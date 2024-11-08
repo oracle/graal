@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,70 +40,29 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.TruffleContext;
+
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.util.Objects;
-import java.util.Set;
 
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageDispatch;
+final class TruffleContextCleanableReference extends WeakReference<TruffleContext> {
 
-final class PolyglotLanguageDispatch extends AbstractLanguageDispatch {
+    private static final ReferenceQueue<Object> queue = new ReferenceQueue<>();
 
-    protected PolyglotLanguageDispatch(PolyglotImpl impl) {
-        super(impl);
+    private final PolyglotContextImpl polyglotContext;
+
+    TruffleContextCleanableReference(TruffleContext referent, PolyglotContextImpl polyglotContext) {
+        super(referent, queue);
+        this.polyglotContext = Objects.requireNonNull(polyglotContext, "PolyglotContext must be non null");
+        processReferenceQueue();
     }
 
-    @Override
-    public String getName(Object receiver) {
-        return ((PolyglotLanguage) receiver).getName();
-    }
-
-    @Override
-    public String getImplementationName(Object receiver) {
-        return ((PolyglotLanguage) receiver).getImplementationName();
-    }
-
-    @Override
-    public boolean isInteractive(Object receiver) {
-        return ((PolyglotLanguage) receiver).isInteractive();
-    }
-
-    @Override
-    public String getVersion(Object receiver) {
-        return ((PolyglotLanguage) receiver).getVersion();
-    }
-
-    @Override
-    public String getId(Object receiver) {
-        return ((PolyglotLanguage) receiver).getId();
-    }
-
-    @Override
-    public OptionDescriptors getOptions(Object receiver) {
-        return ((PolyglotLanguage) receiver).getOptions();
-    }
-
-    @Override
-    public Set<String> getMimeTypes(Object receiver) {
-        return ((PolyglotLanguage) receiver).getMimeTypes();
-    }
-
-    @Override
-    public String getDefaultMimeType(Object receiver) {
-        return ((PolyglotLanguage) receiver).getDefaultMimeType();
-    }
-
-    @Override
-    public String getWebsite(Object receiver) {
-        return ((PolyglotLanguage) receiver).getWebsite();
-    }
-
-    @Override
-    public int hashCode(Object receiver) {
-        return Objects.hashCode(receiver);
-    }
-
-    @Override
-    public boolean equals(Object receiver, Object otherImpl) {
-        return receiver.equals(otherImpl);
+    static void processReferenceQueue() {
+        Reference<?> ref;
+        while ((ref = queue.poll()) != null) {
+            ((TruffleContextCleanableReference) ref).polyglotContext.onContextCollected();
+        }
     }
 }

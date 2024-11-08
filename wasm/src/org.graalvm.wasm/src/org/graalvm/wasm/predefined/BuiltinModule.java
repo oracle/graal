@@ -85,7 +85,7 @@ public abstract class BuiltinModule {
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final WasmModule module = language.getOrCreateBuiltinModule(this, bm -> createModule(language, context, name));
 
-        final WasmInstance instance = new WasmInstance(context, module);
+        final WasmInstance instance = new WasmInstance(context, module, context.environment().getContext());
         instance.createLinkActions();
         boolean multiContext = context.language().isMultiContext();
         for (int i = 0; i < module.numFunctions(); i++) {

@@ -288,7 +288,7 @@ final class PolyglotContextConfig {
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
         this.onlyLanguages = onlyLanguages;
-        this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getLanguages().keySet() : onlyLanguages;
+        this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getPublicLanguages().keySet() : onlyLanguages;
         this.fileSystemConfig = fileSystemConfig;
         this.optionsById = new HashMap<>();
         this.logHandler = logHandler;

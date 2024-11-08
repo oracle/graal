@@ -47,6 +47,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
@@ -3571,4 +3572,35 @@ public class LanguageSPITest {
         assertEquals("java.lang.AssertionError: expectedMessage", e.getMessage());
     }
 
+    @Test
+    public void testEquals() {
+        try (Engine engine = Engine.create()) {
+            Language language1 = engine.getLanguages().get(EqualsLanguage1.ID);
+            Language language2 = engine.getLanguages().get(EqualsLanguage2.ID);
+            assertNotEquals(language1, language2);
+            assertEquals(language1, engine.getLanguages().get(EqualsLanguage1.ID));
+        }
+    }
+
+    @TruffleLanguage.Registration(id = EqualsLanguage1.ID)
+    public static final class EqualsLanguage1 extends TruffleLanguage<Void> {
+
+        static final String ID = "EqualsLanguage1";
+
+        @Override
+        protected Void createContext(Env env) {
+            return null;
+        }
+    }
+
+    @TruffleLanguage.Registration(id = EqualsLanguage2.ID)
+    public static final class EqualsLanguage2 extends TruffleLanguage<Void> {
+
+        static final String ID = "EqualsLanguage2";
+
+        @Override
+        protected Void createContext(Env env) {
+            return null;
+        }
+    }
 }

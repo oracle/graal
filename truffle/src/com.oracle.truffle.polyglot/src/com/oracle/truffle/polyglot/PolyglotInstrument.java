@@ -57,7 +57,6 @@ import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 /** The data corresponding to a given {@link TruffleInstrument}. */
 class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
-    Object api;
     InstrumentInfo info;
     final InstrumentCache cache;
     final PolyglotEngineImpl engine;

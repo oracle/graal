@@ -76,6 +76,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -439,7 +440,7 @@ public abstract class Accessor {
 
         public abstract void leaveInternalContext(Node node, Object polyglotContext, Object prev);
 
-        public abstract Object[] enterContextAsPolyglotThread(Object polyglotContext);
+        public abstract Object[] enterContextAsPolyglotThread(Object polyglotContext, Context contextAPI);
 
         public abstract void leaveContextAsPolyglotThread(Object polyglotContext, Object[] prev);
 
@@ -472,8 +473,6 @@ public abstract class Accessor {
         public abstract void reportAllLanguageContexts(Object polyglotEngine, Object contextsListener);
 
         public abstract void reportAllContextThreads(Object polyglotEngine, Object threadsListener);
-
-        public abstract TruffleContext getParentContext(Object polyglotContext);
 
         public abstract boolean isCreateThreadAllowed(Object polyglotLanguageContext);
 
@@ -702,10 +701,6 @@ public abstract class Accessor {
 
         public abstract Throwable getPolyglotExceptionCause(Object polyglotExceptionImpl);
 
-        public abstract Object getPolyglotExceptionContext(Object polyglotExceptionImpl);
-
-        public abstract Object getPolyglotExceptionEngine(Object polyglotExceptionImpl);
-
         public abstract boolean isCancelExecution(Throwable throwable);
 
         public abstract boolean isExitException(Throwable throwable);
@@ -756,10 +751,6 @@ public abstract class Accessor {
 
         public abstract AutoCloseable createPolyglotThreadScope();
 
-        public abstract Object getPolyglotEngineAPI(Object polyglotEngineImpl);
-
-        public abstract Object getPolyglotContextAPI(Object polyglotContextImpl);
-
         public abstract EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull);
 
         public abstract Thread createInstrumentSystemThread(Object polyglotInstrument, Runnable runnable, ThreadGroup threadGroup);
@@ -809,7 +800,7 @@ public abstract class Accessor {
 
         public abstract Object createEnvContext(Env localEnv, List<Object> servicesCollector);
 
-        public abstract TruffleContext createTruffleContext(Object impl, boolean creator);
+        public abstract TruffleContext createTruffleContext(Object impl, TruffleContext parentContext);
 
         public abstract void postInitEnv(Env env);
 

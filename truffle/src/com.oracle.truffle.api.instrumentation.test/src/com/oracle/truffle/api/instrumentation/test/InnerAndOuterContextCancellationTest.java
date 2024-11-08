@@ -44,7 +44,6 @@ import static com.oracle.truffle.api.instrumentation.test.InstrumentationTestLan
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -57,6 +56,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
@@ -194,8 +194,8 @@ public class InnerAndOuterContextCancellationTest {
             context.initialize(ID);
             Source source = Source.newBuilder(ID, "CONTEXT(LOOP(infinity,STATEMENT))", this.getClass().getSimpleName()).build();
             CountDownLatch cancelLatch = new CountDownLatch(1);
-            AtomicReference<TruffleContext> innerTruffleContext = new AtomicReference<>();
-            captureInnerContext(cancelLatch, innerTruffleContext);
+            AtomicReference<Context> innerContext = new AtomicReference<>();
+            captureInnerContext(cancelLatch, innerContext);
             ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
             List<Future<?>> futures = new ArrayList<>();
             if (inner) {
@@ -204,7 +204,7 @@ public class InnerAndOuterContextCancellationTest {
                         cancelLatch.await();
                     } catch (InterruptedException ie) {
                     }
-                    Context innerCreatorApi = truffleContextToCreatorApi(innerTruffleContext.get());
+                    Context innerCreatorApi = innerContext.get();
                     innerCreatorApi.close(true);
                 }));
             }
@@ -236,7 +236,7 @@ public class InnerAndOuterContextCancellationTest {
         }
     }
 
-    private void captureInnerContext(CountDownLatch cancelLatch, AtomicReference<TruffleContext> innerTruffleContext) {
+    private void captureInnerContext(CountDownLatch cancelLatch, AtomicReference<Context> innerContext) {
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
             @Override
             public void onEnter(EventContext c, VirtualFrame frame) {
@@ -245,7 +245,8 @@ public class InnerAndOuterContextCancellationTest {
 
             @CompilerDirectives.TruffleBoundary
             private void onEnterBoundary() {
-                innerTruffleContext.set(InstrumentContext.get(null).env.getContext());
+                TruffleContext truffleContext = InstrumentContext.get(null).env.getContext();
+                innerContext.set(truffleContextToCreatorApi(truffleContext));
                 cancelLatch.countDown();
             }
 
@@ -261,16 +262,8 @@ public class InnerAndOuterContextCancellationTest {
     }
 
     private static Context truffleContextToCreatorApi(TruffleContext tc) {
-        try {
-            Field polyglotContextField = tc.getClass().getDeclaredField("polyglotContext");
-            polyglotContextField.setAccessible(true);
-            Object polyglotContext = polyglotContextField.get(tc);
-            Field creatorApiField = polyglotContext.getClass().getDeclaredField("api");
-            creatorApiField.setAccessible(true);
-            return (Context) creatorApiField.get(polyglotContext);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
+        Object polyglotContext = ReflectionUtils.getField(tc, "polyglotContext");
+        return (Context) ReflectionUtils.invoke(polyglotContext, "getContextAPI");
     }
 
     static class CancelInfiniteJob implements Callable<Void> {

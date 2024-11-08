@@ -77,17 +77,24 @@ import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.HashEntriesIt
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.HashSizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.PutNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.RemoveBooleanNodeGen;
+import org.graalvm.polyglot.Context;
 
 class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
 
     final PolyglotLanguageContext languageContext;
     final Object guestObject;
     final Cache cache;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this map is still reachable.
+     */
+    final Context contextAnchor;
 
     PolyglotMap(PolyglotLanguageContext languageContext, Object obj, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
         this.guestObject = obj;
         this.languageContext = languageContext;
         this.cache = Cache.lookup(languageContext, obj.getClass(), keyClass, keyType, valueClass, valueType);
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     static <K, V> Map<K, V> create(PolyglotLanguageContext languageContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {

@@ -52,6 +52,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.lang.ref.Reference;
 import java.lang.reflect.Method;
 import java.math.BigInteger;
 import java.net.URI;
@@ -71,6 +72,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
@@ -199,7 +201,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public void initialize() {
         super.initialize();
-        this.hostNull = getAPIAccess().newValue(PolyglotValueDispatch.createHostNull(this), null, EngineAccessor.HOST.getHostNull());
+        this.hostNull = getAPIAccess().newValue(PolyglotValueDispatch.createHostNull(this), null, EngineAccessor.HOST.getHostNull(), null);
         this.disconnectedHostValue = new PolyglotValueDispatch.HostValue(this);
         this.disconnectedBigIntegerHostValue = new PolyglotValueDispatch.BigIntegerHostValue(this);
         PolyglotValueDispatch.createDefaultValues(this, null, primitiveValues);
@@ -255,11 +257,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                 throw PolyglotEngineException.illegalState(
                                 "No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
             }
-            Object api = context.api;
-            if (api == null) {
-                context.api = api = getAPIAccess().newContext(contextDispatch, context, context.engine.api);
-            }
-            return api;
+            return context.getContextAPI();
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);
         }
@@ -270,7 +268,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @SuppressWarnings("unchecked")
     @Override
-    public Object buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
+    public Engine buildEngine(String[] permittedLanguages, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandler, Object hostLanguage, boolean hostLanguageOnly,
                     boolean registerInActiveEngines, Object polyglotHostService) {
         PolyglotEngineImpl impl = null;
@@ -428,10 +426,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @SuppressWarnings("unchecked")
     public void preInitializeEngine() {
         PolyglotEngineImpl engine = createDefaultEngine(new PreInitContextHostLanguage());
-        getAPIAccess().newEngine(engineDispatch, engine, false);
+        Object apiEngine = getAPIAccess().newEngine(engineDispatch, engine, false);
         try {
             engine.preInitialize();
         } finally {
+            Reference.reachabilityFence(apiEngine);
             // Reset language homes from native-image compilation time, will be recomputed in
             // image execution time
             LanguageCache.resetNativeImageCacheLanguageHomes();
@@ -515,7 +514,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         if (hostValue == null) {
             return hostNull;
         } else if (isGuestPrimitive(hostValue)) {
-            return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), null, hostValue);
+            return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), null, hostValue, null);
         } else if (PolyglotWrapper.isInstance(hostValue)) {
             PolyglotWrapper hostWrapper = PolyglotWrapper.asInstance(hostValue);
             // host wrappers can nicely reuse the associated context
@@ -536,7 +535,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             } else {
                 guestValue = EngineAccessor.HOST.toDisconnectedHostObject(hostValue);
             }
-            return getAPIAccess().newValue(hostValue instanceof BigInteger ? disconnectedBigIntegerHostValue : disconnectedHostValue, null, guestValue);
+            return getAPIAccess().newValue(hostValue instanceof BigInteger ? disconnectedBigIntegerHostValue : disconnectedHostValue, null, guestValue, null);
         }
     }
 
@@ -881,9 +880,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
         APIAccess access = polyglot.getAPIAccess();
-        RuntimeException polyglotException = access.newLanguageException(exceptionImpl.getMessage(), polyglot.exceptionDispatch, exceptionImpl);
+        RuntimeException polyglotException = access.newLanguageException(exceptionImpl.getMessage(), polyglot.exceptionDispatch, exceptionImpl, context.getContextAPIOrNull());
         if (suppressedImpl != null) {
-            polyglotException.addSuppressed(access.newLanguageException(exceptionImpl.getMessage(), polyglot.exceptionDispatch, suppressedImpl));
+            polyglotException.addSuppressed(access.newLanguageException(exceptionImpl.getMessage(), polyglot.exceptionDispatch, suppressedImpl, context.getContextAPIOrNull()));
         }
         return polyglotException;
     }
@@ -894,7 +893,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         APIAccess access = engine.getAPIAccess();
         PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, null, false, 0, e);
-        return access.newLanguageException(exceptionImpl.getMessage(), engine.impl.exceptionDispatch, exceptionImpl);
+        return access.newLanguageException(exceptionImpl.getMessage(), engine.impl.exceptionDispatch, exceptionImpl, engine.getEngineAPIOrNull());
     }
 
     /**
@@ -910,7 +909,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         APIAccess access = polyglot.getAPIAccess();
         PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(polyglot, e);
-        return access.newLanguageException(exceptionImpl.getMessage(), polyglot.exceptionDispatch, exceptionImpl);
+        return access.newLanguageException(exceptionImpl.getMessage(), polyglot.exceptionDispatch, exceptionImpl, null);
     }
 
     static RuntimeException hostToGuestException(PolyglotEngineImpl engine, Throwable t) {

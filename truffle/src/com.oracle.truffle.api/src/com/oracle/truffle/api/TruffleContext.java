@@ -42,6 +42,7 @@ package com.oracle.truffle.api;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ref.Reference;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -107,10 +108,28 @@ public final class TruffleContext implements AutoCloseable {
     }
     final Object polyglotContext;
     final boolean creator;
+    final TruffleContext currentAPI;
+    final TruffleContext parent;
+    /**
+     * Strong reference to the creator {@link TruffleContext} to prevent it from being garbage
+     * collected and closed while API {@link TruffleContext} is still reachable.
+     */
+    final TruffleContext creatorContext;
 
-    TruffleContext(Object polyglotContext, boolean creator) {
+    TruffleContext(Object polyglotContext, TruffleContext parentContext) {
         this.polyglotContext = polyglotContext;
-        this.creator = creator;
+        this.creator = true;
+        this.parent = parentContext;
+        this.creatorContext = this;
+        this.currentAPI = new TruffleContext(this);
+    }
+
+    private TruffleContext(TruffleContext creatorContext) {
+        this.polyglotContext = creatorContext.polyglotContext;
+        this.creator = false;
+        this.parent = creatorContext.parent != null ? creatorContext.parent.currentAPI : null;
+        this.creatorContext = creatorContext;
+        this.currentAPI = null;
     }
 
     /*
@@ -119,6 +138,9 @@ public final class TruffleContext implements AutoCloseable {
     private TruffleContext() {
         this.polyglotContext = null;
         this.creator = false;
+        this.parent = null;
+        this.creatorContext = null;
+        this.currentAPI = null;
     }
 
     /**
@@ -129,11 +151,15 @@ public final class TruffleContext implements AutoCloseable {
     @Override
     @TruffleBoundary
     public boolean equals(Object obj) {
-        if (!(obj instanceof TruffleContext)) {
-            return false;
+        try {
+            if (!(obj instanceof TruffleContext)) {
+                return false;
+            }
+            TruffleContext c = (TruffleContext) obj;
+            return polyglotContext.equals(c.polyglotContext);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
-        TruffleContext c = (TruffleContext) obj;
-        return polyglotContext.equals(c.polyglotContext);
     }
 
     /**
@@ -143,7 +169,11 @@ public final class TruffleContext implements AutoCloseable {
      */
     @Override
     public int hashCode() {
-        return polyglotContext.hashCode();
+        try {
+            return polyglotContext.hashCode();
+        } finally {
+            Reference.reachabilityFence(creatorContext);
+        }
     }
 
     /**
@@ -155,9 +185,15 @@ public final class TruffleContext implements AutoCloseable {
     @TruffleBoundary
     public TruffleContext getParent() {
         try {
-            return LanguageAccessor.engineAccess().getParentContext(polyglotContext);
+            TruffleContext parentContext = parent;
+            if (creator && parentContext != null) {
+                parentContext = parentContext.currentAPI;
+            }
+            return parentContext;
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -199,6 +235,8 @@ public final class TruffleContext implements AutoCloseable {
             return prev;
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -229,6 +267,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().initializeInnerContext(node, polyglotContext, languageId, true);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -254,6 +294,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().initializeInnerContext(node, polyglotContext, languageId, false);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -294,6 +336,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().evalInternalContext(node, polyglotContext, source, true);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -314,6 +358,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().evalInternalContext(node, polyglotContext, source, false);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -331,6 +377,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().isContextEntered(polyglotContext);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -349,6 +397,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().isContextActive(polyglotContext);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -365,6 +415,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().isContextClosed(polyglotContext);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -381,6 +433,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().isContextCancelling(polyglotContext);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -397,6 +451,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().isContextExiting(polyglotContext);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -419,6 +475,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().pause(polyglotContext);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -441,6 +499,8 @@ public final class TruffleContext implements AutoCloseable {
             LanguageAccessor.engineAccess().resume(polyglotContext, pauseFuture);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -467,6 +527,8 @@ public final class TruffleContext implements AutoCloseable {
             LanguageAccessor.engineAccess().leaveInternalContext(node, polyglotContext, prev);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -507,6 +569,8 @@ public final class TruffleContext implements AutoCloseable {
             }
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -543,6 +607,8 @@ public final class TruffleContext implements AutoCloseable {
             return LanguageAccessor.engineAccess().leaveAndEnter(polyglotContext, interrupter, interruptible, object);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -592,6 +658,8 @@ public final class TruffleContext implements AutoCloseable {
             LanguageAccessor.engineAccess().closeContext(polyglotContext, false, null, false, null);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -641,6 +709,8 @@ public final class TruffleContext implements AutoCloseable {
             LanguageAccessor.engineAccess().closeContext(polyglotContext, true, closeLocation, false, message);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -697,6 +767,8 @@ public final class TruffleContext implements AutoCloseable {
             LanguageAccessor.engineAccess().exitContext(polyglotContext, exitLocation, exitCode);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 
@@ -721,6 +793,8 @@ public final class TruffleContext implements AutoCloseable {
             LanguageAccessor.engineAccess().closeContext(polyglotContext, true, location, true, message);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
+        } finally {
+            Reference.reachabilityFence(creatorContext);
         }
     }
 

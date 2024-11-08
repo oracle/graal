@@ -361,47 +361,48 @@ public class TruffleSafepointTest extends AbstractThreadedPolyglotTest {
     @Test
     public void testSynchronous() {
         forEachConfig((threads, events) -> {
-            TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 sleepNanosBoundary(50000);
                 TruffleSafepoint.poll(node);
                 return false;
-            });
+            })) {
 
-            ActionCollector[] collectors = new ActionCollector[events];
-            AtomicInteger eventCounter = new AtomicInteger();
-            for (int i = 0; i < collectors.length; i++) {
-                collectors[i] = new ActionCollector(setup, eventCounter, true, true);
-            }
-
-            for (int i = 0; i < events; i++) {
-                setup.env.submitThreadLocal(null, collectors[i]);
-            }
-
-            setup.stopAndAwait();
-
-            for (int i = 0; i < collectors.length; i++) {
-                ActionCollector runnable = collectors[i];
-
-                // verify that events were happening in the right order#
-                assertEquals(threads, runnable.ids.size());
-
-                for (int concurrentId : runnable.ids) {
-                    int priorEvents = threads * i;
-                    int doneBy = priorEvents + threads;
-
-                    assertTrue(concurrentId + ">=" + priorEvents, concurrentId >= priorEvents);
-                    assertTrue(concurrentId + "<=" + doneBy, concurrentId <= doneBy);
+                ActionCollector[] collectors = new ActionCollector[events];
+                AtomicInteger eventCounter = new AtomicInteger();
+                for (int i = 0; i < collectors.length; i++) {
+                    collectors[i] = new ActionCollector(setup, eventCounter, true, true);
                 }
 
-                assertEquals(threads, runnable.actions.size());
+                for (int i = 0; i < events; i++) {
+                    setup.env.submitThreadLocal(null, collectors[i]);
+                }
 
-                // verify that every thread is seen exactly once
-                Set<Thread> seenThreads = new HashSet<>();
-                for (Thread t : runnable.actions) {
-                    if (seenThreads.contains(t)) {
-                        throw new AssertionError("Did not expect to see thread twice.");
+                setup.stopAndAwait();
+
+                for (int i = 0; i < collectors.length; i++) {
+                    ActionCollector runnable = collectors[i];
+
+                    // verify that events were happening in the right order#
+                    assertEquals(threads, runnable.ids.size());
+
+                    for (int concurrentId : runnable.ids) {
+                        int priorEvents = threads * i;
+                        int doneBy = priorEvents + threads;
+
+                        assertTrue(concurrentId + ">=" + priorEvents, concurrentId >= priorEvents);
+                        assertTrue(concurrentId + "<=" + doneBy, concurrentId <= doneBy);
                     }
-                    seenThreads.add(t);
+
+                    assertEquals(threads, runnable.actions.size());
+
+                    // verify that every thread is seen exactly once
+                    Set<Thread> seenThreads = new HashSet<>();
+                    for (Thread t : runnable.actions) {
+                        if (seenThreads.contains(t)) {
+                            throw new AssertionError("Did not expect to see thread twice.");
+                        }
+                        seenThreads.add(t);
+                    }
                 }
             }
         });

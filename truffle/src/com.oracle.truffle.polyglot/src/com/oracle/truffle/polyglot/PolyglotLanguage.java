@@ -63,7 +63,6 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     final LanguageCache cache;
     final LanguageInfo info;
 
-    Object api; // effectively final
     final int engineIndex;
     final RuntimeException initError;
 

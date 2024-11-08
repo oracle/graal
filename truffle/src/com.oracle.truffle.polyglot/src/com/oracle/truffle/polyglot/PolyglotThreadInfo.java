@@ -58,6 +58,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
+import org.graalvm.polyglot.Context;
 
 // Information attached by context to each thread which entered the context
 final class PolyglotThreadInfo {
@@ -98,6 +99,11 @@ final class PolyglotThreadInfo {
     private boolean finalizationComplete;
 
     private final List<ProbeNode> probesEnterList;
+    /**
+     * Field holding the Context instance to prevent it from being collected while there is an
+     * explicitly entered thread.
+     */
+    volatile Context explicitEnterAnchor;
 
     /*
      * Set only for dead embedder threads (Thread#isAlive() == false) to claim the finalization of
@@ -279,7 +285,7 @@ final class PolyglotThreadInfo {
             setContextClassLoader();
         }
 
-        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+        EngineAccessor.INSTRUMENT.notifyEnter(engine.instrumentationHandler, profiledContext.getCreatorTruffleContext());
 
         if (engine.specializationStatistics != null) {
             enterStatistics(engine.specializationStatistics);
@@ -303,7 +309,7 @@ final class PolyglotThreadInfo {
          * Notify might be false if the context was closed already on a second thread.
          */
         try {
-            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.creatorTruffleContext);
+            EngineAccessor.INSTRUMENT.notifyLeave(engine.instrumentationHandler, profiledContext.getCreatorTruffleContext());
         } finally {
             if (!engine.customHostClassLoader.isValid()) {
                 restoreContextClassLoader();

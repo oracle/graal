@@ -55,17 +55,24 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import org.graalvm.polyglot.Context;
 
 class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
 
     final PolyglotLanguageContext languageContext;
     final Object guestObject;
     final PolyglotMapEntry.Cache cache;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this entry is still reachable.
+     */
+    final Context contextAnchor;
 
     PolyglotMapEntry(PolyglotLanguageContext languageContext, Object obj, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
         this.languageContext = languageContext;
         this.guestObject = obj;
         this.cache = Cache.lookup(languageContext, obj.getClass(), keyClass, keyType, valueClass, valueType);
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     static <K, V> PolyglotMapEntry<K, V> create(PolyglotLanguageContext languageContext, Object foreignObject, boolean implementsFunction,
