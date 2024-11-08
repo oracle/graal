@@ -200,20 +200,22 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
 
         # collect project files first, then extend with shaded (re)sources
         super()._collect_files()
-        javafiles = self._javafiles
-        non_javafiles = self._non_javafiles
-
         proj = self.subject
         binDir = proj.output_dir()
+        srcGenDir = proj.source_gen_dir()
         excludedPaths = proj.excluded_paths()
         includedPaths = proj.included_paths()
+
+        # remove possibly outdated src_gen files; they will be added below
+        javafiles = self._javafiles = {src: out for src, out in self._javafiles.items() if not src.startswith(srcGenDir)}
+        non_javafiles = self._non_javafiles = {src: out for src, out in self._non_javafiles.items() if not src.startswith(srcGenDir)}
 
         for dep in proj.shaded_deps():
             srcFilePath = dep.get_source_path(False)
             if srcFilePath is None:
                 continue
 
-            for zipFilePath, outDir in [(srcFilePath, proj.source_gen_dir())]:
+            for zipFilePath, outDir in [(srcFilePath, srcGenDir)]:
                 try:
                     with zipfile.ZipFile(zipFilePath, 'r') as zf:
                         for zi in zf.infolist():
@@ -240,9 +242,9 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                             new_filename = proj.substitute_path(old_filename, mappings=path_mappings)
                             src_gen_path = os.path.join(outDir, new_filename)
                             if filepath.suffix == '.java':
-                                javafiles.setdefault(src_gen_path, os.path.join(binDir, new_filename[:-len('.java')] + '.class'))
+                                javafiles[src_gen_path] = os.path.join(binDir, new_filename[:-len('.java')] + '.class')
                             else:
-                                non_javafiles.setdefault(src_gen_path, os.path.join(binDir, new_filename))
+                                non_javafiles[src_gen_path] = os.path.join(binDir, new_filename)
                 except FileNotFoundError:
                     continue
         return self
