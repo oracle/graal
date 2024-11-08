@@ -13,27 +13,16 @@ import java.util.Map;
  * acting as a memory of FixpointIterator.
  * An example could be mapping Nodes to intervals or constants.
  *
- * @param <Value>  type of the derived abstract value
  * @param <Domain> type of the derived abstract domain
  */
-public class Environment<
-        Value extends AbstractValue<Value>,
+public final class Environment<
         Domain extends AbstractDomain<Domain>> {
-
     private final Map<Node, Domain> nodeToDomainMap;
-    private Domain topValue;
-    private AbstractValueKind kind;
+    private final Domain topValue;
 
     public Environment(Domain topValue) {
         this.nodeToDomainMap = new HashMap<>();
-        this.topValue = topValue;
-        this.kind = AbstractValueKind.TOP;
-    }
-
-    public Environment(Domain topValue, AbstractValueKind kind) {
-        this.nodeToDomainMap = new HashMap<>();
-        this.topValue = topValue;
-        this.kind = kind;
+        this.topValue = topValue.copyOf();
     }
 
     public Environment(Domain topValue, Map<Node, Domain> initialBindings) {
@@ -41,16 +30,10 @@ public class Environment<
         this.topValue = topValue;
         for (Map.Entry<Node, Domain> entry : initialBindings.entrySet()) {
             if (entry.getValue().isBot()) {
-                this.kind = AbstractValueKind.BOT;
                 return;
             }
             this.nodeToDomainMap.put(entry.getKey(), entry.getValue());
         }
-        this.kind = AbstractValueKind.VAL;
-    }
-
-    public boolean isVal() {
-        return this.kind == AbstractValueKind.VAL;
     }
 
     public int size() {
@@ -58,27 +41,14 @@ public class Environment<
     }
 
     public Domain get(Node node) {
-        if (this.kind == AbstractValueKind.BOT) {
-            return null;
-        }
         return this.nodeToDomainMap.getOrDefault(node, topValue);
     }
 
-    public Environment<Value, Domain> set(Node node, Domain value) {
-        if (this.kind == AbstractValueKind.BOT) {
-            return this;
-        }
-        if (value.isBot()) {
-            this.kind = AbstractValueKind.BOT;
-        } else {
-            this.nodeToDomainMap.put(node, value);
-            this.kind = AbstractValueKind.VAL;
-        }
-        return this;
+    public void set(Node node, Domain value) {
+        this.nodeToDomainMap.put(node, value);
     }
 
     public void reset() {
         this.nodeToDomainMap.clear();
-        this.kind = AbstractValueKind.TOP;
     }
 }
