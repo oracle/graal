@@ -686,13 +686,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public final class DisableSingleStepping implements AutoCloseable {
 
+        private final boolean steppingDisabled;
+
         private DisableSingleStepping() {
-            getThreadLocalState().disableSingleStepping();
+            steppingDisabled = getThreadLocalState().disableSingleStepping(false);
         }
 
         @Override
         public void close() {
-            getThreadLocalState().enableSingleStepping();
+            if (steppingDisabled) {
+                getThreadLocalState().enableSingleStepping();
+            }
         }
     }
 

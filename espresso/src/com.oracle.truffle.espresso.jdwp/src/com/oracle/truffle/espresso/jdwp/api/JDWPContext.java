@@ -498,4 +498,6 @@ public interface JDWPContext {
     boolean isSingleSteppingDisabled();
 
     Object allocateInstance(KlassRef klass);
+
+    void steppingInProgress(Thread t, boolean value);
 }

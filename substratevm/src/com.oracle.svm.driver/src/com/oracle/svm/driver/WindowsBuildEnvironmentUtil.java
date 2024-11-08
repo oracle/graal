@@ -40,7 +40,9 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
  * This utility helps set up a build environment for Windows users automatically.
  */
 class WindowsBuildEnvironmentUtil {
+    private static final String PROGRAM_FILES_x86_ENV_KEY = "ProgramFiles(x86)";
     private static final String VCVARSALL = "vcvarsall.bat";
+    private static final String VSWHERE = "vswhere.exe";
     private static final Path VCVARSALL_SUBPATH = Paths.get("VC", "Auxiliary", "Build", VCVARSALL);
     // Use another static field for minimum required version because CCompilerInvoker is hosted only
     private static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION = CCompilerInvoker.VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION;
@@ -50,17 +52,13 @@ class WindowsBuildEnvironmentUtil {
         if (isCCompilerOnPath()) {
             return; // nothing to do, build environment initialized by user
         }
-        Path vcVarsAllLocation = findVCVarsallWithVSWhere();
-        if (vcVarsAllLocation == null) {
-            throw fail(String.format("Failed to find '%s' in a Visual Studio installation.", VCVARSALL));
-        }
+        Path vcVarsAllLocation = findVCVarsallWithVSWhereOrFail();
         Map<String, String> originalEnv = new HashMap<>();
         int numSeenOutputSeparators = 0;
         String outputSeparator = "!NEXTCOMMAND!";
         try {
             // call `set`, then `vcvarsall.bat`, and then `set` again with separators in between
-            String commandSequence = String.format("cmd.exe /c set && echo %s && \"%s\" x64 && echo %s && set",
-                            outputSeparator, vcVarsAllLocation, outputSeparator);
+            String commandSequence = "cmd.exe /c set && echo %s && \"%s\" x64 && echo %s && set".formatted(outputSeparator, vcVarsAllLocation, outputSeparator);
             Process p = Runtime.getRuntime().exec(new String[]{"cmd.exe", "/c", commandSequence});
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
                 String line;
@@ -90,10 +88,10 @@ class WindowsBuildEnvironmentUtil {
         }
     }
 
-    private static Path findVCVarsallWithVSWhere() {
-        String programFilesX86 = System.getenv("ProgramFiles(x86)");
+    private static Path findVCVarsallWithVSWhereOrFail() {
+        String programFilesX86 = System.getenv(PROGRAM_FILES_x86_ENV_KEY);
         if (programFilesX86 == null) {
-            return null;
+            throw fail("Variable '%s' is not defined in the system environment.".formatted(PROGRAM_FILES_x86_ENV_KEY));
         }
         /*
          * vswhere is included with the installer as of Visual Studio 2017 version 15.2 and later,
@@ -101,26 +99,30 @@ class WindowsBuildEnvironmentUtil {
          * Studio\Installer\vswhere.exe` (see:
          * https://github.com/microsoft/vswhere/blob/2717133/README.md).
          */
-        Path vsWhereExe = Paths.get(programFilesX86, "Microsoft Visual Studio", "Installer", "vswhere.exe");
+        Path vsWhereExe = Paths.get(programFilesX86, "Microsoft Visual Studio", "Installer", VSWHERE);
         if (!Files.exists(vsWhereExe)) {
-            return null;
+            throw fail("Failed to find '%s' for locating Visual Studio installations.".formatted(VSWHERE));
         }
         try {
             Process p = Runtime.getRuntime().exec(new String[]{vsWhereExe.toAbsolutePath().toString(),
                             "-version", VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION,
+                            "-products", "*", /* https://github.com/microsoft/vswhere/issues/22 */
                             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
                             "-property", "installationPath"});
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
-                Path installationPath = Paths.get(reader.readLine());
-                Path possibleLocation = installationPath.resolve(VCVARSALL_SUBPATH);
-                if (isRegularReadableFile(possibleLocation)) {
-                    return possibleLocation;
+                String installationPathLine = reader.readLine();
+                if (installationPathLine != null) {
+                    Path installationPath = Paths.get(installationPathLine);
+                    Path possibleLocation = installationPath.resolve(VCVARSALL_SUBPATH);
+                    if (isRegularReadableFile(possibleLocation)) {
+                        return possibleLocation;
+                    }
                 }
             }
         } catch (IOException e) {
-            throw fail("Failed to process vswhere.exe output.", e);
+            throw fail("Failed to process output of '%s'.".formatted(VSWHERE), e);
         }
-        throw fail("Failed to find suitable version of Visual Studio with vswhere.exe.");
+        throw fail("Failed to find a suitable version of Visual Studio with '%s'.".formatted(VSWHERE));
     }
 
     private static boolean isCCompilerOnPath() {
