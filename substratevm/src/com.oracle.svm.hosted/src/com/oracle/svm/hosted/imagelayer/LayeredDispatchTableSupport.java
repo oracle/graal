@@ -34,22 +34,24 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.imagelayer.BuildingImageLayerPredicate;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
@@ -58,7 +60,10 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFla
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.heap.SVMImageLayerWriter;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -81,8 +86,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * The dispatch logic for virtual calls can be found in {@link OpenTypeWorldDispatchTableSnippets}.
  *
  * The contents of the dispatch tables are computed within {@link VTableBuilder}.
+ *
+ * We also track across layers virtual calls which need to be registered as roots in subsequent
+ * layers. We must register these call as roots since new types can be instantiated in subsequent
+ * layers which then may cause new call targets to be reachable from prior layers' virtual calls.
+ *
+ * We call {@link #recordVirtualCallTarget} to register a virtual call that must be added as a root
+ * in a subsequent layer. The logic for installing roots in subsequent layers is performed in
+ * {@link LayeredDispatchTableSupportFeature#beforeAnalysis}.
  */
-@AutomaticallyRegisteredImageSingleton(onlyWith = BuildingImageLayerPredicate.class)
 public class LayeredDispatchTableSupport implements LayeredImageSingleton {
     public static final class Options {
         @Option(help = "Log discrepancies between layered open world type information. This is an experimental option which will be removed.")//
@@ -94,23 +106,56 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
 
     final Set<String> priorUnresolvedSymbols;
     final Map<Integer, PriorDispatchTable> priorDispatchTables;
+    /**
+     * Map from typeId to set of names generated via {@link #generateFormattedMethodName}.
+     */
+    final Map<Integer, Set<String>> priorVirtualCallTargets;
 
     final Map<MethodPointer, HostedDispatchSlot> methodPointerToDispatchSlot = new IdentityHashMap<>();
     final Map<HostedType, HostedDispatchTable> typeToDispatchTable = new HashMap<>();
+    final Set<HostedMethod> virtualCallTargets = ImageLayerBuildingSupport.buildingSharedLayer() ? ConcurrentHashMap.newKeySet() : null;
 
     private final boolean generateUnresolvedSymbolNames = ImageLayerBuildingSupport.buildingSharedLayer();
 
+    /**
+     * Cache of builderModules. Set in {@link LayeredDispatchTableSupportFeature#beforeCompilation}.
+     */
+    private Set<Module> builderModules;
+
     public LayeredDispatchTableSupport() {
-        this(Map.of(), Set.of());
+        this(Map.of(), Set.of(), Map.of());
     }
 
-    private LayeredDispatchTableSupport(Map<Integer, PriorDispatchTable> priorDispatchTables, Set<String> priorUnresolvedSymbols) {
+    private LayeredDispatchTableSupport(Map<Integer, PriorDispatchTable> priorDispatchTables, Set<String> priorUnresolvedSymbols, Map<Integer, Set<String>> priorVirtualCallTargets) {
         this.priorDispatchTables = priorDispatchTables;
         this.priorUnresolvedSymbols = priorUnresolvedSymbols;
+        this.priorVirtualCallTargets = priorVirtualCallTargets;
     }
 
     public static LayeredDispatchTableSupport singleton() {
         return ImageSingletons.lookup(LayeredDispatchTableSupport.class);
+    }
+
+    void installBuilderModules(Set<Module> newCoreTypes) {
+        assert builderModules == null : builderModules;
+        builderModules = newCoreTypes;
+    }
+
+    /**
+     * Registers a virtual call target which will be added as a root in subsequent layers. Currently
+     * we filter our all calls either originating from or targeting a {@link #builderModules}.
+     */
+    public void recordVirtualCallTarget(HostedMethod caller, HostedMethod callee) {
+        Module callerModule = caller.getDeclaringClass().getJavaClass().getModule();
+        Module calleeModule = callee.getDeclaringClass().getJavaClass().getModule();
+        if (!(builderModules.contains(callerModule) || builderModules.contains(calleeModule))) {
+            virtualCallTargets.add(callee);
+        }
+    }
+
+    // GR-59009 remove once we persist more methods
+    static String generateFormattedMethodName(AnalysisMethod method) {
+        return method.format("%n(%P)%R");
     }
 
     public void registerDeclaredDispatchInfo(HostedType type, List<HostedMethod> declaredMethods) {
@@ -447,8 +492,9 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
          * To reduce redundancy, we maintain a separate table of all methods we refer to within the
          * dispatch tables.
          */
-        ImageLayerWriter layerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
+        SVMImageLayerWriter layerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
         Map<HostedMethod, Integer> methodToOffsetMap = new HashMap<>();
+        List<Boolean> methodBooleans = new ArrayList<>();
         List<Integer> methodInts = new ArrayList<>();
         List<String> methodStrings = new ArrayList<>();
         Function<HostedMethod, Integer> methodToOffsetMapper = (hMethod) -> {
@@ -460,27 +506,35 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
                 methodToOffsetMap.put(hMethod, offset);
                 methodInts.add(layerWriter.isMethodPersisted(hMethod.getWrapped()) ? hMethod.wrapped.getId() : PriorDispatchMethod.UNKNOWN_ID);
                 methodInts.add(hMethod.hasVTableIndex() ? hMethod.getVTableIndex() : PriorDispatchMethod.UNKNOWN_VTABLE_IDX);
+                methodBooleans.add(virtualCallTargets.contains(hMethod));
                 methodStrings.add(NativeImage.localSymbolNameForMethod(hMethod));
+                methodStrings.add(generateFormattedMethodName(hMethod.getWrapped()));
             }
             return offset;
         };
 
         /*
-         * Write out all dispatch tables installed within this layer.
+         * Write out dispatch tables for persisted types.
          */
         List<Integer> dispatchTableInts = new ArrayList<>();
         List<Integer> dispatchSlotInts = new ArrayList<>();
         List<String> dispatchSlotStrings = new ArrayList<>();
         int nextSlotIdx = 0;
         for (HostedDispatchTable info : typeToDispatchTable.values()) {
-            if (info.status == HubStatus.INSTALLED_CURRENT_LAYER) {
-                List<Integer> localTargets = new ArrayList<>();
-                List<Integer> slotOffsets = new ArrayList<>();
+            if (!layerWriter.isTypePersisted(info.type.getWrapped())) {
+                // if a type contains target of a virtual call, then it should be persisted
+                assert Arrays.stream(info.locallyDeclaredSlots).noneMatch(virtualCallTargets::contains) : "Type should be persisted: " + info.type;
+                continue;
+            }
 
-                for (var hMethod : info.locallyDeclaredSlots) {
-                    localTargets.add(methodToOffsetMapper.apply(hMethod));
-                }
+            List<Integer> localTargets = new ArrayList<>();
+            List<Integer> slotOffsets = new ArrayList<>();
 
+            for (var hMethod : info.locallyDeclaredSlots) {
+                localTargets.add(methodToOffsetMapper.apply(hMethod));
+            }
+
+            if (info.slots != null) {
                 for (var slotInfo : info.slots) {
                     dispatchSlotStrings.add(slotInfo.symbol);
                     dispatchSlotInts.add(slotInfo.slotNum);
@@ -494,18 +548,19 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
                     }
                     slotOffsets.add(nextSlotIdx++);
                 }
-
-                dispatchTableInts.add(info.type.getWrapped().getId());
-                dispatchTableInts.add(localTargets.size());
-                dispatchTableInts.add(slotOffsets.size());
-                dispatchTableInts.addAll(localTargets);
-                dispatchTableInts.addAll(slotOffsets);
             }
+
+            dispatchTableInts.add(info.type.getWrapped().getId());
+            dispatchTableInts.add(localTargets.size());
+            dispatchTableInts.add(slotOffsets.size());
+            dispatchTableInts.addAll(localTargets);
+            dispatchTableInts.addAll(slotOffsets);
         }
 
         writer.writeIntList("dispatchTableInts", dispatchTableInts);
         writer.writeIntList("dispatchSlotInts", dispatchSlotInts);
         writer.writeStringList("dispatchSlotStrings", dispatchSlotStrings);
+        writer.writeBoolList("methodBooleans", methodBooleans);
         writer.writeIntList("methodInts", methodInts);
         writer.writeStringList("methodStrings", methodStrings);
 
@@ -517,21 +572,26 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         List<Integer> dispatchTableInts = loader.readIntList("dispatchTableInts");
         List<Integer> dispatchSlotInts = loader.readIntList("dispatchSlotInts");
         List<String> dispatchSlotStrings = loader.readStringList("dispatchSlotStrings");
+        List<Boolean> methodBooleans = loader.readBoolList("methodBooleans");
         List<Integer> methodInts = loader.readIntList("methodInts");
         List<String> methodStrings = loader.readStringList("methodStrings");
 
         Set<String> unresolvedSymbols = new HashSet<>();
         Map<Integer, PriorDispatchTable> priorTypes = new HashMap<>();
+        Map<Integer, Set<String>> priorVirtualCallTargets = new HashMap<>();
 
         ArrayList<PriorDispatchMethod> priorMethods = new ArrayList<>();
         var intIterator = methodInts.iterator();
         var stringIterator = methodStrings.iterator();
+        var boolIterator = methodBooleans.iterator();
         while (stringIterator.hasNext()) {
             String symbol = stringIterator.next();
+            String formattedName = stringIterator.next();
             int methodId = intIterator.next();
             int vtableIndex = intIterator.next();
+            boolean isVirtualCallTarget = boolIterator.next();
 
-            var target = new PriorDispatchMethod(methodId, symbol, vtableIndex);
+            var target = new PriorDispatchMethod(methodId, symbol, vtableIndex, formattedName, isVirtualCallTarget);
             priorMethods.add(target);
         }
 
@@ -572,11 +632,18 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             }
 
             var priorDispatchTable = new PriorDispatchTable(typeId, locallyDeclaredSlots, dispatchTableSlots);
-            var prev = priorTypes.put(typeId, priorDispatchTable);
+            Object prev = priorTypes.put(typeId, priorDispatchTable);
             assert prev == null : prev;
+
+            Set<String> priorVirtualCallNames = Arrays.stream(locallyDeclaredSlots).filter(PriorDispatchMethod::isVirtualCallTarget).map(PriorDispatchMethod::formattedName)
+                            .collect(Collectors.toSet());
+            if (!priorVirtualCallNames.isEmpty()) {
+                prev = priorVirtualCallTargets.put(typeId, priorVirtualCallNames);
+                assert prev == null : prev;
+            }
         }
 
-        return new LayeredDispatchTableSupport(priorTypes, unresolvedSymbols);
+        return new LayeredDispatchTableSupport(priorTypes, unresolvedSymbols, priorVirtualCallTargets);
     }
 
     enum HubStatus {
@@ -645,11 +712,51 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
      * not always possible to match on method id. When it is not possible, we store
      * {@link PriorDispatchMethod#UNKNOWN_ID} as the value.
      *
-     * GR-59009 will resolve this issue.
+     * GR-59009 will resolve this issue. As part of this we will also remove
+     * {@link PriorDispatchMethod#formattedName}.
      */
-    record PriorDispatchMethod(int methodId, String symbolName, int vtableIndex) {
+    record PriorDispatchMethod(int methodId, String symbolName, int vtableIndex, String formattedName, boolean isVirtualCallTarget) {
         static final int UNKNOWN_ID = -1;
         static final int UNKNOWN_VTABLE_IDX = -1;
     }
+}
 
+@AutomaticallyRegisteredFeature
+final class LayeredDispatchTableSupportFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return ImageLayerBuildingSupport.buildingImageLayer();
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (ImageLayerBuildingSupport.buildingInitialLayer()) {
+            ImageSingletons.add(LayeredDispatchTableSupport.class, new LayeredDispatchTableSupport());
+        }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            var config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+            var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
+            var singleton = LayeredDispatchTableSupport.singleton();
+            for (var entry : singleton.priorVirtualCallTargets.entrySet()) {
+                AnalysisType type = loader.getAnalysisType(entry.getKey());
+                var methods = type.getOrCalculateOpenTypeWorldDispatchTableMethods();
+                var virtualCallTargets = entry.getValue();
+                methods.forEach(aMethod -> {
+                    if (virtualCallTargets.contains(LayeredDispatchTableSupport.generateFormattedMethodName(aMethod))) {
+                        config.registerAsRoot(aMethod, false, "in prior layer dispatch table");
+                    }
+                });
+            }
+        }
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        LayeredDispatchTableSupport.singleton().installBuilderModules(ImageSingletons.lookup(OpenTypeWorldFeature.class).getBuilderModules());
+    }
 }
