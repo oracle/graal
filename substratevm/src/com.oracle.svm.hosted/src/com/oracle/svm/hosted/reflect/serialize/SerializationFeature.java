@@ -25,6 +25,9 @@
  */
 package com.oracle.svm.hosted.reflect.serialize;
 
+import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
+import static com.oracle.svm.hosted.lambda.LambdaParser.getLambdaClassFromConstantNode;
+
 import java.io.Externalizable;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -35,7 +38,6 @@ import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -47,7 +49,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -56,7 +57,6 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -78,42 +78,26 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.lambda.LambdaParser;
 import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 import com.oracle.svm.hosted.reflect.RecordUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
-import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.java.BytecodeParser;
-import jdk.graal.compiler.java.GraphBuilderPhase;
-import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.OptimisticOptimizations;
-import jdk.graal.compiler.phases.tiers.HighTierContext;
-import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.replacements.MethodHandlePlugin;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.JavaLangReflectAccess;
 import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.ReflectionFactory;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 public class SerializationFeature implements InternalFeature {
@@ -156,67 +140,6 @@ public class SerializationFeature implements InternalFeature {
 
     }
 
-    private static GraphBuilderConfiguration buildLambdaParserConfig() {
-        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-        plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
-        plugins.prependNodePlugin(new MethodHandlePlugin(GraalAccess.getOriginalProviders().getConstantReflection().getMethodHandleAccess(), false));
-        return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
-    }
-
-    @SuppressWarnings("try")
-    private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, OptionValues options) {
-        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getName());
-        DebugContext debug = new DebugContext.Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).description(description).build();
-
-        HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
-        StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
-                        .method(method)
-                        .recordInlinedMethods(false)
-                        .build();
-        try (DebugContext.Scope ignored = debug.scope("ParsingToMaterializeLambdas")) {
-            lambdaParserPhase.apply(graph, context);
-        } catch (Throwable e) {
-            throw debug.handle(e);
-        }
-        return graph;
-    }
-
-    private static Class<?> getLambdaClassFromMemberField(Constant constant) {
-        ResolvedJavaType constantType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType((JavaConstant) constant);
-
-        if (constantType == null) {
-            return null;
-        }
-
-        ResolvedJavaField[] fields = constantType.getInstanceFields(true);
-        ResolvedJavaField targetField = null;
-        for (ResolvedJavaField field : fields) {
-            if (field.getName().equals("member")) {
-                targetField = field;
-                break;
-            }
-        }
-
-        if (targetField == null) {
-            return null;
-        }
-
-        JavaConstant fieldValue = GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(targetField, (JavaConstant) constant);
-        Member memberField = GraalAccess.getOriginalProviders().getSnippetReflection().asObject(Member.class, fieldValue);
-        return memberField.getDeclaringClass();
-    }
-
-    private static Class<?> getLambdaClassFromConstantNode(ConstantNode constantNode) {
-        Constant constant = constantNode.getValue();
-        Class<?> lambdaClass = getLambdaClassFromMemberField(constant);
-
-        if (lambdaClass == null) {
-            return null;
-        }
-
-        return LambdaUtils.isLambdaClass(lambdaClass) ? lambdaClass : null;
-    }
-
     private static void registerLambdasFromConstantNodesInGraph(StructuredGraph graph, SerializationBuilder serializationBuilder) {
         NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
 
@@ -231,37 +154,9 @@ public class SerializationFeature implements InternalFeature {
         }
     }
 
-    static class LambdaGraphBuilderPhase extends GraphBuilderPhase {
-        LambdaGraphBuilderPhase(GraphBuilderConfiguration config) {
-            super(config);
-        }
-
-        @Override
-        public GraphBuilderPhase copyWithConfig(GraphBuilderConfiguration config) {
-            return new LambdaGraphBuilderPhase(config);
-        }
-
-        static class LambdaBytecodeParser extends BytecodeParser {
-            protected LambdaBytecodeParser(Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-                super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
-            }
-        }
-
-        @Override
-        protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
-            return new Instance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext) {
-                @Override
-                protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-                    return new LambdaBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
-                }
-            };
-        }
-    }
-
     @SuppressWarnings("try")
     private static void registerLambdasFromMethod(ResolvedJavaMethod method, SerializationBuilder serializationBuilder, OptionValues options) {
-        GraphBuilderPhase lambdaParserPhase = new LambdaGraphBuilderPhase(buildLambdaParserConfig());
-        StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, options);
+        StructuredGraph graph = createMethodGraph(method, options);
         registerLambdasFromConstantNodesInGraph(graph, serializationBuilder);
     }
 
@@ -284,7 +179,7 @@ public class SerializationFeature implements InternalFeature {
         MetaAccessProvider metaAccess = GraalAccess.getOriginalProviders().getMetaAccess();
         capturingClasses.parallelStream()
                         .map(metaAccess::lookupJavaType)
-                        .flatMap(SerializationFeature::allExecutablesDeclaredInClass)
+                        .flatMap(LambdaParser::allExecutablesDeclaredInClass)
                         .filter(m -> m.getCode() != null)
                         .forEach(m -> registerLambdasFromMethod(m, serializationBuilder, options));
 
@@ -304,13 +199,6 @@ public class SerializationFeature implements InternalFeature {
                 throw serializationFallback;
             }
         }
-    }
-
-    private static Stream<? extends ResolvedJavaMethod> allExecutablesDeclaredInClass(ResolvedJavaType t) {
-        return Stream.concat(Stream.concat(
-                        Arrays.stream(t.getDeclaredMethods(false)),
-                        Arrays.stream(t.getDeclaredConstructors(false))),
-                        t.getClassInitializer() == null ? Stream.empty() : Stream.of(t.getClassInitializer()));
     }
 
     public static Object getConstructorAccessor(Constructor<?> constructor) {

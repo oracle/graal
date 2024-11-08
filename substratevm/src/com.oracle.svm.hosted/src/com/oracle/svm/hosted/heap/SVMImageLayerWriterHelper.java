@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CAPTURING_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FACTORY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.GENERATED_SERIALIZATION_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LAMBDA_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_DECLARING_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_TARGET_CONSTRUCTOR_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TARGET_CONSTRUCTOR_TAG;
@@ -43,6 +45,8 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
 
+import jdk.graal.compiler.java.LambdaUtils;
+
 public class SVMImageLayerWriterHelper extends ImageLayerWriterHelper {
     public SVMImageLayerWriterHelper(ImageLayerWriter imageLayerWriter) {
         super(imageLayerWriter);
@@ -55,6 +59,9 @@ public class SVMImageLayerWriterHelper extends ImageLayerWriterHelper {
             var key = SerializationSupport.singleton().getKeyFromConstructorAccessorClass(type.getJavaClass());
             typeMap.put(RAW_DECLARING_CLASS_TAG, key.getDeclaringClass().getName());
             typeMap.put(RAW_TARGET_CONSTRUCTOR_CLASS_TAG, key.getTargetConstructorClass().getName());
+        } else if (LambdaUtils.isLambdaType(type)) {
+            typeMap.put(WRAPPED_TYPE_TAG, LAMBDA_TYPE_TAG);
+            typeMap.put(CAPTURING_CLASS_TAG, LambdaUtils.capturingClass(type.toJavaName()));
         }
         super.persistType(type, typeMap);
     }
