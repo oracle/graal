@@ -22,43 +22,6 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.constantpool.Resolution;
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.resolver.CallSiteType;
-import com.oracle.truffle.espresso.resolver.LinkResolver;
-import com.oracle.truffle.espresso.resolver.ResolvedCall;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
-import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import org.graalvm.collections.Pair;
-
-import java.lang.invoke.CallSite;
-import java.lang.invoke.MethodHandle;
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_LIMIT;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_NONE;
@@ -83,6 +46,42 @@ import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_METHOD;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_REFERENCE_KIND_MASK;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_REFERENCE_KIND_SHIFT;
+
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandle;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.collections.Pair;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.resolver.CallSiteType;
+import com.oracle.truffle.espresso.resolver.LinkResolver;
+import com.oracle.truffle.espresso.resolver.ResolvedCall;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
+import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions
 public final class Target_java_lang_invoke_MethodHandleNatives {
@@ -465,7 +464,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             if (Constants.flagHas(flags, MN_IS_FIELD)) {
                 isFieldProfile.enter();
                 Symbol<Type> t = lookupType(meta, desc);
-                plantFieldMemberName(memberName, resolutionKlass, name, t, refKind, callerKlass, doAccessChecks, doConstraintsChecks, meta, getLanguage());
+                // Field member name resolution skips several checks:
+                // - Access checks
+                // - Static fields are accessed statically
+                // - Final fields and ref_put*
+                // These are done when needed by JDK code.
+                Field f = LinkResolver.resolveFieldSymbol(meta, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
+                plantResolvedField(memberName, f, refKind, meta, meta.getLanguage());
                 return memberName;
             }
 
@@ -494,7 +499,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             }
 
             Symbol<Signature> sig = lookupSignature(meta, desc, mhMethodId);
-            Method m = LinkResolver.resolveSymbol(meta, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
+            Method m = LinkResolver.resolveMethodSymbol(meta, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
             ResolvedCall resolvedCall = LinkResolver.resolveCallSite(meta, callerKlass, m, CallSiteType.fromRefKind(refKind), resolutionKlass);
 
             plantResolvedMethod(memberName, resolvedCall, meta);
@@ -614,26 +619,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         meta.java_lang_invoke_MemberName_clazz.setObject(memberName, target.getDeclaringKlass().mirror());
     }
 
-    private static void plantFieldMemberName(StaticObject memberName,
-                    Klass resolutionKlass, Symbol<Name> name, Symbol<Type> type,
-                    int refKind,
-                    ObjectKlass callerKlass,
-                    boolean accessCheck,
-                    boolean constraintsCheck,
-                    Meta meta, EspressoLanguage language) {
-        Field field = doFieldLookup(resolutionKlass, name, type);
-        if (field == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, cat("Failed lookup for field ", resolutionKlass.getName(), "#", name, ":", type));
-        }
-        if (accessCheck) {
-            Resolution.memberDoAccessCheck(callerKlass, field.getDeclaringKlass(), field, meta);
-        }
-        if (constraintsCheck) {
-            field.checkLoadingConstraints(callerKlass.getDefiningClassLoader(), resolutionKlass.getDefiningClassLoader());
-        }
-        plantResolvedField(memberName, field, refKind, meta, language);
-    }
-
     private static void plantResolvedField(StaticObject memberName, Field field, int refKind, Meta meta, EspressoLanguage language) {
         meta.HIDDEN_VMTARGET.setHiddenObject(memberName, field.getDeclaringKlass());
         meta.HIDDEN_VMINDEX.setHiddenObject(memberName, Target_sun_misc_Unsafe.slotToGuestOffset(field.getSlot(), field.isStatic(), language));
@@ -711,23 +696,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             res += ((REF_putField - REF_getField) << MN_REFERENCE_KIND_SHIFT);
         }
         return res;
-    }
-
-    private static Field doFieldLookup(Klass resolutionKlass, Symbol<Name> name, Symbol<Type> sig) {
-        if (CompilerDirectives.isPartialEvaluationConstant(resolutionKlass)) {
-            return lookupField(resolutionKlass, name, sig);
-        } else {
-            return lookupFieldBoundary(resolutionKlass, name, sig);
-        }
-    }
-
-    private static Field lookupField(Klass resolutionKlass, Symbol<Name> name, Symbol<Type> sig) {
-        return resolutionKlass.lookupField(name, sig);
-    }
-
-    @TruffleBoundary
-    private static Field lookupFieldBoundary(Klass resolutionKlass, Symbol<Name> name, Symbol<Type> sig) {
-        return lookupField(resolutionKlass, name, sig);
     }
 
     // endregion MemberName planting
