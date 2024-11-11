@@ -95,6 +95,14 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
         }
     }
 
+    JClass getPeer() {
+        return peer;
+    }
+
+    JNICalls getJNICalls() {
+        return hotSpotCalls;
+    }
+
     public final void callVoid(JNIEnv env, T id, JValue args) {
         JNIMethodImpl<T> method = getJNIMethod(env, id, void.class);
         hotSpotCalls.callStaticVoid(env, peer, method, args);
