@@ -38,14 +38,13 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -59,8 +58,9 @@ import jdk.internal.module.Modules;
 /**
  * A classloader, that reads class files and resources from a jimage file at image build time.
  */
+@SuppressWarnings("unused")
 @Platforms(Platform.HOSTED_ONLY.class)
-final class HostedLibGraalClassLoader extends ClassLoader {
+final class HostedLibGraalClassLoader extends ClassLoader implements LibGraalClassLoaderBase {
 
     private static final String JAVA_HOME_PROPERTY_KEY = "jdk.graal.internal.libgraal.javahome";
     private static final String JAVA_HOME_PROPERTY_VALUE = System.getProperty(JAVA_HOME_PROPERTY_KEY, System.getProperty("java.home"));
@@ -79,7 +79,7 @@ final class HostedLibGraalClassLoader extends ClassLoader {
      * Map from the {@linkplain Class#forName(String) name} of a class to the image path of its
      * class file.
      */
-    private final Map<String, String> classes = new HashMap<>();
+    private final Map<String, String> classes;
 
     /**
      * Map from a service name to a list of providers.
@@ -113,7 +113,6 @@ final class HostedLibGraalClassLoader extends ClassLoader {
         super(LibGraalClassLoader.LOADER_NAME, Feature.class.getClassLoader());
         libGraalJavaHome = Path.of(JAVA_HOME_PROPERTY_VALUE);
 
-        Map<String, String> modulesMap = new HashMap<>();
         try {
             /*
              * Access to jdk.internal.jimage classes is needed by this Classloader implementation.
@@ -129,6 +128,9 @@ final class HostedLibGraalClassLoader extends ClassLoader {
             Modules.addExports(javaBaseModule, "jdk.internal.vm", unnamedModuleOfThisLoader);
             Modules.addExports(javaBaseModule, "jdk.internal.misc", unnamedModuleOfThisLoader);
 
+            Map<String, String> modulesMap = new HashMap<>();
+            Map<String, String> classesMap = new HashMap<>();
+
             Path imagePath = libGraalJavaHome.resolve(Path.of("lib", "modules"));
             this.imageReader = BasicImageReader.open(imagePath);
             for (var entry : imageReader.getEntryNames()) {
@@ -140,13 +142,13 @@ final class HostedLibGraalClassLoader extends ClassLoader {
                         resources.put(resource, entry);
                         if (resource.endsWith(".class")) {
                             String className = resource.substring(0, resource.length() - ".class".length()).replace('/', '.');
-                            classes.put(className, entry);
                             if (resource.equals("module-info.class")) {
                                 ModuleDescriptor md = ModuleDescriptor.read(imageReader.getResourceBuffer(imageReader.findLocation(entry)));
                                 for (var p : md.provides()) {
                                     services.computeIfAbsent(p.service(), k -> new ArrayList<>()).addAll(p.providers());
                                 }
                             } else {
+                                classesMap.put(className, entry);
                                 modulesMap.put(className, module);
                             }
                         }
@@ -154,36 +156,24 @@ final class HostedLibGraalClassLoader extends ClassLoader {
                 }
             }
 
+            modules = Map.copyOf(modulesMap);
+            classes = Map.copyOf(classesMap);
+
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw GraalError.shouldNotReachHere(e);
         }
-        this.modules = Map.copyOf(modulesMap);
     }
 
-    /**
-     * Gets an unmodifiable map from the {@linkplain Class#forName(String) name} of a class to the
-     * name of its enclosing module. Reflectively accessed by
-     * {@code LibGraalFeature.OptionCollector#afterAnalysis(AfterAnalysisAccess)}.
-     */
-    @SuppressWarnings("unused")
+    @Override
     public Map<String, String> getModules() {
         return modules;
     }
 
     /* Allow image builder to perform registration action on each class this loader provides. */
-    @SuppressWarnings("unused")
-    public void forEachClass(Consumer<Class<?>> action) {
-        for (String className : classes.keySet()) {
-            if (className.equals("module-info")) {
-                continue;
-            }
-            try {
-                var clazz = loadClass(className);
-                action.accept(clazz);
-            } catch (ClassNotFoundException e) {
-                throw GraalError.shouldNotReachHere(e, LibGraalClassLoader.LOADER_NAME + " could not load class " + className);
-            }
-        }
+
+    @Override
+    public Set<String> getAllClassNames() {
+        return classes.keySet();
     }
 
     @Override
@@ -262,24 +252,11 @@ final class HostedLibGraalClassLoader extends ClassLoader {
 
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
-        return new Enumeration<>() {
-            private URL next = findResource(name);
-
-            @Override
-            public boolean hasMoreElements() {
-                return (next != null);
-            }
-
-            @Override
-            public URL nextElement() {
-                if (next == null) {
-                    throw new NoSuchElementException();
-                }
-                URL u = next;
-                next = null;
-                return u;
-            }
-        };
+        URL resource = findResource(name);
+        if (resource == null) {
+            return Collections.emptyEnumeration();
+        }
+        return Collections.enumeration(List.of(resource));
     }
 
     /**
@@ -340,12 +317,13 @@ final class HostedLibGraalClassLoader extends ClassLoader {
         }
     }
 
-    /**
-     * @return instance of ClassLoader that should be seen at image-runtime if a class was loaded at
-     *         image-buildtime by this classloader.
-     */
-    @SuppressWarnings("unused")
-    public static ClassLoader getRuntimeClassLoader() {
+    @Override
+    public HostedLibGraalClassLoader getClassLoader() {
+        return this;
+    }
+
+    @Override
+    public LibGraalClassLoader getRuntimeClassLoader() {
         return LibGraalClassLoader.singleton;
     }
 }

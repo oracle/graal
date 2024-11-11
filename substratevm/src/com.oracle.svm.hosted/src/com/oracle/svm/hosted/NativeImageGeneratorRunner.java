@@ -284,6 +284,7 @@ public class NativeImageGeneratorRunner {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
         NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
         nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
+        nativeImageClassLoaderSupport.setupLibGraalClassLoader();
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {
             postProcessing.apply(nativeImageClassLoaderSupport);
@@ -445,7 +446,7 @@ public class NativeImageGeneratorRunner {
                                             .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));
                         }
                         if (className.isEmpty()) {
-                            className = classLoader.getMainClassFromModule(mainModule)
+                            className = ImageClassLoader.getMainClassFromModule(mainModule)
                                             .orElseThrow(() -> UserError.abort("Module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
                         }
                         mainClass = classLoader.forName(className, mainModule);
