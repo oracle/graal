@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -109,9 +110,8 @@ public final class SerialGCOptions {
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> GreyToBlackObjRefDemographics = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    /* Option should be renamed, see GR-53798. */
-    @Option(help = "Ignore the maximum heap size while in VM-internal code.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
+    @Option(help = "Ignore the maximum heap size while in VM-internal code. Serial GC only.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMInternalCode = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
     @Option(help = "Determines whether to always (if true) or never (if false) outline write barrier code to a separate function, " +
                     "trading reduced image size for (potentially) worse performance. Serial GC only.", type = OptionType.Expert) //
@@ -119,11 +119,21 @@ public final class SerialGCOptions {
 
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
-        @Option(help = "Collect old generation by compacting in-place instead of copying.", type = OptionType.Expert) //
+        @Option(help = "Collect old generation by compacting in-place instead of copying. Serial GC only.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> CompactingOldGen = new HostedOptionKey<>(false, SerialGCOptions::validateCompactingOldGen);
 
-        @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
+        @Option(help = "Determines if a remembered set is used, which is necessary for collecting the young and old generation independently. Serial GC only.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true, SerialGCOptions::serialGCOnly);
+    }
+
+    public static class DeprecatedOptions {
+        @Option(help = "Ignore the maximum heap size while in VM-internal code. Serial GC only.", type = OptionType.Expert, deprecated = true, deprecationMessage = "Please use the option 'IgnoreMaxHeapSizeWhileInVMInternalCode' instead.")//
+        public static final HostedOptionKey<Boolean> IgnoreMaxHeapSizeWhileInVMOperation = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                IgnoreMaxHeapSizeWhileInVMInternalCode.update(values, newValue);
+            }
+        };
     }
 
     private SerialGCOptions() {

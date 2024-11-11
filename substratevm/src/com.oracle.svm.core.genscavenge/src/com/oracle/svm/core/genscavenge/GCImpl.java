@@ -208,7 +208,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean shouldIgnoreOutOfMemory() {
-        return SerialGCOptions.IgnoreMaxHeapSizeWhileInVMOperation.getValue() && inVMInternalCode();
+        return SerialGCOptions.IgnoreMaxHeapSizeWhileInVMInternalCode.getValue() && inVMInternalCode();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
