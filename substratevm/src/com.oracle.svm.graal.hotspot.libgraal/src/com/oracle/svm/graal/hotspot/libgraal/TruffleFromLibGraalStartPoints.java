@@ -106,19 +106,24 @@ import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
  */
 public final class TruffleFromLibGraalStartPoints {
 
-    private static TruffleFromLibGraalCalls calls;
+    private static volatile TruffleFromLibGraalCalls calls;
     private static JavaVM javaVM;
 
     private TruffleFromLibGraalStartPoints() {
     }
 
     static void initializeJNI(JClass runtimeClass) {
-        if (calls == null) {
-            calls = new TruffleFromLibGraalCalls(JNIMethodScope.env(), runtimeClass);
-            JavaVM vm = JNIUtil.GetJavaVM(JNIMethodScope.env());
-            assert javaVM.isNull() || javaVM.equal(vm);
-            javaVM = vm;
+        TruffleFromLibGraalCalls localCalls = calls;
+        if (localCalls == null) {
+            initialize(runtimeClass);
         }
+    }
+
+    private static synchronized void initialize(JClass runtimeClass) {
+        calls = new TruffleFromLibGraalCalls(JNIMethodScope.env(), runtimeClass);
+        JavaVM vm = JNIUtil.GetJavaVM(JNIMethodScope.env());
+        assert javaVM.isNull() || javaVM.equal(vm);
+        javaVM = vm;
     }
 
     @TruffleFromLibGraal(Id.OnIsolateShutdown)

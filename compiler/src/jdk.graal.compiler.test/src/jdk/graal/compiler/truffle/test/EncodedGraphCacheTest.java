@@ -140,6 +140,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
             TruffleCompilationTask task = newTask();
             try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
+                target.ensureInitialized();
                 getTruffleCompilerFromRuntime(target).compileAST(debug, target, compilation.getCompilationId(), task, null);
                 assertTrue(target.isValid());
             }
