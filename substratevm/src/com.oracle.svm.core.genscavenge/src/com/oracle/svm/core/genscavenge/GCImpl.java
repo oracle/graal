@@ -245,7 +245,8 @@ public final class GCImpl implements GC {
 
         Timer collectionTimer = timers.collection.start();
         try {
-            ThreadLocalAllocation.disableAndFlushForAllThreads();
+            HeapImpl.getHeapImpl().makeParseable();
+
             GenScavengeMemoryPoolMXBeans.singleton().notifyBeforeCollection();
             HeapImpl.getAccounting().notifyBeforeCollection();
 

@@ -502,7 +502,7 @@ public final class HeapImpl extends Heap {
     @Override
     public void walkCollectedHeapObjects(ObjectVisitor visitor) {
         VMOperation.guaranteeInProgressAtSafepoint("Must only be called at a safepoint");
-        ThreadLocalAllocation.disableAndFlushForAllThreads();
+        makeParseable();
         getYoungGeneration().walkObjects(visitor);
         getOldGeneration().walkObjects(visitor);
     }
@@ -512,6 +512,10 @@ public final class HeapImpl extends Heap {
         if (ReferenceHandler.isExecutedManually()) {
             GCImpl.doReferenceHandling();
         }
+    }
+
+    void makeParseable() {
+        youngGeneration.makeParseable();
     }
 
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "Only the GC increments the volatile field 'refListOfferCounter'.")
@@ -797,10 +801,22 @@ public final class HeapImpl extends Heap {
         }
 
         if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
-            // If we are not at a safepoint, then it is unsafe to access thread locals of another
-            // thread as the IsolateThread could be freed at any time.
-            return printTlabInfo(log, ptr);
+            /*
+             * If we are not at a safepoint, then it is unsafe to access thread locals of another
+             * thread as the IsolateThread could be freed at any time.
+             */
+            if (printTlabInfo(log, ptr)) {
+                return true;
+            }
         }
+
+        if (allowJavaHeapAccess) {
+            // Accessing chunks is safe if we prevent a GC.
+            if (YoungGeneration.getHeapAllocation().printLocationInfo(log, ptr)) {
+                return true;
+            }
+        }
+
         return false;
     }
 
