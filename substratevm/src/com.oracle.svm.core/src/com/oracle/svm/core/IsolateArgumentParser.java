@@ -553,13 +553,9 @@ public class IsolateArgumentParser {
 
     @Fold
     public static int getOptionIndex(RuntimeOptionKey<?> key) {
-        return singleton().getOptionIndex0(key);
-    }
-
-    @Fold
-    protected int getOptionIndex0(RuntimeOptionKey<?> key) {
-        for (int i = 0; i < getOptionCount(); i++) {
-            if (getOptions()[i] == key) {
+        RuntimeOptionKey<?>[] options = getOptions();
+        for (int i = 0; i < options.length; i++) {
+            if (options[i] == key) {
                 return i;
             }
         }
@@ -568,7 +564,7 @@ public class IsolateArgumentParser {
     }
 
     @Fold
-    public int getParsedArgsSize() {
+    public static int getParsedArgsSize() {
         return Long.BYTES * getOptionCount();
     }
 

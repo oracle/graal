@@ -38,6 +38,11 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
+    private static final OutOfMemoryError ALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an aligned heap chunk. " +
+                    "Either the OS/container is out of memory or another system-level resource limit was reached (such as the number of memory mappings).");
+    private static final OutOfMemoryError UNALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an unaligned heap chunk. " +
+                    "Either the OS/container is out of memory or another system-level resource limit was reached (such as the number of memory mappings).");
+
     @Fold
     public static ChunkBasedCommittedMemoryProvider get() {
         return (ChunkBasedCommittedMemoryProvider) ImageSingletons.lookup(CommittedMemoryProvider.class);
@@ -45,11 +50,19 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
-        return allocate(nbytes, alignment, false, NmtCategory.JavaHeap);
+        Pointer result = allocate(nbytes, alignment, false, NmtCategory.JavaHeap);
+        if (result.isNull()) {
+            throw ALIGNED_OUT_OF_MEMORY_ERROR;
+        }
+        return result;
     }
 
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
-        return allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
+        Pointer result = allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
+        if (result.isNull()) {
+            throw UNALIGNED_OUT_OF_MEMORY_ERROR;
+        }
+        return result;
     }
 
     /**
