@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
+import static com.oracle.svm.core.SubstrateOptions.MremapImageHeap;
 import static com.oracle.svm.core.SubstrateUtil.mangleName;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -489,9 +490,13 @@ public abstract class NativeImage extends AbstractImage {
             // boundaries, so we take care of this ourselves in CommittedMemoryProvider, if we can.
             int alignment = pageSize;
 
-            // Manually add padding to the SVM_HEAP section, because when SpawnIsolates are disabled
-            // we operate with mprotect on it with page size granularity.
-            long paddedImageHeapSize = SpawnIsolates.getValue() ? imageHeapSize : NumUtil.roundUp(imageHeapSize, alignment);
+            /*
+             * Manually add padding to the SVM_HEAP section, because when SpawnIsolates are disabled
+             * we operate with mprotect on it with page size granularity. Similarly, using mremap
+             * aligns up the page boundary and may reset memory outside of the image heap.
+             */
+            boolean padImageHeap = !SpawnIsolates.getValue() || MremapImageHeap.getValue();
+            long paddedImageHeapSize = padImageHeap ? NumUtil.roundUp(imageHeapSize, alignment) : imageHeapSize;
             RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(paddedImageHeapSize, objectFile.getByteOrder());
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
             // Note: On isolate startup the read only part of the heap will be set up as such.
