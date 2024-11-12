@@ -305,7 +305,6 @@ public class NativeImage {
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
     private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
     private final LinkedHashSet<String> limitModules = new LinkedHashSet<>();
-    private final LinkedHashSet<String> enableNativeAccessModules = new LinkedHashSet<>();
 
     private long imageBuilderPid = -1;
 
@@ -1381,8 +1380,8 @@ public class NativeImage {
         if (config.modulePathBuild && !finalImageClasspath.isEmpty()) {
             imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
         }
-        enableNativeAccessModules.addAll(getModulesFromPath(imageBuilderModulePath).keySet());
-        assert !enableNativeAccessModules.isEmpty();
+        // allow native access for all modules on the image builder module path
+        var enableNativeAccessModules = getModulesFromPath(imageBuilderModulePath).keySet();
         imageBuilderJavaArgs.add("--enable-native-access=" + String.join(",", enableNativeAccessModules));
 
         boolean useColorfulOutput = configureBuildOutput();
@@ -2055,10 +2054,6 @@ public class NativeImage {
 
     public void addLimitedModules(String limitModulesArg) {
         limitModules.addAll(Arrays.asList(SubstrateUtil.split(limitModulesArg, ",")));
-    }
-
-    public void addEnableNativeAccess(String enableNativeAccessArg) {
-        enableNativeAccessModules.addAll(Arrays.asList(SubstrateUtil.split(enableNativeAccessArg, ",")));
     }
 
     void addImageBuilderClasspath(Path classpath) {
