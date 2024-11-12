@@ -34,6 +34,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
 
@@ -99,6 +100,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called by the GC.")
     public void beforeGarbageCollection() {
+        assert VMOperation.isGCInProgress() : "may only be called by the GC";
     }
 
     /**
@@ -107,6 +109,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called by the GC.")
     public void afterGarbageCollection() {
+        assert VMOperation.isGCInProgress() : "may only be called by the GC";
     }
 
     /**
@@ -115,5 +118,6 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
      */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called by the GC.")
     public void uncommitUnusedMemory() {
+        assert VMOperation.isGCInProgress() : "may only be called by the GC";
     }
 }
