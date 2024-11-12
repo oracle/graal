@@ -14,6 +14,7 @@ redirect_from: /reference-manual/native-image/BuildOutput/
 * [Resource Usage Statistics](#resource-usage-statistics)
 * [Build Artifacts](#build-artifacts)
 * [Machine-Readable Build Output](#machine-readable-build-output)
+* [PGO Profile Format](#pgo-profile-format)
 
 Here you will find information about the build output of GraalVM Native Image.
 Below is the example output when building a native executable of the `HelloWorld` class:

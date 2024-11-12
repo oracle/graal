@@ -95,4 +95,6 @@ For a more detailed usage overview, go to [Basic Usage of Profile-Guided Optimiz
 * [Creating LCOV Coverage Reports](PGO-LCOV.md)
 * [Merging Profiles from Multiple Sources](PGO-Merging-Profiles.md)
 * [Tracking Profile Quality Over Time](PGO-Profile-Quality.md)
+* [The _iprof_ File Format](PGO-IprofFileFormat.md)
+* [The _iprof_ JSON Schema](assets/iprof-v1.0.0.schema.json)
 * [Frequently Asked Questions](PGO-FAQ.md)
