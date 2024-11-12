@@ -56,10 +56,8 @@ struct cif_data {
 };
 
 static int align_up(int index, int alignment) {
-    if (index % alignment != 0) {
-        index += alignment - (index % alignment);
-    }
-    return index;
+    int mask = alignment - 1;
+    return (index + mask) & ~mask;
 }
 
 __thread struct __TruffleEnvInternal *cachedTruffleEnv = NULL;
