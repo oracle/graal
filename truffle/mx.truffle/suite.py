@@ -235,6 +235,7 @@ suite = {
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -288,6 +289,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -322,6 +324,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -361,6 +364,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -421,6 +425,7 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -445,6 +450,7 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -473,6 +479,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle,Codegen",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -649,6 +656,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -671,6 +679,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -698,6 +707,7 @@ suite = {
       "workingSets" : "API,Truffle,Codegen,Test",
       "jacoco" : "exclude",
       "testProject" : True,
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -716,6 +726,7 @@ suite = {
       "javaCompliance" : "17+",
       "javadocType" : "api",
       "workingSets" : "API,Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -756,6 +767,7 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -834,6 +846,7 @@ suite = {
       "workingSets" : "Truffle,Test",
       "jacoco" : "exclude",
       "testProject" : True,
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
     "com.oracle.truffle.tck.instrumentation" : {
@@ -906,6 +919,7 @@ suite = {
           },
         },
       },
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -940,6 +954,7 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -1019,6 +1034,7 @@ suite = {
       },
       "testProject" : True,
       "jacoco" : "exclude",
+      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 

@@ -33,17 +33,25 @@ import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 /**
  * Checks that {@code sun.misc.Unsafe} is never used.
  */
 public class VerifyUnsafeAccess extends VerifyPhase<CoreProviders> {
+    private static final Class<?> UNSAFE_CLASS;
+
+    static {
+        try {
+            UNSAFE_CLASS = Class.forName("sun.misc.Unsafe");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         MetaAccessProvider metaAccess = context.getMetaAccess();
-        final ResolvedJavaType unsafeType = metaAccess.lookupJavaType(Unsafe.class);
+        final ResolvedJavaType unsafeType = metaAccess.lookupJavaType(UNSAFE_CLASS);
 
         ResolvedJavaMethod caller = graph.method();
 
@@ -64,7 +72,7 @@ public class VerifyUnsafeAccess extends VerifyPhase<CoreProviders> {
     @Override
     public void verifyClass(Class<?> c, MetaAccessProvider metaAccess) {
         for (Field field : c.getDeclaredFields()) {
-            if (field.getType() == Unsafe.class) {
+            if (field.getType() == UNSAFE_CLASS) {
                 throw new VerificationError("Field of type sun.misc.Unsafe at callsite %s is prohibited.", field);
             }
         }
