@@ -301,7 +301,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         IsolateArguments arguments = StackValue.get(IsolateArguments.class);
         UnmanagedMemoryUtil.fill((Pointer) arguments, SizeOf.unsigned(IsolateArguments.class), (byte) 0);
-        CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.singleton().getParsedArgsSize());
+        CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getParsedArgsSize());
         arguments.setParsedArgs(parsedArgs);
 
         IsolateArgumentParser.singleton().parse(parameters, arguments);

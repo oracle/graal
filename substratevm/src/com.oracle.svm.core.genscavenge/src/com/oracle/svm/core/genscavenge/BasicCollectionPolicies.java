@@ -37,6 +37,7 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 /** Basic/legacy garbage collection policies. */
@@ -109,10 +110,7 @@ final class BasicCollectionPolicies {
             int maximumHeapSizePercent = HeapParameters.getMaximumHeapSizePercent();
             /* Do not cache because `-Xmx` option parsing may not have happened yet. */
             UnsignedWord result = physicalMemorySize.unsignedDivide(100).multiply(maximumHeapSizePercent);
-            if (result.belowThan(addressSpaceSize)) {
-                return result;
-            }
-            return addressSpaceSize;
+            return UnsignedUtils.min(result, addressSpaceSize);
         }
 
         @Override
