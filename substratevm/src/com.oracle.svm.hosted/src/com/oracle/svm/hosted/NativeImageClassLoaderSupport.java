@@ -75,6 +75,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -408,7 +409,29 @@ public final class NativeImageClassLoaderSupport {
             implAddReadsAllUnnamed.setAccessible(true);
             implAddReadsAllUnnamed.invoke(module);
         } catch (ReflectiveOperationException | NoSuchElementException e) {
-            VMError.shouldNotReachHere("Could reflectively call Module.implAddReadsAllUnnamed", e);
+            VMError.shouldNotReachHere("Could not reflectively call Module.implAddReadsAllUnnamed", e);
+        }
+    }
+
+    static void implAddEnableNativeAccess(Module module) {
+        try {
+            Method implAddEnableNativeAccess = Module.class.getDeclaredMethod("implAddEnableNativeAccess");
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
+            implAddEnableNativeAccess.setAccessible(true);
+            implAddEnableNativeAccess.invoke(module);
+        } catch (ReflectiveOperationException | NoSuchElementException e) {
+            VMError.shouldNotReachHere("Could not reflectively call Module.implAddEnableNativeAccess", e);
+        }
+    }
+
+    static void implAddEnableNativeAccessToAllUnnamed() {
+        try {
+            Method implAddEnableNativeAccess = Module.class.getDeclaredMethod("implAddEnableNativeAccessToAllUnnamed");
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
+            implAddEnableNativeAccess.setAccessible(true);
+            implAddEnableNativeAccess.invoke(null);
+        } catch (ReflectiveOperationException | NoSuchElementException e) {
+            VMError.shouldNotReachHere("Could not reflectively call Module.implAddEnableNativeAccessToAllUnnamed", e);
         }
     }
 
@@ -463,6 +486,14 @@ public final class NativeImageClassLoaderSupport {
                 for (Module targetModule : val.targetModules) {
                     Modules.addReads(val.module, targetModule);
                 }
+            }
+        });
+        NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().stream().flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ","))).forEach(moduleName -> {
+            if ("ALL-UNNAMED".equals(moduleName)) {
+                implAddEnableNativeAccessToAllUnnamed();
+            } else {
+                Module module = findModule(moduleName).orElseThrow(() -> userWarningModuleNotFound(NativeImageClassLoaderOptions.EnableNativeAccess, moduleName));
+                implAddEnableNativeAccess(module);
             }
         });
     }
