@@ -64,7 +64,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -231,15 +230,9 @@ public class SourceInternalizationTest extends AbstractPolyglotTest {
         List<WeakReference<Object>> sources = new ArrayList<>();
         for (int i = 0; i < GCUtils.GC_TEST_ITERATIONS; i++) {
             sources.add(new WeakReference<>(createTestSource(testString, i), queue));
-            System.gc();
         }
 
-        int refsCleared = 0;
-        while (queue.poll() != null) {
-            refsCleared++;
-        }
-        // we need to have any refs cleared for this test to have any value
-        Assert.assertTrue(refsCleared > 0);
+        GCUtils.assertGc(testString, sources);
     }
 
     private static Object createTestSource(String testString, int i) {
