@@ -589,8 +589,11 @@ public abstract class StrengthenGraphs {
 
             Collection<AnalysisMethod> callees = invokeFlow.getOriginalCallees();
             if (callees.isEmpty()) {
-                unreachableInvoke(invoke, tool);
-                /* Invoke is unreachable, there is no point in improving any types further. */
+                if (isClosedTypeWorld) {
+                    /* Invoke is unreachable, there is no point in improving any types further. */
+                    unreachableInvoke(invoke, tool);
+                }
+                /* In open world we cannot make any assumptions about an invoke with 0 callees. */
                 return;
             }
             assert invokeFlow.isFlowEnabled() : "Disabled invoke should have no callees: " + invokeFlow + ", in method " + getQualifiedName(graph);
