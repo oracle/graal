@@ -44,7 +44,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
 
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
@@ -55,7 +54,6 @@ import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.I
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonObject;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField;
-import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -76,7 +74,6 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingFeature;
-import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.util.IdentityHashCodeUtil;
@@ -170,26 +167,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected void initializeBaseLayerMethod(AnalysisMethod analysisMethod, PersistedAnalysisMethod.Reader methodData) {
-        if (!HostedDynamicLayerInfo.singleton().compiledInPriorLayer(analysisMethod) && hasAnalysisParsedGraph(analysisMethod)) {
-            /*
-             * GR-55294: When the analysis elements from the base layer will be able to be
-             * materialized after the analysis, this will not be needed anymore.
-             */
-            analysisMethod.ensureGraphParsed(universe.getBigbang());
-            analysisMethod.setAnalyzedGraph(((AnalysisParsedGraph) analysisMethod.getGraph()).getEncodedGraph());
-        }
-        super.initializeBaseLayerMethod(analysisMethod, methodData);
-    }
-
-    @Override
-    protected void afterGraphDecodeHook(EncodedGraph encodedGraph) {
-        super.afterGraphDecodeHook(encodedGraph);
+    protected EncodedGraph getEncodedGraph(AnalysisMethod analysisMethod, Text.Reader location) {
+        EncodedGraph encodedGraph = super.getEncodedGraph(analysisMethod, location);
         for (int i = 0; i < encodedGraph.getNumObjects(); ++i) {
             if (encodedGraph.getObject(i) instanceof CGlobalDataInfo cGlobalDataInfo) {
                 encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
             }
         }
+        return encodedGraph;
     }
 
     @Override
