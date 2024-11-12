@@ -382,7 +382,9 @@ public final class JavaThreads {
 
         PlatformThreads.setThreadStatus(fromTarget(tjlt), ThreadStatus.NEW);
 
-        tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
+        }
 
         initNewThreadLocalsAndLoader(tjlt, inheritThreadLocals, parent);
 
