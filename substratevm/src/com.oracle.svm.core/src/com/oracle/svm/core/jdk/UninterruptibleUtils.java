@@ -427,6 +427,18 @@ public class UninterruptibleUtils {
             return (a >= b) ? a : b;
         }
 
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static double max(double a, double b) {
+            if (a != a) {
+                return a;   // a is NaN
+            }
+            if ((a == 0.0d) && (b == 0.0d) && (Double.doubleToRawLongBits(a) == Double.doubleToRawLongBits(-0.0d))) {
+                // Raw conversion ok since NaN can't map to -0.0.
+                return b;
+            }
+            return (a >= b) ? a : b;
+        }
+
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int clamp(int value, int min, int max) {
             assert min <= max;
