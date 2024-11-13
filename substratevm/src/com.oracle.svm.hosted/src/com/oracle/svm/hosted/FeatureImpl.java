@@ -317,6 +317,12 @@ public class FeatureImpl {
             getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(callback);
         }
 
+        @Override
+        public <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz) {
+            ObjectReachableCallback<T> wrapper = (access, obj, reason) -> callback.accept(obj);
+            getMetaAccess().lookupJavaType(clazz).registerObjectReachableCallback(wrapper);
+        }
+
         public void registerSubstitutionProcessor(SubstitutionProcessor substitution) {
             getUniverse().registerFeatureSubstitution(substitution);
         }

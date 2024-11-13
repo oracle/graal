@@ -191,6 +191,15 @@ public interface Feature {
          * @since 19.0
          */
         void registerObjectReplacer(Function<Object, Object> replacer);
+
+        /**
+         * Register a callback that is executed when an object of type {@code clazz}, or any of its
+         * subtypes, is marked as reachable during heap scanning. The callback may be executed for
+         * the same object by multiple worker threads concurrently.
+         *
+         * @since 24.2
+         */
+        <T> void registerObjectReachabilityHandler(Consumer<T> callback, Class<T> clazz);
     }
 
     /**
