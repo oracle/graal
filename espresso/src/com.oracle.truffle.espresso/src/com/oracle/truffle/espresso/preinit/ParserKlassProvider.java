@@ -50,7 +50,7 @@ public interface ParserKlassProvider {
         boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
         Meta meta = env.getMeta();
         try {
-            return ClassfileParser.parse(env.getParsingContext(), new ClassfileStream(bytes, null), verifiable, loaderIsBootOrPlatform, typeOrNull, info.isHidden);
+            return ClassfileParser.parse(env.getParsingContext(), new ClassfileStream(bytes, null), verifiable, loaderIsBootOrPlatform, typeOrNull, info.isHidden, info.forceAllowVMAnnotations);
         } catch (ValidationException | ParserException.ClassFormatError validationOrBadFormat) {
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, validationOrBadFormat.getMessage());
         } catch (ParserException.UnsupportedClassVersionError unsupportedClassVersionError) {
