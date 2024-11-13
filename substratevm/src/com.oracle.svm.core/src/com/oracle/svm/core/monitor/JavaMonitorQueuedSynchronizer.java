@@ -36,6 +36,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorWaitEvent;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.BasedOnJDKClass;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.misc.Unsafe;
 
@@ -282,6 +283,7 @@ abstract class JavaMonitorQueuedSynchronizer {
 
     // see AbstractQueuedLongSynchronizer.acquire(Node, long, false, false, false, 0L)
     @SuppressWarnings("all")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+24/src/hotspot/share/runtime/objectMonitor.cpp#L895-L930")
     final int acquire(Node node, long arg) {
         Thread current = Thread.currentThread();
         /* Spinning logic is SVM-specific. */
@@ -289,6 +291,15 @@ abstract class JavaMonitorQueuedSynchronizer {
         int spins = getSpinAttempts(parks);
         boolean first = false;
         Node pred = null; // predecessor of node when enqueued
+        long recheckNanos = -1;
+        if (JavaThreads.isCurrentThreadVirtualAndPinned()) {
+            /*
+             * Do not park indefinitely and instead periodically retry acquiring the monitor. This
+             * avoids liveness trouble when all carrier threads have virtual threads pinned to them
+             * and so a queued successor cannot be scheduled when it is unparked.
+             */
+            recheckNanos = 1_000_000;
+        }
 
         for (;;) {
             if (!first && (pred = (node == null) ? null : node.prev) != null && !(first = (head == pred))) {
@@ -353,7 +364,16 @@ abstract class JavaMonitorQueuedSynchronizer {
                 parks++;
                 spins = getSpinAttempts(parks);
                 try {
-                    LockSupport.park(this);
+                    if (recheckNanos == -1) {
+                        LockSupport.park(this);
+                    } else {
+                        LockSupport.parkNanos(this, recheckNanos);
+                        if (tryAcquire(arg)) {
+                            cancelAcquire(node);
+                            return 1;
+                        }
+                        recheckNanos = Math.min(recheckNanos << 3, 1_000_000_000);
+                    }
                 } catch (Error | RuntimeException ex) {
                     cancelAcquire(node); // cancel & rethrow
                     throw ex;
