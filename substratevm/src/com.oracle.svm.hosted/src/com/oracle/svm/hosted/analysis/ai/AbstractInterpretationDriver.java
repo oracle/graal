@@ -4,6 +4,10 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.ProgressReporter;
 
+import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerFactory;
+import com.oracle.svm.hosted.analysis.ai.checker.Checker;
+import com.oracle.svm.hosted.analysis.ai.domain.IntegerDomain;
+import com.oracle.svm.hosted.analysis.ai.transfer.example.BasicResourceLeakTransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -31,9 +35,6 @@ public class AbstractInterpretationDriver {
         }
     }
 
-    /**
-     * TODO this is where the actual analyses will start
-     */
     private void doRun() {
         debug.log("Printing the graph");
         var rootGraph = getGraph(root);
@@ -48,6 +49,12 @@ public class AbstractInterpretationDriver {
                 debug.log("\tCallee: " + callee);
             }
         }
+
+        var transferFunction = new BasicResourceLeakTransferFunction();
+        var desiredDomain = new IntegerDomain(0);
+        var analyzer = AnalyzerFactory.createIntraProceduralAnalyzer(rootGraph, transferFunction, desiredDomain, debug);
+        var checker = new Checker<>(analyzer, debug, desiredDomain);
+        checker.runAnalysis();
     }
 
     private StructuredGraph getGraph(AnalysisMethod method) {
