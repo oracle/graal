@@ -50,8 +50,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
-import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
-import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
@@ -196,7 +194,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void suspendAllocation() {
-        ThreadLocalAllocation.suspendInCurrentThread();
+        TlabSupport.suspendAllocationInCurrentThread();
     }
 
     @Override
@@ -415,13 +413,14 @@ public final class HeapImpl extends Heap {
     @Uninterruptible(reason = "Called during startup.")
     @Override
     public void attachThread(IsolateThread isolateThread) {
-        // nothing to do
+        TlabSupport.startupInitialization();
+        TlabSupport.initialize(isolateThread);
     }
 
     @Override
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     public void detachThread(IsolateThread isolateThread) {
-        ThreadLocalAllocation.disableAndFlushForThread(isolateThread);
+        TlabSupport.disableAndFlushForThread(isolateThread);
     }
 
     @Fold
@@ -707,7 +706,7 @@ public final class HeapImpl extends Heap {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadAllocatedMemory(IsolateThread thread) {
-        UnsignedWord allocatedBytes = ThreadLocalAllocation.allocatedBytes.getVolatile(thread);
+        UnsignedWord allocatedBytes = ThreadLocalAllocation.getAllocatedBytes(thread);
 
         /*
          * The current aligned chunk in the TLAB is only partially filled and therefore not yet
@@ -717,9 +716,8 @@ public final class HeapImpl extends Heap {
          * can cause that the memory in the current aligned TLAB chunk is counted twice.
          */
         ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.getTlab(thread);
-        AlignedHeader alignedTlab = tlab.getAlignedChunk();
+        Pointer start = tlab.getAlignedAllocationStart(SubstrateAllocationSnippets.TLAB_START_IDENTITY);
         Pointer top = tlab.getAllocationTop(SubstrateAllocationSnippets.TLAB_TOP_IDENTITY);
-        Pointer start = AlignedHeapChunk.getObjectsStart(alignedTlab);
 
         if (top.aboveThan(start)) {
             UnsignedWord usedTlabSize = top.subtract(start);
@@ -787,7 +785,7 @@ public final class HeapImpl extends Heap {
         if (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(ptr)) {
             log.string("points into the auxiliary image heap");
             return true;
-        } else if (printTlabInfo(log, ptr, CurrentIsolate.getCurrentThread())) {
+        } else if (TlabSupport.printTlabInfo(log, ptr, CurrentIsolate.getCurrentThread())) {
             return true;
         }
 
@@ -805,7 +803,7 @@ public final class HeapImpl extends Heap {
              * If we are not at a safepoint, then it is unsafe to access thread locals of another
              * thread as the IsolateThread could be freed at any time.
              */
-            if (printTlabInfo(log, ptr)) {
+            if (TlabSupport.printTlabInfo(log, ptr)) {
                 return true;
             }
         }
@@ -822,53 +820,6 @@ public final class HeapImpl extends Heap {
 
     boolean isInHeap(Pointer ptr) {
         return isInImageHeap(ptr) || youngGeneration.isInSpace(ptr) || oldGeneration.isInSpace(ptr);
-    }
-
-    private static boolean printTlabInfo(Log log, Pointer ptr) {
-        for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-            if (printTlabInfo(log, ptr, thread)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean printTlabInfo(Log log, Pointer ptr, IsolateThread thread) {
-        ThreadLocalAllocation.Descriptor tlab = getTlabUnsafe(thread);
-        AlignedHeader aChunk = tlab.getAlignedChunk();
-        while (aChunk.isNonNull()) {
-            if (HeapChunk.asPointer(aChunk).belowOrEqual(ptr) && ptr.belowThan(HeapChunk.getEndPointer(aChunk))) {
-                /* top may be null for a thread's current aligned allocation chunk. */
-                boolean unusablePart = HeapChunk.getTopPointer(aChunk).isNonNull() && ptr.aboveOrEqual(HeapChunk.getTopPointer(aChunk));
-                printTlabChunkInfo(log, thread, aChunk, "aligned", unusablePart);
-                return true;
-            }
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-
-        UnalignedHeader uChunk = tlab.getUnalignedChunk();
-        while (uChunk.isNonNull()) {
-            if (HeapChunk.asPointer(uChunk).belowOrEqual(ptr) && ptr.belowThan(HeapChunk.getEndPointer(uChunk))) {
-                boolean unusablePart = ptr.aboveOrEqual(HeapChunk.getTopPointer(uChunk));
-                printTlabChunkInfo(log, thread, uChunk, "unaligned", unusablePart);
-                return true;
-            }
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-
-        return false;
-    }
-
-    private static void printTlabChunkInfo(Log log, IsolateThread thread, HeapChunk.Header<?> chunk, String chunkType, boolean unusablePart) {
-        String unusable = unusablePart ? "unusable part of " : "";
-        log.string("points into ").string(unusable).string(chunkType).string(" chunk ").zhex(chunk).spaces(1);
-        log.string("(TLAB of thread ").zhex(thread).string(")");
-    }
-
-    @Uninterruptible(reason = "This whole method is unsafe, so it is only uninterruptible to satisfy the checks.")
-    static Descriptor getTlabUnsafe(IsolateThread thread) {
-        assert SubstrateDiagnostics.isFatalErrorHandlingThread() : "can cause crashes, so it may only be used while printing diagnostics";
-        return ThreadLocalAllocation.getTlab(thread);
     }
 
     @Override

@@ -221,10 +221,7 @@ final class BasicCollectionPolicies {
 
         @Override
         public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
-            if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(false)) {
-                return false;
-            }
-            return true;
+            return followingIncrementalCollection || !shouldCollectYoungGenSeparately(false);
         }
 
         @Override

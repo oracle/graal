@@ -474,6 +474,24 @@ public class UninterruptibleUtils {
         }
     }
 
+    public static class NumUtil {
+
+        /**
+         * Determines if a given {@code long} value is the range of signed int values.
+         */
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static boolean isInt(long l) {
+            return (int) l == l;
+        }
+
+        @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+        public static int safeToInt(long v) {
+            assert isInt(v);
+            return (int) v;
+        }
+
+    }
+
     public static class Byte {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         @SuppressWarnings("cast")

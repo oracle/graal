@@ -260,6 +260,7 @@ public final class GCImpl implements GC {
             collectionTimer.stop();
         }
 
+        resizeAllTlabs();
         accounting.updateCollectionCountAndTime(completeCollection, collectionTimer.totalNanos());
         HeapImpl.getAccounting().notifyAfterCollection();
         GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
@@ -400,6 +401,14 @@ public final class GCImpl implements GC {
         UnsignedWord youngBytes = HeapImpl.getHeapImpl().getYoungGeneration().getChunkBytes();
         UnsignedWord oldBytes = HeapImpl.getHeapImpl().getOldGeneration().getChunkBytes();
         return youngBytes.add(oldBytes);
+    }
+
+    private static void resizeAllTlabs() {
+        if (SubstrateGCOptions.TlabOptions.ResizeTLAB.getValue()) {
+            for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+                TlabSupport.resize(thread);
+            }
+        }
     }
 
     private void printGCBefore(GCCause cause) {
@@ -1317,7 +1326,7 @@ public final class GCImpl implements GC {
 
         @Override
         protected void operate() {
-            ThreadLocalAllocation.disableAndFlushForAllThreads();
+            HeapImpl.getHeapImpl().makeParseable();
 
             Log log = Log.log();
             log.string("GC summary").indent(true);

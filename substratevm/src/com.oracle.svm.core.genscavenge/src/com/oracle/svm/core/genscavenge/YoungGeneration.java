@@ -82,7 +82,7 @@ public final class YoungGeneration extends Generation {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void tearDown() {
         heapAllocation.tearDown();
-        ThreadLocalAllocation.tearDown();
+        TlabSupport.tearDown();
         eden.tearDown();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             survivorFromSpaces[i].tearDown();
@@ -113,7 +113,7 @@ public final class YoungGeneration extends Generation {
             heapAllocation.logChunks(log, eden.getShortName());
 
             for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
-                logTlabChunks(log, thread);
+                TlabSupport.logTlabChunks(log, thread, eden.getShortName());
             }
         }
 
@@ -122,15 +122,6 @@ public final class YoungGeneration extends Generation {
             this.survivorFromSpaces[i].logChunks(log);
             this.survivorToSpaces[i].logChunks(log);
         }
-    }
-
-    private void logTlabChunks(Log log, IsolateThread thread) {
-        ThreadLocalAllocation.Descriptor tlab = HeapImpl.getTlabUnsafe(thread);
-        AlignedHeapChunk.AlignedHeader aChunk = tlab.getAlignedChunk();
-        HeapChunkLogging.logChunks(log, aChunk, eden.getShortName(), false);
-
-        UnalignedHeapChunk.UnalignedHeader uChunk = tlab.getUnalignedChunk();
-        HeapChunkLogging.logChunks(log, uChunk, eden.getShortName(), false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -387,7 +378,7 @@ public final class YoungGeneration extends Generation {
     }
 
     void makeParseable() {
-        ThreadLocalAllocation.disableAndFlushForAllThreads();
+        TlabSupport.disableAndFlushForAllThreads();
         heapAllocation.retireChunksToEden();
     }
 
