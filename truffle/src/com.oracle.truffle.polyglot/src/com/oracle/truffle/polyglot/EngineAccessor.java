@@ -1126,6 +1126,8 @@ final class EngineAccessor extends Accessor {
                 impl.setCreatorTruffleContextReference(new TruffleContextCleanableReference(creatorContext, impl));
                 creator.context.addChildContext(impl);
             }
+            creator.getImpl().getAPIAccess().processReferenceQueue();
+            TruffleContextCleanableReference.processReferenceQueue();
 
             synchronized (impl) {
                 impl.initializeContextLocals();
