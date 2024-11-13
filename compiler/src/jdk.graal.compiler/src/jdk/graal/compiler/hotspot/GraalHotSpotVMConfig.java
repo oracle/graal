@@ -390,7 +390,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int unlockedValue = getConstant("markWord::unlocked_value", Integer.class);
     public final int monitorValue = getConstant("markWord::monitor_value", Integer.class);
     public final int ageMaskInPlace = getConstant("markWord::age_mask_in_place", Integer.class);
-    public final int unusedMark = getConstant("markWord::marked_value", Integer.class);
+    public final int unusedMark = getConstant("markWord::marked_value", Integer.class, 3, JDK > 21);
     // Identity hash code value when uninitialized.
     public final int uninitializedIdentityHashCodeValue = getConstant("markWord::no_hash", Integer.class);
 
@@ -400,7 +400,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*");
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, JDK > 21 ? "int64_t" : "JavaThread*");
-    public final int objectMonitorStackLocker = getFieldOffset("ObjectMonitor::_stack_locker", Integer.class, "BasicLock*");
 
     public final int contEntry = getFieldOffset("JavaThread::_cont_entry", Integer.class, "ContinuationEntry*", -1, JDK >= 24);
     public final int pinCount = getFieldOffset("ContinuationEntry::_pin_count", Integer.class, "uint32_t", -1, JDK >= 24);

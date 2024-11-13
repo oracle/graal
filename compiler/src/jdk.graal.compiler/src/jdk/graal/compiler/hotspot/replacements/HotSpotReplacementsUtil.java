@@ -590,11 +590,6 @@ public class HotSpotReplacementsUtil {
         return config.objectMonitorSucc;
     }
 
-    @Fold
-    public static int objectMonitorStackLockerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.objectMonitorStackLocker;
-    }
-
     /**
      * Mask for a biasable, locked or unlocked mark word. It is the least significant 3 bits prior
      * to Java 18 (1 bit for biased locking and 2 bits for stack locking or heavy locking), and 2
