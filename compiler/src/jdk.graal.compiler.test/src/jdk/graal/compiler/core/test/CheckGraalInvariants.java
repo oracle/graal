@@ -195,6 +195,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             return true;
         }
 
+        public boolean shouldVerifyCurrentTimeMillis() {
+            return true;
+        }
+
         /**
          * Makes edits to the list of verifiers to be run.
          */
@@ -360,6 +364,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         VerifyFoldableMethods foldableMethodsVerifier = new VerifyFoldableMethods();
         if (tool.shouldVerifyFoldableMethods()) {
             verifiers.add(foldableMethodsVerifier);
+        }
+
+        if (tool.shouldVerifyCurrentTimeMillis()) {
+            verifiers.add(new VerifyCurrentTimeMillisUsage());
         }
 
         tool.updateVerifiers(verifiers);
