@@ -8,5 +8,14 @@ package com.oracle.svm.hosted.analysis.ai.value;
 public enum AbstractValueKind {
     BOT,
     TOP,
-    VAL
+    VAL;
+
+    @Override
+    public String toString() {
+        return switch (this) {
+            case BOT -> "⊥";
+            case TOP -> "⊤";
+            case VAL -> "VAL";
+        };
+    }
 }
