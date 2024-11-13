@@ -1,26 +1,24 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
-import com.oracle.svm.hosted.analysis.ai.value.ConstantValue;
 
 /**
  * Abstract domain for flat lattice, also known as 3 level lattice
- *              T
- *            / | \
- *      ... -1  0  1 ...
- *            \ | /
- *             _|_
+ *           ⊤
+ *         / | \
+ *   ... -1  0  1 ...
+ *         \ | /
+ *           ⊥
  *
- * @param <Value> the type of derived AbstractValue
+ * @param <Value> the type of the constant value (e.g., Integer, Float, Long, etc.)
  */
 
-public class ConstantDomain<
-        Value extends ConstantValue<Value>>
-        extends AbstractDomain<ConstantDomain<Value>> {
+public class ConstantDomain<Value extends Number> extends AbstractDomain<ConstantDomain<Value>> {
     private AbstractValueKind kind;
     private Value value;
 
     public ConstantDomain() {
+        value = getDefaultValue();
         kind = AbstractValueKind.BOT;
     }
 
@@ -29,16 +27,13 @@ public class ConstantDomain<
         this.kind = AbstractValueKind.VAL;
     }
 
-    public ConstantDomain(AbstractValueKind kind) {
-        this.kind = kind;
-        if (kind != AbstractValueKind.VAL) {
-            throw new RuntimeException("Invalid abstract kind");
-        }
+    public Value getValue() {
+        return value;
     }
 
     @Override
     public ConstantDomain<Value> copyOf() {
-        return null;
+        return new ConstantDomain<>(value);
     }
 
     @Override
@@ -65,7 +60,7 @@ public class ConstantDomain<
         if (isTop()) {
             return false;
         }
-        return value.getConstant() == other.value.getConstant();
+        return value.equals(other.value);
     }
 
     @Override
@@ -79,7 +74,7 @@ public class ConstantDomain<
         if (!other.isVal()) {
             return false;
         }
-        return value.getConstant() == other.value.getConstant();
+        return value.equals(other.value);
     }
 
     @Override
@@ -106,7 +101,7 @@ public class ConstantDomain<
             return;
         }
 
-        kind = value.getConstant() == other.value.getConstant() ? AbstractValueKind.VAL : AbstractValueKind.TOP;
+        kind = value.equals(other.value) ? AbstractValueKind.VAL : AbstractValueKind.TOP;
     }
 
     @Override
@@ -128,7 +123,7 @@ public class ConstantDomain<
             return;
         }
 
-        kind = value.getConstant() == other.value.getConstant() ? AbstractValueKind.VAL : AbstractValueKind.BOT;
+        kind = value.equals(other.value) ? AbstractValueKind.VAL : AbstractValueKind.BOT;
     }
 
     @Override
@@ -141,5 +136,16 @@ public class ConstantDomain<
 
     private boolean isVal() {
         return kind == AbstractValueKind.VAL;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Value getDefaultValue() {
+        return switch (value) {
+            case Integer i -> (Value) Integer.valueOf(0);
+            case Long l -> (Value) Long.valueOf(0);
+            case Float v -> (Value) Float.valueOf(0);
+            case Double v -> (Value) Double.valueOf(0);
+            case null, default -> null;
+        };
     }
 }
