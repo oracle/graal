@@ -8,7 +8,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 public class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>> implements Analyzer<Domain> {
-    private final StructuredGraph graph;
     private final FixpointIterator<Domain> fixpointIterator;
 
     public InterProceduralAnalyzer(StructuredGraph graph,
@@ -16,7 +15,6 @@ public class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>> impl
                                    IteratorPolicy policy,
                                    Domain initialDomain,
                                    DebugContext debug) {
-        this.graph = graph;
         this.fixpointIterator = new FixpointIterator<>(graph, transferFunction, policy, initialDomain, debug);
     }
 
