@@ -1,27 +1,27 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.FixpointIterator;
+import com.oracle.svm.hosted.analysis.ai.transfer.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.transfer.policy.IteratorPolicy;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
-/**
- * Analyzer for inter procedural analysis
- */
+public class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>> implements Analyzer<Domain> {
+    private final StructuredGraph graph;
+    private final FixpointIterator<Domain> fixpointIterator;
 
-public class InterProceduralAnalyzer {
-    private final FixpointIterator<?, ?> fixpointIterator;
-    private final DebugContext debug;
-
-    public InterProceduralAnalyzer(FixpointIterator<?, ?> fixpointIterator, DebugContext debug) {
-        this.fixpointIterator = fixpointIterator;
-        this.debug = debug;
+    public InterProceduralAnalyzer(StructuredGraph graph,
+                                   TransferFunction<Domain> transferFunction,
+                                   IteratorPolicy policy,
+                                   Domain initialDomain,
+                                   DebugContext debug) {
+        this.graph = graph;
+        this.fixpointIterator = new FixpointIterator<>(graph, transferFunction, policy, initialDomain, debug);
     }
 
-    public void analyze(AnalysisMethod method) {
-        StructuredGraph graph = method.decodeAnalyzedGraph(null, null);
-        if (graph != null) {
-            fixpointIterator.analyze(graph, debug);
-        }
+    @Override
+    public Domain analyze() {
+        return fixpointIterator.analyze();
     }
 }
