@@ -98,15 +98,15 @@ public abstract class AbstractDCmd implements DCmd {
 
         /* Check that all mandatory arguments have been set. */
         for (DCmdOption<?> arg : arguments) {
-            if (arg.isRequired() && !result.hasBeenSet(arg)) {
-                throw new IllegalArgumentException("The argument '" + arg.getName() + "' is mandatory.");
+            if (arg.required() && !result.hasBeenSet(arg)) {
+                throw new IllegalArgumentException("The argument '" + arg.name() + "' is mandatory.");
             }
         }
 
         /* Check that all mandatory options have been set. */
         for (DCmdOption<?> option : options) {
-            if (option.isRequired() && !result.hasBeenSet(option)) {
-                throw new IllegalArgumentException("The option '" + option.getName() + "' is mandatory.");
+            if (option.required() && !result.hasBeenSet(option)) {
+                throw new IllegalArgumentException("The option '" + option.name() + "' is mandatory.");
             }
         }
 
@@ -139,7 +139,7 @@ public abstract class AbstractDCmd implements DCmd {
 
     private DCmdOption<?> findOption(String optionName) {
         for (DCmdOption<?> option : options) {
-            if (option.getName().equals(optionName)) {
+            if (option.name().equals(optionName)) {
                 return option;
             }
         }
@@ -148,14 +148,14 @@ public abstract class AbstractDCmd implements DCmd {
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticArgument.cpp#L140-L166")
     private static Object parseValue(DCmdOption<?> option, String valueString) {
-        Class<?> type = option.getType();
+        Class<?> type = option.type();
         if (type == Boolean.class) {
             if (valueString == null || valueString.isEmpty() || "true".equals(valueString)) {
                 return Boolean.TRUE;
             } else if ("false".equals(valueString)) {
                 return Boolean.FALSE;
             } else {
-                throw new IllegalArgumentException("Boolean parsing error in command argument '" + option.getName() + "'. Could not parse: " + valueString + ".");
+                throw new IllegalArgumentException("Boolean parsing error in command argument '" + option.name() + "'. Could not parse: " + valueString + ".");
             }
         } else if (type == String.class) {
             return valueString;
@@ -194,11 +194,11 @@ public abstract class AbstractDCmd implements DCmd {
 
         for (DCmdOption<?> option : arguments) {
             sb.append(" ");
-            if (!option.isRequired()) {
+            if (!option.required()) {
                 sb.append("[");
             }
-            sb.append("<").append(option.getName()).append(">");
-            if (!option.isRequired()) {
+            sb.append("<").append(option.name()).append(">");
+            if (!option.required()) {
                 sb.append("]");
             }
         }
@@ -234,14 +234,14 @@ public abstract class AbstractDCmd implements DCmd {
     }
 
     private static void appendOption(StringBuilder sb, DCmdOption<?> option) {
-        sb.append("\t").append(option.getName()).append(" : ");
-        if (!option.isRequired()) {
+        sb.append("\t").append(option.name()).append(" : ");
+        if (!option.required()) {
             sb.append("[optional] ");
         }
-        sb.append(option.getDescription());
+        sb.append(option.description());
         sb.append(" (").append(typeToString(option)).append(", ");
-        if (option.getDefaultValue() != null) {
-            sb.append(option.getDefaultValue());
+        if (option.defaultValue() != null) {
+            sb.append(option.defaultValue());
         } else {
             sb.append("no default value");
         }
@@ -249,7 +249,7 @@ public abstract class AbstractDCmd implements DCmd {
     }
 
     private static String typeToString(DCmdOption<?> option) {
-        Class<?> type = option.getType();
+        Class<?> type = option.type();
         if (type == Boolean.class) {
             return "BOOLEAN";
         } else if (type == String.class) {

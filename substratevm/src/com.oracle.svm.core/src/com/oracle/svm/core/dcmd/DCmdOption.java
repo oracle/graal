@@ -26,38 +26,5 @@
 
 package com.oracle.svm.core.dcmd;
 
-public class DCmdOption<T> {
-    private final Class<T> type;
-    private final String name;
-    private final String description;
-    private final boolean required;
-    private final T defaultValue;
-
-    public DCmdOption(Class<T> type, String name, String description, boolean required, T defaultValue) {
-        this.type = type;
-        this.name = name;
-        this.description = description;
-        this.required = required;
-        this.defaultValue = defaultValue;
-    }
-
-    public Class<?> getType() {
-        return type;
-    }
-
-    String getName() {
-        return name;
-    }
-
-    String getDescription() {
-        return description;
-    }
-
-    boolean isRequired() {
-        return required;
-    }
-
-    T getDefaultValue() {
-        return defaultValue;
-    }
+public record DCmdOption<T>(Class<T> type, String name, String description, boolean required, T defaultValue) {
 }

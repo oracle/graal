@@ -46,7 +46,7 @@ public class DCmdArguments {
             throw new IllegalArgumentException("Duplicates in diagnostic command arguments");
         }
 
-        assert value == null || option.getType().isAssignableFrom(value.getClass());
+        assert value == null || option.type().isAssignableFrom(value.getClass());
         values.put(option, value);
     }
 
@@ -54,7 +54,7 @@ public class DCmdArguments {
     public <T> T get(DCmdOption<T> option) {
         Object value = values.get(option);
         if (value == null) {
-            return option.getDefaultValue();
+            return option.defaultValue();
         }
         return (T) value;
     }
