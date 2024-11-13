@@ -44,7 +44,6 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import jdk.graal.compiler.word.Word;
-
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
@@ -137,7 +136,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                 name = name.replace("%I", IsolateUtil.getIsolateID(true));
             }
             if (name.contains("%t")) {
-                name = name.replace("%t", String.valueOf(System.currentTimeMillis()));
+                name = name.replace("%t", String.valueOf(GraalServices.milliTimeStamp()));
             }
 
             for (String subst : new String[]{"%o", "%e"}) {

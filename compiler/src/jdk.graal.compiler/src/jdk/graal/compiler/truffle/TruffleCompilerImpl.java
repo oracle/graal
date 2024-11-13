@@ -41,8 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
-import jdk.vm.ci.meta.ProfilingInfo;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
@@ -95,6 +93,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
 import jdk.graal.compiler.truffle.nodes.TruffleAssumption;
 import jdk.graal.compiler.truffle.phases.InstrumentPhase;
 import jdk.graal.compiler.truffle.phases.InstrumentationSuite;
@@ -105,6 +104,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ProfilingInfo;
 
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
@@ -673,7 +673,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     }
 
     @Override
-    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+    public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, long stuckTime) {
         CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
         TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
         exitHostVM(STUCK_COMPILATION_EXIT_CODE);

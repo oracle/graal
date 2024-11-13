@@ -85,7 +85,7 @@ public class SubstrateGraalUtils {
 
     private static final CompilationWatchDog.EventHandler COMPILATION_WATCH_DOG_EVENT_HANDLER = new CompilationWatchDog.EventHandler() {
         @Override
-        public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, int stuckTime) {
+        public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, long stuckTime) {
             CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
             TTY.println("Compilation %s on %s appears stuck - exiting VM", compilation, watched);
             System.exit(STUCK_COMPILATION_EXIT_CODE);

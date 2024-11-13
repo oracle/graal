@@ -326,14 +326,11 @@ public class LibGraalCompilationDriver {
                 return UNSAFE.getLong(getAddress());
             }
 
-            static final long NANOS_IN_MILLI = 1_000_000;
-
             /**
              * @return compilation time as output by libgraal, in nanoseconds.
              */
             public long readTimeElapsed() {
-                // Libgraal uses milliseconds, convert to nano for consistency.
-                return UNSAFE.getLong(getAddress() + Long.BYTES) * NANOS_IN_MILLI;
+                return UNSAFE.getLong(getAddress() + Long.BYTES);
             }
         }
 

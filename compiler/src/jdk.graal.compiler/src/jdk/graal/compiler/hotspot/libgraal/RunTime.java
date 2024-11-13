@@ -29,14 +29,6 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
-import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
-import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.runtime.JVMCIBackend;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.debug.GlobalMetrics;
@@ -51,12 +43,20 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.util.OptionsEncoder;
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
+import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import jdk.internal.misc.Unsafe;
 
 /**
  * This class provides implementations for {@code @CEntryPoint}s that libgraal has to provide as a
@@ -129,7 +129,7 @@ public class RunTime {
             long timeBefore = 0;
             if (timeAndMemConsumer != null) {
                 allocatedBytesBefore = currentThreadAllocatedBytes.get();
-                timeBefore = System.currentTimeMillis();
+                timeBefore = System.nanoTime();
             }
             OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
             if (profileLoadPath != null) {
@@ -139,7 +139,7 @@ public class RunTime {
             if (timeAndMemConsumer != null) {
                 long allocatedBytesAfter = currentThreadAllocatedBytes.get();
                 long bytesAllocated = allocatedBytesAfter - allocatedBytesBefore;
-                long timeAfter = System.currentTimeMillis();
+                long timeAfter = System.nanoTime();
                 long timeSpent = timeAfter - timeBefore;
                 timeAndMemConsumer.accept(timeSpent, bytesAllocated);
             }
