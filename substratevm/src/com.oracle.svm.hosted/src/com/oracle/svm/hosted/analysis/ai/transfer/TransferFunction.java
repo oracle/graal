@@ -18,14 +18,14 @@ public interface TransferFunction<
      * 4. Binary logical operations -> SLShortCircuitNode
      * 5. Unary arithmetic operations -> UnaryArithmeticNode
      * 6. Unary logical operations -> UnaryLogicalNode
-     * 7. Load
-     * 8. Store
-     * 9. Phi -> PhiNode
-     * 10. If -> IfNode
-     * 11. LoopBegin -> LoopBeginNode
-     * 12. LoopEnd -> LoopEndNode
-     * 13. Merge -> MergeNode
-     * 14. Call -> CallNode
+     * 7. Load -> LoadFieldNode
+     * 8. Store -> StoreFieldNode
+     * 9. If -> IfNode
+     * 10. LoopBegin -> LoopBeginNode
+     * 11. LoopEnd -> LoopEndNode
+     * 12. Merge -> MergeNode
+     * 13. Call -> CallNode
+     * 14. Invoke -> InvokeNode
      *
      * @param node        node to analyze
      * @param environment environment to use of a FixpointIterator
