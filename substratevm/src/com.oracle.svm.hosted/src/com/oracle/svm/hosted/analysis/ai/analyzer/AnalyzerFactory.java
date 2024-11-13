@@ -8,6 +8,10 @@ import com.oracle.svm.hosted.analysis.ai.transfer.policy.PolicyBuilder;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
+/**
+ * Factory for creating different kinds of analyzers
+ * Users can create their own IteratorPolicy inside create methods
+ */
 public class AnalyzerFactory {
 
     public static <Domain extends AbstractDomain<Domain>> Analyzer<Domain> createInterProceduralAnalyzer(
