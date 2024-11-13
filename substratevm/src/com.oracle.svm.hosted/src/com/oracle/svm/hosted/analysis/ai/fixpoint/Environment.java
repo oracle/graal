@@ -25,30 +25,18 @@ public class Environment<Domain extends AbstractDomain<Domain>> {
     }
 
     public AbstractState<Domain> getState(Node node) {
-        return stateMap.get(node);
+        return stateMap.computeIfAbsent(node, n -> new AbstractState<>(defaultDomain.copyOf()));
     }
 
     public Domain getDomain(Node node) {
-        var state = stateMap.getOrDefault(node, null);
-        if (state == null) {
-            return defaultDomain;
-        }
-        return state.getDomain();
+        return getState(node).getDomain();
     }
 
     public void setDomain(Node node, Domain domain) {
-        var state = stateMap.getOrDefault(node, null);
-        if (state == null) {
-            return;
-        }
-        state.setDomain(domain);
+        getState(node).setDomain(domain);
     }
 
     public int getVisitCount(Node node) {
-        var state = stateMap.getOrDefault(node, null);
-        if (state == null) {
-            return 0;
-        }
-        return state.getVisitedCount();
+        return getState(node).getVisitedCount();
     }
 }
