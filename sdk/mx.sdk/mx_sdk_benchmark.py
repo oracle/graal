@@ -1263,7 +1263,6 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
     def benchmarkList(self, bmSuiteArgs):
         exclude = []
         # Barista currently does not support running 'micronaut-pegasus' on the JVM - running it results in a crash
-        # Fixing this is currently not a priority, since no one is trying to run this app on the JVM
         exclude.append("micronaut-pegasus")
         return [b for b in self.completeBenchmarkList(bmSuiteArgs) if not b in exclude]
 
