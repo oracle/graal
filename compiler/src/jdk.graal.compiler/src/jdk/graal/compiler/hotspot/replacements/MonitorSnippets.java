@@ -189,8 +189,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * appropriately to comply with the layouts above.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L175-L532",
-          sha1 = "042c4a5c1730525a53c24ee194a182dfd34bf754")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/78b80150e009745b8f28d36c3836f18ad0ca921f/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L175-L499",
+          sha1 = "dfd1e588f5dc19fdd444094b37f162c5ee89803b")
 // @formatter:on
 public class MonitorSnippets implements Snippets {
 
@@ -387,8 +387,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7fa2f229fbee68112cbdd18b811d95721adfe2ec/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L534-L692",
-              sha1 = "393458a9c3b055b97fd247e424fe5b7a63840489")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/78b80150e009745b8f28d36c3836f18ad0ca921f/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L501-L667",
+              sha1 = "1502c5ef5c336a120cc7414741bb36308e2eb6c5")
     // @formatter:on
     @SuppressWarnings("unused")
     private static boolean tryLightweightLocking(Object object, Word lock, Word mark, Word thread, boolean trace, Counters counters, Register stackPointerRegister) {
@@ -515,8 +515,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/d8430efb5e159b8e08d2cac66b46cb4ff1112927/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L694-L858",
-              sha1 = "57536f7432c20e2e785059b464948f9aeee3804b")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/78b80150e009745b8f28d36c3836f18ad0ca921f/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L669-L838",
+              sha1 = "34c70e9dd2d3093e82189a25c056e7fdb1aff506")
     // @formatter:on
     private static boolean tryLightweightUnlocking(Object object, Word thread, Word lock, boolean trace, Counters counters) {
         // Load top
