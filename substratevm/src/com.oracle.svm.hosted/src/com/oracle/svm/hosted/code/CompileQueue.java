@@ -357,6 +357,11 @@ public class CompileQueue {
         public Description getDescription() {
             return description;
         }
+
+        @Override
+        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+            return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
+        }
     }
 
     @SuppressWarnings("this-escape")
