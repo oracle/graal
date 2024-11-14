@@ -23,6 +23,10 @@ public final class SignDomain extends AbstractDomain<SignDomain> {
         this.value = new SignValue(sign);
     }
 
+    public SignDomain(SignDomain signDomain) {
+        this.value = signDomain.value;
+    }
+
     @Override
     public SignDomain copyOf() {
         return new SignDomain(value.getSign());
