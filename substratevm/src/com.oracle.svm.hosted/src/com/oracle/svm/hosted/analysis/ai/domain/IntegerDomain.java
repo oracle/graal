@@ -6,7 +6,7 @@ package com.oracle.svm.hosted.analysis.ai.domain;
     Join and Widening are not implemented, because the only thing we need is to increment and decrement the value.
  */
 
-public class IntegerDomain extends AbstractDomain<IntegerDomain> {
+public final class IntegerDomain extends AbstractDomain<IntegerDomain> {
     private int value;
 
     public IntegerDomain() {
@@ -15,6 +15,10 @@ public class IntegerDomain extends AbstractDomain<IntegerDomain> {
 
     public IntegerDomain(int value) {
         this.value = value;
+    }
+
+    public IntegerDomain(IntegerDomain other) {
+        this.value = other.value;
     }
 
     public int getValue() {
@@ -66,6 +70,7 @@ public class IntegerDomain extends AbstractDomain<IntegerDomain> {
 
     @Override
     public void meetWith(IntegerDomain other) {
+        value = Math.min(value, other.value);
     }
 
     @Override
@@ -81,7 +86,7 @@ public class IntegerDomain extends AbstractDomain<IntegerDomain> {
 
     public void decrementValue() {
         value--;
-        if ( value < 0 )
+        if (value < 0)
             value = 0;
     }
 }

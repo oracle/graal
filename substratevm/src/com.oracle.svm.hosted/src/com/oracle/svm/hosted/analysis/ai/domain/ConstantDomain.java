@@ -13,7 +13,7 @@ import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
  * @param <Value> the type of the constant value (e.g., Integer, Float, Long, etc.)
  */
 
-public class ConstantDomain<Value extends Number> extends AbstractDomain<ConstantDomain<Value>> {
+public final class ConstantDomain<Value extends Number> extends AbstractDomain<ConstantDomain<Value>> {
     private AbstractValueKind kind;
     private Value value;
 
@@ -25,6 +25,11 @@ public class ConstantDomain<Value extends Number> extends AbstractDomain<Constan
     public ConstantDomain(Value value) {
         this.value = value;
         this.kind = AbstractValueKind.VAL;
+    }
+
+    public ConstantDomain(ConstantDomain<Value> other) {
+        this.value = other.value;
+        this.kind = other.kind;
     }
 
     public Value getValue() {
