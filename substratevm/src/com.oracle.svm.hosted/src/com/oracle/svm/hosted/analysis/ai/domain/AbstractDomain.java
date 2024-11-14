@@ -11,20 +11,15 @@ import java.util.function.Supplier;
  * fixpoints.
  * <p>
  * We do not use narrowing operation in our abstract interpretation
+ * All derived generic domains need to extend this class
+ * Derived domains should have default constructor as well as copy constructor
  * Sample usage:
- * public class MyCustomDomain extends AbstractDomain<MyCustomDomain> {}
+ * public final class MyCustomDomain extends AbstractDomain<MyCustomDomain> {}
  *
- * @param <T> type of the derived AbstractDomain
+ * @param <Derived> type of the derived AbstractDomain
  */
 
-public abstract class AbstractDomain<T extends AbstractDomain<T>> {
-    /**
-     * Creates a copy of the domain element
-     *
-     * @return copy of the domain element
-     */
-    public abstract T copyOf();
-
+public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
     /**
      * Checks if the domain is the bottom element
      *
@@ -45,7 +40,7 @@ public abstract class AbstractDomain<T extends AbstractDomain<T>> {
      * @param other domain to compare with
      * @return true if the domain is less or equal to the other domain
      */
-    public abstract boolean leq(T other);
+    public abstract boolean leq(Derived other);
 
     /**
      * Checks if the domain is equal to the other domain
@@ -53,7 +48,7 @@ public abstract class AbstractDomain<T extends AbstractDomain<T>> {
      * @param other domain to compare with
      * @return true if the domain is equal to the other domain
      */
-    public abstract boolean equals(T other);
+    public abstract boolean equals(Derived other);
 
     /**
      * Sets the domain to the bottom element
@@ -70,21 +65,21 @@ public abstract class AbstractDomain<T extends AbstractDomain<T>> {
      *
      * @param other domain to join with
      */
-    public abstract void joinWith(T other);
+    public abstract void joinWith(Derived other);
 
     /**
      * Widens the domain with the other domain, modifying the domain
      *
      * @param other domain to widen with
      */
-    public abstract void widenWith(T other);
+    public abstract void widenWith(Derived other);
 
     /**
      * Meets the domain with the other domain, modifying the domain
      *
      * @param other domain to meet with
      */
-    public abstract void meetWith(T other);
+    public abstract void meetWith(Derived other);
 
     /**
      * String representation of the domain
@@ -92,33 +87,58 @@ public abstract class AbstractDomain<T extends AbstractDomain<T>> {
      */
     public abstract String toString();
 
-    public T join(T other) {
-        T copy = copyOf();
+    /**
+     * Joins the domain with the other domain, returning a new domain
+     * If the domain is a lattice, this is the least upper bound operation
+     * @param other domain to join with
+     * @return new domain after joining
+     */
+    public Derived join(Derived other) {
+        Derived copy = copyOf();
         copy.joinWith(other);
         return copy;
     }
 
-    public T widen(T other) {
-        T copy = copyOf();
+    /**
+     * Widens the domain with the other domain, returning a new domain
+     * Used for acceleration of the fixpoint computation
+     * @param other domain to widen with
+     * @return new domain after widening
+     */
+    public Derived widen(Derived other) {
+        Derived copy = copyOf();
         copy.widenWith(other);
         return copy;
     }
 
-    public T meet(T other) {
-        T copy = copyOf();
+    /**
+     * Meets the domain with the other domain, returning a new domain
+     * If the domain is a lattice, this is the greatest lower bound operation
+     * @param other domain to meet with
+     * @return new domain after meeting
+     */
+    public Derived meet(Derived other) {
+        Derived copy = copyOf();
         copy.meetWith(other);
         return copy;
     }
 
-    public static <T extends AbstractDomain<T>> T createTop(Supplier<T> supplier) {
-        T instance = supplier.get();
-        instance.setToTop();
-        return instance;
-    }
+    /**
+     * Creates a copy of the domain element
+     *
+     * @return copy of the domain element
+     */
+    public abstract Derived copyOf();
 
-    public static <T extends AbstractDomain<T>> T createBot(Supplier<T> supplier) {
-        T instance = supplier.get();
-        instance.setToBot();
-        return instance;
-    }
+//    public static <T extends AbstractDomain<T>> T createTop(Supplier<T> supplier) {
+//        T instance = supplier.get();
+//        instance.setToTop();
+//        return instance;
+//    }
+//
+//    public static <T extends AbstractDomain<T>> T createBot(Supplier<T> supplier) {
+//        T instance = supplier.get();
+//        instance.setToBot();
+//        return instance;
+//    }
 }
