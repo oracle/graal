@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core.aarch64.test;
+package org.graalvm.compiler.core.aarch64.test;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.junit.Test;
 
 /**
