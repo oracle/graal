@@ -179,7 +179,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                     int newThreadStatus = node.getNewThreadStatus();
                     assert StatusSupport.isValidStatus(newThreadStatus);
                     Arguments args = new Arguments(prologue, node.graph().getGuardsStage(), tool.getLoweringStage());
-                    args.addConst("newThreadStatus", newThreadStatus);
+                    args.add("newThreadStatus", newThreadStatus);
                     SnippetTemplate template = template(tool, node, args);
                     return template;
                 }
@@ -210,7 +210,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
                     int oldThreadStatus = node.getOldThreadStatus();
                     assert StatusSupport.isValidStatus(oldThreadStatus);
                     Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
-                    args.addConst("oldThreadStatus", oldThreadStatus);
+                    args.add("oldThreadStatus", oldThreadStatus);
                     SnippetTemplate template = template(tool, node, args);
                     return template;
                 }

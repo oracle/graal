@@ -26,6 +26,8 @@ package jdk.graal.compiler.replacements;
 
 import java.util.EnumMap;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.debug.GraalError;
@@ -39,8 +41,6 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -251,7 +251,7 @@ public class BoxingSnippets implements Snippets {
             SnippetTemplate.Arguments args = null;
             args = new SnippetTemplate.Arguments(boxSnippets.get(box.getBoxingKind()), box.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("value", box.getValue());
-            args.addConst("valueOfCounter", valueOfCounter);
+            args.add("valueOfCounter", valueOfCounter);
             SnippetTemplate template = template(tool, box, args);
             box.getDebug().log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", box.graph(), box, template, args);
             template.instantiate(tool.getMetaAccess(), box, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -260,7 +260,7 @@ public class BoxingSnippets implements Snippets {
         public void lower(UnboxNode unbox, LoweringTool tool) {
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(unboxSnippets.get(unbox.getBoxingKind()), unbox.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("value", unbox.getValue());
-            args.addConst("valueCounter", valueCounter);
+            args.add("valueCounter", valueCounter);
 
             SnippetTemplate template = template(tool, unbox, args);
             unbox.getDebug().log("Lowering integerValueOf in %s: node=%s, template=%s, arguments=%s", unbox.graph(), unbox, template, args);

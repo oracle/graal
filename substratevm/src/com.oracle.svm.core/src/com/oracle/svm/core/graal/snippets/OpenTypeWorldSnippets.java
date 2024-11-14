@@ -249,7 +249,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", node.allowsNull());
+                args.add("allowsNull", node.allowsNull());
                 args.add("exactType", hub);
                 return args;
 
@@ -259,9 +259,9 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
                 args.add("object", node.getValue());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", node.allowsNull());
-                args.addConst("typeID", hub.getTypeID());
-                args.addConst("typeIDDepth", hub.getTypeIDDepth());
+                args.add("allowsNull", node.allowsNull());
+                args.add("typeID", hub.getTypeID());
+                args.add("typeIDDepth", hub.getTypeIDDepth());
                 return args;
             }
         }
@@ -290,7 +290,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
                 args.add("object", node.getObject());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", node.allowsNull());
+                args.add("allowsNull", node.allowsNull());
                 args.add("exactType", node.getMirrorOrHub());
                 return args;
 
@@ -300,7 +300,7 @@ public final class OpenTypeWorldSnippets extends SubstrateTemplates implements S
                 args.add("object", node.getObject());
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
-                args.addConst("allowsNull", node.allowsNull());
+                args.add("allowsNull", node.allowsNull());
                 return args;
             }
         }
