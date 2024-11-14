@@ -60,7 +60,6 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hotspot.GetCompilerConfig;
 import com.oracle.svm.graal.hotspot.GetJNIConfig;
-import com.oracle.svm.hosted.ClassLoaderFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -72,6 +71,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.libgraal.BuildTime;
+import jdk.graal.compiler.hotspot.libgraal.LibGraalClassLoaderBase;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
@@ -108,6 +108,8 @@ public final class LibGraalFeature implements Feature {
     }
 
     final MethodHandles.Lookup mhl = MethodHandles.lookup();
+
+    LibGraalClassLoaderBase libGraalClassLoader;
 
     /**
      * Loader used for loading classes from the guest GraalVM.
@@ -183,8 +185,9 @@ public final class LibGraalFeature implements Feature {
         // org.graalvm.nativeimage.impl.IsolateSupport
         accessModulesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, "org.graalvm.nativeimage");
 
-        loader = createHostedLibGraalClassLoader(access);
-        ImageSingletons.lookup(ClassForNameSupport.class).setCustomLoader(loader);
+        libGraalClassLoader = createHostedLibGraalClassLoader(access);
+        loader = libGraalClassLoader.getClassLoader();
+        ImageSingletons.lookup(ClassForNameSupport.class).setLibGraalLoader(loader);
 
         buildTimeClass = loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
 
@@ -206,10 +209,10 @@ public final class LibGraalFeature implements Feature {
     }
 
     @SuppressWarnings("unchecked")
-    private static ClassLoader createHostedLibGraalClassLoader(AfterRegistrationAccess access) {
+    private static LibGraalClassLoaderBase createHostedLibGraalClassLoader(AfterRegistrationAccess access) {
         var hostedLibGraalClassLoaderClass = access.findClassByName("jdk.graal.compiler.hotspot.libgraal.HostedLibGraalClassLoader");
         ModuleSupport.accessPackagesToClass(Access.EXPORT, hostedLibGraalClassLoaderClass, false, "java.base", "jdk.internal.module");
-        return ReflectionUtil.newInstance((Class<ClassLoader>) hostedLibGraalClassLoaderClass);
+        return ReflectionUtil.newInstance((Class<LibGraalClassLoaderBase>) hostedLibGraalClassLoaderClass);
     }
 
     private static void accessModulesToClass(ModuleSupport.Access access, Class<?> accessingClass, String... moduleNames) {
@@ -231,7 +234,7 @@ public final class LibGraalFeature implements Feature {
          * HostedLibGraalClassLoader provides runtime-replacement loader instance. Make sure
          * HostedLibGraalClassLoader gets replaced by customRuntimeLoader instance in image.
          */
-        ClassLoader customRuntimeLoader = ClassLoaderFeature.getCustomRuntimeClassLoader(loader);
+        ClassLoader customRuntimeLoader = libGraalClassLoader.getRuntimeClassLoader();
         access.registerObjectReplacer(obj -> obj == loader ? customRuntimeLoader : obj);
 
         try {

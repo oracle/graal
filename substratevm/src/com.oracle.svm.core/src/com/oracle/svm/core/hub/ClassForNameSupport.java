@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
@@ -45,16 +46,13 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton
 public final class ClassForNameSupport implements MultiLayeredImageSingleton, UnsavedSingleton {
 
-    private ClassLoader customLoader;
+    private ClassLoader libGraalLoader;
 
-    public ClassForNameSupport(ClassLoader customLoader) {
-        setCustomLoader(customLoader);
-    }
-
-    public void setCustomLoader(ClassLoader customLoader) {
-        this.customLoader = customLoader;
+    public void setLibGraalLoader(ClassLoader libGraalLoader) {
+        this.libGraalLoader = libGraalLoader;
     }
 
     public static ClassForNameSupport singleton() {
@@ -126,7 +124,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
 
     @Platforms(HOSTED_ONLY.class)
     private boolean isLibGraalClass(Class<?> clazz) {
-        return customLoader != null && clazz.getClassLoader() == customLoader;
+        return libGraalLoader != null && clazz.getClassLoader() == libGraalLoader;
     }
 
     public static ConditionalRuntimeValue<Object> updateConditionalValue(ConditionalRuntimeValue<Object> existingConditionalValue, Object newValue,

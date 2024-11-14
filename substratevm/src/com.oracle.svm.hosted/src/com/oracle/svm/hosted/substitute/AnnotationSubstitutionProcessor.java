@@ -1091,15 +1091,18 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     protected <T> Class<?> findTargetClass(Class<T> targetClass, Class<?> noClassNameProviderClass,
                     Class<?> annotatedBaseClass, T target, Class<?> value, String targetClassName, Class<? extends Function<T, String>> classNameProvider, String[] innerClasses,
                     Class<? extends Supplier<ClassLoader>> classloaderSupplier, Class<?>[] onlyWith) {
-
+        Class<?> holder;
         String className;
-        ClassLoader loader = imageClassLoader.getClassLoader();
+        ClassLoader suppliedLoader = null;
         if (value != targetClass) {
             guarantee(targetClassName.isEmpty(), "Both class and class name specified for substitution");
             guarantee(classNameProvider == noClassNameProviderClass, "Both class and classNameProvider specified for substitution");
             guarantee(classloaderSupplier == TargetClass.NoClassLoaderProvider.class, "Annotation attribute 'classLoader' requires use of 'className' or 'classNameProvider'");
-            className = value.getName();
+
+            holder = value;
+            className = holder.getName();
         } else {
+            holder = null;
             if (classNameProvider != noClassNameProviderClass) {
                 try {
                     className = ReflectionUtil.newInstance(classNameProvider).apply(target);
@@ -1112,7 +1115,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             if (classloaderSupplier != TargetClass.NoClassLoaderProvider.class) {
                 try {
-                    loader = ReflectionUtil.newInstance(classloaderSupplier).get();
+                    suppliedLoader = ReflectionUtil.newInstance(classloaderSupplier).get();
                 } catch (ReflectionUtilError ex) {
                     throw UserError.abort(ex.getCause(), "Cannot instantiate classloaderSupplier: %s. The class must have a parameterless constructor.", classloaderSupplier.getTypeName());
                 }
@@ -1145,12 +1148,19 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
         }
 
-        Class<?> holder;
-        try {
-            holder = Class.forName(className, false, loader);
-        } catch (ClassNotFoundException e) {
-            throw UserError.abort("Substitution target for %s is not loaded. Use field `onlyWith` in the `TargetClass` annotation to make substitution only active when needed.",
-                            annotatedBaseClass.getName());
+        if (holder == null) {
+            var substitutionsClassLoaders = suppliedLoader != null ? List.of(suppliedLoader) : imageClassLoader.classLoaderSupport.getClassLoaders();
+            for (ClassLoader substitutionsClassLoader : substitutionsClassLoaders) {
+                try {
+                    holder = Class.forName(className, false, substitutionsClassLoader);
+                    break;
+                } catch (ClassNotFoundException e) {
+                    if (substitutionsClassLoader == substitutionsClassLoaders.getLast()) {
+                        throw UserError.abort("Substitution target for %s is not loaded. Use field `onlyWith` in the `TargetClass` annotation to make substitution only active when needed.",
+                                        annotatedBaseClass.getName());
+                    }
+                }
+            }
         }
         if (innerClasses.length > 0) {
             for (String innerClass : innerClasses) {
