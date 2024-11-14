@@ -96,7 +96,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          */
         private boolean isInBaseLayer;
 
-        ConstantData(AnalysisType type, JavaConstant hostedObject, int identityHashCode) {
+        ConstantData(AnalysisType type, JavaConstant hostedObject, int identityHashCode, int id) {
             Objects.requireNonNull(type);
             this.type = type;
             this.hostedObject = CompressibleConstant.uncompress(hostedObject);
@@ -117,7 +117,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
                 /* This value must never be used later on. */
                 this.identityHashCode = -1;
             }
-            this.id = currentId.getAndIncrement();
+            this.id = id == -1 ? currentId.getAndIncrement() : id;
         }
 
         @Override
@@ -204,6 +204,14 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     public boolean isBackedByHostedObject() {
         return constantData.hostedObject != null;
+    }
+
+    public static int getCurrentId() {
+        return currentId.get();
+    }
+
+    public static void setCurrentId(int id) {
+        currentId.set(id);
     }
 
     public static int getConstantID(ImageHeapConstant constant) {

@@ -70,23 +70,23 @@ public final class ImageHeapInstance extends ImageHeapConstant {
          */
         private Object[] fieldValues;
 
-        private InstanceData(AnalysisType type, JavaConstant hostedObject, Object[] fieldValues, int identityHashCode) {
-            super(type, hostedObject, identityHashCode);
+        private InstanceData(AnalysisType type, JavaConstant hostedObject, Object[] fieldValues, int identityHashCode, int id) {
+            super(type, hostedObject, identityHashCode, id);
             this.fieldValues = fieldValues;
             assert !type.isArray() : type;
         }
     }
 
     ImageHeapInstance(AnalysisType type, JavaConstant hostedObject) {
-        this(type, hostedObject, -1);
+        this(type, hostedObject, -1, -1);
     }
 
-    ImageHeapInstance(AnalysisType type, JavaConstant hostedObject, int identityHashCode) {
-        super(new InstanceData(type, hostedObject, null, identityHashCode), false);
+    ImageHeapInstance(AnalysisType type, JavaConstant hostedObject, int identityHashCode, int id) {
+        super(new InstanceData(type, hostedObject, null, identityHashCode, id), false);
     }
 
     public ImageHeapInstance(AnalysisType type) {
-        super(new InstanceData(type, null, new Object[type.getInstanceFields(true).length], -1), false);
+        super(new InstanceData(type, null, new Object[type.getInstanceFields(true).length], -1, -1), false);
     }
 
     private ImageHeapInstance(ConstantData data, boolean compressed) {
@@ -184,6 +184,6 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         Objects.requireNonNull(fieldValues, "Cannot clone an instance before the field values are set.");
         Object[] newFieldValues = Arrays.copyOf(fieldValues, fieldValues.length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
-        return new ImageHeapInstance(new InstanceData(constantData.type, null, newFieldValues, -1), compressed);
+        return new ImageHeapInstance(new InstanceData(constantData.type, null, newFieldValues, -1, -1), compressed);
     }
 }
