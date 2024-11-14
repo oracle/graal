@@ -142,6 +142,7 @@ class GenScavengeGCFeature implements InternalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        BarrierSnippets.registerForeignCalls(foreignCalls);
         GenScavengeAllocationSupport.registerForeignCalls(foreignCalls);
     }
 

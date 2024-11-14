@@ -43,6 +43,8 @@ public class EspressoThreadLocalState {
 
     private int singleSteppingDisabledCounter;
 
+    private boolean stepInProgress;
+
     @SuppressWarnings("unused")
     public EspressoThreadLocalState(EspressoContext context) {
         typeStack = new ClassRegistry.TypeStack();
@@ -124,8 +126,16 @@ public class EspressoThreadLocalState {
         return privilegedStack;
     }
 
-    public void disableSingleStepping() {
-        singleSteppingDisabledCounter++;
+    public void setSteppingInProgress(boolean value) {
+        stepInProgress = value;
+    }
+
+    public boolean disableSingleStepping(boolean forceDisable) {
+        if (forceDisable || stepInProgress) {
+            singleSteppingDisabledCounter++;
+            return true;
+        }
+        return false;
     }
 
     public void enableSingleStepping() {

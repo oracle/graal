@@ -25,29 +25,45 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerLoader.get;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CAPTURING_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FACTORY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.GENERATED_SERIALIZATION_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LAMBDA_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_DECLARING_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_TARGET_CONSTRUCTOR_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TARGET_CONSTRUCTOR_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.THROW_ALLOCATED_OBJECT_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_METHOD_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_TYPE_TAG;
+import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
+import static com.oracle.svm.hosted.lambda.LambdaParser.getLambdaClassFromConstantNode;
 
 import java.lang.reflect.Constructor;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.heap.ImageLayerLoaderHelper;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
+import com.oracle.svm.hosted.lambda.LambdaParser;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SVMImageLayerLoaderHelper extends ImageLayerLoaderHelper {
+    private final Map<Class<?>, Boolean> capturingClasses = new ConcurrentHashMap<>();
+
     public SVMImageLayerLoaderHelper(ImageLayerLoader imageLayerLoader) {
         super(imageLayerLoader);
     }
@@ -70,9 +86,43 @@ public class SVMImageLayerLoaderHelper extends ImageLayerLoaderHelper {
             Class<?> constructorAccessor = serializationSupport.getSerializationConstructorAccessor(rawDeclaringClass, rawTargetConstructorClass).getClass();
             imageLayerLoader.getMetaAccess().lookupJavaType(constructorAccessor);
             return true;
+        } else if (wrappedType.equals(LAMBDA_TYPE_TAG)) {
+            String capturingClassName = get(typeData, CAPTURING_CLASS_TAG);
+            Class<?> capturingClass = imageLayerLoader.lookupClass(false, capturingClassName);
+            loadLambdaTypes(capturingClass);
+            return true;
         }
 
         return super.loadType(typeData, tid);
+    }
+
+    /**
+     * Load all lambda types of the given capturing class. Each method of the capturing class is
+     * parsed (see {@link LambdaParser#createMethodGraph(ResolvedJavaMethod, OptionValues)}). The
+     * lambda types can then be found in the constant nodes of the graphs.
+     */
+    private void loadLambdaTypes(Class<?> capturingClass) {
+        AnalysisUniverse universe = imageLayerLoader.getUniverse();
+        capturingClasses.computeIfAbsent(capturingClass, key -> {
+            LambdaParser.allExecutablesDeclaredInClass(universe.getOriginalMetaAccess().lookupJavaType(capturingClass))
+                            .filter(m -> m.getCode() != null)
+                            .forEach(m -> loadLambdaTypes(m, universe.getBigbang()));
+            return true;
+        });
+    }
+
+    private static void loadLambdaTypes(ResolvedJavaMethod m, BigBang bigBang) {
+        StructuredGraph graph = createMethodGraph(m, bigBang.getOptions());
+
+        NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
+
+        for (ConstantNode cNode : constantNodes) {
+            Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
+
+            if (lambdaClass != null) {
+                bigBang.getMetaAccess().lookupJavaType(lambdaClass);
+            }
+        }
     }
 
     @Override

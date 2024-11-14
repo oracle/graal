@@ -67,6 +67,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotObjectProxyHandlerFactory.ObjectProxyNodeGen;
+import org.graalvm.polyglot.Context;
 
 final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWrapper {
 
@@ -75,11 +76,17 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
     final Object obj;
     final PolyglotLanguageContext languageContext;
     final CallTarget invoke;
+    /**
+     * Strong reference to the creator {@link Context} to prevent it from being garbage collected
+     * and closed while this object is still reachable.
+     */
+    final Context contextAnchor;
 
     PolyglotObjectProxyHandler(Object obj, PolyglotLanguageContext languageContext, Class<?> interfaceClass, Type genericType) {
         this.obj = obj;
         this.languageContext = languageContext;
         this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass, genericType);
+        this.contextAnchor = languageContext.context.getContextAPI();
     }
 
     @Override

@@ -279,8 +279,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public TruffleContext createTruffleContext(Object impl, boolean creator) {
-            return new TruffleContext(impl, creator);
+        public TruffleContext createTruffleContext(Object impl, TruffleContext parentContext) {
+            return new TruffleContext(impl, parentContext);
         }
 
         @Override

@@ -159,7 +159,7 @@ abstract class FunctionExecuteNode extends Node {
                 throw silenceException(RuntimeException.class, ex);
             }
 
-            return signatureInfo.execute(signature, args, address);
+            return signatureInfo.execute(signature, args, address, this);
         }
 
         @SuppressWarnings({"unchecked"})

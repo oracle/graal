@@ -12,7 +12,7 @@ The project's census with roles as defined in [CONTRIBUTING.md](CONTRIBUTING.md)
 * Compiler
   * [Doug Simon](https://github.com/dougxc)
 * Native Image
-  * [Christian Wimmer](https://github.com/christianwimmer) 
+  * [Christian Wirth](https://github.com/wirthi)
 * Truffle
   * [Christian Humer](https://github.com/chumer)
 * Espresso

@@ -30,11 +30,6 @@ import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.JDKLatest;
-import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.graal.hotspot.LibGraalJNIMethodScope;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
@@ -61,7 +56,12 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.JDKLatest;
+import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.graal.hotspot.LibGraalJNIMethodScope;
 
 class LibGraalJVMCISubstitutions {
 
@@ -461,7 +461,7 @@ public class LibGraalSubstitutions {
 class LibGraalClassLoaderSupplier implements Supplier<ClassLoader> {
     @Override
     public ClassLoader get() {
-        LibGraalClassLoader loader = ImageSingletons.lookup(LibGraalFeature.class).loader;
+        ClassLoader loader = ImageSingletons.lookup(LibGraalFeature.class).loader;
         VMError.guarantee(loader != null);
         return loader;
     }

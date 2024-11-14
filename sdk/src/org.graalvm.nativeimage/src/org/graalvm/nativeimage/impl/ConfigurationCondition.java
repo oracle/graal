@@ -44,11 +44,18 @@ import java.util.Objects;
 
 /**
  * A condition that describes if a reflectively-accessed element in Native Image is visible by the
- * user.
+ * user at run time.
  * <p>
- * Currently, there is only one type of condition (<code>typeReached</code>) so this is a final
- * class instead of the class hierarchy. The {@link ConfigurationCondition#type} represents the
- * {@link Class<>} that needs to be reached by analysis in order for an element to be visible.
+ * Currently, there is only two types of condition:
+ * <li><code>typeReached</code> (the default) that signifies that the type must be both reachable by
+ * static analysis at build time, and reached at run time. A type is reached at run time, right
+ * before the class-initialization routine starts for that type, or any of the type's subtypes are
+ * reached.</li>
+ * <li><code>typeReachable</code> (legacy) that signifies that the type must be reachable by static
+ * analysis at build time.</li>
+ * <p>
+ * When {@link ConfigurationCondition#runtimeChecked} is <code>true</code> denotes that this is a
+ * <code>typeReached</code> condition.
  */
 public final class ConfigurationCondition {
 
@@ -63,6 +70,25 @@ public final class ConfigurationCondition {
 
     private final boolean runtimeChecked;
 
+    /**
+     * Creates the default type-reached condition that is satisfied when the type is reached at
+     * runtime.
+     *
+     * @param type that has to be reached for this condition to be satisfied
+     * @return instance of the condition
+     */
+    public static ConfigurationCondition create(Class<?> type) {
+        return create(type, true);
+    }
+
+    /**
+     * Creates either a type-reached condition ({@code runtimeChecked = true}) or a type-reachable
+     * condition.
+     *
+     * @param type that has to be reached (or reachable) for this condition to be satisfied
+     * @param runtimeChecked makes this a type-reachable condition when false
+     * @return instance of the condition
+     */
     public static ConfigurationCondition create(Class<?> type, boolean runtimeChecked) {
         Objects.requireNonNull(type);
         if (JAVA_LANG_OBJECT_REACHED.getType().equals(type)) {

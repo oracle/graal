@@ -1386,7 +1386,6 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
-                    "jdk.internal.jimage",
                     "jdk.internal.misc",
                 ],
                 "jdk.internal.vm.ci" : [
@@ -1825,14 +1824,6 @@ suite = {
                     "org.graalvm.collections",
                     "org.graalvm.polyglot",
                     "org.graalvm.truffle.compiler",
-                ],
-                "uses" : [
-                    "com.oracle.truffle.api.TruffleLanguage.Provider",
-                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
-                    "com.oracle.truffle.api.provider.TruffleLanguageProvider",
-                    "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
-                    "com.oracle.truffle.api.TruffleLanguage.Provider",                   # Deprecated
-                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [

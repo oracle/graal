@@ -45,7 +45,7 @@ suite = {
   "version" : "24.2.0",
   "release" : False,
   "versionConflictResolution" : "latest",
-  "url" : "http://graalvm.org/",
+  "url" : "http://graalvm.org/webassembly",
   "developer" : {
     "name": "GraalVM Development",
     "email": "graalvm-dev@oss.oracle.com",
@@ -93,6 +93,9 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",
       "license" : "UPL",
+      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
+      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
+      "javac.lint.overrides" : "none",
     },
 
     "org.graalvm.wasm.launcher" : {
@@ -250,7 +253,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "sdk:POLYGLOT",
       ],
-      "description" : "GraalWasm, an engine for the WebAssembly language in GraalVM.",
+      "description" : "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This artifact includes the core language runtime. It is not recommended to depend on the artifact directly. Instead, use `org.graalvm.polyglot:wasm` or `org.graalvm.polyglot:wasm-community` to ensure all dependencies are pulled in correctly.", # pylint: disable=line-too-long
       "allowsJavadocWarnings": True,
       "license" : "UPL",
       "maven" : {
@@ -270,7 +273,7 @@ suite = {
         "artifactId": "wasm-community",
         "tag": ["default", "public"],
       },
-      "description": "Graal WASM engine.",
+      "description": "GraalWasm, a high-performance embeddable WebAssembly runtime for Java. This POM dependency pulls in GraalWasm dependencies and Truffle Community Edition.",
       "license": "UPL",
     },
 

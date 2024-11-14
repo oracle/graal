@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.options.OptionDescriptors;
@@ -94,5 +95,15 @@ final class PolyglotLanguageDispatch extends AbstractLanguageDispatch {
     @Override
     public String getWebsite(Object receiver) {
         return ((PolyglotLanguage) receiver).getWebsite();
+    }
+
+    @Override
+    public int hashCode(Object receiver) {
+        return Objects.hashCode(receiver);
+    }
+
+    @Override
+    public boolean equals(Object receiver, Object otherImpl) {
+        return receiver.equals(otherImpl);
     }
 }

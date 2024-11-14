@@ -364,4 +364,8 @@ public class HostedConfiguration {
             }
         };
     }
+
+    public HeapBreakdownProvider createHeapBreakdownProvider() {
+        return new HeapBreakdownProvider();
+    }
 }

@@ -265,7 +265,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, replacements, target.arch);
-                registerReferencePlugins(invocationPlugins, config, replacements);
+                registerReferencePlugins(invocationPlugins, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
                 for (HotSpotInvocationPluginProvider p : GraalServices.load(HotSpotInvocationPluginProvider.class)) {
@@ -721,7 +721,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7131f053b0d26b62cbf0d8376ec117d6e8d79f9e/src/hotspot/share/opto/library_call.cpp#L2922-L2976",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/1d117f65f06456ae571aecc146542c2f79d402cf/src/hotspot/share/opto/library_call.cpp#L2921-L2975",
               sha1 = "353e0d45b0f63ac58af86dcab5b19777950da7e2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -770,7 +770,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/7131f053b0d26b62cbf0d8376ec117d6e8d79f9e/src/hotspot/share/opto/library_call.cpp#L3756-L3839",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/1d117f65f06456ae571aecc146542c2f79d402cf/src/hotspot/share/opto/library_call.cpp#L3732-L3815",
               sha1 = "d65356dbc0235df26aa56b233bcd100462a5dab4")
     // @formatter:on
     private static class ContinuationPinningPlugin extends InvocationPlugin {
@@ -869,26 +869,25 @@ public class HotSpotGraphBuilderPlugins {
                 }
             });
         }
-        Type[] notifyJvmtiHideFramesArgTypes = JavaVersionUtil.JAVA_SPEC >= 23 ? new Type[]{boolean.class} : new Type[]{Receiver.class, boolean.class};
-        r.register(new InvocationPlugin("notifyJvmtiHideFrames", notifyJvmtiHideFramesArgTypes) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
-                if (config.doJVMTIVirtualThreadTransitions) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        if (JavaVersionUtil.JAVA_SPEC < 23) {
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            r.register(new InvocationPlugin("notifyJvmtiHideFrames", Receiver.class, boolean.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
+                    if (config.doJVMTIVirtualThreadTransitions) {
+                        try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                             receiver.get(true);
+                            // unconditionally update the temporary VTMS transition bit in current
+                            // JavaThread
+                            GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
+                            CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInTmpVTMSTransitionOffset)));
+                            b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION, hide, BarrierType.NONE, false));
                         }
-                        // unconditionally update the temporary VTMS transition bit in current
-                        // JavaThread
-                        GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
-                        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInTmpVTMSTransitionOffset)));
-                        b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION, hide, BarrierType.NONE, false));
                     }
+                    return true;
                 }
-                return true;
-            }
-        });
+            });
+        }
 
         if (JavaVersionUtil.JAVA_SPEC >= 22) {
             Type[] notifyJvmtiDisableSuspendArgTypes = JavaVersionUtil.JAVA_SPEC >= 23 ? new Type[]{boolean.class} : new Type[]{Receiver.class, boolean.class};
@@ -1365,7 +1364,7 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerReferencePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+    private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Reference.class, replacements);
         r.register(new ReachabilityFencePlugin() {
             @Override
@@ -1385,7 +1384,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC >= 24 && !config.useXGC()) {
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
             r.register(new InlineOnlyInvocationPlugin("clear0", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -1415,7 +1414,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        if (JavaVersionUtil.JAVA_SPEC >= 24 && !config.useXGC()) {
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
             r.register(new InlineOnlyInvocationPlugin("clear0", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {

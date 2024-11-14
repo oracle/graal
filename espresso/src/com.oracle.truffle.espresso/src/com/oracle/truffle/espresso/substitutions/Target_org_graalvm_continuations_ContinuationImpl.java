@@ -58,7 +58,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
         // reflection or create the FrameRecords in the guest.
         // Re-enabled in the catch clause of Continuation.resume0().
         // TODO(GR-54326): Let Truffle Instrumentation know.
-        tls.disableSingleStepping();
+        tls.disableSingleStepping(true);
 
         // This internal exception will be caught in BytecodeNode's interpreter loop. Frame records
         // will be added to the exception object in a linked list until it's caught in resume below.
@@ -96,7 +96,7 @@ public final class Target_org_graalvm_continuations_ContinuationImpl {
                 // Disable stepping until we have fully re-winded.
                 // Re-enabled in ResumeNextContinuationNode.dolast()
                 // TODO(GR-54326): Let Truffle Instrumentation know.
-                tls.disableSingleStepping();
+                tls.disableSingleStepping(true);
                 rewind.execute(stack);
                 // Normal completion.
                 return false;

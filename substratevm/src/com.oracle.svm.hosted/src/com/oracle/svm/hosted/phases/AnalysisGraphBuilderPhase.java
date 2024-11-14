@@ -254,7 +254,8 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                      */
                     invokeExactArguments[i] = append(BoxNode.create(invokeExactArguments[i], getMetaAccess().lookupJavaType(stackKind.toBoxedJavaClass()), stackKind));
                 }
-                append(new StoreIndexedNode(newArrayNode, ConstantNode.forInt(i, getGraph()), null, null, JavaKind.Object, invokeExactArguments[i]));
+                var storeIndexed = add(new StoreIndexedNode(newArrayNode, ConstantNode.forInt(i, getGraph()), null, null, JavaKind.Object, invokeExactArguments[i]));
+                storeIndexed.stateAfter().invalidateForDeoptimization();
             }
             ValueNode[] invokeArguments = new ValueNode[]{methodHandleNode, newArrayNode};
 

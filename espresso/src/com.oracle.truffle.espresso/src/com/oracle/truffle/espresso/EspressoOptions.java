@@ -41,8 +41,8 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {
@@ -219,6 +219,12 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "java.PolyglotTypeConverters.java.lang.Optional=my.type.conversion.Implementation") //
     public static final OptionKey<OptionMap<String>> PolyglotTypeConverters = OptionKey.mapOf(String.class);
+
+    @Option(help = "Option to enable target type conversions for foreign objects using type hints from generics signatures.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.STABLE, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableGenericTypeHints = new OptionKey<>(true);
 
     @Option(help = "Enable assertions.", //
                     category = OptionCategory.USER, //

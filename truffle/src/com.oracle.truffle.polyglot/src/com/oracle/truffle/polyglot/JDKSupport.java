@@ -185,16 +185,6 @@ final class JDKSupport {
     private JDKSupport() {
     }
 
-    static void exportTo(Module clientModule) {
-        if (!isExportedTo(clientModule)) {
-            exportFromTo(clientModule);
-        }
-    }
-
-    static void exportToUnnamedModuleOf(ClassLoader loader) {
-        exportTo(loader.getUnnamedModule());
-    }
-
     static void exportTransitivelyTo(Module clientModule) {
         if (isExportedTo(clientModule)) {
             return;
@@ -736,13 +726,9 @@ final class JDKSupport {
         }
 
         @Override
-        public String versionHash(Env env) {
-            try {
-                Path base = basePath(env);
-                return env.readResourceLines(base.resolve("sha256")).get(0);
-            } catch (IOException ioe) {
-                throw new InternalError(ioe);
-            }
+        public String versionHash(Env env) throws IOException {
+            Path base = basePath(env);
+            return env.readResourceLines(base.resolve("sha256")).get(0);
         }
 
         private static Path basePath(Env env) {

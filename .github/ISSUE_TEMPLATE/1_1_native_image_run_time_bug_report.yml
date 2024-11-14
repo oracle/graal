@@ -44,12 +44,12 @@ body:
       required: true
 
   - type: checkboxes
-    id: throw_missing_registration_errors
+    id: troubleshooting_confirmation
     attributes:
-      label: "Diagnostic Flag Confirmation"
-      description: "Check the box if you tried adding the -H:ThrowMissingRegistrationErrors= flag to the image build to catch metadata exceptions early."
+      label: "Troubleshooting Confirmation"
+      description: "Check this box if you have tried all the suggestions in the troubleshooting guide."
       options:
-        - label: "I tried the `-H:ThrowMissingRegistrationErrors=` flag."
+        - label: "I tried the suggestions in the [troubleshooting guide](https://www.graalvm.org/latest/reference-manual/native-image/guides/troubleshoot-run-time-errors/)."
     validations:
       required: true
 

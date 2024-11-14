@@ -200,7 +200,7 @@ public final class WasmContext {
             BytecodeParser.readCodeEntries(module);
         }
         final WasmInstantiator translator = new WasmInstantiator(language);
-        final WasmInstance instance = translator.createInstance(this, module);
+        final WasmInstance instance = translator.createInstance(this, module, environment().getContext());
         // Remove code entries from module to reduce memory footprint at runtime
         module.setCodeEntries(null);
         this.register(instance);

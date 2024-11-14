@@ -77,7 +77,7 @@ public final class HotSpotCompressionNode extends CompressionNode {
         if (JavaVersionUtil.JAVA_SPEC >= 24 && constant instanceof HotSpotMetaspaceConstant mc) {
             ResolvedJavaType type = mc.asResolvedJavaType();
             // As of JDK-8338526, interface and abstract types are not compressible.
-            return !type.isAbstract() && !type.isInterface();
+            return type.isArray() || (!type.isAbstract() && !type.isInterface());
         }
         return true;
     }

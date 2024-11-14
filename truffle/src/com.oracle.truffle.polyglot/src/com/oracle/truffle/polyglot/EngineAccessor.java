@@ -78,6 +78,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
@@ -114,8 +115,6 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.provider.DefaultExportProvider;
-import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -130,6 +129,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotThreadTask.PolyglotThread;
 import com.oracle.truffle.polyglot.PolyglotThreadTask.ThreadSpawnRootNode;
 import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
 import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
@@ -328,12 +328,6 @@ final class EngineAccessor extends Accessor {
             Map<Class<?>, T> found = new LinkedHashMap<>();
             // 1) Add known Truffle DynamicObjectLibraryProvider service.
             DYNAMIC_OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            Class<? extends T> legacyInterface = null;
-            if (type == EagerExportProvider.class) {
-                legacyInterface = com.oracle.truffle.api.library.EagerExportProvider.class.asSubclass(type);
-            } else if (type == DefaultExportProvider.class) {
-                legacyInterface = com.oracle.truffle.api.library.DefaultExportProvider.class.asSubclass(type);
-            }
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (loader != null) {
@@ -342,16 +336,6 @@ final class EngineAccessor extends Accessor {
                         if (loaderSupplier.accepts(service.getClass())) {
                             JDKSupport.exportTransitivelyTo(service.getClass().getModule());
                             found.putIfAbsent(service.getClass(), service);
-                        }
-                    }
-                    // 3) Lookup implementations of a legacy interface
-                    // GR-46293 Remove the deprecated service interface lookup.
-                    if (legacyInterface != null && loaderSupplier.supportsLegacyProviders()) {
-                        JDKSupport.exportToUnnamedModuleOf(loader);
-                        for (T service : ServiceLoader.load(legacyInterface, loader)) {
-                            if (loaderSupplier.accepts(service.getClass())) {
-                                found.putIfAbsent(service.getClass(), service);
-                            }
                         }
                     }
                 }
@@ -394,7 +378,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleContext getTruffleContext(Object polyglotLanguageContext) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglotLanguageContext;
-            return languageContext.context.currentTruffleContext;
+            return languageContext.context.getCreatorTruffleContext();
         }
 
         @Override
@@ -432,7 +416,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public TruffleContext getCurrentCreatorTruffleContext() {
             PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
-            return context != null ? context.creatorTruffleContext : null;
+            return context != null ? context.getCreatorTruffleContext() : null;
         }
 
         @Override
@@ -822,16 +806,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public TruffleContext getParentContext(Object polyglotContext) {
-            PolyglotContextImpl parent = ((PolyglotContextImpl) polyglotContext).parent;
-            if (parent != null) {
-                return parent.currentTruffleContext;
-            } else {
-                return null;
-            }
-        }
-
-        @Override
         public Object enterInternalContext(Node location, Object polyglotLanguageContext) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotLanguageContext);
             PolyglotEngineImpl engine = resolveEngine(location, context);
@@ -839,15 +813,28 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object[] enterContextAsPolyglotThread(Object polyglotContext) {
+        public Object[] enterContextAsPolyglotThread(Object polyglotContext, Context contextAPI) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
-            return context.enterThreadChanged(false, true, false, PolyglotThreadTask.ISOLATE_POLYGLOT_THREAD, false);
+            Object[] prev = context.enterThreadChanged(false, true, false, PolyglotThreadTask.ISOLATE_POLYGLOT_THREAD, false);
+            PolyglotThreadInfo current;
+            synchronized (context) {
+                current = context.getCurrentThreadInfo();
+            }
+            assert current.getThread() == Thread.currentThread();
+            current.explicitEnterAnchor = contextAPI;
+            return prev;
         }
 
         @Override
         public void leaveContextAsPolyglotThread(Object polyglotContext, Object[] prev) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            PolyglotThreadInfo current;
+            synchronized (context) {
+                current = context.getCurrentThreadInfo();
+            }
+            assert current.getThread() == Thread.currentThread();
             context.leaveThreadChanged(prev, true, true);
+            current.explicitEnterAnchor = null;
         }
 
         @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
@@ -1129,10 +1116,14 @@ final class EngineAccessor extends Accessor {
                             useTimeZone, creatorConfig.limits, creatorConfig.hostClassLoader, useAllowHostAccess,
                             creatorConfig.allowValueSharing, false,
                             config, onCancelledRunnable, onExitedRunnable, onClosedRunnable);
-
+            TruffleContext creatorContext;
             synchronized (creator.context) {
                 impl = new PolyglotContextImpl(creator, innerConfig);
-                impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().contextDispatch, impl, creator.context.engine.api);
+                Object contextApi = creator.getImpl().getAPIAccess().newInnerContext(creator.getImpl().contextDispatch, impl, creator.context.getContextAPI(),
+                                creator.context.engine.getEngineAPI());
+                assert contextApi == impl.getContextAPI();
+                creatorContext = EngineAccessor.LANGUAGE.createTruffleContext(impl, creator.context.getCreatorTruffleContext());
+                impl.setCreatorTruffleContextReference(new TruffleContextCleanableReference(creatorContext, impl));
                 creator.context.addChildContext(impl);
             }
 
@@ -1143,7 +1134,7 @@ final class EngineAccessor extends Accessor {
             if (initializeCreatorContext) {
                 impl.initializeInnerContextLanguage(creator.language.getId());
             }
-            return impl.creatorTruffleContext;
+            return creatorContext;
         }
 
         private static boolean inheritAccess(boolean inheritAccess, Boolean newPrivilege, boolean creatorPrivilege) {
@@ -1184,7 +1175,7 @@ final class EngineAccessor extends Accessor {
             if (virtual) {
                 newThread = JDKAccessor.newVirtualThread(name, task);
             } else {
-                newThread = new Thread(group, task, name, stackSize);
+                newThread = new PolyglotThread(group, task, name, stackSize, threadContext.context);
             }
             newThread.setUncaughtExceptionHandler(threadContext.getPolyglotExceptionHandler());
             for (;;) {
@@ -1902,16 +1893,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object getPolyglotExceptionContext(Object polyglotExceptionImpl) {
-            return ((PolyglotExceptionImpl) polyglotExceptionImpl).context;
-        }
-
-        @Override
-        public Object getPolyglotExceptionEngine(Object polyglotExceptionImpl) {
-            return ((PolyglotExceptionImpl) polyglotExceptionImpl).engine;
-        }
-
-        @Override
         public boolean isCancelExecution(Throwable throwable) {
             return throwable instanceof PolyglotEngineImpl.CancelExecution;
         }
@@ -2068,16 +2049,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object getPolyglotEngineAPI(Object polyglotEngineImpl) {
-            return ((PolyglotEngineImpl) polyglotEngineImpl).api;
-        }
-
-        @Override
-        public Object getPolyglotContextAPI(Object polyglotContextImpl) {
-            return ((PolyglotContextImpl) polyglotContextImpl).api;
-        }
-
-        @Override
         public EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull) {
             return PolyglotFastThreadLocals.getEncapsulatingNodeReference(invalidateOnNull);
         }
@@ -2217,10 +2188,6 @@ final class EngineAccessor extends Accessor {
             this.hashCode = loader == null ? 0 : loader.hashCode();
         }
 
-        boolean supportsLegacyProviders() {
-            return true;
-        }
-
         boolean accepts(@SuppressWarnings("unused") Class<?> clazz) {
             return true;
         }
@@ -2265,11 +2232,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        boolean supportsLegacyProviders() {
-            return false;
-        }
-
-        @Override
         boolean accepts(Class<?> clazz) {
             return clazz.getModule().isNamed();
         }
@@ -2294,11 +2256,6 @@ final class EngineAccessor extends Accessor {
 
         WeakModulePathLoaderSupplier(ClassLoader loader) {
             super(loader);
-        }
-
-        @Override
-        boolean supportsLegacyProviders() {
-            return false;
         }
 
         @Override

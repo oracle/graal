@@ -63,6 +63,7 @@ import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
@@ -208,10 +209,15 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     @Override
     protected boolean delegateProcessing(String constantType, Object constantValue, List<Object> constantData, Object[] values, int i) {
         if (constantType.equals(METHOD_POINTER_TAG)) {
-            AnalysisType methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
-            int mid = (int) constantValue;
-            AnalysisMethod method = getAnalysisMethod(mid);
-            values[i] = new RelocatableConstant(new MethodPointer(method), methodPointerType);
+            AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
+                AnalysisType methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
+                int mid = (int) constantValue;
+                AnalysisMethod method = getAnalysisMethod(mid);
+                RelocatableConstant constant = new RelocatableConstant(new MethodPointer(method), methodPointerType);
+                values[i] = constant;
+                return constant;
+            });
+            values[i] = task;
             return true;
         } else if (constantType.equals(C_ENTRY_POINT_LITERAL_CODE_POINTER)) {
             AnalysisType cEntryPointerLiteralPointerType = metaAccess.lookupJavaType(CEntryPointLiteralCodePointer.class);
@@ -383,6 +389,15 @@ class ImageSingletonLoaderImpl implements ImageSingletonLoader {
     @SuppressWarnings("unchecked")
     private static <T> T cast(Object object) {
         return (T) object;
+    }
+
+    @Override
+    public List<Boolean> readBoolList(String keyName) {
+        List<Object> value = cast(keyStore.get(keyName));
+        String type = cast(value.get(0));
+        assert type.equals("B(") : type;
+        List<Integer> internalValue = cast(value.get(1));
+        return internalValue.stream().map(e -> e == 1).toList();
     }
 
     @Override

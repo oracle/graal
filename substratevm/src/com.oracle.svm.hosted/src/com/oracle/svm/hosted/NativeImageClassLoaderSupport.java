@@ -72,6 +72,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -118,6 +119,7 @@ public class NativeImageClassLoaderSupport {
     private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
 
     private final NativeImageClassLoader classLoader;
+    private final ClassLoader customLoader;
 
     public final ModuleFinder upgradeAndSystemModuleFinder;
     public final ModuleLayer moduleLayerForImageBuild;
@@ -187,6 +189,23 @@ public class NativeImageClassLoaderSupport {
 
         classLoader = new NativeImageClassLoader(imagecp, configuration, defaultSystemClassLoader);
 
+        String customLoaderPropertyKey = "org.graalvm.nativeimage.experimental.loader";
+        String customLoaderPropertyValue = System.getProperty(customLoaderPropertyKey);
+        if (customLoaderPropertyValue != null) {
+            try {
+                Class<?> customLoaderClass = Class.forName(customLoaderPropertyValue, true, classLoader);
+                customLoader = (ClassLoader) ReflectionUtil.newInstance(customLoaderClass);
+            } catch (ClassNotFoundException e) {
+                throw VMError.shouldNotReachHere("Custom ClassLoader " + customLoaderPropertyValue +
+                                " set via system property " + customLoaderPropertyKey + " could not be found.", e);
+            } catch (ClassCastException e) {
+                throw VMError.shouldNotReachHere("Custom ClassLoader " + customLoaderPropertyValue +
+                                " set via system property " + customLoaderPropertyKey + " does not extend class ClassLoader.", e);
+            }
+        } else {
+            customLoader = null;
+        }
+
         ModuleLayer moduleLayer = ModuleLayer.defineModules(configuration, List.of(ModuleLayer.boot()), ignored -> classLoader).layer();
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
@@ -219,6 +238,10 @@ public class NativeImageClassLoaderSupport {
         return classLoader;
     }
 
+    public ClassLoader getCustomLoader() {
+        return customLoader;
+    }
+
     private static Path stringToPath(String path) {
         return Path.of(Path.of(path).toAbsolutePath().toUri().normalize());
     }
@@ -246,6 +269,16 @@ public class NativeImageClassLoaderSupport {
         includeAllFromClassPath = IncludeAllFromClassPath.getValue(parsedHostedOptions);
 
         new LoadClassHandler(executor, imageClassLoader).run();
+
+        if (customLoader != null) {
+            /* If we have a customLoader, allow it to register its classes to the image builder */
+            Class<? extends ClassLoader> customLoaderClass = customLoader.getClass();
+            Method customLoaderForEachClass = ReflectionUtil.lookupMethod(true, customLoaderClass, "forEachClass", Consumer.class);
+            if (customLoaderForEachClass != null) {
+                Consumer<Class<?>> handleClass = imageClassLoader::handleClass;
+                ReflectionUtil.invokeMethod(customLoaderForEachClass, customLoader, handleClass);
+            }
+        }
     }
 
     private static void missingFromSetOfEntriesError(Object entry, Collection<?> allEntries, String typeOfEntry,

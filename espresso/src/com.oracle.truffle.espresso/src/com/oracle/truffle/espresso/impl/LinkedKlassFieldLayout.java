@@ -243,6 +243,9 @@ final class LinkedKlassFieldLayout {
                                         new HiddenField(Name.HIDDEN_TREGEX_SEARCH_FROM_BACKUP),
                                         new HiddenField(Name.HIDDEN_TREGEX_MATCHING_MODE_BACKUP)
                         }),
+
+                        entry(Type.com_oracle_truffle_espresso_polyglot_TypeLiteral, new HiddenField[]{
+                                        new HiddenField(Name.HIDDEN_INTERNAL_TYPE)}),
                         entry(Type.org_graalvm_continuations_ContinuationImpl, new HiddenField[]{
                                         new HiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD)
                         }));

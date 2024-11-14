@@ -318,6 +318,13 @@ class ImageSingletonWriterImpl implements ImageSingletonWriter {
     }
 
     @Override
+    public void writeBoolList(String keyName, List<Boolean> value) {
+        var internalValue = value.stream().map(e -> e ? 1 : 0).toList();
+        var previous = keyValueStore.put(keyName, List.of("B(", internalValue));
+        assert previous == null : previous;
+    }
+
+    @Override
     public void writeInt(String keyName, int value) {
         var previous = keyValueStore.put(keyName, List.of("I", value));
         assert previous == null : previous;

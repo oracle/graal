@@ -80,7 +80,7 @@ public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testGroupAllocation() throws Exception {
-        testHelper("testCrossReferences", config.gc == HotSpotGraalRuntime.HotSpotGC.X ? 0 : 1, getInitialOptions());
+        testHelper("testCrossReferences", 1, getInitialOptions());
     }
 
     @SuppressWarnings("try")

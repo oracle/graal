@@ -81,9 +81,20 @@ public class HeapBreakdownProvider {
         return sortedBreakdownEntries;
     }
 
+    public void setBreakdownEntries(List<HeapBreakdownEntry> unsortedBreakdownEntries) {
+        assert this.sortedBreakdownEntries == null : "sortedBreakdownEntries were set before";
+        this.sortedBreakdownEntries = unsortedBreakdownEntries.stream().sorted(Comparator.comparingLong(HeapBreakdownEntry::getByteSize).reversed()).toList();
+    }
+
     public long getTotalHeapSize() {
         assert totalHeapSize >= 0;
         return totalHeapSize;
+    }
+
+    protected void setTotalHeapSize(long totalHeapSize) {
+        assert this.totalHeapSize == -1 : "Total heap size was set before";
+        assert totalHeapSize >= 0 : "Invalid total heap size: " + totalHeapSize;
+        this.totalHeapSize = totalHeapSize;
     }
 
     protected void calculate(BeforeImageWriteAccessImpl access) {
@@ -125,8 +136,8 @@ public class HeapBreakdownProvider {
         classToDataMap.clear();
 
         /* Add heap alignment. */
-        totalHeapSize = access.getImage().getImageHeapSize();
-        long heapAlignmentSize = totalHeapSize - totalObjectSize;
+        setTotalHeapSize(access.getImage().getImageHeapSize());
+        long heapAlignmentSize = getTotalHeapSize() - totalObjectSize;
         assert heapAlignmentSize >= 0 : "Incorrect heap alignment detected: " + heapAlignmentSize;
         if (heapAlignmentSize > 0) {
             HeapBreakdownEntry heapAlignmentEntry = new HeapBreakdownEntry("", "heap alignment", "#glossary-heap-alignment");
@@ -177,7 +188,7 @@ public class HeapBreakdownProvider {
         assert byteArrayEntry.byteSize >= 0 && byteArrayEntry.count >= 0;
         addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "general heap data", "#glossary-general-heap-data"), byteArrayEntry.byteSize, byteArrayEntry.count);
         assert byteArrayEntry.byteSize == 0 && byteArrayEntry.count == 0;
-        sortedBreakdownEntries = entries.stream().sorted(Comparator.comparingLong(HeapBreakdownEntry::getByteSize).reversed()).toList();
+        setBreakdownEntries(entries);
     }
 
     private static void addEntry(List<HeapBreakdownEntry> entries, HeapBreakdownEntry byteArrayEntry, HeapBreakdownEntry newData, long byteSize, int count) {
@@ -200,7 +211,7 @@ public class HeapBreakdownProvider {
         long byteSize;
         int count;
 
-        HeapBreakdownEntry(HostedClass hostedClass) {
+        public HeapBreakdownEntry(HostedClass hostedClass) {
             this(hostedClass.toJavaName(true));
         }
 

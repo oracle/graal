@@ -71,7 +71,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/memory/allocation.inline.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/memory/allStatic.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/nmt/memTag.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+21/src/hotspot/share/runtime/os.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+22/src/hotspot/share/runtime/os.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+20/src/hotspot/share/runtime/os.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/runtime/os.inline.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/checkedCast.hpp")
@@ -86,7 +86,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/logging/log.hpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/memory/allocation.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/share/runtime/globals.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/debug.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+22/src/hotspot/share/utilities/debug.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+16/src/hotspot/share/utilities/debug.hpp")
 public class ContainerLibrary {
     static final int VERSION = 240100;

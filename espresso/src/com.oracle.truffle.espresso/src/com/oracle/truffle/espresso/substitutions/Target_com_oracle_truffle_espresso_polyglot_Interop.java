@@ -4554,7 +4554,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             String metaName = ToEspressoNode.getMetaName(metaObject, exceptionInterop);
             PolyglotTypeMappings.InternalTypeConverter internalTypeConverter = internalTypeConverterNode.execute(metaName);
             if (internalTypeConverter != null) {
-                StaticObject convertedGuestException = internalTypeConverter.convertInternal(exceptionInterop, foreignException, meta, null);
+                StaticObject convertedGuestException = internalTypeConverter.convertInternal(exceptionInterop, foreignException, meta, null, null);
                 return EspressoException.wrap(convertedGuestException, meta);
             }
             PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);

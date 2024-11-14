@@ -52,9 +52,6 @@ public class NativeImageConditionResolver implements ConfigurationConditionResol
              * reachability checks.
              */
             var runtimeChecked = !classInitializationSupport.isAlwaysReached(type) && unresolvedCondition.isRuntimeChecked();
-            if (runtimeChecked) {
-                classInitializationSupport.addForTypeReachedTracking(type);
-            }
             return ConfigurationCondition.create(type, runtimeChecked);
         });
     }

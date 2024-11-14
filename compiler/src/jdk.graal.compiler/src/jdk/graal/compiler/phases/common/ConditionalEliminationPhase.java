@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -195,7 +195,12 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), deferLoopExits);
                 }
                 try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
+                    if (!graph.isLastCFGValid()) {
+                        cfg = null;
+                    }
                     SchedulePhase.run(graph, SchedulePhase.SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER, cfg, context, false);
+                    cfg = graph.getLastCFG();
+                    cfg.computePostdominators();
                 } catch (Throwable t) {
                     throw graph.getDebug().handle(t);
                 }

@@ -73,11 +73,12 @@ struct closure_data {
     enum closure_arg_type argTypes[0];
 };
 
-void processEnvArg(struct closure_data *closure, void **args, JNIEnv **jniEnv, struct __TruffleContextInternal **context) {
+static void processEnvArg(struct closure_data *closure, void **args, JNIEnv **jniEnv, struct __TruffleContextInternal **context, int **nfiErrno) {
     if (closure->envArgIdx >= 0) {
         struct __TruffleEnvInternal *env = *(struct __TruffleEnvInternal **) args[closure->envArgIdx];
         *jniEnv = env->jniEnv;
         *context = env->context;
+        *nfiErrno = env->nfiErrnoAddress;
     } else {
         JavaVM *vm = closure->context->javaVM;
         int ret = (*vm)->GetEnv(vm, (void **) jniEnv, JNI_VERSION_1_6);
@@ -85,6 +86,10 @@ void processEnvArg(struct closure_data *closure, void **args, JNIEnv **jniEnv, s
             ret = (*vm)->AttachCurrentThread(vm, (void **) jniEnv, NULL);
         }
         *context = closure->context;
+        TruffleContext *ctx = (TruffleContext *) closure->context;
+        TruffleEnv *tenv = (*ctx)->getTruffleEnv(ctx);
+        struct __TruffleEnvInternal *env = (struct __TruffleEnvInternal *) tenv;
+        *nfiErrno = env->nfiErrnoAddress;
     }
 }
 
@@ -156,14 +161,15 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
     struct closure_data *data = (struct closure_data *) user_data;
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
+    int *nfiErrno;
 
     jobject retBuffer;
     jobjectArray argBuffers;
     jobject retPatches;
 
-    errnoMirror = errno;
-
-    processEnvArg(data, args, &env, &ctx);
+    int savedErrno = errno;
+    processEnvArg(data, args, &env, &ctx, &nfiErrno);
+    *nfiErrno = savedErrno;
 
     (*env)->PushLocalFrame(env, 8);
 
@@ -208,20 +214,21 @@ static void invoke_closure_buffer_ret(ffi_cif *cif, void *ret, void **args, void
 
     (*env)->PopLocalFrame(env, NULL);
 
-    errno = errnoMirror;
+    errno = *nfiErrno;
 }
 
 static void invoke_closure_object_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
     struct closure_data *data = (struct closure_data *) user_data;
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
+    int *nfiErrno;
 
     jobjectArray argBuffers;
     jobject retObj;
 
-    errnoMirror = errno;
-
-    processEnvArg(data, args, &env, &ctx);
+    int savedErrno = errno;
+    processEnvArg(data, args, &env, &ctx, &nfiErrno);
+    *nfiErrno = savedErrno;
 
     (*env)->PushLocalFrame(env, 4);
 
@@ -232,20 +239,21 @@ static void invoke_closure_object_ret(ffi_cif *cif, void *ret, void **args, void
 
     (*env)->PopLocalFrame(env, NULL);
 
-    errno = errnoMirror;
+    errno = *nfiErrno;
 }
 
 static void invoke_closure_string_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
     struct closure_data *data = (struct closure_data *) user_data;
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
+    int *nfiErrno;
 
     jobjectArray argBuffers;
     jobject retObj;
 
-    errnoMirror = errno;
-
-    processEnvArg(data, args, &env, &ctx);
+    int savedErrno = errno;
+    processEnvArg(data, args, &env, &ctx, &nfiErrno);
+    *nfiErrno = savedErrno;
 
     (*env)->PushLocalFrame(env, 4);
 
@@ -256,19 +264,20 @@ static void invoke_closure_string_ret(ffi_cif *cif, void *ret, void **args, void
 
     (*env)->PopLocalFrame(env, NULL);
 
-    errno = errnoMirror;
+    errno = *nfiErrno;
 }
 
 static void invoke_closure_void_ret(ffi_cif *cif, void *ret, void **args, void *user_data) {
     struct closure_data *data = (struct closure_data *) user_data;
     JNIEnv *env;
     struct __TruffleContextInternal *ctx;
+    int *nfiErrno;
 
     jobjectArray argBuffers;
 
-    errnoMirror = errno;
-
-    processEnvArg(data, args, &env, &ctx);
+    int savedErrno = errno;
+    processEnvArg(data, args, &env, &ctx, &nfiErrno);
+    *nfiErrno = savedErrno;
 
     (*env)->PushLocalFrame(env, 4);
 
@@ -277,7 +286,7 @@ static void invoke_closure_void_ret(ffi_cif *cif, void *ret, void **args, void *
 
     (*env)->PopLocalFrame(env, NULL);
 
-    errno = errnoMirror;
+    errno = *nfiErrno;
 }
 
 jobject prepare_closure(JNIEnv *env, jlong context, jobject signature, jobject receiver, jobject callTarget,
