@@ -1,16 +1,16 @@
 package com.oracle.svm.hosted.analysis.ai.value;
 
 /**
- * Base class for elements of an abstract domain (e.g., integer, interval, sign).
- *
- * @param <T> the type of the derived value
+ * Base class for representing the structure of elements of an abstract domain.
+ * (constant, interval, set, etc.)
+ * @param <Derived> the type of the derived value
  */
 
-public abstract class AbstractValue<T extends AbstractValue<T>> {
+public abstract class AbstractValue<Derived extends AbstractValue<Derived>> {
     /**
      * Returns the kind of this abstract value.
      *
-     * @return the kind of the value
+     * @return the kind of the value (TOP, BOT, or VAL)
      */
     public abstract AbstractValueKind kind();
 
@@ -20,7 +20,7 @@ public abstract class AbstractValue<T extends AbstractValue<T>> {
      * @param other the other value to compare with
      * @return true if this value is less than or equal to the other value, false otherwise
      */
-    public abstract boolean leq(T other);
+    public abstract boolean leq(Derived other);
 
     /**
      * Checks if this value is equal to another value.
@@ -28,31 +28,31 @@ public abstract class AbstractValue<T extends AbstractValue<T>> {
      * @param other the other value to compare with
      * @return true if this value is equal to the other value, false otherwise
      */
-    public abstract boolean equals(T other);
+    public abstract boolean equals(Derived other);
 
     /**
      * Joins this value with another value.
      *
      * @param other the other value to join with
-     * @return the result of the join operation
+     * @return the kind of AbstractValue resulted from this operation
      */
-    public abstract AbstractValueKind joinWith(T other);
+    public abstract AbstractValueKind joinWith(Derived other);
 
     /**
      * Widens this value with another value.
      *
      * @param other the other value to widen with
-     * @return the result of the widen operation
+     * @return the kind of AbstractValue resulted from this operation
      */
-    public abstract AbstractValueKind widenWith(T other);
+    public abstract AbstractValueKind widenWith(Derived other);
 
     /**
      * Meets this value with another value.
      *
      * @param other the other value to meet with
-     * @return the result of the meet operation
+     * @return the kind of AbstractValue resulted from this operation
      */
-    public abstract AbstractValueKind meetWith(T other);
+    public abstract AbstractValueKind meetWith(Derived other);
 
     /**
      * Returns a string representation of this value.
