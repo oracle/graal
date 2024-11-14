@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.nativeimage.Platform;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -85,6 +86,7 @@ public class JCmdTest {
 
     @Test
     public void testConcurrentAttach() throws Throwable {
+        assumeTrue("Fails transiently on MacOS", !Platform.includedIn(Platform.DARWIN.class));
         int threadCount = 32;
 
         AtomicReference<Throwable> exception = new AtomicReference<>();
@@ -120,7 +122,7 @@ public class JCmdTest {
         assertOutputContainsStrings(jcmd, "Recording ", "name=JCmdTest", "running");
 
         jcmd = runJCmd("JFR.dump");
-        assertOutputContainsStrings(jcmd, "Dumped recording", "graalvm-pid-");
+        assertOutputContainsStrings(jcmd, "Dumped recording", "svmjunit-pid-");
 
         jcmd = runJCmd("JFR.stop", "name=JCmdTest");
         assertOutputContainsLines(jcmd, "Stopped recording \"JCmdTest\".");

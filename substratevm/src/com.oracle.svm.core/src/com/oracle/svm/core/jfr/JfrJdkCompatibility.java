@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
@@ -170,6 +171,7 @@ final class JfrFilenameUtil {
         long pid = ProcessProperties.getProcessID();
         String date = Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(LocalDateTime.now());
         String idText = recording == null ? "" : "-id-" + recording.getId();
-        return "graalvm-pid-" + pid + idText + "-" + date + ".jfr";
+        String imageName = SubstrateOptions.Name.getValue();
+        return imageName + "-pid-" + pid + idText + "-" + date + ".jfr";
     }
 }
