@@ -182,14 +182,7 @@ public class FeatureHandler {
             registerFeature(featureClass, specificClassProvider, access);
         }
 
-        List<ClassLoader> featureClassLoaders;
-        ClassLoader customLoader = loader.classLoaderSupport.getCustomLoader();
-        if (customLoader != null) {
-            featureClassLoaders = List.of(customLoader, loader.getClassLoader());
-        } else {
-            featureClassLoaders = List.of(loader.getClassLoader());
-        }
-
+        List<ClassLoader> featureClassLoaders = loader.classLoaderSupport.getClassLoaders();
         for (String featureName : Options.userEnabledFeatures()) {
             Class<?> featureClass = null;
             for (ClassLoader featureClassLoader : featureClassLoaders) {
