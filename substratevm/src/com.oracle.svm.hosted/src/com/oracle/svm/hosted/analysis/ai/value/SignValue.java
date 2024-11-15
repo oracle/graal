@@ -5,22 +5,17 @@ package com.oracle.svm.hosted.analysis.ai.value;
  * The sign can be positive, negative, zero, top (unknown), or bottom (unreachable).
  */
 
-public final class SignValue extends AbstractValue<SignValue> {
+public record SignValue(
+        com.oracle.svm.hosted.analysis.ai.value.SignValue.Sign sign)
+        implements AbstractValue<SignValue> {
     public enum Sign {POS, NEG, ZERO, TOP, BOT}
-
-    private final Sign sign;
 
     /**
      * Constructs a SignValue with the specified sign.
      *
      * @param sign the sign of the value
      */
-    public SignValue(Sign sign) {
-        this.sign = sign;
-    }
-
-    public Sign getSign() {
-        return sign;
+    public SignValue {
     }
 
     @Override
@@ -64,5 +59,10 @@ public final class SignValue extends AbstractValue<SignValue> {
         return "SignValue{" +
                 "sign=" + sign +
                 '}';
+    }
+
+    @Override
+    public void clear() {
+        // Nothing to clear
     }
 }
