@@ -3,13 +3,19 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValue;
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 
+import java.util.function.Supplier;
+
 /**
- * Class for creating lattice-like abstract domains
- * Provides basic logic for handling abstract values
+ * LatticeDomain provides basic logic for handling operations
+ * on abstract domains that are lattices by definition
  * Sample usage:
- * public class CustomAbstractValue extends AbstractValue<CustomAbstractValue> {}
  * <p>
- * public class CustomAbstractDomain extends LatticeDomain<Value, CustomAbstractDomain> {}
+ * public final class CustomAbstractValue extends AbstractValue<CustomAbstractValue> {}
+ * <p>
+ * public final class CustomAbstractDomain extends LatticeDomain<CustomAbstractValue, CustomAbstractDomain> {}
+ * <p>
+ * This way, we only have to implement domain specific methods inside CustomAbstractDomain
+ * without writing boilerplate code for handling methods from AbstractDomain.
  *
  * @param <Value>  the type of derived AbstractValue
  * @param <Domain> the type of derived AbstractDomain
@@ -19,38 +25,27 @@ public class LatticeDomain<
         Value extends AbstractValue<Value>,
         Domain extends LatticeDomain<Value, Domain>>
         extends AbstractDomain<Domain> {
-
     protected AbstractValueKind kind;
     private Value value;
+    private final Supplier<Value> valueSupplier;
 
-    /**
-     * Default constructor should create lattice element that will be
-     * the entry point in fixpoint iteration
-     */
-    public LatticeDomain() {
+    public LatticeDomain(Supplier<Value> valueSupplier) {
+        this.valueSupplier = valueSupplier;
+        this.value = valueSupplier.get();
         this.kind = AbstractValueKind.VAL;
     }
 
-    /**
-     * Constructors for creating TOP or BOT elements
-     *
-     * @param kind desired kind, can be either TOP or BOT,
-     * @throws IllegalAccessException when VAL kind is provided
-     */
-    public LatticeDomain(AbstractValueKind kind) throws IllegalAccessException {
+    public LatticeDomain(AbstractValueKind kind, Supplier<Value> valueSupplier) throws IllegalAccessException {
         if (kind == AbstractValueKind.VAL) {
             throw new IllegalAccessException("Cannot initialize with VAL kind directly");
         }
         this.kind = kind;
+        this.valueSupplier = valueSupplier;
+        this.value = valueSupplier.get();
     }
 
     public AbstractValueKind getKind() {
         return kind;
-    }
-
-    @Override
-    public Domain copyOf() {
-        return null; // Placeholder, implement copyOf inside the actual domain extending LatticeDomain
     }
 
     public boolean isBot() {
@@ -61,16 +56,18 @@ public class LatticeDomain<
         return kind == AbstractValueKind.TOP;
     }
 
-    public boolean isValue() {
+    public boolean isVal() {
         return kind == AbstractValueKind.VAL;
     }
 
     public void setToBot() {
         kind = AbstractValueKind.BOT;
+        value.clear();
     }
 
     public void setToTop() {
         kind = AbstractValueKind.TOP;
+        value.clear();
     }
 
     public boolean leq(Domain other) {
@@ -109,7 +106,12 @@ public class LatticeDomain<
                 '}';
     }
 
-    private void performJoinOperation(Domain other, Runnable operation) {
+    @Override
+    public Domain copyOf() {
+        return null;
+    }
+
+    protected void performJoinOperation(Domain other, Runnable operation) {
         if (isTop() || other.isBot()) return;
         if (other.isTop()) {
             setToTop();
@@ -123,7 +125,7 @@ public class LatticeDomain<
         operation.run();
     }
 
-    private void performMeetOperation(Domain other, Runnable operation) {
+    protected void performMeetOperation(Domain other, Runnable operation) {
         if (isBot() || other.isTop()) return;
         if (other.isBot()) {
             setToBot();
@@ -146,11 +148,17 @@ public class LatticeDomain<
         this.value = value;
     }
 
-    protected void normalize() {
+    /**
+     * This method is used for keeping the domain in a consistent state after performing operations
+     */
+    protected void checkConsistency() {
         if (kind == AbstractValueKind.BOT) {
             return;
         }
         kind = value.kind();
+        if (kind == AbstractValueKind.TOP) {
+            value.clear();
+        }
     }
 
     private void checkKind() {
