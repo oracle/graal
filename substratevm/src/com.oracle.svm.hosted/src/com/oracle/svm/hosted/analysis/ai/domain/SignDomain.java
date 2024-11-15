@@ -29,7 +29,7 @@ public final class SignDomain extends AbstractDomain<SignDomain> {
 
     @Override
     public SignDomain copyOf() {
-        return new SignDomain(value.getSign());
+        return new SignDomain(value.sign());
     }
 
     @Override
@@ -64,7 +64,7 @@ public final class SignDomain extends AbstractDomain<SignDomain> {
 
     @Override
     public void joinWith(SignDomain other) {
-        Sign newSign = value.joinWith(other.value) == AbstractValueKind.TOP ? Sign.TOP : value.getSign();
+        Sign newSign = value.joinWith(other.value) == AbstractValueKind.TOP ? Sign.TOP : value.sign();
         value = new SignValue(newSign);
     }
 
@@ -75,7 +75,7 @@ public final class SignDomain extends AbstractDomain<SignDomain> {
 
     @Override
     public void meetWith(SignDomain other) {
-        Sign newSign = value.meetWith(other.value) == AbstractValueKind.BOT ? Sign.BOT : value.getSign();
+        Sign newSign = value.meetWith(other.value) == AbstractValueKind.BOT ? Sign.BOT : value.sign();
         value = new SignValue(newSign);
     }
 
