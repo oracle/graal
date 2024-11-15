@@ -108,17 +108,17 @@ public final class IntervalDomain<
                 '}';
     }
 
+    @Override
+    public IntervalDomain<Value> copyOf() {
+        return new IntervalDomain<>(lowerBound, upperBound);
+    }
+
     private Value min(Value a, Value b) {
         return a.compareTo(b) < 0 ? a : b;
     }
 
     private Value max(Value a, Value b) {
         return a.compareTo(b) > 0 ? a : b;
-    }
-
-    @Override
-    public IntervalDomain<Value> copyOf() {
-        return new IntervalDomain<>(lowerBound, upperBound);
     }
 
     @SuppressWarnings("unchecked")
