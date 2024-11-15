@@ -150,6 +150,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     @SuppressWarnings("unused")
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     static void checkClassLoaderPermission(ClassLoader cl, Class<?> caller) {
     }
 
