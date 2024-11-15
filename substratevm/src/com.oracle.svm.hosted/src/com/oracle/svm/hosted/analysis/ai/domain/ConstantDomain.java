@@ -4,11 +4,11 @@ import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 
 /**
  * Abstract domain for flat lattice, also known as 3 level lattice
- *           ⊤
- *         / | \
- *   ... -1  0  1 ...
- *         \ | /
- *           ⊥
+ * ⊤
+ * / | \
+ * ... -1  0  1 ...
+ * \ | /
+ * ⊥
  *
  * @param <Value> the type of the constant value (e.g., Integer, Float, Long, etc.)
  */
@@ -19,7 +19,11 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
 
     public ConstantDomain() {
         value = getDefaultValue();
-        kind = AbstractValueKind.BOT;
+        kind = AbstractValueKind.TOP;
+    }
+
+    public ConstantDomain(AbstractValueKind kind) {
+        this.kind = kind;
     }
 
     public ConstantDomain(Value value) {
