@@ -25,6 +25,16 @@ public final class IntegerDomain extends AbstractDomain<IntegerDomain> {
         return value;
     }
 
+    public void incrementValue() {
+        value++;
+    }
+
+    public void decrementValue() {
+        value--;
+        if (value < 0)
+            value = 0;
+    }
+
     @Override
     public IntegerDomain copyOf() {
         return new IntegerDomain(value);
@@ -78,15 +88,5 @@ public final class IntegerDomain extends AbstractDomain<IntegerDomain> {
         return "IntegerDomain{" +
                 "value=" + value +
                 '}';
-    }
-
-    public void incrementValue() {
-        value++;
-    }
-
-    public void decrementValue() {
-        value--;
-        if (value < 0)
-            value = 0;
     }
 }
