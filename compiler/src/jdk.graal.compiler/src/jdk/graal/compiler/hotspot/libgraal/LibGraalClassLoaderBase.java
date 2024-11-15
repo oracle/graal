@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,22 +23,32 @@
  * questions.
  */
 
-package com.oracle.svm.hosted;
+package jdk.graal.compiler.hotspot.libgraal;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import java.util.Map;
+import java.util.Set;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
-import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
-import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
+public interface LibGraalClassLoaderBase {
 
-@AutomaticallyRegisteredFeature
-public final class ClassForNameSupportFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ClassLoader customLoader = ((AfterRegistrationAccessImpl) access).getImageClassLoader().classLoaderSupport.getCustomLoader();
-        ImageSingletons.add(ClassForNameSupport.class, new ClassForNameSupport(customLoader));
-    }
+    /**
+     * @return instance of ClassLoader that implements this interface.
+     */
+    ClassLoader getClassLoader();
+
+    /**
+     * @return instance of ClassLoader that should be seen at image-runtime if a class was loaded at
+     *         image-buildtime by this classloader.
+     */
+    ClassLoader getRuntimeClassLoader();
+
+    /**
+     * Gets an unmodifiable map from the {@linkplain Class#forName(String) name} of a class to the
+     * name of its enclosing module.
+     */
+    Map<String, String> getModules();
+
+    /**
+     * Get unmodifiable set of fully qualified names of all classes this loader can load.
+     */
+    Set<String> getAllClassNames();
 }
