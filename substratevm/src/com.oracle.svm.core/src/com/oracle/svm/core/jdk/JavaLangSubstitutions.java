@@ -428,6 +428,7 @@ final class Target_java_lang_System {
      * passed to the image builder.
      */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
+    @TargetElement(onlyWith =  JDK21OrEarlier.class)
     private static int allowSecurityManager = 1;
 
     /**
@@ -440,6 +441,7 @@ final class Target_java_lang_System {
      */
     @Substitute
     @SuppressWarnings({"removal", "javadoc"})
+    @TargetElement(onlyWith =  JDK21OrEarlier.class)
     private static void setSecurityManager(SecurityManager sm) {
         if (sm != null) {
             /* Read the property collected at isolate creation as that is what happens on the JVM */

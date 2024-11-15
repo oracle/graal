@@ -52,6 +52,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 @TargetClass(Thread.class)
 @SuppressWarnings({"unused"})
@@ -115,6 +116,7 @@ public final class Target_java_lang_Thread {
      */
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
     public AccessControlContext inheritedAccessControlContext;
 
     @Alias //
@@ -215,6 +217,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @SuppressWarnings({"unused"})
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     String name,
@@ -230,6 +233,27 @@ public final class Target_java_lang_Thread {
         String nameLocal = (name != null) ? name : genThreadName();
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, inheritThreadLocals);
+
+        this.scopedValueBindings = NEW_THREAD_BINDINGS;
+    }
+
+    @Substitute
+    @Platforms(InternalPlatform.NATIVE_ONLY.class)
+    @TargetElement(onlyWith = JDKLatest.class)
+    private Target_java_lang_Thread(
+                    ThreadGroup g,
+                    String name,
+                    int characteristics,
+                    Runnable target,
+                    long stackSize) {
+        /* Non-0 instance field initialization. */
+        this.interruptLock = new Object();
+        /* Injected Target_java_lang_Thread instance field initialization. */
+        this.threadData = new ThreadData();
+
+        String nameLocal = (name != null) ? name : genThreadName();
+        boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
+        JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, null, inheritThreadLocals);
 
         this.scopedValueBindings = NEW_THREAD_BINDINGS;
     }
@@ -252,7 +276,9 @@ public final class Target_java_lang_Thread {
 
         this.name = (name != null) ? name : "";
         this.tid = Target_java_lang_Thread_ThreadIdentifiers.next();
-        this.inheritedAccessControlContext = Target_java_lang_Thread_Constants.NO_PERMISSIONS_ACC;
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            this.inheritedAccessControlContext = Target_java_lang_Thread_Constants.NO_PERMISSIONS_ACC;
+        }
 
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initNewThreadLocalsAndLoader(this, inheritThreadLocals, Thread.currentThread());
@@ -538,6 +564,7 @@ public final class Target_java_lang_Thread {
 final class Target_java_lang_Thread_Constants {
     // Checkstyle: stop
     @SuppressWarnings("removal") //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
     @Alias static AccessControlContext NO_PERMISSIONS_ACC;
 
     @Alias static ThreadGroup VTHREAD_GROUP;
