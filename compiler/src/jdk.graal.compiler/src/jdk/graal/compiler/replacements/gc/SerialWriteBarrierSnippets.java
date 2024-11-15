@@ -124,8 +124,8 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
                 OffsetAddressNode address = (OffsetAddressNode) barrier.getAddress();
                 args.add("object", address.getBase());
             }
-            args.addConst("counters", counters);
-            args.addConst("verifyOnly", barrier.getVerifyOnly());
+            args.add("counters", counters);
+            args.add("verifyOnly", barrier.getVerifyOnly());
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -134,7 +134,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());
-            args.addConst("elementStride", barrier.getElementStride());
+            args.add("elementStride", barrier.getElementStride());
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }

@@ -35,6 +35,8 @@ import static jdk.graal.compiler.hotspot.replacements.HotspotSnippetsOptions.Loa
 import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -52,8 +54,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -108,7 +108,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
                 graph.replaceFixedWithFixed(loadExceptionObject, loadExceptionC);
             } else {
                 Arguments args = new Arguments(loadException, loadExceptionObject.graph().getGuardsStage(), tool.getLoweringStage());
-                args.addConst("threadRegister", registers.getThreadRegister());
+                args.add("threadRegister", registers.getThreadRegister());
                 template(tool, loadExceptionObject, args).instantiate(tool.getMetaAccess(), loadExceptionObject, DEFAULT_REPLACER, args);
             }
         }

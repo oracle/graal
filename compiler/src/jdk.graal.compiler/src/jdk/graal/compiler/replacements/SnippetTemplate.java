@@ -604,20 +604,20 @@ public class SnippetTemplate {
     }
 
     /**
-     * Values that are bound to the snippet method parameters. The methods {@link #add},
-     * {@link #addConst}, and {@link #addVarargs} must be called in the same order as in the
-     * signature of the snippet method. The parameter name is passed to the add methods for
-     * assertion checking, i.e., to enforce that the order matches. Which method needs to be called
-     * depends on the annotation of the snippet method parameter:
+     * Values that are bound to the snippet method parameters. The methods {@link #add} and
+     * {@link #addVarargs} must be called in the same order as in the signature of the snippet
+     * method. The parameter name is passed to the add methods for assertion checking, i.e., to
+     * enforce that the order matches. Which method needs to be called depends on the annotation of
+     * the snippet method parameter:
      * <ul>
-     * <li>Use {@link #add} for a parameter without an annotation. The value is bound when the
-     * {@link SnippetTemplate} is {@link SnippetTemplate#instantiate instantiated}.
-     * <li>Use {@link #addConst} for a parameter annotated with {@link ConstantParameter}. The value
-     * is bound when the {@link SnippetTemplate} is {@link SnippetTemplate#SnippetTemplate created}.
      * <li>Use {@link #addVarargs} for an array parameter annotated with {@link VarargsParameter}. A
      * separate {@link SnippetTemplate} is {@link SnippetTemplate#SnippetTemplate created} for every
      * distinct array length. The actual values are bound when the {@link SnippetTemplate} is
      * {@link SnippetTemplate#instantiate instantiated}
+     * <li>Use {@link #add} for all other parameters. Depending on whether the parameter is
+     * annotated with {@link ConstantParameter} or not, the value is bound when the
+     * {@link SnippetTemplate} is {@link SnippetTemplate#SnippetTemplate created} or
+     * {@link SnippetTemplate#instantiate instantiated} respectively.
      * </ul>
      */
     public static final class Arguments implements Formattable {
@@ -637,36 +637,26 @@ public class SnippetTemplate {
             this.constStamps = new Stamp[info.getParameterCount()];
             this.cacheable = true;
             if (info.hasReceiver()) {
-                addConst("this", info.getReceiver());
+                add("this", info.getReceiver());
             }
         }
 
         public Arguments add(String name, Object value) {
-            assert check(name, false, false);
-            values[nextParamIdx] = value;
-            nextParamIdx++;
-            return this;
-        }
-
-        public Arguments addConst(String name, Object value) {
-            assert value != null;
-            if (value instanceof CStringConstant) {
-                return addConst(name, value, StampFactory.pointer());
+            assert check(name, false);
+            if (info.isConstantParameter(nextParamIdx)) {
+                assert value != null;
+                cacheKey.setParam(nextParamIdx, value);
+                if (value instanceof CStringConstant) {
+                    constStamps[nextParamIdx] = StampFactory.pointer();
+                }
             }
-            return addConst(name, value, null);
-        }
-
-        public Arguments addConst(String name, Object value, Stamp stamp) {
-            assert check(name, true, false);
             values[nextParamIdx] = value;
-            constStamps[nextParamIdx] = stamp;
-            cacheKey.setParam(nextParamIdx, value);
             nextParamIdx++;
             return this;
         }
 
         public Arguments addVarargs(String name, Class<?> componentType, Stamp argStamp, Object value) {
-            assert check(name, false, true);
+            assert check(name, true);
             Varargs varargs = new Varargs(componentType, argStamp, value);
             values[nextParamIdx] = varargs;
             // A separate template is necessary for every distinct array length
@@ -679,11 +669,9 @@ public class SnippetTemplate {
             this.cacheable = cacheable;
         }
 
-        private boolean check(String name, boolean constParam, boolean varargsParam) {
+        private boolean check(String name, boolean varargsParam) {
             assert nextParamIdx < info.getParameterCount() : "too many parameters: " + name + "  " + this;
             assert info.getParameterName(nextParamIdx) == null || info.getParameterName(nextParamIdx).equals(name) : "wrong parameter name at " + nextParamIdx + " : " + name + "  " + this;
-            assert constParam == info.isConstantParameter(nextParamIdx) : "Parameter " + (constParam ? "not " : "") + "annotated with @" + ConstantParameter.class.getSimpleName() + ": " + name +
-                            "  " + this;
             assert varargsParam == info.isVarargsParameter(nextParamIdx) : "Parameter " + (varargsParam ? "not " : "") + "annotated with @" + VarargsParameter.class.getSimpleName() + ": " + name +
                             "  " + this;
             return true;

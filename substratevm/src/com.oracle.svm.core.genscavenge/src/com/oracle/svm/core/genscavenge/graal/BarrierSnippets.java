@@ -179,9 +179,9 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
             boolean alwaysAlignedChunk = baseType != null && !baseType.isArray() && !baseType.isJavaLangObject() && !baseType.isInterface();
 
             args.add("object", address.getBase());
-            args.addConst("shouldOutline", shouldOutline(barrier));
-            args.addConst("alwaysAlignedChunk", alwaysAlignedChunk);
-            args.addConst("verifyOnly", getVerifyOnly(barrier));
+            args.add("shouldOutline", shouldOutline(barrier));
+            args.add("alwaysAlignedChunk", alwaysAlignedChunk);
+            args.add("verifyOnly", getVerifyOnly(barrier));
 
             template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }

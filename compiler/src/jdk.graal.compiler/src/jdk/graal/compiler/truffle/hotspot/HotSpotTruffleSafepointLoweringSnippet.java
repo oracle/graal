@@ -116,7 +116,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
             StructuredGraph graph = node.graph();
             Arguments args = new Arguments(pollSnippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("node", node.location());
-            args.addConst("pendingHandshakeOffset", pendingHandshakeOffset);
+            args.add("pendingHandshakeOffset", pendingHandshakeOffset);
             SnippetTemplate template = template(tool, node, args);
             template.instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
         }
