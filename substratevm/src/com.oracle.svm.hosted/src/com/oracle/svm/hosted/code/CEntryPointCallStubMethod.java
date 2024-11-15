@@ -622,4 +622,8 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                         "Epilogue method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), epilogueMethods[0]);
         generatePrologueOrEpilogueInvoke(kit, epilogueMethods[0]);
     }
+
+    public boolean isNotPublished() {
+        return entryPointData.getPublishAs().equals(CEntryPoint.Publish.NotPublished);
+    }
 }

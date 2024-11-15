@@ -260,7 +260,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         return expandSignatureMethods.computeIfAbsent(new SignatureKey(member, callerSensitiveAdapter), signatureKey -> {
             ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(callerSensitiveAdapter ? invokePrototypeForCallerSensitiveAdapter : invokePrototype).getWrapped();
             return asMethodPointer(new ReflectionExpandSignatureMethod("invoke_" + signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind,
-                            signatureKey.callerSensitiveAdapter));
+                            signatureKey.callerSensitiveAdapter, member));
         });
     }
 

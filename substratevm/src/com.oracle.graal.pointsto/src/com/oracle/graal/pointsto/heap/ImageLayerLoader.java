@@ -53,6 +53,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_HEAP_SIZE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_FIELDS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_FIELDS_WITH_SUPER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTERFACES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTRINSIC_TAG;
@@ -69,6 +71,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INTRINSIC
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INVOKED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_LINKED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_REACHABLE;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_STATIC_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_SYNTHETIC_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_UNSAFE_ALLOCATED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_VAR_ARGS_TAG;
@@ -88,10 +91,9 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_INDEX_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RELOCATED_CONSTANT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJECT_FIELDS_TAG;
@@ -112,6 +114,7 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -148,6 +151,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.PrimitiveConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -312,6 +316,7 @@ public class ImageLayerLoader {
     private final Map<Integer, BaseLayerType> baseLayerTypes = new ConcurrentHashMap<>();
     private final Map<Integer, Integer> typeToHubIdentityHashCode = new ConcurrentHashMap<>();
     private final Map<Integer, BaseLayerMethod> baseLayerMethods = new ConcurrentHashMap<>();
+    private final Map<Integer, BaseLayerField> baseLayerFields = new ConcurrentHashMap<>();
 
     /** Map from the type id to its identifier in the jsonMap. */
     protected final Map<Integer, String> typeIdToIdentifier = new HashMap<>();
@@ -481,6 +486,12 @@ public class ImageLayerLoader {
         String name = get(typeData, CLASS_JAVA_NAME_TAG);
         Class<?> clazz = lookupBaseLayerTypeInHostVM(name);
 
+        Integer superClassTid = get(typeData, SUPER_CLASS_TAG);
+        ResolvedJavaType superClass = getResolvedJavaType(superClassTid);
+
+        List<Integer> interfacesIds = get(typeData, INTERFACES_TAG);
+        ResolvedJavaType[] interfaces = interfacesIds.stream().map(this::getResolvedJavaType).toList().toArray(new ResolvedJavaType[0]);
+
         if (clazz != null) {
             /*
              * When looking up the class by name, the host VM will create the corresponding
@@ -497,39 +508,58 @@ public class ImageLayerLoader {
              * If the type cannot be looked up by name, an incomplete AnalysisType, which uses a
              * BaseLayerType in its wrapped field, has to be created
              */
-            baseLayerTypes.computeIfAbsent(tid, (typeId) -> {
-                String className = get(typeData, CLASS_NAME_TAG);
-                int modifiers = get(typeData, MODIFIERS_TAG);
-                boolean isInterface = get(typeData, IS_INTERFACE_TAG);
-                boolean isEnum = get(typeData, IS_ENUM_TAG);
-                boolean isInitialized = get(typeData, IS_INITIALIZED_TAG);
-                boolean initializedAtBuildTime = get(typeData, IS_INITIALIZED_AT_BUILD_TIME_TAG);
-                boolean isLinked = get(typeData, IS_LINKED_TAG);
-                String sourceFileName = get(typeData, SOURCE_FILE_NAME_TAG);
+            BaseLayerType baseLayerType = getBaseLayerType(typeData, tid, superClass, interfaces);
 
-                Integer enclosingTid = get(typeData, ENCLOSING_TYPE_TAG);
-                ResolvedJavaType enclosingType = getResolvedJavaType(enclosingTid);
+            List<Integer> instanceFieldIds = get(typeData, INSTANCE_FIELDS_TAG);
+            ResolvedJavaField[] instanceFields = instanceFieldIds.stream().map(this::getBaseLayerField).toList().toArray(new ResolvedJavaField[0]);
+            baseLayerType.setInstanceFields(instanceFields);
 
-                Integer componentTid = get(typeData, COMPONENT_TYPE_TAG);
-                ResolvedJavaType componentType = getResolvedJavaType(componentTid);
+            List<Integer> instanceFieldWithSuperIds = get(typeData, INSTANCE_FIELDS_WITH_SUPER_TAG);
+            ResolvedJavaField[] instanceFieldsWithSuper = instanceFieldWithSuperIds.stream().map(this::getBaseLayerField).toList().toArray(new ResolvedJavaField[0]);
+            baseLayerType.setInstanceFieldsWithSuper(instanceFieldsWithSuper);
 
-                Integer superClassTid = get(typeData, SUPER_CLASS_TAG);
-                ResolvedJavaType superClass = getResolvedJavaType(superClassTid);
-
-                List<Integer> interfacesIds = get(typeData, INTERFACES_TAG);
-                ResolvedJavaType[] interfaces = interfacesIds.stream().map(this::getResolvedJavaType).toList().toArray(new ResolvedJavaType[0]);
-
-                ResolvedJavaType objectType = universe.getOriginalMetaAccess().lookupJavaType(Object.class);
-
-                Annotation[] annotations = getAnnotations(typeData);
-
-                return new BaseLayerType(className, tid, modifiers, isInterface, isEnum, isInitialized, initializedAtBuildTime, isLinked, sourceFileName, enclosingType, componentType, superClass,
-                                interfaces, objectType, annotations);
-            });
-            BaseLayerType baseLayerType = baseLayerTypes.get(tid);
             AnalysisType type = universe.lookup(baseLayerType);
             guarantee(getBaseLayerTypeId(type) == tid, "The base layer type %s is not correctly matched to the id %d", type, tid);
         }
+    }
+
+    private BaseLayerType getBaseLayerType(int tid) {
+        EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
+        EconomicMap<String, Object> typeData = get(typesMap, typeIdToIdentifier.get(tid));
+
+        Integer superClassTid = get(typeData, SUPER_CLASS_TAG);
+        ResolvedJavaType superClass = getResolvedJavaType(superClassTid);
+
+        List<Integer> interfacesIds = get(typeData, INTERFACES_TAG);
+        ResolvedJavaType[] interfaces = interfacesIds.stream().map(this::getResolvedJavaType).toList().toArray(new ResolvedJavaType[0]);
+
+        return getBaseLayerType(typeData, tid, superClass, interfaces);
+    }
+
+    private BaseLayerType getBaseLayerType(EconomicMap<String, Object> typeData, int tid, ResolvedJavaType superClass, ResolvedJavaType[] interfaces) {
+        return baseLayerTypes.computeIfAbsent(tid, typeId -> {
+            String className = get(typeData, CLASS_NAME_TAG);
+            int modifiers = get(typeData, MODIFIERS_TAG);
+            boolean isInterface = get(typeData, IS_INTERFACE_TAG);
+            boolean isEnum = get(typeData, IS_ENUM_TAG);
+            boolean isInitialized = get(typeData, IS_INITIALIZED_TAG);
+            boolean initializedAtBuildTime = get(typeData, IS_INITIALIZED_AT_BUILD_TIME_TAG);
+            boolean isLinked = get(typeData, IS_LINKED_TAG);
+            String sourceFileName = get(typeData, SOURCE_FILE_NAME_TAG);
+
+            Integer enclosingTid = get(typeData, ENCLOSING_TYPE_TAG);
+            ResolvedJavaType enclosingType = getResolvedJavaType(enclosingTid);
+
+            Integer componentTid = get(typeData, COMPONENT_TYPE_TAG);
+            ResolvedJavaType componentType = getResolvedJavaType(componentTid);
+
+            ResolvedJavaType objectType = universe.getOriginalMetaAccess().lookupJavaType(Object.class);
+
+            Annotation[] annotations = getAnnotations(typeData);
+
+            return new BaseLayerType(className, tid, modifiers, isInterface, isEnum, isInitialized, initializedAtBuildTime, isLinked, sourceFileName, enclosingType, componentType, superClass,
+                            interfaces, objectType, annotations);
+        });
     }
 
     protected Annotation[] getAnnotations(@SuppressWarnings("unused") EconomicMap<String, Object> elementData) {
@@ -658,6 +688,14 @@ public class ImageLayerLoader {
             return;
         }
 
+        int tid = get(methodData, TID_TAG);
+        AnalysisType type = getAnalysisType(tid);
+
+        List<Integer> parameterTypeIds = get(methodData, ARGUMENT_IDS_TAG);
+        AnalysisType[] parameterTypes = parameterTypeIds.stream().map(this::getAnalysisType).toList().toArray(new AnalysisType[0]);
+
+        AnalysisType returnType = getAnalysisType(get(methodData, RETURN_TYPE_TAG));
+
         String name = get(methodData, NAME_TAG);
         String className = get(methodData, CLASS_NAME_TAG);
         if (className != null) {
@@ -678,13 +716,7 @@ public class ImageLayerLoader {
             }
         }
 
-        int tid = get(methodData, TID_TAG);
-        List<Integer> argumentIds = get(methodData, ARGUMENT_IDS_TAG);
-        int returnTypeId = get(methodData, RETURN_TYPE_TAG);
-
-        AnalysisType type = getAnalysisType(tid);
-        List<AnalysisType> arguments = argumentIds.stream().map(this::getAnalysisType).toList();
-        Class<?>[] argumentClasses = arguments.stream().map(AnalysisType::getJavaClass).toList().toArray(new Class<?>[0]);
+        Class<?>[] argumentClasses = Arrays.stream(parameterTypes).map(AnalysisType::getJavaClass).toList().toArray(new Class<?>[0]);
         Executable method = lookupMethodByReflection(name, type.getJavaClass(), argumentClasses);
 
         if (method != null) {
@@ -694,8 +726,7 @@ public class ImageLayerLoader {
             }
         }
 
-        AnalysisType returnType = getAnalysisType(returnTypeId);
-        ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromList(arguments, returnType);
+        ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromList(Arrays.stream(parameterTypes).toList(), returnType);
 
         if (name.equals(CONSTRUCTOR_NAME)) {
             type.findConstructor(signature);
@@ -706,11 +737,11 @@ public class ImageLayerLoader {
         }
 
         if (!methods.containsKey(mid)) {
-            createBaseLayerMethod(methodData, mid, name);
+            createBaseLayerMethod(methodData, mid, name, parameterTypes, returnType);
         }
     }
 
-    private static Executable lookupMethodByReflection(String name, Class<?> clazz, Class<?>[] argumentClasses) {
+    public static Executable lookupMethodByReflection(String name, Class<?> clazz, Class<?>[] argumentClasses) {
         try {
             Executable method;
             if (name.equals(CONSTRUCTOR_NAME)) {
@@ -724,11 +755,8 @@ public class ImageLayerLoader {
         }
     }
 
-    private void createBaseLayerMethod(EconomicMap<String, Object> methodData, int mid, String name) {
+    private void createBaseLayerMethod(EconomicMap<String, Object> methodData, int mid, String name, AnalysisType[] parameterTypes, AnalysisType returnType) {
         AnalysisType type = getAnalysisType(get(methodData, TID_TAG));
-        List<Integer> parameterTypeIds = get(methodData, ARGUMENT_IDS_TAG);
-        AnalysisType[] parameterTypes = parameterTypeIds.stream().map(this::getAnalysisType).toList().toArray(new AnalysisType[0]);
-        AnalysisType returnType = getAnalysisType(get(methodData, RETURN_TYPE_TAG));
         ResolvedSignature<AnalysisType> signature = ResolvedSignature.fromArray(parameterTypes, returnType);
         boolean canBeStaticallyBound = get(methodData, CAN_BE_STATICALLY_BOUND_TAG);
         boolean isConstructor = get(methodData, IS_CONSTRUCTOR_TAG);
@@ -884,6 +912,7 @@ public class ImageLayerLoader {
     private void loadField(FieldIdentifier fieldIdentifier, EconomicMap<String, Object> fieldData) {
         AnalysisType declaringClass = getAnalysisType(Integer.parseInt(fieldIdentifier.tid));
         String className = get(fieldData, CLASS_NAME_TAG);
+        int id = get(fieldData, ID_TAG);
 
         Class<?> clazz = className != null ? lookupBaseLayerTypeInHostVM(className) : declaringClass.getJavaClass();
         if (clazz == null) {
@@ -897,15 +926,43 @@ public class ImageLayerLoader {
             field = null;
         }
 
+        if (field == null && !(declaringClass.getWrapped() instanceof BaseLayerType)) {
+            boolean isStatic = get(fieldData, IS_STATIC_TAG);
+            if (isStatic) {
+                declaringClass.getStaticFields();
+            } else {
+                declaringClass.getInstanceFields(true);
+            }
+
+            if (fields.containsKey(id)) {
+                return;
+            }
+        }
+
         if (field == null) {
             AnalysisType type = getAnalysisType(get(fieldData, FIELD_TYPE_TAG));
-            BaseLayerField baseLayerField = new BaseLayerField(get(fieldData, ID_TAG), fieldIdentifier.name, declaringClass, type, get(fieldData, IS_INTERNAL_TAG), get(fieldData, MODIFIERS_TAG),
-                            getAnnotations(fieldData));
-            AnalysisField analysisField = universe.lookup(baseLayerField);
-            analysisField.setPosition(get(fieldData, POSITION_TAG));
+            BaseLayerField baseLayerField = getBaseLayerField(fieldIdentifier, fieldData, id, declaringClass.getWrapped(), type.getWrapped());
+            universe.lookup(baseLayerField);
         } else {
             metaAccess.lookupJavaField(field);
         }
+    }
+
+    private BaseLayerField getBaseLayerField(int id) {
+        FieldIdentifier fieldIdentifier = fieldIdToIdentifier.get(id);
+        EconomicMap<String, Object> fieldsMap = get(jsonMap, FIELDS_TAG);
+        EconomicMap<String, Object> fieldData = get(get(fieldsMap, fieldIdentifier.tid), fieldIdentifier.name);
+
+        BaseLayerType declaringClass = getBaseLayerType(Integer.parseInt(fieldIdentifier.tid));
+        ResolvedJavaType type = getResolvedJavaType(get(fieldData, FIELD_TYPE_TAG));
+
+        return getBaseLayerField(fieldIdentifier, fieldData, id, declaringClass, type);
+    }
+
+    private BaseLayerField getBaseLayerField(FieldIdentifier fieldIdentifier, EconomicMap<String, Object> fieldData, int id, ResolvedJavaType declaringClass, ResolvedJavaType type) {
+        return baseLayerFields.computeIfAbsent(id,
+                        fid -> new BaseLayerField(id, fieldIdentifier.name, declaringClass, type, get(fieldData, IS_INTERNAL_TAG), get(fieldData, IS_SYNTHETIC_TAG), get(fieldData, MODIFIERS_TAG),
+                                        getAnnotations(fieldData)));
     }
 
     public AnalysisField getAnalysisField(int fid) {
@@ -968,7 +1025,7 @@ public class ImageLayerLoader {
         registerFlag(isFolded, true, () -> analysisField.registerAsFolded(PERSISTED));
     }
 
-    private EconomicMap<String, Object> getFieldData(AnalysisField analysisField) {
+    protected EconomicMap<String, Object> getFieldData(AnalysisField analysisField) {
         int tid = analysisField.getDeclaringClass().getId();
         EconomicMap<String, Object> typeFieldsMap = getElementData(FIELDS_TAG, Integer.toString(tid));
         if (typeFieldsMap == null) {

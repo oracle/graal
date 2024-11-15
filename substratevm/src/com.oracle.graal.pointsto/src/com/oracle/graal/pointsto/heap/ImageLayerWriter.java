@@ -51,6 +51,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_WRITTE
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_HEAP_SIZE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_FIELDS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_FIELDS_WITH_SUPER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANCE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTERFACES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTRINSIC_TAG;
@@ -66,6 +68,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INTRINSIC
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INVOKED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_LINKED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_REACHABLE;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_STATIC_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_SYNTHETIC_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_UNSAFE_ALLOCATED;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_VAR_ARGS_TAG;
@@ -84,8 +87,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONST
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PARENT_CONSTANT_INDEX_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.POSITION_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PRIMITIVE_ARRAY_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RELOCATED_CONSTANT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RETURN_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SIMULATED_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.SOURCE_FILE_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STRENGTHENED_GRAPH_TAG;
@@ -98,6 +101,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.VALUE_TAG;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
@@ -208,7 +213,6 @@ public class ImageLayerWriter {
         this(true);
     }
 
-    @SuppressWarnings({"this-escape", "unused"})
     public ImageLayerWriter(boolean useSharedLayerGraphs) {
         this.useSharedLayerGraphs = useSharedLayerGraphs;
         this.useSharedLayerStrengthenedGraphs = false;
@@ -278,12 +282,6 @@ public class ImageLayerWriter {
         jsonMap.put(NEXT_METHOD_ID_TAG, aUniverse.getNextMethodId());
         jsonMap.put(NEXT_FIELD_ID_TAG, aUniverse.getNextFieldId());
 
-        /*
-         * $$TypeSwitch classes should not be instantiated as they are only used as a container for
-         * a static method, so no constant of those types should be created. This filter can be
-         * removed after a mechanism for determining which types have to be persisted is added, or
-         * if a stable name is implemented for them.
-         */
         for (AnalysisType type : aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).toList()) {
             checkTypeStability(type);
             persistType(type);
@@ -312,6 +310,16 @@ public class ImageLayerWriter {
         jsonMap.put(CONSTANTS_TO_RELINK_TAG, constantsToRelink);
     }
 
+    private void persistAnnotations(AnnotatedElement annotatedElement, EconomicMap<String, Object> typeMap) {
+        Class<? extends Annotation>[] annotationTypes = AnnotationAccess.getAnnotationTypes(annotatedElement);
+        persistAnnotations(annotatedElement, typeMap, annotationTypes);
+    }
+
+    @SuppressWarnings("unused")
+    protected void persistAnnotations(AnnotatedElement annotatedElement, EconomicMap<String, Object> typeMap, Class<? extends Annotation>[] annotationTypes) {
+        typeMap.put(ANNOTATIONS_TAG, Arrays.stream(annotationTypes).map(Class::getName).toList());
+    }
+
     /**
      * A hook used to persist more general information about the base layer not accessible in
      * pointsto.
@@ -338,6 +346,15 @@ public class ImageLayerWriter {
              */
             persistType(superclass);
         }
+
+        for (AnalysisType interfaceType : type.getInterfaces()) {
+            /*
+             * Some persisted types are not reachable. In this case, the interfaces have to be
+             * persisted manually as well.
+             */
+            persistType(interfaceType);
+        }
+
         EconomicMap<String, Object> typeMap = EconomicMap.create();
 
         persistType(type, typeMap);
@@ -364,8 +381,17 @@ public class ImageLayerWriter {
         typeMap.put(IS_INITIALIZED_TAG, type.isInitialized());
         typeMap.put(IS_LINKED_TAG, type.isLinked());
         typeMap.put(SOURCE_FILE_NAME_TAG, type.getSourceFileName());
-        if (type.getEnclosingType() != null) {
-            typeMap.put(ENCLOSING_TYPE_TAG, type.getEnclosingType().getId());
+        try {
+            AnalysisType enclosingType = type.getEnclosingType();
+            if (enclosingType != null) {
+                typeMap.put(ENCLOSING_TYPE_TAG, enclosingType.getId());
+            }
+        } catch (AnalysisError.TypeNotFoundError e) {
+            /*
+             * GR-59571: The enclosing type is not automatically created when the inner type is
+             * created. If the enclosing type is missing, it is ignored for now. This try/catch
+             * block could be removed after the trackAcrossLayers is fully implemented.
+             */
         }
         if (type.isArray()) {
             typeMap.put(COMPONENT_TYPE_TAG, type.getComponentType().getId());
@@ -374,7 +400,9 @@ public class ImageLayerWriter {
             typeMap.put(SUPER_CLASS_TAG, type.getSuperclass().getId());
         }
         typeMap.put(INTERFACES_TAG, Arrays.stream(type.getInterfaces()).map(AnalysisType::getId).toList());
-        typeMap.put(ANNOTATIONS_TAG, Arrays.stream(AnnotationAccess.getAnnotationTypes(type)).map(Class::getName).toList());
+        typeMap.put(INSTANCE_FIELDS_TAG, Arrays.stream(type.getInstanceFields(false)).map(field -> ((AnalysisField) field).getId()).toList());
+        typeMap.put(INSTANCE_FIELDS_WITH_SUPER_TAG, Arrays.stream(type.getInstanceFields(true)).map(field -> ((AnalysisField) field).getId()).toList());
+        persistAnnotations(type, typeMap);
 
         typeMap.put(IS_INSTANTIATED, type.isInstantiated());
         typeMap.put(IS_UNSAFE_ALLOCATED, type.isUnsafeAllocated());
@@ -410,6 +438,9 @@ public class ImageLayerWriter {
             methodMap.put(ARGUMENTS_TAG, Arrays.stream(executable.getParameterTypes()).map(Class::getName).toList());
             methodMap.put(CLASS_NAME_TAG, executable.getDeclaringClass().getName());
         }
+
+        persistType(method.getSignature().getReturnType());
+
         methodMap.put(TID_TAG, method.getDeclaringClass().getId());
         methodMap.put(ARGUMENT_IDS_TAG, method.getSignature().toParameterList(null).stream().map(AnalysisType::getId).toList());
         methodMap.put(ID_TAG, method.getId());
@@ -429,7 +460,7 @@ public class ImageLayerWriter {
         if (intrinsicMethod != null) {
             methodMap.put(METHOD_HANDLE_INTRINSIC_TAG, intrinsicMethod.name());
         }
-        methodMap.put(ANNOTATIONS_TAG, Arrays.stream(AnnotationAccess.getAnnotationTypes(method)).map(Class::getName).toList());
+        persistAnnotations(method, methodMap);
 
         methodMap.put(IS_VIRTUAL_ROOT_METHOD, method.isVirtualRootMethod());
         methodMap.put(IS_DIRECT_ROOT_METHOD, method.isDirectRootMethod());
@@ -524,11 +555,13 @@ public class ImageLayerWriter {
         if (originalField != null && !originalField.getDeclaringClass().equals(field.getDeclaringClass().getJavaClass())) {
             fieldMap.put(CLASS_NAME_TAG, originalField.getDeclaringClass().getName());
         }
+        fieldMap.put(IS_STATIC_TAG, field.isStatic());
         fieldMap.put(IS_INTERNAL_TAG, field.isInternal());
+        fieldMap.put(IS_SYNTHETIC_TAG, field.isSynthetic());
         fieldMap.put(FIELD_TYPE_TAG, field.getType().getId());
         fieldMap.put(MODIFIERS_TAG, field.getModifiers());
         fieldMap.put(POSITION_TAG, field.getPosition());
-        fieldMap.put(ANNOTATIONS_TAG, Arrays.stream(AnnotationAccess.getAnnotationTypes(field)).map(Class::getName).toList());
+        persistAnnotations(field, fieldMap);
 
         String tid = String.valueOf(field.getDeclaringClass().getId());
         fieldsMap.computeIfAbsent(tid, key -> new ConcurrentHashMap<>()).put(field.getName(), fieldMap);

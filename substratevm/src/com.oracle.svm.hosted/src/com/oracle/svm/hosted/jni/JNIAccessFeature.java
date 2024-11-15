@@ -420,7 +420,7 @@ public class JNIAccessFeature implements Feature {
         JNIReflectionDictionary.singleton().addNegativeClassLookupIfAbsent(className);
     }
 
-    private void addMethod(Executable method, DuringAnalysisAccessImpl access) {
+    public void addMethod(Executable method, DuringAnalysisAccessImpl access) {
         if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
             return;
         }
@@ -454,10 +454,10 @@ public class JNIAccessFeature implements Feature {
                             signature -> factory.create(signature, originalMetaAccess, access.getBigBang().getWordTypes()));
             access.registerAsRoot(universe.lookup(callWrapperMethod), true, "JNI call wrapper, registered in " + JNIAccessFeature.class);
 
-            JNIJavaCallVariantWrapperGroup variantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), false);
+            JNIJavaCallVariantWrapperGroup variantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), false, method);
             JNIJavaCallVariantWrapperGroup nonvirtualVariantWrappers = null;
             if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isAbstract(method.getModifiers())) {
-                nonvirtualVariantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), true);
+                nonvirtualVariantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), true, method);
             }
             JNIAccessibleMethod jniMethod = new JNIAccessibleMethod(jniClass, method.getModifiers());
             calledJavaMethods.add(new JNICallableJavaMethod(descriptor, jniMethod, targetMethod, callWrapperMethod, newObjectMethod, variantWrappers, nonvirtualVariantWrappers));
@@ -471,14 +471,14 @@ public class JNIAccessFeature implements Feature {
         jniClass.addMethodIfAbsent(descriptor, d -> JNIAccessibleMethod.negativeMethodQuery(jniClass));
     }
 
-    private JNIJavaCallVariantWrapperGroup createJavaCallVariantWrappers(DuringAnalysisAccessImpl access, ResolvedSignature<ResolvedJavaType> wrapperSignature, boolean nonVirtual) {
+    private JNIJavaCallVariantWrapperGroup createJavaCallVariantWrappers(DuringAnalysisAccessImpl access, ResolvedSignature<ResolvedJavaType> wrapperSignature, boolean nonVirtual, Executable method) {
         var map = nonVirtual ? nonvirtualCallVariantWrappers : callVariantWrappers;
         return map.computeIfAbsent(wrapperSignature, signature -> {
             MetaAccessProvider originalMetaAccess = access.getUniverse().getOriginalMetaAccess();
             WordTypes wordTypes = access.getBigBang().getWordTypes();
-            var varargs = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VARARGS, nonVirtual, originalMetaAccess, wordTypes);
-            var array = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.ARRAY, nonVirtual, originalMetaAccess, wordTypes);
-            var valist = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VA_LIST, nonVirtual, originalMetaAccess, wordTypes);
+            var varargs = new JNIJavaCallVariantWrapperMethod(method, signature, CallVariant.VARARGS, nonVirtual, originalMetaAccess, wordTypes);
+            var array = new JNIJavaCallVariantWrapperMethod(method, signature, CallVariant.ARRAY, nonVirtual, originalMetaAccess, wordTypes);
+            var valist = new JNIJavaCallVariantWrapperMethod(method, signature, CallVariant.VA_LIST, nonVirtual, originalMetaAccess, wordTypes);
             Stream<JNIJavaCallVariantWrapperMethod> wrappers = Stream.of(varargs, array, valist);
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             wrappers.forEach(wrapper -> {

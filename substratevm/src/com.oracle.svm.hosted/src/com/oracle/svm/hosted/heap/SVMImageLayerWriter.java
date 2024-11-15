@@ -24,8 +24,13 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ANNOTATIONS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ANNOTATION_VALUES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_LITERAL_CODE_POINTER;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENUM_CLASS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ENUM_NAME_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_CHECK_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.HUB_IDENTITY_HASH_CODE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
@@ -46,6 +51,8 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.OBJECT_OFFSE
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_OBJECT_FIELDS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.STATIC_PRIMITIVE_FIELDS_TAG;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -54,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
@@ -76,7 +84,10 @@ import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
+import com.oracle.svm.hosted.annotation.AnnotationMetadata;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingFeature;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
@@ -91,11 +102,13 @@ import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerSubstitutionType;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ModuleSupport;
 
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.reflect.annotation.AnnotationType;
 
 public class SVMImageLayerWriter extends ImageLayerWriter {
     private NativeImageHeap nativeImageHeap;
@@ -111,6 +124,37 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     public void setHostedUniverse(HostedUniverse hUniverse) {
         this.hUniverse = hUniverse;
+    }
+
+    @Override
+    protected void persistAnnotations(AnnotatedElement annotatedElement, EconomicMap<String, Object> elementMap, Class<? extends Annotation>[] annotationTypes) {
+        elementMap.put(ANNOTATION_VALUES_TAG, Arrays.stream(annotationTypes).map(annotationClass -> {
+            EconomicMap<String, Object> members = EconomicMap.create();
+            AnnotationType annotationType = AnnotationType.getInstance(annotationClass);
+            Annotation annotation = AnnotationAccess.getAnnotation(annotatedElement, annotationClass);
+            annotationType.members().forEach((memberName, memberAccessor) -> {
+                try {
+                    String moduleName = memberAccessor.getDeclaringClass().getModule().getName();
+                    if (moduleName != null) {
+                        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, SVMImageLayerWriter.class, false, moduleName);
+                    }
+                    AnnotationMemberValue memberValue = AnnotationMemberValue.getMemberValue(annotation, memberName, memberAccessor, annotationType);
+                    Object value = memberValue.get(annotationType.memberTypes().get(memberName));
+                    if (value.getClass().isEnum()) {
+                        HashMap<String, Object> enumEncoding = new HashMap<>();
+                        enumEncoding.put(ENUM_CLASS_TAG, value.getClass().getName());
+                        enumEncoding.put(ENUM_NAME_TAG, value.toString());
+                        value = enumEncoding;
+                    }
+                    members.put(memberName, value);
+                } catch (AnnotationMetadata.AnnotationExtractionError e) {
+                    /* We skip the incorrect annotation */
+                }
+            });
+            return members;
+        }).toList());
+        elementMap.put(ANNOTATIONS_TAG, Arrays.stream(annotationTypes).map(Class::getName).toList());
+        super.persistAnnotations(annotatedElement, elementMap, annotationTypes);
     }
 
     @Override
@@ -207,8 +251,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     protected void persistField(AnalysisField field, EconomicMap<String, Object> fieldMap) {
         HostedField hostedField = hUniverse.lookup(field);
         int location = hostedField.getLocation();
-        if (hostedField.isStatic() && location > 0) {
+        if (location > 0) {
             fieldMap.put(LOCATION_TAG, location);
+        }
+        Integer fieldCheck = StaticFinalFieldFoldingFeature.singleton().getFieldCheckIndex(field);
+        if (fieldCheck != null) {
+            fieldMap.put(FIELD_CHECK_TAG, fieldCheck);
         }
         super.persistField(field, fieldMap);
     }
@@ -238,7 +286,9 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         if (constant instanceof RelocatableConstant relocatableConstant) {
             RelocatedPointer pointer = relocatableConstant.getPointer();
             if (pointer instanceof MethodPointer methodPointer) {
-                data.add(List.of(METHOD_POINTER_TAG, getRelocatableConstantMethodId(methodPointer)));
+                AnalysisMethod method = getRelocatableConstantMethod(methodPointer);
+                persistMethod(method);
+                data.add(List.of(METHOD_POINTER_TAG, method.getId()));
                 return true;
             } else if (pointer instanceof CEntryPointLiteralCodePointer cEntryPointLiteralCodePointer) {
                 data.add(List.of(C_ENTRY_POINT_LITERAL_CODE_POINTER, cEntryPointLiteralCodePointer.methodName, cEntryPointLiteralCodePointer.definingClass.getName(),
@@ -249,26 +299,12 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         return super.delegateProcessing(data, constant);
     }
 
-    private static int getRelocatableConstantMethodId(MethodPointer methodPointer) {
+    private static AnalysisMethod getRelocatableConstantMethod(MethodPointer methodPointer) {
         ResolvedJavaMethod method = methodPointer.getMethod();
         if (method instanceof HostedMethod hostedMethod) {
-            return getMethodId(hostedMethod.wrapped);
+            return hostedMethod.wrapped;
         } else {
-            return getMethodId((AnalysisMethod) method);
-        }
-    }
-
-    private static int getMethodId(AnalysisMethod analysisMethod) {
-        if (!analysisMethod.isTrackedAcrossLayers()) {
-            /*
-             * Only tracked methods are persisted, so the method will not be loaded in the extension
-             * image.
-             *
-             * GR-59009 will ensure all methods referred to are tracked.
-             */
-            return -1;
-        } else {
-            return analysisMethod.getId();
+            return (AnalysisMethod) method;
         }
     }
 

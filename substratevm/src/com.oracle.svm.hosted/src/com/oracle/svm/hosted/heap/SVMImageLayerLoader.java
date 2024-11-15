@@ -25,8 +25,10 @@
 package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ANNOTATIONS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ANNOTATION_VALUES_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_LITERAL_CODE_POINTER;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_CHECK_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_CLASS_INITIALIZER_TAG;
@@ -60,6 +62,7 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -77,6 +80,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingFeature;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.RelocatableConstant;
@@ -88,7 +92,6 @@ import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import sun.reflect.annotation.AnnotationParser;
-import sun.reflect.annotation.AnnotationType;
 
 public class SVMImageLayerLoader extends ImageLayerLoader {
 
@@ -166,11 +169,26 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     @Override
     protected Annotation[] getAnnotations(EconomicMap<String, Object> elementData) {
         List<String> annotationNames = get(elementData, ANNOTATIONS_TAG);
+        List<EconomicMap<String, Object>> annotationValuesList = get(elementData, ANNOTATION_VALUES_TAG);
+        Annotation[] annotations = new Annotation[annotationNames.size()];
 
-        return annotationNames.stream().map(s -> {
-            Class<? extends Annotation> annotationType = cast(lookupBaseLayerTypeInHostVM(s));
-            return AnnotationParser.annotationForMap(annotationType, AnnotationType.getInstance(annotationType).memberDefaults());
-        }).toList().toArray(new Annotation[0]);
+        for (int i = 0; i < annotationNames.size(); ++i) {
+            Class<? extends Annotation> annotationType = cast(lookupBaseLayerTypeInHostVM(annotationNames.get(i)));
+            EconomicMap<String, Object> annotationValues = annotationValuesList.get(i);
+            Map<String, Object> annotationValuesMap = new HashMap<>();
+            var cursor = annotationValues.getEntries();
+            while (cursor.advance()) {
+                Object value = cursor.getValue();
+                if (value instanceof EconomicMap<?, ?>) {
+                    EconomicMap<String, Object> enumData = cast(value);
+                    value = getEnumValue(enumData);
+                }
+                annotationValuesMap.put(cursor.getKey(), value);
+            }
+            annotations[i] = AnnotationParser.annotationForMap(annotationType, annotationValuesMap);
+        }
+
+        return annotations;
     }
 
     @Override
@@ -194,6 +212,18 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 encodedGraph.setObject(i, CGlobalDataFeature.singleton().registerAsAccessedOrGet(cGlobalDataInfo.getData()));
             }
         }
+    }
+
+    @Override
+    public void initializeBaseLayerField(AnalysisField analysisField) {
+        EconomicMap<String, Object> fieldData = getFieldData(analysisField);
+
+        Integer fieldCheckIndex = get(fieldData, FIELD_CHECK_TAG);
+        if (fieldCheckIndex != null) {
+            StaticFinalFieldFoldingFeature.singleton().putBaseLayerFieldCheckIndex(analysisField.getId(), fieldCheckIndex);
+        }
+
+        super.initializeBaseLayerField(analysisField);
     }
 
     @Override
