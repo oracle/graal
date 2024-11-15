@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import java.util.function.Supplier;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * Basic API for Abstract Domains
@@ -14,7 +14,12 @@ import java.util.function.Supplier;
  * All derived generic domains need to extend this class
  * Derived domains should have default constructor as well as copy constructor
  * Sample usage:
- * public final class MyCustomDomain extends AbstractDomain<MyCustomDomain> {}
+ * <p>
+ * public final class MyCustomDomain extends AbstractDomain<MyCustomDomain> {
+ * public MyCustomDomain() {}
+ * public MyCustomDomain(MyCustomDomain other) {}
+ * ...
+ * }
  *
  * @param <Derived> type of the derived AbstractDomain
  */
@@ -83,13 +88,22 @@ public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
 
     /**
      * String representation of the domain
+     *
      * @return string representation of the domain
      */
     public abstract String toString();
 
     /**
+     * Creates a copy of the domain
+     *
+     * @return copy of the domain
+     */
+    public abstract Derived copyOf();
+
+    /**
      * Joins the domain with the other domain, returning a new domain
      * If the domain is a lattice, this is the least upper bound operation
+     *
      * @param other domain to join with
      * @return new domain after joining
      */
@@ -102,6 +116,7 @@ public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
     /**
      * Widens the domain with the other domain, returning a new domain
      * Used for acceleration of the fixpoint computation
+     *
      * @param other domain to widen with
      * @return new domain after widening
      */
@@ -114,6 +129,7 @@ public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
     /**
      * Meets the domain with the other domain, returning a new domain
      * If the domain is a lattice, this is the greatest lower bound operation
+     *
      * @param other domain to meet with
      * @return new domain after meeting
      */
@@ -124,21 +140,33 @@ public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
     }
 
     /**
-     * Creates a copy of the domain element
+     * Creates a top value of the domain using reflection
      *
-     * @return copy of the domain element
+     * @return a new instance of the domain set to top
      */
-    public abstract Derived copyOf();
+    public static <Derived extends AbstractDomain<Derived>> Derived createTop(Class<Derived> domainClass) {
+        try {
+            Derived instance = domainClass.getDeclaredConstructor().newInstance();
+            instance.setToTop();
+            return instance;
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new RuntimeException("Failed to create top value for domain: " + domainClass.getName(), e);
+        }
+    }
 
-//    public static <T extends AbstractDomain<T>> T createTop(Supplier<T> supplier) {
-//        T instance = supplier.get();
-//        instance.setToTop();
-//        return instance;
-//    }
-//
-//    public static <T extends AbstractDomain<T>> T createBot(Supplier<T> supplier) {
-//        T instance = supplier.get();
-//        instance.setToBot();
-//        return instance;
-//    }
+    /**
+     * Creates a bot value of the domain using reflection
+     *
+     * @return a new instance of the domain set to bot
+     */
+    public static <Derived extends AbstractDomain<Derived>> Derived createBot(Class<Derived> domainClass) {
+        try {
+            Derived instance = domainClass.getDeclaredConstructor().newInstance();
+            instance.setToBot();
+            return instance;
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+            throw new RuntimeException("Failed to create bot value for domain: " + domainClass.getName(), e);
+        }
+    }
+
 }
