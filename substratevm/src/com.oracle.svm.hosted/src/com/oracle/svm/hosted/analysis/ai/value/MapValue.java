@@ -4,114 +4,160 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
-/**
- * This class represents a map from variables to abstract values.
- * It is used when we are interested of multiple abstract states during the analysis
- * of a single node, for example:
- * <p>
- * Suppose doing an analysis that is focused on working with mutexes,
- * we can have a map of some unique mutex identifiers to their states (locked, unlocked, etc.)
- *
- * @param <Variable> type of the derived AbstractValue
- * @param <Domain>   type of the derived AbstractDomain
+/*
+    Represents a map of elements (variables, memory locations, etc.) to a common abstract domain.
+    It is used by MapDomain to map elements to abstract domains.
  */
 public final class MapValue<
-        Variable,
+        Key,
         Domain extends AbstractDomain<Domain>>
-        extends AbstractValue<MapValue<Variable, Domain>> {
-    private final Map<Variable, Domain> map;
+        implements AbstractValue<MapValue<Key, Domain>> {
+    private final HashMap<Key, Domain> map;
+    private final Class<Domain> domainClass;
 
-    public MapValue() {
+    public MapValue(Class<Domain> domainClass) {
         this.map = new HashMap<>();
+        this.domainClass = domainClass;
     }
 
-    public MapValue(Variable variable, Domain value) {
-        this();
-        insertBinding(variable, value);
+    public MapValue(Map<Key, Domain> map, Class<Domain> domainClass) {
+        this.map = new HashMap<>(map);
+        this.domainClass = domainClass;
     }
 
-    public void clear() {
-        map.clear();
+    public MapValue(MapValue<Key, Domain> other) {
+        this.map = new HashMap<>(other.map);
+        this.domainClass = other.domainClass;
+    }
+
+    public Map<Key, Domain> getMap() {
+        return map;
     }
 
     @Override
     public AbstractValueKind kind() {
-        return map.isEmpty() ? AbstractValueKind.TOP : AbstractValueKind.VAL;
+        return map.isEmpty() ? AbstractValueKind.BOT : AbstractValueKind.VAL;
     }
 
     @Override
-    public boolean leq(MapValue<Variable, Domain> other) {
-        return map.entrySet().stream().allMatch(e -> e.getValue().leq(other.map.get(e.getKey())));
+    public boolean leq(MapValue<Key, Domain> other) {
+        for (Map.Entry<Key, Domain> entry : map.entrySet()) {
+            if (!entry.getValue().leq(other.map.getOrDefault(entry.getKey(), AbstractDomain.createTop(domainClass)))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
-    public boolean equals(MapValue<Variable, Domain> other) {
+    public boolean equals(MapValue<Key, Domain> other) {
         return map.equals(other.map);
     }
 
     @Override
-    public AbstractValueKind joinWith(MapValue<Variable, Domain> other) {
-        return joinLikeOperation(other, Domain::join);
+    public AbstractValueKind joinWith(MapValue<Key, Domain> other) {
+        for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
+            map.merge(entry.getKey(), entry.getValue(), Domain::join);
+        }
+        return kind();
     }
 
     @Override
-    public AbstractValueKind widenWith(MapValue<Variable, Domain> other) {
-        return joinLikeOperation(other, Domain::widen);
+    public AbstractValueKind widenWith(MapValue<Key, Domain> other) {
+        return joinWith(other);
     }
 
     @Override
-    public AbstractValueKind meetWith(MapValue<Variable, Domain> other) {
-        return meetLikeOperation(other, Domain::meet);
+    public AbstractValueKind meetWith(MapValue<Key, Domain> other) {
+        for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
+            map.merge(entry.getKey(), entry.getValue(), Domain::meet);
+        }
+        return kind();
     }
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("MapValue{");
-        map.forEach((key, value) -> sb.append(key).append(" -> ").append(value).append(", "));
-        sb.append("}");
-        return sb.toString();
+        return "MapValue{" +
+                "map=" + map +
+                '}';
     }
 
-    private void insertBinding(Variable variable, Domain value) {
-        if (value.isBot()) {
-            throw new IllegalArgumentException("Bottom value should not be inserted");
+    @Override
+    public void clear() {
+        map.clear();
+    }
+
+    public boolean empty() {
+        return map.isEmpty();
+    }
+
+    public int getSize() {
+        return map.size();
+    }
+
+    public Domain getDomainAtKey(Key key) {
+        return map.getOrDefault(key, AbstractDomain.createTop(domainClass));
+    }
+
+    public void insertOrAssign(Key key, Domain value) {
+        map.put(key, value);
+    }
+
+    public MapValue<Key, Domain> remove(Key key) {
+        map.remove(key);
+        return this;
+    }
+
+    public void visit(Function<Map.Entry<Key, Domain>, Void> visitor) {
+        for (Map.Entry<Key, Domain> entry : map.entrySet()) {
+            visitor.apply(entry);
         }
-        map.put(variable, value);
     }
 
-    private AbstractValueKind joinLikeOperation(MapValue<Variable, Domain> other, JoinOperation<Domain> operation) {
-        other.map.forEach((key, value) -> map.merge(key, value, operation::apply));
-        return kind();
+    public MapValue<Key, Domain> filter(Predicate<Map.Entry<Key, Domain>> predicate) {
+        map.entrySet().removeIf(entry -> !predicate.test(entry));
+        return this;
     }
 
-    private AbstractValueKind meetLikeOperation(MapValue<Variable, Domain> other, MeetOperation<Domain> operation) {
-        try {
-            other.map.forEach((key, value) -> map.merge(key, value, (v1, v2) -> {
-                Domain result = operation.apply(v1, v2);
-                if (result.isBot()) {
-                    throw new ValueIsBottomException();
-                }
-                return result;
-            }));
-        } catch (ValueIsBottomException e) {
-            clear();
-            return AbstractValueKind.BOT;
+    public boolean eraseAllMatching(Key key) {
+        return map.keySet().removeIf(k -> (k.hashCode() & key.hashCode()) != 0);
+    }
+
+    public MapValue<Key, Domain> update(Function<Domain, Domain> operation, Key key) {
+        map.put(key, operation.apply(map.get(key)));
+        return this;
+    }
+
+    public boolean transform(Function<Domain, Domain> function) {
+        for (Map.Entry<Key, Domain> entry : map.entrySet()) {
+            map.put(entry.getKey(), function.apply(entry.getValue()));
         }
-        return kind();
+        return true;
     }
 
-    @FunctionalInterface
-    private interface JoinOperation<Domain> {
-        Domain apply(Domain d1, Domain d2);
+    public MapValue<Key, Domain> unionWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
+        for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
+            map.merge(entry.getKey(), entry.getValue(), combine);
+        }
+        return this;
     }
 
-    @FunctionalInterface
-    private interface MeetOperation<Domain> {
-        Domain apply(Domain d1, Domain d2);
+    public MapValue<Key, Domain> intersectionWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
+        map.entrySet().removeIf(entry -> !other.map.containsKey(entry.getKey()));
+        for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
+            map.merge(entry.getKey(), entry.getValue(), combine);
+        }
+        return this;
     }
 
-    private static class ValueIsBottomException extends RuntimeException {
+    public MapValue<Key, Domain> differenceWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
+        for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
+            map.merge(entry.getKey(), entry.getValue(), combine);
+        }
+        return this;
     }
 }
