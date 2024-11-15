@@ -22,15 +22,46 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.MODULE;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.PACKAGE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_DONT_INLINE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STABLE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNCHRONIZED;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VOLATILE;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
+
+import java.io.IOException;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
@@ -68,48 +99,18 @@ import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
+import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
-import org.graalvm.collections.EconomicMap;
-
-import java.io.IOException;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.MODULE;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.PACKAGE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_DONT_INLINE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ENUM;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_INTERFACE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_LAMBDA_FORM_COMPILED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_MODULE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_STABLE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_STRICT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_SUPER;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNCHRONIZED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_VOLATILE;
-import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
-import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
 
 @SuppressWarnings("try")
 public final class ClassfileParser {
@@ -180,6 +181,7 @@ public final class ClassfileParser {
 
     private final boolean loaderIsBootOrPlatform;
     private final boolean isHidden;
+    private final boolean forceAllowVMAnnotations;
 
     private Symbol<Type> classType;
 
@@ -195,19 +197,21 @@ public final class ClassfileParser {
     private ImmutableConstantPool pool;
     private final boolean validate;
 
-    private ClassfileParser(ParsingContext parsingContext, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, boolean isHidden) {
+    private ClassfileParser(ParsingContext parsingContext, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, boolean isHidden,
+                    boolean forceAllowVMAnnotations) {
         this.requestedClassType = requestedClassType;
         this.parsingContext = parsingContext;
         this.stream = Objects.requireNonNull(stream);
         this.verifiable = verifiable;
         this.loaderIsBootOrPlatform = loaderIsBootOrPlatform;
         this.isHidden = isHidden;
+        this.forceAllowVMAnnotations = forceAllowVMAnnotations;
         this.validate = true; // always validate
     }
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ParsingContext parsingContext, ClassfileStream stream) {
-        this(parsingContext, stream, false, false, null, false);
+        this(parsingContext, stream, false, false, null, false, false);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -247,9 +251,9 @@ public final class ClassfileParser {
         }
     }
 
-    public static ParserKlass parse(ParsingContext parsingContext, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, boolean isHidden)
-                    throws ValidationException {
-        return new ClassfileParser(parsingContext, stream, verifiable, loaderIsBootOrPlatform, requestedClassType, isHidden).parseClass();
+    public static ParserKlass parse(ParsingContext parsingContext, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, boolean isHidden,
+                    boolean forceAllowVMAnnotations) throws ValidationException {
+        return new ClassfileParser(parsingContext, stream, verifiable, loaderIsBootOrPlatform, requestedClassType, isHidden, forceAllowVMAnnotations).parseClass();
     }
 
     private ParserKlass parseClass() throws ValidationException {
@@ -883,7 +887,7 @@ public final class ClassfileParser {
             byte[] data = stream.readByteArray(attributeSize);
             ClassfileStream subStream = new ClassfileStream(data, stream.getClasspathFile());
             int flags = 0;
-            if (loaderIsBootOrPlatform) {
+            if (loaderIsBootOrPlatform || forceAllowVMAnnotations) {
                 flags = switch (location) {
                     case Method -> parseMethodVMAnnotations(subStream);
                     case Field -> parseFieldVMAnnotations(subStream);
