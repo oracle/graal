@@ -65,6 +65,7 @@ import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.zip.CRC32;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -199,7 +200,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -958,21 +958,6 @@ public class HotSpotGraphBuilderPlugins {
                             OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsDisableSuspendOffset)));
                             b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND, enter, BarrierType.NONE, false));
                         }
-                    }
-                    return true;
-                }
-            });
-        }
-
-        if (JavaVersionUtil.JAVA_SPEC > 21) {
-            r.registerConditional(config.javaThreadLockIDOffset != -1, new InvocationPlugin("setLockId", Receiver.class, long.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tid) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        receiver.get(true);
-                        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadLockIDOffset)));
-                        b.add(new JavaWriteNode(JavaKind.Long, address, JAVA_THREAD_LOCK_ID_LOCATION, tid, BarrierType.NONE, false));
                     }
                     return true;
                 }
