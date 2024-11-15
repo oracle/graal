@@ -1,8 +1,7 @@
-package com.oracle.svm.hosted.analysis.ai.transfer.example;
+package com.oracle.svm.hosted.analysis.ai.transfer;
 
 import com.oracle.svm.hosted.analysis.ai.domain.IntegerDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.Environment;
-import com.oracle.svm.hosted.analysis.ai.transfer.TransferFunction;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
