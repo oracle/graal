@@ -858,11 +858,11 @@ public class MonitorSnippets implements Snippets {
             Arguments args = new Arguments(monitorenter, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("object", monitorenterNode.object());
             args.add("hub", Objects.requireNonNull(monitorenterNode.getObjectData()));
-            args.addConst("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
-            args.addConst("threadRegister", registers.getThreadRegister());
-            args.addConst("stackPointerRegister", registers.getStackPointerRegister());
-            args.addConst("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(graph));
-            args.addConst("counters", counters);
+            args.add("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
+            args.add("threadRegister", registers.getThreadRegister());
+            args.add("stackPointerRegister", registers.getStackPointerRegister());
+            args.add("trace", isTracingEnabledForType(monitorenterNode.object()) || isTracingEnabledForMethod(graph));
+            args.add("counters", counters);
 
             template(tool, monitorenterNode, args).instantiate(tool.getMetaAccess(), monitorenterNode, DEFAULT_REPLACER, args);
         }
@@ -872,10 +872,10 @@ public class MonitorSnippets implements Snippets {
 
             Arguments args = new Arguments(monitorexit, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("object", monitorexitNode.object());
-            args.addConst("lockDepth", monitorexitNode.getMonitorId().getLockDepth());
-            args.addConst("threadRegister", registers.getThreadRegister());
-            args.addConst("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(graph));
-            args.addConst("counters", counters);
+            args.add("lockDepth", monitorexitNode.getMonitorId().getLockDepth());
+            args.add("threadRegister", registers.getThreadRegister());
+            args.add("trace", isTracingEnabledForType(monitorexitNode.object()) || isTracingEnabledForMethod(graph));
+            args.add("counters", counters);
 
             template(tool, monitorexitNode, args).instantiate(tool.getMetaAccess(), monitorexitNode, DEFAULT_REPLACER, args);
         }
@@ -946,7 +946,7 @@ public class MonitorSnippets implements Snippets {
                         graph.addBeforeFixed(ret, invoke);
 
                         Arguments args = new Arguments(checkCounter, graph.getGuardsStage(), tool.getLoweringStage());
-                        args.addConst("errMsg", new CStringConstant(msg));
+                        args.add("errMsg", new CStringConstant(msg));
                         inlineeGraph = template(tool, invoke, args).copySpecializedGraph(graph.getDebug());
                         InliningUtil.inline(invoke, inlineeGraph, false, null);
                     }

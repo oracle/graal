@@ -41,6 +41,8 @@ import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.graal.compiler.word.Word.objectToTrackedPointer;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
@@ -56,8 +58,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.Register;
 
 /**
@@ -153,7 +153,7 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
 
         public void lower(VirtualThreadUpdateJFRNode virtualThreadUpdateJFRNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(virtualThreadUpdateJFR, virtualThreadUpdateJFRNode.graph().getGuardsStage(), tool.getLoweringStage());
-            args.addConst("javaThreadRegister", registers.getThreadRegister());
+            args.add("javaThreadRegister", registers.getThreadRegister());
             args.add("threadObj", virtualThreadUpdateJFRNode.getThread());
 
             template(tool, virtualThreadUpdateJFRNode, args).instantiate(tool.getMetaAccess(), virtualThreadUpdateJFRNode, DEFAULT_REPLACER, args);

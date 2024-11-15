@@ -144,7 +144,7 @@ public final class OpenTypeWorldDispatchTableSnippets extends SubstrateTemplates
                 SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(loadDispatchTableStartingOffset, node.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("interfaceTypeID", node.getInterfaceTypeID());
-                args.addConst("vtableStartingOffset", vtableStartingOffset);
+                args.add("vtableStartingOffset", vtableStartingOffset);
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }

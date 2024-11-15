@@ -741,12 +741,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
-                args.addConst("size", size);
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("profilingData", getProfilingData(node, type));
-                args.addConst("withException", false);
+                args.add("size", size);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("profilingData", getProfilingData(node, type));
+                args.add("withException", false);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
             }
@@ -767,12 +767,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
-                args.addConst("size", size);
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(true));
-                args.addConst("emitMemoryBarrier", true);
-                args.addConst("profilingData", getProfilingData(node, type));
-                args.addConst("withException", true);
+                args.add("size", size);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(true));
+                args.add("emitMemoryBarrier", true);
+                args.add("profilingData", getProfilingData(node, type));
+                args.add("withException", true);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, DEFAULT_REPLACER, args);
             }
@@ -800,16 +800,16 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("arrayBaseOffset", arrayBaseOffset);
-                args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", FillContent.fromBoolean(fillContents));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, instanceClass));
-                args.addConst("withException", false);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("arrayBaseOffset", arrayBaseOffset);
+                args.add("log2ElementSize", log2ElementSize);
+                args.add("fillContents", FillContent.fromBoolean(fillContents));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("maybeUnroll", length.isConstant());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, instanceClass));
+                args.add("withException", false);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -835,12 +835,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateStoredContinuation, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("arrayBaseOffset", arrayBaseOffset);
-                args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("profilingData", getProfilingData(node, instanceClass));
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("arrayBaseOffset", arrayBaseOffset);
+                args.add("log2ElementSize", log2ElementSize);
+                args.add("ipOffset", ContinuationSupport.singleton().getIPOffset());
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("profilingData", getProfilingData(node, instanceClass));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -865,16 +865,16 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("arrayBaseOffset", arrayBaseOffset);
-                args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, type));
-                args.addConst("withException", false);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("arrayBaseOffset", arrayBaseOffset);
+                args.add("log2ElementSize", log2ElementSize);
+                args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("maybeUnroll", length.isConstant());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, type));
+                args.add("withException", false);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -900,16 +900,16 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
                 args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("arrayBaseOffset", arrayBaseOffset);
-                args.addConst("log2ElementSize", log2ElementSize);
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", true);
-                args.addConst("maybeUnroll", length.isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, type));
-                args.addConst("withException", true);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("arrayBaseOffset", arrayBaseOffset);
+                args.add("log2ElementSize", log2ElementSize);
+                args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
+                args.add("emitMemoryBarrier", true);
+                args.add("maybeUnroll", length.isConstant());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, type));
+                args.add("withException", true);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -934,8 +934,8 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
-                args.addConst("rank", rank);
-                args.addConst("withException", false);
+                args.add("rank", rank);
+                args.add("withException", false);
                 args.addVarargs("dimensions", int.class, StampFactory.forKind(JavaKind.Int), dims);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -961,8 +961,8 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(newmultiarray, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
-                args.addConst("rank", rank);
-                args.addConst("withException", true);
+                args.add("rank", rank);
+                args.add("withException", true);
                 args.addVarargs("dimensions", int.class, StampFactory.forKind(JavaKind.Int), dims);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -979,13 +979,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, null));
-                args.addConst("withException", false);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, null));
+                args.add("withException", false);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -1001,13 +1001,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(allocateInstanceDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(true));
-                args.addConst("emitMemoryBarrier", true/* barriers */);
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, null));
-                args.addConst("withException", true);
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(true));
+                args.add("emitMemoryBarrier", true/* barriers */);
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, null));
+                args.add("withException", true);
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -1024,13 +1024,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("withException", false);
-                args.addConst("profilingData", getProfilingData(node, null));
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(node.fillContents()));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("withException", false);
+                args.add("profilingData", getProfilingData(node, null));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -1047,13 +1047,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("elementType", node.getElementType());
                 args.add("length", node.length());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
-                args.addConst("fillContents", FillContent.fromBoolean(true));
-                args.addConst("emitMemoryBarrier", true/* barriers */);
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("withException", true);
-                args.addConst("profilingData", getProfilingData(node, null));
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("fillContents", FillContent.fromBoolean(true));
+                args.add("emitMemoryBarrier", true/* barriers */);
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("withException", true);
+                args.add("profilingData", getProfilingData(node, null));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
@@ -1086,13 +1086,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 Arguments args = new Arguments(allocatePod, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getHub());
                 args.add("arrayLength", node.getArrayLength());
-                args.addConst("forceSlowPath", shouldForceSlowPath(graph));
+                args.add("forceSlowPath", shouldForceSlowPath(graph));
                 args.add("referenceMap", node.getReferenceMap());
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("maybeUnroll", node.getArrayLength().isConstant());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, node.getKnownInstanceType()));
+                args.add("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.add("maybeUnroll", node.getArrayLength().isConstant());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("profilingData", getProfilingData(node, node.getKnownInstanceType()));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }

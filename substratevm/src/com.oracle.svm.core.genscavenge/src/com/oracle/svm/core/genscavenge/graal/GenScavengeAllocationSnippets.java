@@ -160,7 +160,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                args.add("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
@@ -180,9 +180,9 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
@@ -200,9 +200,9 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("length", node.getLength());
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
-                args.addConst("ipOffset", ContinuationSupport.singleton().getIPOffset());
-                args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                args.add("ipOffset", ContinuationSupport.singleton().getIPOffset());
+                args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
+                args.add("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
@@ -222,10 +222,10 @@ public final class GenScavengeAllocationSnippets implements Snippets {
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
                 args.add("fillContents", node.getFillContents());
-                args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
+                args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
+                args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
+                args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.add("snippetCounters", baseTemplates.getSnippetCounters());
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }

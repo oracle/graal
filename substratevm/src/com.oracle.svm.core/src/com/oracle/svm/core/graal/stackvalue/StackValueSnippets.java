@@ -125,11 +125,11 @@ final class StackValueSnippets extends SubstrateTemplates implements Snippets {
         boolean mustNotAllocate = ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(graph.method());
 
         SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(stackValueSnippet, graph.getGuardsStage(), tool.getLoweringStage());
-        args.addConst("sizeInBytes", sizeInBytes);
-        args.addConst("alignmentInBytes", alignmentInBytes);
-        args.addConst("slotIdentifier", slotIdentity);
-        args.addConst("disallowVirtualThread", checkVirtualThread);
-        args.addConst("mustNotAllocate", mustNotAllocate);
+        args.add("sizeInBytes", sizeInBytes);
+        args.add("alignmentInBytes", alignmentInBytes);
+        args.add("slotIdentifier", slotIdentity);
+        args.add("disallowVirtualThread", checkVirtualThread);
+        args.add("mustNotAllocate", mustNotAllocate);
         template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
     }
 
