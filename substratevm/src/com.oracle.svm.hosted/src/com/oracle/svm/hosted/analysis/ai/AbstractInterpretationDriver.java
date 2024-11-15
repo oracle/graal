@@ -5,9 +5,9 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.ProgressReporter;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerFactory;
-import com.oracle.svm.hosted.analysis.ai.checker.Checker;
+import com.oracle.svm.hosted.analysis.ai.checker.CustomChecker;
 import com.oracle.svm.hosted.analysis.ai.domain.IntegerDomain;
-import com.oracle.svm.hosted.analysis.ai.transfer.example.BasicResourceLeakTransferFunction;
+import com.oracle.svm.hosted.analysis.ai.transfer.BasicResourceLeakTransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -51,9 +51,9 @@ public class AbstractInterpretationDriver {
         }
 
         var transferFunction = new BasicResourceLeakTransferFunction();
-        var desiredDomain = new IntegerDomain(0);
-        var analyzer = AnalyzerFactory.createIntraProceduralAnalyzer(rootGraph, transferFunction, desiredDomain, debug);
-        var checker = new Checker<>(analyzer, debug, desiredDomain);
+        var initialDomain = new IntegerDomain();
+        var analyzer = AnalyzerFactory.createIntraProceduralAnalyzer(rootGraph, transferFunction, initialDomain, debug);
+        var checker = new CustomChecker<>(analyzer, debug);
         checker.runAnalysis();
     }
 
