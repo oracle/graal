@@ -4,13 +4,14 @@ import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 
 /**
  * Abstract domain for flat lattice, also known as 3 level lattice
- * ⊤
- * / | \
+ * For domains that can be represented as a constant value and have infinite ascending and descending chains.
+ *         ⊤
+ *       / | \
  * ... -1  0  1 ...
- * \ | /
- * ⊥
+ *      \ | /
+ *        ⊥
  *
- * @param <Value> the type of the constant value (e.g., Integer, Float, Long, etc.)
+ * @param <Value> the type of the constant value (e.g., Integer, Long, Float, Double)
  */
 
 public final class ConstantDomain<Value extends Number> extends AbstractDomain<ConstantDomain<Value>> {
@@ -34,6 +35,20 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
     public ConstantDomain(ConstantDomain<Value> other) {
         this.value = other.value;
         this.kind = other.kind;
+    }
+
+    public void incrementValue() {
+        if (isTop() || isBot()) {
+            return;
+        }
+        value = increment(value);
+    }
+
+    public void decrementValue() {
+        if (isTop() || isBot()) {
+            return;
+        }
+        value = decrement(value);
     }
 
     public Value getValue() {
@@ -155,6 +170,28 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
             case Float v -> (Value) Float.valueOf(0);
             case Double v -> (Value) Double.valueOf(0);
             case null, default -> null;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Value increment(Value value) {
+        return switch (value) {
+            case Integer i -> (Value) Integer.valueOf(i + 1);
+            case Long l -> (Value) Long.valueOf(l + 1);
+            case Float f -> (Value) Float.valueOf(f + 1);
+            case Double d -> (Value) Double.valueOf(d + 1);
+            case null, default -> value;
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Value decrement(Value value) {
+        return switch (value) {
+            case Integer i -> (Value) Integer.valueOf(i - 1);
+            case Long l -> (Value) Long.valueOf(l - 1);
+            case Float f -> (Value) Float.valueOf(f - 1);
+            case Double d -> (Value) Double.valueOf(d - 1);
+            case null, default -> value;
         };
     }
 }
