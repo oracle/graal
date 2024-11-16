@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.Environment;
 
 /**
  * Basic interface for all analyzers
@@ -8,5 +9,5 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
  */
 
 public interface Analyzer<Domain extends AbstractDomain<Domain>> {
-    Domain analyze();
+    Environment<Domain> analyze();
 }
