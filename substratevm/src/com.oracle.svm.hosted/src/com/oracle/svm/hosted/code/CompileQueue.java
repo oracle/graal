@@ -396,7 +396,9 @@ public class CompileQueue {
                 parseAll();
             }
 
-            if (!ImageLayerBuildingSupport.buildingImageLayer() && !PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
+            // GR-59742 re-enable for open type world and layered images
+            if (SubstrateOptions.useClosedTypeWorld() && !ImageLayerBuildingSupport.buildingImageLayer() &&
+                            !PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(universe.hostVM().options())) {
                 /*
                  * Reachability Analysis creates call graphs with more edges compared to the
                  * Points-to Analysis, therefore the annotations would have to be added to a lot
