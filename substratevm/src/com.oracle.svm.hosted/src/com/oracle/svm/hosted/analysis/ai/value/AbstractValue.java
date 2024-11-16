@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.value;
 
 /**
- * Basic interface for representing the structure of elements of an abstract domain.
+ * Represents the structure of elements of an abstract domain.
  * (constant, interval, set, etc.)
  *
  * @param <Derived> the type of the derived value

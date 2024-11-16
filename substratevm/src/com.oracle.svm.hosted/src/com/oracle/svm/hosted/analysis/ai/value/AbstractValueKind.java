@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.value;
 
 /**
- * Basic encoding of abstract values in custom abstract domains
+ * Encoding of abstract values in custom abstract domains
  * for easier implementation of operations on abstract values
  */
 
