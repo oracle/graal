@@ -2,6 +2,11 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
+/**
+ * Represents a state in the fixpoint iteration.
+ *
+ * @param <Domain> type of the derived AbstractDomain
+ */
 public class AbstractState<Domain extends AbstractDomain<Domain>> {
     private Domain domain;
     private int visitedCount = 0;
