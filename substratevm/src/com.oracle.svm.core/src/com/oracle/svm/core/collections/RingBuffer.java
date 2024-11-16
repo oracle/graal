@@ -29,9 +29,9 @@ import java.util.function.Supplier;
 import com.oracle.svm.core.Uninterruptible;
 
 /** Keeps the last-n entries. */
-public final class RingBuffer<T> {
-    private final T[] entries;
-    private int pos;
+public class RingBuffer<T> {
+    protected final T[] entries;
+    protected int pos;
     private boolean wrapped;
 
     public interface Consumer<T> {
@@ -56,7 +56,7 @@ public final class RingBuffer<T> {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private int nextIndex(int p) {
+    protected int nextIndex(int p) {
         return (p + 1) % entries.length;
     }
 
@@ -67,7 +67,7 @@ public final class RingBuffer<T> {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void advance() {
+    protected void advance() {
         int posNext = nextIndex(pos);
         if (posNext <= pos) {
             wrapped = true;
