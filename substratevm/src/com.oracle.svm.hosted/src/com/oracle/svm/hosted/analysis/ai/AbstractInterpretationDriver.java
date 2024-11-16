@@ -6,7 +6,7 @@ import com.oracle.svm.hosted.ProgressReporter;
 
 import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerFactory;
 import com.oracle.svm.hosted.analysis.ai.checker.CustomChecker;
-import com.oracle.svm.hosted.analysis.ai.domain.IntegerDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.ConstantDomain;
 import com.oracle.svm.hosted.analysis.ai.transfer.BasicResourceLeakTransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -51,7 +51,7 @@ public class AbstractInterpretationDriver {
         }
 
         var transferFunction = new BasicResourceLeakTransferFunction();
-        var initialDomain = new IntegerDomain();
+        var initialDomain = new ConstantDomain<Integer>();
         var analyzer = AnalyzerFactory.createIntraProceduralAnalyzer(rootGraph, transferFunction, initialDomain, debug);
         var checker = new CustomChecker<>(analyzer, debug);
         checker.runAnalysis();
