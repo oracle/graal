@@ -152,20 +152,13 @@ public final class StringInternSupport implements MultiLayeredImageSingleton {
 
     private String doIntern(String str) {
         String result = str;
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            StringInternSupport[] layers = MultiLayeredImageSingleton.getAllLayers(StringInternSupport.class);
-            for (StringInternSupport layer : layers) {
-                String[] layerImageInternedStrings = layer.imageInternedStrings;
-                int imageIdx = Arrays.binarySearch(layerImageInternedStrings, str);
-                if (imageIdx >= 0) {
-                    result = layerImageInternedStrings[imageIdx];
-                    break;
-                }
-            }
-        } else {
-            int imageIdx = Arrays.binarySearch(imageInternedStrings, str);
+        StringInternSupport[] layers = MultiLayeredImageSingleton.getAllLayers(StringInternSupport.class);
+        for (StringInternSupport layer : layers) {
+            String[] layerImageInternedStrings = layer.imageInternedStrings;
+            int imageIdx = Arrays.binarySearch(layerImageInternedStrings, str);
             if (imageIdx >= 0) {
-                result = imageInternedStrings[imageIdx];
+                result = layerImageInternedStrings[imageIdx];
+                break;
             }
         }
         String oldValue = internedStrings.putIfAbsent(result, result);

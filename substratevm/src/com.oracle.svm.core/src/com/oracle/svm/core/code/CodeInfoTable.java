@@ -45,7 +45,6 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -103,13 +102,7 @@ public class CodeInfoTable {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodeInfo getFirstImageCodeInfo(int layerNumber) {
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            ImageCodeInfoStorage[] runtimeCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfoStorage.class);
-            return runtimeCodeInfos[layerNumber].getData();
-        } else {
-            assert layerNumber == 0;
-            return imageCodeInfo;
-        }
+        return MultiLayeredImageSingleton.getForLayer(ImageCodeInfoStorage.class, layerNumber).getData();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
