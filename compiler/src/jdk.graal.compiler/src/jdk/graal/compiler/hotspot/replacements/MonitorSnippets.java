@@ -60,9 +60,9 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.jv
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassMiscFlagsOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordLockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockMetadataOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.markWordLockMaskInPlace;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.monitorValue;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorCxqOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.objectMonitorEntryListOffset;
@@ -206,6 +206,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class MonitorSnippets implements Snippets {
 
     /**
+     * This helper method is for bypassing the mandatory branch probabilities for snippets.
+     *
+     * See also {@code jdk.graal.compiler.core.test.VerifySnippetProbabilities}
+     */
+    @Fold
+    public static boolean isJDK21() {
+        return JavaVersionUtil.JAVA_SPEC == 21;
+    }
+
+    /**
      * The monitorenter snippet is slightly different from the HotSpot code:
      *
      * 1. when LockingMode=LM_MONITOR, we won't attempt inlined inflated locking, but go to C stub
@@ -240,7 +250,7 @@ public class MonitorSnippets implements Snippets {
         }
 
         if (tryFastPathLocking(object, stackPointerRegister, trace, counters, mark, lock, thread)) {
-            if (JavaVersionUtil.JAVA_SPEC == 21 || useStackLocking(INJECTED_VMCONFIG)) {
+            if (isJDK21() || useStackLocking(INJECTED_VMCONFIG)) {
                 incrementHeldMonitorCount(thread);
             }
         } else {
@@ -313,7 +323,7 @@ public class MonitorSnippets implements Snippets {
 
         int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
         Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
-        Word newOwner = JavaVersionUtil.JAVA_SPEC == 21 ? thread : thread.readWord(javaThreadLockIDOffset(INJECTED_VMCONFIG), JAVA_THREAD_LOCK_ID_LOCATION);
+        Word newOwner = isJDK21() ? thread : thread.readWord(javaThreadLockIDOffset(INJECTED_VMCONFIG), JAVA_THREAD_LOCK_ID_LOCATION);
 
         // The following owner null check is essential. In the case where the null check fails, it
         // avoids the subsequent bound-to-fail CAS operation, which would have caused the
@@ -480,7 +490,7 @@ public class MonitorSnippets implements Snippets {
         trace(trace, "             lock: 0x%016lx\n", lock);
 
         if (tryFastPathUnlocking(object, trace, counters, thread, lock)) {
-            if (JavaVersionUtil.JAVA_SPEC == 21 || useStackLocking(INJECTED_VMCONFIG)) {
+            if (isJDK21() || useStackLocking(INJECTED_VMCONFIG)) {
                 decrementHeldMonitorCount(thread);
             }
         } else {
@@ -614,7 +624,7 @@ public class MonitorSnippets implements Snippets {
         int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
         Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
         if (probability(FAST_PATH_PROBABILITY, recursions.equal(0))) {
-            if (JavaVersionUtil.JAVA_SPEC == 21) {
+            if (isJDK21()) {
                 // recursions == 0
                 Word entryList = monitor.readWord(objectMonitorEntryListOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_ENTRY_LIST_LOCATION);
                 Word cxq = monitor.readWord(objectMonitorCxqOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_CXQ_LOCATION);
