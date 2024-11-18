@@ -64,6 +64,8 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
     private final ResolvedJavaType superClass;
     private final ResolvedJavaType[] interfaces;
     private final ResolvedJavaType objectType;
+    private ResolvedJavaField[] instanceFields;
+    private ResolvedJavaField[] instanceFieldsWithSuper;
 
     public BaseLayerType(String name, int baseLayerId, int modifiers, boolean isInterface, boolean isEnum, boolean isInitialized, boolean initializedAtBuildTime, boolean isLinked,
                     String sourceFileName, ResolvedJavaType enclosingType, ResolvedJavaType componentType, ResolvedJavaType superClass, ResolvedJavaType[] interfaces, ResolvedJavaType objectType,
@@ -83,6 +85,14 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
         this.superClass = superClass;
         this.interfaces = interfaces;
         this.objectType = objectType;
+    }
+
+    public void setInstanceFields(ResolvedJavaField[] instanceFields) {
+        this.instanceFields = instanceFields;
+    }
+
+    public void setInstanceFieldsWithSuper(ResolvedJavaField[] instanceFieldsWithSuper) {
+        this.instanceFieldsWithSuper = instanceFieldsWithSuper;
     }
 
     @Override
@@ -244,11 +254,7 @@ public class BaseLayerType extends BaseLayerElement implements ResolvedJavaType,
 
     @Override
     public ResolvedJavaField[] getInstanceFields(boolean includeSuperclasses) {
-        /*
-         * For now, the base layer types have no fields. If they are needed, a BaseLayerField could
-         * be created and put in an AnalysisField in a similar way to this BaseLayerType.
-         */
-        return new ResolvedJavaField[0];
+        return includeSuperclasses ? instanceFieldsWithSuper : instanceFields;
     }
 
     @Override
