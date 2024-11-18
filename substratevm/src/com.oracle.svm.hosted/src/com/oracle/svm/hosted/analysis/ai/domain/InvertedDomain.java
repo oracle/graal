@@ -6,12 +6,12 @@ package com.oracle.svm.hosted.analysis.ai.domain;
  * Reverses the top and bottom elements of an abstract domain
  * and also reverses meet and join operations
  */
-public final class InvertedAbstractDomain<
-        Domain extends InvertedAbstractDomain<Domain>>
+public final class InvertedDomain<
+        Domain extends InvertedDomain<Domain>>
         extends AbstractDomain<Domain> {
     private final Domain domain;
 
-    public InvertedAbstractDomain(Domain domain) {
+    public InvertedDomain(Domain domain) {
         this.domain = domain;
     }
 
@@ -69,7 +69,7 @@ public final class InvertedAbstractDomain<
 
     @Override
     public String toString() {
-        return "InvertedAbstractDomain{" +
+        return "InvertedDomain{" +
                 "domain=" + domain +
                 '}';
     }
@@ -80,7 +80,7 @@ public final class InvertedAbstractDomain<
         try {
             return (Domain) this.getClass().getDeclaredConstructor(domain.getClass()).newInstance(domain.copyOf());
         } catch (Exception e) {
-            throw new RuntimeException("Failed to copy InvertedAbstractDomain", e);
+            throw new RuntimeException("Failed to copy InvertedDomain", e);
         }
     }
 }

@@ -20,5 +20,5 @@ public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
      *
      * @return the environment after the fixpoint iteration
      */
-    public Environment<Domain> iterateUntilFixpoint();
+    Environment<Domain> iterateUntilFixpoint();
 }
