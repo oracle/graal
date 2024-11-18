@@ -17,7 +17,7 @@ This document outlines the structure and semantics of the _iprof_ file format.
 
 ## Structure
 
-The full schema of the JSON format used for _iprof_ files can be found in the [iprof-v1.0.0.schema.json](asserts/iprof-v1.0.0.schema.json) document.
+The full schema of the JSON format used for _iprof_ files can be found in the [iprof-v1.0.0.schema.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/iprof-v1.0.0.schema.json) document.
 This JSON schema fully defines the _iprof_ file format and can be used to validate the structure of an arbitrary _iprof_ file.
 
 A minimal valid _iprof_ file consists of a JSON object containing 3 fields: `types`, `methods` and `version`.
