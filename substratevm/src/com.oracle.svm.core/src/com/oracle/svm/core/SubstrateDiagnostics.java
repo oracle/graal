@@ -850,7 +850,7 @@ public class SubstrateDiagnostics {
             log.string("Build time information:").indent(true);
 
             VM vm = ImageSingletons.lookup(VM.class);
-            log.string("Version: ").string(vm.version).string(", ").string(vm.info).newline();
+            log.string("Version: ").string(vm.vendorVersion).string(" (").string(vm.info).string("), JDK ").string(vm.version).newline();
 
             Platform platform = ImageSingletons.lookup(Platform.class);
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();

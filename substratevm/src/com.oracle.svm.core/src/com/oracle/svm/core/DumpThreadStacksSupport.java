@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +23,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platform.WINDOWS;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
@@ -41,38 +38,8 @@ import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
 
-import jdk.internal.misc.Signal;
-
-@AutomaticallyRegisteredFeature
-public class DumpThreadStacksOnSignalFeature implements InternalFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasThreadDumpSupport();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpThreadStacksOnSignalStartupHook());
-    }
-}
-
-final class DumpThreadStacksOnSignalStartupHook implements RuntimeSupport.Hook {
-    @Override
-    public void execute(boolean isFirstIsolate) {
-        if (isFirstIsolate) {
-            DumpAllStacks.install();
-        }
-    }
-}
-
-class DumpAllStacks implements Signal.Handler {
-    static void install() {
-        Signal.handle(Platform.includedIn(WINDOWS.class) ? new Signal("BREAK") : new Signal("QUIT"), new DumpAllStacks());
-    }
-
-    @Override
-    public void handle(Signal arg0) {
+public class DumpThreadStacksSupport {
+    public static void dump() {
         DumpAllStacksOperation vmOp = new DumpAllStacksOperation();
         vmOp.enqueue();
     }
