@@ -23,10 +23,8 @@
 package com.oracle.truffle.espresso.jdwp.impl;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -40,12 +38,14 @@ public final class JDWPInstrument extends TruffleInstrument {
 
     private DebuggerController controller;
     private JDWPContext context;
-    private final Set<Thread> debuggerThreads = new HashSet<>();
+    private Thread senderThread;
+    private Thread receiverThread;
     private volatile HandshakeController hsController = null;
-    private final Semaphore resetting = new Semaphore(1);
+    private final Lock resetting = new ReentrantLock();
+    private volatile boolean isClosing;
 
     @Override
-    protected void onCreate(TruffleInstrument.Env instrumentEnv) {
+    protected void onCreate(Env instrumentEnv) {
         assert controller == null;
         controller = new DebuggerController(this, instrumentEnv.getLogger(ID));
         instrumentEnv.registerService(controller);
@@ -53,46 +53,39 @@ public final class JDWPInstrument extends TruffleInstrument {
     }
 
     public void reset(boolean prepareForReconnect) {
-        if (!resetting.tryAcquire()) {
+        if (isClosing) {
+            // already done closing, so don't attempt anything further
             return;
         }
+        if (!prepareForReconnect) {
+            // mark that we're closing down the whole context
+            isClosing = true;
+        }
+        Thread currentReceiverThread = null;
         try {
-            // stop all running jdwp threads in an orderly fashion
-            synchronized (debuggerThreads) {
-                for (Thread activeThread : debuggerThreads) {
-                    activeThread.interrupt();
-                }
-            }
-            // close the server socket used to listen for transport dt_socket
+            // begin section that needs to be synchronized with establishing a new connection and
+            // starting the threads. The logic within the locked part, must be written in a way that
+            // it can run on any current state in the debugger connection and in any debugger thread
+            // existence state.
+            resetting.lockInterruptibly();
+
+            currentReceiverThread = receiverThread;
+
+            // Close the server socket used to listen for transport dt_socket.
+            // This will unblock the accept call on a server socket.
             HandshakeController hsc = hsController;
             if (hsc != null) {
                 hsc.close();
             }
-            // close the connection to the debugger
-            controller.closeConnection();
+            // Tell the controller to dispose the underlying connection by adding a special dispose
+            // packet to the sender thread queue. This will force the sender to complete work.
+            controller.dispose();
 
-            // wait for threads to fully stop
-            boolean stillRunning = true;
-            while (stillRunning) {
-                stillRunning = false;
-                synchronized (debuggerThreads) {
-                    Iterator<Thread> it = debuggerThreads.iterator();
-                    while (it.hasNext()) {
-                        Thread activeThread = it.next();
-                        if (activeThread.isAlive()) {
-                            stillRunning = true;
-                        } else {
-                            // thread is done, so clean up from set
-                            it.remove();
-                        }
-                    }
-                }
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    // ignore
-                }
-            }
+            // we know the sender can finish work, so wait for it to complete
+            joinThread(senderThread);
+
+            // clear our current state of the threads
+            senderThread = null;
 
             // re-enable GC for all objects
             controller.getGCPrevention().clearAll();
@@ -104,12 +97,37 @@ public final class JDWPInstrument extends TruffleInstrument {
             // resume all threads
             controller.forceResumeAll();
 
-            if (prepareForReconnect) {
-                // replace the controller instance
-                controller.reInitialize();
-            }
+            // Now, close the socket, which will force the receiver thread to complete eventually.
+            // Note that we might run this code in the receiver thread, so we can't simply join.
+            controller.closeSocket();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         } finally {
-            resetting.release();
+            resetting.unlock();
+        }
+
+        // If we're not running in the receiver thread we should join
+        if (Thread.currentThread() != currentReceiverThread) {
+            joinThread(currentReceiverThread);
+        }
+
+        if (prepareForReconnect && !isClosing) {
+            // replace the controller instance
+            controller.reInitialize();
+        }
+        // At this point the receiver thread field has either been replaced with a fresh thread from
+        // the above reInitialize call, or we're closing down. Either way, we don't need to worry
+        // about leaking the receiverThread field.
+    }
+
+    private void joinThread(Thread thread) {
+        if (thread != null) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                controller.warning(() -> "jdwp thread " + thread.getName() + " didn't finish naturally");
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
@@ -134,15 +152,24 @@ public final class JDWPInstrument extends TruffleInstrument {
         return context;
     }
 
-    public void addDebuggerThread(Thread thread) {
-        synchronized (debuggerThreads) {
-            debuggerThreads.add(thread);
-        }
+    public void addDebuggerSenderThread(Thread thread) {
+        senderThread = thread;
+    }
+
+    public void addDebuggerReceiverThread(Thread thread) {
+        receiverThread = thread;
     }
 
     public boolean isDebuggerThread(Thread hostThread) {
-        synchronized (debuggerThreads) {
-            return debuggerThreads.contains(hostThread);
-        }
+        // only the receiver thread enters the context
+        return hostThread == receiverThread;
+    }
+
+    public Lock getResettingLock() {
+        return resetting;
+    }
+
+    public boolean isClosing() {
+        return isClosing;
     }
 }

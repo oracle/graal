@@ -27,9 +27,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
+import com.oracle.truffle.espresso.classfile.attributes.LocalRef;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
@@ -37,8 +38,6 @@ import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
-import com.oracle.truffle.espresso.classfile.attributes.LocalRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
@@ -163,12 +162,9 @@ public final class JDWP {
             static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                return new CommandResult(reply, null, Collections.singletonList(new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        controller.disposeDebugger(true);
-                        return null;
-                    }
+                return new CommandResult(reply, null, Collections.singletonList(() -> {
+                    controller.disposeDebugger(true);
+                    return null;
                 }));
             }
         }
@@ -214,19 +210,17 @@ public final class JDWP {
         static class EXIT {
             public static final int ID = 10;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 if (context.systemExitImplemented()) {
                     return new CommandResult(reply,
                                     null,
-                                    Collections.singletonList(new Callable<Void>() {
-                                        @Override
-                                        public Void call() {
-                                            context.exit(input.readInt());
-                                            return null;
-                                        }
+                                    Collections.singletonList(() -> {
+                                        controller.disposeDebugger(false);
+                                        context.exit(input.readInt());
+                                        return null;
                                     }));
                 } else {
                     reply.errorCode(ErrorCodes.NOT_IMPLEMENTED);
