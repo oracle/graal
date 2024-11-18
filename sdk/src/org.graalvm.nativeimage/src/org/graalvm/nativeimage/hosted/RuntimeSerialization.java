@@ -81,7 +81,9 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void register(Class<?>... classes) {
-        RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), classes);
+        for (Class<?> clazz : classes) {
+            RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), clazz);
+        }
     }
 
     /**
@@ -95,8 +97,10 @@ public final class RuntimeSerialization {
      *
      * @since 21.3
      */
+    @Deprecated
+    @SuppressWarnings("unused")
     public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        RuntimeSerializationSupport.singleton().registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
+        RuntimeSerializationSupport.singleton().register(ConfigurationCondition.alwaysTrue(), clazz);
     }
 
     /**
