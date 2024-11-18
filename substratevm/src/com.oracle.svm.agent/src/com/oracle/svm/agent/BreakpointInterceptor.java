@@ -1102,7 +1102,7 @@ final class BreakpointInterceptor {
             name = nullHandle();
         }
         var className = fromJniString(jni, name);
-        traceSerializeBreakpoint(jni, "ObjectInputStream.readClassDescriptor", true, state.getFullStackTraceOrNull(), className, null);
+        traceSerializeBreakpoint(jni, "ObjectInputStream.readClassDescriptor", true, state.getFullStackTraceOrNull(), className);
         return true;
     }
 
@@ -1158,7 +1158,7 @@ final class BreakpointInterceptor {
                     Object interfaceNames = getClassArrayNames(jni, interfaces);
                     traceSerializeBreakpoint(jni, "ProxyClassSerialization", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), interfaceNames);
                 } else {
-                    traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className, null);
+                    traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", validObjectStreamClassInstance, state.getFullStackTraceOrNull(), className);
                 }
             }
         }
@@ -1177,13 +1177,7 @@ final class BreakpointInterceptor {
         JNIObjectHandle serializeTargetClass = getObjectArgument(thread, 1);
         if (Support.isSerializable(jni, serializeTargetClass)) {
             String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
-
-            JNIObjectHandle customConstructorObj = getObjectArgument(thread, 2);
-            JNIObjectHandle customConstructorClass = jniFunctions().getGetObjectClass().invoke(jni, customConstructorObj);
-            JNIMethodId getDeclaringClassNameMethodID = agent.handles().getJavaLangReflectConstructorDeclaringClassName(jni, customConstructorClass);
-            JNIObjectHandle declaredClassNameObj = Support.callObjectMethod(jni, customConstructorObj, getDeclaringClassNameMethodID);
-            String customConstructorClassName = fromJniString(jni, declaredClassNameObj);
-            traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", true, state.getFullStackTraceOrNull(), serializeTargetClassName, customConstructorClassName);
+            traceSerializeBreakpoint(jni, "ObjectStreamClass.<init>", true, state.getFullStackTraceOrNull(), serializeTargetClassName);
         }
         return true;
     }
