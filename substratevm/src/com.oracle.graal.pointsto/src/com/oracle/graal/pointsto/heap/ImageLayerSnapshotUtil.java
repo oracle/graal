@@ -71,6 +71,7 @@ public class ImageLayerSnapshotUtil {
     public static final String METHODS_TAG = "methods";
     public static final String FIELDS_TAG = "fields";
     public static final String IS_INTERNAL_TAG = "is internal";
+    public static final String IS_STATIC_TAG = "is static";
     public static final String FIELD_TYPE_TAG = "field type";
     public static final String CLASS_JAVA_NAME_TAG = "class java name";
     public static final String CAN_BE_STATICALLY_BOUND_TAG = "can be statically bound";
@@ -85,6 +86,7 @@ public class ImageLayerSnapshotUtil {
     public static final String IS_IMPLEMENTATION_INVOKED = "is implementation invoked";
     public static final String IS_INTRINSIC_METHOD = "is intrinsic method";
     public static final String ANNOTATIONS_TAG = "annotations";
+    public static final String ANNOTATION_VALUES_TAG = "annotation values";
     public static final String IS_INSTANTIATED = "is instantiated";
     public static final String IS_UNSAFE_ALLOCATED = "is unsafe allocated";
     public static final String IS_REACHABLE = "is reachable";
@@ -104,8 +106,11 @@ public class ImageLayerSnapshotUtil {
     public static final String GENERATED_SERIALIZATION_TAG = "generated serialization";
     public static final String LAMBDA_TYPE_TAG = "lambda type";
     public static final String CAPTURING_CLASS_TAG = "capturing class";
+    public static final String PROXY_TYPE_TAG = "proxy type";
     public static final String RAW_DECLARING_CLASS_TAG = "raw declaring class";
     public static final String RAW_TARGET_CONSTRUCTOR_CLASS_TAG = "raw target constructor class";
+    public static final String INSTANCE_FIELDS_TAG = "instance fields";
+    public static final String INSTANCE_FIELDS_WITH_SUPER_TAG = "instance fields with super";
     public static final String CONSTANTS_TAG = "constants";
     public static final String CONSTANTS_TO_RELINK_TAG = "constants to relink";
     public static final String TID_TAG = "tid";
@@ -118,8 +123,17 @@ public class ImageLayerSnapshotUtil {
     public static final String METHOD_TYPE_PARAMETERS_TAG = "method type parameters";
     public static final String METHOD_TYPE_RETURN_TAG = "method type return";
     public static final String FACTORY_TAG = "factory";
+    public static final String C_ENTRY_POINT_CALL_STUB_METHOD_TAG = "CEntryPointCallStubMethod";
+    public static final String REFLECTION_EXPAND_SIGNATURE_METHOD_TAG = "reflection expand signature method";
+    public static final String JNI_JAVA_CALL_VARIANT_WRAPPER_METHOD_TAG = "jni java call variant wrapper method";
     public static final String OUTLINED_SB_TAG = "outlinedSB";
+    public static final String ORIGINAL_METHOD_ID_TAG = "original method id";
+    public static final String NOT_AS_PUBLISHED_TAG = "not as published";
     public static final String TARGET_CONSTRUCTOR_TAG = "target constructor";
+    public static final String INSTANTIATED_TYPE_TAG = "instantiated type";
+    public static final String WRAPPED_MEMBER_CLASS_TAG = "wrapped member class";
+    public static final String WRAPPED_MEMBER_NAME_TAG = "wrapped member name";
+    public static final String WRAPPED_MEMBER_ARGUMENTS_TAG = "wrapped member arguments";
     public static final String THROW_ALLOCATED_OBJECT_TAG = "throw allocated object";
     public static final String IDENTITY_HASH_CODE_TAG = "identityHashCode";
     public static final String PARENT_CONSTANT_ID_TAG = "parent constant id";
@@ -146,6 +160,7 @@ public class ImageLayerSnapshotUtil {
     public static final String ARRAY_TAG = "array";
     public static final String PRIMITIVE_ARRAY_TAG = "primitive array";
     public static final String RELOCATED_CONSTANT_TAG = "relocation constant";
+    public static final String FIELD_CHECK_TAG = "field check";
     public static final String FIELD_ACCESSED_TAG = "accessed";
     public static final String FIELD_READ_TAG = "read";
     public static final String FIELD_WRITTEN_TAG = "written";

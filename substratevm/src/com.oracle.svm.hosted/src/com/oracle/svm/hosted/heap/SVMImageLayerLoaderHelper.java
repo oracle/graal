@@ -26,35 +26,60 @@ package com.oracle.svm.hosted.heap;
 
 import static com.oracle.graal.pointsto.heap.ImageLayerLoader.get;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CAPTURING_CLASS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_CALL_STUB_METHOD_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FACTORY_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.GENERATED_SERIALIZATION_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANTIATED_TYPE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INTERFACES_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.JNI_JAVA_CALL_VARIANT_WRAPPER_METHOD_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LAMBDA_TYPE_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_AS_PUBLISHED_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ORIGINAL_METHOD_ID_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PROXY_TYPE_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_DECLARING_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_TARGET_CONSTRUCTOR_CLASS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.REFLECTION_EXPAND_SIGNATURE_METHOD_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TARGET_CONSTRUCTOR_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.THROW_ALLOCATED_OBJECT_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_MEMBER_ARGUMENTS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_MEMBER_CLASS_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_MEMBER_NAME_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_METHOD_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_TYPE_TAG;
 import static com.oracle.svm.hosted.lambda.LambdaParser.createMethodGraph;
 import static com.oracle.svm.hosted.lambda.LambdaParser.getLambdaClassFromConstantNode;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Proxy;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.heap.ImageLayerLoaderHelper;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
+import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
+import com.oracle.svm.hosted.jni.JNIAccessFeature;
 import com.oracle.svm.hosted.lambda.LambdaParser;
+import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.serialize.SerializationFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
@@ -69,6 +94,7 @@ public class SVMImageLayerLoaderHelper extends ImageLayerLoaderHelper {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected boolean loadType(EconomicMap<String, Object> typeData, int tid) {
         String wrappedType = get(typeData, WRAPPED_TYPE_TAG);
         if (wrappedType == null) {
@@ -90,6 +116,12 @@ public class SVMImageLayerLoaderHelper extends ImageLayerLoaderHelper {
             String capturingClassName = get(typeData, CAPTURING_CLASS_TAG);
             Class<?> capturingClass = imageLayerLoader.lookupClass(false, capturingClassName);
             loadLambdaTypes(capturingClass);
+        } else if (wrappedType.equals(PROXY_TYPE_TAG)) {
+            List<Integer> interfaceIds = get(typeData, INTERFACES_TAG);
+            Class<?>[] interfaces = interfaceIds.stream().map(i -> imageLayerLoader.getAnalysisType(i).getJavaClass()).toArray(Class<?>[]::new);
+            /* GR-59854: The deprecation warning comes from this call to Proxy.getProxyClass. */
+            Class<?> proxy = Proxy.getProxyClass(interfaces[0].getClassLoader(), interfaces);
+            imageLayerLoader.getMetaAccess().lookupJavaType(proxy);
             return true;
         }
 
@@ -112,7 +144,13 @@ public class SVMImageLayerLoaderHelper extends ImageLayerLoaderHelper {
     }
 
     private static void loadLambdaTypes(ResolvedJavaMethod m, BigBang bigBang) {
-        StructuredGraph graph = createMethodGraph(m, bigBang.getOptions());
+        StructuredGraph graph;
+        try {
+            graph = createMethodGraph(m, bigBang.getOptions());
+        } catch (NoClassDefFoundError | BytecodeParser.BytecodeParserError e) {
+            /* Skip the method if it refers to a missing class */
+            return;
+        }
 
         NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
 
@@ -134,10 +172,53 @@ public class SVMImageLayerLoaderHelper extends ImageLayerLoaderHelper {
         if (wrappedMethod.equals(FACTORY_TAG)) {
             int constructorId = get(methodData, TARGET_CONSTRUCTOR_TAG);
             boolean throwAllocatedObject = get(methodData, THROW_ALLOCATED_OBJECT_TAG);
-            FactoryMethodSupport.singleton().lookup(imageLayerLoader.getMetaAccess(), imageLayerLoader.getAnalysisMethod(constructorId), throwAllocatedObject);
+            AnalysisMethod analysisMethod = imageLayerLoader.getAnalysisMethod(constructorId);
+            if (analysisMethod.wrapped instanceof BaseLayerMethod) {
+                return false;
+            }
+            int instantiatedTypeId = get(methodData, INSTANTIATED_TYPE_TAG);
+            AnalysisType instantiatedType = imageLayerLoader.getAnalysisType(instantiatedTypeId);
+            FactoryMethodSupport.singleton().lookup(imageLayerLoader.getMetaAccess(), analysisMethod, instantiatedType, throwAllocatedObject);
+            return true;
+        } else if (wrappedMethod.equals(C_ENTRY_POINT_CALL_STUB_METHOD_TAG)) {
+            int originalMethodId = get(methodData, ORIGINAL_METHOD_ID_TAG);
+            boolean asNotPublished = get(methodData, NOT_AS_PUBLISHED_TAG);
+            AnalysisMethod originalMethod = imageLayerLoader.getAnalysisMethod(originalMethodId);
+            CEntryPointCallStubSupport.singleton().registerStubForMethod(originalMethod, () -> {
+                CEntryPointData data = CEntryPointData.create(originalMethod);
+                if (asNotPublished) {
+                    data = data.copyWithPublishAs(CEntryPoint.Publish.NotPublished);
+                }
+                return data;
+            });
+            return true;
+        } else if (wrappedMethod.equals(REFLECTION_EXPAND_SIGNATURE_METHOD_TAG)) {
+            Executable member = getWrappedMember(methodData);
+            if (member == null) {
+                return false;
+            }
+            ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(member);
+            return true;
+        } else if (wrappedMethod.equals(JNI_JAVA_CALL_VARIANT_WRAPPER_METHOD_TAG)) {
+            Executable member = getWrappedMember(methodData);
+            if (member == null) {
+                return false;
+            }
+            JNIAccessFeature.singleton().addMethod(member, (FeatureImpl.DuringAnalysisAccessImpl) imageLayerLoader.getUniverse().getConcurrentAnalysisAccess());
             return true;
         }
-
         return super.loadMethod(methodData, mid);
+    }
+
+    private Executable getWrappedMember(EconomicMap<String, Object> methodData) {
+        String className = get(methodData, WRAPPED_MEMBER_CLASS_TAG);
+        Class<?> declaringClass = imageLayerLoader.lookupClass(true, className);
+        if (declaringClass == null) {
+            return null;
+        }
+        String name = get(methodData, WRAPPED_MEMBER_NAME_TAG);
+        List<String> parameterNames = get(methodData, WRAPPED_MEMBER_ARGUMENTS_TAG);
+        Class<?>[] parameters = parameterNames.stream().map(c -> imageLayerLoader.lookupClass(false, c)).toArray(Class<?>[]::new);
+        return ImageLayerLoader.lookupMethodByReflection(name, declaringClass, parameters);
     }
 }
