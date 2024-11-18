@@ -62,10 +62,9 @@ public abstract class SerializationConfigurationParser<C> extends ConfigurationP
 
     protected abstract void parseSerializationDescriptorObject(EconomicMap<String, Object> data, boolean lambdaCapturingType);
 
-    protected void registerType(ConfigurationTypeDescriptor targetSerializationClass, C condition, Object optionalCustomCtorValue) {
-        String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
+    protected void registerType(ConfigurationTypeDescriptor targetSerializationClass, C condition) {
         if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
-            serializationSupport.registerWithTargetConstructorClass(condition, namedClass.name(), customTargetConstructorClass);
+            serializationSupport.register(condition, namedClass.name());
         } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
             serializationSupport.registerProxyClass(condition, proxyClass.interfaceNames());
         } else {
