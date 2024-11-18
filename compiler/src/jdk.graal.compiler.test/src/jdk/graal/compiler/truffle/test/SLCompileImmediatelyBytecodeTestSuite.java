@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,9 @@ package jdk.graal.compiler.truffle.test;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.oracle.truffle.sl.test.SLSimpleTestSuite;
 import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
+import com.oracle.truffle.sl.test.SLTestSuiteBytecode;
 
 /*
  * We turn on the flag to compile every Truffle function immediately, on its first execution
@@ -40,8 +40,12 @@ import com.oracle.truffle.sl.test.SLTestSuite;
  * compiled multiple times, in different specialization states.
  */
 @RunWith(SLTestRunner.class)
-@SLTestSuite(value = {"tests"}, testCaseDirectory = SLSimpleTestSuite.class, options = {"engine.CompileImmediately", "true", "engine.BackgroundCompilation", "false"})
-public class SLCompileImmediatelyTestSuite {
+@SLTestSuite(value = {"tests"}, testCaseDirectory = SLTestSuiteBytecode.class, options = {//
+                "engine.CompileImmediately", "true",
+                "engine.BackgroundCompilation", "false",
+                "sl.UseBytecode", "true",
+})
+public class SLCompileImmediatelyBytecodeTestSuite {
     /*
      * Our "mx unittest" command looks for methods that are annotated with @Test. By just defining
      * an empty method, this class gets included and the test suite is properly executed.

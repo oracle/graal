@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,15 +43,25 @@ import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
 
 @RunWith(SLTestRunner.class)
-@SLTestSuite(value = {"sl"}, options = {"engine.BackgroundCompilation", "false", "engine.SingleTierCompilationThreshold", "10", "engine.MultiTier", "false", "engine.CompileImmediately", "false"})
-public class SLTruffleGraalTestSuite {
+@SLTestSuite(value = {"sl"}, options = {//
+                "engine.BackgroundCompilation", "false",
+                "engine.SingleTierCompilationThreshold", "10",
+                "engine.MultiTier", "false",
+                "engine.CompileImmediately", "false",
+                "sl.UseBytecode", "false"
+})
+public class SLCompileASTTestSuite {
 
     public static void main(String[] args) throws Exception {
-        SLTestRunner.runInMain(SLTruffleGraalTestSuite.class, args);
+        SLTestRunner.runInMain(SLCompileASTTestSuite.class, args);
     }
 
     @BeforeClass
     public static void setupTestRunner() {
+        installBuiltins();
+    }
+
+    static void installBuiltins() {
         SLTestRunner.installBuiltin(SLGetOptionBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLIsOptimizedBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLWaitForOptimizationBuiltinFactory.getInstance());
