@@ -377,6 +377,8 @@ public class ImageLayerWriter {
              * created. If the enclosing type is missing, it is ignored for now. This try/catch
              * block could be removed after the trackAcrossLayers is fully implemented.
              */
+        } catch (InternalError | TypeNotPresentException | LinkageError e) {
+            /* Ignore missing type errors. */
         }
         if (type.isArray()) {
             builder.setComponentTypeId(type.getComponentType().getId());
