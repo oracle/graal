@@ -62,6 +62,8 @@ public class ExportMessageData extends MessageContainer {
 
     private final Element element;
     private final AnnotationMirror annotation;
+    private TypeMirror preferredReceiverType;
+    private boolean forcedStatic;
     private NodeData specializedNode;
 
     private boolean overriden;
@@ -122,7 +124,22 @@ public class ExportMessageData extends MessageContainer {
         return !isClass();
     }
 
+    void setForcedStatic() {
+        this.forcedStatic = true;
+    }
+
+    public boolean isForcedStatic() {
+        return forcedStatic;
+    }
+
+    void setPreferredReceiverType(TypeMirror type) {
+        this.preferredReceiverType = type;
+    }
+
     public TypeMirror getReceiverType() {
+        if (preferredReceiverType != null) {
+            return preferredReceiverType;
+        }
         if (element == null || exports.isExplicitReceiver()) {
             return exports.getReceiverType();
         }

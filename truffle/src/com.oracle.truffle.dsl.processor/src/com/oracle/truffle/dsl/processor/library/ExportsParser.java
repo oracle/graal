@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -236,6 +236,53 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
+        Map<ExportsLibrary, Set<LibraryMessage>> generatedLibraryMessages = new HashMap<>();
+
+        for (ExportsLibrary library : model.getExportedLibraries().values()) {
+            for (LibraryMessage message : library.getLibrary().getAllMethods()) {
+                ExecutableElement replaceWith = message.getReplaceWith();
+                if (replaceWith != null && message.getReplacementFor() == null) {
+                    // Replacing this message, if not exported
+                    Map<String, ExportMessageData> exportedMessages = library.getExportedMessages();
+                    if (!exportedMessages.containsKey(message.getName())) {
+                        // Exported messages do not contain this message
+                        // We'll generate the replacement when some message from isExported is
+                        // exported
+                        boolean shouldReplace = false;
+                        for (LibraryMessage expMessage : message.getAbstractIfExportedAsWarning()) {
+                            ExportMessageData messageData = exportedMessages.get(expMessage.getName());
+                            if (messageData != null) {
+                                shouldReplace = true;
+                                break;
+                            }
+                        }
+                        if (shouldReplace) {
+                            // We need to add an @ExportMessage annotation for the generated message
+                            AnnotationMirror exportAnnotation = new CodeAnnotationMirror(ProcessorContext.getInstance().getTypes().ExportMessage);
+                            CodeExecutableElement replaceWithClone = CodeExecutableElement.clone(replaceWith);
+                            if (library.isExplicitReceiver()) {
+                                replaceWithClone.getModifiers().add(STATIC);
+                            }
+                            Element enclosing = ElementUtils.castTypeElement(library.getReceiverType());
+                            replaceWithClone.setEnclosingElement(enclosing);
+                            replaceWith = replaceWithClone;
+                            ExportMessageData exportData = new ExportMessageData(library, message, replaceWith, exportAnnotation);
+                            // The correct receiver is the exported library's receiver
+                            // not where the replace method was declared.
+                            exportData.setPreferredReceiverType(library.getReceiverType());
+                            // The replace method takes the receiver as the first argument,
+                            // like if it'd be static even though it's not.
+                            exportData.setForcedStatic();
+                            exportedElements.add(exportData);
+                            exportedMessages.put(message.getName(), exportData);
+                            Set<LibraryMessage> generatedNames = generatedLibraryMessages.computeIfAbsent(library, (lib) -> new HashSet<>());
+                            generatedNames.add(message);
+                        }
+                    }
+                }
+            }
+        }
+
         /*
          * Generate synthetic exports for export delegation.
          */
@@ -420,6 +467,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
             Set<LibraryMessage> missingAbstractMessage = new LinkedHashSet<>();
             Set<LibraryMessage> missingAbstractMessageAsWarning = new LinkedHashSet<>();
+            Set<LibraryMessage> generatedMessages = generatedLibraryMessages.get(exportLib);
             for (LibraryMessage message : exportLib.getLibrary().getMethods()) {
                 List<Element> elementsWithSameName = potentiallyMissedOverrides.getOrDefault(message.getName(), Collections.emptyList());
                 if (!elementsWithSameName.isEmpty()) {
@@ -435,7 +483,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                 }
                 if (message.isAbstract() && !message.getName().equals("accepts")) {
-                    if (!exportLib.isExported(message)) {
+                    // if not exported. Generated messages were not exported, we check them first.
+                    if (generatedMessages != null && generatedMessages.contains(message) || !exportLib.isExported(message)) {
                         boolean isAbstract;
                         if (!message.getAbstractIfExported().isEmpty()) {
                             isAbstract = false;
@@ -457,7 +506,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
 
                         if (!message.getAbstractIfExportedAsWarning().isEmpty()) {
                             for (LibraryMessage abstractIfExportedAsWarning : message.getAbstractIfExportedAsWarning()) {
-                                if (exportLib.getExportedMessages().containsKey(abstractIfExportedAsWarning.getName())) {
+                                if (!(generatedMessages != null && generatedMessages.contains(abstractIfExportedAsWarning)) &&
+                                                exportLib.getExportedMessages().containsKey(abstractIfExportedAsWarning.getName())) {
                                     missingAbstractMessageAsWarning.add(message);
                                     break;
                                 }
@@ -1301,9 +1351,12 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 element.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT_Exclude));
             }
 
-            boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
+            boolean isStatic = element.getModifiers().contains(Modifier.STATIC) || exportedElement.isForcedStatic();
             if (!isStatic) {
                 element.getParameters().add(0, new CodeVariableElement(exportedElement.getReceiverType(), "this"));
+                element.getModifiers().add(Modifier.STATIC);
+            } else if (exportedElement.isForcedStatic()) {
+                element.getParameters().set(0, new CodeVariableElement(exportedElement.getReceiverType(), "receiver"));
                 element.getModifiers().add(Modifier.STATIC);
             }
 
@@ -1457,7 +1510,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             return false;
         }
 
-        boolean explicitReceiver = exportedMethod.getModifiers().contains(Modifier.STATIC);
+        boolean explicitReceiver = exportedMethod.getModifiers().contains(Modifier.STATIC) || exportedMessage.isForcedStatic();
         int paramOffset = !explicitReceiver ? 1 : 0;
         List<? extends VariableElement> expectedParameters = libraryMethod.getParameters().subList(paramOffset, libraryMethod.getParameters().size());
         List<? extends VariableElement> exportedParameters = exportedMethod.getParameters().subList(0, realParameterCount);
@@ -1488,7 +1541,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             VariableElement exportedArg = exportedParameters.get(i);
             VariableElement libraryArg = expectedParameters.get(i);
             TypeMirror exportedArgType = exportedArg.asType();
-            TypeMirror libraryArgType = (explicitReceiver && i == 0) ? receiverType : libraryArg.asType();
+            TypeMirror libraryArgType = (explicitReceiver && !exportedMessage.isForcedStatic() && i == 0) ? receiverType : libraryArg.asType();
             if (!typeEquals(exportedArgType, libraryArgType)) {
                 if (emitErrors) {
                     exportedMessage.addError(exportedArg, "Invalid parameter type. Expected '%s' but was '%s'. Expected signature:%n    %s",
@@ -1593,5 +1646,4 @@ public class ExportsParser extends AbstractParser<ExportsData> {
     public List<DeclaredType> getTypeDelegatedAnnotationTypes() {
         return Arrays.asList(types.ExportMessage, types.ExportMessage_Repeat);
     }
-
 }

@@ -775,8 +775,8 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         ExportsGenerator exportGenerator = new ExportsGenerator(constants);
         Map<String, ExportMessageData> messages = defaultExportsLibrary.getExportedMessages();
-        CodeTypeElement uncachedClass = exportGenerator.createUncached(defaultExportsLibrary, messages);
-        CodeTypeElement cacheClass = exportGenerator.createCached(defaultExportsLibrary, messages);
+        CodeTypeElement uncachedClass = exportGenerator.createUncached(defaultExportsLibrary, messages, false);
+        CodeTypeElement cacheClass = exportGenerator.createCached(defaultExportsLibrary, messages, false);
 
         CodeTypeElement resolvedExports = exportGenerator.createResolvedExports(defaultExportsLibrary, messages, "Default", cacheClass, uncachedClass);
         resolvedExports.add(cacheClass);

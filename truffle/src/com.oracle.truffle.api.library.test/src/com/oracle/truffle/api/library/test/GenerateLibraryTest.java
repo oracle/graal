@@ -47,12 +47,14 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.library.test.CachedLibraryTest.SimpleDispatchedNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
@@ -300,6 +302,353 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
 
         public abstract String messageString(CharSequence receiver);
 
+    }
+
+    @GenerateLibrary
+    public abstract static class ReplacementsLibrary extends Library {
+
+        @Deprecated
+        public int readMember(Object receiver, String name) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementFor = "readMember(Object, String)")
+        public int readMember(Object receiver, Object name) {
+            if (name instanceof String stringName) {
+                return readMember(receiver, stringName);
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        @Deprecated
+        public int read(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementFor = "read(Object, int)")
+        public int read(Object receiver, long index) {
+            if (Integer.MIN_VALUE <= index && index <= Integer.MAX_VALUE) {
+                return read(receiver, (int) index);
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, int index) {
+            long unsignedIndex = Integer.toUnsignedLong(index);
+            return read(receiver, unsignedIndex);
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary.class)
+    @SuppressWarnings({"deprecation", "static-method"})
+    public static class ReplacementLegacy {
+
+        @ExportMessage
+        final int readMember(String name) {
+            return 1;
+        }
+
+        @ExportMessage
+        final int read(int index) {
+            return Integer.toString(index).length();
+        }
+
+        @ExportMessage
+        final int readUnsigned(int index) {
+            return Integer.toUnsignedString(index).length();
+        }
+    }
+
+    @ExportLibrary(ReplacementsLibrary.class)
+    @SuppressWarnings("static-method")
+    public static class ReplacementNew {
+
+        @ExportMessage
+        final int readMember(Object name) {
+            return 100;
+        }
+
+        @ExportMessage
+        final int read(long index) {
+            return Long.toString(index).length();
+        }
+
+        @ExportMessage
+        final int readUnsigned(long index) {
+            return Long.toUnsignedString(index).length();
+        }
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void testReplacements() {
+        ReplacementsLibrary lib = LibraryFactory.resolve(ReplacementsLibrary.class).getUncached();
+        Object legacyObj = new ReplacementLegacy();
+        Object newObj = new ReplacementNew();
+
+        assertEquals(1, lib.readMember(legacyObj, "string"));
+        assertEquals(1, lib.readMember(legacyObj, (Object) "string"));
+        assertEquals(2, lib.read(legacyObj, 10));
+        assertEquals(2, lib.read(legacyObj, 10L));
+        assertEquals(10, lib.readUnsigned(legacyObj, -10));
+        assertEquals(10, lib.readUnsigned(legacyObj, 0XFFFFFFFA));
+
+        assertEquals(100, lib.readMember(newObj, "string"));
+        assertEquals(100, lib.readMember(newObj, (Object) "string"));
+        assertEquals(2, lib.read(newObj, 10));
+        assertEquals(2, lib.read(newObj, 10L));
+        assertEquals(10, lib.readUnsigned(newObj, -10));
+        assertEquals(20, lib.readUnsigned(newObj, -10L));
+    }
+
+    @GenerateLibrary
+    public abstract static class ReplacementsLibraryErrors1 extends Library {
+
+        @Deprecated
+        public int readMember(Object receiver, String name) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replaced message readMember(Object, int) was not found. Specify an existing message with optional type arguments.")
+        @Abstract(replacementFor = "readMember(Object, int)")
+        public int readMember(Object receiver, Object name) {
+            if (name instanceof String stringName) {
+                return readMember(receiver, stringName);
+            }
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors2 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, String index) {
+            return index.length();
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors3 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) throws Exception {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) throws Exception {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final int readUnsignedLegacy(Object receiver, int index) throws ArrayIndexOutOfBoundsException {
+            return index;
+        }
+    }
+
+    @GenerateLibrary
+    @SuppressWarnings({"deprecation", "static-method"})
+    public abstract static class ReplacementsLibraryErrors4 extends Library {
+
+        @Deprecated
+        public int readUnsigned(Object receiver, int index) {
+            throw new UnsupportedOperationException();
+        }
+
+        @ExpectError("The replacement method readUnsignedLegacy does not have signature and thrown types equal to the message readUnsigned(Object, int) it replaces.")
+        @Abstract(replacementFor = "readUnsigned(Object, int)", replaceWith = "readUnsignedLegacy")
+        public int readUnsigned(Object receiver, long index) {
+            if (0 <= index && index <= 0xFFFFFFFFL) {
+                return readUnsigned(receiver, (int) (0xFFFFFFFFL & index));
+            }
+            throw new UnsupportedOperationException();
+        }
+
+        protected final long readUnsignedLegacy(Object receiver, int index) {
+            return index;
+        }
+    }
+
+    @GenerateLibrary
+    public abstract static class ReplacementsLibraryErrors5 extends Library {
+
+        @Abstract
+        public boolean isType(Object receiver) {
+            return false;
+        }
+
+        @Abstract(replaceWith = "isType")
+        public Object replacedErr(Object receiver) {
+            return receiver;
+        }
+
+        @ExpectError("The replacement method doReplaceNone does not exist.")
+        @Abstract(replacementFor = "isType", replaceWith = "doReplaceNone")
+        public boolean replaceWithNonexisting(Object receiver) {
+            return receiver != null;
+        }
+
+        @ExpectError("Message replace2 is a replacement of multiple messages. Arguments to replacementFor annotation have to be unique.")
+        @Abstract(replacementFor = "isType")
+        public boolean replace2(Object receiver) {
+            return receiver != null;
+        }
+    }
+
+    @GenerateLibrary
+    public abstract static class SelfReplacementsLibraryA extends Library {
+
+        public void noop(Object receiver) {
+        }
+
+        public boolean canComputeFactorial(Object receiver) {
+            return false;
+        }
+
+        @Abstract(ifExported = "canComputeFactorial")
+        public double multiply(Object receiver, double a, double b) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(ifExportedAsWarning = "canComputeFactorial", replaceWith = "factorialFixed")
+        public double factorial(Object receiver, int n) {
+            return n;
+        }
+
+        // Replaces factorial() only when factorial() is not exported
+        // and canComputeFactorial() is exported.
+        protected final double factorialFixed(Object receiver, int n) {
+            double f = n;
+            for (int i = 2; i < n; i++) {
+                f = multiply(receiver, f, i);
+            }
+            return f;
+        }
+    }
+
+    @GenerateLibrary
+    public abstract static class SelfReplacementsLibraryB extends Library {
+
+        public boolean canComputeFactorial(Object receiver) {
+            return false;
+        }
+
+        @Abstract(ifExported = "canComputeFactorial")
+        public double multiply(Object receiver, double a, double b) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Abstract(ifExportedAsWarning = "canComputeFactorial", replaceWith = "factorialFixed")
+        public double factorial(Object receiver, int n) {
+            return n;
+        }
+
+        // Replaces factorial() only when factorial() is not exported
+        // and canComputeFactorial() is exported.
+        @SuppressWarnings("static-method")
+        protected final double factorialFixed(Object receiver, int n, @CachedLibrary(limit = "2") SelfReplacementsLibraryB helperLibrary) {
+            if (helperLibrary.canComputeFactorial(n)) {
+                double f = helperLibrary.factorial(n, n);
+                return f;
+            } else {
+                return -n;
+            }
+        }
+    }
+
+    @ExportLibrary(SelfReplacementsLibraryA.class)
+    public static final class SelfReplacementsLibraryImplA1 extends Object {
+
+        // Only to prevent from warning: Exported library has no effect.
+        @ExportMessage
+        void noop() {
+        }
+
+        // canComputeFactorial() is not implemented,
+        // we have only the default impl of factorial() that returns `n`.
+    }
+
+    @ExportLibrary(SelfReplacementsLibraryA.class)
+    @SuppressWarnings("static-method")
+    public static final class SelfReplacementsLibraryImplA3 extends Object {
+
+        @ExportMessage
+        boolean canComputeFactorial() {
+            return true;
+        }
+
+        @ExportMessage
+        double multiply(double a, double b) {
+            return a * b;
+        }
+
+        @ExportMessage
+        double factorial(int n) {
+            return 2 * n;
+        }
+    }
+
+    @ExportLibrary(SelfReplacementsLibraryB.class)
+    @SuppressWarnings({"static-method", "truffle-abstract-export"})
+    public static final class SelfReplacementsLibraryImplB3 extends Object {
+
+        @ExportMessage
+        boolean canComputeFactorial() {
+            return true;
+        }
+
+        @ExportMessage
+        double multiply(double a, double b) {
+            return a * b;
+        }
+    }
+
+    @ExpectError({"The following message(s) of library SelfReplacementsLibraryB are abstract and should be exported using:%"})
+    @ExportLibrary(SelfReplacementsLibraryB.class)
+    @SuppressWarnings("static-method")
+    public static final class SelfReplacementsLibraryImplBErr extends Object {
+
+        @ExportMessage
+        boolean canComputeFactorial() {
+            return true;
+        }
+
+        @ExportMessage
+        double multiply(double a, double b) {
+            return a * b;
+        }
     }
 
     interface ExportsType {

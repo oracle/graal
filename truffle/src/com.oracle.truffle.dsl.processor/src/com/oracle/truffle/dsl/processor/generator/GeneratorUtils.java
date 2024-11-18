@@ -208,6 +208,25 @@ public class GeneratorUtils {
         }
     }
 
+    public static void mergeSuppressWarnings(CodeElement<?> element, AnnotationMirror suppressedWarnings) {
+        List<String> newWarnings = ElementUtils.getAnnotationValueList(String.class, suppressedWarnings, "value");
+        mergeSuppressWarnings(element, newWarnings.toArray(new String[newWarnings.size()]));
+    }
+
+    public static void mergeSuppressWarningsFrom(ExecutableElement from, CodeElement<?> to) {
+        AnnotationMirror suppressWarnings = ElementUtils.findAnnotationMirror(from, SuppressWarnings.class);
+        if (suppressWarnings != null) {
+            mergeSuppressWarnings(to, suppressWarnings);
+        }
+        Element enclosingElement = from.getEnclosingElement();
+        if (enclosingElement != null) {
+            suppressWarnings = ElementUtils.findAnnotationMirror(enclosingElement, SuppressWarnings.class);
+            if (suppressWarnings != null) {
+                mergeSuppressWarnings(to, suppressWarnings);
+            }
+        }
+    }
+
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz, ExecutableElement superConstructor) {
         return createConstructorUsingFields(modifiers, clazz, superConstructor, Collections.emptySet());
     }

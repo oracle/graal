@@ -310,6 +310,80 @@ public @interface GenerateLibrary {
          * @since 23.0
          */
         String[] ifExportedAsWarning() default {};
+
+        /**
+         * Specifies a message that is intended to be replaced by this message. If the specified
+         * message is not implemented, a default implementation is generated that delegates to this
+         * message. The message specification can include argument types in parentheses. When
+         * necessary, a custom implementation can be provided by a method specified in
+         * {@link #replaceWith()}.
+         * <p>
+         * The primary use case is to manage transitions from one message to another during the
+         * evolution of a library, where the new message is annotated as a replacement for an older,
+         * deprecated message. For example:
+         * 
+         * <pre>
+         * &#64;GenerateLibrary
+         * public abstract class ArrayLibrary extends Library {
+         *
+         *     &#64;Abstract(ifExported = "isArray")
+         *     &#64;Deprecated
+         *     public int read(Object receiver, int index) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         *
+         *     &#64;Abstract(ifExported = "isArray", replacementFor = "read(Object, int)")
+         *     public int read(Object receiver, long index) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         * }
+         * </pre>
+         *
+         * In this example, the read message with a long index replaces the read message with an int
+         * index. When only {@code read(Object receiver, long index)} is implemented, the following
+         * message is generated:
+         *
+         * <pre>
+         * public int read(Object receiver, int index) {
+         *     return read(receiver, (long) index);
+         * }
+         * </pre>
+         *
+         * Legacy code can still call the generated message, while implementations only need to
+         * provide the read message with the long argument.
+         *
+         * @see #replaceWith()
+         * @since 25.1
+         */
+        String replacementFor() default "";
+
+        /**
+         * Provides the name of a method that implements the replacement specified by
+         * {@link #replacementFor()}. Use this when automatic trivial delegation cannot be used.
+         * This may be specified only when {@link #replacementFor()} is set.
+         * <p>
+         * In the context of the {@link #replacementFor()} example, the following replacement method
+         * can be provided:
+         *
+         * <pre>
+         * &#64;Abstract(ifExported = "isArray", replacementFor = "read(Object, int)", replacementWith = "readLegacy")
+         * public int read(Object receiver, long unsignedIndex) {
+         *     throw new UnsupportedOperationException();
+         * }
+         *
+         * protected final int readLegacy(Object receiver, int index) {
+         *     long unsignedIndex = Integer.toUnsignedLong(index);
+         *     return read(receiver, unsignedIndex);
+         * }
+         * </pre>
+         *
+         * When the int and long indices are treated as unsigned, the automatic conversion produces
+         * an incorrect result and a customized replacement method is necessary.
+         *
+         * @see #replacementFor()
+         * @since 25.1
+         */
+        String replaceWith() default "";
     }
 
     /**

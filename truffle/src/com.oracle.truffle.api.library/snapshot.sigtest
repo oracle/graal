@@ -78,6 +78,8 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.library
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.String replaceWith()
+meth public abstract !hasdefault java.lang.String replacementFor()
 meth public abstract !hasdefault java.lang.String[] ifExported()
 meth public abstract !hasdefault java.lang.String[] ifExportedAsWarning()
 
