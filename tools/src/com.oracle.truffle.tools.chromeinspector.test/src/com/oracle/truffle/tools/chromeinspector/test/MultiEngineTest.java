@@ -53,6 +53,10 @@ import static org.junit.Assert.fail;
 import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.tools.utils.java_websocket.client.WebSocketClient;
 import com.oracle.truffle.tools.utils.java_websocket.handshake.ServerHandshake;
@@ -65,7 +69,14 @@ import org.graalvm.polyglot.Value;
 /**
  * Test handling of multiple engines by the Inspector.
  */
+@RunWith(Parameterized.class)
 public class MultiEngineTest extends EnginesGCedTest {
+    @Parameters(name = "useBytecode={0}")
+    public static List<Boolean> getParameters() {
+        return List.of(false, true);
+    }
+
+    @Parameter(0) public Boolean useBytecode;
 
     private static final String[] INITIAL_MESSAGES = {
                     "{\"id\":1,\"method\":\"Runtime.enable\"}",
@@ -281,7 +292,7 @@ public class MultiEngineTest extends EnginesGCedTest {
     private String runEngine(Source src, AtomicInteger port, String path, OutputStream out, CountDownLatch isUp) {
         try (Engine e = Engine.newBuilder().option("inspect", Integer.toString(port.get())).option("inspect.Path", path).err(out).build()) {
             addEngineReference(e);
-            Context c = Context.newBuilder().engine(e).allowAllAccess(true).build();
+            Context c = Context.newBuilder().engine(e).option("sl.UseBytecode", Boolean.toString(useBytecode)).allowAllAccess(true).build();
             if (port.get() == 0) {
                 port.set(InspectorAddressTest.parseWSPort(out.toString()));
             }

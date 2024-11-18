@@ -75,12 +75,24 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
         getMessagesForModification().add(new Message(null, null, null, this, String.format(text, params), Kind.WARNING, null));
     }
 
+    public final void addWarning(Element enclosedElement, String text, Object... params) {
+        getMessagesForModification().add(new Message(null, null, enclosedElement, this, String.format(text, params), Kind.WARNING, null));
+    }
+
     public final void addSuppressableWarning(String suppressionKey, String text, Object... params) {
         getMessagesForModification().add(new Message(null, null, null, this, String.format(text, params), Kind.WARNING, suppressionKey));
     }
 
+    public final void addSuppressableWarning(String suppressionKey, AnnotationMirror mirror, AnnotationValue value, String text, Object... params) {
+        getMessagesForModification().add(new Message(mirror, value, null, this, String.format(text, params), Kind.WARNING, suppressionKey));
+    }
+
     public final void addWarning(AnnotationValue value, String text, Object... params) {
         getMessagesForModification().add(new Message(null, value, null, this, String.format(text, params), Kind.WARNING, null));
+    }
+
+    public final void addWarning(AnnotationMirror mirror, AnnotationValue value, String text, Object... params) {
+        getMessagesForModification().add(new Message(mirror, value, null, this, String.format(text, params), Kind.WARNING, null));
     }
 
     public final void addSuppressableWarning(String suppressionKey, AnnotationValue value, String text, Object... params) {

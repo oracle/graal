@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.api.nodes;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -127,6 +128,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 0.8 or earlier
  */
+// @DefaultSymbol("$rootNode")
 public abstract class RootNode extends ExecutableNode {
 
     private static final AtomicReferenceFieldUpdater<RootNode, ReentrantLock> LOCK_UPDATER = AtomicReferenceFieldUpdater.newUpdater(RootNode.class, ReentrantLock.class, "lock");
@@ -585,6 +587,52 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected boolean isTrivial() {
         return false;
+    }
+
+    /**
+     * Prepares a root node for use with the Truffle instrumentation framework. This is similar to
+     * materialization of syntax nodes in an InstrumentableNode, but this method should be preferred
+     * if the root node is updated as a whole and the individual materialization of nodes is not
+     * needed. Another advantage of this method is that it is always invoked before
+     * {@link #getSourceSection()} by the instrumentation framework. This allows to perform the
+     * materialization of sources and tags in one operation.
+     * <p>
+     * This method is invoked repeatedly and should not perform any operation if a set of tags was
+     * already prepared before. In other words, this method should stabilize and eventually not
+     * perform any operation if the same tags were observed before.
+     *
+     * @since 24.2
+     */
+    protected void prepareForInstrumentation(@SuppressWarnings("unused") Set<Class<?>> tags) {
+        // no default implementation
+    }
+
+    /**
+     * Returns an instrumentable call node from a node and frame. By default, returns the given
+     * <code>callNode</code>. If the returned node is not instrumentable, the
+     * {@link Node#getParent() parent} chain of the node may be traversed until an instrumentable
+     * node is found (thus, the returned node should be adopted).
+     * <p>
+     * This method should be implemented if the instrumentable call node is not reachable through
+     * the {@link Node#getParent() parent} chain of a {@link FrameInstance#getCallNode() call node}.
+     * For example, in bytecode interpreters instrumentable nodes may be stored in a side data
+     * structure and the instrumentable node must be looked up using the bytecode index. This method
+     * is intended to be overridden to implement specify such behavior.
+     * <p>
+     * A {@link Frame frame} parameter is only provided if {@link #isCaptureFramesForTrace(boolean)}
+     * returns <code>true</code>. If the frame is not captured then the frame parameter is
+     * <code>null</code>.
+     * <p>
+     * The <code>bytecodeIndex</code> parameter takes on the value produced by calling
+     * {@link #findBytecodeIndex(Node, Frame)} (<code>-1</code> unless overridden).
+     *
+     * @param callNode the top-most node of the activation or <code>null</code>
+     * @param frame the current frame of the activation or <code>null</code>
+     * @param bytecodeIndex the current bytecode index of the activation or a negative number
+     * @since 24.2
+     */
+    protected Node findInstrumentableCallNode(Node callNode, Frame frame, int bytecodeIndex) {
+        return callNode;
     }
 
     /**
