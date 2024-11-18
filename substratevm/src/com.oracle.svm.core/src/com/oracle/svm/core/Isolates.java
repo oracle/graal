@@ -54,6 +54,12 @@ public class Isolates {
     public static final String IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME = "__svm_heap_writable_patched_begin";
     public static final String IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME = "__svm_heap_writable_patched_end";
 
+    /*
+     * The values that are stored in the image heap symbols are either unaligned or at most aligned
+     * to the build-time page size. When using these values at run-time (e.g., for changing the
+     * memory access protection of the image heap), it may be necessary to round them to a multiple
+     * of the run-time page size.
+     */
     public static final CGlobalData<Word> IMAGE_HEAP_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_END_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_RELOCATABLE_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME);
