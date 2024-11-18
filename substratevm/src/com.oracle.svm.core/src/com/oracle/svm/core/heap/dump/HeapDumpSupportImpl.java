@@ -132,8 +132,9 @@ public class HeapDumpSupportImpl extends HeapDumping {
     }
 
     @Override
-    public void dumpHeap(String filename, boolean gcBefore) throws IOException {
-        RawFileDescriptor fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
+    public void dumpHeap(String filename, boolean gcBefore, boolean overwrite) throws IOException {
+        FileCreationMode creationMode = overwrite ? FileCreationMode.CREATE_OR_REPLACE : FileCreationMode.CREATE;
+        RawFileDescriptor fd = getFileSupport().create(filename, creationMode, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {
             throw new IOException("Could not create the heap dump file: " + filename);
         }

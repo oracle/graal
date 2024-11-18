@@ -325,8 +325,9 @@ public class NativeMemoryTracking {
         };
     }
 
-    private void printStatistics() {
+    public void printStatistics() {
         if (VMInspectionOptions.PrintNMTStatistics.getValue()) {
+            System.out.println();
             System.out.println(generateReportString());
         }
     }
@@ -335,7 +336,6 @@ public class NativeMemoryTracking {
         String lineBreak = System.lineSeparator();
 
         StringBuilder result = new StringBuilder(3000);
-        result.append(lineBreak);
         result.append("Native memory tracking").append(lineBreak).append(lineBreak);
 
         result.append("Total").append(lineBreak);

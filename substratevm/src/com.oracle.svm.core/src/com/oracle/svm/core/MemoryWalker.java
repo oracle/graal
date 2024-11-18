@@ -40,7 +40,9 @@ public final class MemoryWalker {
     /** A set of access methods for visiting regions of the native image heap. */
     public interface NativeImageHeapRegionAccess<T> {
 
-        UnsignedWord getStart(T region);
+        Object getFirstObject(T region);
+
+        Object getLastObject(T region);
 
         UnsignedWord getSize(T region);
 
