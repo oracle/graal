@@ -43,11 +43,14 @@ package com.oracle.truffle.sl.nodes.expression;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.bytecode.OperationProxy;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
@@ -59,10 +62,11 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * the code simple.
  */
 @NodeInfo(shortName = "/")
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLDivNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected long doLong(long left, long right) throws ArithmeticException {
+    public static long doLong(long left, long right) throws ArithmeticException {
         long result = left / right;
         /*
          * The division overflows if left is Long.MIN_VALUE and right is -1.
@@ -73,15 +77,15 @@ public abstract class SLDivNode extends SLBinaryNode {
         return result;
     }
 
-    @Specialization
+    @Specialization(replaces = "doLong")
     @TruffleBoundary
-    protected SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
+    public static SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
         return new SLBigInteger(left.getValue().divide(right.getValue()));
     }
 
     @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
     @TruffleBoundary
-    protected SLBigInteger doInteropBigInteger(Object left, Object right,
+    public static SLBigInteger doInteropBigInteger(Object left, Object right,
                     @CachedLibrary("left") InteropLibrary leftLibrary,
                     @CachedLibrary("right") InteropLibrary rightLibrary) {
         try {
@@ -92,7 +96,7 @@ public abstract class SLDivNode extends SLBinaryNode {
     }
 
     @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw SLException.typeError(this, left, right);
+    public static Object typeError(Object left, Object right, @Bind Node node) {
+        throw SLException.typeError(node, "/", left, right);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,7 @@ public abstract class SLGetSizeBuiltin extends SLBuiltinNode {
         try {
             return arrays.getArraySize(obj);
         } catch (UnsupportedMessageException e) {
-            throw new SLException("Element is not a valid array.", this);
+            throw SLException.create("Element is not a valid array.", this);
         }
     }
 }

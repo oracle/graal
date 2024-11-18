@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.sl.SLLanguage;
 
-public class SLSharedCodeSeparatedEnvTest {
+public class SLSharedCodeSeparatedEnvTest extends AbstractSLTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -71,25 +71,26 @@ public class SLSharedCodeSeparatedEnvTest {
     private ByteArrayOutputStream os1;
     private ByteArrayOutputStream os2;
     private Engine engine;
-    private Context e1;
-    private Context e2;
+    private Context c1;
+    private Context c2;
 
     @Before
     public void initializeEngines() {
+        int instances = SLLanguage.counter;
+
         osRuntime = new ByteArrayOutputStream();
-        engine = Engine.newBuilder().out(osRuntime).err(osRuntime).build();
+        engine = newEngineBuilder().out(osRuntime).err(osRuntime).build();
 
         os1 = new ByteArrayOutputStream();
         os2 = new ByteArrayOutputStream();
 
-        int instances = SLLanguage.counter;
         // @formatter:off
-        e1 = Context.newBuilder("sl").engine(engine).out(os1).allowPolyglotAccess(PolyglotAccess.ALL).build();
-        e1.getPolyglotBindings().putMember("extra", 1);
-        e2 = Context.newBuilder("sl").engine(engine).out(os2).allowPolyglotAccess(PolyglotAccess.ALL).build();
-        e2.getPolyglotBindings().putMember("extra", 2);
-        e1.initialize("sl");
-        e2.initialize("sl");
+        c1 = newContextBuilder("sl").engine(engine).out(os1).allowPolyglotAccess(PolyglotAccess.ALL).build();
+        c1.getPolyglotBindings().putMember("extra", 1);
+        c2 = newContextBuilder("sl").engine(engine).out(os2).allowPolyglotAccess(PolyglotAccess.ALL).build();
+        c2.getPolyglotBindings().putMember("extra", 2);
+        c1.initialize("sl");
+        c2.initialize("sl");
         assertEquals("One SLLanguage instance created", instances + 1, SLLanguage.counter);
     }
 
@@ -107,18 +108,18 @@ public class SLSharedCodeSeparatedEnvTest {
             "}";
         // @formatter:on
 
-        e1.eval("sl", sayHello);
+        c1.eval("sl", sayHello);
         assertEquals("Ahoj1\n", toUnixString(os1));
         assertEquals("", toUnixString(os2));
 
-        e2.eval("sl", sayHello);
+        c2.eval("sl", sayHello);
         assertEquals("Ahoj1\n", toUnixString(os1));
         assertEquals("Ahoj2\n", toUnixString(os2));
     }
 
     @Test
     public void instrumentsSeeOutputOfBoth() throws Exception {
-        Instrument outInstr = e2.getEngine().getInstruments().get("captureOutput");
+        Instrument outInstr = c2.getEngine().getInstruments().get("captureOutput");
         ByteArrayOutputStream outConsumer = outInstr.lookup(ByteArrayOutputStream.class);
         assertNotNull("Stream capturing is ready", outConsumer);
 
@@ -127,11 +128,11 @@ public class SLSharedCodeSeparatedEnvTest {
                         "}";
         // @formatter:on
 
-        e1.eval("sl", sayHello);
+        c1.eval("sl", sayHello);
         assertEquals("Ahoj1\n", toUnixString(os1));
         assertEquals("", toUnixString(os2));
 
-        e2.eval("sl", sayHello);
+        c2.eval("sl", sayHello);
         assertEquals("Ahoj1\n", toUnixString(os1));
         assertEquals("Ahoj2\n", toUnixString(os2));
 

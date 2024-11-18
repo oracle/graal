@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,27 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.sl.test;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.sl.SLException;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-public final class SLUndefinedNameException extends SLException {
+@RunWith(SLTestRunner.class)
+@SLTestSuite(value = {"tests"}, options = {"sl.UseBytecode", "true", "sl.ForceBytecodeTier", "UNCACHED"})
+public class SLTestSuiteBytecodeUncached {
 
-    private static final long serialVersionUID = 1L;
-
-    @TruffleBoundary
-    public static SLUndefinedNameException undefinedFunction(Node location, Object name) {
-        throw new SLUndefinedNameException("Undefined function: " + name, location);
+    public static void main(String[] args) throws Exception {
+        SLTestRunner.runInMain(SLTestSuiteBytecodeUncached.class, args);
     }
 
-    @TruffleBoundary
-    public static SLUndefinedNameException undefinedProperty(Node location, Object name) {
-        throw new SLUndefinedNameException("Undefined property: " + name, location);
-    }
-
-    private SLUndefinedNameException(String message, Node node) {
-        super(message, node);
+    /*
+     * Our "mx unittest" command looks for methods that are annotated with @Test. By just defining
+     * an empty method, this class gets included and the test suite is properly executed.
+     */
+    @Test
+    public void unittest() {
     }
 }
