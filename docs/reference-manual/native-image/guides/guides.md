@@ -30,7 +30,7 @@ Here you will learn how to:
 - [Include Reachability Metadata Using the Native Image Gradle Plugin](include-reachability-metadata-gradle.md)
 - [Include Reachability Metadata Using the Native Image Maven Plugin](include-reachability-metadata-maven.md)
 - [Include Resources in a Native Executable](include-resources.md)
-- [Optimize a Native Executable with Profile-Guided Optimizations](optimize-native-executable-with-pgo.md)
+- [Optimize a Native Executable with Profile-Guided Optimization](optimize-native-executable-with-pgo.md)
 - [Optimize a Native Executable for File Size](optimize-file-size.md)
 - [Specify Class Initialization Explicitly](specify-class-initialization.md)
 - [Use Gradle to Build a Native Executable from a Java Application](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html)
