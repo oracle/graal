@@ -203,13 +203,18 @@ public abstract class ImageHeapScanner {
         return data;
     }
 
-    void markTypeInstantiated(AnalysisType type, ScanReason reason) {
-        if (universe.sealed()) {
-            AnalysisError.guarantee(type.isReachable(), "The type %s should have been reachable during analysis.", type);
-            AnalysisError.guarantee(type.isInstantiated(), "The type %s should have been instantiated during analysis.", type);
-        } else {
-            type.registerAsInstantiated(reason);
+    void markTypeReachable(AnalysisType type, ScanReason reason) {
+        if (universe.sealed() && !type.isReachable()) {
+            throw AnalysisError.typeNotFound(type);
         }
+        type.registerAsReachable(reason);
+    }
+
+    void markTypeInstantiated(AnalysisType type, ScanReason reason) {
+        if (universe.sealed() && !type.isInstantiated()) {
+            throw AnalysisError.typeNotFound(type);
+        }
+        type.registerAsInstantiated(reason);
     }
 
     public JavaConstant getImageHeapConstant(JavaConstant constant) {
@@ -278,9 +283,9 @@ public abstract class ImageHeapScanner {
         return existingTask instanceof ImageHeapConstant ? (ImageHeapConstant) existingTask : ((AnalysisFuture<ImageHeapConstant>) existingTask).ensureDone();
     }
 
-    private static void ensureFieldPositionsComputed(ImageHeapConstant baseLayerConstant, ScanReason reason) {
+    private void ensureFieldPositionsComputed(ImageHeapConstant baseLayerConstant, ScanReason reason) {
         AnalysisType objectType = baseLayerConstant.getType();
-        objectType.registerAsReachable(reason);
+        markTypeReachable(objectType, reason);
         objectType.getStaticFields();
         objectType.getInstanceFields(true);
     }
@@ -331,7 +336,7 @@ public abstract class ImageHeapScanner {
         /* Read hosted array element values only when the array is initialized. */
         array.constantData.hostedValuesReader = new AnalysisFuture<>(() -> {
             checkSealed(reason, "Trying to materialize an ImageHeapObjectArray for %s after the ImageHeapScanner is sealed.", constant);
-            type.registerAsReachable(reason);
+            markTypeReachable(type, reason);
             ScanReason arrayReason = new ArrayScan(type, array, reason);
             Object[] elementValues = new Object[length];
             for (int idx = 0; idx < length; idx++) {
@@ -367,10 +372,10 @@ public abstract class ImageHeapScanner {
             /* If this is a Class constant register the corresponding type as reachable. */
             AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(instance);
             if (typeFromClassConstant != null) {
-                typeFromClassConstant.registerAsReachable(reason);
+                markTypeReachable(typeFromClassConstant, reason);
             }
             /* We are about to query the type's fields, the type must be marked as reachable. */
-            type.registerAsReachable(reason);
+            markTypeReachable(type, reason);
             ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
             Object[] hostedFieldValues = new Object[instanceFields.length];
             for (ResolvedJavaField javaField : instanceFields) {
