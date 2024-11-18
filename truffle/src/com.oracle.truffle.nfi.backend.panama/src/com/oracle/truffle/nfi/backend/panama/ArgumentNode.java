@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,7 +159,7 @@ abstract class ArgumentNode extends Node {
 
         @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
         static long putGeneric(Object arg,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @CachedLibrary("arg") InteropLibrary interop,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {

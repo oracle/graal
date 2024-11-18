@@ -237,7 +237,7 @@ abstract class DynamicObjectLibraryImpl {
     @ExportMessage
     @SuppressWarnings("unused")
     public static boolean setDynamicType(DynamicObject object, Object objectType,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached SetDynamicTypeNode setCache) {
         return setCache.execute(node, object, cachedShape, objectType);
@@ -251,7 +251,7 @@ abstract class DynamicObjectLibraryImpl {
 
     @ExportMessage
     public static boolean setShapeFlags(DynamicObject object, @SuppressWarnings("unused") int flags,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached SetFlagsNode setCache) {
         return setCache.execute(node, object, cachedShape, flags);
@@ -265,7 +265,7 @@ abstract class DynamicObjectLibraryImpl {
 
     @ExportMessage
     public static void markShared(DynamicObject object,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached MakeSharedNode setCache) {
         setCache.execute(node, object, cachedShape);
@@ -288,7 +288,7 @@ abstract class DynamicObjectLibraryImpl {
 
     @ExportMessage
     public static boolean resetShape(DynamicObject object, Shape otherShape,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached ResetShapeNode setCache) {
         return setCache.execute(node, object, cachedShape, otherShape);

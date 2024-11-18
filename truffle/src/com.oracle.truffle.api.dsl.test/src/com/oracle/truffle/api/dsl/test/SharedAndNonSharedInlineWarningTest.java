@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,7 +92,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object mixProfilesWithoutDataClass(int a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlinedBranchProfile exclusiveBranch) {
             sharedBranch.enter(node);
@@ -102,7 +102,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object dummy(double a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile sharedBranch) {
             sharedBranch.enter(node);
             return a;
@@ -116,7 +116,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object mixProfilesWithoutDataClass(int a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Exclusive @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlinedBranchProfile exclusiveBranch) {
             sharedBranch.enter(node);
@@ -126,7 +126,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object dummy(double a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Exclusive @Cached InlinedBranchProfile sharedBranch) {
             sharedBranch.enter(node);
             return a;
@@ -140,7 +140,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object mixProfilesWithoutDataClass(int a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlineNode exclusiveNode) {
             sharedBranch.enter(node);
@@ -150,7 +150,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object dummy(double a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile sharedBranch) {
             sharedBranch.enter(node);
             return a;
@@ -164,7 +164,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object mixWithoutDataClass(int a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlineNode sharedNode,
                         @Exclusive @Cached InlineNode exclusiveNode) {
             sharedNode.execute(node, a);
@@ -174,7 +174,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object dummy(double a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlineNode sharedNode) {
             sharedNode.execute(node, a);
             return a;
@@ -191,7 +191,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object dummy(double a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile sharedBranch) {
             sharedBranch.enter(node);
             return a;
@@ -200,7 +200,7 @@ public class SharedAndNonSharedInlineWarningTest {
         @Specialization
         @ExpectWarning(EXPECTED_WARNING)
         static Object mixWithDataClass(int a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlinedBranchProfile exclusiveBranch,
                         @SuppressWarnings("unused") @Cached IndirectCallNode cachedNode1,
@@ -220,7 +220,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object dummy(double a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Exclusive @Cached InlinedBranchProfile sharedBranch) {
             sharedBranch.enter(node);
             return a;
@@ -228,7 +228,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object mixWithDataClass(int a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Exclusive @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlinedBranchProfile exclusiveBranch,
                         @SuppressWarnings("unused") @Cached IndirectCallNode cachedNode1,
@@ -248,7 +248,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object dummy(double a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile sharedBranch) {
             sharedBranch.enter(node);
             return a;
@@ -257,7 +257,7 @@ public class SharedAndNonSharedInlineWarningTest {
         @Specialization
         @ExpectWarning(EXPECTED_WARNING)
         static Object mixWithDataClass(int a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlinedBranchProfile sharedBranch,
                         @Exclusive @Cached InlineNode exclusiveNode,
                         @SuppressWarnings("unused") @Cached IndirectCallNode cachedNode1,
@@ -277,7 +277,7 @@ public class SharedAndNonSharedInlineWarningTest {
 
         @Specialization
         static Object dummy(double a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlineNode sharedNode) {
             sharedNode.execute(node, a);
             return a;
@@ -286,7 +286,7 @@ public class SharedAndNonSharedInlineWarningTest {
         @Specialization
         @ExpectWarning(EXPECTED_WARNING)
         static Object mixWithDataClass(int a,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Shared @Cached InlineNode sharedNode,
                         @Exclusive @Cached InlineNode exclusiveNode,
                         @SuppressWarnings("unused") @Cached IndirectCallNode cachedNode1,

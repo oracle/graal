@@ -3137,7 +3137,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 return objects.isDate(receiver);
             }
@@ -3161,7 +3161,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3194,7 +3194,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 return objects.isTime(receiver);
             }
@@ -3218,7 +3218,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3251,7 +3251,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 return objects.isTimeZone(receiver);
             }
@@ -3275,7 +3275,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3308,7 +3308,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 return objects.isDuration(receiver);
             }
@@ -3332,7 +3332,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3366,7 +3366,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3449,7 +3449,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary natives) {
                 return natives.isPointer(receiver);
             }
@@ -3474,7 +3474,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary natives,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3504,7 +3504,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary arrays) {
                 return arrays.hasArrayElements(receiver);
             }
@@ -3529,7 +3529,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported) {
@@ -3560,7 +3560,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary arrays,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -3595,7 +3595,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary arrays,
                             @Cached(inline = true) ToGuestValueNode toGuestValue,
                             @Cached InlinedBranchProfile unsupported,
@@ -3637,7 +3637,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary arrays,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidIndex) {
@@ -3676,7 +3676,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary arrays,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3708,7 +3708,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary buffers) {
                 return buffers.hasBufferElements(receiver);
             }
@@ -3733,7 +3733,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3764,7 +3764,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -3795,7 +3795,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -3832,7 +3832,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -3871,7 +3871,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidIndex,
@@ -3913,7 +3913,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -3950,7 +3950,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidIndex,
@@ -3993,7 +3993,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -4030,7 +4030,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidIndex,
@@ -4073,7 +4073,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -4110,7 +4110,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidIndex,
@@ -4153,7 +4153,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -4190,7 +4190,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidIndex) {
@@ -4232,7 +4232,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, //
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -4268,7 +4268,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary buffers,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile invalidIndex,
@@ -4312,7 +4312,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -4356,7 +4356,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary objects,
                             @Cached(inline = true) ToGuestValueNode toGuestValue,
                             @Cached InlinedBranchProfile unsupported,
@@ -4399,7 +4399,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached InlinedBranchProfile unsupported,
                             @Cached InlinedBranchProfile unknown) {
@@ -4448,7 +4448,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary values) {
                 return values.isNull(receiver);
             }
@@ -4472,7 +4472,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 return objects.hasMembers(receiver);
             }
@@ -4504,7 +4504,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 String key = (String) args[ARGUMENT_OFFSET];
                 return objects.isMemberExisting(receiver, key);
@@ -4523,7 +4523,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 String key = (String) args[ARGUMENT_OFFSET];
                 return objects.isMemberInvocable(receiver, key);
@@ -4548,7 +4548,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary executables) {
                 return executables.isExecutable(receiver);
             }
@@ -4572,7 +4572,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary instantiables) {
                 return instantiables.isInstantiable(receiver);
             }
@@ -4725,7 +4725,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary instantiables,
                             @Cached ToGuestValuesNode toGuestValues,
                             @Cached ToHostValueNode toHostValue,
@@ -4857,7 +4857,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 return objects.isException(receiver);
             }
@@ -4880,7 +4880,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -4909,7 +4909,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects) {
                 return objects.isMetaObject(receiver);
             }
@@ -4932,7 +4932,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @CachedLibrary(limit = "1") InteropLibrary toString,
                             @Cached InlinedBranchProfile unsupported) {
@@ -4962,7 +4962,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+            static String doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @CachedLibrary(limit = "1") InteropLibrary toString,
                             @Cached InlinedBranchProfile unsupported) {
@@ -4993,7 +4993,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached(inline = true) ToGuestValueNode toGuest,
                             @Cached InlinedBranchProfile unsupported) {
@@ -5023,7 +5023,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+            static boolean doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached InlinedBranchProfile unsupported) {
                 return objects.hasMetaParents(receiver);
@@ -5047,7 +5047,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node,
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary objects,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported) {
@@ -5077,7 +5077,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary iterators) {
                 return iterators.hasIterator(receiver);
             }
@@ -5100,7 +5100,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary iterators,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported) {
@@ -5130,7 +5130,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary iterators) {
                 return iterators.isIterator(receiver);
             }
@@ -5153,7 +5153,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary iterators,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -5182,7 +5182,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary iterators,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported,
@@ -5216,7 +5216,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary hashes) {
                 return hashes.hasHashEntries(receiver);
             }
@@ -5239,7 +5239,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached InlinedBranchProfile unsupported) {
                 try {
@@ -5269,7 +5269,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached(inline = true) ToGuestValueNode toGuestKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
@@ -5296,7 +5296,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached(inline = true) ToGuestValueNode toGuestKey,
                             @Cached ToHostValueNode toHost,
@@ -5337,7 +5337,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached(inline = true) ToGuestValueNode toGuestKey,
                             @Cached(inline = true) ToGuestValueNode toGuestDefaultValue,
@@ -5374,7 +5374,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached(inline = true) ToGuestValueNode toGuestKey,
                             @Cached(inline = true) ToGuestValueNode toGuestValue,
@@ -5415,7 +5415,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached(inline = true) ToGuestValueNode toGuestKey,
                             @Cached InlinedBranchProfile unsupported,
@@ -5458,7 +5458,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported) {
@@ -5488,7 +5488,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported) {
@@ -5518,7 +5518,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
 
             @Specialization(limit = "CACHE_LIMIT")
-            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind("this") Node node, //
+            static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args, @Bind Node node, //
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached ToHostValueNode toHost,
                             @Cached InlinedBranchProfile unsupported) {
