@@ -10,6 +10,7 @@ At runtime, premain runtime options are set along with main class' arguments in 
   The warning is planned to be replaced by an error in GraalVM for JDK 25.
 * (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
 * (GR-49517) Add support for emitting Windows x64 unwind info. This enables stack walking in native tooling such as debuggers and profilers.
+* (GR-52576) Optimize FFM API upcalls for specifiable static upcall target methods.
 * (GR-56599) Update native image debuginfo from DWARF4 to DWARF5 and store type information for debugging in DWARF type units.
 * (GR-56601) Together with Red Hat, we added experimental support for `jcmd` on Linux and macOS. Add `--enable-monitoring=jcmd` to your build arguments to try it out.
 * (GR-57384) Preserve the origin of a resource included in a native image. The information is included in the report produced by -H:+GenerateEmbeddedResourcesFile.
