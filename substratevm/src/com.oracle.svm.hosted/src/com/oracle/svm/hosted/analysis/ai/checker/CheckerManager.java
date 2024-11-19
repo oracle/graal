@@ -7,7 +7,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class CheckerManager {
-    private final List<Checker> checkers = new ArrayList<>();
+    private final List<Checker<?>> checkers = new ArrayList<>();
     private final ExecutorService executorService;
 
     public CheckerManager() {
@@ -18,14 +18,14 @@ public class CheckerManager {
         this.executorService = Executors.newFixedThreadPool(numberOfThreads);
     }
 
-    public void registerChecker(Checker checker) {
+    public void registerChecker(Checker<?> checker) {
         checkers.add(checker);
     }
 
     public void runAllAnalyses() throws InterruptedException {
         List<Future<?>> futures = new ArrayList<>();
-        for (Checker checker : checkers) {
-            futures.add(executorService.submit(checker::runAnalysis));
+        for (Checker<?> checker : checkers) {
+            futures.add(executorService.submit(checker::check));
         }
         for (Future<?> future : futures) {
             try {
