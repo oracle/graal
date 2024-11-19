@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix.linux;
 
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -76,7 +77,7 @@ class ProcFSSupport {
         UnsignedWord fileOffset = WordFactory.zero();
         OUT: for (;;) {
             while (position == endOffset) { // fill buffer
-                int readBytes = PosixUtils.readBytes(fd, buffer, bufferLen, readOffset);
+                int readBytes = PosixUtils.readUninterruptibly(fd, (Pointer) buffer, bufferLen, readOffset);
                 if (readBytes <= 0) {
                     return false; // read failure or 0 == EOF -> not matched
                 }

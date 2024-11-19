@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -321,8 +322,14 @@ public abstract class NativeImageCodeCache {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders(true, clazz -> {
-            if (clazz != null && !imageHeap.hMetaAccess.optionalLookupJavaType(clazz).isPresent()) {
-                throw VMError.shouldNotReachHere("Type added to the runtime metadata without being seen by the analysis: %s", clazz);
+            if (clazz != null) {
+                Optional<HostedType> hostedType = imageHeap.hMetaAccess.optionalLookupJavaType(clazz);
+                if (hostedType.isPresent()) {
+                    boolean reachable = hostedType.get().getWrapped().isReachable();
+                    VMError.guarantee(reachable, "Type added to the runtime metadata was seen by the analysis, but not marked as reachable: %s", clazz);
+                } else {
+                    throw VMError.shouldNotReachHere("Type added to the runtime metadata without being seen by the analysis: %s", clazz);
+                }
             }
         });
         HostedConstantAccess hostedConstantAccess = new HostedConstantAccess(snippetReflection);

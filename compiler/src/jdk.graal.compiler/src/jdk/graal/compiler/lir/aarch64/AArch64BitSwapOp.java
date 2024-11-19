@@ -36,7 +36,7 @@ import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/79345bbbae2564f9f523859d1227a1784293b20f/src/hotspot/cpu/aarch64/aarch64.ad#L13507-L13531",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d52d13648612546ef4458579aff6daf965586a03/src/hotspot/cpu/aarch64/aarch64.ad#L13508-L13532",
           sha1 = "5e7655c00a9d610fa3c992305c0f6aeba32b2d6c")
 // @formatter:on
 public class AArch64BitSwapOp extends AArch64LIRInstruction {

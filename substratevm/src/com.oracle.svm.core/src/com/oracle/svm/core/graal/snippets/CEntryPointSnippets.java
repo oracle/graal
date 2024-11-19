@@ -323,6 +323,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
     private static int createIsolate0(Isolate isolate, IsolateArguments arguments) {
+        assert Heap.getHeap().verifyImageHeapMapping();
         IsolateArgumentParser.singleton().persistOptions(arguments);
         IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
