@@ -32,7 +32,9 @@ import static jdk.graal.compiler.bytecode.Bytecodes.INVOKEVIRTUAL;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -79,10 +81,15 @@ public final class LambdaUtils {
     public static String findStableLambdaName(ResolvedJavaType lambdaType) {
         ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods(false)).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
         /*
-         * Take only the first method to find invoked methods, because the result would be the same
-         * for all other methods.
+         * Traverse all methods in lambda class for invokes because it is possible a javaagent may
+         * inject new methods into the lambda class. For example, Byte-buddy used by OTele can
+         * transform all classes that implements {@link java.util.concurrent.Callable} by injecting
+         * new methods that may not have any invokes.
          */
-        List<JavaMethod> invokedMethods = findInvokedMethods(lambdaProxyMethods[0]);
+        Set<JavaMethod> invokedMethods = new HashSet<>();
+        for (int i = 0; i < lambdaProxyMethods.length; i++) {
+            invokedMethods.addAll(findInvokedMethods(lambdaProxyMethods[i]));
+        }
         if (invokedMethods.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("Lambda without a target invoke: ").append(lambdaType.toClassName());
@@ -141,7 +148,7 @@ public final class LambdaUtils {
         return isLambdaClassName(name) && lambdaMatcher(name).find();
     }
 
-    private static String createStableLambdaName(ResolvedJavaType lambdaType, List<JavaMethod> targetMethods) {
+    private static String createStableLambdaName(ResolvedJavaType lambdaType, Set<JavaMethod> targetMethods) {
         final String lambdaName = lambdaType.getName();
         assert lambdaMatcher(lambdaName).find() : "Stable name should be created for lambda types: " + lambdaName;
 
