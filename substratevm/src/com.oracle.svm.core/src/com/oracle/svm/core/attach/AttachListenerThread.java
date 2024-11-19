@@ -96,7 +96,7 @@ public abstract class AttachListenerThread extends Thread {
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L383-L420")
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticFramework.cpp#L422-L439")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+24/src/hotspot/share/services/diagnosticFramework.cpp#L422-L439")
     private static String parseAndExecute(String input) throws Throwable {
         String[] args = StringUtil.split(input, " ");
         String cmdName = args[0];
