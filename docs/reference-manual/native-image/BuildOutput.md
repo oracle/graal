@@ -288,6 +288,11 @@ Use the [Tracing Agent](AutomaticMetadataCollection.md) to collect such metadata
 Otherwise, your application is unlikely to work properly.
 If your application is not a desktop application (for example using Swing or AWT directly), you may want to re-evaluate whether the dependency on AWT is actually needed.
 
+#### <a name="recommendation-home"></a>`HOME`: Set `java.home` When Running the Binary
+
+The Native Image analysis has detected the usage of `System.getProperty("java.home")`.
+To ensure it returns a valid value, set `java.home` by passing the `-Djava.home=<path>` option to the binary. If not set, `System.getProperty("java.home")` will return `null`.
+
 #### <a name="recommendation-cpu"></a>`CPU`: Enable More CPU Features for Improved Performance
 
 The Native Image build process has determined that your CPU supports more features, such as AES or LSE, than currently enabled.

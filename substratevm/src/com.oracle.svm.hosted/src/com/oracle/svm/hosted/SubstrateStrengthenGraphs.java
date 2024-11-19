@@ -45,6 +45,7 @@ import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
 
+import com.oracle.svm.hosted.phases.AnalyzeJavaHomeAccessPhase;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
@@ -61,8 +62,20 @@ import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class SubstrateStrengthenGraphs extends StrengthenGraphs {
 
+    private final Boolean trackJavaHomeAccess;
+    private final Boolean trackJavaHomeAccessDetailed;
+
     public SubstrateStrengthenGraphs(Inflation bb, Universe converter) {
         super(bb, converter);
+        trackJavaHomeAccess = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccess.getValue(bb.getOptions());
+        trackJavaHomeAccessDetailed = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccessDetailed.getValue(bb.getOptions());
+    }
+
+    @Override
+    protected void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
+        if (trackJavaHomeAccess) {
+            new AnalyzeJavaHomeAccessPhase(trackJavaHomeAccessDetailed, bb.getMetaAccess()).apply(graph, bb.getProviders(method));
+        }
     }
 
     @Override
