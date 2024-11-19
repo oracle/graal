@@ -39,4 +39,12 @@ public class Environment<Domain extends AbstractDomain<Domain>> {
     public int getVisitCount(Node node) {
         return getState(node).getVisitedCount();
     }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (Node node : stateMap.keySet()) {
+            sb.append(node).append(" -> ").append(getDomain(node)).append("\n");
+        }
+        return sb.toString();
+    }
 }
