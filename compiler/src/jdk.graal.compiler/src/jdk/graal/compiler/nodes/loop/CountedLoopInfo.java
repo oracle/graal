@@ -615,7 +615,11 @@ public class CountedLoopInfo {
         if (loop.loopBegin().canNeverOverflow()) {
             return true;
         }
-        if (!isLimitIncluded && getLimitCheckedIV().isConstantStride() && Loop.absStrideIsOne(getLimitCheckedIV())) {
+        return ivCanNeverOverflow(getLimitCheckedIV());
+    }
+
+    public boolean ivCanNeverOverflow(InductionVariable iv) {
+        if (!isLimitIncluded && iv.isConstantStride() && Loop.absStrideIsOne(iv)) {
             return true;
         }
         if (loop.loopBegin().isProtectedNonOverflowingUnsigned()) {
@@ -670,7 +674,7 @@ public class CountedLoopInfo {
          */
         // @formatter:on
         IntegerStamp endStamp = (IntegerStamp) getTripCountLimit().stamp(NodeView.DEFAULT);
-        ValueNode strideNode = getLimitCheckedIV().strideNode();
+        ValueNode strideNode = iv.strideNode();
         IntegerStamp strideStamp = (IntegerStamp) strideNode.stamp(NodeView.DEFAULT);
         IntegerHelper integerHelper = getCounterIntegerHelper();
         if (getDirection() == InductionVariable.Direction.Up) {
