@@ -14,7 +14,7 @@ public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Iterates until a fixpoint is reached.
-     * This method performs the fixpoint iteration process and returns the
+     * This method performs the fixpoint iteration algorithm and returns the
      * resulting environment (mapping of StructuredGraph Nodes to a common AbstractDomain)
      * after the analysis is complete.
      *
