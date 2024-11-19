@@ -222,7 +222,6 @@ suite = {
             "native": "shared_lib",
             "deliverable": "nespresso",
             "platformDependent": True,
-            "use_jdk_headers": True,
             "buildDependencies": [
                 "com.oracle.truffle.espresso.mokapot",
             ],
@@ -283,7 +282,6 @@ suite = {
             "native": "shared_lib",
             "deliverable": "jvm",
             "platformDependent": True,
-            "use_jdk_headers": True,
             "os_arch": {
                 "darwin": {
                     "<others>": {

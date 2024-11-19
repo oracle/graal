@@ -37,10 +37,15 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-/* jni_md.h contains the machine-dependent typedefs for jbyte, jint
+/* jni_<platform>.h contains the machine-dependent typedefs for jbyte, jint
    and jlong */
-
-#include "jni_md.h"
+#if defined(_WIN32)
+#include "jni_windows.h"
+#elif defined(__linux__) || defined(__APPLE__)
+#include "jni_unix.h"
+#else
+#error unknown platform
+#endif
 
 #ifdef __cplusplus
 extern "C" {
