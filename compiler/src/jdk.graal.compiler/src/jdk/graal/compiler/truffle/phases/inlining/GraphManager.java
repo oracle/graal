@@ -72,22 +72,21 @@ final class GraphManager {
         this.useSize = TruffleCompilerOptions.InliningUseSize.getValue(rootContext.compilerOptions);
     }
 
+    TruffleTierContext rootContext() {
+        return rootContext;
+    }
+
     @SuppressWarnings("try")
     Entry pe(TruffleCompilable truffleAST) {
         Entry entry = irCache.get(truffleAST);
         if (entry == null) {
             // the guest scope represents the guest language method of truffle
             try (AutoCloseable guestScope = rootContext.debug.scope("Truffle", new TruffleDebugJavaMethod(rootContext.task, truffleAST))) {
-                final PEAgnosticInlineInvokePlugin plugin = newPlugin();
                 final TruffleTierContext context = rootContext.createInlineContext(truffleAST);
                 try (Scope hostScope = context.debug.scope("CreateGraph", context.graph);
                                 Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {
-                    partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
-                    context.graph.getAssumptions().record(new TruffleAssumption(context.getNodeRewritingAssumption(partialEvaluator.getProviders())));
-                    StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
-                    postPartialEvaluationSuite.apply(context.graph, context);
-                    entry = new Entry(context.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(context.graph) : -1);
-                    context.debug.dump(DebugContext.INFO_LEVEL, context.graph, "After PE Tier");
+                    TruffleAssumption nodeRewritingAssumption = new TruffleAssumption(context.getNodeRewritingAssumption(partialEvaluator.getProviders()));
+                    entry = pe(context, nodeRewritingAssumption, DebugContext.INFO_LEVEL);
                 } catch (Throwable e) {
                     throw context.debug.handle(e);
                 }
@@ -99,21 +98,20 @@ final class GraphManager {
         return entry;
     }
 
-    private PEAgnosticInlineInvokePlugin newPlugin() {
-        return new PEAgnosticInlineInvokePlugin(partialEvaluator);
-    }
-
-    TruffleTierContext rootContext() {
-        return rootContext;
-    }
-
     Entry peRoot() {
-        final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-        partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
-        StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
-        postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
-        rootContext.debug.dump(DebugContext.BASIC_LEVEL, rootContext.graph, "After PE Tier");
-        return new Entry(rootContext.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(rootContext.graph) : -1);
+        return pe(rootContext, null, DebugContext.BASIC_LEVEL);
+    }
+
+    private Entry pe(TruffleTierContext context, TruffleAssumption nodeRewritingAssumption, int dumpLevel) {
+        final PEAgnosticInlineInvokePlugin plugin = new PEAgnosticInlineInvokePlugin(partialEvaluator);
+        partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
+        if (nodeRewritingAssumption != null) {
+            context.graph.getAssumptions().record(nodeRewritingAssumption);
+        }
+        final StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
+        postPartialEvaluationSuite.apply(context.graph, context);
+        context.debug.dump(dumpLevel, context.graph, "After PE Tier");
+        return new Entry(context.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(context.graph) : -1);
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, TruffleCompilable truffleAST, InliningUtil.InlineeReturnAction returnAction) {
