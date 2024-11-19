@@ -51,6 +51,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -403,6 +404,7 @@ final class Target_java_lang_System {
     }
 
     @Substitute
+    @NeverInlineTrivial("Used in 'java.home' access analysis: AnalyzeJavaHomeAccessPhase")
     private static String getProperty(String key) {
         checkKey(key);
         return SystemPropertiesSupport.singleton().getProperty(key);
@@ -415,6 +417,7 @@ final class Target_java_lang_System {
     }
 
     @Substitute
+    @NeverInlineTrivial("Used in 'java.home' access analysis: AnalyzeJavaHomeAccessPhase")
     private static String getProperty(String key, String def) {
         String result = getProperty(key);
         return result != null ? result : def;
