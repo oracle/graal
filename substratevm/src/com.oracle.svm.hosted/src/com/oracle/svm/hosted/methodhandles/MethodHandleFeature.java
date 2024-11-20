@@ -106,23 +106,22 @@ public class MethodHandleFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        Class<?> memberNameClass = ReflectionUtil.lookupClass("java.lang.invoke.MemberName");
+        Class<?> memberNameClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MemberName");
         memberNameIsMethod = ReflectionUtil.lookupMethod(memberNameClass, "isMethod");
         memberNameIsConstructor = ReflectionUtil.lookupMethod(memberNameClass, "isConstructor");
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
         memberNameGetMethodType = ReflectionUtil.lookupMethod(memberNameClass, "getMethodType");
 
-<<<<<<< HEAD
         Class<?> lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
         lambdaFormLFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "LF_identity");
         lambdaFormLFZero = ReflectionUtil.lookupField(lambdaFormClass, "LF_zero");
         lambdaFormNFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "NF_identity");
         lambdaFormNFZero = ReflectionUtil.lookupField(lambdaFormClass, "NF_zero");
 
-        Class<?> arrayAccessorClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
+        Class<?> arrayAccessorClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodHandleImpl$ArrayAccessor");
         typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
 
-        Class<?> concurrentWeakInternSetClass = access.findClassByName("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
+        Class<?> concurrentWeakInternSetClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType$ConcurrentWeakInternSet");
         runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
         concurrentWeakInternSetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
 
@@ -134,172 +133,65 @@ public class MethodHandleFeature implements InternalFeature {
             var accessImpl = (DuringSetupAccessImpl) access;
             substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
             accessImpl.registerSubstitutionProcessor(substitutionProcessor);
-=======
-        Class<?> arrayAccessorClass = ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
-        typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
-        Class<?> makersClass = ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl$Makers");
-        typedCollectors = ReflectionUtil.lookupField(makersClass, "TYPED_COLLECTORS");
-
-        if (JavaVersionUtil.JAVA_SPEC >= 22) {
-            try {
-                Class<?> referencedKeySetClass = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeySet");
-                Method create = ReflectionUtil.lookupMethod(referencedKeySetClass, "create", boolean.class, boolean.class, Supplier.class);
-                // The following call must match the static initializer of MethodType#internTable.
-                runtimeMethodTypeInternTable = create.invoke(null,
-                                /* isSoft */ false, /* useNativeQueue */ true, (Supplier<Object>) () -> new ConcurrentHashMap<>(512));
-                referencedKeySetAdd = ReflectionUtil.lookupMethod(referencedKeySetClass, "add", Object.class);
-            } catch (ReflectiveOperationException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        } else {
-            Class<?> concurrentWeakInternSetClass = ReflectionUtil.lookupClass("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
-            runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
-            referencedKeySetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
->>>>>>> 6e859d90dde (Eagerly initialize caches in method handle implementation)
         }
     }
 
     @Override
-<<<<<<< HEAD
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        /* java.lang.invoke functions called through reflection */
-        Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerMHImplFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(mhImplClazz, "getFunction", byte.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerMHImplConstantHandlesForReflection,
-                        ReflectionUtil.lookupMethod(mhImplClazz, "makeConstantHandle", int.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerMHImplCountingWrapperFunctionsForReflection,
-                        access.findClassByName("java.lang.invoke.MethodHandleImpl$CountingWrapper"));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerInvokersFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(access.findClassByName("java.lang.invoke.Invokers"), "getFunction", byte.class));
-
-=======
-    public void beforeAnalysis(BeforeAnalysisAccess a) {
-        var access = (BeforeAnalysisAccessImpl) a;
 
         eagerlyInitializeMHImplFunctions();
         eagerlyInitializeMHImplConstantHandles();
         eagerlyInitializeInvokersFunctions();
->>>>>>> 6e859d90dde (Eagerly initialize caches in method handle implementation)
         eagerlyInitializeValueConversionsCaches();
         eagerlyInitializeCallSite();
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::registerVarHandleMethodsForReflection, VarHandle.class);
-        access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, ReflectionUtil.lookupClass("java.lang.invoke.BoundMethodHandle"));
+        access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, ReflectionUtil.lookupClass(false, "java.lang.invoke.BoundMethodHandle"));
 
         AnalysisMetaAccess metaAccess = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getMetaAccess();
         access.registerFieldValueTransformer(
-                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer"), "cache"),
-                        new FieldValueTransformerWithAvailability() {
-                            private static final Class<?> SPECIES_DATA_CLASS = ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer$SpeciesData");
+                ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer"), "cache"),
+                new FieldValueTransformerWithAvailability() {
+                    private static final Class<?> SPECIES_DATA_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData");
+                    /*
+                     * The value of the ClassSpecializer.cache is not seen by the analysis
+                     * because the transformer declares the AfterAnalysis availability. This
+                     * is unsafe, and it relies on the fact that the underlying data
+                     * structure, a ConcurrentHashMap, was already seen by the analysis from
+                     * other uses, and that the analysis already has a full view of its type
+                     * structure. GR-46027 will implement a safe solution.
+                     */
+                    @Override
+                    public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
+                        return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
+                    }
 
-                            /*
-                             * The value of the ClassSpecializer.cache is not seen by the analysis
-                             * because the transformer declares the AfterAnalysis availability. This
-                             * is unsafe, and it relies on the fact that the underlying data
-                             * structure, a ConcurrentHashMap, was already seen by the analysis from
-                             * other uses, and that the analysis already has a full view of its type
-                             * structure. GR-46027 will implement a safe solution.
-                             */
-                            @Override
-                            public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
-                                return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
-                            }
-
-                            @Override
-                            @SuppressWarnings("unchecked")
-                            public Object transform(Object receiver, Object originalValue) {
-                                ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
-                                ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
-                                originalMap.forEach((key, speciesData) -> {
-                                    if (isSpeciesReachable(speciesData)) {
-                                        filteredMap.put(key, speciesData);
-                                    }
-                                });
-                                return filteredMap;
-                            }
-
-<<<<<<< HEAD
-                            private boolean isSpeciesReachable(Object speciesData) {
-                                Class<?> speciesClass = ReflectionUtil.readField(speciesDataClass, "speciesCode", speciesData);
-=======
-                            private boolean isSpeciesTypeInstantiated(Object speciesData) {
-                                Class<?> speciesClass = ReflectionUtil.readField(SPECIES_DATA_CLASS, "speciesCode", speciesData);
->>>>>>> 6e859d90dde (Eagerly initialize caches in method handle implementation)
-                                Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
-                                return analysisType.isPresent() && analysisType.get().isReachable();
+                    @Override
+                    @SuppressWarnings("unchecked")
+                    public Object transform(Object receiver, Object originalValue) {
+                        ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
+                        ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
+                        originalMap.forEach((key, speciesData) -> {
+                            if (isSpeciesReachable(speciesData)) {
+                                filteredMap.put(key, speciesData);
                             }
                         });
-        access.registerFieldValueTransformer(
-<<<<<<< HEAD
-                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
-                        (receiver, originalValue) -> runtimeMethodTypeInternTable);
-=======
-                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.DirectMethodHandle"), "ACCESSOR_FORMS"),
-                        NewEmptyArrayFieldValueTransformer.INSTANCE);
-        access.registerFieldValueTransformer(
-                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.MethodType"), "internTable"),
-                        (receiver, originalValue) -> runtimeMethodTypeInternTable);
+                        return filteredMap;
+                    }
 
-        /*
-         * SpeciesData.transformHelpers is a lazily initialized cache of MethodHandle objects. We do
-         * not want to make a MethodHandle reachable just because the image builder initialized the
-         * cache, so we filter out unreachable objects. This also solves the problem when late image
-         * heap re-scanning after static analysis would see a method handle that was not yet cached
-         * during static analysis, in which case image building would fail because new types would
-         * be made reachable after analysis.
-         */
+                    private boolean isSpeciesReachable(Object speciesData) {
+                        Class<?> speciesClass = ReflectionUtil.readField(SPECIES_DATA_CLASS, "speciesCode", speciesData);
+                        Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
+                        return analysisType.isPresent() && analysisType.get().isReachable();
+                    }
+                });
         access.registerFieldValueTransformer(
-                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer$SpeciesData"), "transformHelpers"),
-                        new FieldValueTransformerWithAvailability() {
-                            @Override
-                            public boolean isAvailable() {
-                                return BuildPhaseProvider.isHostedUniverseBuilt();
-                            }
-
-                            @Override
-                            @SuppressWarnings("unchecked")
-                            public Object transform(Object receiver, Object originalValue) {
-                                MethodHandle[] originalArray = (MethodHandle[]) originalValue;
-                                MethodHandle[] filteredArray = new MethodHandle[originalArray.length];
-                                for (int i = 0; i < originalArray.length; i++) {
-                                    MethodHandle handle = originalArray[i];
-                                    if (handle != null && heapScanner.isObjectReachable(handle)) {
-                                        filteredArray[i] = handle;
-                                    }
-                                }
-                                return filteredArray;
-                            }
-                        });
-
-        /*
-         * Retrieve all six basic types from the java.lang.invoke.LambdaForm$BasicType class (void,
-         * int, long, float, double, Object) and invoke the
-         * java.lang.invoke.LambdaForm.createFormsFor method to ensure that the analysis tracks
-         * these types. This addresses an issue that arises when these types are created after
-         * analysis as a side effect of using reflection in the image builder (for example in a
-         * method Feature.beforeCompilation()), thereby registering new elements into the image heap
-         * (elements that were not tracked in the analysis).
-         */
-        Class<?> lambdaFormClass = ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm");
-        Class<?> basicTypeClass = ReflectionUtil.lookupClass("java.lang.invoke.LambdaForm$BasicType");
-        Method createFormsForMethod = ReflectionUtil.lookupMethod(lambdaFormClass, "createFormsFor", basicTypeClass);
-        try {
-            for (Object type : (Object[]) ReflectionUtil.readStaticField(basicTypeClass, "ALL_TYPES")) {
-                createFormsForMethod.invoke(null, type);
-            }
-        } catch (ReflectiveOperationException e) {
-            VMError.shouldNotReachHere("Can not invoke createFormsForm method to register base types from the java.lang.invoke.LambdaForm$BasicType class.");
-        }
->>>>>>> 6e859d90dde (Eagerly initialize caches in method handle implementation)
+                ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
+                (receiver, originalValue) -> runtimeMethodTypeInternTable);
     }
 
     private static void eagerlyInitializeMHImplFunctions() {
-        var methodHandleImplClass = ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl");
+        var methodHandleImplClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodHandleImpl");
         int count = ((Object[]) ReflectionUtil.readStaticField(methodHandleImplClass, "NFS")).length;
         var getFunctionMethod = ReflectionUtil.lookupMethod(methodHandleImplClass, "getFunction", byte.class);
         for (int i = 0; i < count; i++) {
@@ -308,7 +200,7 @@ public class MethodHandleFeature implements InternalFeature {
     }
 
     private static void eagerlyInitializeMHImplConstantHandles() {
-        var methodHandleImplClass = ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl");
+        var methodHandleImplClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodHandleImpl");
         int count = ((Object[]) ReflectionUtil.readStaticField(methodHandleImplClass, "HANDLES")).length;
         var getConstantHandleMethod = ReflectionUtil.lookupMethod(methodHandleImplClass, "getConstantHandle", int.class);
         for (int i = 0; i < count; i++) {
@@ -317,7 +209,7 @@ public class MethodHandleFeature implements InternalFeature {
     }
 
     private static void eagerlyInitializeInvokersFunctions() {
-        var invokerksClass = ReflectionUtil.lookupClass("java.lang.invoke.Invokers");
+        var invokerksClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.Invokers");
         int count = ((Object[]) ReflectionUtil.readStaticField(invokerksClass, "NFS")).length;
         var getFunctionMethod = ReflectionUtil.lookupMethod(invokerksClass, "getFunction", byte.class);
         for (int i = 0; i < count; i++) {
