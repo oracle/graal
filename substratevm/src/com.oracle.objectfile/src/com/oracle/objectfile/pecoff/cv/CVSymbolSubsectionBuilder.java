@@ -85,13 +85,13 @@ final class CVSymbolSubsectionBuilder {
     private void buildClass(ClassEntry classEntry) {
 
         /* Define all the functions in this class all functions defined in this class. */
-        classEntry.compiledEntries().forEach(this::buildFunction);
+        classEntry.compiledMethods().forEach(this::buildFunction);
 
         /* Define the class itself. */
         addTypeRecords(classEntry);
 
         /* Add manifested static fields as S_GDATA32 records. */
-        classEntry.fields().filter(CVSymbolSubsectionBuilder::isManifestedStaticField).forEach(f -> {
+        classEntry.getFields().stream().filter(CVSymbolSubsectionBuilder::isManifestedStaticField).forEach(f -> {
             int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(f.getValueType());
             String displayName = CVNames.fieldNameToCodeViewName(f);
             if (cvDebugInfo.useHeapBase()) {
@@ -118,7 +118,7 @@ final class CVSymbolSubsectionBuilder {
      * @param compiledEntry compiled method for this function
      */
     private void buildFunction(CompiledMethodEntry compiledEntry) {
-        final Range primaryRange = compiledEntry.getPrimary();
+        final Range primaryRange = compiledEntry.primary();
 
         /* The name as it will appear in the debugger. */
         final String debuggerName = CVNames.methodNameToCodeViewName(primaryRange.getMethodEntry());
@@ -139,7 +139,7 @@ final class CVSymbolSubsectionBuilder {
         int localBP = 1 << 14; /* Local base pointer = SP (0=none, 1=sp, 2=bp 3=r13). */
         int paramBP = 1 << 16; /* Param base pointer = SP. */
         int frameFlags = asynceh + localBP + paramBP; /* NB: LLVM uses 0x14000. */
-        addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.getFrameSize(), frameFlags));
+        addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.frameSize(), frameFlags));
 
         /* TODO: add parameter definitions (types have been added already). */
         /* TODO: add local variables, and their types. */

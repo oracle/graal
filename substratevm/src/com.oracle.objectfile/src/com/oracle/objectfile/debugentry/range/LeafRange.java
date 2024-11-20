@@ -28,20 +28,11 @@ package com.oracle.objectfile.debugentry.range;
 
 import com.oracle.objectfile.debugentry.MethodEntry;
 
-class LeafRange extends SubRange {
-    protected LeafRange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller) {
-        super(methodEntry, lo, hi, line, primary, caller);
+public class LeafRange extends Range {
+    protected LeafRange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, int depth) {
+        super(primary, methodEntry, lo, hi, line, caller, depth);
     }
 
-    @Override
-    protected void addCallee(SubRange callee) {
-        assert false : "should never be adding callees to a leaf range!";
-    }
-
-    @Override
-    public SubRange getFirstCallee() {
-        return null;
-    }
 
     @Override
     public boolean isLeaf() {

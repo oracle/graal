@@ -26,77 +26,40 @@
 
 package com.oracle.objectfile.debugentry;
 
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_INTEGRAL;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_NUMERIC;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_SIGNED;
-
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-
-import jdk.graal.compiler.debug.DebugContext;
+import jdk.vm.ci.meta.JavaKind;
 
 public class PrimitiveTypeEntry extends TypeEntry {
-    private char typeChar;
-    private int flags;
-    private int bitCount;
 
-    public PrimitiveTypeEntry(String typeName, int size) {
-        super(typeName, size);
-        typeChar = '#';
-        flags = 0;
-        bitCount = 0;
+    private final JavaKind kind;
+
+    public PrimitiveTypeEntry(String typeName, int size, long classOffset, long typeSignature,
+                              JavaKind kind) {
+        super(typeName, size, classOffset, typeSignature, typeSignature);
+        this.kind = kind;
     }
 
     @Override
-    public DebugTypeKind typeKind() {
-        return DebugTypeKind.PRIMITIVE;
-    }
-
-    @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
-        DebugPrimitiveTypeInfo debugPrimitiveTypeInfo = (DebugPrimitiveTypeInfo) debugTypeInfo;
-        flags = debugPrimitiveTypeInfo.flags();
-        typeChar = debugPrimitiveTypeInfo.typeChar();
-        bitCount = debugPrimitiveTypeInfo.bitCount();
-        if (debugContext.isLogEnabled()) {
-            debugContext.log("typename %s %s (%d bits)%n", typeName, decodeFlags(), bitCount);
-        }
-    }
-
-    private String decodeFlags() {
-        StringBuilder builder = new StringBuilder();
-        if ((flags & FLAG_NUMERIC) != 0) {
-            if ((flags & FLAG_INTEGRAL) != 0) {
-                if ((flags & FLAG_SIGNED) != 0) {
-                    builder.append("SIGNED ");
-                } else {
-                    builder.append("UNSIGNED ");
-                }
-                builder.append("INTEGRAL");
-            } else {
-                builder.append("FLOATING");
-            }
-        } else {
-            if (bitCount > 0) {
-                builder.append("LOGICAL");
-            } else {
-                builder.append("VOID");
-            }
-        }
-        return builder.toString();
+    public boolean isPrimitive() {
+        return true;
     }
 
     public char getTypeChar() {
-        return typeChar;
+        return kind.getTypeChar();
     }
 
     public int getBitCount() {
-        return bitCount;
+        return (kind == JavaKind.Void ? 0 : kind.getBitCount());
     }
 
-    public int getFlags() {
-        return flags;
+    public boolean isNumericInteger() {
+        return kind.isNumericInteger();
+    }
+
+    public boolean isNumericFloat() {
+        return kind.isNumericFloat();
+    }
+
+    public boolean isUnsigned() {
+        return kind.isUnsigned();
     }
 }

@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debugentry.FrameSizeChangeEntry;
 
 import java.util.List;
 
@@ -73,14 +73,14 @@ public class DwarfFrameSectionImplAArch64 extends DwarfFrameSectionImpl {
     }
 
     @Override
-    protected int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int p) {
+    protected int writeFDEs(int frameSize, List<FrameSizeChangeEntry> frameSizeInfos, byte[] buffer, int p) {
         int pos = p;
         int currentOffset = 0;
-        for (DebugInfoProvider.DebugFrameSizeChange debugFrameSizeInfo : frameSizeInfos) {
-            int advance = debugFrameSizeInfo.getOffset() - currentOffset;
+        for (FrameSizeChangeEntry frameSizeInfo : frameSizeInfos) {
+            int advance = frameSizeInfo.offset() - currentOffset;
             currentOffset += advance;
             pos = writeAdvanceLoc(advance, buffer, pos);
-            if (debugFrameSizeInfo.getType() == DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND) {
+            if (frameSizeInfo.isExtend()) {
                 /*
                  * SP has been extended so rebase CFA using full frame.
                  *

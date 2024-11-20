@@ -31,12 +31,12 @@ package com.oracle.objectfile.debugentry;
  * shared by both field and method entries.
  */
 public abstract class MemberEntry {
-    protected FileEntry fileEntry;
-    protected final int line;
-    protected final String memberName;
-    protected final StructureTypeEntry ownerType;
-    protected final TypeEntry valueType;
-    protected final int modifiers;
+    private final FileEntry fileEntry;
+    private final int line;
+    private final String memberName;
+    private final StructureTypeEntry ownerType;
+    private final TypeEntry valueType;
+    private final int modifiers;
 
     public MemberEntry(FileEntry fileEntry, String memberName, StructureTypeEntry ownerType, TypeEntry valueType, int modifiers) {
         this(fileEntry, 0, memberName, ownerType, valueType, modifiers);
@@ -54,7 +54,7 @@ public abstract class MemberEntry {
 
     public String getFileName() {
         if (fileEntry != null) {
-            return fileEntry.getFileName();
+            return fileEntry.fileName();
         } else {
             return "";
         }
@@ -90,11 +90,15 @@ public abstract class MemberEntry {
         return 1;
     }
 
+    public String getMemberName() {
+        return memberName;
+    }
+
     public int getLine() {
         return line;
     }
 
-    public StructureTypeEntry ownerType() {
+    public StructureTypeEntry getOwnerType() {
         return ownerType;
     }
 
@@ -108,5 +112,10 @@ public abstract class MemberEntry {
 
     public String getModifiersString() {
         return ownerType.memberModifiers(modifiers);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Member(%s %s %s owner=%s %s:%d)", getModifiersString(), valueType.getTypeName(), memberName, ownerType.getTypeName(), fileEntry.getFullName(), line);
     }
 }

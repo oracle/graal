@@ -26,8 +26,8 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Allows incoming strings to be reduced to unique (up to equals) instances and supports marking of
@@ -36,22 +36,10 @@ import java.util.Iterator;
  */
 public class StringTable implements Iterable<StringEntry> {
 
-    private final HashMap<String, StringEntry> table;
+    private final ConcurrentHashMap<String, StringEntry> table;
 
     public StringTable() {
-        this.table = new HashMap<>();
-    }
-
-    /**
-     * Ensures a unique instance of a string exists in the table, inserting the supplied String if
-     * no equivalent String is already present. This should only be called before the string section
-     * has been written.
-     *
-     * @param string the string to be included in the table
-     * @return the unique instance of the String
-     */
-    public String uniqueString(String string) {
-        return ensureString(string, false);
+        this.table = new ConcurrentHashMap<>();
     }
 
     /**
@@ -64,19 +52,7 @@ public class StringTable implements Iterable<StringEntry> {
      * @return the unique instance of the String
      */
     public String uniqueDebugString(String string) {
-        return ensureString(string, true);
-    }
-
-    private String ensureString(String string, boolean addToStrSection) {
-        StringEntry stringEntry = table.get(string);
-        if (stringEntry == null) {
-            stringEntry = new StringEntry(string);
-            table.put(string, stringEntry);
-        }
-        if (addToStrSection && !stringEntry.isAddToStrSection()) {
-            stringEntry.setAddToStrSection();
-        }
-        return stringEntry.getString();
+        return table.computeIfAbsent(string, StringEntry::new).getString();
     }
 
     /**
@@ -90,9 +66,6 @@ public class StringTable implements Iterable<StringEntry> {
     public int debugStringIndex(String string) {
         StringEntry stringEntry = table.get(string);
         assert stringEntry != null : "\"" + string + "\" not in string table";
-        if (stringEntry == null) {
-            return -1;
-        }
         return stringEntry.getOffset();
     }
 

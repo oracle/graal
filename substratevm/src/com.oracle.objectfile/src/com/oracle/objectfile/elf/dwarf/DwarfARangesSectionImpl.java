@@ -91,8 +91,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          */
         assert !contentByteArrayCreated();
         Cursor byteCount = new Cursor();
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
-            byteCount.add(entrySize(classEntry.compiledEntryCount()));
+        instanceClassStream().filter(ClassEntry::hasCompiledMethods).forEachOrdered(classEntry -> {
+            byteCount.add(entrySize(classEntry.compiledMethods().size()));
         });
         byte[] buffer = new byte[byteCount.get()];
         super.setContent(buffer);
@@ -117,7 +117,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
         if (decisionMap != null) {
             Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
-            if (valueObj != null && valueObj instanceof Number) {
+            if (valueObj instanceof Number) {
                 /*
                  * This may not be the final vaddr for the text segment but it will be close enough
                  * to make debug easier i.e. to within a 4k page or two.
@@ -138,11 +138,11 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         enableLog(context, cursor.get());
 
         log(context, "  [0x%08x] DEBUG_ARANGES", cursor.get());
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+        instanceClassStream().filter(ClassEntry::hasCompiledMethods).forEachOrdered(classEntry -> {
             int lengthPos = cursor.get();
             log(context, "  [0x%08x] class %s CU 0x%x", lengthPos, classEntry.getTypeName(), getCUIndex(classEntry));
             cursor.set(writeHeader(getCUIndex(classEntry), buffer, cursor.get()));
-            classEntry.compiledEntries().forEachOrdered(compiledMethodEntry -> {
+            classEntry.compiledMethods().forEach(compiledMethodEntry -> {
                 cursor.set(writeARange(context, compiledMethodEntry, buffer, cursor.get()));
             });
             // write two terminating zeroes
@@ -176,9 +176,9 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
 
     int writeARange(DebugContext context, CompiledMethodEntry compiledMethod, byte[] buffer, int p) {
         int pos = p;
-        Range primary = compiledMethod.getPrimary();
+        Range primary = compiledMethod.primary();
         log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
-        pos = writeRelocatableCodeOffset(primary.getLo(), buffer, pos);
+        pos = writeCodeOffset(primary.getLo(), buffer, pos);
         pos = writeLong(primary.getHi() - primary.getLo(), buffer, pos);
         return pos;
     }

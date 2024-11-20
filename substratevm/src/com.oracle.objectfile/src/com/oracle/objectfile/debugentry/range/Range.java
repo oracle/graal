@@ -27,14 +27,21 @@
 package com.oracle.objectfile.debugentry.range;
 
 import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Details of a specific address range in a compiled method either a primary range identifying a
@@ -70,12 +77,24 @@ import java.util.List;
  * represented by the parent call range at level N.
  */
 public abstract class Range {
-    private static final String CLASS_DELIMITER = ".";
-    protected final MethodEntry methodEntry;
-    protected final long lo;
-    protected long hi;
-    protected final int line;
-    protected final int depth;
+    private final MethodEntry methodEntry;
+    private final int loOffset;
+    private int hiOffset;
+    private final int line;
+    private final int depth;
+
+    /**
+     * The range for the caller or the primary range when this range is for top level method code.
+     */
+    private final CallRange caller;
+
+    private final PrimaryRange primary;
+
+    /**
+     * Values for the associated method's local and parameter variables that are available or,
+     * alternatively, marked as invalid in this range.
+     */
+    private final List<LocalValueEntry> localValueInfos = new ArrayList<>();
 
     /**
      * Create a primary range representing the root of the subrange tree for a top level compiled
@@ -87,8 +106,8 @@ public abstract class Range {
      * @param line the line number associated with the range
      * @return a new primary range to serve as the root of the subrange tree.
      */
-    public static PrimaryRange createPrimary(MethodEntry methodEntry, long lo, long hi, int line) {
-        return new PrimaryRange(methodEntry, lo, hi, line);
+    public static PrimaryRange createPrimary(MethodEntry methodEntry, int lo, int hi, int line, long codeOffset) {
+        return new PrimaryRange(methodEntry, lo, hi, line, codeOffset);
     }
 
     /**
@@ -99,57 +118,110 @@ public abstract class Range {
      * @param lo the lowest address included in the range.
      * @param hi the first address above the highest address in the range.
      * @param line the line number associated with the range
-     * @param primary the primary range to which this subrange belongs
      * @param caller the range for which this is a subrange, either an inlined call range or the
      *            primary range.
      * @param isLeaf true if this is a leaf range with no subranges
      * @return a new subrange to be linked into the range tree below the primary range.
      */
-    public static SubRange createSubrange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller, boolean isLeaf) {
-        assert primary != null;
-        assert primary.isPrimary();
-        if (isLeaf) {
-            return new LeafRange(methodEntry, lo, hi, line, primary, caller);
-        } else {
-            return new CallRange(methodEntry, lo, hi, line, primary, caller);
+    public static Range createSubrange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, boolean isLeaf, boolean isInitialRange) {
+        assert caller != null;
+        if (caller != primary) {
+            methodEntry.setInlined();
         }
+        Range callee;
+        if (isLeaf) {
+            callee = new LeafRange(primary, methodEntry, lo, hi, line, caller, caller.getDepth() + 1);
+        } else {
+            callee = new CallRange(primary, methodEntry, lo, hi, line, caller, caller.getDepth() + 1);
+        }
+
+        caller.addCallee(callee, isInitialRange);
+        return callee;
     }
 
-    protected Range(MethodEntry methodEntry, long lo, long hi, int line, int depth) {
+    public static Range createSubrange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, boolean isLeaf) {
+        return createSubrange(primary, methodEntry, lo, hi, line, caller, isLeaf, false);
+    }
+
+    protected Range(PrimaryRange primary, MethodEntry methodEntry, int loOffset, int hiOffset, int line, CallRange caller, int depth) {
         assert methodEntry != null;
+        this.primary = primary;
         this.methodEntry = methodEntry;
-        this.lo = lo;
-        this.hi = hi;
+        this.loOffset = loOffset;
+        this.hiOffset = hiOffset;
         this.line = line;
+        this.caller = caller;
         this.depth = depth;
     }
 
-    protected abstract void addCallee(SubRange callee);
+    public Range split(int stackDecrement, int frameSize, int preExtendFrameSize) {
+        // this should be for an initial range extending beyond the stack decrement
+        assert loOffset == 0 && loOffset < stackDecrement && stackDecrement < hiOffset : "invalid split request";
+        Range newRange = Range.createSubrange(this.primary, this.methodEntry, stackDecrement, this.hiOffset, this.line, this.caller, this.isLeaf());
+        this.hiOffset = stackDecrement;
 
-    public boolean contains(Range other) {
-        return (lo <= other.lo && hi >= other.hi);
+        // TODO fix this properly
+        this.caller.removeCallee(newRange);
+        this.caller.insertCallee(newRange, 1);
+
+        for (LocalValueEntry localInfo : this.localValueInfos) {
+            if (localInfo.localKind() == DebugInfoProvider.LocalValueKind.STACK) {
+                // need to redefine the value for this param using a stack slot value
+                // that allows for the stack being extended by framesize. however we
+                // also need to remove any adjustment that was made to allow for the
+                // difference between the caller SP and the pre-extend callee SP
+                // because of a stacked return address.
+                int adjustment = frameSize - preExtendFrameSize;
+                newRange.localValueInfos.add(new LocalValueEntry(localInfo.line(), localInfo.name(), localInfo.type(), localInfo.regIndex(), localInfo.stackSlot() + adjustment, localInfo.heapOffset(), localInfo.constant(), localInfo.localKind(), localInfo.local()));
+            } else {
+                newRange.localValueInfos.add(localInfo);
+            }
+        }
+        return newRange;
     }
 
-    public abstract boolean isPrimary();
+    public boolean contains(Range other) {
+        return (loOffset <= other.loOffset && hiOffset >= other.hiOffset);
+    }
+
+    public boolean isPrimary() {
+        return false;
+    }
 
     public String getClassName() {
-        return methodEntry.ownerType().getTypeName();
+        return methodEntry.getOwnerType().getTypeName();
     }
 
     public String getMethodName() {
-        return methodEntry.methodName();
+        return methodEntry.getMethodName();
     }
 
     public String getSymbolName() {
         return methodEntry.getSymbolName();
     }
 
-    public long getHi() {
-        return hi;
+    public int getHiOffset() {
+        return hiOffset;
+    }
+
+    public int getLoOffset() {
+        return loOffset;
+    }
+
+    public long getCodeOffset() {
+        return primary.getCodeOffset();
     }
 
     public long getLo() {
-        return lo;
+        return getCodeOffset() + loOffset;
+    }
+
+    public long getHi() {
+        return getCodeOffset() + hiOffset;
+    }
+
+    public PrimaryRange getPrimary() {
+        return primary;
     }
 
     public int getLine() {
@@ -157,31 +229,27 @@ public abstract class Range {
     }
 
     public String getFullMethodName() {
-        return constructClassAndMethodName();
+        return getExtendedMethodName(false);
     }
 
     public String getFullMethodNameWithParams() {
-        return constructClassAndMethodNameWithParams();
+        return getExtendedMethodName(true);
     }
 
     public boolean isDeoptTarget() {
         return methodEntry.isDeopt();
     }
 
-    private String getExtendedMethodName(boolean includeClass, boolean includeParams, boolean includeReturnType) {
+    private String getExtendedMethodName(boolean includeParams) {
         StringBuilder builder = new StringBuilder();
-        if (includeReturnType && methodEntry.getValueType().getTypeName().length() > 0) {
-            builder.append(methodEntry.getValueType().getTypeName());
-            builder.append(' ');
-        }
-        if (includeClass && getClassName() != null) {
+        if (getClassName() != null) {
             builder.append(getClassName());
-            builder.append(CLASS_DELIMITER);
+            builder.append(".");
         }
         builder.append(getMethodName());
         if (includeParams) {
             builder.append("(");
-            TypeEntry[] paramTypes = methodEntry.getParamTypes();
+            List<TypeEntry> paramTypes = methodEntry.getParamTypes();
             if (paramTypes != null) {
                 String prefix = "";
                 for (TypeEntry t : paramTypes) {
@@ -192,19 +260,7 @@ public abstract class Range {
             }
             builder.append(')');
         }
-        if (includeReturnType) {
-            builder.append(" ");
-            builder.append(methodEntry.getValueType().getTypeName());
-        }
         return builder.toString();
-    }
-
-    private String constructClassAndMethodName() {
-        return getExtendedMethodName(true, false, false);
-    }
-
-    private String constructClassAndMethodNameWithParams() {
-        return getExtendedMethodName(true, true, false);
     }
 
     public FileEntry getFileEntry() {
@@ -217,7 +273,7 @@ public abstract class Range {
 
     @Override
     public String toString() {
-        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), methodEntry.getFullFileName(), line);
+        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", getLo(), getHi(), getFullMethodNameWithParams(), methodEntry.getFullFileName(), line);
     }
 
     public String getFileName() {
@@ -228,74 +284,129 @@ public abstract class Range {
         return methodEntry;
     }
 
-    public abstract SubRange getFirstCallee();
-
     public abstract boolean isLeaf();
 
     public boolean includesInlineRanges() {
-        SubRange child = getFirstCallee();
-        while (child != null && child.isLeaf()) {
-            child = child.getSiblingCallee();
+        for (Range callee : getCallees()) {
+            if (!callee.isLeaf()) {
+                return true;
+            }
         }
-        return child != null;
+        return false;
+    }
+
+    public List<Range> getCallees() {
+        return List.of();
+    }
+
+    public Stream<Range> rangeStream() {
+        return Stream.of(this);
     }
 
     public int getDepth() {
         return depth;
     }
 
-    public HashMap<DebugLocalInfo, List<SubRange>> getVarRangeMap() {
-        MethodEntry calleeMethod;
-        if (isPrimary()) {
-            calleeMethod = getMethodEntry();
-        } else {
-            assert !isLeaf() : "should only be looking up var ranges for inlined calls";
-            calleeMethod = getFirstCallee().getMethodEntry();
-        }
-        HashMap<DebugLocalInfo, List<SubRange>> varRangeMap = new HashMap<>();
-        if (calleeMethod.getThisParam() != null) {
-            varRangeMap.put(calleeMethod.getThisParam(), new ArrayList<>());
-        }
-        for (int i = 0; i < calleeMethod.getParamCount(); i++) {
-            varRangeMap.put(calleeMethod.getParam(i), new ArrayList<>());
-        }
-        for (int i = 0; i < calleeMethod.getLocalCount(); i++) {
-            varRangeMap.put(calleeMethod.getLocal(i), new ArrayList<>());
-        }
-        return updateVarRangeMap(varRangeMap);
-    }
-
-    public HashMap<DebugLocalInfo, List<SubRange>> updateVarRangeMap(HashMap<DebugLocalInfo, List<SubRange>> varRangeMap) {
-        // leaf subranges of the current range may provide values for param or local vars
-        // of this range's method. find them and index the range so that we can identify
-        // both the local/param and the associated range.
-        SubRange subRange = this.getFirstCallee();
-        while (subRange != null) {
-            addVarRanges(subRange, varRangeMap);
-            subRange = subRange.siblingCallee;
+    public Map<LocalEntry, List<Range>> getVarRangeMap() {
+        HashMap<LocalEntry, List<Range>> varRangeMap = new HashMap<>();
+        for (Range callee : getCallees()) {
+            for (LocalValueEntry localValue : callee.localValueInfos) {
+                LocalEntry local = localValue.local();
+                if (local != null) {
+                    switch (localValue.localKind()) {
+                        case REGISTER:
+                        case STACK:
+                        case CONSTANT:
+                            varRangeMap.computeIfAbsent(local, l -> new ArrayList<>()).add(callee);
+                            break;
+                        case UNDEFINED:
+                            break;
+                    }
+                }
+            }
         }
         return varRangeMap;
     }
 
-    public void addVarRanges(SubRange subRange, HashMap<DebugLocalInfo, List<SubRange>> varRangeMap) {
-        int localValueCount = subRange.getLocalValueCount();
-        for (int i = 0; i < localValueCount; i++) {
-            DebugLocalValueInfo localValueInfo = subRange.getLocalValue(i);
-            DebugLocalInfo local = subRange.getLocal(i);
-            if (local != null) {
-                switch (localValueInfo.localKind()) {
-                    case REGISTER:
-                    case STACKSLOT:
-                    case CONSTANT:
-                        List<SubRange> varRanges = varRangeMap.get(local);
-                        assert varRanges != null : "local not present in var to ranges map!";
-                        varRanges.add(subRange);
-                        break;
-                    case UNDEFINED:
-                        break;
+    public boolean hasLocalValues(LocalEntry local) {
+        for (Range callee : getCallees()) {
+            for (LocalValueEntry localValue : callee.localValueInfos) {
+                if (local == localValue.local()) {
+                    switch (localValue.localKind()) {
+                        case REGISTER:
+                        case STACK:
+                            return true;
+                        case CONSTANT:
+                            JavaConstant constant = localValue.constant();
+                            // can only handle primitive or null constants just now
+                            return constant instanceof PrimitiveConstant || constant.getJavaKind() == JavaKind.Object;
+                        case UNDEFINED:
+                            break;
+                    }
                 }
             }
         }
+        return false;
     }
 
+    public Range getCaller() {
+        return caller;
+    }
+
+    public List<LocalValueEntry> getLocalValues() {
+        return Collections.unmodifiableList(localValueInfos);
+    }
+
+    public int getLocalValueCount() {
+        return localValueInfos.size();
+    }
+
+    public LocalValueEntry getLocalValue(int i) {
+        return localValueInfos.get(i);
+    }
+
+    public LocalEntry getLocal(int i) {
+        return getLocalValue(i).local();
+    }
+
+    public void setLocalValueInfo(List<LocalValueEntry> localValueInfos) {
+        this.localValueInfos.addAll(localValueInfos);
+    }
+
+    public LocalValueEntry lookupValue(LocalEntry local) {
+        for (LocalValueEntry localValue : localValueInfos) {
+            if (localValue.local() == local) {
+                return localValue;
+            }
+        }
+        return null;
+    }
+
+    public boolean tryMerge(Range that) {
+        assert this.caller == that.caller;
+        assert this.isLeaf() == that.isLeaf();
+        assert this.depth == that.depth : "should only compare sibling ranges";
+        assert this.hiOffset <= that.loOffset : "later nodes should not overlap earlier ones";
+        if (this.hiOffset != that.loOffset) {
+            return false;
+        }
+        if (this.methodEntry != that.methodEntry) {
+            return false;
+        }
+        if (this.line != that.line) {
+            return false;
+        }
+        if (this.localValueInfos.size() != that.localValueInfos.size()) {
+            return false;
+        }
+        for (int i = 0; i < this.localValueInfos.size(); i++) {
+            if (!this.getLocalValue(i).equals(that.getLocalValue(i))) {
+                return false;
+            }
+        }
+        // merging just requires updating lo and hi range as everything else is equal
+        this.hiOffset = that.hiOffset;
+        caller.removeCallee(that);
+        return true;
+    }
 }
