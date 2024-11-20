@@ -161,6 +161,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * implement a method.
      */
     private static final Object NULL_METHOD = new Object();
+    private static final Object COMPUTING_FALLBACK_RESOLUTION = new Object();
 
     private final AnalysisType componentType;
     private final AnalysisType elementalType;
@@ -1117,6 +1118,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (resolvedMethod == null) {
             ResolvedJavaMethod originalMethod = OriginalMethodProvider.getOriginalMethod(method);
             Object newResolvedMethod = null;
+            boolean computingFallback = false;
             if (originalMethod != null) {
                 /*
                  * We do not want any access checks to be performed, so we use the method's
@@ -1128,7 +1130,27 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
                     var concreteMethod = originalMethod instanceof BaseLayerMethod ? originalMethod : wrapped.resolveConcreteMethod(originalMethod, originalCallerType);
                     newResolvedMethod = universe.lookup(concreteMethod);
                     if (newResolvedMethod == null) {
-                        newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                        /*
+                         * Note we cannot directly use computeIfAbsent; calling
+                         * fallbackResolveConcreteMethod will potentially cause other entries to be
+                         * added to resolvedMethods, resulting in illegal recursive updates.
+                         */
+                        Object oldResolvedMethod = resolvedMethods.putIfAbsent(method, COMPUTING_FALLBACK_RESOLUTION);
+                        if (oldResolvedMethod == null) {
+                            computingFallback = true;
+                            try {
+                                newResolvedMethod = getUniverse().getBigbang().fallbackResolveConcreteMethod(this, (AnalysisMethod) method);
+                            } catch (Throwable t) {
+                                /* Finalize result if an error occurs. */
+                                resolvedMethods.compute(method, (k, v) -> {
+                                    assert v == COMPUTING_FALLBACK_RESOLUTION : v;
+                                    return NULL_METHOD;
+                                });
+                                computingFallback = false;
+
+                                throw t;
+                            }
+                        }
                     }
 
                 } catch (UnsupportedFeatureException e) {
@@ -1140,9 +1162,32 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             if (newResolvedMethod == null) {
                 newResolvedMethod = NULL_METHOD;
             }
-            Object oldResolvedMethod = resolvedMethods.putIfAbsent(method, newResolvedMethod);
-            resolvedMethod = oldResolvedMethod != null ? oldResolvedMethod : newResolvedMethod;
+
+            if (computingFallback) {
+                /*
+                 * If computingFallback is set, it is this thread's responsibility to install the
+                 * result and override the placeholder put in the map.
+                 */
+                var finalResolvedMethod = newResolvedMethod;
+                resolvedMethods.compute(method, (k, v) -> {
+                    assert v == COMPUTING_FALLBACK_RESOLUTION : v;
+                    return finalResolvedMethod;
+                });
+                resolvedMethod = newResolvedMethod;
+            } else {
+                Object oldResolvedMethod = resolvedMethods.putIfAbsent(method, newResolvedMethod);
+                resolvedMethod = oldResolvedMethod != null ? oldResolvedMethod : newResolvedMethod;
+            }
         }
+
+        /*
+         * Wait for fallback resolution computation to complete on another thread (if needed).
+         */
+        while (resolvedMethod == COMPUTING_FALLBACK_RESOLUTION) {
+            Thread.onSpinWait();
+            resolvedMethod = resolvedMethods.get(method);
+        }
+        assert resolvedMethod != null;
         return resolvedMethod == NULL_METHOD ? null : (AnalysisMethod) resolvedMethod;
     }
 
