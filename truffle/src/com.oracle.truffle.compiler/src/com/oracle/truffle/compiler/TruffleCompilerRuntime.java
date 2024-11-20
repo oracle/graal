@@ -359,4 +359,31 @@ public interface TruffleCompilerRuntime {
      */
     boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException);
 
+    /**
+     * Represents HotSpot's compilation activity mode which is one of:
+     * {@code stop_compilation = 0}, {@code run_compilation = 1} or {@code shutdown_compilation = 2}
+     * Should be in sync with the {@code CompilerActivity} enum in {@code hotspot/share/compiler/compileBroker.hpp}
+     */
+    enum CompilationActivityMode {
+        STOP_COMPILATION,
+        RUN_COMPILATION,
+        SHUTDOWN_COMPILATION;
+
+        static public CompilationActivityMode fromInteger(int i) {
+            return switch (i) {
+                case 0 -> STOP_COMPILATION;
+                case 1 -> RUN_COMPILATION;
+                case 2 -> SHUTDOWN_COMPILATION;
+                default -> throw new RuntimeException("Invalid CompilationActivityMode " + i);
+            };
+        }
+    }
+
+    /**
+     * Returns the current host compilation activity mode which is one of:
+     * {@code STOP_COMPILATION}, {@code RUN_COMPILATION} or {@code SHUTDOWN_COMPILATION}
+     */
+     default CompilationActivityMode getCompilationActivityMode() {
+         return CompilationActivityMode.RUN_COMPILATION;
+     }
 }

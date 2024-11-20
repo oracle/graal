@@ -41,6 +41,7 @@
 package com.oracle.truffle.runtime;
 
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.StoppedCompilationRetryDelay;
 
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
@@ -912,10 +913,45 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected void onEngineCreated(EngineData engine) {
     }
 
+    private long stoppedCompilationTime = 0;
+    private boolean logShutdownCompilations = true;
+
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
-        Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
-        return getCompileQueue().submitCompilation(priority, optimizedCallTarget);
+        BackgroundCompileQueue queue = getCompileQueue();
+        CompilationActivityMode compilationActivityMode = getCompilationActivityMode();
+        if (compilationActivityMode == CompilationActivityMode.RUN_COMPILATION ||
+                (stoppedCompilationTime != 0 && System.currentTimeMillis() - stoppedCompilationTime > optimizedCallTarget.getOptionValue(StoppedCompilationRetryDelay))) {
+            stoppedCompilationTime = 0;
+            Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
+            return queue.submitCompilation(priority, optimizedCallTarget);
+        } else if (compilationActivityMode == CompilationActivityMode.STOP_COMPILATION) {
+            if (stoppedCompilationTime == 0) {
+                stoppedCompilationTime = System.currentTimeMillis();
+            }
+            // Flush the compilations queue. There's still a chance that compilation will be re-enabled
+            // eventually, if the hosts code cache can be cleaned up.
+            for (OptimizedCallTarget target : queue.getQueuedTargets(optimizedCallTarget.engine)) {
+                target.cancelCompilation("Compilation temporary disabled due to full code cache.");
+            }
+        } else {
+            // Compilation was shut down permanently because the hosts code cache ran full and
+            // the host was configured without support for code cache sweeping.
+            assert compilationActivityMode == CompilationActivityMode.SHUTDOWN_COMPILATION;
+            TruffleLogger logger = optimizedCallTarget.engine.getLogger("engine");
+            // The logger can be null if the engine is closed.
+            if (logger != null && logShutdownCompilations) {
+                logShutdownCompilations = false;
+                logger.log(Level.WARNING, "Truffle host compilations permanently disabled because of full code cache. "  +
+                    "Increase the code cache size using '-XX:ReservedCodeCacheSize=' and/or run with '-XX:+UseCodeCacheFlushing -XX:+MethodFlushing'.");
+            }
+            try {
+                queue.shutdownAndAwaitTermination(100 /* milliseconds */);
+            } catch (RuntimeException re) {
+                // Best effort, ignore failure
+            }
+        }
+        return null;
     }
 
     @SuppressWarnings("all")
