@@ -45,7 +45,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -137,21 +136,10 @@ public class PanamaNFILanguage extends TruffleLanguage<PanamaNFIContext> {
     @Override
     protected void initializeThread(PanamaNFIContext context, Thread thread) {
         ErrorContext ctx = errorContext.get(context.env.getContext(), thread);
-        if (thread == Thread.currentThread()) {
-            // we need to get the thread-local errno pointer
-            // this is only possible on the correct thread
-            ctx.initialize();
-        } else {
-            // submit as thread-local action on the correct thread
-            context.env.submitThreadLocal(new Thread[]{thread}, new ThreadLocalAction(false, false) {
-
-                @Override
-                protected void perform(Access access) {
-                    assert access.getThread() == thread;
-                    ctx.initialize();
-                }
-            });
-        }
+        assert thread == Thread.currentThread();
+        // we need to get the thread-local errno pointer
+        // this is only possible on the correct thread
+        ctx.initialize();
     }
 
     @Override

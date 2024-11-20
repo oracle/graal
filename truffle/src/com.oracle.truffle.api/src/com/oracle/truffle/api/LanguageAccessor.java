@@ -567,6 +567,15 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public void notifyTLActionBlocked(ThreadLocalAction action, ThreadLocalAction.Access access, boolean blocked) {
+            if (blocked) {
+                action.notifyBlocked(access);
+            } else {
+                action.notifyUnblocked(access);
+            }
+        }
+
+        @Override
         public OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors) {
             return switch (descriptors.length) {
                 case 0 -> OptionDescriptors.EMPTY;

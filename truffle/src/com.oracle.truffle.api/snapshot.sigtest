@@ -253,6 +253,8 @@ cons protected init(boolean,boolean)
 cons protected init(boolean,boolean,boolean)
 innr public abstract static Access
 meth protected abstract void perform(com.oracle.truffle.api.ThreadLocalAction$Access)
+meth protected void notifyBlocked(com.oracle.truffle.api.ThreadLocalAction$Access)
+meth protected void notifyUnblocked(com.oracle.truffle.api.ThreadLocalAction$Access)
 supr java.lang.Object
 hfds hasSideEffects,recurring,synchronous
 

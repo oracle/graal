@@ -780,6 +780,8 @@ public abstract class Accessor {
         public abstract long getEngineId(Object polyglotEngine);
 
         public abstract ModulesAccessor getModulesAccessor();
+
+        public abstract Node getUncachedLocation(Object polyglotContext);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -915,6 +917,8 @@ public abstract class Accessor {
         public abstract boolean isRecurringTLAction(ThreadLocalAction action);
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
+
+        public abstract void notifyTLActionBlocked(ThreadLocalAction action, ThreadLocalAction.Access access, boolean blocked);
 
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 

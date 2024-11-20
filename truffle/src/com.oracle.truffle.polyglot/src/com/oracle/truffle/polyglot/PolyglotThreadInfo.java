@@ -96,6 +96,7 @@ final class PolyglotThreadInfo {
     final EncapsulatingNodeReference encapsulatingNodeReference;
 
     private final BitSet initializedLanguageContexts;
+    private final BitSet initializingLanguageContexts;
     private boolean finalizationComplete;
 
     private final List<ProbeNode> probesEnterList;
@@ -132,8 +133,10 @@ final class PolyglotThreadInfo {
             this.fastThreadLocals = PolyglotFastThreadLocals.createFastThreadLocals(this);
         }
         if (context != null) {
+            initializingLanguageContexts = new BitSet(context.contexts.length);
             initializedLanguageContexts = new BitSet(context.contexts.length);
         } else {
+            initializingLanguageContexts = null;
             initializedLanguageContexts = null;
         }
         this.probesEnterList = initProbesEnterList(context);
@@ -184,16 +187,31 @@ final class PolyglotThreadInfo {
         return initializedLanguageContexts.get(language.engineIndex);
     }
 
-    void initializeLanguageContext(PolyglotLanguageContext languageContext) {
+    void setLanguageContextInitializing(PolyglotLanguageContext languageContext) {
         assert Thread.holdsLock(context);
         assert !finalizationComplete;
-        LANGUAGE.initializeThread(languageContext.env, getThread());
+        initializingLanguageContexts.set(languageContext.language.engineIndex);
+    }
+
+    void clearLanguageContextInitializing(PolyglotLanguageContext languageContext) {
+        assert Thread.holdsLock(context);
+        initializingLanguageContexts.clear(languageContext.language.engineIndex);
+    }
+
+    boolean isLanguageContextInitializing(PolyglotLanguage language) {
+        assert Thread.holdsLock(context);
+        return initializingLanguageContexts.get(language.engineIndex);
+    }
+
+    void setLanguageContextInitialized(PolyglotLanguageContext languageContext) {
+        assert Thread.holdsLock(context);
+        assert !finalizationComplete;
+        assert initializingLanguageContexts.get(languageContext.language.engineIndex);
         initializedLanguageContexts.set(languageContext.language.engineIndex);
     }
 
-    void clearLanguageContextInitialized(PolyglotLanguage language) {
-        assert Thread.holdsLock(context);
-        initializedLanguageContexts.clear(language.engineIndex);
+    void initializeLanguageContext(PolyglotLanguageContext languageContext) {
+        LANGUAGE.initializeThread(languageContext.env, getThread());
     }
 
     int initializedLanguageContextsCount() {

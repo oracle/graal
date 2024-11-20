@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.nfi;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -61,7 +63,6 @@ import com.oracle.truffle.nfi.SignatureRootNode.BuildSignatureNode;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
-import org.graalvm.options.OptionValues;
 
 class NFIRootNode extends RootNode {
 
@@ -137,7 +138,7 @@ class NFIRootNode extends RootNode {
 
         @Override
         API execute() {
-            return NFIContext.get(this).getAPI(backendId);
+            return NFIContext.get(this).getAPI(backendId, this);
         }
     }
 
@@ -152,7 +153,7 @@ class NFIRootNode extends RootNode {
         API execute() {
             NFIContext ctx = NFIContext.get(this);
             String defaultBackendId = getDefaultBackendOption(ctx.env.getOptions());
-            return ctx.getAPI(defaultBackendId);
+            return ctx.getAPI(defaultBackendId, this);
         }
     }
 

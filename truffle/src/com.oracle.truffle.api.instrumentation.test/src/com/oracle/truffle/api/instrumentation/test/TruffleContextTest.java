@@ -401,12 +401,11 @@ public class TruffleContextTest extends AbstractPolyglotTest {
                 waitUntilExited.countDown();
             });
 
-            boolean othrerThreadExited = false;
-            while (!othrerThreadExited) {
-                try {
-                    waitUntilExited.await();
-                    othrerThreadExited = true;
-                } catch (InterruptedException ie) {
+            try {
+                TruffleSafepoint.setBlockedThreadInterruptible(null, CountDownLatch::await, waitUntilExited);
+            } catch (ThreadDeath e) {
+                if (!"Exit was called with exit code 1.".equals(e.getMessage())) {
+                    throw e;
                 }
             }
             /*
