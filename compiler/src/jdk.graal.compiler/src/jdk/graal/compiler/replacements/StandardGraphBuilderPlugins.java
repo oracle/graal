@@ -514,7 +514,7 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
                 ValueNode componentTypeNonNull = b.nullCheckedValue(componentType);
                 ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(length);
-                if (b.currentBlockCatchesOOM()) {
+                if (b.currentBlockCatchesOOME()) {
                     b.addPush(JavaKind.Object, new DynamicNewArrayWithExceptionNode(componentTypeNonNull, lengthPositive));
                 } else {
                     b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentTypeNonNull, lengthPositive, true));
@@ -1401,6 +1401,13 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+            if (b.currentBlockCatchesOOME()) {
+                /*
+                 * Avoid intrinsification as it exposes deopt with scalar replaced objects to out of
+                 * memory conditions that cause the exception handler to be bypassed.
+                 */
+                return false;
+            }
             MetaAccessProvider metaAccess = b.getMetaAccess();
             if (b.parsingIntrinsic()) {
                 ResolvedJavaMethod rootMethod = b.getGraph().method();

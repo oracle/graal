@@ -65,6 +65,7 @@ import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.zip.CRC32;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -199,7 +200,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.meta.UnresolvedJavaType;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -552,7 +552,7 @@ public class HotSpotGraphBuilderPlugins {
                  */
                 b.add(new KlassFullyInitializedCheckNode(clazzLegal));
 
-                if (b.currentBlockCatchesOOM()) {
+                if (b.currentBlockCatchesOOME()) {
                     b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true));
                 } else {
                     b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));

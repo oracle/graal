@@ -334,7 +334,6 @@ import jdk.graal.compiler.nodes.FullInfopointNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.InliningLog;
 import jdk.graal.compiler.nodes.InliningLog.PlaceholderInvokable;
-import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.Invokable;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
@@ -343,6 +342,7 @@ import jdk.graal.compiler.nodes.LogicConstantNode;
 import jdk.graal.compiler.nodes.LogicNegationNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.LoopBeginNode;
+import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.LoopExitNode;
 import jdk.graal.compiler.nodes.MergeNode;
@@ -2162,7 +2162,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         if (referencedType != null) {
             invoke.callTarget().setReferencedType(referencedType);
         }
-        if (currentBlockCatchesOOM()) {
+        if (currentBlockCatchesOOME()) {
             invoke.setInOOMETry(true);
         }
         return invoke;
@@ -2778,7 +2778,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                         : (calleeIntrinsicContext != null ? new IntrinsicScope(this, targetMethod, args)
                                         : new InliningScope(this, targetMethod, args))) {
             BytecodeParser parser = graphBuilderInstance.createBytecodeParser(graph, this, targetMethod, INVOCATION_ENTRY_BCI, calleeIntrinsicContext);
-            if (currentBlockCatchesOOM()) {
+            if (currentBlockCatchesOOME()) {
                 parser.calleeInOOMEBlock = true;
             }
             boolean targetIsSubstitution = parsingIntrinsic();
@@ -5003,7 +5003,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      * failures.
      */
     @Override
-    public boolean currentBlockCatchesOOM() {
+    public boolean currentBlockCatchesOOME() {
         if (disableExplicitAllocationExceptionEdges) {
             return false;
         }
@@ -5024,7 +5024,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     private void createNewInstance(ResolvedJavaType resolvedType) {
-        if (currentBlockCatchesOOM()) {
+        if (currentBlockCatchesOOME()) {
             NewInstanceWithExceptionNode ni = new NewInstanceWithExceptionNode(resolvedType, true);
             frameState.push(JavaKind.Object, append(ni));
             setStateAfter(ni);
@@ -5034,7 +5034,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     private void createNewArray(ResolvedJavaType resolvedType, ValueNode length) {
-        if (currentBlockCatchesOOM()) {
+        if (currentBlockCatchesOOME()) {
             NewArrayWithExceptionNode nawe = new NewArrayWithExceptionNode(resolvedType, length, true);
             frameState.push(JavaKind.Object, append(nawe));
             setStateAfter(nawe);
@@ -5044,7 +5044,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     private void generateNewMultIArray(ResolvedJavaType resolvedType, ValueNode[] dims) {
-        if (currentBlockCatchesOOM()) {
+        if (currentBlockCatchesOOME()) {
             NewMultiArrayWithExceptionNode nmanwe = new NewMultiArrayWithExceptionNode(resolvedType, dims);
             frameState.push(JavaKind.Object, append(nmanwe));
             setStateAfter(nmanwe);
