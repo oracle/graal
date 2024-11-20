@@ -23,26 +23,19 @@
 
 package com.oracle.truffle.espresso.resolver;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STRICT;
-import static com.oracle.truffle.espresso.meta.EspressoError.cat;
-
-import java.util.Locale;
-
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.constantpool.Resolution;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.resolver.meta.ClassType;
+import com.oracle.truffle.espresso.resolver.meta.ErrorType;
+import com.oracle.truffle.espresso.resolver.meta.FieldType;
+import com.oracle.truffle.espresso.resolver.meta.MethodType;
+import com.oracle.truffle.espresso.resolver.meta.RuntimeAccess;
 
-public final class LinkResolver {
+public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> {
+    private final LinkResolverImpl<R, C, M, F> impl = new LinkResolverImpl<>();
 
     /**
      * Symbolically resolves a field.
@@ -54,10 +47,10 @@ public final class LinkResolver {
      * @param accessCheck Whether to perform access checks on the resolved field.
      * @param loadingConstraints Whether to check loading constraints on the resolved field.
      */
-    public static Field resolveFieldSymbol(Meta meta, ObjectKlass accessingKlass,
-                    Symbol<Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
+    public F resolveFieldSymbol(R meta, C accessingKlass,
+                    Symbol<Name> name, Symbol<Type> type, C symbolicHolder,
                     boolean accessCheck, boolean loadingConstraints) {
-        return LinkResolverImpl.resolveFieldSymbol(meta, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
+        return impl.resolveFieldSymbol(meta, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
     }
 
     /**
@@ -72,8 +65,8 @@ public final class LinkResolver {
      *            access site.
      * @param fieldAccessType The {@link FieldAccessType} representing the access site to resolve.
      */
-    public static Field resolveFieldAccess(Meta meta, Klass currentKlass, Method currentMethod, Field symbolicResolution, FieldAccessType fieldAccessType) {
-        return LinkResolverImpl.resolveFieldAccess(meta, symbolicResolution, fieldAccessType, currentKlass, currentMethod);
+    public F resolveFieldAccess(R meta, C currentKlass, M currentMethod, F symbolicResolution, FieldAccessType fieldAccessType) {
+        return impl.resolveFieldAccess(meta, symbolicResolution, fieldAccessType, currentKlass, currentMethod);
     }
 
     /**
@@ -86,11 +79,11 @@ public final class LinkResolver {
      * @param accessCheck Whether to perform access checks on the resolved method.
      * @param loadingConstraints Whether to check loading constraints on the resolved method.
      */
-    public static Method resolveMethodSymbol(Meta meta, ObjectKlass accessingKlass,
-                    Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
+    public M resolveMethodSymbol(R meta, C accessingKlass,
+                    Symbol<Name> name, Symbol<Signature> signature, C symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
-        return LinkResolverImpl.resolveMethodSymbol(meta, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
+        return impl.resolveMethodSymbol(meta, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
     }
 
     /**
@@ -103,16 +96,12 @@ public final class LinkResolver {
      * @param symbolicHolder The declared holder for symbolic resolution. May differ from
      *            {@code symbolicResolution.getDeclaringKlass()}.
      */
-    public static ResolvedCall resolveCallSite(Meta meta, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
-        return LinkResolverImpl.resolveCallSite(meta, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
-    }
-
-    // Only static
-    private LinkResolver() {
+    public ResolvedCall<C, M, F> resolveCallSite(R meta, C currentKlass, M symbolicResolution, CallSiteType callSiteType, C symbolicHolder) {
+        return impl.resolveCallSite(meta, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
     }
 }
 
-final class LinkResolverImpl {
+final class LinkResolverImpl<R extends RuntimeAccess<C, M, F>, C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> {
 
     private static final String AN_INTERFACE = "an interface";
     private static final String A_CLASS = "a class";
@@ -122,24 +111,24 @@ final class LinkResolverImpl {
     private static final String CLINIT = "<clinit>";
 
     @TruffleBoundary
-    public static Field resolveFieldSymbol(Meta meta, ObjectKlass accessingKlass,
-                    Symbol<Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
+    public F resolveFieldSymbol(R meta, C accessingKlass,
+                    Symbol<Name> name, Symbol<Type> type, C symbolicHolder,
                     boolean accessCheck, boolean loadingConstraints) {
-        Field f = symbolicHolder.lookupField(name, type);
+        F f = symbolicHolder.lookupField(name, type);
         if (f == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString());
+            throw meta.throwError(ErrorType.NoSuchFieldError, "%s", name);
         }
         if (accessCheck) {
-            Resolution.memberDoAccessCheck(accessingKlass, symbolicHolder, f, meta);
+            meta.fieldAccessCheck(f, accessingKlass, symbolicHolder);
         }
         if (loadingConstraints) {
-            f.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), f.getDeclaringKlass().getDefiningClassLoader());
+            meta.fieldLoadingConstraints(f, accessingKlass);
         }
         return f;
     }
 
-    public static Field resolveFieldAccess(Meta meta, Field field, FieldAccessType fieldAccessType,
-                    Klass currentKlass, Method currentMethod) {
+    public F resolveFieldAccess(R meta, F field, FieldAccessType fieldAccessType,
+                    C currentKlass, M currentMethod) {
         /*
          * PUTFIELD/GETFIELD: Otherwise, if the resolved field is a static field, putfield throws an
          * IncompatibleClassChangeError.
@@ -149,10 +138,10 @@ final class LinkResolverImpl {
          */
 
         if (fieldAccessType.isStatic() != field.isStatic()) {
-            throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError,
+            throw meta.throwError(ErrorType.IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
-                            field.getDeclaringKlass().getName(),
+                            field.getDeclaringClass().getJavaName(),
                             field.getName());
         }
         if (fieldAccessType.isPut()) {
@@ -166,24 +155,22 @@ final class LinkResolverImpl {
              * Otherwise, an IllegalAccessError is thrown.
              */
             if (field.isFinalFlagSet()) {
-                if (field.getDeclaringKlass() != currentKlass) {
-                    throw throwBoundary(meta, meta.java_lang_IllegalAccessError,
+                if (field.getDeclaringClass() != currentKlass) {
+                    throw meta.throwError(ErrorType.IllegalAccessError,
                                     "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                                     (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
-                                    field.getDeclaringKlass().getName(),
+                                    field.getDeclaringClass().getJavaName(),
                                     field.getName(),
-                                    currentKlass.getName());
+                                    currentKlass.getJavaName());
                 }
-                boolean enforceInitializerCheck = (meta.getLanguage().getSpecComplianceMode() == STRICT) ||
-                                // HotSpot enforces this only for >= Java 9 (v53) .class files.
-                                field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
+                boolean enforceInitializerCheck = meta.enforceInitializerCheck(field);
                 if (enforceInitializerCheck) {
                     if (!((fieldAccessType.isStatic() && currentMethod.isClassInitializer()) ||
                                     (!fieldAccessType.isStatic() && currentMethod.isConstructor()))) {
-                        throw throwBoundary(meta, meta.java_lang_IllegalAccessError,
+                        throw meta.throwError(ErrorType.IllegalAccessError,
                                         "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
                                         (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
-                                        field.getDeclaringKlass().getName(),
+                                        field.getDeclaringClass().getJavaName(),
                                         field.getName(),
                                         currentMethod.getName(),
                                         (fieldAccessType.isStatic()) ? CLINIT : INIT);
@@ -195,44 +182,46 @@ final class LinkResolverImpl {
     }
 
     @TruffleBoundary
-    public static Method resolveMethodSymbol(Meta meta, ObjectKlass accessingKlass, Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
+    public M resolveMethodSymbol(R meta, C accessingKlass, Symbol<Name> name,
+                    Symbol<Signature> signature, C symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
-        Method resolved;
+        M resolved;
         if (interfaceLookup != symbolicHolder.isInterface()) {
             String expected = interfaceLookup ? AN_INTERFACE : A_CLASS;
             String found = interfaceLookup ? A_CLASS : AN_INTERFACE;
-            meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, cat("Resolution failure for ", symbolicHolder.getExternalName(), ".\n",
-                            "Is ", found, ", but ", expected, " was expected."));
+            throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Resolution failure for %s.\nIs %s, but %s was expected",
+                            symbolicHolder.getJavaName(), found, expected);
         }
 
         if (symbolicHolder.isInterface()) {
-            resolved = ((ObjectKlass) symbolicHolder).resolveInterfaceMethod(name, signature);
+            resolved = symbolicHolder.lookupInterfaceMethod(name, signature);
         } else {
             resolved = symbolicHolder.lookupMethod(name, signature);
         }
         if (resolved == null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, symbolicHolder.getNameAsString() + "." + name + signature);
+            throw meta.throwError(ErrorType.NoSuchMethodError, symbolicHolder.getJavaName() + "." + name + signature);
         }
         if (accessCheck) {
-            Resolution.memberDoAccessCheck(accessingKlass, symbolicHolder, resolved, meta);
+            meta.methodAccessCheck(resolved, accessingKlass, symbolicHolder);
         }
-        if (loadingConstraints && !resolved.isPolySignatureIntrinsic()) {
-            resolved.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), resolved.getDeclaringKlass().getDefiningClassLoader());
+        if (loadingConstraints && !meta.skipLoadingConstraints(resolved)) {
+            meta.methodLoadingConstraints(resolved, accessingKlass);
         }
         return resolved;
     }
 
-    public static ResolvedCall resolveCallSite(Meta meta, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
-        Method resolved = symbolicResolution;
+    public ResolvedCall<C, M, F> resolveCallSite(R meta, C currentKlass, M symbolicResolution,
+                    CallSiteType callSiteType, C symbolicHolder) {
+        M resolved = symbolicResolution;
         CallKind callKind;
         switch (callSiteType) {
             case Static:
                 // Otherwise, if the resolved method is an instance method, the invokestatic
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
-                    throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected static method '%s.%s%s'",
-                                    resolved.getDeclaringKlass().getName(),
+                    throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Expected static method '%s.%s%s'",
+                                    resolved.getDeclaringClass().getJavaName(),
                                     resolved.getName(),
                                     resolved.getRawSignature());
                 }
@@ -243,21 +232,18 @@ final class LinkResolverImpl {
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
                                 (meta.getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
-                    throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
-                                    resolved.getDeclaringKlass().getName(),
+                    throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                                    resolved.getDeclaringClass().getJavaName(),
                                     resolved.getName(),
                                     resolved.getRawSignature());
                 }
-                if (resolved.getITableIndex() < 0) {
-                    if (resolved.isPrivate()) {
-                        assert meta.getJavaVersion().java9OrLater();
-                        // Interface private methods do not appear in itables.
-                        callKind = CallKind.DIRECT;
-                    } else {
-                        assert resolved.getVTableIndex() >= 0;
-                        // Can happen in old classfiles that calls j.l.Object on interfaces.
-                        callKind = CallKind.VTABLE_LOOKUP;
-                    }
+                if (resolved.isPrivate()) {
+                    assert meta.getJavaVersion().java9OrLater() : "Should have thrown in previous check.";
+                    // Interface private methods do not appear in itables.
+                    callKind = CallKind.DIRECT;
+                } else if (resolved.getDeclaringClass().isJavaLangObject()) {
+                    // Can happen in old classfiles that calls j.l.Object methods on interfaces.
+                    callKind = CallKind.VTABLE_LOOKUP;
                 } else {
                     callKind = CallKind.ITABLE_LOOKUP;
                 }
@@ -266,12 +252,12 @@ final class LinkResolverImpl {
                 // Otherwise, if the resolved method is a class (static) method, the invokevirtual
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
-                    throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
-                                    resolved.getDeclaringKlass().getName(),
+                    throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
+                                    resolved.getDeclaringClass().getJavaName(),
                                     resolved.getName(),
                                     resolved.getRawSignature());
                 }
-                if (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate()) {
+                if (resolved.isFinalFlagSet() || resolved.getDeclaringClass().isFinalFlagSet() || resolved.isPrivate()) {
                     callKind = CallKind.DIRECT;
                 } else {
                     callKind = CallKind.VTABLE_LOOKUP;
@@ -282,10 +268,10 @@ final class LinkResolverImpl {
                 // class in which it is declared is not the class symbolically referenced by the
                 // instruction, a NoSuchMethodError is thrown.
                 if (resolved.isConstructor()) {
-                    if (resolved.getDeclaringKlass().getName() != symbolicHolder.getName()) {
-                        throw throwBoundary(meta, meta.java_lang_NoSuchMethodError,
+                    if (resolved.getDeclaringClass().getName() != symbolicHolder.getName()) {
+                        throw meta.throwError(ErrorType.NoSuchMethodError,
                                         "%s.%s%s",
-                                        resolved.getDeclaringKlass().getName(),
+                                        resolved.getDeclaringClass().getJavaName(),
                                         resolved.getName(),
                                         resolved.getRawSignature());
                     }
@@ -293,8 +279,8 @@ final class LinkResolverImpl {
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
-                    throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
-                                    resolved.getDeclaringKlass().getName(),
+                    throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                                    resolved.getDeclaringClass().getJavaName(),
                                     resolved.getName(),
                                     resolved.getRawSignature());
                 }
@@ -313,23 +299,17 @@ final class LinkResolverImpl {
                 if (!resolved.isConstructor()) {
                     if (!symbolicHolder.isInterface() &&
                                     symbolicHolder != currentKlass &&
-                                    currentKlass.getSuperKlass() != null &&
-                                    symbolicHolder != currentKlass.getSuperKlass() &&
+                                    currentKlass.getSuperClass() != null &&
+                                    symbolicHolder != currentKlass.getSuperClass() &&
                                     symbolicHolder.isAssignableFrom(currentKlass)) {
-                        resolved = currentKlass.getSuperKlass().lookupMethod(resolved.getName(), resolved.getRawSignature(), Klass.LookupMode.INSTANCE_ONLY);
+                        resolved = currentKlass.getSuperClass().lookupInstanceMethod(resolved.getName(), resolved.getRawSignature());
                     }
                 }
                 callKind = CallKind.DIRECT;
                 break;
             default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.unimplemented("Resolution for " + callSiteType);
+                throw meta.fatal("Resolution for %s", callSiteType);
         }
-        return new ResolvedCall(callKind, resolved);
-    }
-
-    @TruffleBoundary
-    private static RuntimeException throwBoundary(Meta meta, ObjectKlass exceptionKlass, String messageFormat, Object... args) {
-        throw meta.throwExceptionWithMessage(exceptionKlass, String.format(Locale.ENGLISH, messageFormat, args));
+        return new ResolvedCall<>(callKind, resolved);
     }
 }

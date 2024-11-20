@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
+package com.oracle.truffle.espresso.resolver.meta;
 
-public abstract class Member<T extends Descriptor> implements ModifiersProvider,
-                com.oracle.truffle.espresso.resolver.meta.Member<Klass, Method, Field> {
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 
-    public abstract Symbol<Name> getName();
+public interface RuntimeAccess<C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> {
+    JavaVersion getJavaVersion();
 
-    public abstract ObjectKlass getDeclaringKlass();
+    void fieldAccessCheck(F field, C accessingClass, C holderClass);
 
-    @Override
-    public final ObjectKlass getDeclaringClass() {
-        return getDeclaringKlass();
-    }
+    void methodAccessCheck(M method, C accessingClass, C holderClass);
+
+    void fieldLoadingConstraints(F field, C accessingClass);
+
+    void methodLoadingConstraints(M method, C accessingClass);
+
+    boolean enforceInitializerCheck(F field);
+
+    boolean skipLoadingConstraints(M method);
+
+    RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
+
+    RuntimeException fatal(String messageFormat, Object... args);
 }

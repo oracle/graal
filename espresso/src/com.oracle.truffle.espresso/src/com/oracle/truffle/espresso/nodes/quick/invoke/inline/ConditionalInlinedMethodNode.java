@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.nodes.quick.invoke.inline;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
@@ -46,7 +48,7 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
     @Child protected InvokeQuickNode fallbackNode;
     private final InlinedMethodPredicate condition;
 
-    public ConditionalInlinedMethodNode(ResolvedCall resolvedCall, int top, int opcode, int callerBCI, int statementIndex, Recipes recipes, InlinedMethodPredicate condition) {
+    public ConditionalInlinedMethodNode(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int opcode, int callerBCI, int statementIndex, Recipes recipes, InlinedMethodPredicate condition) {
         super(resolvedCall.getResolvedMethod().getMethodVersion(), top, opcode, callerBCI, statementIndex, null);
         this.fallbackNode = getFallback(resolvedCall, top, callerBCI);
         this.condition = condition;
@@ -79,7 +81,7 @@ public class ConditionalInlinedMethodNode extends InlinedMethodNode {
         return replacement;
     }
 
-    static InvokeQuickNode getFallback(ResolvedCall resolvedCall, int top, int callerBCI) {
+    static InvokeQuickNode getFallback(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int callerBCI) {
         // @formatter:off
         switch (resolvedCall.getCallKind()) {
             case STATIC        : return new InvokeStaticQuickNode(resolvedCall.getResolvedMethod(), top, callerBCI);

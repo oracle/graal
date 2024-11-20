@@ -32,6 +32,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.ConditionalInlinedMethodNode;
@@ -95,14 +96,14 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
         this.field = getInlinedField(method, fieldCpi);
     }
 
-    public static InlinedMethodNode createGetter(ResolvedCall resolvedCall, int top, int opCode, int curBCI, int statementIndex) {
+    public static InlinedMethodNode createGetter(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int opCode, int curBCI, int statementIndex) {
         Method.MethodVersion methodVersion = resolvedCall.getResolvedMethod().getMethodVersion();
         char fieldCpi = InlinedFieldAccessNode.getFieldCpi(false, methodVersion);
         ConditionalInlinedMethodNode.Recipes recipes = new FieldAccessRecipes(() -> new InlinedGetterNode(methodVersion, fieldCpi));
         return create(resolvedCall, top, opCode, curBCI, statementIndex, recipes, fieldCpi);
     }
 
-    public static InlinedMethodNode createSetter(ResolvedCall resolvedCall, int top, int opCode, int curBCI, int statementIndex) {
+    public static InlinedMethodNode createSetter(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int opCode, int curBCI, int statementIndex) {
         Method.MethodVersion methodVersion = resolvedCall.getResolvedMethod().getMethodVersion();
         char fieldCpi = InlinedFieldAccessNode.getFieldCpi(true, methodVersion);
         ConditionalInlinedMethodNode.Recipes recipes = new FieldAccessRecipes(() -> new InlinedSetterNode(methodVersion, fieldCpi));
@@ -123,7 +124,7 @@ public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode 
      * to a generic invoke if the method is no longer a leaf.</li>
      * </ul>
      */
-    private static InlinedMethodNode create(ResolvedCall resolvedCall, int top, int opCode, int curBCI, int statementIndex,
+    private static InlinedMethodNode create(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int opCode, int curBCI, int statementIndex,
                     ConditionalInlinedMethodNode.Recipes recipes, char fieldCpi) {
         assert isInlineCandidate(resolvedCall);
         Method.MethodVersion inlinedMethod = resolvedCall.getResolvedMethod().getMethodVersion();

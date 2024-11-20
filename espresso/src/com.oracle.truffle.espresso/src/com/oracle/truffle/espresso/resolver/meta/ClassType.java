@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+
+package com.oracle.truffle.espresso.resolver.meta;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 
-public abstract class Member<T extends Descriptor> implements ModifiersProvider,
-                com.oracle.truffle.espresso.resolver.meta.Member<Klass, Method, Field> {
+public interface ClassType<C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> extends ModifiersProvider {
+    Symbol<Name> getName();
 
-    public abstract Symbol<Name> getName();
+    String getJavaName();
 
-    public abstract ObjectKlass getDeclaringKlass();
+    C getSuperClass();
 
-    @Override
-    public final ObjectKlass getDeclaringClass() {
-        return getDeclaringKlass();
+    F lookupField(Symbol<Name> name, Symbol<Type> type);
+
+    M lookupMethod(Symbol<Name> name, Symbol<Signature> signature);
+
+    M lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature);
+
+    M lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature);
+
+    boolean isAssignableFrom(C other);
+
+    default boolean isJavaLangObject() {
+        return getSuperClass() == null;
     }
 }

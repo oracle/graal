@@ -82,7 +82,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethodNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
@@ -91,6 +90,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeFactory;
 import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
 import com.oracle.truffle.espresso.nodes.interop.ToPrimitiveFactory;
+import com.oracle.truffle.espresso.resolver.meta.ClassType;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
@@ -107,7 +107,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class Klass extends ContextAccessImpl implements ModifiersProvider, KlassRef, TruffleObject, EspressoType {
+public abstract class Klass extends ContextAccessImpl implements KlassRef, TruffleObject, EspressoType, ClassType<Klass, Method, Field> {
 
     // region Interop
 
@@ -886,7 +886,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     public final boolean isInterface() {
         // conflict between ModifiersProvider and KlassRef interfaces,
         // so chose the default implementation in ModifiersProvider.
-        return ModifiersProvider.super.isInterface();
+        return ClassType.super.isInterface();
     }
 
     /**
@@ -1042,6 +1042,20 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return this instanceof PrimitiveKlass;
     }
 
+    public static ObjectKlass asAccessingObjectKlass(Klass k) {
+        if (k == null) {
+            return null;
+        }
+        if (k.isPrimitive()) {
+            return null;
+        }
+        if (k.isArray()) {
+            return asAccessingObjectKlass(k.getElementalType());
+        }
+        assert k instanceof ObjectKlass;
+        return (ObjectKlass) k;
+    }
+
     /*
      * The setting of the final bit for types is a bit confusing since arrays are marked as final.
      * This method provides a semantically equivalent test that appropriate for types.
@@ -1057,7 +1071,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
          * never overriden default interface methods. We cirumvent this CHA limitation here by using
          * an invokespecial, which is inlinable.
          */
-        return ModifiersProvider.super.isFinalFlagSet() /* || isLeafAssumption() */;
+        return ClassType.super.isFinalFlagSet() /* || isLeafAssumption() */;
     }
 
     /**
@@ -1568,6 +1582,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return lookupMethod(methodName, signature, LookupMode.ALL);
     }
 
+    @Override
+    public Method lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        return lookupMethod(name, signature, LookupMode.INSTANCE_ONLY);
+    }
+
     public final Method vtableLookup(int vtableIndex) {
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).vtableLookupImpl(vtableIndex);
@@ -1792,7 +1811,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @Override
-    public KlassRef getSuperClass() {
+    public Klass getSuperClass() {
         return getSuperKlass();
     }
 
@@ -1873,4 +1892,19 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     // endregion jdwp-specific
+
+    // ClassType impl
+
+    @Override
+    public String getJavaName() {
+        return getExternalName();
+    }
+
+    @Override
+    public Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        if (this instanceof ObjectKlass) {
+            return ((ObjectKlass) this).resolveInterfaceMethod(name, signature);
+        }
+        return null;
+    }
 }

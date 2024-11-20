@@ -379,7 +379,6 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
 import com.oracle.truffle.espresso.resolver.CallKind;
 import com.oracle.truffle.espresso.resolver.CallSiteType;
 import com.oracle.truffle.espresso.resolver.FieldAccessType;
-import com.oracle.truffle.espresso.resolver.LinkResolver;
 import com.oracle.truffle.espresso.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -2412,7 +2411,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private InvokeQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
 
         Klass symbolicRef = Resolution.getResolvedHolderKlass((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
-        ResolvedCall resolvedCall = LinkResolver.resolveCallSite(getMeta(), getDeclaringKlass(), resolutionSeed, CallSiteType.fromOpCode(opcode), symbolicRef);
+        ResolvedCall<Klass, Method, Field> resolvedCall = getContext().getLinkResolver().resolveCallSite(getContext(),
+                        getDeclaringKlass(), resolutionSeed, CallSiteType.fromOpCode(opcode), symbolicRef);
 
         Method resolved = resolvedCall.getResolvedMethod();
         CallKind callKind = resolvedCall.getCallKind();
@@ -2706,7 +2706,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.partialEvaluationConstant(field);
         CompilerAsserts.partialEvaluationConstant(mode);
 
-        LinkResolver.resolveFieldAccess(getMeta(), getDeclaringKlass(), getMethod(), field, mode);
+        getContext().getLinkResolver().resolveFieldAccess(getContext(), getDeclaringKlass(), getMethod(), field, mode);
 
         byte typeHeader = field.getType().byteAt(0);
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
@@ -2819,7 +2819,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         CompilerAsserts.partialEvaluationConstant(field);
 
-        LinkResolver.resolveFieldAccess(getMeta(), getDeclaringKlass(), getMethod(), field, mode);
+        getContext().getLinkResolver().resolveFieldAccess(getContext(), getDeclaringKlass(), getMethod(), field, mode);
 
         int slot = top - 1;
         StaticObject receiver;

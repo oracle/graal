@@ -75,7 +75,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.resolver.CallSiteType;
-import com.oracle.truffle.espresso.resolver.LinkResolver;
 import com.oracle.truffle.espresso.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -453,6 +452,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 iaeProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid MemberName flag format.");
             }
+
+            EspressoContext ctx = meta.getContext();
             ByteSequence desc = asSignature(type, meta);
             Symbol<Name> name = lookupName(meta, meta.toHostString(guestName), (Constants.flagHas(flags, MN_IS_FIELD)) ? meta.java_lang_NoSuchFieldException : meta.java_lang_NoSuchMethodException);
             ObjectKlass callerKlass = StaticObject.isNull(caller) ? null : (ObjectKlass) caller.getMirrorKlass(meta);
@@ -469,7 +470,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 // - Static fields are accessed statically
                 // - Final fields and ref_put*
                 // These are done when needed by JDK code.
-                Field f = LinkResolver.resolveFieldSymbol(meta, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
+                Field f = ctx.getLinkResolver().resolveFieldSymbol(ctx, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
                 plantResolvedField(memberName, f, refKind, meta, meta.getLanguage());
                 return memberName;
             }
@@ -499,8 +500,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             }
 
             Symbol<Signature> sig = lookupSignature(meta, desc, mhMethodId);
-            Method m = LinkResolver.resolveMethodSymbol(meta, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
-            ResolvedCall resolvedCall = LinkResolver.resolveCallSite(meta, callerKlass, m, CallSiteType.fromRefKind(refKind), resolutionKlass);
+            Method m = ctx.getLinkResolver().resolveMethodSymbol(ctx, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
+            ResolvedCall<Klass, Method, Field> resolvedCall = ctx.getLinkResolver().resolveCallSite(ctx, callerKlass, m, CallSiteType.fromRefKind(refKind), resolutionKlass);
 
             plantResolvedMethod(memberName, resolvedCall, meta);
 
@@ -607,7 +608,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         plant(memberName, target, meta, methodFlags);
     }
 
-    public static void plantResolvedMethod(StaticObject memberName, ResolvedCall resolvedCall, Meta meta) {
+    public static void plantResolvedMethod(StaticObject memberName, ResolvedCall<Klass, Method, Field> resolvedCall, Meta meta) {
         int methodFlags = getMethodFlags(resolvedCall);
         plant(memberName, resolvedCall.getResolvedMethod(), meta, methodFlags);
     }
@@ -626,7 +627,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         meta.java_lang_invoke_MemberName_clazz.setObject(memberName, field.getDeclaringKlass().mirror());
     }
 
-    private static int getMethodFlags(ResolvedCall call) {
+    private static int getMethodFlags(ResolvedCall<Klass, Method, Field> call) {
         int flags = call.getResolvedMethod().getMethodModifiers();
         if (call.getResolvedMethod().isCallerSensitive()) {
             flags |= MN_CALLER_SENSITIVE;

@@ -116,6 +116,8 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
+import com.oracle.truffle.espresso.resolver.ResolvedCall;
+import com.oracle.truffle.espresso.resolver.meta.MethodType;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -124,7 +126,8 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM.EspressoStackElement;
 
-public final class Method extends Member<Signature> implements TruffleObject, ContextAccess {
+public final class Method extends Member<Signature> implements TruffleObject, ContextAccess,
+                MethodType<Klass, Method, Field> {
 
     public static final Method[] EMPTY_ARRAY = new Method[0];
     public static final MethodVersion[] EMPTY_VERSION_ARRAY = new MethodVersion[0];
@@ -523,6 +526,19 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         } finally {
             tls.unblockContinuationSuspension();
         }
+    }
+
+    public static Object call(ResolvedCall<Klass, Method, Field> resolved, Object... args) {
+        return switch (resolved.getCallKind()) {
+            case STATIC ->
+                resolved.getResolvedMethod().invokeDirectStatic(args);
+            case DIRECT ->
+                resolved.getResolvedMethod().invokeDirect(args);
+            case VTABLE_LOOKUP ->
+                resolved.getResolvedMethod().invokeDirectVirtual(args);
+            case ITABLE_LOOKUP ->
+                resolved.getResolvedMethod().invokeDirectInterface(args);
+        };
     }
 
     @TruffleBoundary

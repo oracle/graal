@@ -25,31 +25,20 @@ package com.oracle.truffle.espresso.resolver;
 
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.resolver.meta.ClassType;
+import com.oracle.truffle.espresso.resolver.meta.FieldType;
+import com.oracle.truffle.espresso.resolver.meta.MethodType;
 
-public final class ResolvedCall {
+public final class ResolvedCall<C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> {
     private final CallKind callKind;
-    private final Method resolved;
+    private final M resolved;
 
-    public ResolvedCall(CallKind callKind, Method resolved) {
+    public ResolvedCall(CallKind callKind, M resolved) {
         this.callKind = Objects.requireNonNull(callKind);
         this.resolved = Objects.requireNonNull(resolved);
     }
 
-    public Object call(Object... args) {
-        return switch (callKind) {
-            case STATIC ->
-                resolved.invokeDirectStatic(args);
-            case DIRECT ->
-                resolved.invokeDirect(args);
-            case VTABLE_LOOKUP ->
-                resolved.invokeDirectVirtual(args);
-            case ITABLE_LOOKUP ->
-                resolved.invokeDirectInterface(args);
-        };
-    }
-
-    public Method getResolvedMethod() {
+    public M getResolvedMethod() {
         return resolved;
     }
 

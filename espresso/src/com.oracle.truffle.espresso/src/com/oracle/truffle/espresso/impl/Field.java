@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.resolver.meta.FieldType;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -74,7 +75,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * value (this could be either an Original Field or a Redefine Added Field) a Delegation field is
  * assigned the underlying field as a Compatible Field.
  */
-public class Field extends Member<Type> implements FieldRef {
+public class Field extends Member<Type> implements FieldRef, FieldType<Klass, Method, Field> {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 

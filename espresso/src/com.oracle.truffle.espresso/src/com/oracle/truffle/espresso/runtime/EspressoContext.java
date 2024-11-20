@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
@@ -66,6 +67,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Names;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
@@ -77,6 +79,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
+import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
@@ -102,6 +105,9 @@ import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
+import com.oracle.truffle.espresso.resolver.LinkResolver;
+import com.oracle.truffle.espresso.resolver.meta.ErrorType;
+import com.oracle.truffle.espresso.resolver.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import com.oracle.truffle.espresso.runtime.panama.Platform;
@@ -115,7 +121,8 @@ import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
 
-public final class EspressoContext {
+public final class EspressoContext
+                implements RuntimeAccess<Klass, Method, Field> {
     // MaxJavaStackTraceDepth is 1024 by default
     public static final int DEFAULT_STACK_SIZE = 32;
 
@@ -186,6 +193,7 @@ public final class EspressoContext {
     @CompilationFinal private AgentLibraries agents;
     @CompilationFinal private NativeAccess nativeAccess;
     @CompilationFinal private JNIHandles handles;
+    private final LinkResolver<EspressoContext, Klass, Method, Field> linkResolver = new LinkResolver<>();
     // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -1248,5 +1256,73 @@ public final class EspressoContext {
 
     public boolean isJavaBase(ModuleTable.ModuleEntry m) {
         return m == getRegistries().getJavaBaseModule();
+    }
+
+    // RuntimeAccess impl
+
+    public LinkResolver<EspressoContext, Klass, Method, Field> getLinkResolver() {
+        return linkResolver;
+    }
+
+    @Override
+    public void fieldAccessCheck(Field field, Klass accessingClass, Klass holderClass) {
+        Resolution.memberDoAccessCheck(accessingClass, holderClass, field, meta);
+    }
+
+    @Override
+    public void methodAccessCheck(Method method, Klass accessingClass, Klass holderClass) {
+        Resolution.memberDoAccessCheck(accessingClass, holderClass, method, meta);
+    }
+
+    @Override
+    public void fieldLoadingConstraints(Field field, Klass accessingClass) {
+        field.checkLoadingConstraints(accessingClass.getDefiningClassLoader(), field.getDeclaringKlass().getDefiningClassLoader());
+    }
+
+    @Override
+    public void methodLoadingConstraints(Method method, Klass accessingClass) {
+        method.checkLoadingConstraints(accessingClass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
+    }
+
+    @Override
+    public boolean enforceInitializerCheck(Field field) {
+        return (meta.getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT) ||
+                        // HotSpot enforces this only for >= Java 9 (v53) .class files.
+                        field.getDeclaringClass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
+    }
+
+    @Override
+    public boolean skipLoadingConstraints(Method method) {
+        return method.isPolySignatureIntrinsic();
+    }
+
+    @Override
+    @TruffleBoundary
+    public RuntimeException throwError(ErrorType error, String messageFormat, Object... args) {
+        ObjectKlass exType = errorTypeToExceptionKlass(error);
+        if (exType == null) {
+            throw fatal(messageFormat, args);
+        }
+        throw meta.throwExceptionWithMessage(exType, String.format(Locale.ENGLISH, messageFormat, args));
+    }
+
+    @Override
+    public RuntimeException fatal(String messageFormat, Object... args) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere(String.format(Locale.ENGLISH, messageFormat, args));
+    }
+
+    private ObjectKlass errorTypeToExceptionKlass(ErrorType errorType) {
+        switch (errorType) {
+            case IllegalAccessError:
+                return meta.java_lang_IllegalAccessError;
+            case NoSuchFieldError:
+                return meta.java_lang_NoSuchFieldError;
+            case NoSuchMethodError:
+                return meta.java_lang_NoSuchMethodError;
+            case IncompatibleClassChangeError:
+                return meta.java_lang_IncompatibleClassChangeError;
+        }
+        return null;
     }
 }
