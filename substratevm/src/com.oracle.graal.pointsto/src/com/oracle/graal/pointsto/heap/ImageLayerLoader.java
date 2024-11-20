@@ -81,6 +81,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHODS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_HANDLE_INTRINSIC_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.MODIFIERS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NAME_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_CONSTANT_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_FIELD_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_METHOD_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_TYPE_ID_TAG;
@@ -424,6 +425,9 @@ public class ImageLayerLoader {
 
         int nextFieldId = get(jsonMap, NEXT_FIELD_ID_TAG);
         universe.setStartFieldId(nextFieldId);
+
+        int nextConstantId = get(jsonMap, NEXT_CONSTANT_ID_TAG);
+        ImageHeapConstant.setCurrentId(nextConstantId);
 
         imageHeapSize = Long.parseLong(get(jsonMap, IMAGE_HEAP_SIZE_TAG));
 
@@ -1115,7 +1119,7 @@ public class ImageLayerLoader {
                 }
 
                 addBaseLayerObject(id, objectOffset, () -> {
-                    ImageHeapInstance imageHeapInstance = new ImageHeapInstance(type, foundHostedObject == null ? parentReachableHostedObject : foundHostedObject, identityHashCode);
+                    ImageHeapInstance imageHeapInstance = new ImageHeapInstance(type, foundHostedObject == null ? parentReachableHostedObject : foundHostedObject, identityHashCode, id);
                     if (instanceData != null) {
                         Object[] fieldValues = getReferencedValues(constantsMap, imageHeapInstance, instanceData, imageLayerSnapshotUtil.getRelinkedFields(type, metaAccess));
                         imageHeapInstance.setFieldValues(fieldValues);
@@ -1126,7 +1130,7 @@ public class ImageLayerLoader {
             case ARRAY_TAG -> {
                 List<List<Object>> arrayData = get(baseLayerConstant, DATA_TAG);
                 addBaseLayerObject(id, objectOffset, () -> {
-                    ImageHeapObjectArray imageHeapObjectArray = new ImageHeapObjectArray(type, null, arrayData.size(), identityHashCode);
+                    ImageHeapObjectArray imageHeapObjectArray = new ImageHeapObjectArray(type, null, arrayData.size(), identityHashCode, id);
                     Object[] elementsValues = getReferencedValues(constantsMap, imageHeapObjectArray, arrayData, Set.of());
                     imageHeapObjectArray.setElementValues(elementsValues);
                     return imageHeapObjectArray;
@@ -1135,11 +1139,11 @@ public class ImageLayerLoader {
             case PRIMITIVE_ARRAY_TAG -> {
                 List<Object> primitiveData = get(baseLayerConstant, DATA_TAG);
                 Object array = getArray(type.getComponentType().getJavaKind(), primitiveData);
-                addBaseLayerObject(id, objectOffset, () -> new ImageHeapPrimitiveArray(type, null, array, primitiveData.size(), identityHashCode));
+                addBaseLayerObject(id, objectOffset, () -> new ImageHeapPrimitiveArray(type, null, array, primitiveData.size(), identityHashCode, id));
             }
             case RELOCATED_CONSTANT_TAG -> {
                 String key = get(baseLayerConstant, DATA_TAG);
-                addBaseLayerObject(id, objectOffset, () -> ImageHeapRelocatableConstant.create(type, key));
+                addBaseLayerObject(id, objectOffset, () -> ImageHeapRelocatableConstant.create(type, key, id));
             }
             default -> throw GraalError.shouldNotReachHere("Unknown constant type: " + constantType);
         }

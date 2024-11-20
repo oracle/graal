@@ -77,6 +77,7 @@ import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHODS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_HANDLE_INTRINSIC_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.MODIFIERS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NAME_TAG;
+import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_CONSTANT_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_FIELD_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_METHOD_ID_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NEXT_TYPE_ID_TAG;
@@ -281,6 +282,7 @@ public class ImageLayerWriter {
         jsonMap.put(NEXT_TYPE_ID_TAG, aUniverse.getNextTypeId());
         jsonMap.put(NEXT_METHOD_ID_TAG, aUniverse.getNextMethodId());
         jsonMap.put(NEXT_FIELD_ID_TAG, aUniverse.getNextFieldId());
+        jsonMap.put(NEXT_CONSTANT_ID_TAG, ImageHeapConstant.getCurrentId());
 
         for (AnalysisType type : aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).toList()) {
             checkTypeStability(type);
