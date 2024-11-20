@@ -813,7 +813,7 @@ public class SubstrateGraphBuilderPlugins {
                 ensureInitialized.setStateAfter(b.getInvocationPluginBeforeState());
 
                 ValidateNewInstanceClassNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazzNonNull));
-                if (b.currentBlockCatchesOOM()) {
+                if (b.currentBlockCatchesOOME()) {
                     b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzLegal, true));
                 } else {
                     b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
@@ -971,7 +971,7 @@ public class SubstrateGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode clazz) {
                 ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
-                if (b.currentBlockCatchesOOM()) {
+                if (b.currentBlockCatchesOOME()) {
                     b.addPush(JavaKind.Object, new DynamicNewInstanceWithExceptionNode(clazzNonNull, true));
                 } else {
                     b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzNonNull, true));

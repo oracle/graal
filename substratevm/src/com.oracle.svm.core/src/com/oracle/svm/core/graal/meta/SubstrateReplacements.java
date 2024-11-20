@@ -364,9 +364,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod original, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosiion,
-                    AllowAssumptions allowAssumptions,
-                    OptionValues options) {
+    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod original, int invokeBci, boolean isInOOMETry, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosiion, AllowAssumptions allowAssumptions, OptionValues options) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return null;
     }

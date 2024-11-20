@@ -584,7 +584,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * Determine if the given basic block is inside a {@code try} block of an exception handler
      * catching {@link OutOfMemoryError} exceptions.
      */
-    default boolean currentBlockCatchesOOM() {
+    default boolean currentBlockCatchesOOME() {
         return false;
     }
 }
