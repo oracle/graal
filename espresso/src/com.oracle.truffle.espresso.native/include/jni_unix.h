@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,45 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.util.ReflectionUtil;
+#ifndef _JAVASOFT_JNI_MD_H_
+#define _JAVASOFT_JNI_MD_H_
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+#ifndef __has_attribute
+  #define __has_attribute(x) 0
+#endif
 
-public abstract class JavaThreadsFeature implements InternalFeature {
+#ifndef JNIEXPORT
+  #if (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4) && (__GNUC_MINOR__ > 2))) || __has_attribute(visibility)
+    #ifdef ARM
+      #define JNIEXPORT     __attribute__((externally_visible,visibility("default")))
+    #else
+      #define JNIEXPORT     __attribute__((visibility("default")))
+    #endif
+  #else
+    #define JNIEXPORT
+  #endif
+#endif
 
-    protected static long threadId(Thread thread) {
-        if (thread == PlatformThreads.singleton().mainThread) {
-            if (JavaVersionUtil.JAVA_SPEC <= 21) {
-                return 1;
-            }
-            return ReflectionUtil.readStaticField(Thread.class, "PRIMORDIAL_TID");
-        }
-        return JavaThreads.getThreadId(thread);
-    }
-}
+#if (defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4) && (__GNUC_MINOR__ > 2))) || __has_attribute(visibility)
+  #ifdef ARM
+    #define JNIIMPORT     __attribute__((externally_visible,visibility("default")))
+  #else
+    #define JNIIMPORT     __attribute__((visibility("default")))
+  #endif
+#else
+  #define JNIIMPORT
+#endif
+
+#define JNICALL
+
+typedef int jint;
+#ifdef _LP64
+typedef long jlong;
+#else
+typedef long long jlong;
+#endif
+
+typedef signed char jbyte;
+
+#endif /* !_JAVASOFT_JNI_MD_H_ */

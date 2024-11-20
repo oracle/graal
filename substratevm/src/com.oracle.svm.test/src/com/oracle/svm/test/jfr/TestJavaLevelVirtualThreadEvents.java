@@ -41,6 +41,7 @@ import org.junit.Test;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.test.jfr.events.StringEvent;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -54,7 +55,12 @@ public class TestJavaLevelVirtualThreadEvents extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd", "jdk.VirtualThreadPinned", "com.jfr.String"};
+        String[] events;
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd", "jdk.VirtualThreadPinned", "com.jfr.String"};
+        } else {
+            events = new String[]{"jdk.ThreadSleep", "jdk.VirtualThreadStart", "jdk.VirtualThreadEnd", "com.jfr.String"};
+        }
         Recording recording = startRecording(events);
         Runnable r = () -> {
             try {

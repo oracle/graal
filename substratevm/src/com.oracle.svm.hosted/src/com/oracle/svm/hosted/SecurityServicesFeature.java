@@ -166,8 +166,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         CertPathBuilder.class, CertPathValidator.class, CertStore.class, CertificateFactory.class,
                         Cipher.class, Configuration.class, KeyAgreement.class, KeyFactory.class,
                         KeyGenerator.class, KeyManagerFactory.class, KeyPairGenerator.class,
-                        KeyStore.class, Mac.class, MessageDigest.class, Policy.class, SSLContext.class,
+                        KeyStore.class, Mac.class, MessageDigest.class, SSLContext.class,
                         SecretKeyFactory.class, SecureRandom.class, Signature.class, TrustManagerFactory.class));
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            // JDK-8338411: Implement JEP 486: Permanently Disable the Security Manager
+            classList.add(Policy.class);
+        }
 
         if (ModuleLayer.boot().findModule("java.security.sasl").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.security.sasl.SaslClientFactory"));
@@ -634,6 +638,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
         try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
             Set<Service> services = availableServices.get(serviceType);
+            VMError.guarantee(services != null);
             for (Service service : services) {
                 registerService(access, service);
             }

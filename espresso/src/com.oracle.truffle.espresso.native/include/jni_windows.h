@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.util.ReflectionUtil;
+#ifndef _JAVASOFT_JNI_MD_H_
+#define _JAVASOFT_JNI_MD_H_
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+#ifndef JNIEXPORT
+  #define JNIEXPORT __declspec(dllexport)
+#endif
+#define JNIIMPORT __declspec(dllimport)
+#define JNICALL __stdcall
 
-public abstract class JavaThreadsFeature implements InternalFeature {
+// 'long' is always 32 bit on windows so this matches what jdk expects
+typedef long jint;
+typedef __int64 jlong;
+typedef signed char jbyte;
 
-    protected static long threadId(Thread thread) {
-        if (thread == PlatformThreads.singleton().mainThread) {
-            if (JavaVersionUtil.JAVA_SPEC <= 21) {
-                return 1;
-            }
-            return ReflectionUtil.readStaticField(Thread.class, "PRIMORDIAL_TID");
-        }
-        return JavaThreads.getThreadId(thread);
-    }
-}
+#endif /* !_JAVASOFT_JNI_MD_H_ */

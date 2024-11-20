@@ -61,8 +61,7 @@ public final class Target_java_lang_VirtualThread {
     // Checkstyle: stop
     @Alias static int NEW;
     @Alias static int STARTED;
-    @Alias //
-    @TargetElement(onlyWith = JDK21OrEarlier.class) static int RUNNABLE;
+    @TargetElement(onlyWith = JDK21OrEarlier.class) @Alias static int RUNNABLE;
     @Alias static int RUNNING;
     @Alias static int PARKING;
     @Alias static int PARKED;
@@ -75,6 +74,13 @@ public final class Target_java_lang_VirtualThread {
     @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PARKED;
     @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_PINNED;
     @TargetElement(onlyWith = JDKLatest.class) @Alias static int UNPARKED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int BLOCKING;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int BLOCKED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int UNBLOCKED;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int WAITING;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int WAIT;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_WAITING;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias static int TIMED_WAIT;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
 
     /**
@@ -111,6 +117,14 @@ public final class Target_java_lang_VirtualThread {
      */
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NondefaultSchedulerSupplier.class) //
     private Executor nondefaultScheduler;
+
+    @TargetElement(onlyWith = JDKLatest.class) @Alias volatile int state;
+
+    // With our monitor implementation, we do not use these fields.
+    @TargetElement(onlyWith = JDKLatest.class) @Delete volatile Target_java_lang_VirtualThread next;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean blockPermit;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean onWaitingList;
+    @TargetElement(onlyWith = JDKLatest.class) @Alias @InjectAccessors(AlwaysFalseAccessor.class) boolean notified;
     // Checkstyle: resume
 
     @Alias
@@ -123,6 +137,17 @@ public final class Target_java_lang_VirtualThread {
     @Alias
     @TargetElement(onlyWith = JDKLatest.class)
     private static native ScheduledExecutorService[] createDelayedTaskSchedulers();
+
+    @SuppressWarnings("unused")
+    private static final class AlwaysFalseAccessor {
+        static boolean get(Target_java_lang_VirtualThread vt) {
+            return false;
+        }
+
+        static void set(Target_java_lang_VirtualThread vt, boolean value) {
+            assert !value;
+        }
+    }
 
     private static final class DefaultSchedulerAccessor {
         private static volatile ForkJoinPool defaultScheduler;
@@ -258,6 +283,12 @@ public final class Target_java_lang_VirtualThread {
         // unimplemented (GR-51158)
     }
 
+    @Substitute
+    @SuppressWarnings("unused")
+    @TargetElement(onlyWith = JDKLatest.class)
+    private static void postPinnedEvent(String op) {
+    }
+
     @Alias volatile Thread carrierThread;
 
     @Alias volatile Target_sun_nio_ch_Interruptible nioBlocker;
@@ -297,6 +328,10 @@ public final class Target_java_lang_VirtualThread {
     @Alias
     @TargetElement(onlyWith = JDKLatest.class)
     native void enableSuspendAndPreempt();
+
+    @Alias
+    @TargetElement(onlyWith = JDKLatest.class)
+    native Object carrierThreadAccessLock();
 
     @Alias
     private native void setCarrierThread(Target_java_lang_Thread carrier);
@@ -346,9 +381,33 @@ public final class Target_java_lang_VirtualThread {
     @Alias
     native int state();
 
+    @Substitute
+    @TargetElement(onlyWith = JDKLatest.class)
+    void setState(int s) {
+        assert s != BLOCKING && s != BLOCKED && s != UNBLOCKED && s != WAITING && s != WAIT && s != TIMED_WAIT && s != TIMED_WAITING //
+                        : "states should never be reached with our monitor implementation";
+        state = s;
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDKLatest.class)
+    @SuppressWarnings({"static-method", "unused"})
+    void waitTimeoutExpired(byte seqNo) {
+        throw VMError.shouldNotReachHere("not used in our monitor implementation");
+    }
+
+    @Delete
+    @TargetElement(onlyWith = JDKLatest.class)
+    static native void unblockVirtualThreads();
+
+    @Delete
+    @TargetElement(onlyWith = JDKLatest.class)
+    private static native Target_java_lang_VirtualThread takeVirtualThreadListToUnblock();
+
     /** Needed for handling monitor-specific states. */
     @Substitute
     @TargetElement(onlyWith = JDKLatest.class)
+    @SuppressWarnings("hiding")
     Thread.State threadState() {
         int state = state() & ~SUSPENDED;
         if (state == NEW) {
@@ -365,7 +424,7 @@ public final class Target_java_lang_VirtualThread {
             if (Thread.currentThread() != asThread(this)) {
                 disableSuspendAndPreempt();
                 try {
-                    synchronized (asTarget(this).interruptLock) {
+                    synchronized (carrierThreadAccessLock()) {
                         Thread carrier = this.carrierThread;
                         if (carrier != null) {
                             return asTarget(carrier).threadState();
@@ -378,25 +437,25 @@ public final class Target_java_lang_VirtualThread {
             return Thread.State.RUNNABLE;
         } else if (state == PARKING || state == YIELDING) {
             return Thread.State.RUNNABLE;
-        } else if (state == PARKED || state == PINNED) {
-            int parkedThreadStatus = MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false);
+        } else if (state == PARKED || state == PINNED || state == TIMED_PARKED || state == TIMED_PINNED) {
+            boolean timed = (state == TIMED_PARKED || state == TIMED_PINNED);
+            int parkedThreadStatus = MonitorSupport.singleton().getParkedThreadStatus(asThread(this), timed);
             switch (parkedThreadStatus) {
                 case ThreadStatus.BLOCKED_ON_MONITOR_ENTER:
                     return Thread.State.BLOCKED;
                 case ThreadStatus.PARKED:
                 case ThreadStatus.IN_OBJECT_WAIT:
                     return Thread.State.WAITING;
+                case ThreadStatus.PARKED_TIMED:
+                case ThreadStatus.IN_OBJECT_WAIT_TIMED:
+                    return Thread.State.TIMED_WAITING;
                 default:
                     throw VMError.shouldNotReachHereUnexpectedInput(parkedThreadStatus); // ExcludeFromJacocoGeneratedReport
             }
         } else if (state == TERMINATED) {
             return Thread.State.TERMINATED;
-        } else {
-            if (state == TIMED_PARKING) {
-                return Thread.State.RUNNABLE;
-            } else if (state == TIMED_PARKED || state == TIMED_PINNED) {
-                return Thread.State.TIMED_WAITING;
-            }
+        } else if (state == TIMED_PARKING) {
+            return Thread.State.RUNNABLE;
         }
         throw new InternalError();
     }
@@ -404,6 +463,7 @@ public final class Target_java_lang_VirtualThread {
     /** Needed because {@link #disableSuspendAndPreempt()} does not exist on JDK 21. */
     @Substitute
     @TargetElement(name = "threadState", onlyWith = JDK21OrEarlier.class)
+    @SuppressWarnings("hiding")
     Thread.State threadStateJDK21() {
         int state = state() & ~SUSPENDED;
         if (state == NEW) {

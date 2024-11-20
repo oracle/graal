@@ -963,21 +963,6 @@ public class HotSpotGraphBuilderPlugins {
                 }
             });
         }
-
-        if (JavaVersionUtil.JAVA_SPEC > 21) {
-            r.registerConditional(config.javaThreadLockIDOffset != -1, new InvocationPlugin("setLockId", Receiver.class, long.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tid) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        receiver.get(true);
-                        CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadLockIDOffset)));
-                        b.add(new JavaWriteNode(JavaKind.Long, address, JAVA_THREAD_LOCK_ID_LOCATION, tid, BarrierType.NONE, false));
-                    }
-                    return true;
-                }
-            });
-        }
     }
 
     private static ResolvedJavaType resolveTypeAESCrypt(ResolvedJavaType context) {
