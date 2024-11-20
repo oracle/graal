@@ -1028,18 +1028,17 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
 
     # ====== check gdb version ======
-    # gdb-debughelperstest and this tests are designed for gdb 14 and higher with the python API enabled
-    # if we encounter a version lower than 14, we skip this tests
-    # TODO: remove when gdb 14 is available
+    # gdb-debughelperstests are designed for GDB 14 and higher with the GDB Python API enabled
+    # abort if we encounter a version lower than 14 or the GDB Python API is not available
     gdb_version = mx.run([
         os.environ.get('GDB_BIN', 'gdb'), '--nx', '-q',
-        '-ex', 'py gdb.execute("quit " + gdb.VERSION.split(".")[0])',  # try to get gdb version via python
-        '-ex', 'quit 0'  # fallback gdb exit
+        '-ex', 'py gdb.execute("quit " + gdb.VERSION.split(".")[0])',  # try to get GDB version via Python API
+        '-ex', 'quit 0'  # fallback GDB exit
         ]
         , nonZeroIsFatal=False)
     if gdb_version < 14:
-        mx.warn(f"Skipping gdb-debughelpers tests (Requires gdb version 14, found gdb version {gdb_version}).")
-        return
+        mx.abort('gdb-debughelpers test requires at least GDB version 14 with the GDB Python API enabled, ' +
+                 ('GDB Python API is not available.' if gdb_version == 0 else f'found GDB version {gdb_version}.'))
     # ===============================
 
     test_proj = mx.dependency('com.oracle.svm.test')
@@ -1107,6 +1106,9 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
                 '-H:+IncludeDebugHelperMethods',
                 '-H:DebugInfoSourceSearchPath=' + source_path,
             ]) + extra_args
+
+            if '--shared' in extra_args:
+                build_args = [arg for arg in build_args if arg not in ['--libc=musl', '--static']]
 
             if not with_isolates:
                 build_args += svm_experimental_options(['-H:-SpawnIsolates'])
@@ -1715,7 +1717,7 @@ def gdbdebughelperstest(args, config=None):
     builds and tests gdb-debughelpers.py with multiple native images with debuginfo
     """
     parser = ArgumentParser(prog='mx gdbdebughelperstest')
-    all_args = ['--output-path', '--with-isolates-only', '--build-only', '--test-only']
+    all_args = ['--output-path', '--with-isolates-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(), "gdbdebughelperstest")])
     parser.add_argument(all_args[1], action='store_true', help='Only build and test the native image with isolates')
