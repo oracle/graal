@@ -51,7 +51,9 @@ final class HandshakeController {
         if (controller.isServer()) {
             ServerSocket serverSocket = new ServerSocket();
             serverSocket.setSoTimeout(0); // no timeout
-            serverSocket.setReuseAddress(true);
+            if (port != 0) {
+                serverSocket.setReuseAddress(true);
+            }
             if ("*".equals(controller.getHost())) {
                 // allow any host to bind
                 serverSocket.bind(new InetSocketAddress((InetAddress) null, port));

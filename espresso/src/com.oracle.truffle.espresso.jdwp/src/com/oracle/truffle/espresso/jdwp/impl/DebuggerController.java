@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.Lock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
@@ -131,11 +132,13 @@ public final class DebuggerController implements ContextsListener {
         assert setupState != null;
 
         if (setupState.fatalConnectionError) {
-            System.err.println("ERROR: Debuggers will not be able to connect to this context again!");
+            fine(() -> "Failed debugger setup due to initial connection issue.");
             // OK, give up on trying to reconnect
             return;
         }
-        DebuggerConnection.reconnectDebuggerConnection(this, setupState);
+        // On reconnect, we just pass a placeholder CountDownLatch object which we don't ever wait
+        // for. This avoids tedious null checks in the connection method.
+        DebuggerConnection.establishDebuggerConnection(this, setupState, true, new CountDownLatch(1));
     }
 
     void setDebuggerConnection(DebuggerConnection connection) {
@@ -146,18 +149,36 @@ public final class DebuggerController implements ContextsListener {
         this.setupState = state;
     }
 
-    public void closeConnection() {
+    public void dispose() {
         if (connection != null) {
-            connection.close();
+            connection.dispose();
         }
     }
 
-    public void addDebuggerThread(Thread thread) {
-        instrument.addDebuggerThread(thread);
+    public void closeSocket() {
+        if (connection != null) {
+            connection.closeSocket();
+        }
+    }
+
+    public void addDebuggerReceiverThread(Thread thread) {
+        instrument.addDebuggerReceiverThread(thread);
+    }
+
+    public void addDebuggerSenderThread(Thread thread) {
+        instrument.addDebuggerSenderThread(thread);
     }
 
     public void markLateStartupError(Throwable t) {
         lateStartupError = t;
+    }
+
+    public boolean isClosing() {
+        return instrument.isClosing();
+    }
+
+    public Lock getResettingLock() {
+        return instrument.getResettingLock();
     }
 
     static final class SetupState {
@@ -505,15 +526,7 @@ public final class DebuggerController implements ContextsListener {
                 suspend(context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), true);
             }
         }
-        // Creating a new thread, because the reset method
-        // will interrupt all active jdwp threads, which might
-        // include the current one if we received a DISPOSE command.
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                instrument.reset(prepareReconnect);
-            }
-        }).start();
+        instrument.reset(prepareReconnect);
     }
 
     public void endSession() {
