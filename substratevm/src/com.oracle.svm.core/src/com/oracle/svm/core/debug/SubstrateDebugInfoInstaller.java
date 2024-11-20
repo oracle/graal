@@ -1,14 +1,20 @@
 package com.oracle.svm.core.debug;
 
+import com.oracle.objectfile.BasicNobitsSectionImpl;
+import com.oracle.objectfile.ObjectFile;
+import com.oracle.objectfile.SectionName;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.nmt.NmtCategory;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -19,11 +25,21 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 
 public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
 
     private final SubstrateDebugInfoProvider substrateDebugInfoProvider;
+    private final DebugContext debugContext;
+    private final ObjectFile objectFile;
+    private final ArrayList<ObjectFile.Element> sortedObjectFileElements;
+    private final int debugInfoSize;
 
     static final class Factory implements InstalledCodeObserver.Factory {
 
@@ -46,7 +62,31 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
     }
 
     private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, MetaAccessProvider metaAccess, RuntimeConfiguration runtimeConfiguration, Pointer code, int codeSize) {
-        substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debugContext, method, compilation, runtimeConfiguration, code.rawValue(), codeSize);
+        this.debugContext = debugContext;
+        substrateDebugInfoProvider = new SubstrateDebugInfoProvider(method, compilation, runtimeConfiguration, metaAccess, code.rawValue());
+
+        int pageSize = NumUtil.safeToInt(ImageSingletons.lookup(VirtualMemoryProvider.class).getGranularity().rawValue());
+        objectFile = ObjectFile.createRuntimeDebugInfo(pageSize);
+        objectFile.newNobitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), new BasicNobitsSectionImpl(codeSize));
+        objectFile.installDebugInfo(substrateDebugInfoProvider);
+        sortedObjectFileElements = new ArrayList<>();
+        debugInfoSize = objectFile.bake(sortedObjectFileElements);
+
+        if (debugContext.isLogEnabled()) {
+            dumpObjectFile();
+        }
+    }
+
+    private void dumpObjectFile() {
+        StringBuilder sb = new StringBuilder(substrateDebugInfoProvider.getCompilationName()).append(".debug");
+        try (FileChannel dumpFile = FileChannel.open(Paths.get(sb.toString()),
+                StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
+                StandardOpenOption.CREATE)) {
+            ByteBuffer buffer = dumpFile.map(FileChannel.MapMode.READ_WRITE, 0, debugInfoSize);
+            objectFile.writeBuffer(sortedObjectFileElements, buffer);
+        } catch (IOException e) {
+            debugContext.log("Failed to dump %s", sb);
+        }
     }
 
     @RawStructure
@@ -139,26 +179,30 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
             // UnmanagedMemory.free(handle); -> change because of Uninterruptible annotation
             ImageSingletons.lookup(UnmanagedMemorySupport.class).free(handle);
         }
-
-        static String toString(Handle handle) {
-            StringBuilder sb = new StringBuilder("DebugInfoHandle(handle = 0x");
-            sb.append(Long.toHexString(handle.getRawHandle().rawValue()));
-            sb.append(", address = 0x");
-            sb.append(Long.toHexString(NonmovableArrays.addressOf(handle.getDebugInfoData(), 0).rawValue()));
-            sb.append(", size = ");
-            sb.append(NonmovableArrays.lengthOf(handle.getDebugInfoData()));
-            sb.append(", handleState = ");
-            sb.append(handle.getState());
-            sb.append(")");
-            return sb.toString();
-        }
     }
 
     @Override
     public InstalledCodeObserverHandle install() {
-        NonmovableArray<Byte> debugInfoData = substrateDebugInfoProvider.writeDebugInfoData();
+        NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
         Handle handle = Accessor.createHandle(debugInfoData);
-        System.out.println(Accessor.toString(handle));
+        System.out.println(toString(handle));
         return handle;
+    }
+
+    private NonmovableArray<Byte> writeDebugInfoData() {
+        NonmovableArray<Byte> array = NonmovableArrays.createByteArray(debugInfoSize, NmtCategory.Code);
+        objectFile.writeBuffer(sortedObjectFileElements, NonmovableArrays.asByteBuffer(array));
+        return array;
+    }
+
+    private static String toString(Handle handle) {
+        return "DebugInfoHandle(handle = 0x" + Long.toHexString(handle.getRawHandle().rawValue()) +
+                ", address = 0x" +
+                Long.toHexString(NonmovableArrays.addressOf(handle.getDebugInfoData(), 0).rawValue()) +
+                ", size = " +
+                NonmovableArrays.lengthOf(handle.getDebugInfoData()) +
+                ", handleState = " +
+                handle.getState() +
+                ")";
     }
 }

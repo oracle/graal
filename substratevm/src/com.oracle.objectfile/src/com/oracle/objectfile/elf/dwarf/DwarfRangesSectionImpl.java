@@ -61,7 +61,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
         LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
         if (decisionMap != null) {
             Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
-            if (valueObj != null && valueObj instanceof Number) {
+            if (valueObj instanceof Number) {
                 /*
                  * This may not be the final vaddr for the text segment but it will be close enough
                  * to make debug easier i.e. to within a 4k page or two.
@@ -119,7 +119,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     private int writeRangeLists(DebugContext context, byte[] buffer, int p) {
         Cursor entryCursor = new Cursor(p);
 
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+        instanceClassStream().filter(ClassEntry::hasCompiledMethods).forEachOrdered(classEntry -> {
             int pos = entryCursor.get();
             setCodeRangesIndex(classEntry, pos);
             /* Write range list for a class */
@@ -131,18 +131,18 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     private int writeRangeList(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         log(context, "  [0x%08x] ranges start for class %s", pos, classEntry.getTypeName());
-        long base = classEntry.compiledEntriesBase();
+        long base = classEntry.lowpc();
         log(context, "  [0x%08x] base 0x%x", pos, base);
         pos = writeRangeListEntry(DwarfRangeListEntry.DW_RLE_base_address, buffer, pos);
-        pos = writeRelocatableCodeOffset(base, buffer, pos);
+        pos = writeCodeOffset(base, buffer, pos);
 
         Cursor cursor = new Cursor(pos);
-        classEntry.compiledEntries().forEach(compiledMethodEntry -> {
+        classEntry.compiledMethods().forEach(compiledMethodEntry -> {
             cursor.set(writeRangeListEntry(DwarfRangeListEntry.DW_RLE_offset_pair, buffer, cursor.get()));
 
-            long loOffset = compiledMethodEntry.getPrimary().getLo() - base;
-            long hiOffset = compiledMethodEntry.getPrimary().getHi() - base;
-            log(context, "  [0x%08x] lo 0x%x (%s)", cursor.get(), loOffset, compiledMethodEntry.getPrimary().getFullMethodNameWithParams());
+            long loOffset = compiledMethodEntry.primary().getLo() - base;
+            long hiOffset = compiledMethodEntry.primary().getHi() - base;
+            log(context, "  [0x%08x] lo 0x%x (%s)", cursor.get(), loOffset, compiledMethodEntry.primary().getFullMethodNameWithParams());
             cursor.set(writeULEB(loOffset, buffer, cursor.get()));
             log(context, "  [0x%08x] hi 0x%x", cursor.get(), hiOffset);
             cursor.set(writeULEB(hiOffset, buffer, cursor.get()));
