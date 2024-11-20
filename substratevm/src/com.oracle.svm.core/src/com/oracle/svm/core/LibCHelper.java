@@ -47,12 +47,12 @@ public class LibCHelper {
     public static class Locale {
         @CFunction(transition = Transition.TO_NATIVE)
         @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+17/src/java.base/unix/native/libjava/java_props_md.c#L93-L357")
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+17/src/java.base/windows/native/libjava/java_props_md.c#L321-L715")
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+24/src/java.base/windows/native/libjava/java_props_md.c#L321-L713")
         public static native CCharPointerPointer parseDisplayLocale();
 
         @CFunction(transition = Transition.TO_NATIVE)
         @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+17/src/java.base/unix/native/libjava/java_props_md.c#L93-L357")
-        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+17/src/java.base/windows/native/libjava/java_props_md.c#L321-L715")
+        @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+24/src/java.base/windows/native/libjava/java_props_md.c#L321-L713")
         public static native CCharPointerPointer parseFormatLocale();
     }
 }

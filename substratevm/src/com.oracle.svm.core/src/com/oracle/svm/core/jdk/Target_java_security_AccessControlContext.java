@@ -34,7 +34,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import sun.security.util.Debug;
 
-@TargetClass(java.security.AccessControlContext.class)
+@TargetClass(value = java.security.AccessControlContext.class, onlyWith = JDK21OrEarlier.class)
 final class Target_java_security_AccessControlContext {
 
     @Alias //

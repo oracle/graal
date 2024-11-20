@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.word;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+#ifndef _JAVASOFT_JNI_MD_H_
+#define _JAVASOFT_JNI_MD_H_
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface HotSpotOperation {
+#ifndef JNIEXPORT
+  #define JNIEXPORT __declspec(dllexport)
+#endif
+#define JNIIMPORT __declspec(dllimport)
+#define JNICALL __stdcall
 
-    enum HotspotOpcode {
-        FROM_POINTER,
-        FROM_COMPRESSED_POINTER,
-        TO_KLASS_POINTER,
-        TO_METHOD_POINTER,
-        POINTER_EQ,
-        POINTER_NE,
-        IS_NULL,
-        READ_KLASS_POINTER
-    }
+// 'long' is always 32 bit on windows so this matches what jdk expects
+typedef long jint;
+typedef __int64 jlong;
+typedef signed char jbyte;
 
-    HotspotOpcode opcode();
-}
+#endif /* !_JAVASOFT_JNI_MD_H_ */
