@@ -26,40 +26,21 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugArrayTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 public class ArrayTypeEntry extends StructureTypeEntry {
-    private TypeEntry elementType;
-    private int baseSize;
-    private int lengthOffset;
+    private final TypeEntry elementType;
+    private final LoaderEntry loader;
 
-    public ArrayTypeEntry(String typeName, int size) {
-        super(typeName, size);
+    public ArrayTypeEntry(String typeName, int size, long classOffset, long typeSignature,
+                          long compressedTypeSignature, long layoutTypeSignature, long compressedLayoutTypeSignature,
+                          TypeEntry elementType, LoaderEntry loader) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, compressedLayoutTypeSignature);
+        this.elementType = elementType;
+        this.loader = loader;
     }
 
     @Override
-    public DebugTypeKind typeKind() {
-        return DebugTypeKind.ARRAY;
-    }
-
-    @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
-        DebugArrayTypeInfo debugArrayTypeInfo = (DebugArrayTypeInfo) debugTypeInfo;
-        ResolvedJavaType eltType = debugArrayTypeInfo.elementType();
-        this.elementType = debugInfoBase.lookupTypeEntry(eltType);
-        this.baseSize = debugArrayTypeInfo.baseSize();
-        this.lengthOffset = debugArrayTypeInfo.lengthOffset();
-        /* Add details of fields and field types */
-        debugArrayTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
-        if (debugContext.isLogEnabled()) {
-            debugContext.log("typename %s element type %s base size %d length offset %d%n", typeName, this.elementType.getTypeName(), baseSize, lengthOffset);
-        }
+    public boolean isArray() {
+        return true;
     }
 
     public TypeEntry getElementType() {
@@ -67,13 +48,6 @@ public class ArrayTypeEntry extends StructureTypeEntry {
     }
 
     public String getLoaderId() {
-        TypeEntry type = elementType;
-        while (type.isArray()) {
-            type = ((ArrayTypeEntry) type).elementType;
-        }
-        if (type.isClass()) {
-            return ((ClassEntry) type).getLoaderId();
-        }
-        return "";
+        return (loader != null ? loader.loaderId() : "");
     }
 }

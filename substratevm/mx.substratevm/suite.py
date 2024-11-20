@@ -1970,8 +1970,9 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.objectfile.io",
                 "com.oracle.objectfile.debuginfo",
+                "com.oracle.objectfile.debugentry",
+                "com.oracle.objectfile.debugentry.range",
                 "com.oracle.objectfile.macho",
-                "com.oracle.objectfile.runtime",
               ],
 
               "requiresConcealed" : {

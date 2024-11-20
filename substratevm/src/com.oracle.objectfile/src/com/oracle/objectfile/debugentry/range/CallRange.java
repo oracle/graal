@@ -28,46 +28,60 @@ package com.oracle.objectfile.debugentry.range;
 
 import com.oracle.objectfile.debugentry.MethodEntry;
 
-class CallRange extends SubRange {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
+
+public class CallRange extends Range {
+
     /**
-     * The first direct callee whose range is wholly contained in this range or null if this is a
+     * The direct callees whose ranges are wholly contained in this range. Empty if this is a
      * leaf range.
      */
-    protected SubRange firstCallee;
-    /**
-     * The last direct callee whose range is wholly contained in this range.
-     */
-    protected SubRange lastCallee;
+    private final List<Range> callees = new ArrayList<>();
 
-    protected CallRange(MethodEntry methodEntry, long lo, long hi, int line, PrimaryRange primary, Range caller) {
-        super(methodEntry, lo, hi, line, primary, caller);
-        this.firstCallee = null;
-        this.lastCallee = null;
+    protected CallRange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, int depth) {
+        super(primary, methodEntry, lo, hi, line, caller, depth);
     }
 
     @Override
-    protected void addCallee(SubRange callee) {
-        assert this.lo <= callee.lo;
-        assert this.hi >= callee.hi;
-        assert callee.caller == this;
-        assert callee.siblingCallee == null;
-        if (this.firstCallee == null) {
-            assert this.lastCallee == null;
-            this.firstCallee = this.lastCallee = callee;
+    public List<Range> getCallees() {
+        return callees;
+    }
+
+    @Override
+    public Stream<Range> rangeStream() {
+        return Stream.concat(super.rangeStream(), callees.stream().flatMap(Range::rangeStream));
+    }
+
+    protected void addCallee(Range callee, boolean isInitialRange) {
+        //System.out.println("Caller lo: " + this.getLo() + ", Callee lo: " + callee.getLo());
+        //System.out.println("Caller hi: " + this.getHi() + ", Callee hi: " + callee.getHi());
+        //System.out.println("Caller method: " + this.getMethodName() + ", Callee method: " + callee.getMethodName());
+        assert this.getLoOffset() <= callee.getLoOffset();
+        assert this.getHiOffset() >= callee.getHiOffset();
+        assert callee.getCaller() == this;
+        if (isInitialRange) {
+            callees.addFirst(callee);
         } else {
-            this.lastCallee.siblingCallee = callee;
-            this.lastCallee = callee;
+            callees.add(callee);
         }
     }
 
-    @Override
-    public SubRange getFirstCallee() {
-        return firstCallee;
+    protected void insertCallee(Range callee, int pos) {
+        assert pos < callees.size();
+        assert this.getLoOffset() <= callee.getLoOffset();
+        assert this.getHiOffset() >= callee.getHiOffset();
+        assert callee.getCaller() == this;
+        callees.add(pos, callee);
     }
 
     @Override
     public boolean isLeaf() {
-        assert firstCallee != null;
-        return false;
+        return callees.isEmpty();
+    }
+
+    public void removeCallee(Range callee) {
+        callees.remove(callee);
     }
 }

@@ -26,26 +26,11 @@
 
 package com.oracle.objectfile.debugentry;
 
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.ARRAY;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.ENUM;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.FOREIGN;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.HEADER;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.INSTANCE;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.INTERFACE;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind.PRIMITIVE;
-
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
-
-import com.oracle.objectfile.runtime.RuntimeDebugInfoBase;
-import jdk.graal.compiler.debug.DebugContext;
-
 public abstract class TypeEntry {
     /**
      * The name of this type.
      */
-    protected final String typeName;
+    private final String typeName;
 
     /**
      * The type signature of this type. This is a pointer to the underlying layout of the type.
@@ -62,19 +47,20 @@ public abstract class TypeEntry {
      * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
      * object exists.
      */
-    private long classOffset;
+    private final long classOffset;
 
     /**
      * The size of an occurrence of this type in bytes.
      */
-    protected final int size;
+    private final int size;
 
-    protected TypeEntry(String typeName, int size) {
+    protected TypeEntry(String typeName, int size, long classOffset, long typeSignature,
+                        long typeSignatureForCompressed) {
         this.typeName = typeName;
         this.size = size;
-        this.classOffset = -1;
-        this.typeSignature = 0;
-        this.typeSignatureForCompressed = 0;
+        this.classOffset = classOffset;
+        this.typeSignature = typeSignature;
+        this.typeSignatureForCompressed = typeSignatureForCompressed;
     }
 
     public long getTypeSignature() {
@@ -97,34 +83,32 @@ public abstract class TypeEntry {
         return typeName;
     }
 
-    public abstract DebugTypeKind typeKind();
-
     public boolean isPrimitive() {
-        return typeKind() == PRIMITIVE;
+        return false;
     }
 
     public boolean isHeader() {
-        return typeKind() == HEADER;
+        return false;
     }
 
     public boolean isArray() {
-        return typeKind() == ARRAY;
+        return false;
     }
 
     public boolean isInstance() {
-        return typeKind() == INSTANCE;
+        return false;
     }
 
     public boolean isInterface() {
-        return typeKind() == INTERFACE;
+        return false;
     }
 
     public boolean isEnum() {
-        return typeKind() == ENUM;
+        return false;
     }
 
     public boolean isForeign() {
-        return typeKind() == FOREIGN;
+        return false;
     }
 
     /**
@@ -148,15 +132,18 @@ public abstract class TypeEntry {
         return isClass() || isHeader();
     }
 
-    public void addDebugInfo(@SuppressWarnings("unused") DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, @SuppressWarnings("unused") DebugContext debugContext) {
-        /* Record the location of the Class instance in the heap if there is one */
-        this.classOffset = debugTypeInfo.classOffset();
-        this.typeSignature = debugTypeInfo.typeSignature("");
-        // primitives, header and foreign types are never stored compressed
-        if (!debugInfoBase.useHeapBase() || this instanceof PrimitiveTypeEntry || this instanceof HeaderTypeEntry || this instanceof ForeignTypeEntry) {
-            this.typeSignatureForCompressed = typeSignature;
-        } else {
-            this.typeSignatureForCompressed = debugTypeInfo.typeSignature(DwarfDebugInfo.COMPRESSED_PREFIX);
-        }
+    @Override
+    public String toString() {
+        String kind = switch (this) {
+            case PrimitiveTypeEntry p -> "Primitive";
+            case HeaderTypeEntry h -> "Header";
+            case ArrayTypeEntry a -> "Array";
+            case InterfaceClassEntry i  -> "Interface";
+            case EnumClassEntry e -> "Enum";
+            case ForeignTypeEntry f -> "Foreign";
+            case ClassEntry c -> "Instance";
+            default -> "";
+        };
+        return String.format("%sType(%s size=%d @%s)", kind, getTypeName(), getSize(), Long.toHexString(classOffset));
     }
 }

@@ -27,8 +27,8 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.FrameSizeChangeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfFrameValue;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import jdk.graal.compiler.debug.DebugContext;
@@ -143,11 +143,11 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     private int writeMethodFrame(CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
         int lengthPos = pos;
-        Range range = compiledEntry.getPrimary();
+        Range range = compiledEntry.primary();
         long lo = range.getLo();
         long hi = range.getHi();
-        pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
-        pos = writeFDEs(compiledEntry.getFrameSize(), compiledEntry.getFrameSizeInfos(), buffer, pos);
+        pos = writeFDEHeader(lo, hi, buffer, pos);
+        pos = writeFDEs(compiledEntry.frameSize(), compiledEntry.frameSizeInfos(), buffer, pos);
         pos = writePaddingNops(buffer, pos);
         patchLength(lengthPos, buffer, pos);
         return pos;
@@ -161,9 +161,9 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         return cursor.get();
     }
 
-    protected abstract int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int pos);
+    protected abstract int writeFDEs(int frameSize, List<FrameSizeChangeEntry> frameSizeInfos, byte[] buffer, int pos);
 
-    private int writeFDEHeader(int lo, int hi, byte[] buffer, int p) {
+    private int writeFDEHeader(long lo, long hi, byte[] buffer, int p) {
         /*
          * We only need a vanilla FDE header with default fields the layout is:
          *
@@ -189,7 +189,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         /* CIE_offset */
         pos = writeInt(0, buffer, pos);
         /* Initial address. */
-        pos = writeRelocatableCodeOffset(lo, buffer, pos);
+        pos = writeCodeOffset(lo, buffer, pos);
         /* Address range. */
         return writeLong(hi - lo, buffer, pos);
     }
@@ -263,8 +263,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     protected int writeRestore(int register, byte[] buffer, int p) {
         byte op = restoreOp(register);
-        int pos = p;
-        return writeByte(op, buffer, pos);
+        return writeByte(op, buffer, p);
     }
 
     @SuppressWarnings("unused")
