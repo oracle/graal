@@ -2179,6 +2179,11 @@ final class EngineAccessor extends Accessor {
         public ModulesAccessor getModulesAccessor() {
             return JDKSupport.getModulesAccessor();
         }
+
+        @Override
+        public Node getUncachedLocation(Object polyglotContext) {
+            return ((PolyglotContextImpl) polyglotContext).uncachedLocation;
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {
