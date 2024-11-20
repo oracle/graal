@@ -1665,6 +1665,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
         }
 
+        public void emit(AMD64Assembler asm, AVXKind.AVXSize size, AMD64Address dst, Register src, Register mask) {
+            emitVexOrEvex(asm, src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, Z0, B0);
+            asm.emitByte(opReverse);
+            asm.emitOperandHelper(src, dst, 0, getDisp8Scale(isEvex, size));
+        }
+
         public void emitReverse(AMD64Assembler asm, AVXKind.AVXSize size, Register dst, Register src) {
             emitVexOrEvex(asm, src, Register.None, dst, size, pp, mmmmm, w, wEvex);
             asm.emitByte(opReverse);
