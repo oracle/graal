@@ -361,6 +361,49 @@ public class AMD64VectorMove {
         }
     }
 
+    public static class VectorMaskedStoreOp extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<VectorMaskedStoreOp> TYPE = LIRInstructionClass.create(VectorMaskedStoreOp.class);
+
+        protected final AVXSize size;
+        protected final VexOp op;
+
+        @Use({OperandFlag.COMPOSITE}) protected AMD64AddressValue address;
+        @Use({OperandFlag.REG}) protected AllocatableValue mask;
+        @Use({OperandFlag.REG}) protected AllocatableValue value;
+        @State protected LIRFrameState state;
+
+        public VectorMaskedStoreOp(AVXSize size, VexMaskedMoveOp op, AMD64AddressValue address, AllocatableValue mask, AllocatableValue value, LIRFrameState state) {
+            super(TYPE);
+            this.size = size;
+            this.op = op;
+            this.address = address;
+            this.mask = mask;
+            this.value = value;
+            this.state = state;
+        }
+
+        public VectorMaskedStoreOp(AVXSize size, VexMoveOp op, AMD64AddressValue address, AllocatableValue mask, AllocatableValue value, LIRFrameState state) {
+            super(TYPE);
+            this.size = size;
+            this.op = op;
+            this.address = address;
+            this.mask = mask;
+            this.value = value;
+            this.state = state;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            GraalError.guarantee(state == null, "Implicit exception not supported yet");
+            if (op instanceof VexMaskedMoveOp o) {
+                o.emit(masm, size, address.toAddress(masm), asRegister(mask), asRegister(value));
+            } else {
+                VexMoveOp o = (VexMoveOp) op;
+                o.emit(masm, size, address.toAddress(masm), asRegister(value), asRegister(mask));
+            }
+        }
+    }
+
     @Opcode("SAVE_REGISTER")
     public static class SaveRegistersOp extends AMD64SaveRegistersOp {
         public static final LIRInstructionClass<SaveRegistersOp> TYPE = LIRInstructionClass.create(SaveRegistersOp.class);
