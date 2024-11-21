@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -65,6 +66,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.thread.Target_java_lang_ThreadLocal;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -196,7 +198,13 @@ final class Target_java_security_Provider_ServiceKey {
 final class Target_java_security_Provider {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ServiceKeyComputer.class) //
-    private static Target_java_security_Provider_ServiceKey previousKey;
+    @TargetElement(name = "previousKey", onlyWith = JDK21OrEarlier.class) //
+    private static Target_java_security_Provider_ServiceKey previousKeyJDK21;
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadLocalServiceKeyComputer.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
+    private static Target_java_lang_ThreadLocal previousKey;
 }
 
 @TargetClass(value = java.security.Provider.class, innerClass = "Service")
@@ -222,6 +230,38 @@ class ServiceKeyComputer implements FieldValueTransformer {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadLocalServiceKeyComputer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        try {
+            // Originally the thread local creates a new default service key each time.
+            // Here we always return the singleton default service key. This default key
+            // will be replaced with an actual key in Provider.parseLegacy
+            Class<?> serviceKey = Class.forName("java.security.Provider$ServiceKey");
+            Constructor<?> serviceKeyConstructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
+            Object newServiceKey = serviceKeyConstructor.newInstance("", "", false);
+            return ThreadLocal.withInitial(new ThreadLocalServiceKeySupplier(newServiceKey));
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+}
+
+class ThreadLocalServiceKeySupplier implements Supplier<Object> {
+
+    private final Object serviceKey;
+
+    public ThreadLocalServiceKeySupplier(Object serviceKey) {
+        this.serviceKey = serviceKey;
+    }
+
+    @Override
+    public Object get() {
+        return serviceKey;
     }
 }
 
