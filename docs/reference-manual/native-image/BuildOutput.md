@@ -100,7 +100,7 @@ Use `-Os` to optimize for size.
 The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
 See [here](#recommendation-cpu) for recommendations on how to use this option.
 
-On Oracle GraalVM, the line also shows information about [Profile-Guided Optimizations (PGO)](#recommendation-pgo).
+On Oracle GraalVM, the line also shows information about [Profile-Guided Optimization (PGO)](#recommendation-pgo).
 - `off`: PGO is not used
 - `instrument`: The generated executable or shared library is instrumented to collect data for PGO (`--pgo-instrument`)
 - `user-provided`: PGO is enabled and uses a user-provided profile (for example `--pgo default.iprof`)
@@ -305,15 +305,15 @@ Use `-march=list` to list all available machine types that can be targeted expli
 The G1 garbage collector is available for your platform.
 Consider enabling it using `--gc=G1` at build time to improve the latency and throughput of your application.
 For more information see the [docs on Memory Management](MemoryManagement.md).
-For best peak performance, also consider using [Profile-Guided Optimizations](#recommendation-pgo).
+For best peak performance, also consider using [Profile-Guided Optimization](#recommendation-pgo).
 
 #### <a name="recommendation-heap"></a>`HEAP`: Specify a Maximum Heap Size
 
 Please refer to [Maximum Heap Size](#glossary-gc-max-heap-size).
 
-#### <a name="recommendation-pgo"></a>`PGO`: Use Profile-Guided Optimizations for Improved Throughput
+#### <a name="recommendation-pgo"></a>`PGO`: Use Profile-Guided Optimization for Improved Throughput
 
-Consider using Profile-Guided Optimizations to optimize your application for improved throughput.
+Consider using Profile-Guided Optimization (PGO) to optimize your application for improved throughput.
 These optimizations allow the Graal compiler to leverage profiling information, similar to when it is running as a JIT compiler, when AOT-compiling your application.
 For this, perform the following steps:
 
@@ -321,7 +321,7 @@ For this, perform the following steps:
 2. Run your instrumented application with a representative workload to generate profiling information in the form of an `.iprof` file.
 3. Re-build your application and pass in the profiling information with `--pgo=<your>.iprof` to generate an optimized version of your application.
 
-Relevant guide: [Optimize a Native Executable with Profile-Guided Optimizations](guides/optimize-native-executable-with-pgo.md).
+Relevant guide: [Optimize a Native Executable with Profile-Guided Optimization](guides/optimize-native-executable-with-pgo.md).
 
 For best peak performance, also consider using the [G1 garbage collector](#recommendation-g1gc).
 
