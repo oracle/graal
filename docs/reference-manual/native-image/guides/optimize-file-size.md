@@ -98,7 +98,7 @@ Moreover, build-time initialization, if not used towards a specific goal, can ca
 Generally, it is a good idea to check file size, number of embedded resources, or other metrics from time to time, for example, when adding or updating dependencies, or even monitor build metrics frequently.
 For this, you can use the [machine-readable version of the build output](../BuildOutput.md#machine-readable-build-output) or the [build reports for GitHub Actions](https://medium.com/graalvm/native-image-build-reports-and-update-notifications-351aca964a55){:target="_blank"}.
 
-There are other Native Image techniques that can positively affect the executable size, besides improving other metrics, for example, [Profile-Guided Optimizations (PGO)](optimize-native-executable-with-pgo.md). 
+There are other Native Image techniques that can positively affect the executable size, besides improving other metrics, for example, [Profile-Guided Optimization (PGO)](optimize-native-executable-with-pgo.md).
 
 ### Related Documentation
 

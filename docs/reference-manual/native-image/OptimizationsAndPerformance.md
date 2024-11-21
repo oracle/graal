@@ -24,9 +24,9 @@ The following table provides an overview of the different optimization levels an
 | `-O2` | Advanced | **Default:** Aims for good performance at a reasonable file size. |
 | `-O3` | All | Aims for the best performance at the cost of longer build times. Used automatically by Oracle GraalVM for [PGO builds](guides/optimize-native-executable-with-pgo.md) (`--pgo` option). `-O3` and `-O2` are identical in GraalVM Community Edition. |
 
-### Profile-Guided Optimizations for Improved Throughput
+### Profile-Guided Optimization for Improved Throughput
 
-Consider using Profile-Guided Optimizations to optimize your application for improved throughput.
+Consider using Profile-Guided Optimization (PGO) to optimize your application for improved throughput.
 These optimizations allow the Graal compiler to leverage profiling information, similar to when it is running as a JIT compiler, when AOT-compiling your application.
 For this, perform the following steps:
 
