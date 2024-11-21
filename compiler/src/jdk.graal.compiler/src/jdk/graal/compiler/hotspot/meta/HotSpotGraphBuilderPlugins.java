@@ -822,7 +822,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/b80ca4902af71938b32634d3fd230f4d65cde454/src/hotspot/share/opto/library_call.cpp#L3734-L3817",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/cf158bc6cdadfdfa944b8ec1d3dc7069c8f055a9/src/hotspot/share/opto/library_call.cpp#L3740-L3823",
               sha1 = "f05a07a18ffae50e2a2b20586184a26e9cc8c5f2")
     // @formatter:on
     private static class ContinuationPinningPlugin extends InvocationPlugin {
