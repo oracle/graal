@@ -136,6 +136,9 @@ final class Target_jdk_jfr_internal_Utils {
 
     @Alias
     public static native String formatTimespan(Duration dValue, String separation);
+
+    @Alias
+    public static native String formatDateTime(LocalDateTime time);
 }
 
 @TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = {JDKLatest.class, HasJfrSupport.class})
@@ -169,9 +172,17 @@ final class Target_jdk_jfr_internal_PlatformRecording {
 final class JfrFilenameUtil {
     public static String makeFilename(Recording recording) {
         long pid = ProcessProperties.getProcessID();
-        String date = Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(LocalDateTime.now());
+        String date = getFormatDateTime();
         String idText = recording == null ? "" : "-id-" + recording.getId();
         String imageName = SubstrateOptions.Name.getValue();
         return imageName + "-pid-" + pid + idText + "-" + date + ".jfr";
+    }
+
+    private static String getFormatDateTime() {
+        LocalDateTime now = LocalDateTime.now();
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
+            return Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(now);
+        }
+        return Target_jdk_jfr_internal_Utils.formatDateTime(now);
     }
 }
