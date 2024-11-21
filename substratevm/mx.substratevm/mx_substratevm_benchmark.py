@@ -286,6 +286,15 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
     def benchmarkName(self):
         return self.context.benchmark
 
+    def benchmarkList(self, bmSuiteArgs):
+        return self.completeBenchmarkList(bmSuiteArgs)
+
+    def default_stages(self):
+        if self.context.benchmark == "micronaut-pegasus":
+            # The 'agent' stage is not supported, as currently we cannot run micronaut-pegasus on the JVM
+            return ['instrument-image', 'instrument-run', 'image', 'run']
+        return super().default_stages()
+
     def application_nib(self):
         if self.benchmarkName() not in self._application_nibs:
             # Run subprocess retrieving the application nib from the Barista 'build' script
@@ -337,6 +346,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return []
 
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
+        self.context = mx_sdk_benchmark.BaristaBenchmarkSuite.RuntimeContext(self, None, benchmarks[0], bmSuiteArgs)
         return self.intercept_run(super(), benchmarks, bmSuiteArgs)
 
     def ensure_image_is_at_desired_location(self, bmSuiteArgs):
