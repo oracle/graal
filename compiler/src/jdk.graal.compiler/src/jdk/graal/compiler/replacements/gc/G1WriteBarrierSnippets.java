@@ -213,7 +213,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             if (probability(FREQUENT_PROBABILITY, writtenValue.notEqual(0))) {
                 // Calculate the address of the card to be enqueued to the
                 // thread local card queue.
-                Word cardAddress = cardTableAddress(oop);
+                Word cardAddress = cardTableBase().add(cardTableOffset(oop));
 
                 byte cardByte = cardAddress.readByte(0, GC_CARD_LOCATION);
                 counters.g1EffectiveAfterNullPostWriteBarrierCounter.inc();
@@ -267,7 +267,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word indexAddress = thread.add(satbQueueIndexOffset());
         long indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION).rawValue();
         long scale = objectArrayIndexScale();
-        Word start = getPointerToFirstArrayElement(address, length, elementStride);
+        Word start = getPointerToFirstArrayElement(Word.fromAddress(address), length, elementStride);
 
         for (int i = 0; GraalDirectives.injectIterationCount(10, i < length); i++) {
             Word arrElemPtr = start.add(Word.unsigned(i * scale));
@@ -293,8 +293,10 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             return;
         }
 
-        Word start = cardTableAddress(getPointerToFirstArrayElement(address, length, elementStride));
-        Word end = cardTableAddress(getPointerToLastArrayElement(address, length, elementStride));
+        Word base = cardTableBase();
+        Word addr = Word.fromAddress(address);
+        Word start = base.add(cardTableOffset(getPointerToFirstArrayElement(addr, length, elementStride)));
+        Word end = base.add(cardTableOffset(getPointerToLastArrayElement(addr, length, elementStride)));
 
         Word cur = start;
         if (usesNewStylePostBarriers()) {
@@ -366,7 +368,9 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     protected abstract boolean usesNewStylePostBarriers();
 
-    protected abstract Word cardTableAddress(Pointer oop);
+    protected abstract Word cardTableBase();
+
+    protected abstract UnsignedWord cardTableOffset(Pointer oop);
 
     protected abstract int logOfHeapRegionGrainBytes();
 

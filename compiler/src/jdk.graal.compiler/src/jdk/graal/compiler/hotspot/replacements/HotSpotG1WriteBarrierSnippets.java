@@ -31,6 +31,7 @@ import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Trans
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -133,16 +134,17 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
     }
 
     @Override
-    protected Word cardTableAddress(Pointer oop) {
+    protected Word cardTableBase() {
         if (usesNewStylePostBarriers()) {
-            Word cardTableBase = getThread().readWord(HotSpotReplacementsUtil.g1CardTableBaseOffset(INJECTED_VMCONFIG), CARD_TABLE_BASE_LOCATION);
-            int cardTableShift = HotSpotReplacementsUtil.cardTableShift(INJECTED_VMCONFIG);
-            return cardTableBase.add(oop.unsignedShiftRight(cardTableShift));
+            return getThread().readWord(HotSpotReplacementsUtil.g1CardTableBaseOffset(INJECTED_VMCONFIG), CARD_TABLE_BASE_LOCATION);
         }
+        return Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
+    }
 
-        Word cardTable = Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
+    @Override
+    protected UnsignedWord cardTableOffset(Pointer oop) {
         int cardTableShift = HotSpotReplacementsUtil.cardTableShift(INJECTED_VMCONFIG);
-        return cardTable.add(oop.unsignedShiftRight(cardTableShift));
+        return oop.unsignedShiftRight(cardTableShift);
     }
 
     @Override
