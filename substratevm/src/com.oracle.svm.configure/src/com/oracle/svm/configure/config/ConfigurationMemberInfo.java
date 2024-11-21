@@ -92,10 +92,11 @@ public final class ConfigurationMemberInfo {
         }
 
         public boolean includes(ConfigurationMemberDeclaration other) {
-            if (equals(DECLARED_AND_PUBLIC)) {
-                return DECLARED.equals(other) || PUBLIC.equals(other);
-            }
-            return equals(other);
+            return switch (this) {
+                case PRESENT -> true;
+                case DECLARED_AND_PUBLIC -> other == DECLARED || other == PUBLIC;
+                default -> this == other;
+            };
         }
     }
 
