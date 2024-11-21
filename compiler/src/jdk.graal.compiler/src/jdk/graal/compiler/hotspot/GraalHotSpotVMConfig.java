@@ -440,14 +440,19 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
      */
     public final long shouldNotifyObjectAllocAddress = getFieldValue("CompilerToVM::Data::_should_notify_object_alloc", Long.class, "int*", 0L, JDK >= 23);
 
+    // Check whether new-style G1 write barriers are available (JDK-8340827)
+    public final boolean g1QueuelessPostWriteBarrier = getStore().getConstants().containsKey("G1ThreadLocalData::card_table_base_offset");
+
     // G1 Collector Related Values.
     public final byte dirtyCardValue = getConstant("CardTable::dirty_card", Byte.class);
-    public final byte g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class);
+    public final byte cleanCardValue = getConstant("CardTable::clean_card", Byte.class, (byte) 0, g1QueuelessPostWriteBarrier);
+    public final byte g1YoungCardValue = getConstant("G1CardTable::g1_young_gen", Byte.class, (byte) 0, !g1QueuelessPostWriteBarrier);
     public final int g1SATBQueueMarkingActiveOffset = getConstant("G1ThreadLocalData::satb_mark_queue_active_offset", Integer.class);
     public final int g1SATBQueueIndexOffset = getConstant("G1ThreadLocalData::satb_mark_queue_index_offset", Integer.class);
     public final int g1SATBQueueBufferOffset = getConstant("G1ThreadLocalData::satb_mark_queue_buffer_offset", Integer.class);
-    public final int g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class);
-    public final int g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class);
+    public final int g1CardQueueIndexOffset = getConstant("G1ThreadLocalData::dirty_card_queue_index_offset", Integer.class, -1, !g1QueuelessPostWriteBarrier);
+    public final int g1CardQueueBufferOffset = getConstant("G1ThreadLocalData::dirty_card_queue_buffer_offset", Integer.class, -1, !g1QueuelessPostWriteBarrier);
+    public final int g1CardTableBaseOffset = getConstant("G1ThreadLocalData::card_table_base_offset", Integer.class, -1, g1QueuelessPostWriteBarrier);
 
     public final int klassOffset = getFieldValue("java_lang_Class::_klass_offset", Integer.class, "int");
     public final int arrayKlassOffset = getFieldValue("java_lang_Class::_array_klass_offset", Integer.class, "int");
@@ -660,7 +665,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long vmErrorAddress = getAddress("JVMCIRuntime::vm_error");
     public final long loadAndClearExceptionAddress = getAddress("JVMCIRuntime::load_and_clear_exception");
     public final long writeBarrierPreAddress = getAddress("JVMCIRuntime::write_barrier_pre");
-    public final long writeBarrierPostAddress = getAddress("JVMCIRuntime::write_barrier_post");
+    public final long writeBarrierPostAddress = getAddress("JVMCIRuntime::write_barrier_post", -1L, !g1QueuelessPostWriteBarrier);
     public final long validateObject = getAddress("JVMCIRuntime::validate_object");
 
     public final long testDeoptimizeCallInt = getAddress("JVMCIRuntime::test_deoptimize_call_int");

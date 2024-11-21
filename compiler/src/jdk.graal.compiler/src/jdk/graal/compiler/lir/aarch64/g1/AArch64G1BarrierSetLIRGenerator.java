@@ -26,6 +26,7 @@ package jdk.graal.compiler.lir.aarch64.g1;
 
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
 import jdk.graal.compiler.lir.gen.G1WriteBarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -62,8 +63,14 @@ public class AArch64G1BarrierSetLIRGenerator implements G1WriteBarrierSetLIRGene
         AllocatableValue temp = lirTool.newVariable(LIRKind.value(AArch64Kind.QWORD));
         AllocatableValue temp2 = lirTool.newVariable(LIRKind.value(AArch64Kind.QWORD));
 
-        ForeignCallLinkage callTarget = lirTool.getForeignCalls().lookupForeignCall(barrierSetLIRTool.postWriteBarrierDescriptor());
-        lirTool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
-        lirTool.append(new AArch64G1PostWriteBarrierOp(address, value, temp, temp2, callTarget, nonNull, barrierSetLIRTool));
+        AArch64LIRInstruction op;
+        if (barrierSetLIRTool.supportsCardless()) {
+            op = new AArch64G1PostWriteBarrierOp(address, value, temp, temp2, nonNull, barrierSetLIRTool);
+        } else {
+            ForeignCallLinkage callTarget = lirTool.getForeignCalls().lookupForeignCall(barrierSetLIRTool.postWriteBarrierDescriptor());
+            lirTool.getResult().getFrameMapBuilder().callsMethod(callTarget.getOutgoingCallingConvention());
+            op = new AArch64G1CardQueuePostWriteBarrierOp(address, value, temp, temp2, callTarget, nonNull, barrierSetLIRTool);
+        }
+        lirTool.append(op);
     }
 }

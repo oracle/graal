@@ -648,6 +648,16 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static boolean supportsG1NewBarriers(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.g1QueuelessPostWriteBarrier;
+    }
+
+    @Fold
+    public static byte cleanCardValue(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.cleanCardValue;
+    }
+
+    @Fold
     public static byte dirtyCardValue(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.dirtyCardValue;
     }
@@ -665,6 +675,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static long cardTableStart(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.cardtableStartAddress;
+    }
+
+    @Fold
+    public static int g1CardTableBaseOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.g1CardTableBaseOffset;
     }
 
     @Fold

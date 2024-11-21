@@ -40,6 +40,10 @@ public interface G1BarrierSetLIRTool {
 
     int cardQueueIndexOffset();
 
+    boolean supportsCardless();
+
+    byte cleanCardValue();
+
     byte dirtyCardValue();
 
     byte youngCardValue();

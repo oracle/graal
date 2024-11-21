@@ -64,11 +64,22 @@ public class AArch64HotSpotG1BarrierSetLIRTool extends HotSpotG1BarrierSetLIRToo
         return providers.getRegisters().getThreadRegister();
     }
 
+    private void computeCardFromTable(Register cardAddress, Register cardTableAddress, Register storeAddress, AArch64MacroAssembler masm) {
+        int cardTableShift = HotSpotReplacementsUtil.cardTableShift(config);
+        masm.add(64, cardAddress, cardTableAddress, storeAddress, AArch64Assembler.ShiftType.LSR, cardTableShift);
+    }
+
+    @Override
+    public void computeCardFromThread(Register cardAddress, Register storeAddress, Register threadAddress, Register tmp2, AArch64MacroAssembler masm) {
+        AArch64Address cardTableAddress = masm.makeAddress(64, threadAddress, HotSpotReplacementsUtil.g1CardTableBaseOffset(config));
+        masm.ldr(64, tmp2, cardTableAddress);
+        computeCardFromTable(cardAddress, tmp2, storeAddress, masm);
+    }
+
     @Override
     public void computeCard(Register cardAddress, Register storeAddress, Register tmp2, AArch64MacroAssembler masm) {
-        int cardTableShift = HotSpotReplacementsUtil.cardTableShift(config);
         masm.mov(tmp2, cardTableAddress());
-        masm.add(64, cardAddress, tmp2, storeAddress, AArch64Assembler.ShiftType.LSR, cardTableShift);
+        computeCardFromTable(cardAddress, tmp2, storeAddress, masm);
     }
 
     @Override

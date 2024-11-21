@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,6 +77,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     public static final LocationIdentity CARD_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Buffer");
     public static final LocationIdentity CARD_QUEUE_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Log");
     public static final LocationIdentity CARD_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Index");
+    public static final LocationIdentity CARD_TABLE_BASE_LOCATION = NamedLocationIdentity.mutable("GC-Card-Table-Base");
 
     protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, SATB_QUEUE_LOG_LOCATION};
     protected static final LocationIdentity[] KILLED_POST_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{CARD_QUEUE_INDEX_LOCATION, CARD_QUEUE_BUFFER_LOCATION, CARD_QUEUE_LOG_LOCATION,
@@ -217,6 +218,13 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                 byte cardByte = cardAddress.readByte(0, GC_CARD_LOCATION);
                 counters.g1EffectiveAfterNullPostWriteBarrierCounter.inc();
 
+                if (usesNewStylePostBarriers()) {
+                    if (probability(NOT_FREQUENT_PROBABILITY, cardByte == cleanCardValue())) {
+                        cardAddress.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
+                    }
+                    return;
+                }
+
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByte != youngCardValue())) {
                     MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_LOAD, GC_CARD_LOCATION);
@@ -285,15 +293,26 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             return;
         }
 
+        Word start = cardTableAddress(getPointerToFirstArrayElement(address, length, elementStride));
+        Word end = cardTableAddress(getPointerToLastArrayElement(address, length, elementStride));
+
+        Word cur = start;
+        if (usesNewStylePostBarriers()) {
+            do {
+                byte cardByte = cur.readByte(0, GC_CARD_LOCATION);
+                if (probability(NOT_FREQUENT_PROBABILITY, cardByte == cleanCardValue())) {
+                    cur.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
+                }
+                cur = cur.add(1);
+            } while (GraalDirectives.injectIterationCount(10, cur.belowOrEqual(end)));
+            return;
+        }
+
         Word thread = getThread();
         Word bufferAddress = thread.readWord(cardQueueBufferOffset(), CARD_QUEUE_BUFFER_LOCATION);
         Word indexAddress = thread.add(cardQueueIndexOffset());
         long indexValue = thread.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION).rawValue();
 
-        Word start = cardTableAddress(getPointerToFirstArrayElement(address, length, elementStride));
-        Word end = cardTableAddress(getPointerToLastArrayElement(address, length, elementStride));
-
-        Word cur = start;
         do {
             byte cardByte = cur.readByte(0, GC_CARD_LOCATION);
             // If the card is already dirty, (hence already enqueued) skip the insertion.
@@ -342,6 +361,10 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     protected abstract byte dirtyCardValue();
 
     protected abstract byte youngCardValue();
+
+    public abstract byte cleanCardValue();
+
+    protected abstract boolean usesNewStylePostBarriers();
 
     protected abstract Word cardTableAddress(Pointer oop);
 

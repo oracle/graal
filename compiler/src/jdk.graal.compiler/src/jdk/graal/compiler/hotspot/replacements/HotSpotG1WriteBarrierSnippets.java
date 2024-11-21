@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,7 +123,23 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
     }
 
     @Override
+    public byte cleanCardValue() {
+        return HotSpotReplacementsUtil.cleanCardValue(INJECTED_VMCONFIG);
+    }
+
+    @Override
+    protected boolean usesNewStylePostBarriers() {
+        return HotSpotReplacementsUtil.supportsG1NewBarriers(INJECTED_VMCONFIG);
+    }
+
+    @Override
     protected Word cardTableAddress(Pointer oop) {
+        if (usesNewStylePostBarriers()) {
+            Word cardTableBase = getThread().readWord(HotSpotReplacementsUtil.g1CardTableBaseOffset(INJECTED_VMCONFIG), CARD_TABLE_BASE_LOCATION);
+            int cardTableShift = HotSpotReplacementsUtil.cardTableShift(INJECTED_VMCONFIG);
+            return cardTableBase.add(oop.unsignedShiftRight(cardTableShift));
+        }
+
         Word cardTable = Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
         int cardTableShift = HotSpotReplacementsUtil.cardTableShift(INJECTED_VMCONFIG);
         return cardTable.add(oop.unsignedShiftRight(cardTableShift));
@@ -213,6 +229,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
                             null,
                             receiver,
                             GC_CARD_LOCATION,
+                            CARD_TABLE_BASE_LOCATION,
                             CARD_QUEUE_LOG_LOCATION,
                             CARD_QUEUE_INDEX_LOCATION,
                             CARD_QUEUE_BUFFER_LOCATION);
@@ -231,6 +248,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
                             null,
                             receiver,
                             GC_CARD_LOCATION,
+                            CARD_TABLE_BASE_LOCATION,
                             CARD_QUEUE_LOG_LOCATION,
                             CARD_QUEUE_INDEX_LOCATION,
                             CARD_QUEUE_BUFFER_LOCATION);

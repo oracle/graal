@@ -48,11 +48,22 @@ public class AMD64HotSpotG1BarrierSetLIRTool extends HotSpotG1BarrierSetLIRTool 
         return providers.getRegisters().getThreadRegister();
     }
 
-    @Override
-    public void computeCard(Register cardAddress, Register storeAddress, Register tmp2, AMD64MacroAssembler masm) {
+    private void computeCardOffset(Register cardAddress, Register storeAddress, AMD64MacroAssembler masm) {
         int cardTableShift = HotSpotReplacementsUtil.cardTableShift(config);
         masm.movq(cardAddress, storeAddress);
         masm.shrq(cardAddress, cardTableShift);
+    }
+
+    @Override
+    public void computeCardFromThread(Register cardAddress, Register storeAddress, Register threadAddress, AMD64MacroAssembler masm) {
+        computeCardOffset(cardAddress, storeAddress, masm);
+        AMD64Address cardTableAddress = new AMD64Address(threadAddress, HotSpotReplacementsUtil.g1CardTableBaseOffset(config));
+        masm.addq(cardAddress, cardTableAddress);
+    }
+
+    @Override
+    public void computeCard(Register cardAddress, Register storeAddress, Register tmp2, AMD64MacroAssembler masm) {
+        computeCardOffset(cardAddress, storeAddress, masm);
         masm.movq(tmp2, HotSpotReplacementsUtil.cardTableStart(config));
         masm.addq(cardAddress, tmp2);
     }
