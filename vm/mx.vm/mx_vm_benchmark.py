@@ -1769,6 +1769,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             out += get_size_message(launcher_name, location)
         if out:
             mx.log(out, end='')
+        dims.update(vm.dimensions(output_root, bmSuiteArgs, 0, out))
         return 0, out, dims
 
     def rules(self, output, benchmarks, bmSuiteArgs):
