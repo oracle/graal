@@ -1528,11 +1528,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.getPackageName(this);
     }
 
+    private boolean isHybrid() {
+        if (SubstrateUtil.HOSTED) {
+            return AnnotationAccess.isAnnotationPresent(hostedJavaClass, Hybrid.class);
+        } else {
+            return LayoutEncoding.isHybrid(getLayoutEncoding());
+        }
+    }
+
     String computePackageName() {
         String pn = null;
         DynamicHub me = this;
-        while (me.hubIsArray()) {
-            me = me.getComponentType();
+        if (!isHybrid()) {
+            while (me.hubIsArray()) {
+                me = me.getComponentType();
+            }
         }
         if (me.isPrimitive()) {
             pn = "java.lang";
