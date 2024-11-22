@@ -221,7 +221,7 @@ public class NativeImageGeneratorRunner {
         }
     }
 
-    private static void transitiveReaders(Module readModule, Set<Module> potentialReaders, Set<Module> actualReaders) {
+    public static void transitiveReaders(Module readModule, Set<Module> potentialReaders, Set<Module> actualReaders) {
         for (Module potentialReader : potentialReaders) {
             if (potentialReader.canRead(readModule)) {
                 if (actualReaders.add(potentialReader)) {
