@@ -24,13 +24,15 @@ package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 import java.lang.invoke.MethodHandle;
 
-public final class ResolvedMethodHandleConstant implements Resolvable.ResolvedConstant {
+public final class ResolvedMethodHandleConstant implements MethodHandleConstant, Resolvable.ResolvedConstant {
     private final @JavaType(MethodHandle.class) StaticObject payload;
 
     ResolvedMethodHandleConstant(StaticObject payload) {
@@ -44,6 +46,16 @@ public final class ResolvedMethodHandleConstant implements Resolvable.ResolvedCo
 
     public Tag tag() {
         return Tag.METHODHANDLE;
+    }
+
+    @Override
+    public int getRefKind() {
+        throw EspressoError.shouldNotReachHere("Getting ref kind of a resolved method handle constant");
+    }
+
+    @Override
+    public char getRefIndex() {
+        throw EspressoError.shouldNotReachHere("Getting ref index of a resolved method handle constant");
     }
 
     @Override
