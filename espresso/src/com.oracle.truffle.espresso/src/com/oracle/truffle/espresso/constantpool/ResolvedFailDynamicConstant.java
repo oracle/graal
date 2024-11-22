@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.constantpool;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -51,6 +52,11 @@ public final class ResolvedFailDynamicConstant implements ResolvedDynamicConstan
     public Object value() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Failure should have arose earlier.");
+    }
+
+    @Override
+    public JavaKind getKind() {
+        return JavaKind.Illegal;
     }
 
     @Override

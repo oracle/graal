@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
@@ -51,6 +52,8 @@ public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.Res
     default NameAndTypeConstant getNameAndType(ConstantPool pool) {
         throw EspressoError.shouldNotReachHere("Getting name and type of a resolved dynamic constant");
     }
+
+    JavaKind getKind();
 
     default StaticObject guestBoxedValue(Meta meta) {
         Object value = value();
