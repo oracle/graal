@@ -417,7 +417,10 @@ public class BciBlockMapping implements JavaMethodContext {
                 if (block.jsrData != null) {
                     block.jsrData = block.jsrData.copy();
                 }
-                block.successors = new ArrayList<>(successors);
+                block.successors = new ArrayList<>();
+                for (var sux : successors) {
+                    block.addSuccessor(sux);
+                }
                 block.loops = (BitSet) block.loops.clone();
                 return block;
             } catch (CloneNotSupportedException e) {
@@ -431,7 +434,10 @@ public class BciBlockMapping implements JavaMethodContext {
                 if (block.jsrData != null) {
                     throw new PermanentBailoutException("Can not duplicate block with JSR data");
                 }
-                block.successors = new ArrayList<>(successors);
+                block.successors = new ArrayList<>();
+                for (var sux : successors) {
+                    block.addSuccessor(sux);
+                }
                 block.loops = new BitSet();
                 block.loopId = 0;
                 block.id = UNASSIGNED_ID;
@@ -915,6 +921,7 @@ public class BciBlockMapping implements JavaMethodContext {
                         blocksNotYetAssignedId++;
                     }
                     b.successors.set(i, dup);
+                    dup.predecessorCount++;
 
                     if (duplicates.get(b) != null) {
                         // Patch successor of own duplicate.
