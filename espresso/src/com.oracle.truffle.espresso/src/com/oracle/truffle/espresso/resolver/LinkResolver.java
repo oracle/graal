@@ -23,16 +23,19 @@
 
 package com.oracle.truffle.espresso.resolver;
 
+import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STRICT;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
 import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -40,10 +43,42 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public final class LinkResolver {
+
+    /**
+     * Symbolically resolves a field.
+     *
+     * @param accessingKlass The class requesting resolution.
+     * @param name The name of the field.
+     * @param type The type of the field.
+     * @param symbolicHolder The holder of the field, as described in the constant pool.
+     * @param accessCheck Whether to perform access checks on the resolved field.
+     * @param loadingConstraints Whether to check loading constraints on the resolved field.
+     */
+    public static Field resolveFieldSymbol(Meta meta, ObjectKlass accessingKlass,
+                    Symbol<Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
+                    boolean accessCheck, boolean loadingConstraints) {
+        return LinkResolverImpl.resolveFieldSymbol(meta, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
+    }
+
+    /**
+     * Resolve a field access site, given the symbolic resolution of the method. This ensures the
+     * access is valid for the given site. In particular, this checks that static fields are only
+     * accessed with static accesses, and that field writes to final fields are done only in the
+     * constructor or class initializer.
+     *
+     * @param currentKlass The class in which the field access appears.
+     * @param currentMethod The method in which the field access appears.
+     * @param symbolicResolution The result of symbolic resolution of the field declared in the
+     *            access site.
+     * @param fieldAccessType The {@link FieldAccessType} representing the access site to resolve.
+     */
+    public static Field resolveFieldAccess(Meta meta, Klass currentKlass, Method currentMethod, Field symbolicResolution, FieldAccessType fieldAccessType) {
+        return LinkResolverImpl.resolveFieldAccess(meta, symbolicResolution, fieldAccessType, currentKlass, currentMethod);
+    }
+
     /**
      * Symbolically resolves a method.
      *
-     * @param meta
      * @param accessingKlass The class requesting resolution.
      * @param name The name of the method.
      * @param signature The signature of the method.
@@ -51,17 +86,16 @@ public final class LinkResolver {
      * @param accessCheck Whether to perform access checks on the resolved method.
      * @param loadingConstraints Whether to check loading constraints on the resolved method.
      */
-    public static Method resolveSymbol(Meta meta, ObjectKlass accessingKlass,
+    public static Method resolveMethodSymbol(Meta meta, ObjectKlass accessingKlass,
                     Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
-        return LinkResolverImpl.resolveSymbol(meta, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
+        return LinkResolverImpl.resolveMethodSymbol(meta, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
     }
 
     /**
      * Resolve a call-site given the symbolic resolution of the method in the constant pool.
      *
-     * @param meta
      * @param currentKlass The class in which the call site to resolve appears.
      * @param symbolicResolution The result of the symbolic resolution of the method declared in the
      *            call site.
@@ -82,9 +116,86 @@ final class LinkResolverImpl {
 
     private static final String AN_INTERFACE = "an interface";
     private static final String A_CLASS = "a class";
+    private static final String STATIC = "static";
+    private static final String NON_STATIC = "non-static";
+    private static final String INIT = "<init>";
+    private static final String CLINIT = "<clinit>";
 
     @TruffleBoundary
-    public static Method resolveSymbol(Meta meta, ObjectKlass accessingKlass, Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
+    public static Field resolveFieldSymbol(Meta meta, ObjectKlass accessingKlass,
+                    Symbol<Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
+                    boolean accessCheck, boolean loadingConstraints) {
+        Field f = symbolicHolder.lookupField(name, type);
+        if (f == null) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString());
+        }
+        if (accessCheck) {
+            Resolution.memberDoAccessCheck(accessingKlass, symbolicHolder, f, meta);
+        }
+        if (loadingConstraints) {
+            f.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), f.getDeclaringKlass().getDefiningClassLoader());
+        }
+        return f;
+    }
+
+    public static Field resolveFieldAccess(Meta meta, Field field, FieldAccessType fieldAccessType,
+                    Klass currentKlass, Method currentMethod) {
+        /*
+         * PUTFIELD/GETFIELD: Otherwise, if the resolved field is a static field, putfield throws an
+         * IncompatibleClassChangeError.
+         *
+         * PUTSTATIC/GETSTATIC: Otherwise, if the resolved field is not a static (class) field or an
+         * interface field, putstatic throws an IncompatibleClassChangeError.
+         */
+
+        if (fieldAccessType.isStatic() != field.isStatic()) {
+            throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError,
+                            "Expected %s field %s.%s",
+                            (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
+                            field.getDeclaringKlass().getName(),
+                            field.getName());
+        }
+        if (fieldAccessType.isPut()) {
+            /*
+             * PUTFIELD: Otherwise, if the field is final, it must be declared in the current class,
+             * and the instruction must occur in an instance initialization method (<init>) of the
+             * current class. Otherwise, an IllegalAccessError is thrown.
+             *
+             * PUTSTATIC: Otherwise, if the field is final, it must be declared in the current
+             * class, and the instruction must occur in the <clinit> method of the current class.
+             * Otherwise, an IllegalAccessError is thrown.
+             */
+            if (field.isFinalFlagSet()) {
+                if (field.getDeclaringKlass() != currentKlass) {
+                    throw throwBoundary(meta, meta.java_lang_IllegalAccessError,
+                                    "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
+                                    (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
+                                    field.getDeclaringKlass().getName(),
+                                    field.getName(),
+                                    currentKlass.getName());
+                }
+                boolean enforceInitializerCheck = (meta.getLanguage().getSpecComplianceMode() == STRICT) ||
+                                // HotSpot enforces this only for >= Java 9 (v53) .class files.
+                                field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
+                if (enforceInitializerCheck) {
+                    if (!((fieldAccessType.isStatic() && currentMethod.isClassInitializer()) ||
+                                    (!fieldAccessType.isStatic() && currentMethod.isConstructor()))) {
+                        throw throwBoundary(meta, meta.java_lang_IllegalAccessError,
+                                        "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
+                                        (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
+                                        field.getDeclaringKlass().getName(),
+                                        field.getName(),
+                                        currentMethod.getName(),
+                                        (fieldAccessType.isStatic()) ? CLINIT : INIT);
+                    }
+                }
+            }
+        }
+        return field;
+    }
+
+    @TruffleBoundary
+    public static Method resolveMethodSymbol(Meta meta, ObjectKlass accessingKlass, Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
         Method resolved;
@@ -132,7 +243,7 @@ final class LinkResolverImpl {
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
                                 (meta.getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
-                    throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
+                    throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
                                     resolved.getDeclaringKlass().getName(),
                                     resolved.getName(),
                                     resolved.getRawSignature());
@@ -155,7 +266,7 @@ final class LinkResolverImpl {
                 // Otherwise, if the resolved method is a class (static) method, the invokevirtual
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
-                    throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                    throw throwBoundary(meta, meta.java_lang_IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
                                     resolved.getDeclaringKlass().getName(),
                                     resolved.getName(),
                                     resolved.getRawSignature());
