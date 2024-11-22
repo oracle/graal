@@ -24,15 +24,19 @@ VisualVM enables powerful yet easy-to-use Java tooling which includes heap analy
 
 Immediately after startup, the tool shows all locally running Java processes in the Applications area, including the VisualVM process, itself.
 
-### Capture a Heap Dump
-To capture a heap dump of, for example, a Ruby application for later analysis, start your application and let it run for a few seconds to warm up.
-Then right-click its process in VisualVM and invoke the Heap Dump action.
-A new heap viewer for the Ruby process opens.
+### Using VisualVM with GraalVM Native Executables
 
-__Note:__ Heap dump support must be explicitly enabled when using [Native Image](../reference-manual/native-image/README.md).
-Add the `--enable-monitoring=heapdump,jvmstat` option when invoking the `native-image` tool to enable the heap dump feature and allow VisualVM to detect native executables via `jvmstat`.
-This way your application will handle signals and capture a heap dump when it receives the `SIGUSR1` signal.
-See the [Generating Native Heap Dumps](../reference-manual/native-image/guides/create-heap-dump-from-native-executable.md) page for details on capturing heap dumps from a native image process.
+> Note: VisualVM support for GraalVM native executables is not yet available on Windows.
+
+When using GraalVM [Native Image](../reference-manual/native-image/README.md), VisualVM support is disabled by default.
+VisualVM support can be enabled when building a native executable with the option `--enable-monitoring=jvmstat,heapdump`:
+```shell
+native-image --enable-monitoring=jvmstat,heapdump JavaApplication
+```
+
+### Capture a Heap Dump
+To capture a heap dump for later analysis, start your application and let it run for a few seconds to warm up.
+Then right-click its process in VisualVM and invoke the Heap Dump action.
 
 ### Analyzing Objects
 Initially the Summary view for the Java heap is displayed.
