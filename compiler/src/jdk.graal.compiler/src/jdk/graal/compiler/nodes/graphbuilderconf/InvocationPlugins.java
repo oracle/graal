@@ -483,6 +483,10 @@ public class InvocationPlugins {
     }
 
     InvocationPlugin get(ResolvedJavaMethod method) {
+        assert method != null : "Shouldn't be null";
+        if (method == null) {
+            System.out.println(new NullPointerException().getStackTrace());
+        }
         if (resolvedRegistrations != null) {
             return resolvedRegistrations.get(method);
         } else {

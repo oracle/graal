@@ -189,6 +189,7 @@ import jdk.graal.compiler.nodes.virtual.EnsureVirtualizedNode;
 import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.AESNode.CryptMode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
@@ -412,6 +413,29 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
+    public static class ArrayFillInvocationPlugin extends InvocationPlugin {
+        private final JavaKind kind;
+
+        public ArrayFillInvocationPlugin(JavaKind kind, Type... argumentTypes) {
+            super("fill", argumentTypes);
+            this.kind = kind;
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode value) {
+            if (!b.canMergeIntrinsicReturns()) {
+                return false;
+            }
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ValueNode nonNullArray = b.nullCheckedValue(arg1, DeoptimizationAction.None);
+                ValueNode arrayLength = b.add(new ArrayLengthNode(nonNullArray));
+                b.append(new ArrayFillNode(nonNullArray, arrayLength, value, kind));
+            }
+            return true;
+        }
+    }
+
     public static class ArrayEqualsInvocationPlugin extends InvocationPlugin {
         private final JavaKind kind;
 
@@ -428,16 +452,27 @@ public class StandardGraphBuilderPlugins {
             }
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                 ConstantNode arrayBaseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(kind), b.getGraph());
+
                 helper.emitReturnIf(b.add(new ObjectEqualsNode(arg1, arg2)), b.add(ConstantNode.forBoolean(true)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+
                 GuardingNode nonNullArg1guard = helper.emitReturnIf(IsNullNode.create(arg1), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+
                 GuardingNode nonNullArg2guard = helper.emitReturnIf(IsNullNode.create(arg2), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+
                 Stamp stamp1 = AbstractPointerStamp.pointerNonNull(arg1.stamp(NodeView.DEFAULT));
+
                 ValueNode nonNullArg1 = b.add(new PiNode(arg1, stamp1, nonNullArg1guard.asNode()));
+
                 ValueNode arg1Length = b.add(new ArrayLengthNode(nonNullArg1));
+
                 Stamp stamp2 = AbstractPointerStamp.pointerNonNull(arg1.stamp(NodeView.DEFAULT));
+
                 ValueNode nonNullArg2 = b.add(new PiNode(arg2, stamp2, nonNullArg2guard.asNode()));
+
                 ValueNode arg2Length = b.add(new ArrayLengthNode(nonNullArg2));
+
                 helper.emitReturnIfNot(IntegerEqualsNode.create(arg1Length, arg2Length, NodeView.DEFAULT), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
+
                 helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(nonNullArg1, arrayBaseOffset, nonNullArg2, arrayBaseOffset, arg1Length, kind)));
             }
             return true;
@@ -505,6 +540,9 @@ public class StandardGraphBuilderPlugins {
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Char, char[].class, char[].class));
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Int, int[].class, int[].class));
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Long, long[].class, long[].class));
+
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Byte, byte[].class, byte.class));
+        r.register(new ArrayFillInvocationPlugin(JavaKind.Int, int[].class, int.class));
     }
 
     private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements) {

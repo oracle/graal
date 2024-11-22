@@ -233,6 +233,11 @@ public interface LIRGeneratorTool extends CoreProviders, DiagnosticLIRGeneratorT
     }
 
     @SuppressWarnings("unused")
+    default void emitArrayFill(JavaKind commonElementKind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length, Value value) {
+        throw GraalError.unimplemented("Arrays.fill substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitArrayEquals(JavaKind commonElementKind, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture"); // ExcludeFromJacocoGeneratedReport

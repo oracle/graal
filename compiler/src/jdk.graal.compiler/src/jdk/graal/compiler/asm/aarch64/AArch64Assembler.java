@@ -1816,11 +1816,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert destSize == 8 || destSize == 16 || destSize == 32 || destSize == 64 : destSize;
         assert verifyRegistersZ(rt);
 
-        loadStoreInstruction(STR, rt, address, false, getLog2TransferSize(destSize));
-    }
-
-    private void loadStoreInstruction(Instruction instr, Register reg, AArch64Address address, boolean isFP, int log2TransferSize) {
-        loadStoreInstruction(instr, reg, address, isFP, log2TransferSize, 0);
+        loadStoreInstruction(Instruction.STR, rt, address, false, getLog2TransferSize(destSize), 0);
     }
 
     private void loadStoreInstruction(Instruction instr, Register reg, AArch64Address address, boolean isFP, int log2TransferSize, int extraEncoding) {
@@ -2461,6 +2457,12 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert verifySizeAndRegistersRR(size, dst, src);
 
         bitfieldInstruction(BFM, dst, src, r, s, generalFromSize(size));
+    }
+
+    public void bfi(int size, Register dst, Register src, int lsb, int width) {
+        assert verifySizeAndRegistersRR(size, dst, src);
+
+        bfm(size, dst, src, ((size - lsb) & (size - 1)), (width - 1));
     }
 
     /**
@@ -3281,7 +3283,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128 : size;
         assert verifyRegistersF(rt);
 
-        loadStoreInstruction(STR, rt, address, true, getLog2TransferSize(size));
+        loadStoreInstruction(Instruction.STR, rt, address, true, getLog2TransferSize(size), 0);
     }
 
     /**
