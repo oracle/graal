@@ -153,9 +153,6 @@ import com.oracle.svm.core.graal.phases.RemoveUnwindPhase;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
-import com.oracle.svm.core.graal.snippets.OpenTypeWorldSnippets;
-import com.oracle.svm.core.graal.snippets.TypeSnippets;
 import com.oracle.svm.core.graal.word.SubstrateWordOperationPlugins;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.BarrierSetProvider;
@@ -1493,12 +1490,6 @@ public class NativeImageGenerator {
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
-            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-                TypeSnippets.registerLowerings(options, providers, lowerings);
-            } else {
-                OpenTypeWorldSnippets.registerLowerings(options, providers, lowerings);
-                OpenTypeWorldDispatchTableSnippets.registerLowerings(options, providers, lowerings);
-            }
 
             featureHandler.forEachGraalFeature(feature -> feature.registerLowerings(runtimeConfig, options, providers, lowerings, hosted));
         } catch (Throwable e) {

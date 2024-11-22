@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.replacements;
 
+import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMaxHints;
+import static jdk.graal.compiler.core.common.GraalOptions.TypeCheckMinProfileHitProbability;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OPTIMIZING_PRIMARY_SUPERS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.PRIMARY_SUPERS_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.SECONDARY_SUPER_CACHE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubIntrinsic;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadHubOrNullIntrinsic;
-import static jdk.graal.compiler.hotspot.replacements.HotspotSnippetsOptions.TypeCheckMaxHints;
-import static jdk.graal.compiler.hotspot.replacements.HotspotSnippetsOptions.TypeCheckMinProfileHitProbability;
 import static jdk.graal.compiler.hotspot.replacements.TypeCheckSnippetUtils.checkSecondarySubType;
 import static jdk.graal.compiler.hotspot.replacements.TypeCheckSnippetUtils.checkUnknownSubType;
 import static jdk.graal.compiler.hotspot.replacements.TypeCheckSnippetUtils.createHints;
