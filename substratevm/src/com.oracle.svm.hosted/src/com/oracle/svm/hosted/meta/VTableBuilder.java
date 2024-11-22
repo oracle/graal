@@ -47,13 +47,13 @@ import jdk.graal.compiler.debug.Assertions;
 public final class VTableBuilder {
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
-    private final boolean closedTypeWorldHubLayout;
-    private final boolean imageLayer = ImageLayerBuildingSupport.buildingImageLayer();
+
+    private final OpenTypeWorldHubLayoutUtils openHubUtils;
 
     private VTableBuilder(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
         this.hUniverse = hUniverse;
         this.hMetaAccess = hMetaAccess;
-        closedTypeWorldHubLayout = SubstrateOptions.useClosedTypeWorldHubLayout();
+        openHubUtils = SubstrateOptions.useClosedTypeWorldHubLayout() ? null : new OpenTypeWorldHubLayoutUtils(hUniverse);
     }
 
     public static void buildTables(HostedUniverse hUniverse, HostedMetaAccess hMetaAccess) {
@@ -66,8 +66,67 @@ public final class VTableBuilder {
         }
     }
 
-    private static boolean shouldIncludeType(HostedType type) {
-        return type.getWrapped().isReachable() || type.getWrapped().isTrackedAcrossLayers();
+    private static class OpenTypeWorldHubLayoutUtils {
+        private final boolean closedTypeWorld;
+        private final boolean registerTrackedTypes;
+        private final boolean registerAllTypes;
+        private final boolean filterVTableMethods;
+
+        OpenTypeWorldHubLayoutUtils(HostedUniverse hUniverse) {
+            closedTypeWorld = SubstrateOptions.useClosedTypeWorld();
+
+            /*
+             * We only filter vtable methods when we are building a non-layered image under the
+             * closed type world assumption. For layered builds, we must keep all vtable methods to
+             * ensure consistency across layers.
+             *
+             * With the closed type world assumption we can filter out methods that we know will be
+             * simplified to direct calls (i.e., when at most a single implementation exists for the
+             * given target). See generateDispatchTable for the use of this filter.
+             */
+            filterVTableMethods = closedTypeWorld && !ImageLayerBuildingSupport.buildingImageLayer();
+
+            registerTrackedTypes = hUniverse.hostVM().enableTrackAcrossLayers();
+            registerAllTypes = ImageLayerBuildingSupport.buildingApplicationLayer();
+            assert !(registerTrackedTypes && registerAllTypes) : "We expect these flags to be mutually exclusive";
+            assert (registerTrackedTypes || registerAllTypes) == ImageLayerBuildingSupport.buildingImageLayer() : "Type information must be registered during layered image builds";
+        }
+
+        private boolean shouldIncludeType(HostedType type) {
+            if (closedTypeWorld) {
+                if (type.getWrapped().isInBaseLayer()) {
+                    /*
+                     * This check will be later removed.
+                     *
+                     * GR-60010 - We are currently loading base analysis types too late.
+                     */
+                    return type.getWrapped().isOpenTypeWorldDispatchTableMethodsCalculated();
+                }
+
+                /*
+                 * When using the closed type world we know calls to unreachable types will be
+                 * removed via graph strengthening. It is also always possible to see base layer
+                 * types.
+                 */
+                return type.getWrapped().isReachable() || type.getWrapped().isInBaseLayer();
+            } else {
+                /*
+                 * When using the open type world we are conservative and calculate metadata for all
+                 * types seen during analysis.
+                 */
+                return type.getWrapped().isOpenTypeWorldDispatchTableMethodsCalculated();
+            }
+        }
+
+        private boolean shouldRegisterType(HostedType type) {
+            if (registerAllTypes) {
+                return true;
+            }
+            if (registerTrackedTypes && type.getWrapped().isTrackedAcrossLayers()) {
+                return true;
+            }
+            return false;
+        }
     }
 
     private boolean verifyOpenTypeWorldDispatchTables() {
@@ -124,7 +183,7 @@ public final class VTableBuilder {
 
     private List<HostedMethod> generateDispatchTable(HostedType type, int startingIndex) {
         Predicate<HostedMethod> includeMethod;
-        if (closedTypeWorldHubLayout) {
+        if (openHubUtils.filterVTableMethods) {
             // include only methods which will be indirect calls
             includeMethod = m -> m.implementations.length > 1 || m.wrapped.isVirtualRootMethod();
         } else {
@@ -141,7 +200,7 @@ public final class VTableBuilder {
             index++;
         }
 
-        if (imageLayer) {
+        if (openHubUtils.shouldRegisterType(type)) {
             LayeredDispatchTableSupport.singleton().registerDeclaredDispatchInfo(type, table);
         }
 
@@ -209,13 +268,13 @@ public final class VTableBuilder {
                 type.openTypeWorldDispatchTables[i] = targetMethod;
             }
 
-            if (imageLayer) {
+            if (openHubUtils.shouldRegisterType(type)) {
                 LayeredDispatchTableSupport.singleton().registerNonArrayDispatchTable(type, validTarget);
             }
         }
 
         for (HostedType subType : type.subTypes) {
-            if (subType instanceof HostedInstanceClass instanceClass && shouldIncludeType(subType)) {
+            if (subType instanceof HostedInstanceClass instanceClass && openHubUtils.shouldIncludeType(subType)) {
                 generateOpenTypeWorldDispatchTable(instanceClass, dispatchTablesMap, invalidDispatchTableEntryHandler);
             }
         }
@@ -229,7 +288,7 @@ public final class VTableBuilder {
              * Each interface has its own dispatch table. These can be directly determined via
              * looking at their declared methods.
              */
-            if (type.isInterface() && shouldIncludeType(type)) {
+            if (type.isInterface() && openHubUtils.shouldIncludeType(type)) {
                 dispatchTablesMap.put(type, generateITable(type));
             }
         }
@@ -240,16 +299,16 @@ public final class VTableBuilder {
         int[] emptyITableOffsets = new int[0];
         var objectType = hUniverse.getObjectClass();
         for (HostedType type : hUniverse.getTypes()) {
-            if (type.isArray() && shouldIncludeType(type)) {
+            if (type.isArray() && openHubUtils.shouldIncludeType(type)) {
                 type.openTypeWorldDispatchTables = objectType.openTypeWorldDispatchTables;
                 type.openTypeWorldDispatchTableSlotTargets = objectType.openTypeWorldDispatchTableSlotTargets;
                 type.itableStartingOffsets = objectType.itableStartingOffsets;
-                if (imageLayer) {
+                if (openHubUtils.shouldRegisterType(type)) {
                     LayeredDispatchTableSupport.singleton().registerArrayDispatchTable(type, objectType);
                 }
             }
             if (type.openTypeWorldDispatchTables == null) {
-                assert !needsDispatchTable(type) : type;
+                assert !openHubUtils.shouldIncludeType(type) || hasEmptyDispatchTable(type) : type;
                 type.openTypeWorldDispatchTables = HostedMethod.EMPTY_ARRAY;
                 type.openTypeWorldDispatchTableSlotTargets = HostedMethod.EMPTY_ARRAY;
                 type.itableStartingOffsets = emptyITableOffsets;
@@ -257,8 +316,12 @@ public final class VTableBuilder {
         }
     }
 
-    public static boolean needsDispatchTable(HostedType type) {
-        return shouldIncludeType(type) && !(type.isInterface() || type.isPrimitive() || type.isAbstract());
+    public static boolean hasEmptyDispatchTable(HostedType type) {
+        /*
+         * Note that array types are by definition abstract, i.e., if type.isArray() is true then
+         * type.isAbstract() is true.
+         */
+        return (type.isInterface() || type.isPrimitive() || type.isAbstract()) && !type.isArray();
     }
 
     private void buildClosedTypeWorldVTables() {
