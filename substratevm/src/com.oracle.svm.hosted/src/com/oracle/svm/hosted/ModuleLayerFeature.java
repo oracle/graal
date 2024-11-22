@@ -195,6 +195,10 @@ public final class ModuleLayerFeature implements InternalFeature {
         ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl, accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
         /* Only scan the value if module support is enabled and bootLayer field is reachable. */
         accessImpl.registerReachabilityHandler((a) -> accessImpl.rescanObject(runtimeBootLayer), ReflectionUtil.lookupField(RuntimeModuleSupport.class, "bootLayer"));
+        /*
+         * Reset the runtime module table for the proper boot module layer synthesis after analysis.
+         */
+        moduleLayerFeatureUtils.resetRuntimeModuleTable();
     }
 
     @Override
@@ -794,6 +798,12 @@ public final class ModuleLayerFeature implements InternalFeature {
                 }
             } else {
                 return runtimeModule;
+            }
+        }
+
+        public void resetRuntimeModuleTable() {
+            synchronized (runtimeModules) {
+                runtimeModules.clear();
             }
         }
 
