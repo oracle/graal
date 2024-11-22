@@ -2689,7 +2689,7 @@ public final class Meta extends ContextAccessImpl
         assert classLoader != null : "use StaticObject.NULL for BCL";
         Klass k = loadKlassOrNull(type, classLoader, protectionDomain);
         if (k == null) {
-            throw throwException(java_lang_NoClassDefFoundError);
+            throw throwExceptionWithMessage(java_lang_NoClassDefFoundError, TypeSymbols.typeToName(type).toString());
         }
         return k;
     }

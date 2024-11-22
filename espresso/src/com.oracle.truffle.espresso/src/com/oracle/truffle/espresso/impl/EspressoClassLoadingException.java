@@ -23,6 +23,9 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -64,12 +67,13 @@ public abstract class EspressoClassLoadingException extends Exception {
         throw new EspressoClassLoadingException.IllegalAccessError(msg);
     }
 
-    public static EspressoException wrapClassNotFoundGuestException(ClassLoadingEnv env, EspressoException e) {
+    public static EspressoException wrapClassNotFoundGuestException(ClassLoadingEnv env, EspressoException e, Symbol<Type> root) {
         Meta meta = env.getMeta();
         if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
             // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
             StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
             meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
+            meta.java_lang_Throwable_detailMessage.set(ncdfe, meta.toGuestString(TypeSymbols.typeToName(root)));
             throw meta.throwException(ncdfe);
         }
         throw e;
