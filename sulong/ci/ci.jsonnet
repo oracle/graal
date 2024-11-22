@@ -46,6 +46,8 @@ local sc = (import "ci_common/sulong-common.jsonnet");
       ] else []) + (if style then [
         "<graal>/.clang-format",
         "<graal>/pyproject.toml",
+        # `mx checkcopyrights` doesn't work if `.gitignore` doesn't exist
+        "<graal>/.gitignore",
       ] else []),
     },
   },
