@@ -81,8 +81,6 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimeSource;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.CompositeValue;
-import jdk.graal.compiler.lir.CompositeValueClass;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -397,21 +395,6 @@ final class Target_jdk_graal_compiler_lir_LIRInstructionClass {
             throw VMError.shouldNotReachHere(String.format("Unknown instruction class: %s%n", clazz.getName()));
         }
         return instructionClass;
-    }
-}
-
-@TargetClass(value = CompositeValueClass.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_lir_CompositeValueClass {
-
-    @Substitute
-    @SuppressWarnings("unlikely-arg-type")
-    @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
-    public static CompositeValueClass<?> get(Class<? extends CompositeValue> clazz) {
-        CompositeValueClass<?> compositeValueClass = GraalCompilerSupport.get().compositeValueClasses.get(clazz);
-        if (compositeValueClass == null) {
-            throw VMError.shouldNotReachHere(String.format("Unknown composite value class: %s%n", clazz.getName()));
-        }
-        return compositeValueClass;
     }
 }
 

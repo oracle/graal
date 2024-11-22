@@ -404,23 +404,6 @@ public class LibGraalSubstitutions {
         }
     }
 
-    @TargetClass(className = "jdk.graal.compiler.lir.CompositeValueClass", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_graal_compiler_lir_CompositeValueClass {
-
-        /*
-         * Redirect method to image build-time pre-computed compositeValueClasses map in
-         * LibGraalCompilerSupport.
-         */
-        @Substitute
-        public static Target_jdk_graal_compiler_lir_CompositeValueClass get(Class<?> clazz) {
-            Object compositeValueClass = LibGraalCompilerSupport.get().compositeValueClasses.get(clazz);
-            if (compositeValueClass == null) {
-                throw VMError.shouldNotReachHere(String.format("Unknown composite value class: %s%n", clazz.getName()));
-            }
-            return SubstrateUtil.cast(compositeValueClass, Target_jdk_graal_compiler_lir_CompositeValueClass.class);
-        }
-    }
-
     @TargetClass(className = "jdk.graal.compiler.hotspot.HotSpotGraalOptionValues", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_jdk_graal_compiler_hotspot_HotSpotGraalOptionValues {
 

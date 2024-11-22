@@ -39,7 +39,6 @@ public class LibGraalCompilerSupport {
 
     public final EconomicMap<Class<?>, Object> nodeClasses = ImageHeapMap.create();
     public final EconomicMap<Class<?>, Object> instructionClasses = ImageHeapMap.create();
-    public final EconomicMap<Class<?>, Object> compositeValueClasses = ImageHeapMap.create();
 
     protected EconomicMap<Class<?>, Object> basePhaseStatistics = ImageHeapMap.create();
     protected EconomicMap<Class<?>, Object> lirPhaseStatistics = ImageHeapMap.create();
