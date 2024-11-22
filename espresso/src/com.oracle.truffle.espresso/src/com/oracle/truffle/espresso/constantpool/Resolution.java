@@ -22,29 +22,15 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Member;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
-import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNode;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
@@ -58,15 +44,29 @@ import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
+import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Member;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
+import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNode;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.resolver.LinkResolver;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-
-import java.util.logging.Level;
 
 public final class Resolution {
     static final DebugCounter CLASS_RESOLVE_COUNT = DebugCounter.create("ClassConstant.resolve calls");
@@ -195,86 +195,31 @@ public final class Resolution {
         }
     }
 
-    /**
-     * <h3>5.4.3.2. Field Resolution</h3>
-     *
-     * To resolve an unresolved symbolic reference from D to a field in a class or interface C, the
-     * symbolic reference to C given by the field reference must first be resolved (&sect;5.4.3.1).
-     * Therefore, any exception that can be thrown as a result of failure of resolution of a class
-     * or interface reference can be thrown as a result of failure of field resolution. If the
-     * reference to C can be successfully resolved, an exception relating to the failure of
-     * resolution of the field reference itself can be thrown.
-     *
-     * When resolving a field reference, field resolution first attempts to look up the referenced
-     * field in C and its superclasses:
-     * <ol>
-     * <li>If C declares a field with the name and descriptor specified by the field reference,
-     * field lookup succeeds. The declared field is the result of the field lookup.
-     * <li>Otherwise, field lookup is applied recursively to the direct superinterfaces of the
-     * specified class or interface C.
-     * <li>Otherwise, if C has a superclass S, field lookup is applied recursively to S.
-     * <li>Otherwise, field lookup fails.
-     * </ol>
-     *
-     * Then:
-     * <ul>
-     * <li>If field lookup fails, field resolution throws a NoSuchFieldError.
-     * <li>Otherwise, if field lookup succeeds but the referenced field is not accessible
-     * (&sect;5.4.4) to D, field resolution throws an IllegalAccessError.
-     * <li>Otherwise, let < E, L1 > be the class or interface in which the referenced field is
-     * actually declared and let L2 be the defining loader of D.
-     * <li>Given that the type of the referenced field is Tf, let T be Tf if Tf is not an array
-     * type, and let T be the element type (&sect;2.4) of Tf otherwise.
-     * <li>The Java Virtual Machine must impose the loading constraint that TL1 = TL2 (&sect;5.3.4).
-     * </ul>
-     */
-    private static Field lookupField(Klass seed, Symbol<Name> name, Symbol<Type> type) {
-        Field f = seed.lookupDeclaredField(name, type);
-        if (f != null) {
-            return f;
-        }
-        for (Klass i : seed.getSuperInterfaces()) {
-            f = lookupField(i, name, type);
-            if (f != null) {
-                return f;
-            }
-        }
-        if (seed.getSuperKlass() != null) {
-            return lookupField(seed.getSuperKlass(), name, type);
-        }
-        return null;
-    }
-
     public static Resolvable.ResolvedConstant resolveFieldRefConstant(FieldRefConstant.Indexes thiz, RuntimeConstantPool pool, @SuppressWarnings("unused") int thisIndex, ObjectKlass accessingKlass) {
         FIELDREF_RESOLVE_COUNT.inc();
         Klass holderKlass = getResolvedHolderKlass(thiz, pool, accessingKlass);
         Symbol<Name> name = thiz.getName(pool);
         Symbol<Type> type = thiz.getType(pool);
 
-        Field field = lookupField(holderKlass, name, type);
-        if (field == null) {
-            ClassRedefinition classRedefinition = pool.getContext().getClassRedefinition();
-            if (classRedefinition != null) {
-                // could be due to ongoing redefinition
-                classRedefinition.check();
-                field = lookupField(holderKlass, name, type);
-            }
-            if (field == null) {
-                Meta meta = pool.getContext().getMeta();
-                EspressoException failure = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString()), meta);
-                Assumption missingFieldAssumption;
+        Meta meta = pool.getContext().getMeta();
+        Field field;
+        ClassRedefinition classRedefinition = null;
+        try {
+            try {
+                field = LinkResolver.resolveFieldSymbol(meta, accessingKlass, name, type, holderKlass, true, true);
+            } catch (EspressoException e) {
+                classRedefinition = pool.getContext().getClassRedefinition();
                 if (classRedefinition != null) {
-                    missingFieldAssumption = classRedefinition.getMissingFieldAssumption();
+                    // could be due to ongoing redefinition
+                    classRedefinition.check();
+                    field = LinkResolver.resolveFieldSymbol(meta, accessingKlass, name, type, holderKlass, true, true);
                 } else {
-                    missingFieldAssumption = Assumption.ALWAYS_VALID;
+                    throw e;
                 }
-                return new MissingFieldRefConstant(failure, missingFieldAssumption);
             }
+        } catch (EspressoException e) {
+            return new MissingFieldRefConstant(e, classRedefinition == null ? Assumption.ALWAYS_VALID : classRedefinition.getMissingFieldAssumption());
         }
-
-        memberDoAccessCheck(accessingKlass, holderKlass, field, pool.getContext().getMeta());
-
-        field.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), field.getDeclaringKlass().getDefiningClassLoader());
 
         return new ResolvedFieldRefConstant(field);
     }
@@ -411,7 +356,7 @@ public final class Resolution {
         Symbol<Name> name = thiz.getName(pool);
         Symbol<Signature> signature = thiz.getSignature(pool);
 
-        Method method = LinkResolver.resolveSymbol(pool.getContext().getMeta(), accessingKlass, name, signature, holderInterface, true, true, true);
+        Method method = LinkResolver.resolveMethodSymbol(pool.getContext().getMeta(), accessingKlass, name, signature, holderInterface, true, true, true);
 
         return new ResolvedInterfaceMethodRefConstant(method);
     }
@@ -533,7 +478,7 @@ public final class Resolution {
         Symbol<Name> name = thiz.getName(pool);
         Symbol<Signature> signature = thiz.getSignature(pool);
 
-        Method method = LinkResolver.resolveSymbol(meta, accessingKlass, name, signature, holderKlass, false, true, true);
+        Method method = LinkResolver.resolveMethodSymbol(meta, accessingKlass, name, signature, holderKlass, false, true, true);
 
         if (method.isInvokeIntrinsic()) {
             MHInvokeGenericNode.MethodHandleInvoker invoker = MHInvokeGenericNode.linkMethod(meta.getLanguage(), meta, accessingKlass, method, name, signature);
