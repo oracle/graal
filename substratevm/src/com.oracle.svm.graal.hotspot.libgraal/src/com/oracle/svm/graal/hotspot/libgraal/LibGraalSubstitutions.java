@@ -360,19 +360,6 @@ public class LibGraalSubstitutions {
     @TargetClass(className = "jdk.graal.compiler.graph.NodeClass", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_jdk_graal_compiler_graph_NodeClass {
 
-        /*
-         * Redirect method to image build-time pre-computed nodeClasses map in
-         * LibGraalCompilerSupport.
-         */
-        @Substitute
-        public static Target_jdk_graal_compiler_graph_NodeClass get(Class<?> clazz) {
-            Object nodeClass = LibGraalCompilerSupport.get().nodeClasses.get(clazz);
-            if (nodeClass == null) {
-                throw VMError.shouldNotReachHere(String.format("Unknown node class: %s%n", clazz.getName()));
-            }
-            return SubstrateUtil.cast(nodeClass, Target_jdk_graal_compiler_graph_NodeClass.class);
-        }
-
         @Alias //
         private String shortName;
 
@@ -384,23 +371,6 @@ public class LibGraalSubstitutions {
         public String shortName() {
             assert shortName != null;
             return shortName;
-        }
-    }
-
-    @TargetClass(className = "jdk.graal.compiler.lir.LIRInstructionClass", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_graal_compiler_lir_LIRInstructionClass {
-
-        /*
-         * Redirect method to image build-time pre-computed instructionClasses map in
-         * LibGraalCompilerSupport.
-         */
-        @Substitute
-        public static Target_jdk_graal_compiler_lir_LIRInstructionClass get(Class<?> clazz) {
-            Object instructionClass = LibGraalCompilerSupport.get().instructionClasses.get(clazz);
-            if (instructionClass == null) {
-                throw VMError.shouldNotReachHere(String.format("Unknown instruction class: %s%n", clazz.getName()));
-            }
-            return SubstrateUtil.cast(instructionClass, Target_jdk_graal_compiler_lir_LIRInstructionClass.class);
         }
     }
 
