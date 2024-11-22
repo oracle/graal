@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core.graal.llvm.lowering;
 
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
-import jdk.graal.compiler.nodes.spi.LoweringTool;
-
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.thread.VMThreads;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 
 public class LLVMLoadExceptionObjectLowering implements NodeLoweringProvider<LoadExceptionObjectNode> {
 
@@ -46,7 +46,7 @@ public class LLVMLoadExceptionObjectLowering implements NodeLoweringProvider<Loa
 
         StructuredGraph graph = node.graph();
         GraalError.guarantee(graph.getGuardsStage().areFrameStatesAtDeopts(), "Should be after FSA %s", node);
-        FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
+        FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(node.stamp(NodeView.DEFAULT)));
         graph.replaceFixedWithFixed(node, readRegNode);
 
         /*
