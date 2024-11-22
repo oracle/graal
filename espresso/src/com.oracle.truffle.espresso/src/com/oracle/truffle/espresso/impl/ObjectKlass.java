@@ -766,7 +766,7 @@ public final class ObjectKlass extends Klass {
         int nextBci = 0;
         while (nextBci < bs.endBCI()) {
             if (Bytecodes.isInvoke(bs.opcode(nextBci))) {
-                FrameAnalysis.apply(m.getMethodVersion(), nextBci);
+                FrameAnalysis.apply(m.getMethodVersion(), nextBci, m.getMethodVersion().getLivenessAnalysis());
             }
             nextBci = bs.nextBCI(nextBci);
         }

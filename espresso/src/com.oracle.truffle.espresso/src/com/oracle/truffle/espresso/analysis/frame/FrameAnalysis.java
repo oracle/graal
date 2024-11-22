@@ -281,9 +281,9 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     boolean withStackMaps;
 
     @TruffleBoundary
-    public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci) {
+    public static EspressoFrameDescriptor apply(Method.MethodVersion m, int bci, LivenessAnalysis la) {
         try {
-            return new FrameAnalysis(bci, m).apply();
+            return new FrameAnalysis(bci, m, la).apply();
         } catch (Exception e) {
             throw EspressoError.shouldNotReachHere(String.format("Failed suspension during frame analysis of method '%s'", m), e);
         }
@@ -301,9 +301,9 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         return bs;
     }
 
-    private FrameAnalysis(int targetBci, Method.MethodVersion m) {
+    private FrameAnalysis(int targetBci, Method.MethodVersion m, LivenessAnalysis la) {
         this.lang = m.getMethod().getLanguage();
-        this.la = m.getLivenessAnalysis();
+        this.la = la;
         this.bs = new BytecodeStream(m.getOriginalCode());
         this.targetBci = targetBci;
         this.states = new Builder[bs.endBCI()];
