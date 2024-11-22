@@ -56,6 +56,7 @@ import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.InstrumentFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -65,6 +66,8 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+
+import org.graalvm.nativeimage.hosted.Feature;
 
 @AutomaticallyRegisteredFeature
 public class ClassInitializationFeature implements InternalFeature {
@@ -135,6 +138,15 @@ public class ClassInitializationFeature implements InternalFeature {
         initializationSupport.initializeAtBuildTime("org.graalvm.polyglot", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.options", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.jniutils", NATIVE_IMAGE_CLASS_REASON);
+    }
+
+    @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        /**
+         * {@link InstrumentFeature} replace the objects that should not appear in runtime. It must
+         * come before this feature, otherwise shouldInitializeAtRuntime will be triggered first.
+         */
+        return List.of(InstrumentFeature.class);
     }
 
     @Override

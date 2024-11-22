@@ -81,9 +81,10 @@ public final class LambdaUtils {
     public static String findStableLambdaName(ResolvedJavaType lambdaType) {
         ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods(false)).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
         /*
-         * Traverse all methods in lambda class for invokes because it is possible a javaagent may inject new methods into
-         * the lambda class. For example, Byte-buddy used by OTele can transform all classes that implements
-         * {@link java.util.concurrent.Callable} by injecting new methods that may not have any invokes.
+         * Traverse all methods in lambda class for invokes because it is possible a javaagent may
+         * inject new methods into the lambda class. For example, Byte-buddy used by OTele can
+         * transform all classes that implements {@link java.util.concurrent.Callable} by injecting
+         * new methods that may not have any invokes.
          */
         Set<JavaMethod> invokedMethods = new HashSet<>();
         for (int i = 0; i < lambdaProxyMethods.length; i++) {
