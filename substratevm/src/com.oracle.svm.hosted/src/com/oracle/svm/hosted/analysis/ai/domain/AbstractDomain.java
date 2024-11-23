@@ -12,7 +12,6 @@ import java.lang.reflect.InvocationTargetException;
  * <p>
  * We do not use narrowing operation in our abstract interpretation
  * All derived generic domains need to extend this class
- * Derived domains should have default constructor as well as copy constructor
  * Sample usage:
  * <p>
  * public final class MyCustomDomain extends AbstractDomain<MyCustomDomain> {
@@ -23,8 +22,8 @@ import java.lang.reflect.InvocationTargetException;
  *
  * @param <Derived> type of the derived AbstractDomain
  */
-
 public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
+
     /**
      * Checks if the domain is the bottom element
      *
@@ -149,7 +148,8 @@ public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
             Derived instance = domainClass.getDeclaredConstructor().newInstance();
             instance.setToTop();
             return instance;
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                 NoSuchMethodException e) {
             throw new RuntimeException("Failed to create top value for domain: " + domainClass.getName(), e);
         }
     }
@@ -164,9 +164,9 @@ public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
             Derived instance = domainClass.getDeclaredConstructor().newInstance();
             instance.setToBot();
             return instance;
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                 NoSuchMethodException e) {
             throw new RuntimeException("Failed to create bot value for domain: " + domainClass.getName(), e);
         }
     }
-
 }
