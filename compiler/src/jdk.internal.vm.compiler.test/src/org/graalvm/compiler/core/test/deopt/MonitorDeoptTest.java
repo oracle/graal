@@ -39,7 +39,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
+import org.graalvm.compiler.nodes.LoopBeginNode.SafepointState;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 public final class MonitorDeoptTest extends GraalCompilerTest {
