@@ -32,7 +32,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.junit.Assert;
 import org.junit.Test;
 
-<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler.test/src/org/graalvm/compiler/core/test/deopt/MonitorDeoptTest.java
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -40,18 +39,8 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-=======
-import jdk.graal.compiler.code.CompilationResult;
-import jdk.graal.compiler.core.test.GraalCompilerTest;
-import jdk.graal.compiler.nodes.AbstractEndNode;
-import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.FixedWithNextNode;
-import jdk.graal.compiler.nodes.LoopBeginNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
-import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings):compiler/src/jdk.graal.compiler.test/src/jdk/graal/compiler/core/test/deopt/MonitorDeoptTest.java
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 public final class MonitorDeoptTest extends GraalCompilerTest {
 

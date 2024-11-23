@@ -26,15 +26,16 @@ package org.graalvm.compiler.loop.phases;
 
 import java.util.Optional;
 
-<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/loop/phases/LoopSafepointEliminationPhase.java
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LoopBeginNode.SafepointState;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.loop.InductionVariable;
@@ -47,30 +48,6 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
-=======
-import jdk.graal.compiler.core.common.NumUtil;
-import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.core.common.type.Stamp;
-import jdk.graal.compiler.nodes.FixedNode;
-import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
-import jdk.graal.compiler.nodes.LoopEndNode;
-import jdk.graal.compiler.nodes.NodeView;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.extended.ForeignCall;
-import jdk.graal.compiler.nodes.loop.InductionVariable;
-import jdk.graal.compiler.nodes.loop.Loop;
-import jdk.graal.compiler.nodes.loop.LoopsData;
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
-import jdk.graal.compiler.phases.BasePhase;
-import jdk.graal.compiler.phases.tiers.MidTierContext;
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/loop/phases/LoopSafepointEliminationPhase.java
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
@@ -83,37 +60,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
     private static final long IntegerRangeDistance = Math.abs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
 
-<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/loop/phases/LoopSafepointEliminationPhase.java
-    /**
-     * To be implemented by subclasses to perform additional checks. Returns <code>true</code> if
-     * the safepoint was also disabled in subclasses and we therefore don't need to continue
-     * traversing.
-     */
-    @SuppressWarnings("unused")
-    protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
-        return true;
-    }
-
-    /**
-     * To be implemented by subclasses to compute additional fields.
-     */
-    @SuppressWarnings("unused")
-    protected void onSafepointDisabledLoopBegin(LoopEx loop) {
-    }
-
-    /**
-     * Determines whether guest safepoints should be allowed at all. To be implemented by
-     * subclasses. The default implementation returns <code>false</code>, leading to guest
-     * safepoints being disabled for all loops in the graph.
-     */
-    protected boolean allowGuestSafepoints() {
-        return false;
-    }
-
-    public static boolean loopIsIn32BitRange(LoopEx loop) {
-=======
-    public static boolean iterationRangeIsIn32Bit(Loop loop) {
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/loop/phases/LoopSafepointEliminationPhase.java
+    public static boolean iterationRangeIsIn32Bit(LoopEx loop) {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
         }
@@ -221,12 +168,8 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
 
             LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
             loops.detectCountedLoops();
-<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/loop/phases/LoopSafepointEliminationPhase.java
-            for (LoopEx loop : loops.countedLoops()) {
-                if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
-=======
 
-            for (Loop loop : loops.loops()) {
+            for (LoopEx loop : loops.loops()) {
                 if (!allowGuestSafepoints()) {
                     loop.loopBegin().disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
                 }
@@ -291,7 +234,6 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 if (loop.getCFGLoop().getChildren().isEmpty() &&
                                 (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) ||
                                                 loop.loopBegin().isStripMinedInner())) {
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/loop/phases/LoopSafepointEliminationPhase.java
                     boolean hasSafepoint = false;
                     for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                         hasSafepoint |= loopEnd.canSafepoint();
@@ -330,23 +272,6 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             }
             return false;
         }
-<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/loop/phases/LoopSafepointEliminationPhase.java
-        for (LoopEx loop : loops.loops()) {
-            if (!allowGuestSafepoints()) {
-                loop.loopBegin().disableGuestSafepoint();
-            }
-            for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
-                HIRBlock b = loops.getCFG().blockFor(loopEnd);
-                blocks: while (b != loop.loop().getHeader()) {
-                    assert b != null;
-                    for (FixedNode node : b.getNodes()) {
-                        boolean canDisableSafepoint = canDisableSafepoint(node, context);
-                        boolean disabledInSubclass = onCallInLoop(loopEnd, node);
-                        if (canDisableSafepoint) {
-                            loopEnd.disableSafepoint();
-                            graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
-=======
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/loop/phases/LoopSafepointEliminationPhase.java
 
         public boolean loopIsIn32BitRange(Loop loop) {
             return iterationRangeIsIn32Bit(loop);

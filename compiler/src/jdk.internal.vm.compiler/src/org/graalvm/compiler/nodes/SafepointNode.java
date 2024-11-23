@@ -27,24 +27,15 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
-<<<<<<< HEAD:compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/nodes/SafepointNode.java
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-=======
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodeinfo.InputType;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.spi.LIRLowerable;
-import jdk.graal.compiler.nodes.spi.Lowerable;
-import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
->>>>>>> c0405ac1a58 (safepoint elimination: refactorings):compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/nodes/SafepointNode.java
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 /**
  * Marks a position in the graph where a safepoint should be emitted.
