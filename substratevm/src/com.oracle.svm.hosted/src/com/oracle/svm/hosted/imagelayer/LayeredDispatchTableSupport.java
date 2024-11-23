@@ -318,7 +318,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         assert hType.getWrapped().isReachable() : "All installed hubs should be reachable " + hType;
 
         int vtableLength = Array.getLength(vTable);
-        if (!VTableBuilder.needsDispatchTable(hType) && !hType.isArray()) {
+        if (VTableBuilder.hasEmptyDispatchTable(hType)) {
             assert vtableLength == 0 : hType;
             return;
         }
