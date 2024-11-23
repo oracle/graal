@@ -14,37 +14,70 @@ import java.util.Map;
  *
  * @param <Domain> type of the derived abstract domain
  */
-
 public class Environment<Domain extends AbstractDomain<Domain>> {
-    private final Domain defaultDomain;
+
+    private final Domain initialDomain;
     private final Map<Node, AbstractState<Domain>> stateMap;
 
-    public Environment(Domain defaultDomain, int nodeCount) {
-        this.defaultDomain = defaultDomain;
+    public Environment(Domain initialDomain, int nodeCount) {
+        this.initialDomain = initialDomain;
         this.stateMap = new HashMap<>(nodeCount);
     }
 
+    public Domain getInitialDomain() {
+        return initialDomain;
+    }
+
     public AbstractState<Domain> getState(Node node) {
-        return stateMap.computeIfAbsent(node, n -> new AbstractState<>(defaultDomain.copyOf()));
+        return stateMap.computeIfAbsent(node, n -> new AbstractState<>(initialDomain.copyOf()));
     }
 
-    public Domain getDomain(Node node) {
-        return getState(node).getDomain();
+    public Domain getPreCondition(Node node) {
+        return getState(node).getPreCondition();
     }
 
-    public void setDomain(Node node, Domain domain) {
-        getState(node).setDomain(domain);
+    public Domain getPostCondition(Node node) {
+        return getState(node).getPostCondition();
+    }
+
+    public Domain setPostCondition(Node node, Domain postCondition) {
+        AbstractState<Domain> state = getState(node);
+        state.setPostCondition(postCondition);
+        return postCondition;
+    }
+
+    public Domain setPrecondition(Node node, Domain preCondition) {
+        AbstractState<Domain> state = getState(node);
+        state.setPreCondition(preCondition);
+        return preCondition;
     }
 
     public int getVisitCount(Node node) {
         return getState(node).getVisitedCount();
     }
 
+    public boolean isVisited(Node node) {
+        return getState(node).isVisited();
+    }
+
+    public void resetStates() {
+        var initialDomainCopy = initialDomain.copyOf();
+        for (AbstractState<Domain> state : stateMap.values()) {
+            state.resetCount();
+            state.setPostCondition(initialDomainCopy);
+            state.setPreCondition(initialDomainCopy);
+        }
+    }
+
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder("Post conditions after executing the analysis: \n");
         for (Node node : stateMap.keySet()) {
-            sb.append(node).append(" -> ").append(getDomain(node)).append("\n");
+            sb.append(node).append(" -> ").append(getPreCondition(node)).append("\n");
         }
         return sb.toString();
+    }
+
+    public void clearPostCondition(Node node) {
+        getState(node).setPostCondition(initialDomain.copyOf());
     }
 }
