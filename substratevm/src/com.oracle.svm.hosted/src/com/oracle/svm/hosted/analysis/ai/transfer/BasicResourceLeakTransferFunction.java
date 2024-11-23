@@ -6,18 +6,19 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
 public class BasicResourceLeakTransferFunction implements TransferFunction<ConstantDomain<Integer>> {
+
     @Override
-    public ConstantDomain<Integer> analyzeNode(Node node, Environment<ConstantDomain<Integer>> environment) {
+    public ConstantDomain<Integer> computePostCondition(Node node, Environment<ConstantDomain<Integer>> environment) {
+        ConstantDomain<Integer> currentDomain = environment.getPostCondition(node).copyOf();
         if (node instanceof Invoke invoke) {
             String methodName = invoke.callTarget().targetName();
-            ConstantDomain<Integer> currentDomain = environment.getDomain(node);
-
             if (methodName.contains("init")) {
                 currentDomain.incrementValue();
             } else if (methodName.contains("close")) {
                 currentDomain.decrementValue();
             }
         }
-        return environment.getDomain(node);
+
+        return currentDomain;
     }
 }

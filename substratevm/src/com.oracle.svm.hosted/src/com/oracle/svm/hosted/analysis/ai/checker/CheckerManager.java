@@ -6,7 +6,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+/**
+ * Manages a list of checkers and runs them in parallel
+ */
 public class CheckerManager {
+
     private final List<Checker<?>> checkers = new ArrayList<>();
     private final ExecutorService executorService;
 
