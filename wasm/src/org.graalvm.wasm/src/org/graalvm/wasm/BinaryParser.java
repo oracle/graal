@@ -153,6 +153,7 @@ public class BinaryParser extends BinaryStreamParser {
         int lastNonCustomSection = 0;
         int codeSectionOffset = -1;
         int codeSectionLength = 0;
+        boolean dataSectionPresent = false;
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
         final BytecodeGen customData = new BytecodeGen();
         final BytecodeGen functionDebugData = new BytecodeGen();
@@ -218,6 +219,7 @@ public class BinaryParser extends BinaryStreamParser {
                     codeSectionLength = size;
                     break;
                 case Section.DATA:
+                    dataSectionPresent = true;
                     readDataSection(bytecode);
                     break;
             }
@@ -226,6 +228,9 @@ public class BinaryParser extends BinaryStreamParser {
         if (codeSectionOffset == -1) {
             assertIntEqual(module.numFunctions(), module.numImportedFunctions(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
             codeSectionOffset = 0;
+        }
+        if (bulkMemoryAndRefTypes && !dataSectionPresent) {
+            module.checkDataSegmentCount(0);
         }
         module.setBytecode(bytecode.toArray());
         module.removeFunctionReferences();
@@ -2823,7 +2828,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void readDataSection(RuntimeBytecodeGen bytecode) {
         final int dataSegmentCount = readLength();
         module.limits().checkDataSegmentCount(dataSegmentCount);
-        if (bulkMemoryAndRefTypes && dataSegmentCount != 0) {
+        if (bulkMemoryAndRefTypes) {
             module.checkDataSegmentCount(dataSegmentCount);
         }
         final int droppedDataInstanceOffset = bytecode.location();
