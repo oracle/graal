@@ -4,15 +4,13 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.ProgressReporter;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.AnalyzerFactory;
-import com.oracle.svm.hosted.analysis.ai.checker.CustomChecker;
-import com.oracle.svm.hosted.analysis.ai.domain.ConstantDomain;
-import com.oracle.svm.hosted.analysis.ai.transfer.BasicResourceLeakTransferFunction;
+import com.oracle.svm.hosted.analysis.ai.checker.DivisionByZeroChecker;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 public class AbstractInterpretationDriver {
+
     private final DebugContext debug;
     private final AnalysisMethod root;
 
@@ -40,6 +38,24 @@ public class AbstractInterpretationDriver {
         var rootGraph = getGraph(root);
         for (Node node : rootGraph.getNodes()) {
             debug.log("\t" + node);
+
+            debug.log("\t" + "inputs: ");
+            for (var pred : node.inputs()) {
+                debug.log("\t\t" + pred);
+            }
+            debug.log("\t" + " successors: ");
+            for (var succ : node.successors()) {
+                debug.log("\t\t" + succ);
+            }
+            debug.log("\t" + " CFG successors: ");
+            for (var succ : node.cfgSuccessors()) {
+                debug.log("\t\t" + succ);
+            }
+
+            debug.log("\t" + " CFG predecessors: ");
+            for (var pred : node.cfgPredecessors()) {
+                debug.log("\t\t" + pred);
+            }
         }
 
         debug.log("Printing the invokes");
@@ -50,11 +66,8 @@ public class AbstractInterpretationDriver {
             }
         }
 
-        var transferFunction = new BasicResourceLeakTransferFunction();
-        var initialDomain = new ConstantDomain<Integer>();
-        var analyzer = AnalyzerFactory.createIntraProceduralAnalyzer(rootGraph, transferFunction, initialDomain, debug);
-        var checker = new CustomChecker<>(analyzer, debug);
-        checker.runAnalysis();
+        var checker = new DivisionByZeroChecker(debug, rootGraph);
+        checker.check();
     }
 
     private StructuredGraph getGraph(AnalysisMethod method) {

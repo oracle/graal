@@ -3,10 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
 /**
- * Interface for a fixpoint iterator.
- *
- * This interface defines the method for iterating until a fixpoint is reached
- * in an abstract interpretation framework.
+ * Represents a fixpoint iterator that can be used to perform a fixpoint iteration
  *
  * @param <Domain> the type of the abstract domain
  */
@@ -14,7 +11,7 @@ public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Iterates until a fixpoint is reached.
-     * This method performs the fixpoint iteration algorithm and returns the
+     * This method performs a fixpoint iteration algorithm and returns the
      * resulting environment (mapping of StructuredGraph Nodes to a common AbstractDomain)
      * after the analysis is complete.
      *
