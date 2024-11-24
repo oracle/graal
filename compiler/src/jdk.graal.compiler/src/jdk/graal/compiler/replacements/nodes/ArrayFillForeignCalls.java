@@ -39,7 +39,7 @@ public final class ArrayFillForeignCalls {
     };
 
     public static ForeignCallDescriptor getArrayFillStub(ArrayFillNode arrayFillNode) {
-        JavaKind kind = arrayFillNode.getKind();
+        JavaKind kind = arrayFillNode.getElementKind();
         switch (kind) {
             case Byte:
                 return STUB_BYTE_ARRAY_FILL;

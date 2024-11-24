@@ -430,7 +430,7 @@ public class StandardGraphBuilderPlugins {
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                 ValueNode nonNullArray = b.nullCheckedValue(arg1, DeoptimizationAction.None);
                 ValueNode arrayLength = b.add(new ArrayLengthNode(nonNullArray));
-                b.append(new ArrayFillNode(nonNullArray, arrayLength, value, kind));
+                b.add(new ArrayFillNode(nonNullArray, arrayLength, value, kind, null));
             }
             return true;
         }

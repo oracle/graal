@@ -24,25 +24,31 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.nodeinfo.InputType.State;
+
 import java.util.EnumSet;
 
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.GenerateStub;
+import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.DeoptBciSupplier;
+import jdk.graal.compiler.nodes.DeoptimizingNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.StateSplit;
 import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.spi.Canonicalizable;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
+import jdk.graal.compiler.nodes.memory.MemoryAccess;
+import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.spi.Virtualizable;
-import jdk.graal.compiler.nodes.spi.VirtualizerTool;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 
 // JaCoCo Exclude
@@ -51,12 +57,11 @@ import jdk.vm.ci.meta.JavaKind;
  * Fills in an array with a given value
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public class ArrayFillNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, Virtualizable {
+public class ArrayFillNode extends MemoryKillStubIntrinsicNode implements StateSplit, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring, DeoptBciSupplier {
 
     public static final NodeClass<ArrayFillNode> TYPE = NodeClass.create(ArrayFillNode.class);
 
-    /** {@link JavaKind} of the array to fill. */
-    protected final JavaKind kind;
+    public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte), NamedLocationIdentity.OFF_HEAP_LOCATION};
 
     /** One array to be tested for equality. */
     @Input protected ValueNode array;
@@ -67,35 +72,32 @@ public class ArrayFillNode extends PureFunctionStubIntrinsicNode implements Cano
     /** Value to fill the array with. */
     @Input protected ValueNode value;
 
-    public ArrayFillNode(ValueNode array1, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind kind) {
-        this(TYPE, array1, length, value, kind, null);
-    }
+    /** {@link JavaKind} of the array to fill. */
+    protected JavaKind elementKind;
 
-    public ArrayFillNode(ValueNode array1, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        this(TYPE, array1, length, value, kind, runtimeCheckedCPUFeatures);
-    }
+    @OptionalInput(State) FrameState stateDuring;
 
-    protected ArrayFillNode(NodeClass<? extends ArrayFillNode> c, ValueNode array, ValueNode length, ValueNode value,
-                    @ConstantNodeParameter JavaKind kind,
-                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
-        super(c, StampFactory.forVoid(), runtimeCheckedCPUFeatures, NamedLocationIdentity.getArrayLocation(kind));
-        this.kind = kind;
+    @OptionalInput(InputType.State) protected FrameState stateAfter;
+
+    protected int bci;
+
+    public ArrayFillNode(ValueNode array, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind) {
+        super(TYPE, StampFactory.forVoid(), null, LocationIdentity.any());
+        this.bci = BytecodeFrame.BEFORE_BCI;
         this.array = array;
         this.length = length;
         this.value = value;
+        this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
-    public JavaKind getKind() {
-        return this.kind;
-    }
-
-    @Override
-    public Node canonical(CanonicalizerTool tool) {
-        return this;
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
+    public ArrayFillNode(ValueNode array, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        super(TYPE, StampFactory.forVoid(), runtimeCheckedCPUFeatures, LocationIdentity.any());
+        this.bci = BytecodeFrame.BEFORE_BCI;
+        this.array = array;
+        this.length = length;
+        this.value = value;
+        this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
     @NodeIntrinsic
@@ -121,7 +123,69 @@ public class ArrayFillNode extends PureFunctionStubIntrinsicNode implements Cano
 
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitArrayFill(kind, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(length), gen.operand(value));
+        gen.getLIRGeneratorTool().emitArrayFill(elementKind, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(length), gen.operand(value));
     }
 
+    @Override
+    public int bci() {
+        return bci;
+    }
+
+    @Override
+    public void setBci(int bci) {
+        this.bci = bci;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return locationIdentity;
+    }
+
+    @Override
+    public boolean hasSideEffect() {
+        return true;
+    }
+
+    @Override
+    public LocationIdentity[] getKilledLocationIdentities() {
+        return KILLED_LOCATIONS;
+    }
+
+    public JavaKind getElementKind() {
+        return this.elementKind;
+    }
+
+    @Override
+    public FrameState stateDuring() {
+        return stateDuring;
+    }
+
+    @Override
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
+    }
+
+    @Override
+    public FrameState stateAfter() {
+        return stateAfter;
+    }
+
+    @Override
+    public void setStateAfter(FrameState x) {
+        assert x == null || x.isAlive() : "frame state must be in a graph";
+        updateUsages(stateAfter, x);
+        stateAfter = x;
+    }
+
+    @Override
+    public boolean canDeoptimize() {
+        return true;
+    }
+
+    @Override
+    public void computeStateDuring(FrameState currentStateAfter) {
+        FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(bci(), asNode().getStackKind());
+        setStateDuring(newStateDuring);
+    }
 }
