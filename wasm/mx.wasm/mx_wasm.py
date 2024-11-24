@@ -630,12 +630,17 @@ def emscripten_init(args):
 @mx.command(_suite.name, "wasm")
 def wasm(args, **kwargs):
     """Run a WebAssembly program."""
+
     vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
+    # This is needed for Truffle since JEP 472: Prepare to Restrict the Use of JNI
+    vmArgs += ['--enable-native-access=org.graalvm.truffle']
+
     path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",
         "org.graalvm.wasm",
         "org.graalvm.wasm.launcher",
     ] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+
     return mx.run_java(vmArgs + path_args + ["org.graalvm.wasm.launcher.WasmLauncher"] + wasmArgs, jdk=get_jdk(), **kwargs)
 
 @mx.command(_suite.name, "wasm-memory-layout")
