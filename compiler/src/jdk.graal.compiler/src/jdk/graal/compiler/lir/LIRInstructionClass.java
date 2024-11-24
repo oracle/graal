@@ -40,9 +40,12 @@ import jdk.graal.compiler.lir.StandardOp.MoveOp;
 import jdk.graal.compiler.lir.StandardOp.ValueMoveOp;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Value;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static <T extends LIRInstruction> LIRInstructionClass<T> create(Class<T> c) {
         return new LIRInstructionClass<>(c);
     }
@@ -63,10 +66,12 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
     private String opcodeConstant;
     private int opcodeIndex;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private LIRInstructionClass(Class<T> clazz) {
         this(clazz, new FieldsScanner.DefaultCalcOffset());
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public LIRInstructionClass(Class<T> clazz, FieldsScanner.CalcOffset calcOffset) {
         super(clazz);
         assert INSTRUCTION_CLASS.isAssignableFrom(clazz);
@@ -95,6 +100,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
     }
 
     @SuppressWarnings("unchecked")
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static <T> LIRInstructionClass<T> get(Class<T> clazz) {
         try {
             Field field = clazz.getDeclaredField("TYPE");

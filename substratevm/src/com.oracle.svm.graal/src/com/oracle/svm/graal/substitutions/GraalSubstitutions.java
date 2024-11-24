@@ -69,7 +69,6 @@ import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.core.gen.NodeLIRBuilder;
 import jdk.graal.compiler.core.match.MatchRuleRegistry;
 import jdk.graal.compiler.core.match.MatchStatement;
@@ -81,10 +80,6 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.debug.TimeSource;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.CompositeValue;
-import jdk.graal.compiler.lir.CompositeValueClass;
-import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.lir.phases.LIRPhase;
 import jdk.graal.compiler.nodes.Invoke;
@@ -364,17 +359,6 @@ final class Target_jdk_graal_compiler_graph_NodeClass {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = FieldsOffsetsFeature.SuccessorsIterationMaskRecomputation.class)//
     private long successorIteration;
 
-    @Substitute
-    @SuppressWarnings("unlikely-arg-type")
-    @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
-    public static NodeClass<?> get(Class<?> clazz) {
-        NodeClass<?> nodeClass = GraalCompilerSupport.get().nodeClasses.get(clazz);
-        if (nodeClass == null) {
-            throw VMError.shouldNotReachHere(String.format("Unknown node class: %s%n", clazz.getName()));
-        }
-        return nodeClass;
-    }
-
     @Alias //
     private String shortName;
 
@@ -382,36 +366,6 @@ final class Target_jdk_graal_compiler_graph_NodeClass {
     public String shortName() {
         assert shortName != null;
         return shortName;
-    }
-}
-
-@TargetClass(value = LIRInstructionClass.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_lir_LIRInstructionClass {
-
-    @Substitute
-    @SuppressWarnings("unlikely-arg-type")
-    @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
-    public static LIRInstructionClass<?> get(Class<? extends LIRInstruction> clazz) {
-        LIRInstructionClass<?> instructionClass = GraalCompilerSupport.get().instructionClasses.get(clazz);
-        if (instructionClass == null) {
-            throw VMError.shouldNotReachHere(String.format("Unknown instruction class: %s%n", clazz.getName()));
-        }
-        return instructionClass;
-    }
-}
-
-@TargetClass(value = CompositeValueClass.class, onlyWith = GraalCompilerFeature.IsEnabled.class)
-final class Target_jdk_graal_compiler_lir_CompositeValueClass {
-
-    @Substitute
-    @SuppressWarnings("unlikely-arg-type")
-    @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
-    public static CompositeValueClass<?> get(Class<? extends CompositeValue> clazz) {
-        CompositeValueClass<?> compositeValueClass = GraalCompilerSupport.get().compositeValueClasses.get(clazz);
-        if (compositeValueClass == null) {
-            throw VMError.shouldNotReachHere(String.format("Unknown composite value class: %s%n", clazz.getName()));
-        }
-        return compositeValueClass;
     }
 }
 
