@@ -75,11 +75,13 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
+            boundary();
+            Object result = callNode.call(frame.getArguments());
             if (CompilerDirectives.inInterpreter()) {
                 return "root:interpreter";
             }
             boundary();
-            return callNode.call(frame.getArguments());
+            return result;
         }
     }
 
@@ -193,10 +195,6 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         final int compilationThreshold = calleeTarget.getOptionValue(LastTierCompilationThreshold);
 
         Assert.assertEquals("root:interpreter", multiTierTarget.call());
-        for (int i = 0; i < firstTierCompilationThreshold; i++) {
-            multiTierTarget.call();
-        }
-        Assert.assertEquals("callee:interpreter", multiTierTarget.call());
         for (int i = 0; i < firstTierCompilationThreshold; i++) {
             multiTierTarget.call();
         }

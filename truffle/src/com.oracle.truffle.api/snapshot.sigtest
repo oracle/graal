@@ -1376,6 +1376,7 @@ meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
 meth protected boolean isSameFrame(com.oracle.truffle.api.frame.Frame,com.oracle.truffle.api.frame.Frame)
 meth protected boolean isTrivial()
+meth protected boolean prepareForCompilation(boolean,int,boolean)
 meth protected com.oracle.truffle.api.frame.FrameDescriptor getParentFrameDescriptor()
 meth protected com.oracle.truffle.api.nodes.ExecutionSignature prepareForAOT()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
@@ -1645,7 +1646,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation

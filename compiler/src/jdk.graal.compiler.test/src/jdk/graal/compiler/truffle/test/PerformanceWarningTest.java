@@ -127,6 +127,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             DebugContext debug = new Builder(compiler.getOrCreateCompilerOptions(target)).build();
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
+                compilable.ensureInitialized();
                 TruffleCompilationTask task = PartialEvaluationTest.newTask();
                 try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
                     compiler.compileAST(debug, compilable, compilation.getCompilationId(), task, null);

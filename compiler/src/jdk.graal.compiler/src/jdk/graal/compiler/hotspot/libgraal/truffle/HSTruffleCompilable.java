@@ -87,9 +87,9 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     }
 
     @Override
-    public void prepareForCompilation() {
+    public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
         try {
-            HANDLES.prepareForCompilation.invoke(hsHandle);
+            return (boolean) HANDLES.prepareForCompilation.invoke(hsHandle, rootCompilation, compilationTier, lastTier);
         } catch (Throwable t) {
             throw handleException(t);
         }

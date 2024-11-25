@@ -28,8 +28,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import com.oracle.svm.graal.isolated.IsolatedHandles;
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -43,6 +41,7 @@ import com.oracle.svm.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.graal.isolated.IsolatedCodeInstallBridge;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
+import com.oracle.svm.graal.isolated.IsolatedHandles;
 import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.svm.graal.isolated.IsolatedSpeculationLog;
@@ -50,6 +49,7 @@ import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
 import com.oracle.svm.truffle.isolated.BinaryOutput.ByteArrayBinaryOutput;
 import com.oracle.truffle.compiler.TruffleCompilable;
 
+import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -128,8 +128,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public void prepareForCompilation() {
-        prepareForCompilation0(IsolatedCompileContext.get().getClient(), handle);
+    public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        return prepareForCompilation0(IsolatedCompileContext.get().getClient(), handle, rootCompilation, compilationTier, lastTier);
     }
 
     @Override
@@ -225,9 +225,10 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static void prepareForCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
+    private static boolean prepareForCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle,
+                    boolean rootCompilation, int compilationTier, boolean lastTier) {
         TruffleCompilable ast = IsolatedCompileClient.get().unhand(handle);
-        ast.prepareForCompilation();
+        return ast.prepareForCompilation(rootCompilation, compilationTier, lastTier);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)

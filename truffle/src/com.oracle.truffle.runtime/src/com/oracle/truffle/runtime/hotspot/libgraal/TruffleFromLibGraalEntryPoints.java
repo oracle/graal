@@ -231,9 +231,15 @@ final class TruffleFromLibGraalEntryPoints {
         return output.getArray();
     }
 
+    @SuppressWarnings("deprecation")
     @TruffleFromLibGraal(Id.PrepareForCompilation)
     static void prepareForCompilation(Object compilable) {
         ((TruffleCompilable) compilable).prepareForCompilation();
+    }
+
+    // new method for new target reflectively resolved
+    static boolean prepareForCompilation(Object compilable, boolean rootCompilation, int tier, boolean lastTier) {
+        return ((TruffleCompilable) compilable).prepareForCompilation(rootCompilation, tier, lastTier);
     }
 
     @TruffleFromLibGraal(GetURI)

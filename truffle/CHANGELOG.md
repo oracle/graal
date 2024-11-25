@@ -17,6 +17,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-30264 `TruffleLanguage#initializeThread(Object, Thread)` is now guaranteed to be executed on the thread that is being initialized. Additional changes:  
     * Added `ThreadLocalAction#notifyBlocked(Access)` and `ThreadLocalAction#notifyUnblocked(Access)` to notify thread local actions that their processing has been blocked/unblocked due to a blocked call (see `ThreadLocalAction` documentation).
     * `TruffleSafepoint#poll(Node)` does not require a non-null location anymore. However, it is still recommended to always pass a location node, if available.  
+* GR-59565 Added `RootNode.prepareForCompilation` which allows root nodes to offload expensive computation to the compiler thread and to delay compilation if they are not yet fully profiled.
+
 
 ## Version 24.1.0
 * GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.
