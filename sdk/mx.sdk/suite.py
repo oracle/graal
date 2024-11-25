@@ -322,6 +322,11 @@ suite = {
       "digest" : "sha512:2682ac2dd133efb143352fc571671859980044565470188ea26a95926132f43477686fe321f012f7af9ba5f4022b797e4b7591f63bb12450a80f820456a54ac2",
     },
 
+    "RENAISSANCE_0.16.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.16.0.jar"],
+      "digest" : "sha512:82cc829636f3420622b9ce55fb0406230a2a90692f03f0e85bfe6d99f1bd58ee9ec173695bd1c597aeae149b19391231d0f7fe47ca290334b2dba7c7cd3ef64e",
+    },
+
     "UBENCH_AGENT_DIST" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/java-ubench-agent-2e5becaf97afcf64fd8aef3ac84fc05a3157bff5.zip"],
       "digest" : "sha512:5ec1781aaceb3c1c6123e6db52a49967399f42ac9c81ef87e2abdf7b8d4a8cd0dac6b8e31e9a57ee0e890b15e1a9326a4a3e44e742f9aa1cba7836361c50b921",
