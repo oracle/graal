@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,7 @@ final class JfrOldObjectSampler {
             }
         }
 
-        store(obj, allocatedSize, arrayLength);
+        store(obj, span, allocatedSize, arrayLength);
         return true;
     }
 
@@ -142,17 +142,17 @@ final class JfrOldObjectSampler {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private void store(Object obj, UnsignedWord allocatedSize, int arrayLength) {
+    private void store(Object obj, UnsignedWord span, UnsignedWord allocatedSize, int arrayLength) {
         Thread thread = JavaThreads.getCurrentThreadOrNull();
         long threadId = thread == null ? 0L : JavaThreads.getThreadId(thread);
         long stackTraceId = thread == null ? 0L : SubstrateJVM.get().getStackTraceId(JfrEvent.OldObjectSample, 0);
         UnsignedWord heapUsedAfterLastGC = Heap.getHeap().getUsedMemoryAfterLastGC();
 
         JfrOldObject sample = (JfrOldObject) freeList.pop();
-        sample.initialize(obj, allocatedSize, threadId, stackTraceId, heapUsedAfterLastGC, arrayLength);
+        sample.initialize(obj, span, allocatedSize, threadId, stackTraceId, heapUsedAfterLastGC, arrayLength);
         queue.add(sample);
         usedList.append(sample);
-        totalInQueue.add(allocatedSize);
+        totalInQueue = totalInQueue.add(span);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
