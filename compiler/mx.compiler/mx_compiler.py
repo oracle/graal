@@ -275,8 +275,15 @@ def ctw(args, extraVMarguments=None):
     parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
     args, vmargs = parser.parse_known_args(args)
-
     vmargs.extend(_remove_empty_entries(extraVMarguments))
+
+    # Enable jvmci by default if not specified
+    if _get_XX_option_value(vmargs, 'EnableJVMCI', None) is None:
+        vmargs.append('-XX:+EnableJVMCI')
+
+    # Disable JVMCICompiler by default if not specified
+    if _get_XX_option_value(vmargs, 'UseJVMCICompiler', None) is None:
+        vmargs.append('-XX:-UseJVMCICompiler')
 
     if mx.get_os() == 'darwin':
         # suppress menubar and dock when running on Mac
@@ -515,7 +522,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # Run ctw against rt.jar on hosted
     ctw_flags = [
-        '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+        '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-ea', '-esa',
         '-DCompileTheWorld.MultiThreaded=true', '-Djdk.graal.InlineDuringParsing=false', '-Djdk.graal.TrackNodeSourcePosition=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
