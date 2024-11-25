@@ -28,7 +28,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.CodeSource;
@@ -219,17 +218,29 @@ final class Target_java_security_Provider_Service {
     private Object constructorCache;
 }
 
+class ServiceKeyProvider {
+    static Object getNewServiceKey() {
+        Class<?> serviceKey = ReflectionUtil.lookupClass("java.security.Provider$ServiceKey");
+        Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
+        return ReflectionUtil.newInstance(constructor, "", "", false);
+    }
+
+    /**
+     * Originally the thread local creates a new default service key each time. Here we always
+     * return the singleton default service key. This default key will be replaced with an actual
+     * key in {@code java.security.Provider.parseLegacy}
+     */
+    static Supplier<Object> getNewServiceKeySupplier() {
+        final Object singleton = ServiceKeyProvider.getNewServiceKey();
+        return () -> singleton;
+    }
+}
+
 @Platforms(Platform.HOSTED_ONLY.class)
 class ServiceKeyComputer implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        try {
-            Class<?> serviceKey = Class.forName("java.security.Provider$ServiceKey");
-            Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
-            return constructor.newInstance("", "", false);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        return ServiceKeyProvider.getNewServiceKey();
     }
 }
 
@@ -237,31 +248,10 @@ class ServiceKeyComputer implements FieldValueTransformer {
 class ThreadLocalServiceKeyComputer implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        try {
-            // Originally the thread local creates a new default service key each time.
-            // Here we always return the singleton default service key. This default key
-            // will be replaced with an actual key in Provider.parseLegacy
-            Class<?> serviceKey = Class.forName("java.security.Provider$ServiceKey");
-            Constructor<?> serviceKeyConstructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
-            Object newServiceKey = serviceKeyConstructor.newInstance("", "", false);
-            return ThreadLocal.withInitial(new ThreadLocalServiceKeySupplier(newServiceKey));
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-}
-
-class ThreadLocalServiceKeySupplier implements Supplier<Object> {
-
-    private final Object serviceKey;
-
-    public ThreadLocalServiceKeySupplier(Object serviceKey) {
-        this.serviceKey = serviceKey;
-    }
-
-    @Override
-    public Object get() {
-        return serviceKey;
+        // Originally the thread local creates a new default service key each time.
+        // Here we always return the singleton default service key. This default key
+        // will be replaced with an actual key in Provider.parseLegacy
+        return ThreadLocal.withInitial(ServiceKeyProvider.getNewServiceKeySupplier());
     }
 }
 
