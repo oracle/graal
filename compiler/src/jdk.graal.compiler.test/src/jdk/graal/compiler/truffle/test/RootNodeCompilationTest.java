@@ -25,6 +25,8 @@
 package jdk.graal.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -32,6 +34,8 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -131,6 +135,147 @@ public class RootNodeCompilationTest extends TestWithSynchronousCompiling {
             }
             return index;
         }
+    }
+
+    @Test
+    public void testPrepareForCompilationLastTier() {
+        PrepareRootNode node = new PrepareRootNode(true);
+        OptimizedCallTarget target = (OptimizedCallTarget) node.getCallTarget();
+        target.compile(true);
+        target.waitForCompilation();
+        assertTrue(target.isValidLastTier());
+        assertEquals(new CompilationData(true, 2, true), target.call());
+        assertEquals(1, node.prepareCount);
+        assertTrue(target.isValidLastTier());
+    }
+
+    @Test
+    public void testPrepareForCompilationLastTierReprofile() {
+        PrepareRootNode node = new PrepareRootNode(false);
+        OptimizedCallTarget target = (OptimizedCallTarget) node.getCallTarget();
+        target.compile(true);
+        target.waitForCompilation();
+        assertFalse(target.isValidLastTier());
+        assertNull(target.call());
+        assertEquals(new CompilationData(true, 2, true), node.compilationData);
+        assertEquals(1, node.prepareCount);
+
+        target.invalidate("test");
+        node.returnValue = true;
+
+        target.compile(true);
+        target.waitForCompilation();
+        assertEquals(new CompilationData(true, 2, true), target.call());
+        assertEquals(2, node.prepareCount);
+        assertTrue(target.isValidLastTier());
+    }
+
+    @Test
+    public void testPrepareForCompilationFirstTier() {
+        PrepareRootNode node = new PrepareRootNode(true);
+        OptimizedCallTarget target = (OptimizedCallTarget) node.getCallTarget();
+        target.compile(false);
+        target.waitForCompilation();
+        assertTrue(target.isValid());
+        assertEquals(new CompilationData(true, 1, false), target.call());
+        assertEquals(1, node.prepareCount);
+        assertTrue(target.isValid());
+    }
+
+    @Test
+    public void testPrepareForCompilationFirstTierReprofile() {
+        PrepareRootNode node = new PrepareRootNode(false);
+        OptimizedCallTarget target = (OptimizedCallTarget) node.getCallTarget();
+        target.compile(false);
+        target.waitForCompilation();
+        assertFalse(target.isValid());
+        assertNull(target.call());
+        assertEquals(new CompilationData(true, 1, false), node.compilationData);
+        assertEquals(1, node.prepareCount);
+
+        target.invalidate("test");
+        node.returnValue = true;
+
+        target.compile(false);
+        target.waitForCompilation();
+        assertEquals(new CompilationData(true, 1, false), target.call());
+        assertEquals(2, node.prepareCount);
+        assertTrue(target.isValid());
+
+    }
+
+    @Test
+    public void testPrepareForCompilationInlined() {
+        PrepareRootNode node = new PrepareRootNode(true);
+        node.getCallTarget().call(); // ensure initialized for inlining
+        ConstantTargetRootNode call = new ConstantTargetRootNode(node);
+        OptimizedCallTarget target = (OptimizedCallTarget) call.getCallTarget();
+        target.compile(true);
+        target.waitForCompilation();
+        assertTrue(target.isValidLastTier());
+        assertEquals(1, node.prepareCount);
+        assertEquals(new CompilationData(false, 2, true), target.call());
+        assertTrue(target.isValidLastTier());
+    }
+
+    @Test
+    public void testPrepareForCompilationInlinedReprofile() {
+        PrepareRootNode node = new PrepareRootNode(false);
+        node.getCallTarget().call(); // ensure initialized for inlining
+        ConstantTargetRootNode call = new ConstantTargetRootNode(node);
+        OptimizedCallTarget target = (OptimizedCallTarget) call.getCallTarget();
+        target.compile(true);
+        target.waitForCompilation();
+        assertTrue(target.isValidLastTier());
+        assertNull(target.call());
+        assertEquals(new CompilationData(false, 2, true), node.compilationData);
+        assertEquals(1, node.prepareCount);
+
+        target.invalidate("test");
+        node.returnValue = true;
+
+        target.compile(true);
+        target.waitForCompilation();
+        assertTrue(target.isValidLastTier());
+        assertEquals(2, node.prepareCount);
+        assertEquals(new CompilationData(false, 2, true), target.call());
+        assertTrue(target.isValidLastTier());
+    }
+
+    record CompilationData(boolean rootCompilation, int compilationTier, boolean lastTier) {
+    }
+
+    static final class PrepareRootNode extends BaseRootNode {
+
+        private volatile int prepareCount = 0;
+        @CompilationFinal volatile boolean returnValue;
+        @CompilationFinal volatile CompilationData compilationData;
+
+        PrepareRootNode(boolean returnValue) {
+            this.returnValue = returnValue;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return compilationData;
+            }
+            return null;
+        }
+
+        @Override
+        protected boolean isTrivial() {
+            return true;
+        }
+
+        @SuppressWarnings("hiding")
+        @Override
+        protected boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+            this.prepareCount++;
+            this.compilationData = new CompilationData(rootCompilation, compilationTier, lastTier);
+            return returnValue;
+        }
+
     }
 
     static class ConstantTargetRootNode extends BaseRootNode {

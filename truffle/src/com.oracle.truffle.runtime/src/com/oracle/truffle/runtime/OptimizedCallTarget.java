@@ -80,6 +80,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.runtime.OptimizedBlockNode.PartialBlockRootNode;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -394,17 +395,58 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return size > 0 ? size : childrenCount;
     }
 
-    @Override
+    /*
+     * Legacy implementation.
+     */
+    @SuppressWarnings("deprecation")
     public final void prepareForCompilation() {
-        if (rootNode == null) {
+        RootNode root = this.rootNode;
+        if (root == null) {
             throw CompilerDirectives.shouldNotReachHere("Initialization call targets cannot be compiled.");
         }
+        /*
+         * Compared to the new prepareForCompilation we do not return for not initialized call
+         * targets. This is on purpose, as the return value of prepareForCompilation has no effect.
+         */
+        OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, true, 2, true);
+        /*
+         * We need to unconditionally initialize the assumptions as the return value is not
+         * interpreted for the legacy implementation.
+         */
         if (nodeRewritingAssumption == null) {
             initializeNodeRewritingAssumption();
         }
         if (validRootAssumption == null) {
             initializeValidRootAssumption();
         }
+    }
+
+    @Override
+    public final boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        RootNode root = this.rootNode;
+        if (root == null) {
+            throw CompilerDirectives.shouldNotReachHere("Initialization call targets cannot be compiled.");
+        }
+
+        if (!initialized && !isOSR() && !isPartialBlock()) {
+            /*
+             * We must not compile a method that was not yet initialized, as they may likely
+             * deoptimize and their instrumentation is not yet attached. OSR and partial blocks do
+             * not need initialization.
+             */
+            return false;
+        }
+
+        boolean result = OptimizedRuntimeAccessor.NODES.prepareForCompilation(root, rootCompilation, compilationTier, lastTier);
+        if (result) {
+            if (nodeRewritingAssumption == null) {
+                initializeNodeRewritingAssumption();
+            }
+            if (validRootAssumption == null) {
+                initializeValidRootAssumption();
+            }
+        }
+        return result;
     }
 
     final Assumption getNodeRewritingAssumption() {
@@ -803,7 +845,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
-    private void ensureInitialized() {
+    public final void ensureInitialized() {
         if (!initialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initialize(true);
@@ -1848,17 +1890,21 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return true;
     }
 
-    boolean isOSR() {
+    final boolean isOSR() {
         return rootNode instanceof BaseOSRRootNode;
     }
 
+    final boolean isPartialBlock() {
+        return rootNode instanceof PartialBlockRootNode;
+    }
+
     @Override
-    public long engineId() {
+    public final long engineId() {
         return engine.id;
     }
 
     @Override
-    public Map<String, String> getCompilerOptions() {
+    public final Map<String, String> getCompilerOptions() {
         return engine.getCompilerOptions();
     }
 

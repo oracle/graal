@@ -133,8 +133,26 @@ public interface TruffleCompilable {
     /**
      * Called before call target is used for runtime compilation, either as root compilation or via
      * inlining.
+     *
+     * @deprecated use {@link #prepareForCompilation(boolean, int, boolean)} instead.
      */
-    void prepareForCompilation();
+    @Deprecated
+    default void prepareForCompilation() {
+        prepareForCompilation(true, 2, true);
+    }
+
+    /**
+     * Called before call target is used for runtime compilation, either as root compilation or via
+     * inlining.
+     *
+     * @param rootCompilation whether this compilation is compiled as root method
+     * @param compilationTier which tier this compilation is compiled with
+     * @param lastTier
+     */
+    default boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
+        prepareForCompilation();
+        return true;
+    }
 
     /**
      * Returns {@code e} serialized as a string. The format of the returned string is:

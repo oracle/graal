@@ -538,11 +538,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
              * TODO GR-37097 Merge TruffleTierConfiguration and TruffleCompilationWrapper so that
              * there is one place where compilation data lives
              */
-            TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+            TruffleTierContext context = TruffleTierContext.createInitialContext(partialEvaluator,
                             wrapper.compilerOptions,
                             debug,
                             wrapper.compilable,
-                            partialEvaluator.rootForCallTarget(wrapper.compilable),
                             wrapper.compilationId, TruffleTierContext.getSpeculationLog(wrapper), wrapper.task,
                             handler);
 

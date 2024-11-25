@@ -207,6 +207,11 @@ final class NodeAccessor extends Accessor {
         public boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled) {
             return rootNode.isCaptureFramesForTrace(compiled);
         }
+
+        @Override
+        public boolean prepareForCompilation(RootNode rootNode, boolean rootCompilation, int compilationTier, boolean lastTier) {
+            return rootNode.prepareForCompilation(rootCompilation, compilationTier, lastTier);
+        }
     }
 
 }
