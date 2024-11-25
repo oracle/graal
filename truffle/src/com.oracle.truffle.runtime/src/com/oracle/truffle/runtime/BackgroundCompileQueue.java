@@ -218,7 +218,8 @@ public class BackgroundCompileQueue {
 
     /**
      * Return call targets waiting in queue. This does not include call targets currently being
-     * compiled.
+     * compiled. If {@code engine} is {@code null}, the call targets for all engines are returned,
+     * otherwise only the call targets belonging to {@code engine} will be returned.
      */
     public Collection<OptimizedCallTarget> getQueuedTargets(EngineData engine) {
         BlockingQueue<Runnable> queue = this.compilationQueue;
@@ -230,7 +231,7 @@ public class BackgroundCompileQueue {
         CompilationTask.ExecutorServiceWrapper[] array = queue.toArray(new CompilationTask.ExecutorServiceWrapper[0]);
         for (CompilationTask.ExecutorServiceWrapper wrapper : array) {
             OptimizedCallTarget target = wrapper.compileTask.targetRef.get();
-            if (target != null && target.engine == engine) {
+            if (target != null && (engine == null || target.engine == engine)) {
                 queuedTargets.add(target);
             }
         }

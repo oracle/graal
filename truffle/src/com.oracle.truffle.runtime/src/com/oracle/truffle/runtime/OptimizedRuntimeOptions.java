@@ -159,10 +159,11 @@ public final class OptimizedRuntimeOptions {
     public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(10000L);
 
     @Option(help = "Before the Truffle runtime submits an OptimizedCallTarget for compilation, it checks for the " +
-                   "compilation activity mode in the host VM. If the activity mode is 'STOP_COMPILATION' because " +
-                   "of a full code cache, no new compilation requests are submitted and the compilation queue is flushed. " +
+                   "compilation activity mode in the host VM. If the activity mode indicates a full code " +
+                   "cache, no new compilation requests are submitted and the compilation queue is flushed. " +
                    "After 'StoppedCompilationRetryDelay' milliseconds new compilations will be submitted again " +
-                   "(which might trigger a sweep of the code cache and a reset of the compilation activity mode in the host JVM).",
+                   "(which might trigger a sweep of the code cache and a reset of the compilation activity mode in the host JVM)." +
+                   "The option is only supported on the HotSpot Truffle runtime. On runtimes which don't support it the option has no effect. default: 1000",
                    usageSyntax = "<ms>", category = OptionCategory.EXPERT)
     public static final OptionKey<Long> StoppedCompilationRetryDelay = new OptionKey<>(1000L);
 

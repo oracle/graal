@@ -695,19 +695,20 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         return compilationSupport instanceof LibGraalTruffleCompilationSupport;
     }
 
-    static MethodHandle getCompilationActivityMode;
+    static final MethodHandle getCompilationActivityMode;
     static {
+        MethodHandle mHandle = null;
         try {
             MethodType mt = MethodType.methodType(int.class);
-            getCompilationActivityMode = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class, "getCompilationActivityMode", mt);
+            mHandle = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class, "getCompilationActivityMode", mt);
         } catch (NoSuchMethodException | IllegalAccessException e) {
             // Older JVMCI runtimes might not support `getCompilationActivityMode()`
         }
+        getCompilationActivityMode = mHandle;
     }
 
     /**
-     * Returns the current host compilation activity mode which is one of:
-     * {@code stop_compilation = 0}, {@code run_compilation = 1} or {@code shutdown_compilation = 2}
+     * Returns the current host compilation activity mode based on HotSpot's code cache state.
      */
     @Override
     public CompilationActivityMode getCompilationActivityMode() {
@@ -716,7 +717,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
             try {
                 activityMode = (int) getCompilationActivityMode.invokeExact(HotSpotJVMCIRuntime.runtime());
             } catch (Throwable t) {
-                // Ignore and go with the default mode
+                throw new RuntimeException("Can't get HotSpot's compilation activity mode", t);
             }
         }
         return CompilationActivityMode.fromInteger(activityMode);

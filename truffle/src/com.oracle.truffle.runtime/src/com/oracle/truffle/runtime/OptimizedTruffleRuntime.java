@@ -64,6 +64,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -913,45 +915,23 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected void onEngineCreated(EngineData engine) {
     }
 
-    private long stoppedCompilationTime = 0;
-    private boolean logShutdownCompilations = true;
+
+    private final AtomicLong stoppedCompilationTime = new AtomicLong(0);
+
+    public final AtomicLong stoppedCompilationTime() {
+        return stoppedCompilationTime;
+    }
+
+    private final AtomicBoolean logShutdownCompilations = new AtomicBoolean(true);
+
+    public final AtomicBoolean logShutdownCompilations() {
+        return logShutdownCompilations;
+    }
 
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
-        BackgroundCompileQueue queue = getCompileQueue();
-        CompilationActivityMode compilationActivityMode = getCompilationActivityMode();
-        if (compilationActivityMode == CompilationActivityMode.RUN_COMPILATION ||
-                (stoppedCompilationTime != 0 && System.currentTimeMillis() - stoppedCompilationTime > optimizedCallTarget.getOptionValue(StoppedCompilationRetryDelay))) {
-            stoppedCompilationTime = 0;
-            Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
-            return queue.submitCompilation(priority, optimizedCallTarget);
-        } else if (compilationActivityMode == CompilationActivityMode.STOP_COMPILATION) {
-            if (stoppedCompilationTime == 0) {
-                stoppedCompilationTime = System.currentTimeMillis();
-            }
-            // Flush the compilations queue. There's still a chance that compilation will be re-enabled
-            // eventually, if the hosts code cache can be cleaned up.
-            for (OptimizedCallTarget target : queue.getQueuedTargets(optimizedCallTarget.engine)) {
-                target.cancelCompilation("Compilation temporary disabled due to full code cache.");
-            }
-        } else {
-            // Compilation was shut down permanently because the hosts code cache ran full and
-            // the host was configured without support for code cache sweeping.
-            assert compilationActivityMode == CompilationActivityMode.SHUTDOWN_COMPILATION;
-            TruffleLogger logger = optimizedCallTarget.engine.getLogger("engine");
-            // The logger can be null if the engine is closed.
-            if (logger != null && logShutdownCompilations) {
-                logShutdownCompilations = false;
-                logger.log(Level.WARNING, "Truffle host compilations permanently disabled because of full code cache. "  +
-                    "Increase the code cache size using '-XX:ReservedCodeCacheSize=' and/or run with '-XX:+UseCodeCacheFlushing -XX:+MethodFlushing'.");
-            }
-            try {
-                queue.shutdownAndAwaitTermination(100 /* milliseconds */);
-            } catch (RuntimeException re) {
-                // Best effort, ignore failure
-            }
-        }
-        return null;
+        Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
+        return getCompileQueue().submitCompilation(priority, optimizedCallTarget);
     }
 
     @SuppressWarnings("all")
@@ -1519,4 +1499,30 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
     }
 
+    /**
+     * Represents HotSpot's compilation activity mode which is one of:
+     * {@code stop_compilation = 0}, {@code run_compilation = 1} or {@code shutdown_compilation = 2}
+     * Should be in sync with the {@code CompilerActivity} enum in {@code hotspot/share/compiler/compileBroker.hpp}
+     */
+    public enum CompilationActivityMode {
+        STOP_COMPILATION,
+        RUN_COMPILATION,
+        SHUTDOWN_COMPILATION;
+
+        static public CompilationActivityMode fromInteger(int i) {
+            return switch (i) {
+                case 0 -> STOP_COMPILATION;
+                case 1 -> RUN_COMPILATION;
+                case 2 -> SHUTDOWN_COMPILATION;
+                default -> throw new RuntimeException("Invalid CompilationActivityMode " + i);
+            };
+        }
+    }
+
+    /**
+     * Returns the current host compilation activity mode. The default is to run compilations.
+     */
+    public CompilationActivityMode getCompilationActivityMode() {
+        return CompilationActivityMode.RUN_COMPILATION;
+    }
 }

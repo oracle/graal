@@ -68,6 +68,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingGrowth
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxCalleeSize;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxPropagationDepth;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingTraceEvents;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.StoppedCompilationRetryDelay;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceCompilation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceCompilationDetails;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceDeoptimizeFrame;
@@ -148,6 +149,7 @@ public final class EngineData {
     @CompilationFinal public boolean traceDeoptimizeFrame;
     @CompilationFinal public boolean compileAOTOnCreate;
     @CompilationFinal public boolean firstTierOnly;
+    @CompilationFinal public long stoppedCompilationRetryDelay;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
@@ -305,6 +307,7 @@ public final class EngineData {
         this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
         this.propagateCallAndLoopCount = options.get(PropagateLoopCountToLexicalSingleCaller);
         this.propagateCallAndLoopCountMaxDepth = options.get(PropagateLoopCountToLexicalSingleCallerMaxDepth);
+        this.stoppedCompilationRetryDelay = options.get(StoppedCompilationRetryDelay);
 
         // compilation queue options
         priorityQueue = options.get(PriorityQueue);
