@@ -876,6 +876,13 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return length < 0 || offset < 0 || offset > getBufferSize() - length;
     }
 
+    public final WasmMemory checkSize(long initialSize) {
+        if (byteSize() < initialSize * Sizes.MEMORY_PAGE_SIZE) {
+            throw CompilerDirectives.shouldNotReachHere("Memory size must not be less than initial size");
+        }
+        return this;
+    }
+
     /**
      * Copy data from an input stream into memory.
      *

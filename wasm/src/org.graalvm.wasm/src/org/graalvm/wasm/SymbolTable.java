@@ -179,12 +179,12 @@ public abstract class SymbolTable {
 
     public static class MemoryInfo {
         /**
-         * Lower bound on memory size.
+         * Lower bound on memory size (in pages of 64 kiB).
          */
         public final long initialSize;
 
         /**
-         * Upper bound on memory size.
+         * Upper bound on memory size (in pages of 64 kiB).
          * <p>
          * <em>Note:</em> this is the upper bound defined by the module. A memory instance might
          * have a lower internal max allowed size in practice.

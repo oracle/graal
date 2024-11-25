@@ -423,7 +423,8 @@ public abstract class BytecodeParser {
             results = Bytecode.EMPTY_BYTES;
         }
         List<CallNode> callNodes = readCallNodes(bytecode, codeEntryOffset - length, codeEntryOffset);
-        return new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, codeEntryOffset - length, codeEntryOffset);
+        boolean usesMemoryZero = module.memoryCount() != 0;
+        return new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, codeEntryOffset - length, codeEntryOffset, usesMemoryZero);
     }
 
     /**
