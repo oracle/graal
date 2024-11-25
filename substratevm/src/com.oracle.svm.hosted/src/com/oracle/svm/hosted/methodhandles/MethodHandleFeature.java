@@ -28,10 +28,12 @@ import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -239,6 +241,52 @@ public class MethodHandleFeature implements InternalFeature {
                                 return filteredArray;
                             }
                         });
+
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
+            /*
+             * StringConcatFactory$InlineHiddenClassStrategy was added in JDK 24, as well as its
+             * CACHE field, so there is no need to filter for previous JDK versions.
+             */
+            Class<?> referencedKeyMapClazz = ReflectionUtil.lookupClass("jdk.internal.util.ReferencedKeyMap");
+            Method createMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "create", boolean.class, Supplier.class);
+            Method concurrentHashMapSupplierMethod = ReflectionUtil.lookupMethod(referencedKeyMapClazz, "concurrentHashMapSupplier");
+            Class<?> methodHandlePair = ReflectionUtil.lookupClass("java.lang.invoke.StringConcatFactory$InlineHiddenClassStrategy$MethodHandlePair");
+            Method constructorGetter = ReflectionUtil.lookupMethod(methodHandlePair, "constructor");
+            Method concatenatorGetter = ReflectionUtil.lookupMethod(methodHandlePair, "concatenator");
+
+            /*
+             * StringConcatFactory$InlineHiddenClassStrategy.CACHE is a cache like
+             * SpeciesData.transformHelpers, so it needs a similar transformation for the same
+             * reasons.
+             */
+            access.registerFieldValueTransformer(
+                            ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.StringConcatFactory$InlineHiddenClassStrategy"), "CACHE"),
+                            new FieldValueTransformerWithAvailability() {
+                                @Override
+                                public boolean isAvailable() {
+                                    return BuildPhaseProvider.isHostedUniverseBuilt();
+                                }
+
+                                @Override
+                                @SuppressWarnings("unchecked")
+                                public Object transform(Object receiver, Object originalValue) {
+                                    Map<Object, SoftReference<Object>> cache = (Map<Object, SoftReference<Object>>) originalValue;
+                                    Map<Object, Object> result = ReflectionUtil.invokeMethod(createMethod, null, true, ReflectionUtil.invokeMethod(concurrentHashMapSupplierMethod, null));
+
+                                    for (var entry : cache.entrySet()) {
+                                        SoftReference<Object> value = entry.getValue();
+                                        Object object = value.get();
+                                        MethodHandle constructor = ReflectionUtil.invokeMethod(constructorGetter, object);
+                                        MethodHandle concatenator = ReflectionUtil.invokeMethod(concatenatorGetter, object);
+                                        if (constructor != null && concatenator != null && heapScanner.isObjectReachable(constructor) && heapScanner.isObjectReachable(concatenator)) {
+                                            result.put(entry.getKey(), value);
+                                        }
+                                    }
+
+                                    return result;
+                                }
+                            });
+        }
 
         /*
          * Retrieve all six basic types from the java.lang.invoke.LambdaForm$BasicType class (void,
