@@ -894,7 +894,7 @@ public final class VMOperationControl {
         public void add(VMOpStatus status, VMOperation operation, IsolateThread queueingThread, IsolateThread executingThread, int nestingLevel) {
             assert Heap.getHeap().isInImageHeap(status);
             VMOpStatusChange entry = history.next();
-            entry.timestamp = System.currentTimeMillis();
+            entry.uptimeMillis = Isolates.getUptimeMillis();
             entry.status = status;
             entry.name = operation.getName();
             entry.causesSafepoint = operation.getCausesSafepoint();
@@ -936,7 +936,7 @@ public final class VMOperationControl {
      * data structures).
      */
     private static class VMOpStatusChange {
-        long timestamp;
+        long uptimeMillis;
         VMOpStatus status;
         String name;
         boolean causesSafepoint;
@@ -952,8 +952,7 @@ public final class VMOperationControl {
         void print(Log log, boolean allowJavaHeapAccess) {
             VMOpStatus localStatus = status;
             if (localStatus != null) {
-                long uptime = timestamp - Isolates.getCurrentStartTimeMillis();
-                log.rational(uptime, TimeUtils.millisPerSecond, 3).string("s - ").spaces(nestingLevel * 2).string(localStatus.name());
+                log.rational(uptimeMillis, TimeUtils.millisPerSecond, 3).string("s - ").spaces(nestingLevel * 2).string(localStatus.name());
                 if (allowJavaHeapAccess) {
                     log.string(" ").string(name);
                 }

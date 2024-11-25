@@ -81,6 +81,7 @@ import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
@@ -112,7 +113,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     private static final String LINE_SEPARATOR;
     private static final int MAX_NUM_BREAKDOWN = 10;
     public static final String DOCS_BASE_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
-    private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
+    private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = TimeUtils.secondsToMillis(15);
     private static final double EXCESSIVE_GC_RATIO = 0.5;
 
     private final NativeImageSystemIOWrappers builderIO;
@@ -125,7 +126,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     private final LinkStrategy linkStrategy;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-    private long lastGCCheckTimeMillis = System.currentTimeMillis();
+    private long lastGCCheckTimeNanos = System.nanoTime();
     private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
     private int numJNIClasses = -1;
@@ -826,7 +827,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     }
 
     private void printResourceStatistics() {
-        double totalProcessTimeSeconds = Utils.millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
+        double totalProcessTimeSeconds = Utils.millisToSeconds(ManagementFactory.getRuntimeMXBean().getUptime());
         GCStats gcStats = GCStats.getCurrent();
         double gcSeconds = Utils.millisToSeconds(gcStats.totalTimeMillis);
         recordJsonMetric(ResourceUsageKey.GC_COUNT, gcStats.totalCount);
@@ -850,9 +851,9 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     }
 
     private void checkForExcessiveGarbageCollection() {
-        long current = System.currentTimeMillis();
-        long timeDeltaMillis = current - lastGCCheckTimeMillis;
-        lastGCCheckTimeMillis = current;
+        long nowNanos = System.nanoTime();
+        long timeDeltaMillis = TimeUtils.millisSinceNanos(nowNanos, lastGCCheckTimeNanos);
+        lastGCCheckTimeNanos = nowNanos;
         GCStats currentGCStats = GCStats.getCurrent();
         long gcTimeDeltaMillis = currentGCStats.totalTimeMillis - lastGCStats.totalTimeMillis;
         double ratio = gcTimeDeltaMillis / (double) timeDeltaMillis;
@@ -963,9 +964,9 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             return new GCStats(totalCount, totalTime);
         }
 
-        GCStats(long totalCount, long totalTime) {
+        GCStats(long totalCount, long totalTimeMillis) {
             this.totalCount = totalCount;
-            this.totalTimeMillis = totalTime;
+            this.totalTimeMillis = totalTimeMillis;
         }
     }
 
