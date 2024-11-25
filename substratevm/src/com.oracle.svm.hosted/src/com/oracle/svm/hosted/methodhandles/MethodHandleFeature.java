@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.methodhandles;
 
 import java.lang.invoke.CallSite;
-import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
@@ -150,44 +149,45 @@ public class MethodHandleFeature implements InternalFeature {
 
         AnalysisMetaAccess metaAccess = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getMetaAccess();
         access.registerFieldValueTransformer(
-                ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer"), "cache"),
-                new FieldValueTransformerWithAvailability() {
-                    private static final Class<?> SPECIES_DATA_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData");
-                    /*
-                     * The value of the ClassSpecializer.cache is not seen by the analysis
-                     * because the transformer declares the AfterAnalysis availability. This
-                     * is unsafe, and it relies on the fact that the underlying data
-                     * structure, a ConcurrentHashMap, was already seen by the analysis from
-                     * other uses, and that the analysis already has a full view of its type
-                     * structure. GR-46027 will implement a safe solution.
-                     */
-                    @Override
-                    public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
-                        return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
-                    }
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer"), "cache"),
+                        new FieldValueTransformerWithAvailability() {
+                            private static final Class<?> SPECIES_DATA_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData");
 
-                    @Override
-                    @SuppressWarnings("unchecked")
-                    public Object transform(Object receiver, Object originalValue) {
-                        ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
-                        ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
-                        originalMap.forEach((key, speciesData) -> {
-                            if (isSpeciesReachable(speciesData)) {
-                                filteredMap.put(key, speciesData);
+                            /*
+                             * The value of the ClassSpecializer.cache is not seen by the analysis
+                             * because the transformer declares the AfterAnalysis availability. This
+                             * is unsafe, and it relies on the fact that the underlying data
+                             * structure, a ConcurrentHashMap, was already seen by the analysis from
+                             * other uses, and that the analysis already has a full view of its type
+                             * structure. GR-46027 will implement a safe solution.
+                             */
+                            @Override
+                            public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
+                                return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
+                            }
+
+                            @Override
+                            @SuppressWarnings("unchecked")
+                            public Object transform(Object receiver, Object originalValue) {
+                                ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
+                                ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
+                                originalMap.forEach((key, speciesData) -> {
+                                    if (isSpeciesReachable(speciesData)) {
+                                        filteredMap.put(key, speciesData);
+                                    }
+                                });
+                                return filteredMap;
+                            }
+
+                            private boolean isSpeciesReachable(Object speciesData) {
+                                Class<?> speciesClass = ReflectionUtil.readField(SPECIES_DATA_CLASS, "speciesCode", speciesData);
+                                Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
+                                return analysisType.isPresent() && analysisType.get().isReachable();
                             }
                         });
-                        return filteredMap;
-                    }
-
-                    private boolean isSpeciesReachable(Object speciesData) {
-                        Class<?> speciesClass = ReflectionUtil.readField(SPECIES_DATA_CLASS, "speciesCode", speciesData);
-                        Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
-                        return analysisType.isPresent() && analysisType.get().isReachable();
-                    }
-                });
         access.registerFieldValueTransformer(
-                ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
-                (receiver, originalValue) -> runtimeMethodTypeInternTable);
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType"), "internTable"),
+                        (receiver, originalValue) -> runtimeMethodTypeInternTable);
     }
 
     private static void eagerlyInitializeMHImplFunctions() {
