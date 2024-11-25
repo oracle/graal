@@ -228,7 +228,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             var priorInfo = priorDispatchTables.get(type.getWrapped().getId());
             if (priorInfo != null) {
                 compareTypeInfo(dispatchTable, priorInfo);
-                dispatchTable.status = HubStatus.INSTALLED_PRIOR_LAYER;
+                dispatchTable.status = priorInfo.installed ? HubStatus.INSTALLED_PRIOR_LAYER : HubStatus.COMPUTED_PRIOR_LAYER;
                 for (int i = 0; i < dispatchTable.slots.length; i++) {
                     HostedDispatchSlot slot = dispatchTable.slots[i];
                     PriorDispatchSlot priorSlot = priorInfo.slots[i];
@@ -326,7 +326,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         var dispatchTable = typeToDispatchTable.get(hType);
 
         // upgrade status to being installed in current layer
-        assert dispatchTable.status == HubStatus.DISPATCH_INFO_CALCULATED : dispatchTable;
+        assert dispatchTable.status == HubStatus.DISPATCH_INFO_CALCULATED || dispatchTable.status == HubStatus.COMPUTED_PRIOR_LAYER : dispatchTable;
         dispatchTable.status = HubStatus.INSTALLED_CURRENT_LAYER;
 
         assert dispatchTable.slots.length == vtableLength : Assertions.errorMessage(vTable, dispatchTable.slots);
@@ -415,7 +415,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
          * Next determine if any vtable symbols defined in prior layers now have a resolved target.
          */
         for (HostedDispatchTable typeInfo : typeToDispatchTable.values()) {
-            if (typeInfo.status == HubStatus.INSTALLED_PRIOR_LAYER) {
+            if (typeInfo.status == HubStatus.INSTALLED_PRIOR_LAYER || typeInfo.status == HubStatus.COMPUTED_PRIOR_LAYER) {
                 for (HostedDispatchSlot slotInfo : typeInfo.slots) {
                     if (slotInfo.status == SlotResolutionStatus.COMPUTED && slotInfo.resolvedMethod.isCompiled()) {
                         /*
@@ -449,6 +449,9 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
          */
         if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             priorUnresolvedSymbols.forEach(symbol -> {
+                if (symbol.isEmpty()) {
+                    return;
+                }
                 if (!resolvedPriorVTableMap.containsKey(symbol)) {
                     CompilationResult result = codeCache.compilationResultFor(invalidMethod);
 
@@ -519,6 +522,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         List<Integer> dispatchTableInts = new ArrayList<>();
         List<Integer> dispatchSlotInts = new ArrayList<>();
         List<String> dispatchSlotStrings = new ArrayList<>();
+        List<Boolean> dispatchTableBooleans = new ArrayList<>();
         int nextSlotIdx = 0;
         for (HostedDispatchTable info : typeToDispatchTable.values()) {
             if (!layerWriter.isTypePersisted(info.type.getWrapped())) {
@@ -555,6 +559,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             dispatchTableInts.add(slotOffsets.size());
             dispatchTableInts.addAll(localTargets);
             dispatchTableInts.addAll(slotOffsets);
+            dispatchTableBooleans.add(info.type.getWrapped().isReachable());
         }
 
         writer.writeIntList("dispatchTableInts", dispatchTableInts);
@@ -563,6 +568,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         writer.writeBoolList("methodBooleans", methodBooleans);
         writer.writeIntList("methodInts", methodInts);
         writer.writeStringList("methodStrings", methodStrings);
+        writer.writeBoolList("dispatchTableBooleans", dispatchTableBooleans);
 
         return PersistFlags.CREATE;
     }
@@ -575,6 +581,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         List<Boolean> methodBooleans = loader.readBoolList("methodBooleans");
         List<Integer> methodInts = loader.readIntList("methodInts");
         List<String> methodStrings = loader.readStringList("methodStrings");
+        List<Boolean> dispatchTableBooleans = loader.readBoolList("dispatchTableBooleans");
 
         Set<String> unresolvedSymbols = new HashSet<>();
         Map<Integer, PriorDispatchTable> priorTypes = new HashMap<>();
@@ -618,8 +625,10 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         }
 
         intIterator = dispatchTableInts.iterator();
+        boolIterator = dispatchTableBooleans.iterator();
         while (intIterator.hasNext()) {
             int typeId = intIterator.next();
+            boolean installed = boolIterator.next();
             int locallyDeclaredMethodsSize = intIterator.next();
             int allSlotsSize = intIterator.next();
             PriorDispatchMethod[] locallyDeclaredSlots = new PriorDispatchMethod[locallyDeclaredMethodsSize];
@@ -631,7 +640,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
                 dispatchTableSlots[i] = priorDispatchSlots.get(intIterator.next());
             }
 
-            var priorDispatchTable = new PriorDispatchTable(typeId, locallyDeclaredSlots, dispatchTableSlots);
+            var priorDispatchTable = new PriorDispatchTable(typeId, installed, locallyDeclaredSlots, dispatchTableSlots);
             Object prev = priorTypes.put(typeId, priorDispatchTable);
             assert prev == null : prev;
 
@@ -649,6 +658,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
     enum HubStatus {
         UNINITIALIZED,
         DISPATCH_INFO_CALCULATED,
+        COMPUTED_PRIOR_LAYER,
         INSTALLED_PRIOR_LAYER,
         INSTALLED_CURRENT_LAYER,
     }
@@ -697,7 +707,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
      * symbols.
      */
 
-    record PriorDispatchTable(int typeID,
+    record PriorDispatchTable(int typeID, boolean installed,
                     PriorDispatchMethod[] locallyDeclaredSlots, PriorDispatchSlot[] slots) {
     }
 

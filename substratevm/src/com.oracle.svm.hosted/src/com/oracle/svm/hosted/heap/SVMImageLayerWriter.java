@@ -247,7 +247,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         if (referencedObjects != null) {
             for (Object obj : referencedObjects) {
                 if (obj instanceof MethodPointer mp) {
-                    ensureMethodPersisted(getRelocatableConstantMethod(mp));
+                    getRelocatableConstantMethod(mp).registerAsTrackedAcrossLayers("In method pointer");
                 }
             }
         }
@@ -389,7 +389,10 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 case String[] strl -> {
                     TextList.Builder strlb = b.getValue().initStrl(strl.length);
                     for (int j = 0; j < strl.length; j++) {
-                        strlb.set(j, new Text.Reader(strl[j]));
+                        String s = strl[j];
+                        if (s != null) {
+                            strlb.set(j, new Text.Reader(s));
+                        }
                     }
                 }
                 case boolean[] zl -> {
