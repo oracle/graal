@@ -1553,23 +1553,23 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
 mx_benchmark.add_bm_suite(BaristaBenchmarkSuite())
 
-
+# GR-59934 Enable [als, dec-tree, log-regression, naive-bayes]
 _renaissanceConfig = {
     "akka-uct"         : 24,
-    "als"              : 60,
+    "als"              : -1,
     "chi-square"       : 60,
     "db-shootout"      : 16,
-    "dec-tree"         : 40,
+    "dec-tree"         : -1,
     "dotty"            : 50,
     "finagle-chirper"  : 90,
     "finagle-http"     : 12,
     "fj-kmeans"        : 30,
     "future-genetic"   : 50,
     "gauss-mix"        : 40,
-    "log-regression"   : 20,
+    "log-regression"   : -1,
     "mnemonics"        : 16,
     "movie-lens"       : 20,
-    "naive-bayes"      : 30,
+    "naive-bayes"      : -1,
     "neo4j-analytics"  : 20,
     "page-rank"        : 20,
     "par-mnemonics"    : 16,
