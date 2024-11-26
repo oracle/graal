@@ -122,7 +122,7 @@ public final class ConfigurationFiles {
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Resources describing reachability metadata needed for the program " +
-                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.0.0.json", type = OptionType.User)//
+                        "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.1.0.json", type = OptionType.User)//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ReachabilityMetadataResources = new HostedOptionKey<>(
                         AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 

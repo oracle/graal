@@ -39,6 +39,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.reflect.proxy.DynamicProxySupport;
 import com.oracle.svm.hosted.FallbackFeature;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -50,18 +51,29 @@ import com.oracle.svm.hosted.reflect.NativeImageConditionResolver;
 public final class DynamicProxyFeature implements InternalFeature {
     private int loadedConfigurations;
     private Field proxyCacheField;
+    private ProxyRegistry proxyRegistry;
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess a) {
+        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
+        ImageClassLoader imageClassLoader = access.getImageClassLoader();
+        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport();
+        ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
+        ImageSingletons.add(RuntimeProxyCreationSupport.class, dynamicProxySupport);
+        proxyRegistry = new ProxyRegistry(dynamicProxySupport, imageClassLoader);
+        /*
+         * ImageSingletons registration has to happen after registration to be available for
+         * SerializationFeature
+         */
+        ImageSingletons.add(ProxyRegistry.class, proxyRegistry);
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationConditionResolver<ConfigurationCondition> conditionResolver = new NativeImageConditionResolver(imageClassLoader, ClassInitializationSupport.singleton());
-        DynamicProxySupport dynamicProxySupport = new DynamicProxySupport();
-        ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
-        ImageSingletons.add(RuntimeProxyCreationSupport.class, dynamicProxySupport);
-        ProxyRegistry proxyRegistry = new ProxyRegistry(dynamicProxySupport, imageClassLoader);
-        ImageSingletons.add(ProxyRegistry.class, proxyRegistry);
+
         ProxyConfigurationParser<ConfigurationCondition> parser = new ProxyConfigurationParser<>(conditionResolver, ConfigurationFiles.Options.StrictConfiguration.getValue(), proxyRegistry);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
