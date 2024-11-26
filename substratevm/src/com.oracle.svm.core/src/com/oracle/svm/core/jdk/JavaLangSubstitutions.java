@@ -726,9 +726,10 @@ final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransf
         }
 
         ConcurrentHashMap<?, ?> original = (ConcurrentHashMap<?, ?>) originalValue;
-        List<ClassLoaderValue<?>> clvs = Arrays.asList(
-                        ReflectionUtil.readField(ServicesCatalog.class, "CLV", null),
-                        ReflectionUtil.readField(ModuleLayer.class, "CLV", null));
+
+        ClassLoaderValue<?> x = ReflectionUtil.readField(ServicesCatalog.class, "CLV", null);
+        List<ClassLoaderValue<?>> clvs = Arrays.asList(x);
+//                        ReflectionUtil.readField(ModuleLayer.class, "CLV", null));
 
         var res = new ConcurrentHashMap<>();
         for (ClassLoaderValue<?> clv : clvs) {
