@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
@@ -105,7 +106,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> polymorphicMethodSubstitutions;
     private final Map<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
+
     private ClassInitializationSupport classInitializationSupport;
+    private final Set<String> disabledSubstitutions;
 
     public AnnotationSubstitutionProcessor(ImageClassLoader imageClassLoader, MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.imageClassLoader = imageClassLoader;
@@ -117,6 +120,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         methodSubstitutions = new ConcurrentHashMap<>();
         polymorphicMethodSubstitutions = new HashMap<>();
         fieldSubstitutions = new ConcurrentHashMap<>();
+        disabledSubstitutions = Set.copyOf(SubstrateOptions.DisableSubstitution.getValue().values());
     }
 
     public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
@@ -459,6 +463,18 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
             return;
+        }
+
+        if (!disabledSubstitutions.isEmpty()) {
+            /*
+             * Substitutions can be disabled on the command line. The three formats to match are
+             * specified in the help text of the option DisableSubstitution.
+             */
+            if (disabledSubstitutions.contains(annotated.format("%H")) ||
+                            disabledSubstitutions.contains(annotated.format("%H.%n")) ||
+                            disabledSubstitutions.contains(annotated.format("%H.%n(%P)"))) {
+                return;
+            }
         }
 
         if (deleteAnnotation != null) {
