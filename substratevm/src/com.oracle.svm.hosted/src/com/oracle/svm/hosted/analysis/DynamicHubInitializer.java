@@ -56,6 +56,7 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -172,6 +173,7 @@ public class DynamicHubInitializer {
             ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
             VMError.guarantee(runtimeClassLoader != null, "Class loader missing for class %s", hub.getName());
             String packageName = hub.getPackageName();
+            assert packageName.equals(packageValue.getName()) : Assertions.errorMessage("Package name mismatch:", packageName, packageValue.getName());
             HostedClassLoaderPackageManagement.singleton().registerPackage(runtimeClassLoader, packageName, packageValue, heapScanner::rescanObject);
         }
     }
