@@ -29,15 +29,15 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.shared.descriptors.Signatures;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.shared.descriptors.Types;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 
 /**

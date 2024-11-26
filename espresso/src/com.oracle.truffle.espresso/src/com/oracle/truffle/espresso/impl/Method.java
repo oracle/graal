@@ -22,26 +22,26 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_DONT_INLINE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_0;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETFIELD;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETSTATIC;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTFIELD;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTSTATIC;
-import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RETURN;
+import static com.oracle.truffle.espresso.shared.bytecode.Bytecodes.ALOAD_0;
+import static com.oracle.truffle.espresso.shared.bytecode.Bytecodes.GETFIELD;
+import static com.oracle.truffle.espresso.shared.bytecode.Bytecodes.GETSTATIC;
+import static com.oracle.truffle.espresso.shared.bytecode.Bytecodes.PUTFIELD;
+import static com.oracle.truffle.espresso.shared.bytecode.Bytecodes.PUTSTATIC;
+import static com.oracle.truffle.espresso.shared.bytecode.Bytecodes.RETURN;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_DONT_INLINE;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_FORCE_INLINE;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_HIDDEN;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_SCOPED;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_STATIC;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_SYNTHETIC;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_VARARGS;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeInterface;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeStatic;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeVirtual;
 
 import java.io.PrintStream;
 import java.lang.invoke.VarHandle;
@@ -71,29 +71,6 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodePrinter;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.ExceptionHandler;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.ParserException;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.ParserMethod;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
-import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
-import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.resolver.ResolvedCall;
-import com.oracle.truffle.espresso.classfile.resolver.meta.MethodType;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
@@ -113,7 +90,6 @@ import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
@@ -122,12 +98,36 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.shared.attributes.Attribute;
+import com.oracle.truffle.espresso.shared.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.shared.attributes.ExceptionsAttribute;
+import com.oracle.truffle.espresso.shared.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.shared.attributes.LocalVariableTable;
+import com.oracle.truffle.espresso.shared.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.shared.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
+import com.oracle.truffle.espresso.shared.classfile.Constants;
+import com.oracle.truffle.espresso.shared.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.shared.classfile.ParserException;
+import com.oracle.truffle.espresso.shared.classfile.ParserKlass;
+import com.oracle.truffle.espresso.shared.classfile.ParserMethod;
+import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.shared.descriptors.Signatures;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
+import com.oracle.truffle.espresso.shared.resolver.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.resolver.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM.EspressoStackElement;
 
 public final class Method extends Member<Signature> implements TruffleObject, ContextAccess,
-                MethodType<Klass, Method, Field> {
+                MethodAccess<Klass, Method, Field> {
 
     public static final Method[] EMPTY_ARRAY = new Method[0];
     public static final MethodVersion[] EMPTY_VERSION_ARRAY = new MethodVersion[0];
@@ -243,6 +243,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return rawSignature;
         }
         return getLinkedMethod().getRawSignature();
+    }
+
+    @Override
+    public Symbol<Signature> getSymbolicSignature() {
+        return getRawSignature();
     }
 
     public Symbol<Type>[] getParsedSignature() {
@@ -943,6 +948,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         for (Symbol<Type> type : getParsedSignature()) {
             getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
         }
+    }
+
+    @Override
+    public void loadingConstraints(Klass accessingClass) {
+        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
+    }
+
+    @Override
+    public boolean shouldSkipLoadingConstraints() {
+        return isPolySignatureIntrinsic();
     }
 
     public int getCatchLocation(int bci, StaticObject ex) {

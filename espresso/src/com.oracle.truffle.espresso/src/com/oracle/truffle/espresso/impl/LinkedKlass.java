@@ -22,20 +22,20 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_FINALIZER;
 
 import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticShape;
-import com.oracle.truffle.espresso.classfile.ImmutableConstantPool;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.ParserMethod;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.shared.classfile.ImmutableConstantPool;
+import com.oracle.truffle.espresso.shared.classfile.ParserKlass;
+import com.oracle.truffle.espresso.shared.classfile.ParserMethod;
+import com.oracle.truffle.espresso.shared.attributes.Attribute;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
 
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
 // contains shape, field locations.

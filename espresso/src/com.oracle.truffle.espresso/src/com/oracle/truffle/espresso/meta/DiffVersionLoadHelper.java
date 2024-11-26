@@ -23,14 +23,14 @@
 
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.shared.JavaVersion.VersionRange;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
 
 final class DiffVersionLoadHelper {
 

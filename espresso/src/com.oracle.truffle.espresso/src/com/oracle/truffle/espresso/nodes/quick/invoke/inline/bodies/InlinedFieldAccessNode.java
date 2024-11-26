@@ -30,8 +30,6 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -41,6 +39,8 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.inline.GuardedConditionalI
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 
 public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode implements InlinedMethodPredicate {
 

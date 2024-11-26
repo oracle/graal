@@ -30,9 +30,9 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.Classpath;
+import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
 
 public class JImageExtensions {
     private final ZipFile zipFile;

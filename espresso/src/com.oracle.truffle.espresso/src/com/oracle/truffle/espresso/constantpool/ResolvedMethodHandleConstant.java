@@ -24,10 +24,10 @@ package com.oracle.truffle.espresso.constantpool;
 
 import java.lang.invoke.MethodHandle;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
+import com.oracle.truffle.espresso.shared.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.shared.constantpool.MethodHandleConstant;
+import com.oracle.truffle.espresso.shared.constantpool.Resolvable;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;

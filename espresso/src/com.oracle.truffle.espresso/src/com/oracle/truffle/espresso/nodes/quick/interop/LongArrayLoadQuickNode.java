@@ -24,12 +24,12 @@
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.LongArrayLoad;
 import com.oracle.truffle.espresso.nodes.bytecodes.LongArrayLoadNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.bytecode.Bytecodes;
 
 /**
  * @see LongArrayLoad

@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.classfile.ParserMethod;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.shared.classfile.ParserMethod;
+import com.oracle.truffle.espresso.shared.attributes.Attribute;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
 
 public final class LinkedMethod {
     private final ParserMethod parserMethod;

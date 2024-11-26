@@ -23,28 +23,28 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINAL;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_ABSTRACT;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_FINAL;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_PRIVATE;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_PROTECTED;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_PUBLIC;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
+import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.shared.descriptors.Types;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class ArrayKlass extends Klass {

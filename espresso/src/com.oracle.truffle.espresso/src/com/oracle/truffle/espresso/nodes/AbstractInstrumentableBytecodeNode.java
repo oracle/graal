@@ -38,13 +38,13 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoScope;
-import com.oracle.truffle.espresso.classfile.attributes.Local;
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.shared.attributes.Local;
+import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.shared.descriptors.Signatures;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
 
 @GenerateWrapper(yieldExceptions = UnwindContinuationException.class, resumeMethodPrefix = "resumeContinuation")

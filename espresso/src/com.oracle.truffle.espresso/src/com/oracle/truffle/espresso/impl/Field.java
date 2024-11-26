@@ -27,15 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
-import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.resolver.meta.FieldType;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -45,6 +37,16 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.shared.attributes.Attribute;
+import com.oracle.truffle.espresso.shared.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.shared.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.shared.classfile.Constants;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.ModifiedUTF8;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.shared.resolver.meta.FieldAccess;
 
 /**
  * Represents a resolved Espresso field.
@@ -75,7 +77,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  * value (this could be either an Original Field or a Redefine Added Field) a Delegation field is
  * assigned the underlying field as a Compatible Field.
  */
-public class Field extends Member<Type> implements FieldRef, FieldType<Klass, Method, Field> {
+public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, Method, Field> {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
@@ -210,6 +212,18 @@ public class Field extends Member<Type> implements FieldRef, FieldType<Klass, Me
 
     public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
+    }
+
+    @Override
+    public final void loadingConstraints(Klass accessingClass) {
+        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
+    }
+
+    @Override
+    public final boolean shouldEnforceInitializerCheck() {
+        return (getDeclaringKlass().getMeta().getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT) ||
+                        // HotSpot enforces this only for >= Java 9 (v53) .class files.
+                        getDeclaringClass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
     }
 
     // region Field accesses

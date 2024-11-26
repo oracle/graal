@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.preinit;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.shared.JavaVersion;
 
 public final class ContextPatchingException extends Exception {
 

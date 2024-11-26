@@ -28,8 +28,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Consumer;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
 
 public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
     private final HashMap<Symbol<Name>, T> entries = new HashMap<>();

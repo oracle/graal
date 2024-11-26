@@ -48,8 +48,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -81,6 +79,8 @@ import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.redefinition.RedefinitionNotSupportedException;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 

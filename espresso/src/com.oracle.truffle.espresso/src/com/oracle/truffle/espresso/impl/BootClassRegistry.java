@@ -24,16 +24,16 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.ClasspathFile;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
-import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
-import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.classfile.ClasspathFile;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Types;
+import com.oracle.truffle.espresso.shared.perf.DebugCloseable;
+import com.oracle.truffle.espresso.shared.perf.DebugCounter;
+import com.oracle.truffle.espresso.shared.perf.DebugTimer;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**

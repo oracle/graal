@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.analysis.BlockIteratorClosure;
 import com.oracle.truffle.espresso.analysis.BlockLogger;
 import com.oracle.truffle.espresso.analysis.Util;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.impl.Method;
 
 /**

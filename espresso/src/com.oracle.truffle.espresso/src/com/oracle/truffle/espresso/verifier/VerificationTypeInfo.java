@@ -23,24 +23,24 @@
 
 package com.oracle.truffle.espresso.verifier;
 
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Bogus;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Double;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Float;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Integer;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_Bogus;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_Double;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_Float;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_InitObject;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_Integer;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_Long;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_NewObject;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_Null;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_Object;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
+import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.shared.descriptors.Types;
 
 public abstract class VerificationTypeInfo {
 

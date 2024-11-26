@@ -32,7 +32,6 @@ import java.util.ServiceLoader;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
@@ -40,6 +39,7 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.ClassLoadAction;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
 
 public final class RedefinitionPluginHandler implements RedefineListener, DefineKlassListener {
 

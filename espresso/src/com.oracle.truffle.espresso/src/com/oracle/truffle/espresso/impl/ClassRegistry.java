@@ -32,15 +32,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
-import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
@@ -51,6 +42,15 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
+import com.oracle.truffle.espresso.shared.classfile.Constants;
+import com.oracle.truffle.espresso.shared.classfile.ParserKlass;
+import com.oracle.truffle.espresso.shared.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.shared.descriptors.Types;
+import com.oracle.truffle.espresso.shared.perf.DebugCloseable;
+import com.oracle.truffle.espresso.shared.perf.DebugTimer;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**

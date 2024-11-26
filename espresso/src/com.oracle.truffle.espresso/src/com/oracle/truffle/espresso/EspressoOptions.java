@@ -41,8 +41,8 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
+import com.oracle.truffle.espresso.shared.JavaVersion;
 
 @Option.Group(EspressoLanguage.ID)
 public final class EspressoOptions {

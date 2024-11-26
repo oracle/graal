@@ -33,7 +33,7 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.formatGuarante
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.isType2;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.verifyGuarantee;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 class StackFrame implements StackMapFrameParser.FrameState {

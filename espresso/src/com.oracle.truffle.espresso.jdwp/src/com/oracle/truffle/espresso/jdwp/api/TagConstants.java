@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.shared.JavaKind;
 
 public final class TagConstants {
 

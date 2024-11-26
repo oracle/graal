@@ -27,11 +27,11 @@ import static com.oracle.truffle.espresso.nodes.quick.invoke.inline.ConditionalI
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 
 public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode {
     private final ConditionalInlinedMethodNode.Recipes recipes;

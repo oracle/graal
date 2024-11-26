@@ -26,7 +26,7 @@ package com.oracle.truffle.espresso.runtime.jimage;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
 
 public class ImageLocation {
     private static final int ATTRIBUTE_END = 0;

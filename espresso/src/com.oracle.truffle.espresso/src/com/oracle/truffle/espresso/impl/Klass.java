@@ -60,17 +60,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
-import com.oracle.truffle.espresso.classfile.resolver.meta.ClassType;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
@@ -102,12 +91,23 @@ import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvoke;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InteropLookupAndInvokeFactory;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
+import com.oracle.truffle.espresso.shared.classfile.Constants;
+import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.shared.descriptors.Types;
+import com.oracle.truffle.espresso.shared.perf.DebugCounter;
+import com.oracle.truffle.espresso.shared.resolver.meta.TypeAccess;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class Klass extends ContextAccessImpl implements KlassRef, TruffleObject, EspressoType, ClassType<Klass, Method, Field> {
+public abstract class Klass extends ContextAccessImpl implements KlassRef, TruffleObject, EspressoType, TypeAccess<Klass, Method, Field> {
 
     // region Interop
 
@@ -886,7 +886,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     public final boolean isInterface() {
         // conflict between ModifiersProvider and KlassRef interfaces,
         // so chose the default implementation in ModifiersProvider.
-        return ClassType.super.isInterface();
+        return TypeAccess.super.isInterface();
     }
 
     /**
@@ -1071,7 +1071,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
          * never overriden default interface methods. We cirumvent this CHA limitation here by using
          * an invokespecial, which is inlinable.
          */
-        return ClassType.super.isFinalFlagSet() /* || isLeafAssumption() */;
+        return TypeAccess.super.isFinalFlagSet() /* || isLeafAssumption() */;
     }
 
     /**
@@ -1692,6 +1692,11 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return name;
     }
 
+    @Override
+    public Symbol<Name> getSymbolicName() {
+        return getName();
+    }
+
     public String getExternalName() {
         // Conversion from internal form.
         String externalName = MetaUtil.internalNameToJava(type.toString(), true, true);
@@ -1893,7 +1898,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
 
     // endregion jdwp-specific
 
-    // ClassType impl
+    // TypeAccess impl
 
     @Override
     public String getJavaName() {
@@ -1906,5 +1911,12 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             return ((ObjectKlass) this).resolveInterfaceMethod(name, signature);
         }
         return null;
+    }
+
+    @Idempotent
+    @Override
+    // Implement here for indempotent, and make sure arrays are not abstract.
+    public final boolean isAbstract() {
+        return !isArray() && TypeAccess.super.isAbstract();
     }
 }

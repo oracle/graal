@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
 
 public interface JImageHelper {
     void close();

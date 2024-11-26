@@ -68,8 +68,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoType;
@@ -93,6 +91,8 @@ import com.oracle.truffle.espresso.shadowed.asm.ClassWriter;
 import com.oracle.truffle.espresso.shadowed.asm.Label;
 import com.oracle.truffle.espresso.shadowed.asm.MethodVisitor;
 import com.oracle.truffle.espresso.shadowed.asm.Type;
+import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
 import com.oracle.truffle.espresso.vm.ModulesHelperVM;
 
 /**

@@ -22,19 +22,38 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.resolver.meta.MemberType;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Descriptor;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.resolver.meta.MemberAccess;
 
-public abstract class Member<T extends Descriptor> implements MemberType<Klass, Method, Field> {
+public abstract class Member<T extends Descriptor> implements MemberAccess<Klass, Method, Field> {
 
     public abstract Symbol<Name> getName();
+
+    @Override
+    public final Symbol<Name> getSymbolicName() {
+        return getName();
+    }
 
     public abstract ObjectKlass getDeclaringKlass();
 
     @Override
     public final ObjectKlass getDeclaringClass() {
         return getDeclaringKlass();
+    }
+
+    @Override
+    public final void accessChecks(Klass accessingClass, Klass holderClass) {
+        Resolution.memberDoAccessCheck(accessingClass, holderClass, this, holderClass.getMeta());
+    }
+
+    @Override
+    @Idempotent
+    // Re-implement here for indempotent annotation. Some of our nodes benefit from it.
+    public boolean isAbstract() {
+        return MemberAccess.super.isAbstract();
     }
 }

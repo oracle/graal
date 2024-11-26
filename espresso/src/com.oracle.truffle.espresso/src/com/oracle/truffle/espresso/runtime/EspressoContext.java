@@ -67,19 +67,6 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
-import com.oracle.truffle.espresso.classfile.descriptors.Names;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
-import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
-import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
-import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
@@ -105,14 +92,25 @@ import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
-import com.oracle.truffle.espresso.resolver.LinkResolver;
-import com.oracle.truffle.espresso.resolver.meta.ErrorType;
-import com.oracle.truffle.espresso.resolver.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import com.oracle.truffle.espresso.runtime.panama.Platform;
 import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.JavaVersion;
+import com.oracle.truffle.espresso.shared.descriptors.Names;
+import com.oracle.truffle.espresso.shared.descriptors.Signatures;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.shared.descriptors.Types;
+import com.oracle.truffle.espresso.shared.perf.DebugCloseable;
+import com.oracle.truffle.espresso.shared.perf.DebugTimer;
+import com.oracle.truffle.espresso.shared.perf.TimerCollection;
+import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
+import com.oracle.truffle.espresso.shared.resolver.meta.ErrorType;
+import com.oracle.truffle.espresso.shared.resolver.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -1262,38 +1260,6 @@ public final class EspressoContext
 
     public LinkResolver<EspressoContext, Klass, Method, Field> getLinkResolver() {
         return linkResolver;
-    }
-
-    @Override
-    public void fieldAccessCheck(Field field, Klass accessingClass, Klass holderClass) {
-        Resolution.memberDoAccessCheck(accessingClass, holderClass, field, meta);
-    }
-
-    @Override
-    public void methodAccessCheck(Method method, Klass accessingClass, Klass holderClass) {
-        Resolution.memberDoAccessCheck(accessingClass, holderClass, method, meta);
-    }
-
-    @Override
-    public void fieldLoadingConstraints(Field field, Klass accessingClass) {
-        field.checkLoadingConstraints(accessingClass.getDefiningClassLoader(), field.getDeclaringKlass().getDefiningClassLoader());
-    }
-
-    @Override
-    public void methodLoadingConstraints(Method method, Klass accessingClass) {
-        method.checkLoadingConstraints(accessingClass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
-    }
-
-    @Override
-    public boolean enforceInitializerCheck(Field field) {
-        return (meta.getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT) ||
-                        // HotSpot enforces this only for >= Java 9 (v53) .class files.
-                        field.getDeclaringClass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
-    }
-
-    @Override
-    public boolean skipLoadingConstraints(Method method) {
-        return method.isPolySignatureIntrinsic();
     }
 
     @Override

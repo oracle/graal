@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.methodhandle;
 
-import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeSpecial;
 
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;

@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.shared.JavaVersion;
 
 public final class ContextDescription {
 

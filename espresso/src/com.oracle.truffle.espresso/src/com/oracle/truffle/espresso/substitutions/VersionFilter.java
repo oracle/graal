@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.shared.JavaVersion;
 
 @FunctionalInterface
 public interface VersionFilter {

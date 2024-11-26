@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.Util;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
 
 /**
  * Glues together loop entries and loop ends by forcing loop ends to have an end state that is a

@@ -22,22 +22,22 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Class;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Double;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Fieldref;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Float;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Integer;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_InterfaceMethodref;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_InvokeDynamic;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Long;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_MethodHandle;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_MethodType;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Methodref;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Module;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_NameAndType;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Package;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_String;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Utf8;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Class;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Double;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Fieldref;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Float;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Integer;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_InterfaceMethodref;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_InvokeDynamic;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Long;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_MethodHandle;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_MethodType;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Methodref;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Module;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_NameAndType;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Package;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_String;
+import static com.oracle.truffle.espresso.shared.classfile.ConstantPool.CONSTANT_Utf8;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

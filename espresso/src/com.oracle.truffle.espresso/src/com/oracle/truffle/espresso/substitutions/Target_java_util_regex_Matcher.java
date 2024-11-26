@@ -61,6 +61,7 @@ import com.oracle.truffle.espresso.nodes.EspressoInlineNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeInterface;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.JavaVersion;
 
 @EspressoSubstitutions
 public final class Target_java_util_regex_Matcher {

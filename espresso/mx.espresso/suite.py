@@ -116,8 +116,8 @@ suite = {
             "license": "UPL",
         },
 
-        # Shared .class file parser
-        "com.oracle.truffle.espresso.classfile": {
+        # Shared .class file parser, link resolver
+        "com.oracle.truffle.espresso.shared": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -204,7 +204,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.truffle.espresso.classfile",
+                "com.oracle.truffle.espresso.shared",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],
