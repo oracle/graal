@@ -215,12 +215,12 @@ public class HostedClassLoaderPackageManagement implements LayeredImageSingleton
             /* Scan the class loader packages if the new package was missing. */
             objectScanner.accept(loaderPackages);
             if (inSharedLayer && runtimeClassLoader == appClassLoader) {
+                VMError.guarantee(packageValue.getName().equals(packageName), "Package name is different from package value's name: %s %s", packageName, packageValue);
+
                 /*
                  * We must register this package so that it can be relinked in subsequent layers.
                  */
                 registry.registerHeapConstant(generateKeyName(packageValue.getName()), packageValue);
-
-                VMError.guarantee(packageValue.getName().equals(packageName), "Package name is different from package value's name: %s %s", packageName, packageValue);
             }
         }
     }
