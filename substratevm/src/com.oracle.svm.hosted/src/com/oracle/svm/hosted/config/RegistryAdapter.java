@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
@@ -52,9 +53,10 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     private final ReflectionRegistry registry;
     private final ImageClassLoader classLoader;
 
-    public static RegistryAdapter create(ReflectionRegistry registry, ProxyRegistry proxyRegistry, ImageClassLoader classLoader) {
+    public static RegistryAdapter create(ReflectionRegistry registry, ProxyRegistry proxyRegistry, RuntimeSerializationSupport<ConfigurationCondition> serializationSupport,
+                    ImageClassLoader classLoader) {
         if (registry instanceof RuntimeReflectionSupport) {
-            return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, proxyRegistry, classLoader);
+            return new ReflectionRegistryAdapter((RuntimeReflectionSupport) registry, proxyRegistry, serializationSupport, classLoader);
         } else {
             return new RegistryAdapter(registry, classLoader);
         }
@@ -287,6 +289,11 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
 
     private void registerExecutable(ConfigurationCondition condition, boolean queriedOnly, Executable... executable) {
         registry.register(condition, queriedOnly, executable);
+    }
+
+    @Override
+    public void registerAsSerializable(ConfigurationCondition condition, Class<?> clazz) {
+        /* Serializable has no effect on JNI registrations */
     }
 
     @Override
