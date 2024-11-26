@@ -41,7 +41,6 @@
 package com.oracle.truffle.runtime;
 
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
-import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.StoppedCompilationRetryDelay;
 
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
