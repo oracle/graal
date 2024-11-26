@@ -78,9 +78,9 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode
 
     @OptionalInput(State) FrameState stateDuring;
 
-    @OptionalInput(Memory) MemoryKill lastLocationAccess;
+    @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
-    @OptionalInput(InputType.State) FrameState stateAfter;
+    @OptionalInput(InputType.State) protected FrameState stateAfter;
 
     protected JavaKind elementKind;
 

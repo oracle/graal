@@ -31,13 +31,16 @@ import java.util.EnumSet;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.GenerateStub;
-import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodes.DeoptBciSupplier;
 import jdk.graal.compiler.nodes.DeoptimizingNode;
@@ -56,8 +59,9 @@ import jdk.vm.ci.meta.JavaKind;
 /**
  * Fills in an array with a given value
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_16)
-public class ArrayFillNode extends MemoryKillStubIntrinsicNode implements StateSplit, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring, DeoptBciSupplier {
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN, allowedUsageTypes = InputType.Memory)
+public class ArrayFillNode extends MemoryKillStubIntrinsicNode
+                implements StateSplit, MemoryAccess, DeoptimizingNode, DeoptimizingNode.DeoptDuring, DeoptimizingNode.DeoptBefore, DeoptimizingNode.DeoptAfter, DeoptBciSupplier {
 
     public static final NodeClass<ArrayFillNode> TYPE = NodeClass.create(ArrayFillNode.class);
 
@@ -75,25 +79,25 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode implements StateS
     /** {@link JavaKind} of the array to fill. */
     protected JavaKind elementKind;
 
+    @OptionalInput(State) FrameState stateBefore;
     @OptionalInput(State) FrameState stateDuring;
-
-    @OptionalInput(InputType.State) protected FrameState stateAfter;
+    @OptionalInput(State) FrameState stateAfter;
 
     protected int bci;
 
-    public ArrayFillNode(ValueNode array, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind) {
+    public ArrayFillNode(ValueNode array, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind, int bci) {
         super(TYPE, StampFactory.forVoid(), null, LocationIdentity.any());
-        this.bci = BytecodeFrame.BEFORE_BCI;
+        this.bci = bci;
         this.array = array;
         this.length = length;
         this.value = value;
         this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
-    public ArrayFillNode(ValueNode array, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind,
+    public ArrayFillNode(ValueNode array, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind, int bci,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
         super(TYPE, StampFactory.forVoid(), runtimeCheckedCPUFeatures, LocationIdentity.any());
-        this.bci = BytecodeFrame.BEFORE_BCI;
+        this.bci = bci;
         this.array = array;
         this.length = length;
         this.value = value;
@@ -104,11 +108,11 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode implements StateS
     @GenerateStub(name = "byteArrayFill", parameters = {"Byte"})
     @GenerateStub(name = "intArrayFill", parameters = {"Int"})
     public static native void fill(Pointer array, int length, int value,
-                    @ConstantNodeParameter JavaKind kind);
+                    @ConstantNodeParameter JavaKind kind, int bci);
 
     @NodeIntrinsic
     public static native void fill(Pointer array, int length, int value,
-                    @ConstantNodeParameter JavaKind kind,
+                    @ConstantNodeParameter JavaKind kind, int bci,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @Override
@@ -155,15 +159,29 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode implements StateS
         return this.elementKind;
     }
 
+    @SuppressWarnings("unlikely-arg-type")
+    public static boolean isSupported(Architecture arch) {
+        // if (arch instanceof AMD64) {
+        // return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
+        // } else if (arch instanceof AArch64) {
+        // return ((AArch64) arch).getFeatures().containsAll(minFeaturesAARCH64());
+        // }
+        return (arch instanceof AArch64);
+    }
+
+    @Override
+    public boolean canBeEmitted(Architecture arch) {
+        return isSupported(arch);
+    }
+
     @Override
     public FrameState stateDuring() {
         return stateDuring;
     }
 
     @Override
-    public void setStateDuring(FrameState stateDuring) {
-        updateUsages(this.stateDuring, stateDuring);
-        this.stateDuring = stateDuring;
+    public FrameState stateBefore() {
+        return stateBefore;
     }
 
     @Override
@@ -173,19 +191,30 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode implements StateS
 
     @Override
     public void setStateAfter(FrameState x) {
-        assert x == null || x.isAlive() : "frame state must be in a graph";
-        updateUsages(stateAfter, x);
-        stateAfter = x;
+        updateUsages(this.stateAfter, x);
+        this.stateAfter = x;
+    }
+
+    @Override
+    public void setStateBefore(FrameState x) {
+        updateUsages(this.stateBefore, x);
+        this.stateBefore = x;
+    }
+
+    @Override
+    public void setStateDuring(FrameState stateDuring) {
+        updateUsages(this.stateDuring, stateDuring);
+        this.stateDuring = stateDuring;
+    }
+
+    @Override
+    public void computeStateDuring(FrameState stateAfter1) {
+        FrameState newStateDuring = stateAfter1.duplicateModifiedDuringCall(bci, asNode().getStackKind());
+        setStateDuring(newStateDuring);
     }
 
     @Override
     public boolean canDeoptimize() {
         return true;
-    }
-
-    @Override
-    public void computeStateDuring(FrameState currentStateAfter) {
-        FrameState newStateDuring = currentStateAfter.duplicateModifiedDuringCall(bci(), asNode().getStackKind());
-        setStateDuring(newStateDuring);
     }
 }
