@@ -153,6 +153,7 @@ public class BinaryParser extends BinaryStreamParser {
         int lastNonCustomSection = 0;
         int codeSectionOffset = -1;
         int codeSectionLength = 0;
+        boolean dataSectionPresent = false;
         final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
         final BytecodeGen customData = new BytecodeGen();
         final BytecodeGen functionDebugData = new BytecodeGen();
@@ -218,6 +219,7 @@ public class BinaryParser extends BinaryStreamParser {
                     codeSectionLength = size;
                     break;
                 case Section.DATA:
+                    dataSectionPresent = true;
                     readDataSection(bytecode);
                     break;
             }
@@ -226,6 +228,9 @@ public class BinaryParser extends BinaryStreamParser {
         if (codeSectionOffset == -1) {
             assertIntEqual(module.numFunctions(), module.numImportedFunctions(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
             codeSectionOffset = 0;
+        }
+        if (bulkMemoryAndRefTypes && !dataSectionPresent) {
+            module.checkDataSegmentCount(0);
         }
         module.setBytecode(bytecode.toArray());
         module.removeFunctionReferences();
@@ -2388,7 +2393,7 @@ public class BinaryParser extends BinaryStreamParser {
         // Table offset expression must be a constant expression with result type i32.
         // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE, false);
+        Pair<Object, byte[]> result = readConstantExpression(I32_TYPE, true);
         if (result.getRight() == null) {
             return Pair.create((int) result.getLeft(), null);
         } else {
@@ -2397,7 +2402,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private Pair<Long, byte[]> readLongOffsetExpression() {
-        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE, false);
+        Pair<Object, byte[]> result = readConstantExpression(I64_TYPE, true);
         if (result.getRight() == null) {
             return Pair.create((long) result.getLeft(), null);
         } else {
@@ -2478,8 +2483,8 @@ public class BinaryParser extends BinaryStreamParser {
                     if (onlyImportedGlobals) {
                         // The current WebAssembly spec says constant expressions can only refer to
                         // imported globals. We can easily remove this restriction in the future.
-                        assertUnsignedIntLess(index, module.symbolTable().importedGlobals().size(), Failure.UNSPECIFIED_MALFORMED,
-                                        "The initializer for global " + index + " in module '" + module.name() + "' refers to a non-imported global.");
+                        assertUnsignedIntLess(index, module.symbolTable().importedGlobals().size(), Failure.UNKNOWN_GLOBAL,
+                                        "Constant expression in module '" + module.name() + "' refers to non-imported global " + index + ".");
                     }
                     assertIntEqual(module.globalMutability(index), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
                     state.push(module.symbolTable().globalValueType(index));
@@ -2491,7 +2496,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I32_SUB:
                 case Instructions.I32_MUL:
                     if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
-                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                        fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X", opcode);
                     }
                     state.popChecked(I32_TYPE);
                     state.popChecked(I32_TYPE);
@@ -2512,7 +2517,7 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.I64_SUB:
                 case Instructions.I64_MUL:
                     if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
-                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                        fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X", opcode);
                     }
                     state.popChecked(I64_TYPE);
                     state.popChecked(I64_TYPE);
@@ -2544,12 +2549,12 @@ public class BinaryParser extends BinaryStreamParser {
                             break;
                         }
                         default:
-                            fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
+                            fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X 0x%02X", opcode, vectorOpcode);
                             break;
                     }
                     break;
                 default:
-                    fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    fail(Failure.ILLEGAL_OPCODE, "Invalid instruction for constant expression: 0x%02X", opcode);
                     break;
             }
         }
@@ -2707,6 +2712,7 @@ public class BinaryParser extends BinaryStreamParser {
             module.setElemInstance(currentElemSegmentId, headerOffset, elemType);
             if (mode == SegmentMode.ACTIVE) {
                 assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
+                module.checkElemType(currentElemSegmentId, module.tableElementType(tableIndex));
                 module.addLinkAction((context, instance, imports) -> {
                     context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
                                     currentOffsetBytecode, bytecodeOffset, elementCount);
@@ -2822,7 +2828,7 @@ public class BinaryParser extends BinaryStreamParser {
     private void readDataSection(RuntimeBytecodeGen bytecode) {
         final int dataSegmentCount = readLength();
         module.limits().checkDataSegmentCount(dataSegmentCount);
-        if (bulkMemoryAndRefTypes && dataSegmentCount != 0) {
+        if (bulkMemoryAndRefTypes) {
             module.checkDataSegmentCount(dataSegmentCount);
         }
         final int droppedDataInstanceOffset = bytecode.location();
@@ -3173,13 +3179,21 @@ public class BinaryParser extends BinaryStreamParser {
 
     protected int readAlignHint(int n) {
         final int value = readUnsignedInt32();
-        assertUnsignedIntLessOrEqual(1 << value, n / 8, Failure.ALIGNMENT_LARGER_THAN_NATURAL);
+        // if bit 6 of the alignment arg is set, then that indicates that an i32 memory index
+        // follows after the alignment bitfield and is not part of the alignment value
+        int align = multiMemory && (value & 0b0100_0000) != 0 ? value - 0b0100_0000 : value;
+        assertUnsignedIntLess(align, 32, Failure.MALFORMED_MEMOP_FLAGS);
+        assertUnsignedIntLessOrEqual(1 << align, n / 8, Failure.ALIGNMENT_LARGER_THAN_NATURAL);
         return value;
     }
 
     protected int readAtomicAlignHint(int n) {
         final int value = readUnsignedInt32();
-        assertIntEqual(1 << value, n / 8, Failure.ATOMIC_ALIGNMENT_NOT_NATURAL);
+        // if bit 6 of the alignment arg is set, then that indicates that an i32 memory index
+        // follows after the alignment bitfield and is not part of the alignment value
+        int align = multiMemory && (value & 0b0100_0000) != 0 ? value - 0b0100_0000 : value;
+        assertUnsignedIntLess(align, 32, Failure.MALFORMED_MEMOP_FLAGS);
+        assertIntEqual(1 << align, n / 8, Failure.ATOMIC_ALIGNMENT_NOT_NATURAL);
         return value;
     }
 
