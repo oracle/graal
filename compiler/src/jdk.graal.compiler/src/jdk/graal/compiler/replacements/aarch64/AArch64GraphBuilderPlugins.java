@@ -69,23 +69,19 @@ import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
 import jdk.graal.compiler.replacements.nodes.HalfFloatToFloatNode;
-import jdk.graal.compiler.replacements.nodes.MessageDigestNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
     public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, OptionValues options) {
-        register(plugins, replacements, (AArch64) arch, registerForeignCallMath, options);
+        register(plugins, replacements, registerForeignCallMath, options);
     }
 
-    public static void register(Plugins plugins, Replacements replacements, AArch64 arch, boolean registerForeignCallMath, OptionValues options) {
+    public static void register(Plugins plugins, Replacements replacements, boolean registerForeignCallMath, OptionValues options) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
@@ -99,7 +95,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
-                registerSHA3Plugins(invocationPlugins, replacements, arch);
             }
         });
     }
@@ -468,30 +463,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                                 new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
                                 NamedLocationIdentity.getArrayLocation(JavaKind.Byte), BarrierType.NONE, MemoryOrderMode.PLAIN, false));
                 return true;
-            }
-        });
-    }
-
-    private static void registerSHA3Plugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
-        Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
-        rSha3.registerConditional(MessageDigestNode.SHA3Node.isSupported(arch), new InvocationPlugin("implCompress0", InvocationPlugin.Receiver.class, byte[].class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode buf, ValueNode ofs) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
-                    ResolvedJavaField stateField = helper.getField(receiverType, "state");
-                    ResolvedJavaField blockSizeField = helper.getField(receiverType, "blockSize");
-
-                    ValueNode nonNullReceiver = receiver.get(true);
-                    ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
-                    ValueNode state = helper.loadField(nonNullReceiver, stateField);
-                    assert stateField.getType().isArray() : "SHA3.state expected to be an array, got: " + stateField.getType();
-                    JavaKind stateElementKind = stateField.getType().getComponentType().getJavaKind();
-                    ValueNode stateStart = helper.arrayStart(state, stateElementKind);
-                    ValueNode blockSize = helper.loadField(nonNullReceiver, blockSizeField);
-                    b.add(new MessageDigestNode.SHA3Node(bufStart, stateStart, blockSize));
-                    return true;
-                }
             }
         });
     }
