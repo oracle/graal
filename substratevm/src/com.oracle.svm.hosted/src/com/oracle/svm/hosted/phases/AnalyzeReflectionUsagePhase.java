@@ -75,7 +75,6 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
             "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
             "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
             "sun.misc.Unsafe", Set.of("allocateInstance"));
-    private static final AnalyzeReflectionUsageSupport singleton = AnalyzeReflectionUsageSupport.instance();
     private final Set<String> includedPackages = new HashSet<>();
 
     public AnalyzeReflectionUsagePhase(String jarPaths) {
@@ -93,7 +92,7 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
                 if (nspToShow != null) {
                     int bci = nspToShow.getBCI();
-                    singleton.addReflectiveCall(reflectiveMethodName, nspToShow.getMethod().asStackTraceElement(bci).toString());
+                    AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getMethod().asStackTraceElement(bci).toString());
                 }
             }
         }
