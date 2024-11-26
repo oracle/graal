@@ -40,13 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.InternalResource;
-import com.oracle.truffle.api.TruffleOptions;
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.ProcessProperties;
-
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -59,6 +52,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ProcessProperties;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.TruffleOptions;
 
 final class InternalResourceRoots {
 
@@ -232,11 +233,11 @@ final class InternalResourceRoots {
             Path overriddenRootPath = Path.of(overriddenRoot).toAbsolutePath();
             root = new ResolvedCacheFolder(overriddenRootPath, PROPERTY_RESOURCE_PATH + " system property", overriddenRootPath);
             kind = Root.Kind.UNVERSIONED;
-        } else if (ImageInfo.inImageRuntimeCode()) {
+        } else if (ImageInfo.inImageRuntimeCode() && InternalResourceCache.usesResourceDirectoryOnNativeImage()) {
             root = findCacheRootOnNativeImage();
             kind = Root.Kind.UNVERSIONED;
         } else {
-            root = findCacheRootOnHotSpot();
+            root = findCacheRootDefault();
             kind = Root.Kind.VERSIONED;
         }
         logInternalResourceEvent("Resolved the root directory for the internal resource cache to: %s, determined by the %s with the value %s.",
@@ -282,7 +283,7 @@ final class InternalResourceRoots {
         }
     }
 
-    private static ResolvedCacheFolder findCacheRootOnHotSpot() {
+    private static ResolvedCacheFolder findCacheRootDefault() {
         String enforcedCacheFolder = System.getProperty(PROPERTY_USER_RESOURCE_CACHE);
         if (enforcedCacheFolder != null) {
             Path enforcedCacheFolderPath = Path.of(enforcedCacheFolder);

@@ -190,6 +190,7 @@ meth public com.oracle.truffle.api.InternalResource$CPUArchitecture getCPUArchit
 meth public com.oracle.truffle.api.InternalResource$OS getOS()
 meth public java.util.List<java.lang.String> readResourceLines(java.nio.file.Path) throws java.io.IOException
 meth public void unpackResourceFiles(java.nio.file.Path,java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
+meth public void unpackResourceFiles(java.nio.file.Path,java.nio.file.Path,java.nio.file.Path,java.util.function.Predicate<java.nio.file.Path>) throws java.io.IOException
 supr java.lang.Object
 hfds contextPreinitializationCheck,owner,resourceClass
 

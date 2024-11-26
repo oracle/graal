@@ -246,6 +246,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     private boolean needsAllEncodings;
 
+    private boolean copyLanguageResources;
+    private boolean includeLanguageResources;
+
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "initializeNativeImageState",
@@ -277,6 +280,16 @@ public final class TruffleBaseFeature implements InternalFeature {
             Class<?> clazz = Class.forName(className);
             Method method = ReflectionUtil.lookupMethod(clazz, methodName, parameterTypes.toArray(new Class<?>[0]));
             return (T) method.invoke(null, args);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    static boolean isStaticMethodPresent(String className, String methodName, Collection<Class<?>> parameterTypes) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            Method method = ReflectionUtil.lookupMethod(clazz, methodName, parameterTypes.toArray(new Class<?>[0]));
+            return method != null;
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
@@ -469,8 +482,31 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         StaticObjectSupport.duringSetup(a);
 
+        if (SubstrateOptions.TruffleStableOptions.CopyLanguageResources.hasBeenSet() && SubstrateOptions.TruffleStableOptions.IncludeLanguageResources.hasBeenSet() &&
+                        SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue() && SubstrateOptions.TruffleStableOptions.IncludeLanguageResources.getValue()) {
+            throw VMError.shouldNotReachHere("The options CopyLanguageResources and IncludeLanguageResources can't both be set to true!");
+        }
+
+        copyLanguageResources = SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue();
+        includeLanguageResources = SubstrateOptions.TruffleStableOptions.IncludeLanguageResources.getValue();
+
+        if (includeLanguageResources && (!isStaticMethodPresent("com.oracle.truffle.polyglot.InternalResourceCache", "includeResourcesForNativeImage", List.of(Path.class, BiConsumer.class)) ||
+                        (HomeFinder.getInstance() != null && HomeFinder.getInstance().getLanguageHomes() != null && !HomeFinder.getInstance().getLanguageHomes().isEmpty()))) {
+            // IncludeLanguageResources == true, but it is not supported.
+            if (SubstrateOptions.TruffleStableOptions.IncludeLanguageResources.hasBeenSet()) {
+                throw VMError.shouldNotReachHere("The option IncludeLanguageResources has been set to true, but it is not supported!");
+            }
+            if (!SubstrateOptions.TruffleStableOptions.CopyLanguageResources.hasBeenSet()) {
+                copyLanguageResources = true;
+            }
+        }
+
+        if (copyLanguageResources) {
+            includeLanguageResources = false;
+        }
+
         HomeFinder hf = HomeFinder.getInstance();
-        if (SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue()) {
+        if (copyLanguageResources) {
             if (!(hf instanceof DefaultHomeFinder)) {
                 VMError.shouldNotReachHere(String.format("HomeFinder %s cannot be used if CopyLanguageResources option of TruffleBaseFeature is enabled", hf.getClass().getName()));
             }
@@ -521,6 +557,38 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (needsAllEncodings) {
             RuntimeResourceSupport.singleton().addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$", "Truffle needsAllEncodings flag is set");
         }
+
+        if (includeLanguageResources) {
+            Path resourcesForNativeImageTempDir;
+            try {
+                resourcesForNativeImageTempDir = Files.createTempDirectory("resources_for_native_image");
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("Unable to create temporary directory for truffle language resources", e);
+            }
+            try {
+                invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "includeResourcesForNativeImage", List.of(Path.class, BiConsumer.class), resourcesForNativeImageTempDir,
+                                new BiConsumer<Module, Pair<String, byte[]>>() {
+                                    @Override
+                                    public void accept(Module module, Pair<String, byte[]> resource) {
+                                        RuntimeResourceSupport.singleton().injectResource(module, resource.getLeft(), resource.getRight(), "Truffle Language Internal Resources");
+                                    }
+                                });
+            } catch (Exception e) {
+                throw VMError.shouldNotReachHere("Unable to include truffle language resources in the image.", e);
+            } finally {
+                try (Stream<Path> filesToDelete = Files.walk(resourcesForNativeImageTempDir)) {
+                    filesToDelete.sorted(Comparator.reverseOrder()).forEach(f -> {
+                        try {
+                            Files.deleteIfExists(f);
+                        } catch (IOException ioe) {
+                            throw VMError.shouldNotReachHere("Unable to delete temporary directory for truffle language resources", ioe);
+                        }
+                    });
+                } catch (IOException ioe) {
+                    throw VMError.shouldNotReachHere("Unable to delete temporary directory for truffle language resources", ioe);
+                }
+            }
+        }
     }
 
     static void checkTruffleFile(ClassInitializationSupport classInitializationSupport, TruffleFile file) {
@@ -570,7 +638,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         registerInternalResourceFieldValueTransformers(config);
     }
 
-    private static void registerInternalResourceFieldValueTransformers(BeforeAnalysisAccessImpl config) {
+    private void registerInternalResourceFieldValueTransformers(BeforeAnalysisAccessImpl config) {
         Class<?> internalResourceCacheClass = config.findClassByName("com.oracle.truffle.polyglot.InternalResourceCache");
         Class<?> internalResourceRootsClass = config.findClassByName("com.oracle.truffle.polyglot.InternalResourceRoots");
         Class<?> resetableCacheRootClass = config.findClassByName("com.oracle.truffle.polyglot.InternalResourceCache$ResettableCachedRoot");
@@ -586,6 +654,9 @@ public final class TruffleBaseFeature implements InternalFeature {
             config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceCacheClass, "owningRoot"), ResetFieldValueTransformer.INSTANCE);
             config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceCacheClass, "path"), ResetFieldValueTransformer.INSTANCE);
             config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceRootsClass, "roots"), ResetFieldValueTransformer.INSTANCE);
+        }
+        if (!copyLanguageResources && !includeLanguageResources) {
+            config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceCacheClass, "useInternalResources"), (receiver, originalValue) -> false);
         }
     }
 
@@ -1133,7 +1204,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        if (SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue()) {
+        if (copyLanguageResources) {
             Path buildDir = access.getImagePath();
             if (buildDir != null) {
                 Path parent = buildDir.getParent();
@@ -1150,14 +1221,13 @@ public final class TruffleBaseFeature implements InternalFeature {
             Path languagesDir = resourcesDir.resolve("languages");
             if (Files.exists(languagesDir)) {
                 try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
-                    filesToDelete.sorted(Comparator.reverseOrder())
-                                    .forEach(f -> {
-                                        try {
-                                            Files.deleteIfExists(f);
-                                        } catch (IOException ioe) {
-                                            throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
-                                        }
-                                    });
+                    filesToDelete.sorted(Comparator.reverseOrder()).forEach(f -> {
+                        try {
+                            Files.deleteIfExists(f);
+                        } catch (IOException ioe) {
+                            throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
+                        }
+                    });
                 } catch (IOException ioe) {
                     throw VMError.shouldNotReachHere("Deletion of previous language resources directory failed.", ioe);
                 }
@@ -1462,20 +1532,6 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private String languageHome;
-}
-
-@TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
-
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = UseInternalResourcesComputer.class, isFinal = true) //
-    private static boolean useInternalResources;
-
-    private static final class UseInternalResourcesComputer implements FieldValueTransformer {
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            return SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue();
-        }
-    }
 }
 
 @TargetClass(className = "com.oracle.truffle.polyglot.PolyglotEngineImpl", onlyWith = TruffleBaseFeature.IsEnabled.class)

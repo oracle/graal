@@ -2516,6 +2516,7 @@ class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
             '-H:APIFunctionPrefix=truffle_isolate_',
         ] + svm_experimental_options([
             '-H:+IgnoreMaxHeapSizeWhileInVMOperation',
+            '-H:+CopyLanguageResources',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions) + \
         project.native_image_config.build_args + project.native_image_config.build_args_enterprise

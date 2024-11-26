@@ -37,6 +37,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-32682 Added `InstrumentableNode.findProbe()` to specify how an instrumentable node finds its associated probe. This is useful for bytecode interpreters to store the probe nodes in a separate data structure without associated wrapper nodes.
 * GR-32682 Added `InstrumentableNode.createProbe(SourceSection)` method, which allows to create eager probe nodes for an instrumentable node. Eager probes do not wait for a probe to be inserted and for example all probes for statements can be inserted in a batch. Eager probes are typically used in combination with overriding the `InstrumentableNode.findProbe()` method.
 * GR-32682 Added detection of boxing overloads to support state sharing and better boxing elimination. See `Specialization#rewriteOn` for details. 
+    * `TruffleSafepoint#poll(Node)` does not require a non-null location anymore. However, it is still recommended to always pass a location node, if available. 
+* GR-57838 Added `InternalResource#unpackResourceFiles(Path, Path, Path, Predicate)` to allow filtering of resources to unpack. 
 
 ## Version 24.1.0
 * GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.

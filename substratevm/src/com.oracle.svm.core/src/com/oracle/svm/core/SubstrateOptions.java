@@ -1331,10 +1331,11 @@ public class SubstrateOptions {
 
     public static class TruffleStableOptions {
 
-        @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
-                        "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
-                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
-        public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
+        @Option(help = "Automatically copy the necessary language resources to the resources directory next to the produced image.", type = User, stability = OptionStability.STABLE)//
+        public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(false);
+
+        @Option(help = "Automatically include the necessary language internal resources in the produced image.", type = User, stability = OptionStability.STABLE)//
+        public static final HostedOptionKey<Boolean> IncludeLanguageResources = new HostedOptionKey<>(true);
     }
 
     @Option(help = "Reduce the amount of metadata in the image for implicit exceptions by removing inlining information from the stack trace. " +
