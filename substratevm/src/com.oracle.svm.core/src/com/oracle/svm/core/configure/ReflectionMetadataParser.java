@@ -38,7 +38,7 @@ import com.oracle.svm.core.TypeResult;
 class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T> {
     private static final List<String> OPTIONAL_REFLECT_METADATA_ATTRS = Arrays.asList(CONDITIONAL_KEY,
                     "allDeclaredConstructors", "allPublicConstructors", "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "methods", "fields", "unsafeAllocated");
+                    "methods", "fields", "unsafeAllocated", "serializable");
 
     private final String combinedFileKey;
 
@@ -106,6 +106,8 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
         registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, clazz));
         registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, clazz));
         registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
+
+        registerIfNotDefault(data, false, clazz, "serializable", () -> delegate.registerAsSerializable(condition, clazz));
 
         MapCursor<String, Object> cursor = data.getEntries();
         while (cursor.advance()) {

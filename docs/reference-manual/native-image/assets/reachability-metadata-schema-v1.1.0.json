@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
-  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.0.0.json",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.1.0.json",
   "title": "JSON schema for the reachability metadata used by GraalVM Native Image",
   "type": "object",
   "default": {},
@@ -200,6 +200,11 @@
           },
           "unsafeAllocated": {
             "title": "Allow objects of this class to be instantiated with a call to jdk.internal.misc.Unsafe#allocateInstance or JNI's AllocObject",
+            "type": "boolean",
+            "default": false
+          },
+          "serializable": {
+            "title": "Allow objects of this class to be serialized and deserialized",
             "type": "boolean",
             "default": false
           }

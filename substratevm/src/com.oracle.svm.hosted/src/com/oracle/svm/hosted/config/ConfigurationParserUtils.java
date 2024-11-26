@@ -57,13 +57,15 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
 
 import jdk.graal.compiler.util.json.JsonParserException;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 public final class ConfigurationParserUtils {
 
     public static ReflectionConfigurationParser<ConfigurationCondition, Class<?>> create(String combinedFileKey, boolean strictMetadata,
-                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ProxyRegistry proxyRegistry, ImageClassLoader imageClassLoader) {
+                    ConfigurationConditionResolver<ConfigurationCondition> conditionResolver, ReflectionRegistry registry, ProxyRegistry proxyRegistry,
+                    RuntimeSerializationSupport<ConfigurationCondition> serializationSupport, ImageClassLoader imageClassLoader) {
         return ReflectionConfigurationParser.create(combinedFileKey, strictMetadata, conditionResolver,
-                        RegistryAdapter.create(registry, proxyRegistry, imageClassLoader),
+                        RegistryAdapter.create(registry, proxyRegistry, serializationSupport, imageClassLoader),
                         ConfigurationFiles.Options.StrictConfiguration.getValue(),
                         ConfigurationFiles.Options.WarnAboutMissingReflectionOrJNIMetadataElements.getValue(), TreatAllNameEntriesAsType.getValue());
     }
