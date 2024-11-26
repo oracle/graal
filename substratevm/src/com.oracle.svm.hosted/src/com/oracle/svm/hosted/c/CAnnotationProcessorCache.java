@@ -40,12 +40,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
-<<<<<<< HEAD
 import org.graalvm.compiler.options.Option;
-=======
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
->>>>>>> 1e0b8fd86bf (Added option QueryIfNotInCAPCache.)
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -53,17 +50,8 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.query.QueryResultParser;
-<<<<<<< HEAD
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-=======
-
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
->>>>>>> 1e0b8fd86bf (Added option QueryIfNotInCAPCache.)
 
 /**
  * Cache of pre-computed information for the {@link CAnnotationProcessor}. The cache is helpful to

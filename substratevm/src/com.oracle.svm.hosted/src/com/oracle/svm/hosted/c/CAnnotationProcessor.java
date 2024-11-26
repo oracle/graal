@@ -42,11 +42,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-<<<<<<< HEAD
 import com.oracle.svm.hosted.ImageClassLoader;
-=======
-import com.oracle.svm.hosted.DeadlockWatchdog;
->>>>>>> 1e0b8fd86bf (Added option QueryIfNotInCAPCache.)
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
