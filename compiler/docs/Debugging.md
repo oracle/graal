@@ -68,10 +68,10 @@ guarding against use in a thread different from the one in which it was instanti
 
 ## JVMCI and compiler specific options
 
-JVMCI and GraalVM compiler options are specified by the `jvmci.*` and `graal.*` system properties
+JVMCI and GraalVM compiler options are specified by the `jvmci.*` and `jdk.graal.*` system properties
 respectively. These must be specified on the JVM command line. Modifications to these properties by
 application code are not seen by JVMCI and the compiler. A listing of all supported properties can be
-obtained with `-XX:+JVMCIPrintProperties`.
+obtained with `-XX:+JVMCIPrintProperties -Djdk.graal.PrintPropertiesAll=true`.
 
 ## Metrics
 
