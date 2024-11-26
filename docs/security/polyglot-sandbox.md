@@ -182,7 +182,7 @@ As an example, an antipattern would be to implement a third party interface and 
 
 The ISOLATED and UNTRUSTED sandbox policies require setting resource limits for a context.
 Different configurations can be provided for each context.
-If a limit is exceeded, evaluation of the code fails and the context is canceled with a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html) which returns `true` for `isResourceExhausted()`.
+If a limit is exceeded, evaluation of the code fails and the context is cancelled with a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html) which returns `true` for `isResourceExhausted()`.
 At this point, no more guest code can be executed in the context
 
 The `--sandbox.TraceLimits` option allows you to trace guest code and record the maximum resource utilization.
@@ -348,7 +348,7 @@ The allocated bytes are checked by a separate high-priority thread that will be 
 There is one such thread for each memory-limited context (one with `sandbox.MaxHeapMemory` set).
 The retained bytes computation is done by yet another high-priority thread that is started from the allocated bytes checking thread as needed.
 The retained bytes computation thread also cancels the context if the heap memory limit is exeeded.
-Additionaly, when the low memory trigger is invoked, all contexts on engines with at least one memory-limited context are paused together with their allocation checkers.
+Additionaly, when the low memory trigger is invoked, all memory-limited contexts are paused together with their allocation checkers.
 All individual retained size computations are cancelled.
 Retained bytes in the heap for each memory-limited context are computed by a single high-priority thread.
 
@@ -377,7 +377,7 @@ The allocated bytes checking for a context can be disabled by the `sandbox.Alloc
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the context can be triggered only by the low memory trigger.
 
 When the total number of bytes allocated in the heap for the whole host VM exceeds a certain factor of the total heap memory of the VM, [low memory notification](https://docs.oracle.com/en/java/javase/17/docs/api/java.management/java/lang/management/MemoryMXBean.html) is invoked and initiates the following process.
-The execution for all engines with at least one execution context which has the `sandbox.MaxHeapMemory` option set is paused, retained bytes in the heap for each memory-limited context are computed, contexts exceeding their limits are cancelled, and then the execution is resumed.
+The execution pauses for all execution contexts where the `sandbox.MaxHeapMemory` option is set. The execution is resumed only when retained bytes in the heap for each memory-limited context are computed and contexts exceeding their limits are cancelled.
 The default factor is 0.7. This can be configured by the `sandbox.RetainedBytesCheckFactor` option.
 The factor must be between 0.0 and 1.0. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.RetainedBytesCheckFactor`.
 
@@ -388,6 +388,8 @@ That way the low memory trigger can be used together with libraries that also se
 The described low memory trigger can be disabled by the `sandbox.UseLowMemoryTrigger` option.
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the execution context can be triggered only by the allocated bytes checker.
 All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.UseLowMemoryTrigger`.
+
+The `sandbox.UseLowMemoryTrigger` option is not supported for the ISOLATED and UNTRUSTED sandbox policies as the polyglot engine runs in a `native-image` isolate for those policies. It is also not supported on a `native-image` host regardless of the policy. The option defaults to disabled (`false`) wherever it is not supported.
 
 ### Limiting the amount of data written to standard output and error streams
 
