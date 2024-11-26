@@ -42,6 +42,7 @@ import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.PhiNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.loop.LoopEx;
 import jdk.graal.compiler.nodes.util.GraphUtil;
@@ -97,8 +98,8 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
             @Override
             protected void run(StructuredGraph graph, HighTierContext context) {
                 for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
-                    lb.disableSafepoint();
-                    lb.disableGuestSafepoint();
+                    lb.disableSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                    lb.disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
                 }
             }
 

@@ -100,8 +100,8 @@ public final class LoopEndNode extends AbstractEndNode {
         assert NumUtil.assertNonNegativeInt(idx);
         this.endIndex = idx;
         this.loopBegin = begin;
-        this.canSafepoint = begin.canEndsSafepoint;
-        this.canGuestSafepoint = begin.canEndsGuestSafepoint;
+        this.canSafepoint = begin.canEndsSafepoint();
+        this.canGuestSafepoint = begin.canEndsGuestSafepoint();
     }
 
     @Override
@@ -120,7 +120,8 @@ public final class LoopEndNode extends AbstractEndNode {
 
     /**
      * Disables safepoints for only this loop end (in contrast to disabling it for
-     * {@link LoopBeginNode#disableSafepoint() the whole loop}.
+     * {@link LoopBeginNode#disableSafepoint(jdk.graal.compiler.nodes.LoopBeginNode.SafepointState)
+     * the whole loop}.
      */
     public void disableSafepoint() {
         this.canSafepoint = false;
@@ -131,12 +132,12 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     public boolean canGuestSafepoint() {
-        assert !canGuestSafepoint || loopBegin().canEndsGuestSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
+        assert !canGuestSafepoint || loopBegin().canEndsGuestSafepoint() : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
         return this.canGuestSafepoint;
     }
 
     public boolean canSafepoint() {
-        assert !canSafepoint || loopBegin().canEndsSafepoint : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
+        assert !canSafepoint || loopBegin().canEndsSafepoint() : "When safepoints are disabled for loop begin, safepoints must be disabled for all loop ends";
         return canSafepoint;
     }
 
