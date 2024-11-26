@@ -273,7 +273,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 additionalPreOptions.add("-Wl,--gc-sections");
             }
 
-            if (!imageKind.isExecutable) {
+            if (imageKind.isImageLayer) {
                 /*
                  * We do not want interposition to affect the resolution of symbols we define and
                  * reference within this library.
