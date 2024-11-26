@@ -56,11 +56,8 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-<<<<<<< HEAD
 import java.util.Properties;
-=======
 import java.util.Queue;
->>>>>>> c23e853aa9e (Add system modules implicitly required by the application to the image builder module graph)
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.BiConsumer;
