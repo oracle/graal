@@ -21,32 +21,37 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.resolver.meta;
+package com.oracle.truffle.espresso.shared.resolver;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import java.util.Objects;
 
-public interface ClassType<C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> extends ModifiersProvider {
-    Symbol<Name> getName();
+import com.oracle.truffle.espresso.classfile.resolver.meta.FieldAccess;
+import com.oracle.truffle.espresso.classfile.resolver.meta.MethodAccess;
+import com.oracle.truffle.espresso.classfile.resolver.meta.TypeAccess;
 
-    String getJavaName();
+/**
+ * Represents a resolved call-site.
+ */
+public final class ResolvedCall<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
+    private final CallKind callKind;
+    private final M resolved;
 
-    C getSuperClass();
+    public ResolvedCall(CallKind callKind, M resolved) {
+        this.callKind = Objects.requireNonNull(callKind);
+        this.resolved = Objects.requireNonNull(resolved);
+    }
 
-    F lookupField(Symbol<Name> name, Symbol<Type> type);
+    /**
+     * Returns the resolved method.
+     */
+    public M getResolvedMethod() {
+        return resolved;
+    }
 
-    M lookupMethod(Symbol<Name> name, Symbol<Signature> signature);
-
-    M lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature);
-
-    M lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature);
-
-    boolean isAssignableFrom(C other);
-
-    default boolean isJavaLangObject() {
-        return getSuperClass() == null;
+    /**
+     * Returns the {@link CallKind kind} of call to perform at the call-site.
+     */
+    public CallKind getCallKind() {
+        return callKind;
     }
 }

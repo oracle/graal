@@ -25,10 +25,9 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.classfile.resolver.meta.MemberType;
 
-public abstract class Member<T extends Descriptor> implements ModifiersProvider,
-                com.oracle.truffle.espresso.resolver.meta.Member<Klass, Method, Field> {
+public abstract class Member<T extends Descriptor> implements MemberType<Klass, Method, Field> {
 
     public abstract Symbol<Name> getName();
 

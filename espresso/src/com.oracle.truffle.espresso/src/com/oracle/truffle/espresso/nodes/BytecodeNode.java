@@ -329,6 +329,9 @@ import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.classfile.resolver.CallKind;
+import com.oracle.truffle.espresso.classfile.resolver.FieldAccessType;
+import com.oracle.truffle.espresso.classfile.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.constantpool.CallSiteLink;
 import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.constantpool.ResolvedDynamicConstant;
@@ -376,15 +379,12 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
-import com.oracle.truffle.espresso.resolver.CallKind;
-import com.oracle.truffle.espresso.resolver.CallSiteType;
-import com.oracle.truffle.espresso.resolver.FieldAccessType;
-import com.oracle.truffle.espresso.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.SiteTypes;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;
@@ -2412,7 +2412,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         Klass symbolicRef = Resolution.getResolvedHolderKlass((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
         ResolvedCall<Klass, Method, Field> resolvedCall = getContext().getLinkResolver().resolveCallSite(getContext(),
-                        getDeclaringKlass(), resolutionSeed, CallSiteType.fromOpCode(opcode), symbolicRef);
+                        getDeclaringKlass(), resolutionSeed, SiteTypes.callSiteFromOpCode(opcode), symbolicRef);
 
         Method resolved = resolvedCall.getResolvedMethod();
         CallKind callKind = resolvedCall.getCallKind();

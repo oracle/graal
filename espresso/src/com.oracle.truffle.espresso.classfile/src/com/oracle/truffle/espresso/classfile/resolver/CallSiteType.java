@@ -21,28 +21,19 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.resolver;
+package com.oracle.truffle.espresso.shared.resolver;
 
-import java.util.Objects;
+import com.oracle.truffle.espresso.shared.classfile.bytecode.Bytecodes;
 
-import com.oracle.truffle.espresso.resolver.meta.ClassType;
-import com.oracle.truffle.espresso.resolver.meta.FieldType;
-import com.oracle.truffle.espresso.resolver.meta.MethodType;
-
-public final class ResolvedCall<C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> {
-    private final CallKind callKind;
-    private final M resolved;
-
-    public ResolvedCall(CallKind callKind, M resolved) {
-        this.callKind = Objects.requireNonNull(callKind);
-        this.resolved = Objects.requireNonNull(resolved);
-    }
-
-    public M getResolvedMethod() {
-        return resolved;
-    }
-
-    public CallKind getCallKind() {
-        return callKind;
-    }
+/**
+ * Describes the type of call-site resolution that should happen for a given call-site. For
+ * call-sites in the bytecodes, they correspond 1-to-1 to {@link Bytecodes#INVOKESTATIC},
+ * {@link Bytecodes#INVOKESPECIAL}, {@link Bytecodes#INVOKEVIRTUAL},
+ * {@link Bytecodes#INVOKEINTERFACE}.
+ */
+public enum CallSiteType {
+    Static,
+    Special,
+    Virtual,
+    Interface;
 }

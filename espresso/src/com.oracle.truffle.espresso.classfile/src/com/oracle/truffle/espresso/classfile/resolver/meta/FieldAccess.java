@@ -21,8 +21,22 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.resolver.meta;
+package com.oracle.truffle.espresso.classfile.resolver.meta;
 
-public interface FieldType<C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> extends Member<C, M, F> {
-
+/**
+ * Represents a {@link java.lang.reflect.Field}, and provides access to various runtime metadata.
+ *
+ * @param <C> The class providing access to the VM-side java {@link java.lang.Class}.
+ * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
+ * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
+ */
+public interface FieldAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F> {
+    /**
+     * Whether resolution for this field access site should enforce final field only being written
+     * in constructors or class initializer, whichever applies (see JVMS-6.5.putfield /
+     * JVMS-6.5.putstatic).
+     * <p>
+     * In particular, this check was not enforced in java bytecodes in versions prior to Java 9.
+     */
+    boolean shouldEnforceInitializerCheck();
 }

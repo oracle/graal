@@ -61,12 +61,16 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.resolver.CallSiteType;
+import com.oracle.truffle.espresso.classfile.resolver.FieldAccessType;
+import com.oracle.truffle.espresso.classfile.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -74,8 +78,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.resolver.CallSiteType;
-import com.oracle.truffle.espresso.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -501,7 +503,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
             Symbol<Signature> sig = lookupSignature(meta, desc, mhMethodId);
             Method m = ctx.getLinkResolver().resolveMethodSymbol(ctx, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
-            ResolvedCall<Klass, Method, Field> resolvedCall = ctx.getLinkResolver().resolveCallSite(ctx, callerKlass, m, CallSiteType.fromRefKind(refKind), resolutionKlass);
+            ResolvedCall<Klass, Method, Field> resolvedCall = ctx.getLinkResolver().resolveCallSite(ctx, callerKlass, m, SiteTypes.callSiteFromRefKind(refKind), resolutionKlass);
 
             plantResolvedMethod(memberName, resolvedCall, meta);
 
@@ -712,6 +714,73 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     // endregion Helper methods
+
+    public static final class SiteTypes {
+        public static CallSiteType callSiteFromOpCode(int opcode) {
+            switch (opcode) {
+                case Bytecodes.INVOKESTATIC:
+                    return CallSiteType.Static;
+                case Bytecodes.INVOKESPECIAL:
+                    return CallSiteType.Special;
+                case Bytecodes.INVOKEVIRTUAL:
+                    return CallSiteType.Virtual;
+                case Bytecodes.INVOKEINTERFACE:
+                    return CallSiteType.Interface;
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(opcode));
+            }
+        }
+
+        public static CallSiteType callSiteFromRefKind(int refKind) {
+            switch (refKind) {
+                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual:
+                    return CallSiteType.Virtual;
+                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic:
+                    return CallSiteType.Static;
+                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial: // fallthrough
+                case com.oracle.truffle.espresso.classfile.Constants.REF_newInvokeSpecial:
+                    return CallSiteType.Special;
+                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface:
+                    return CallSiteType.Interface;
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("refKind: " + refKind);
+            }
+        }
+
+        public static FieldAccessType fieldAccessFromOpCode(int opcode) {
+            switch (opcode) {
+                case Bytecodes.GETSTATIC:
+                    return FieldAccessType.GetStatic;
+                case Bytecodes.PUTSTATIC:
+                    return FieldAccessType.PutStatic;
+                case Bytecodes.GETFIELD:
+                    return FieldAccessType.GetInstance;
+                case Bytecodes.PUTFIELD:
+                    return FieldAccessType.PutInstance;
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(opcode));
+            }
+        }
+
+        public static FieldAccessType fieldAccessFromRefKind(int refKind) {
+            switch (refKind) {
+                case com.oracle.truffle.espresso.classfile.Constants.REF_getField:
+                    return FieldAccessType.GetInstance;
+                case com.oracle.truffle.espresso.classfile.Constants.REF_getStatic:
+                    return FieldAccessType.GetStatic;
+                case com.oracle.truffle.espresso.classfile.Constants.REF_putField:
+                    return FieldAccessType.PutInstance;
+                case com.oracle.truffle.espresso.classfile.Constants.REF_putStatic:
+                    return FieldAccessType.PutStatic;
+                default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("refkind: " + refKind);
+            }
+        }
+    }
 
     /**
      * Compile-time constants go here. This collection exists not only for reference from clients,

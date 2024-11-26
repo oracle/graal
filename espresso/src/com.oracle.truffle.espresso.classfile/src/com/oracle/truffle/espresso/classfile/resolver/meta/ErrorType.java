@@ -21,18 +21,17 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.resolver.meta;
+package com.oracle.truffle.espresso.classfile.resolver.meta;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
 
-public interface MethodType<C extends ClassType<C, M, F>, M extends MethodType<C, M, F>, F extends FieldType<C, M, F>> extends Member<C, M, F> {
-    Symbol<Name> getName();
-
-    Symbol<Signature> getRawSignature();
-
-    boolean isConstructor();
-
-    boolean isClassInitializer();
+/**
+ * The errors that can happen during
+ * {@link LinkResolver resolution}.
+ */
+public enum ErrorType {
+    IllegalAccessError,
+    NoSuchFieldError,
+    NoSuchMethodError,
+    IncompatibleClassChangeError;
 }
