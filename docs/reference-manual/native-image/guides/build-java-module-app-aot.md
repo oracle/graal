@@ -48,7 +48,7 @@ Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-1. Download or clone the demos repository and navigate to the directory _native-hello-module/_:
+1. Download or clone the demos repository and navigate to the directory _native-image/build-java-modules/_:
     ```bash
     git clone https://github.com/graalvm/graalvm-demos
     ```
@@ -58,7 +58,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 2. Compile and package the project with Maven:
     ```bash
-    mvn package
+    mvn clean package
     ```
 
 3. Test running it on the GraalVM JDK:

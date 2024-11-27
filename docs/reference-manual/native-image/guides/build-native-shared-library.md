@@ -154,9 +154,9 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 4. Compile _main.c_ using the `clang` compiler available on your system:
     ```shell
-    clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
+    clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c
     ```
-    It creates an executable file _main_.
+    It creates an executable file `main`.
 
 5. Run the C application by passing a string as an argument. For example:
     ```shell
