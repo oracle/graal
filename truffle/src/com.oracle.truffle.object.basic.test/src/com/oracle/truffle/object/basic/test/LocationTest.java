@@ -42,13 +42,16 @@ package com.oracle.truffle.object.basic.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.object.DynamicObject;
@@ -63,12 +66,27 @@ import com.oracle.truffle.object.ShapeImpl;
 @RunWith(Parameterized.class)
 public class LocationTest extends AbstractParametrizedLibraryTest {
 
-    @Parameters(name = "{0}")
-    public static List<TestRun> data() {
-        return Arrays.asList(TestRun.values());
+    @Parameter(1) public boolean useLookup;
+
+    @Parameters(name = "{0},{1}")
+    public static List<Object[]> data() {
+        return Arrays.stream(TestRun.values()).flatMap(run -> List.of(Boolean.FALSE, Boolean.TRUE).stream().map(lookup -> new Object[]{run, lookup})).toList();
     }
 
-    final Shape rootShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).build();
+    Shape rootShape;
+
+    @Before
+    public void setup() {
+        rootShape = makeRootShape();
+    }
+
+    private Shape makeRootShape() {
+        if (useLookup) {
+            return Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
+        } else {
+            return Shape.newBuilder().layout(TestDynamicObjectDefault.class).build();
+        }
+    }
 
     private DynamicObject newInstance() {
         return new TestDynamicObjectDefault(rootShape);
