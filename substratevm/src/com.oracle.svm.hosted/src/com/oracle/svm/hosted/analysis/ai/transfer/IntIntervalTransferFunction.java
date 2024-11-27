@@ -9,9 +9,13 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
+import jdk.graal.compiler.nodes.calc.FloatDivNode;
+import jdk.graal.compiler.nodes.calc.IntegerDivRemNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 import jdk.graal.compiler.nodes.calc.MulNode;
+import jdk.graal.compiler.nodes.calc.RemNode;
+import jdk.graal.compiler.nodes.calc.SignedFloatingIntegerDivNode;
 import jdk.graal.compiler.nodes.calc.SubNode;
 import jdk.graal.compiler.nodes.PhiNode;
 
@@ -74,6 +78,8 @@ public record IntIntervalTransferFunction() implements TransferFunction<IntInter
             case AddNode addNode -> x.add(y);
             case SubNode subNode -> x.sub(y);
             case MulNode mulNode -> x.mul(y);
+            case FloatDivNode divNode -> x.div(y);
+            case RemNode remNode -> x.rem(y);
             default -> result;
         };
     }
