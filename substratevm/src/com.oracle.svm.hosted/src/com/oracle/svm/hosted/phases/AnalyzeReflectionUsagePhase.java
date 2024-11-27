@@ -82,7 +82,9 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
                 if (nspToShow != null) {
                     int bci = nspToShow.getBCI();
-                    AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getMethod().asStackTraceElement(bci).toString());
+                    if (!AnalyzeReflectionUsageSupport.instance().containsFoldEntry(bci, nspToShow.getMethod())) {
+                        AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getMethod().asStackTraceElement(bci).toString());
+                    }
                 }
             }
         }

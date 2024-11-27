@@ -30,6 +30,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.json.JsonBuilder;
 import jdk.graal.compiler.util.json.JsonWriter;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.io.IOException;
@@ -38,14 +39,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class AnalyzeReflectionUsageSupport {
     private final Map<String, List<String>> reflectiveCalls;
     private final Set<String> jarPaths;
+    private final Set<FoldEntry> foldEntries = ConcurrentHashMap.newKeySet();
     private static final String ARTIFACT_FILE_NAME = "reflection-usage.json";
 
     public AnalyzeReflectionUsageSupport() {
@@ -109,5 +113,50 @@ public final class AnalyzeReflectionUsageSupport {
 
     public Set<String> getJarPaths() {
         return jarPaths;
+    }
+
+    public Set<FoldEntry> getFoldEntries() {
+        return this.foldEntries;
+    }
+
+    /*
+     * Support data structure used to keep track of reflective calls which don't require metadata, but can't be folded.
+     */
+    public static class FoldEntry {
+        public FoldEntry(int bci, ResolvedJavaMethod method) {
+            this.bci = bci;
+            this.method = method;
+        }
+
+        int bci;
+        ResolvedJavaMethod method;
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+            FoldEntry other = (FoldEntry) obj;
+            return bci == other.bci && Objects.equals(method, other.method);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(bci, method);
+        }
+    }
+
+    public void addFoldEntry(int bci, ResolvedJavaMethod method) {
+        this.foldEntries.add(new FoldEntry(bci, method));
+    }
+
+    /*
+     * If a fold entry exists for the given method, the method should be ignored by the analysis phase.
+     */
+    public boolean containsFoldEntry(int bci, ResolvedJavaMethod method) {
+        return this.foldEntries.contains(new FoldEntry(bci, method));
     }
 }
