@@ -104,7 +104,7 @@ public class CGlobalDataFeature implements InternalFeature {
         return ImageSingletons.lookup(CGlobalDataFeature.class);
     }
 
-    private boolean isLayouted() {
+    private boolean isLaidOut() {
         return totalSize != -1;
     }
 
@@ -187,7 +187,7 @@ public class CGlobalDataFeature implements InternalFeature {
 
     public CGlobalDataInfo registerAsAccessedOrGet(CGlobalData<?> obj) {
         CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) obj;
-        VMError.guarantee(!isLayouted() || map.containsKey(data), "CGlobalData instance must have been discovered/registered before or during analysis");
+        VMError.guarantee(!isLaidOut() || map.containsKey(data), "CGlobalData instance must have been discovered/registered before or during analysis");
         return map.computeIfAbsent((CGlobalDataImpl<?>) obj,
                         o -> {
                             CGlobalDataInfo cGlobalDataInfo = new CGlobalDataInfo(data);
@@ -260,7 +260,7 @@ public class CGlobalDataFeature implements InternalFeature {
     }
 
     private void layout() {
-        assert !isLayouted() : "Already layouted";
+        assert !isLaidOut() : "Already laid out";
         final int wordSize = ConfigurationValues.getTarget().wordSize;
         /*
          * Put larger blobs at the end so that offsets are reasonable (<24bit imm) for smaller
@@ -275,11 +275,11 @@ public class CGlobalDataFeature implements InternalFeature {
                             int nextOffset = currentOffset + info.getSize();
                             return (nextOffset + (wordSize - 1)) & ~(wordSize - 1); // align
                         }, Integer::sum);
-        assert isLayouted();
+        assert isLaidOut();
     }
 
     public int getSize() {
-        assert isLayouted() : "Not layouted yet";
+        assert isLaidOut() : "Not laid out yet";
         return totalSize;
     }
 
@@ -288,7 +288,7 @@ public class CGlobalDataFeature implements InternalFeature {
     }
 
     public void writeData(RelocatableBuffer buffer, SymbolConsumer createSymbol, SymbolConsumer createSymbolReference) {
-        assert isLayouted() : "Not layouted yet";
+        assert isLaidOut() : "Not laid out yet";
         ByteBuffer bufferBytes = buffer.getByteBuffer();
         int start = bufferBytes.position();
         assert IntStream.range(start, start + totalSize).allMatch(i -> bufferBytes.get(i) == 0) : "Buffer must be zero-initialized";
