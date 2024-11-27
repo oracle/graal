@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,9 +61,9 @@ public final class JfrOldObject implements UninterruptibleComparable, Uninterrup
 
     @SuppressWarnings("hiding")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    void initialize(Object obj, UnsignedWord allocatedSize, long threadId, long stackTraceId, UnsignedWord heapUsedAfterLastGC, int arrayLength) {
+    void initialize(Object obj, UnsignedWord span, UnsignedWord allocatedSize, long threadId, long stackTraceId, UnsignedWord heapUsedAfterLastGC, int arrayLength) {
         ReferenceInternals.setReferent(reference, obj);
-        this.span = allocatedSize;
+        this.span = span;
         this.objectSize = allocatedSize;
         this.allocationTicks = JfrTicks.elapsedTicks();
         this.threadId = threadId;
