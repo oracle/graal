@@ -111,6 +111,10 @@ The newly built GraalVM image containing libgraal is shown by:
 ```bash
 $ mx --env libgraal graalvm-home
 ```
+or by following this symlink:
+```bash
+$ ./latest_graalvm_home
+```
 
 For more information about building Native Images, see the [README file of the vm suite](../vm/README.md).
 
