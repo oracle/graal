@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.ClassInclusionPolicy;
@@ -60,6 +61,7 @@ import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inflation {
 
@@ -67,6 +69,14 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     private final DynamicHubInitializer dynamicHubInitializer;
     private final CustomTypeFieldHandler customTypeFieldHandler;
     private final CallChecker callChecker;
+
+    /**
+     * Track the fallback methods created so that they are unique.
+     */
+    private final ConcurrentHashMap<FallbackDescriptor, IncompatibleClassChangeFallbackMethod> fallbackMethods = new ConcurrentHashMap<>();
+
+    record FallbackDescriptor(AnalysisType resolvingType, String name, Signature signature) {
+    }
 
     @SuppressWarnings("this-escape")
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe,
@@ -206,7 +216,10 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  */
                 return method;
             }
-            return getUniverse().lookup(new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
+
+            var uniqueFallbackMethod = fallbackMethods.computeIfAbsent(new FallbackDescriptor(resolvingType, method.getName(), method.getSignature()),
+                            (k) -> new IncompatibleClassChangeFallbackMethod(resolvingType.getWrapped(), method.getWrapped(), findResolutionError(resolvingType, method.getJavaMethod())));
+            return getUniverse().lookup(uniqueFallbackMethod);
         }
         return super.fallbackResolveConcreteMethod(resolvingType, method);
     }
