@@ -1553,23 +1553,23 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
 mx_benchmark.add_bm_suite(BaristaBenchmarkSuite())
 
-# GR-59934 Enable [als, dec-tree, log-regression, naive-bayes]
+
 _renaissanceConfig = {
     "akka-uct"         : 24,
-    "als"              : -1,
+    "als"              : 60,
     "chi-square"       : 60,
     "db-shootout"      : 16,
-    "dec-tree"         : -1,
+    "dec-tree"         : 40,
     "dotty"            : 50,
     "finagle-chirper"  : 90,
     "finagle-http"     : 12,
     "fj-kmeans"        : 30,
     "future-genetic"   : 50,
     "gauss-mix"        : 40,
-    "log-regression"   : -1,
+    "log-regression"   : 20,
     "mnemonics"        : 16,
     "movie-lens"       : 20,
-    "naive-bayes"      : -1,
+    "naive-bayes"      : 30,
     "neo4j-analytics"  : 20,
     "page-rank"        : 20,
     "par-mnemonics"    : 16,
@@ -1617,6 +1617,13 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["gauss-mix"]
             del benchmarks["page-rank"]
             del benchmarks["movie-lens"]
+            if mx.get_jdk().javaCompliance >= '24':
+                # JEP 486 Security Manager removal causes the following benchmarks to fail unconditionally.
+                # See https://github.com/renaissance-benchmarks/renaissance/pull/453 for a temporary fix.
+                del benchmarks["als"]
+                del benchmarks["dec-tree"]
+                del benchmarks["log-regression"]
+                del benchmarks["naive-bayes"]
 
         return benchmarks
 
@@ -1627,7 +1634,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["0.14.1", "0.15.0"]
+        return ["0.14.1", "0.15.0", "0.16.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
