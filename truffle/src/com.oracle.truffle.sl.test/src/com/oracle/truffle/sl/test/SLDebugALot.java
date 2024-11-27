@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ import org.junit.Test;
 /**
  * Basic test of debug-a-lot instrument applied to simple language.
  */
-public class SLDebugALot {
+public class SLDebugALot extends AbstractSLTest {
 
     private final Source slCode = Source.create("sl", "function main() {\n" +
                     "  n = 2;\n" +
@@ -92,8 +92,8 @@ public class SLDebugALot {
 
     @Test
     public void test() {
-        try (Engine engine = Engine.newBuilder().out(out).err(err).allowExperimentalOptions(true).option("debugalot", "true").build()) {
-            try (Context context = Context.newBuilder().engine(engine).build()) {
+        try (Engine engine = newEngineBuilder().out(out).err(err).allowExperimentalOptions(true).option("debugalot", "true").build()) {
+            try (Context context = newContextBuilder().engine(engine).build()) {
                 context.eval(slCode);
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -144,7 +144,6 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SDIV;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STLR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STLXR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
-import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STXR;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SUB;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.SUBS;
@@ -1816,7 +1815,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert destSize == 8 || destSize == 16 || destSize == 32 || destSize == 64 : destSize;
         assert verifyRegistersZ(rt);
 
-        loadStoreInstruction(STR, rt, address, false, getLog2TransferSize(destSize));
+        loadStoreInstruction(Instruction.STR, rt, address, false, getLog2TransferSize(destSize));
     }
 
     private void loadStoreInstruction(Instruction instr, Register reg, AArch64Address address, boolean isFP, int log2TransferSize) {
@@ -3281,7 +3280,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128 : size;
         assert verifyRegistersF(rt);
 
-        loadStoreInstruction(STR, rt, address, true, getLog2TransferSize(size));
+        loadStoreInstruction(Instruction.STR, rt, address, true, getLog2TransferSize(size));
     }
 
     /**

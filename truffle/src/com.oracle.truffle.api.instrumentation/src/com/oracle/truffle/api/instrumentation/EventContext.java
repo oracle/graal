@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -142,7 +141,7 @@ public final class EventContext {
      */
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == null) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new NullPointerException();
         }
         Node node = getInstrumentedNode();
@@ -211,8 +210,7 @@ public final class EventContext {
      * @since 0.12
      */
     public Node getInstrumentedNode() {
-        WrapperNode wrapper = probeNode.findWrapper();
-        return wrapper != null ? wrapper.getDelegateNode() : null;
+        return (Node) probeNode.findInstrumentableNode();
     }
 
     /**

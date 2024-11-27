@@ -54,7 +54,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_TypeLiteral {
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject foreignObject,
                         int typeArgumentIndex,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached GetTypeLiteralNode getTypeLiteralNode,
                         @Cached InlinedBranchProfile notValidForeign,
                         @Cached InlinedBranchProfile invalidIndex) {

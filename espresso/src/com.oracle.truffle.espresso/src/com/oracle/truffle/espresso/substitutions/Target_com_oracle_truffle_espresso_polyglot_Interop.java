@@ -198,7 +198,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -254,7 +254,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(String.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -465,7 +465,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static byte doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -495,7 +495,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static short doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -525,7 +525,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static int doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -555,7 +555,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static long doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -585,7 +585,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static float doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -615,7 +615,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static double doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -646,7 +646,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(BigInteger.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -728,7 +728,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(RuntimeException.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -760,7 +760,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ExceptionType;")
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -806,7 +806,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile error) {
@@ -842,7 +842,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static int doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile error) {
@@ -899,7 +899,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -960,7 +960,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary messageInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1027,7 +1027,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary stackTraceInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1097,7 +1097,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1129,7 +1129,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static long doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -1195,7 +1195,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         long index,
                         @JavaType(Object.class) StaticObject value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1251,7 +1251,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static void doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -1418,7 +1418,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary metaObjectInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1522,7 +1522,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary qualifiedNameInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1560,7 +1560,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary simpleNameInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1601,7 +1601,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject instance,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -1723,7 +1723,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static int doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -1799,7 +1799,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary membersInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -1873,7 +1873,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(String.class) StaticObject member,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberValueInterop,
@@ -1979,7 +1979,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(String.class) StaticObject member,
                         @JavaType(Object.class) StaticObject value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
@@ -2056,7 +2056,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static void doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(String.class) StaticObject member,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary memberInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -2130,7 +2130,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(String.class) StaticObject member,
                         @JavaType(Object[].class) StaticObject arguments,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
@@ -2183,7 +2183,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(String.class) StaticObject member,
                         @JavaType(Object[].class) StaticObject arguments,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Bind("getMeta()") Meta meta,
@@ -2330,7 +2330,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static long doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -2422,7 +2422,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object[].class) StaticObject arguments,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
@@ -2502,7 +2502,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object[].class) StaticObject arguments,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -2566,7 +2566,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary executableNameInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -2629,7 +2629,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary declaringMetaObjectInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -2702,7 +2702,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static long doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -2746,7 +2746,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -2772,7 +2772,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * <p>
      * Throws UnsupportedMessageException if and only if
      * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
-     * 
+     *
      * @since 24.0
      */
     @Substitution
@@ -2793,7 +2793,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(byte[].class) StaticObject destination,
                         int destinationOffset,
                         int length,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile unexpectedExceptionProfile,
@@ -2848,7 +2848,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static byte doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -2894,7 +2894,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         long byteOffset,
                         byte value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -2947,7 +2947,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3002,7 +3002,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         short value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3060,7 +3060,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3115,7 +3115,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         int value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3172,7 +3172,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3227,7 +3227,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         long value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3284,7 +3284,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3339,7 +3339,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         float value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3396,7 +3396,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3451,7 +3451,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(ByteOrder.class) StaticObject order,
                         long byteOffset,
                         double value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile,
@@ -3521,7 +3521,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -3589,7 +3589,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -3637,7 +3637,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
@@ -3716,7 +3716,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @Specialization
         static long doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached InlinedBranchProfile exceptionProfile) {
@@ -3792,7 +3792,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -3843,7 +3843,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @JavaType(Object.class) StaticObject defaultValue,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -4000,7 +4000,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @JavaType(Object.class) StaticObject value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -4088,7 +4088,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static void doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
@@ -4169,7 +4169,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -4207,7 +4207,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -4245,7 +4245,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
@@ -4288,7 +4288,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static Object[] doEspressoNoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             return arguments.<StaticObject[]> unwrap(EspressoLanguage.get(node));
         }
 
@@ -4299,7 +4299,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         static Object[] doEspressoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             EspressoLanguage language = EspressoLanguage.get(node);
             Object[] rawArgs = arguments.unwrap(language);
             if (rawArgs.length == 0) {
@@ -4321,7 +4321,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object[].class) StaticObject arguments,
                         @Cached(inline = false) GetArraySize getArraySize,
                         @Cached(inline = false) ReadArrayElement readArrayElement,
-                        @Bind("$node") Node node) {
+                        @Bind Node node) {
             EspressoLanguage language = EspressoLanguage.get(node);
             int argsLength = Math.toIntExact(getArraySize.execute(arguments));
             if (argsLength == 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,5 +52,18 @@ public abstract class CodeTypeElementFactory<M> {
     public abstract List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, M m);
 
     protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
+
+    /**
+     * Factory that produces nothing. Can be used in an {@link AnnotationProcessor} that only
+     * performs validation (and no code generation).
+     */
+    public static <M> CodeTypeElementFactory<M> noOpFactory() {
+        return new CodeTypeElementFactory<>() {
+            @Override
+            public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, M m) {
+                return null;
+            }
+        };
+    }
 
 }

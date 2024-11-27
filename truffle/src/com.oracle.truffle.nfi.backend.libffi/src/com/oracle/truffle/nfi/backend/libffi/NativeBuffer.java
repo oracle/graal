@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,7 +101,7 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         byte readBufferByte(long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             if (Long.compareUnsigned(offset, content.length) >= 0) {
                 exception.enter(node);
@@ -112,7 +112,7 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         void readBuffer(long offset, byte[] destination, int destinationOffset, int length,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(ByteOrder.BIG_ENDIAN);
             System.arraycopy(content, check(support, offset, length, exception, node), destination, destinationOffset, length);
@@ -137,7 +137,7 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         short readBufferShort(ByteOrder order, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
             return support.getShort(content, check(support, offset, Short.BYTES, exception, node));
@@ -145,7 +145,7 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         int readBufferInt(ByteOrder order, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
             return support.getInt(content, check(support, offset, Integer.BYTES, exception, node));
@@ -153,7 +153,7 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         long readBufferLong(ByteOrder order, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
             return support.getLong(content, check(support, offset, Long.BYTES, exception, node));
@@ -161,7 +161,7 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         float readBufferFloat(ByteOrder order, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
             return support.getFloat(content, check(support, offset, Float.BYTES, exception, node));
@@ -169,7 +169,7 @@ abstract class NativeBuffer implements TruffleObject {
 
         @ExportMessage
         double readBufferDouble(ByteOrder order, long offset,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("exception") @Cached InlinedBranchProfile exception) throws InvalidBufferOffsetException {
             ByteArraySupport support = byteArraySupport(order);
             return support.getDouble(content, check(support, offset, Double.BYTES, exception, node));

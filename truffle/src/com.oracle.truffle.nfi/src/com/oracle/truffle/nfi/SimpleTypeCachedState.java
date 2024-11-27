@@ -203,7 +203,7 @@ final class SimpleTypeCachedState {
         @Specialization(guards = "arg != null")
         Object doObject(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary(limit = "1") BackendNativePointerLibrary library,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedConditionProfile isPointerProfile) {
             try {
                 return isPointerProfile.profile(node, library.isPointer(arg)) ? NFIPointer.create(library.asPointer(arg)) : arg;
@@ -239,7 +239,7 @@ final class SimpleTypeCachedState {
         @GenerateAOT.Exclude
         static byte doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInByte(arg)) {
@@ -314,7 +314,7 @@ final class SimpleTypeCachedState {
         @GenerateAOT.Exclude
         static short doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInShort(arg)) {
@@ -389,7 +389,7 @@ final class SimpleTypeCachedState {
         @GenerateAOT.Exclude
         static int doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInInt(arg)) {
@@ -464,7 +464,7 @@ final class SimpleTypeCachedState {
         @GenerateAOT.Exclude
         static long doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInLong(arg)) {
@@ -521,7 +521,7 @@ final class SimpleTypeCachedState {
         @GenerateAOT.Exclude
         static float doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInDouble(arg)) {
@@ -573,7 +573,7 @@ final class SimpleTypeCachedState {
         @GenerateAOT.Exclude
         static double doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInDouble(arg)) {

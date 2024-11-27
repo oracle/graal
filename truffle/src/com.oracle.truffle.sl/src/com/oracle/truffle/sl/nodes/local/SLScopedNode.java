@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLAstRootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
@@ -119,7 +120,7 @@ public abstract class SLScopedNode extends Node {
         if (blockNode instanceof SLBlockNode) {
             return new VariablesObject(frame, cachedNode, nodeEnter, (SLBlockNode) blockNode);
         } else {
-            return new ArgumentsObject(frame, (SLRootNode) blockNode);
+            return new ArgumentsObject(frame, (SLAstRootNode) blockNode);
         }
     }
 
@@ -224,12 +225,12 @@ public abstract class SLScopedNode extends Node {
         static int LIMIT = 3;
 
         private final Frame frame;
-        protected final SLRootNode root;
+        protected final SLAstRootNode root;
 
         /**
          * The arguments depend on the current frame and root node.
          */
-        ArgumentsObject(Frame frame, SLRootNode root) {
+        ArgumentsObject(Frame frame, SLAstRootNode root) {
             this.frame = frame;
             this.root = root;
         }

@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.chromeinspector.test;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
@@ -36,13 +37,25 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * Test of the provided inspector TruffleObject.
  */
+@RunWith(Parameterized.class)
 public class InspectorObjectTest {
+
+    @Parameters(name = "useBytecode={0}")
+    public static List<Boolean> getParameters() {
+        return List.of(false, true);
+    }
+
+    @Parameter(0) public Boolean useBytecode;
 
     private static final String NL = System.lineSeparator();
 
@@ -54,7 +67,7 @@ public class InspectorObjectTest {
     @Before
     public void setUp() {
         out = new ByteArrayOutputStream();
-        context = Context.newBuilder().out(out).err(out).build();
+        context = Context.newBuilder().out(out).err(out).option("sl.UseBytecode", Boolean.toString(useBytecode)).build();
         Instrument inspect = context.getEngine().getInstruments().get("inspect");
         inspector = inspect.lookup(TruffleObject.class);
         try (ServerSocket testSocket = new ServerSocket(0)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.nodes.expression;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -65,43 +66,44 @@ import com.oracle.truffle.sl.runtime.SLNull;
  * {@link SLLogicalNotNode negate} the {@code ==} operator.
  */
 @NodeInfo(shortName = "==")
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLEqualNode extends SLBinaryNode {
 
     @Specialization
-    protected boolean doLong(long left, long right) {
+    public static boolean doLong(long left, long right) {
         return left == right;
     }
 
     @Specialization
     @TruffleBoundary
-    protected boolean doBigNumber(SLBigInteger left, SLBigInteger right) {
+    public static boolean doBigNumber(SLBigInteger left, SLBigInteger right) {
         return left.equals(right);
     }
 
     @Specialization
-    protected boolean doBoolean(boolean left, boolean right) {
+    public static boolean doBoolean(boolean left, boolean right) {
         return left == right;
     }
 
     @Specialization
-    protected boolean doString(String left, String right) {
+    public static boolean doString(String left, String right) {
         return left.equals(right);
     }
 
     @Specialization
-    protected boolean doTruffleString(TruffleString left, TruffleString right,
+    public static boolean doTruffleString(TruffleString left, TruffleString right,
                     @Cached TruffleString.EqualNode equalNode) {
         return equalNode.execute(left, right, SLLanguage.STRING_ENCODING);
     }
 
     @Specialization
-    protected boolean doNull(SLNull left, SLNull right) {
+    public static boolean doNull(SLNull left, SLNull right) {
         /* There is only the singleton instance of SLNull, so we do not need equals(). */
         return left == right;
     }
 
     @Specialization
-    protected boolean doFunction(SLFunction left, Object right) {
+    public static boolean doFunction(SLFunction left, Object right) {
         /*
          * Our function registry maintains one canonical SLFunction object per function name, so we
          * do not need equals().
@@ -124,7 +126,7 @@ public abstract class SLEqualNode extends SLBinaryNode {
      * replace the previous specializations, as they are still more efficient in the interpeter.
      */
     @Specialization(limit = "4")
-    public boolean doGeneric(Object left, Object right,
+    public static boolean doGeneric(Object left, Object right,
                     @CachedLibrary("left") InteropLibrary leftInterop,
                     @CachedLibrary("right") InteropLibrary rightInterop) {
         /*

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.function.Function;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
@@ -67,7 +66,7 @@ import com.oracle.truffle.tck.DebuggerTester;
 /**
  * Test of host interop in debugger: {@link DebuggerSession#setShowHostStackFrames(boolean)}.
  */
-public class SLJavaInteropDebugTest {
+public class SLJavaInteropDebugTest extends AbstractSLTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -78,7 +77,7 @@ public class SLJavaInteropDebugTest {
 
     @Before
     public void before() {
-        tester = new DebuggerTester(Context.newBuilder().allowAllAccess(true));
+        tester = new DebuggerTester(newContextBuilder().allowAllAccess(true));
     }
 
     @After
@@ -237,7 +236,7 @@ public class SLJavaInteropDebugTest {
                 assertEquals(frameInfo[frameInfoIndex], element.getName());
                 Integer line = (Integer) frameInfo[frameInfoIndex + 2];
                 if (line != null && frameInfoIndex > 0) {
-                    assertEquals((int) line, element.getSourceSection().getStartLine());
+                    assertEquals("Invalid line in stack trace at index " + frameInfoIndex + ".", (int) line, element.getSourceSection().getStartLine());
                 } else {
                     assertNull(element.getSourceSection());
                 }

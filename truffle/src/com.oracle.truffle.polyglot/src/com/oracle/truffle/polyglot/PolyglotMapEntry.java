@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -283,7 +283,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings({"unused", "truffle-static-method"})
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @Bind("this") Node node,
+                            @Bind Node node,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached PolyglotToHostNode toHost,
                             @Cached InlinedBranchProfile error) {

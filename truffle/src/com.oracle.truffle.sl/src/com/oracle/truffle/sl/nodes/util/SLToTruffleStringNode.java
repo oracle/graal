@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,7 +81,7 @@ public abstract class SLToTruffleStringNode extends Node {
     public abstract TruffleString execute(Node node, Object value);
 
     @Specialization
-    protected static TruffleString fromNull(@SuppressWarnings("unused") SLNull value) {
+    public static TruffleString fromNull(@SuppressWarnings("unused") SLNull value) {
         return SLStrings.NULL;
     }
 
@@ -93,12 +93,12 @@ public abstract class SLToTruffleStringNode extends Node {
     }
 
     @Specialization
-    protected static TruffleString fromTruffleString(TruffleString value) {
+    public static TruffleString fromTruffleString(TruffleString value) {
         return value;
     }
 
     @Specialization
-    protected static TruffleString fromBoolean(boolean value) {
+    public static TruffleString fromBoolean(boolean value) {
         return value ? TRUE : FALSE;
     }
 
@@ -117,12 +117,12 @@ public abstract class SLToTruffleStringNode extends Node {
     }
 
     @Specialization
-    protected static TruffleString fromFunction(SLFunction value) {
+    public static TruffleString fromFunction(SLFunction value) {
         return value.getName();
     }
 
     @Specialization(limit = "LIMIT")
-    protected static TruffleString fromInterop(Object value,
+    public static TruffleString fromInterop(Object value,
                     @CachedLibrary("value") InteropLibrary interop,
                     @Shared("fromLong") @Cached(inline = false) TruffleString.FromLongNode fromLongNode,
                     @Shared("fromJava") @Cached(inline = false) TruffleString.FromJavaStringNode fromJavaStringNode) {

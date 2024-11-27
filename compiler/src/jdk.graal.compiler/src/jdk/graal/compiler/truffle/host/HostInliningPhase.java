@@ -512,7 +512,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                  */
                 boolean forceShallowInline = context.isBytecodeSwitch && (caller.forceShallowInline || caller.parent == null) && isBytecodeInterpreterSwitch(context.env, invoke.getTargetMethod());
 
-                double frequency = context.isFrequencyCutoffEnabled() ? block.getRelativeFrequency() : 1.0d;
+                double frequency = (!forceShallowInline && context.isFrequencyCutoffEnabled()) ? block.getRelativeFrequency() : 1.0d;
                 CallTree callee = new CallTree(caller, invoke, deoptimized, unwind, inInterpreter, forceShallowInline, frequency);
                 children.add(callee);
 
@@ -953,10 +953,6 @@ public class HostInliningPhase extends AbstractInliningPhase {
             /*
              * Always force inline bytecode switches into bytecode switches.
              */
-            if (call.frequency <= context.minimumFrequency) {
-                call.reason = "frequency < minimumFrequency";
-                return false;
-            }
             return true;
         }
 

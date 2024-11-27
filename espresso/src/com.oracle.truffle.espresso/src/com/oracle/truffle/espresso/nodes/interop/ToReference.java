@@ -346,7 +346,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isStaticObject(value)"
         })
         public static StaticObject doMappedInterface(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
@@ -387,7 +387,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isStaticObject(value)"
         })
         public static StaticObject doTypeConverter(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Exclusive LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached @Shared InlinedBranchProfile errorProfile,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop) throws UnsupportedTypeException {
@@ -422,7 +422,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isStaticObject(value)"
         })
         public static StaticObject doInternalTypeConverter(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Exclusive LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
                         @Cached @Exclusive ToReference.DynamicToReference converterToEspresso,
                         @Cached @Shared InlinedBranchProfile errorProfile,
@@ -449,7 +449,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isStaticObject(value)"
         })
         public static StaticObject doBuiltinTypeConverter(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached @Exclusive LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached @Exclusive ProxyInstantiateNode proxyInstantiatorNode,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
@@ -479,7 +479,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isTypeMappingEnabled(targetType)"
         })
         public static StaticObject doGeneric(Object value, EspressoType targetType,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupInternalTypeConverterNode lookupInternalTypeConverterNode,
@@ -1194,7 +1194,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isBoxedPrimitive(value)"
         })
         static StaticObject doForeignException(Object value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Bind("get(node)") EspressoContext context,
                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
@@ -2590,7 +2590,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isStaticObject(value)"
         })
         static StaticObject doForeignWrapper(Object value,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Bind("get(node)") EspressoContext context,
                         @Bind("targetType") EspressoType target,

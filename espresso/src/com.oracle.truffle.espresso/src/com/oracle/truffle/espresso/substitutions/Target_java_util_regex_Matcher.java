@@ -150,7 +150,7 @@ public final class Target_java_util_regex_Matcher {
                         @Bind("getMeta()") Meta meta,
                         @Bind("getRegexObject(self, anchor, meta)") Object regexObject,
                         @Shared("exec") @Cached JavaRegexExecNode javaRegexExecNode,
-                        @Bind("this") Node node) {
+                        @Bind Node node) {
             assert getContext().regexSubstitutionsEnabled();
             meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
             meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, getMatchAction(anchor));
@@ -163,7 +163,7 @@ public final class Target_java_util_regex_Matcher {
                         @Bind("context.getMeta()") Meta meta,
                         @Shared("exec") @Cached JavaRegexExecNode javaRegexExecNode,
                         @Cached JavaRegexCompileNode javaRegexCompileNode,
-                        @Bind("this") Node node) {
+                        @Bind Node node) {
             assert context.regexSubstitutionsEnabled();
             RegexAction action = getMatchAction(anchor);
             meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
@@ -242,7 +242,7 @@ public final class Target_java_util_regex_Matcher {
                         @Bind("getMeta()") Meta meta,
                         @Bind("getRegexSearchObject(self, meta)") Object regexObject,
                         @Shared("exec") @Cached JavaRegexExecNode javaRegexExecNode,
-                        @Bind("this") Node node) {
+                        @Bind Node node) {
             assert getContext().regexSubstitutionsEnabled();
             meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
             meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, RegexAction.Search);
@@ -261,7 +261,7 @@ public final class Target_java_util_regex_Matcher {
                         @Bind("context.getMeta()") Meta meta,
                         @Shared("exec") @Cached JavaRegexExecNode javaRegexExecNode,
                         @Cached JavaRegexCompileNode javaRegexCompileNode,
-                        @Bind("this") Node node) {
+                        @Bind Node node) {
             assert context.regexSubstitutionsEnabled();
             meta.java_util_regex_Matcher_HIDDEN_searchFromBackup.setHiddenObject(self, from);
             meta.java_util_regex_Matcher_HIDDEN_matchingModeBackup.setHiddenObject(self, RegexAction.Search);

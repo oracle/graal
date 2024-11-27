@@ -230,7 +230,7 @@ final class HostMethodScope {
 
         @ExportMessage
         Object send(Message message, Object[] args,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @CachedLibrary(limit = "5") ReflectionLibrary library,
                         @Cached InlinedBranchProfile seenError,
                         @Cached InlinedBranchProfile seenOther) throws Exception {
