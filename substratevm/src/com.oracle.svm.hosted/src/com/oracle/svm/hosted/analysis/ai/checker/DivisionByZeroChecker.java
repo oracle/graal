@@ -1,44 +1,36 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
-import com.oracle.svm.hosted.analysis.ai.checker.rule.CheckerRule;
-import com.oracle.svm.hosted.analysis.ai.checker.rule.CheckerRuleResult;
 import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.Environment;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.FixpointIterator;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.WorkListFixpointIterator;
-import com.oracle.svm.hosted.analysis.ai.transfer.IntIntervalTransferFunction;
-import com.oracle.svm.hosted.analysis.ai.transfer.TransferFunction;
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
+import jdk.graal.compiler.nodes.calc.FloatDivNode;
+import jdk.graal.compiler.nodes.calc.RemNode;
 
-/**
- * Basic division by zero checker
- * TODO implement the actual rules
- */
-public class DivisionByZeroChecker implements Checker<IntInterval> {
-    private final DebugContext debug;
-    private final FixpointIterator<IntInterval> fixpointIterator;
-    private final CheckerRule<IntInterval> rule = new CheckerRule<>() {
-        @Override
-        public CheckerRuleResult evaluateRule(Node node, IntInterval domain) {
-            return CheckerRuleResult.OK;
-        }
-    };
+public class DivisionByZeroChecker implements Checker {
 
-    public DivisionByZeroChecker(DebugContext debug, StructuredGraph graph) {
-        this.debug = debug;
-        TransferFunction<IntInterval> transfer = new IntIntervalTransferFunction();
-        IntInterval domain = new IntInterval();
-        this.fixpointIterator = new WorkListFixpointIterator<>(graph, transfer, rule, domain, debug);
+    @Override
+    public String getDescription() {
+        return "Division By Zero Checker";
     }
 
     @Override
-    public Environment<IntInterval> check() {
-        debug.log("\t" + "Running the analysis");
-        var environment = fixpointIterator.iterateUntilFixpoint();
-        debug.log("\t" + "Analysis result: " + environment);
-        return environment;
-    }
+    public CheckerResult check(Node node, Environment<?> environment) {
+        var domain = environment.getPostCondition(node);
 
+        if (!(domain instanceof IntInterval)) {
+            return new CheckerResult(CheckStatus.UNKNOWN, "Unsupported domain");
+        }
+
+        if (node instanceof FloatDivNode || node instanceof RemNode) {
+            var divisorNode = ((BinaryArithmeticNode<?>) node).getY();
+            IntInterval divisorInterval = (IntInterval) environment.getPostCondition(divisorNode);
+
+            if (divisorInterval.containsValue(0)) {
+                return new CheckerResult(CheckStatus.ERROR, "Division by zero on line: " + node.getNodeSourcePosition().toString());
+            }
+        }
+
+        return new CheckerResult(CheckStatus.OK, "No division by zero");
+    }
 }
