@@ -70,6 +70,7 @@ public final class CallTreePrinter {
 
     public static final Pattern CAMEL_CASE_PATTERN = Pattern.compile(
                     "\\b[a-zA-Z]|[A-Z]|\\.");
+    public static final String METHOD_FORMAT = "%H.%n(%P):%R";
 
     public static void print(BigBang bb, String reportsPath, String reportName) {
         CallTreePrinter printer = new CallTreePrinter(bb);
@@ -258,8 +259,6 @@ public final class CallTreePrinter {
         }
         return sourceReference.toArray(new SourceReference[sourceReference.size()]);
     }
-
-    private static final String METHOD_FORMAT = "%H.%n(%P):%R";
 
     private void printMethods(PrintWriter out) {
         out.println("VM Entry Points");
