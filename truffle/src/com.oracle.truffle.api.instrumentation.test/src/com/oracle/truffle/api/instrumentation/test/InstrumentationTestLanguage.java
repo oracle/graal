@@ -803,13 +803,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         }
 
         public WrapperNode createWrapper(ProbeNode probe) {
-            throw CompilerDirectives.shouldNotReachHere();
+            return null;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            throw CompilerDirectives.shouldNotReachHere();
+            return null;
         }
+
     }
 
     @ExportLibrary(InteropLibrary.class)

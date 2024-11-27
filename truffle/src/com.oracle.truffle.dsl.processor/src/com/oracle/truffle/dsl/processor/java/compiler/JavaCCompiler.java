@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,45 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
-import java.util.List;
-
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
+import java.io.File;
+import java.lang.reflect.Method;
+import java.util.List;
 
 public class JavaCCompiler extends AbstractCompiler {
+
+    private static volatile Reflection reflection;
+
+    private static class Reflection {
+        final Class<?> clsTrees;
+        final Method metTreesGetPath;
+        final Method metTreePathGetCompilationUnit;
+        final Method metCompilationUnitTreeGetSourceFile;
+
+        Reflection(ClassLoader cl) throws ReflectiveOperationException {
+            clsTrees = Class.forName("com.sun.source.util.Trees", false, cl);
+            metTreesGetPath = clsTrees.getMethod("getPath", new Class<?>[]{Element.class});
+
+            Class<?> clsTreePath = Class.forName("com.sun.source.util.TreePath", false, cl);
+            metTreePathGetCompilationUnit = clsTreePath.getMethod("getCompilationUnit", new Class<?>[0]);
+
+            Class<?> clsCompilationUnitTree = Class.forName("com.sun.source.tree.CompilationUnitTree", false, cl);
+            metCompilationUnitTreeGetSourceFile = clsCompilationUnitTree.getDeclaredMethod("getSourceFile", new Class<?>[0]);
+        }
+    }
+
+    private static void initializeReflectionClasses(Object classLoaderSupplier) throws ReflectiveOperationException {
+        if (reflection == null) {
+            synchronized (JavaCCompiler.class) {
+                if (reflection == null) {
+                    reflection = new Reflection(classLoaderSupplier.getClass().getClassLoader());
+                }
+            }
+        }
+    }
 
     public static boolean isValidElement(Element currentElement) {
         try {
@@ -91,10 +122,14 @@ public class JavaCCompiler extends AbstractCompiler {
         }
     }
 
+    private static Object getTrees(ProcessingEnvironment environment, Element element) throws ReflectiveOperationException {
+        initializeReflectionClasses(element);
+        return staticMethod(reflection.clsTrees, "instance", new Class<?>[]{ProcessingEnvironment.class}, environment);
+    }
+
     private static Object getTreePathForElement(ProcessingEnvironment environment, Element element) throws ReflectiveOperationException {
-        Class<?> treesClass = Class.forName("com.sun.source.util.Trees", false, element.getClass().getClassLoader());
-        Object trees = staticMethod(treesClass, "instance", new Class<?>[]{ProcessingEnvironment.class}, environment);
-        return method(trees, "getPath", new Class<?>[]{Element.class}, element);
+        Object trees = getTrees(environment, element);
+        return reflection.metTreesGetPath.invoke(trees, element);
     }
 
     private static Object getLog(Object javacContext) throws ReflectiveOperationException {
@@ -121,5 +156,17 @@ public class JavaCCompiler extends AbstractCompiler {
         Class<?> symbolClass = Class.forName("com.sun.tools.javac.code.Symbol", false, cl);
         Object elementTree = method(treePath, "getLeaf");
         method(check, "warnDeprecated", new Class<?>[]{diagnosticPositionClass, symbolClass}, elementTree, element);
+    }
+
+    @Override
+    public File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element) {
+        try {
+            Object treePath = getTreePathForElement(processingEnv, element);
+            Object compilationUnit = reflection.metTreePathGetCompilationUnit.invoke(treePath);
+            JavaFileObject obj = (JavaFileObject) reflection.metCompilationUnitTreeGetSourceFile.invoke(compilationUnit);
+            return new File(obj.toUri());
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("should not happen", e);
+        }
     }
 }

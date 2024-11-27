@@ -545,12 +545,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
 
-        if (isGenerateSlowPathOnly(type)) {
-            for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
-                for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
-                    if (export.isClass() && export.getSpecializedNode() != null) {
-                        NodeParser.removeFastPathSpecializations(export.getSpecializedNode(), libraryExports.getSharedExpressions());
-                    }
+        for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
+            for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+                if (export.isClass() && export.getSpecializedNode() != null) {
+                    NodeParser.removeSpecializations(export.getSpecializedNode(), libraryExports.getSharedExpressions(), isGenerateSlowPathOnly(type));
                 }
             }
         }

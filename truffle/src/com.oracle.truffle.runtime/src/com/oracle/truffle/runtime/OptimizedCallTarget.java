@@ -1059,7 +1059,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             return false;
         }
         CompilationTask task = this.compilationTask;
-        if (cancelAndResetCompilationTask()) {
+        if (task != null && cancelAndResetCompilationTask()) {
             runtime().getListener().onCompilationDequeued(this, null, reason, task != null ? task.tier() : 0);
             return true;
         }
@@ -1067,13 +1067,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     private boolean cancelAndResetCompilationTask() {
-        CompilationTask task = this.compilationTask;
-        if (task != null) {
-            synchronized (this) {
-                task = this.compilationTask;
-                if (task != null) {
-                    return task.cancel();
-                }
+        CompilationTask task;
+        synchronized (this) {
+            task = this.compilationTask;
+            if (task != null) {
+                return task.cancel();
             }
         }
         return false;

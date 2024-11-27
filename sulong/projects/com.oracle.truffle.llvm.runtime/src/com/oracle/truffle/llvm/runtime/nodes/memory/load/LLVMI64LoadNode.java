@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -114,6 +114,7 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
         return doGenericI64Managed(getReceiver.execute(addr), nativeRead);
     }
 
+    @SuppressWarnings("truffle-unexpected-result-rewrite")
     @Specialization(limit = "3", rewriteOn = UnexpectedResultException.class)
     @GenerateAOT.Exclude
     protected long doI64Managed(LLVMManagedPointer addr,
@@ -121,6 +122,7 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
         return nativeRead.readI64(addr.getObject(), addr.getOffset());
     }
 
+    @SuppressWarnings("truffle-unexpected-result-rewrite")
     @Specialization(limit = "3", replaces = "doI64Managed")
     @GenerateAOT.Exclude
     protected Object doGenericI64Managed(LLVMManagedPointer addr,

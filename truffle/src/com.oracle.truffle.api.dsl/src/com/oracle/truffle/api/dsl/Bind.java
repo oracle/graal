@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.dsl;
 
 import java.lang.annotation.ElementType;
+import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
@@ -85,6 +86,10 @@ import java.lang.annotation.Target;
  * }
  * </pre>
  *
+ * The special variable {@code $node} can be used to bind the current node. Bytecode DSL
+ * interpreters can also bind the special variables {@code $rootNode}, {@code $bytecodeNode}, and
+ * {@code $bytecodeIndex}.
+ *
  *
  * @see Cached
  * @see Specialization
@@ -100,6 +105,50 @@ public @interface Bind {
      * @see Bind
      * @since 20.2
      */
-    String value();
+    String value() default "";
 
+    /**
+     * Defines a default bind expression for a given type. When a type defines a default bind
+     * expression, specialization methods can declare bind parameters of the type without specifying
+     * a {@link Bind#value() bind expression}; the DSL will automatically use the
+     * {@link DefaultExpression#value() default expression} for the type.
+     * <p>
+     * Usage example:
+     *
+     * <pre>
+     * &#64;Bind.DefaultExpression("get($node)")
+     * public final class MyLanguageContext {
+     *     // ...
+     *     public static MyLanguageContext get(Node node) {
+     *         // ...
+     *     }
+     * }
+     *
+     * abstract static class NodeWithBinding extends Node {
+     *     abstract Object execute();
+     *
+     *     &#64;Specialization
+     *     Object perform(&#64;Bind("MyLanguageContext.get($node)") MyLanguageContext boundWithExplicitExpression,
+     *                     &#64;Bind MyLanguageContext boundWithDefaultExpression) {
+     *         // ...
+     *     }
+     * }
+     * </pre>
+     *
+     * @since 24.2
+     */
+    @Retention(RetentionPolicy.CLASS)
+    @Target({ElementType.TYPE})
+    @Inherited
+    public @interface DefaultExpression {
+
+        /**
+         * The default expression to be used for a particular type.
+         *
+         * @see Bind
+         * @since 24.2
+         */
+        String value();
+
+    }
 }

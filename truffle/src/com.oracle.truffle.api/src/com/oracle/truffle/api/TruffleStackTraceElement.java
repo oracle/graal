@@ -111,6 +111,27 @@ public final class TruffleStackTraceElement {
     }
 
     /**
+     * Returns an instrumentable call node from a frame instance. This method should be preferred
+     * over {@link #getLocation()} by tools to find the instrumentable node associated with this
+     * stack trace element.
+     * <p>
+     * In case of bytecode interpreters the instrumentable node needs to be resolved by the language
+     * and is not directly accessible from the {@link Node#getParent() parent} chain of the regular
+     * {@link #getLocation() location}. Just like {@link #getLocation()} this method may not
+     * directly return an instrumentable node. To find the eventual instrumentable node the
+     * {@link Node#getParent() parent} chain must be searched. There is no guarantee that an
+     * instrumentable node can be found, e.g. if the language does not support instrumentation.
+     *
+     * @see RootNode#findInstrumentableCallNode
+     * @see FrameInstance#getInstrumentableCallNode()
+     * @see com.oracle.truffle.api.instrumentation.InstrumentableNode#findInstrumentableParent(Node)
+     * @since 24.2
+     */
+    public Node getInstrumentableLocation() {
+        return LanguageAccessor.NODES.findInstrumentableCallNode(target.getRootNode(), getLocation(), getFrame(), getBytecodeIndex());
+    }
+
+    /**
      * Returns the call target on the stack. Never returns <code>null</code>.
      * <p>
      * See {@link FrameInstance#getCallNode()} for the relation between callsite and CallTarget.

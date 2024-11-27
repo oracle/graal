@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-public class SLValueSharingTest {
+public class SLValueSharingTest extends AbstractSLTest {
 
     public static class JavaObject {
         public Object sharedField;
@@ -56,7 +56,7 @@ public class SLValueSharingTest {
     @Test
     public void testImplicitValueSharing() {
         JavaObject obj = new JavaObject();
-        Context.Builder b = Context.newBuilder().allowAllAccess(true);
+        Context.Builder b = newContextBuilder().allowAllAccess(true);
         try (Context c0 = b.build();
                         Context c1 = b.build()) {
 

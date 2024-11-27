@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,12 +50,12 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SLInteropObjectTest {
+public class SLInteropObjectTest extends AbstractSLTest {
     private Context context;
 
     @Before
     public void setUp() {
-        context = Context.create("sl");
+        context = newContextBuilder().build();
     }
 
     @After

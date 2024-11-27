@@ -387,7 +387,7 @@ final class MemoryDump implements TruffleObject {
 
         @ExportMessage
         Object readArrayElement(long index,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile exception) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(index)) {
                 exception.enter(node);

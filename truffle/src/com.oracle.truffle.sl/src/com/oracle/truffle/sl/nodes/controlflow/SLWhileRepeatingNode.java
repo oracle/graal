@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.controlflow;
 
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.nodes.util.SLToBooleanNodeGen;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
 
 /**
@@ -77,7 +78,8 @@ public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
     private final BranchProfile breakTaken = BranchProfile.create();
 
     public SLWhileRepeatingNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        this.conditionNode = SLUnboxNodeGen.create(conditionNode);
+        this.conditionNode = SLToBooleanNodeGen.create(SLUnboxNodeGen.create(conditionNode));
+        this.conditionNode.setSourceSection(conditionNode.getSourceCharIndex(), conditionNode.getSourceLength());
         this.bodyNode = bodyNode;
     }
 
@@ -116,12 +118,7 @@ public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
              */
             return conditionNode.executeBoolean(frame);
         } catch (UnexpectedResultException ex) {
-            /*
-             * The condition evaluated to a non-boolean result. This is a type error in the SL
-             * program. We report it with the same exception that Truffle DSL generated nodes use to
-             * report type errors.
-             */
-            throw new UnsupportedSpecializationException(this, new Node[]{conditionNode}, ex.getResult());
+            throw CompilerDirectives.shouldNotReachHere(ex);
         }
     }
 
