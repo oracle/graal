@@ -1,8 +1,14 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
-import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.Environment;
+import jdk.graal.compiler.graph.Node;
 
-public interface Checker<Domain extends AbstractDomain<Domain>> {
-    Environment<Domain> check();
+/*
+ * Interface for a checker that can be used to check the desired program property.
+ */
+public interface Checker {
+
+    String getDescription();
+
+    CheckerResult check(Node node, Environment<?> domain);
 }
