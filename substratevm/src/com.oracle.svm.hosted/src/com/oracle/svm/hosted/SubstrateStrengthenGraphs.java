@@ -80,7 +80,7 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     @Override
     protected void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
         if (reflectionUsageJarPaths != null) {
-            new AnalyzeReflectionUsagePhase(reflectionUsageJarPaths).apply(graph, bb.getProviders(method));
+            new AnalyzeReflectionUsagePhase().apply(graph, bb.getProviders(method));
         }
     }
 

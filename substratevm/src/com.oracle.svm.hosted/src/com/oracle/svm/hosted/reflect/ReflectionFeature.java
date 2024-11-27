@@ -357,7 +357,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         RuntimeReflection.register(Object.class.getDeclaredMethods());
 
         if (SubstrateOptions.TrackReflectionUsage.getValue() != null) {
-            ImageSingletons.add(AnalyzeReflectionUsageSupport.class, new AnalyzeReflectionUsageSupport());
+            ImageSingletons.add(AnalyzeReflectionUsageSupport.class, new AnalyzeReflectionUsageSupport(SubstrateOptions.TrackReflectionUsage.getValue()));
         }
     }
 

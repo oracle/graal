@@ -34,17 +34,22 @@ import org.graalvm.nativeimage.ImageSingletons;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
 
 public final class AnalyzeReflectionUsageSupport {
     private final Map<String, List<String>> reflectiveCalls;
+    private final Set<String> jarPaths = new HashSet<>();
     private static final String ARTIFACT_FILE_NAME = "reflection-usage.json";
 
-    public AnalyzeReflectionUsageSupport() {
+    public AnalyzeReflectionUsageSupport(String paths) {
         this.reflectiveCalls = new TreeMap<>();
+        this.jarPaths.addAll(Arrays.asList(paths.split(":")));
     }
 
     public static AnalyzeReflectionUsageSupport instance() {
@@ -99,6 +104,10 @@ public final class AnalyzeReflectionUsageSupport {
     private static Path getTargetPath() {
         Path buildPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
         return buildPath.resolve(ARTIFACT_FILE_NAME);
+    }
+
+    public Set<String> getJarPaths() {
+        return jarPaths;
     }
 }
 

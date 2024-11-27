@@ -32,18 +32,15 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 
-import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashSet;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.security.CodeSource;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 
 public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
     private static final Map<String, Set<String>> reflectMethodNames = Map.of(
@@ -75,13 +72,6 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
             "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
             "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
             "sun.misc.Unsafe", Set.of("allocateInstance"));
-    private final Set<String> includedPackages = new HashSet<>();
-
-    public AnalyzeReflectionUsagePhase(String jarPaths) {
-        for (String jarPath : jarPaths.split(":")) {
-            getPackagesFromJar(Paths.get(jarPath), includedPackages);
-        }
-    }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
@@ -100,7 +90,7 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
 
     private String getReflectiveMethod(StructuredGraph graph, MethodCallTargetNode callTarget) {
         AnalysisType callerClass = (AnalysisType) graph.method().getDeclaringClass();
-        if (!includedPackages.contains(callerClass.getJavaClass().getPackageName())) {
+        if (!containedInJars(callerClass)) {
             return null;
         }
         String methodName = callTarget.targetMethod().getName();
@@ -113,24 +103,21 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
         return null;
     }
 
-    private static void getPackagesFromJar(Path jarPath, Set<String> packageSet) {
-        try (JarFile jarFile = new JarFile(jarPath.toFile())) {
-            jarFile.stream()
-                    .filter(entry -> entry.getName().endsWith(".class"))
-                    .map(AnalyzeReflectionUsagePhase::getPackageName)
-                    .filter(pkg -> !pkg.isEmpty())
-                    .forEach(packageSet::add);
-        } catch (IOException e) {
+    private boolean containedInJars(AnalysisType callerClass) {
+        try {
+            CodeSource jarPathSource = callerClass.getJavaClass().getProtectionDomain().getCodeSource();
+            if (jarPathSource == null) {
+                return false;
+            }
+
+            URL jarPathURL = jarPathSource.getLocation();
+            if (jarPathURL == null) {
+                return false;
+            }
+
+            return AnalyzeReflectionUsageSupport.instance().getJarPaths().contains(jarPathURL.toURI().getPath());
+        } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static String getPackageName(JarEntry entry) {
-        String entryName = entry.getName();
-        int lastSlashIndex = entryName.lastIndexOf('/');
-        if (lastSlashIndex == -1) {
-            return ""; // Default package
-        }
-        return entryName.substring(0, lastSlashIndex).replace('/', '.');
     }
 }
