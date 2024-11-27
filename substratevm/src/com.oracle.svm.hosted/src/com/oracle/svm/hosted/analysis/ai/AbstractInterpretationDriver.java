@@ -4,7 +4,10 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.ProgressReporter;
 
+import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
 import com.oracle.svm.hosted.analysis.ai.checker.DivisionByZeroChecker;
+import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
+import com.oracle.svm.hosted.analysis.ai.transfer.IntIntervalTransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -38,24 +41,6 @@ public class AbstractInterpretationDriver {
         var rootGraph = getGraph(root);
         for (Node node : rootGraph.getNodes()) {
             debug.log("\t" + node);
-
-            debug.log("\t" + "inputs: ");
-            for (var pred : node.inputs()) {
-                debug.log("\t\t" + pred);
-            }
-            debug.log("\t" + " successors: ");
-            for (var succ : node.successors()) {
-                debug.log("\t\t" + succ);
-            }
-            debug.log("\t" + " CFG successors: ");
-            for (var succ : node.cfgSuccessors()) {
-                debug.log("\t\t" + succ);
-            }
-
-            debug.log("\t" + " CFG predecessors: ");
-            for (var pred : node.cfgPredecessors()) {
-                debug.log("\t\t" + pred);
-            }
         }
 
         debug.log("Printing the invokes");
@@ -66,8 +51,9 @@ public class AbstractInterpretationDriver {
             }
         }
 
-        var checker = new DivisionByZeroChecker(debug, rootGraph);
-        checker.check();
+        var analyzer = new Analyzer<IntInterval>(debug);
+        analyzer.registerChecker(new DivisionByZeroChecker());
+        analyzer.run(rootGraph, new IntInterval(), new IntIntervalTransferFunction());
     }
 
     private StructuredGraph getGraph(AnalysisMethod method) {
