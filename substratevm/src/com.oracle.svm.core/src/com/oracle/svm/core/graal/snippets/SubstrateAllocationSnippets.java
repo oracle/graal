@@ -529,7 +529,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Override
     public void initializeObjectHeader(Word memory, Word objectHeader, boolean isArrayLike) {
-        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(memory, objectHeader, isArrayLike);
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObjectInit(memory, objectHeader, isArrayLike);
     }
 
     @Override
