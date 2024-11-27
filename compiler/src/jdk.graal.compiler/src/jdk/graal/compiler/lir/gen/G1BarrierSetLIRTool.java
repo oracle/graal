@@ -42,6 +42,8 @@ public interface G1BarrierSetLIRTool {
 
     boolean supportsCardless();
 
+    boolean useConditionalCardMarking();
+
     byte cleanCardValue();
 
     byte dirtyCardValue();

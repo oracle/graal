@@ -95,7 +95,7 @@ public class AArch64G1PostWriteBarrierOp extends AArch64LIRInstruction {
         tool.computeCardFromThread(tmp1, storeAddress, thread, tmp2, masm);
         AArch64Address cardAddress = masm.makeAddress(8, tmp1, 0);
 
-        if (true) { // TODO
+        if (tool.useConditionalCardMarking()) {
             masm.ldr(8, tmp2, cardAddress);
             // Instead of loading clean_card_val and comparing, we exploit the fact that
             // the LSB of non-clean cards is always 0, and the LSB of clean cards 1.

@@ -97,7 +97,7 @@ public class AMD64G1PostWriteBarrierOp extends AMD64LIRInstruction {
 
         tool.computeCardFromThread(cardAddress, storeAddress, thread, masm);
 
-        if (true) { // TODO
+        if (tool.useConditionalCardMarking()) {
             masm.cmpb(new AMD64Address(cardAddress, 0), tool.cleanCardValue());
             masm.jccb(AMD64Assembler.ConditionFlag.NotEqual, done);
         }

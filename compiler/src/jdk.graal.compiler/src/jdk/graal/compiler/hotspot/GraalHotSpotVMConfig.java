@@ -158,6 +158,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
     public final boolean useCharacterCompareIntrinsics = getFlag("UseCharacterCompareIntrinsics", Boolean.class);
+    public final boolean useCondCardMark = getFlag("UseCondCardMark", Boolean.class);
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
     public final boolean alwaysSafeConstructors = getFlag("AlwaysSafeConstructors", Boolean.class);
 
@@ -191,6 +192,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int allocateInstancePrefetchLines = getFlag("AllocateInstancePrefetchLines", Integer.class);
     public final int allocatePrefetchStepSize = getFlag("AllocatePrefetchStepSize", Integer.class);
     public final int allocatePrefetchDistance = getFlag("AllocatePrefetchDistance", Integer.class);
+
 
     private final long universeCollectedHeap = getFieldValue("CompilerToVM::Data::Universe_collectedHeap", Long.class, "CollectedHeap*");
     private final int collectedHeapTotalCollectionsOffset = getFieldOffset("CollectedHeap::_total_collections", Integer.class, "unsigned int");

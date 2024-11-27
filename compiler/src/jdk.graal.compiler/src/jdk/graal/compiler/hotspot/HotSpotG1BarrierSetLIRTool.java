@@ -91,6 +91,11 @@ public abstract class HotSpotG1BarrierSetLIRTool implements G1BarrierSetLIRTool 
     }
 
     @Override
+    public boolean useConditionalCardMarking() {
+        return HotSpotReplacementsUtil.useCondCardMark(config);
+    }
+
+    @Override
     public byte youngCardValue() {
         return HotSpotReplacementsUtil.g1YoungCardValue(config);
     }

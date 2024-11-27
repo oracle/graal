@@ -712,6 +712,11 @@ public class HotSpotReplacementsUtil {
         return config.g1SATBQueueBufferOffset;
     }
 
+    @Fold
+    public static boolean useCondCardMark(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useCondCardMark;
+    }
+
     public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.immutable("Klass::_super_check_offset");
 
     @Fold
