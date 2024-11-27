@@ -30,7 +30,7 @@ import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
 import java.io.FileDescriptor;
 
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -335,15 +335,17 @@ public class PosixUtils {
             bufSize = 1024;
         }
 
-        /* Retrieve the username and copy it to a String object. */
-        CCharPointer pwBuf = NullableNativeMemory.malloc(WordFactory.unsigned(bufSize), NmtCategory.Internal);
-        if (pwBuf.isNull()) {
+        /* Does not use StackValue because it is not safe to use in virtual threads. */
+        UnsignedWord allocSize = WordFactory.unsigned(SizeOf.get(passwdPointer.class) + SizeOf.get(passwd.class) + bufSize);
+        Pointer alloc = NullableNativeMemory.malloc(allocSize, NmtCategory.Internal);
+        if (alloc.isNull()) {
             return null;
         }
 
         try {
-            passwd pwent = StackValue.get(passwd.class);
-            passwdPointer p = StackValue.get(passwdPointer.class);
+            passwdPointer p = (passwdPointer) alloc;
+            passwd pwent = (passwd) ((Pointer) p).add(SizeOf.get(passwdPointer.class));
+            CCharPointer pwBuf = (CCharPointer) ((Pointer) pwent).add(SizeOf.get(passwd.class));
             int code = Pwd.getpwuid_r(uid, pwent, pwBuf, WordFactory.unsigned(bufSize), p);
             if (code != 0) {
                 return null;
@@ -361,7 +363,7 @@ public class PosixUtils {
 
             return CTypeConversion.toJavaString(pwName);
         } finally {
-            NullableNativeMemory.free(pwBuf);
+            NullableNativeMemory.free(alloc);
         }
     }
 }
