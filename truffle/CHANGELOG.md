@@ -18,6 +18,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `ThreadLocalAction#notifyBlocked(Access)` and `ThreadLocalAction#notifyUnblocked(Access)` to notify thread local actions that their processing has been blocked/unblocked due to a blocked call (see `ThreadLocalAction` documentation).
     * `TruffleSafepoint#poll(Node)` does not require a non-null location anymore. However, it is still recommended to always pass a location node, if available.  
 * GR-59565 Added `RootNode.prepareForCompilation` which allows root nodes to offload expensive computation to the compiler thread and to delay compilation if they are not yet fully profiled.
+* GR-40323 Deprecated `Shape.Builder.layout(Class)` for removal and added replacement API [`Shape.Builder.layout(Class, MethodHandles.Lookup)`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/Shape.Builder.html#layout(java.lang.Class,java.lang.MethodHandles.Lookup)). Replace usages with the new method, additionally providing a `Lookup` that has full privilege access to the layout class or the module in which it is declared, as obtained by `MethodHandles.lookup()`. See javadoc for the updated usage.
 
 
 * GR-54760 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, and the name of the declared meta-object to build `StackTraceElement` instances.
