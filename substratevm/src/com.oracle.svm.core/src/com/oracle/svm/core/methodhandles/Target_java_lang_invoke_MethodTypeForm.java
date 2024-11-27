@@ -44,16 +44,16 @@ final class Target_java_lang_invoke_MethodTypeForm {
      * writing.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class, isFinal = true) //
-    @TargetElement(onlyWith = JDKLatest.class)
+    @TargetElement(onlyWith = JDKLatest.class) //
     private Object[] methodHandles;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class, isFinal = true) //
-    @TargetElement(onlyWith = JDKLatest.class)
+    @TargetElement(onlyWith = JDKLatest.class) //
     private Object[] lambdaForms;
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class, isFinal = true) //
-    @TargetElement(name = "methodHandles", onlyWith = JDK21OrEarlier.class)
+    @TargetElement(name = "methodHandles", onlyWith = JDK21OrEarlier.class) //
     private SoftReference<?>[] methodHandlesJDK21;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class, isFinal = true) //
-    @TargetElement(name = "lambdaForms", onlyWith = JDK21OrEarlier.class)
+    @TargetElement(name = "lambdaForms", onlyWith = JDK21OrEarlier.class) //
     private SoftReference<?>[] lambdaFormsJDK21;
 }
