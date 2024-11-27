@@ -123,9 +123,9 @@ public final class IntInterval
         if (isTop()) {
             return "⊤";
         }
-        return "[" + lowerBound +
-                ", " + upperBound +
-                ']';
+        String lower = (lowerBound == MIN) ? "-∞" : String.valueOf(lowerBound);
+        String upper = (upperBound == MAX) ? "∞" : String.valueOf(upperBound);
+        return "[" + lower + ", " + upper + "]";
     }
 
     @Override
@@ -133,6 +133,10 @@ public final class IntInterval
         return new IntInterval(lowerBound, upperBound);
     }
 
+    public boolean containsValue(int value) {
+        return lowerBound >= value && value <= upperBound;
+    }
+    
     /**
      * Arithmetic operations
      */
@@ -230,6 +234,32 @@ public final class IntInterval
     public IntInterval div(IntInterval other) {
         IntInterval result = new IntInterval(this);
         result.divWith(other);
+        return result;
+    }
+
+    public void remWith(IntInterval other) {
+        if (other.isBot() || other.getLowerBound() == 0 || other.getUpperBound() == 0) {
+            setToBot();
+            return;
+        }
+
+        if (isBot()) {
+            this.lowerBound = other.lowerBound;
+            this.upperBound = other.upperBound;
+            return;
+        }
+
+        int a = getClampedValue(((long) getLowerBound() % other.getLowerBound()));
+        int b = getClampedValue(((long) getLowerBound() % other.getUpperBound()));
+        int c = getClampedValue(((long) getUpperBound() % other.getLowerBound()));
+        int d = getClampedValue(((long) getUpperBound() % other.getUpperBound()));
+        this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
+        this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
+    }
+
+    public IntInterval rem(IntInterval other) {
+        IntInterval result = new IntInterval(this);
+        result.remWith(other);
         return result;
     }
 
