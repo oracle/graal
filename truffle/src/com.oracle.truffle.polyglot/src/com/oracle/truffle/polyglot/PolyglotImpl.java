@@ -352,7 +352,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 hostLanguageOnly,
                                 usePolyglotHostService);
             }
-            return getAPIAccess().newEngine(engineDispatch, impl, registerInActiveEngines);
+            Engine engineApi = getAPIAccess().newEngine(engineDispatch, impl, registerInActiveEngines);
+            /*
+             * When registerInActiveEngines is false, the engine is a local engine decorated by its
+             * owning engine. In this case, there's no need to process the reference queue, as it
+             * will be processed by the owner.
+             */
+            if (registerInActiveEngines) {
+                getAPIAccess().processReferenceQueue();
+            }
+            return engineApi;
         } catch (Throwable t) {
             if (impl == null) {
                 throw PolyglotImpl.guestToHostException(this, t);

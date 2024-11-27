@@ -89,12 +89,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionService;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -861,6 +865,81 @@ public class PolyglotGCTest {
         }
         for (Future<?> f : futures) {
             f.get();
+        }
+    }
+
+    @Test
+    public void testGR59795() throws Exception {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        runInSubprocess(() -> {
+            List<Context> contexts = new ArrayList<>(100);
+            // Create top-level contexts
+            for (int i = 0; i < 100; i++) {
+                contexts.add(newContextBuilder().build());
+            }
+
+            // In each top-level context create a strongly reachable inner context
+            for (Context context : contexts) {
+                AbstractExecutableTestLanguage.execute(context, TestGR59795Language.class);
+            }
+
+            // Make the inner context unreachable and assert that are collected
+            List<? extends Reference<TruffleContext>> innerContextRefs = TestGR59795Language.clearInnerContexts();
+            List<Pair<String, Reference<?>>> msgRefPairs = new ArrayList<>(innerContextRefs.size());
+            for (Reference<?> reference : innerContextRefs) {
+                msgRefPairs.add(Pair.create("Inner context must be collected", reference));
+            }
+            GCUtils.assertGc(msgRefPairs);
+
+            // Dispose top-level contexts in parallel
+            ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(20);
+            CompletionService<Boolean> todo = new ExecutorCompletionService<>(executor);
+            Semaphore threadsStarted = new Semaphore(-1 * executor.getMaximumPoolSize());
+            CountDownLatch runClose = new CountDownLatch(1);
+            for (Context context : contexts) {
+                todo.submit(() -> {
+                    threadsStarted.release();
+                    runClose.await();
+                    context.close();
+                    return true;
+                });
+            }
+            threadsStarted.release();
+            try {
+                threadsStarted.acquire();
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
+            runClose.countDown();
+            for (int i = 0; i < contexts.size(); i++) {
+                try {
+                    todo.take();
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+            }
+            executor.shutdown();
+        });
+    }
+
+    @Registration
+    static final class TestGR59795Language extends AbstractPolyglotGcLanguage {
+
+        private static final List<TruffleContext> innerContexts = new ArrayList<>();
+
+        static List<? extends Reference<TruffleContext>> clearInnerContexts() {
+            List<? extends Reference<TruffleContext>> res = TestGR59795Language.innerContexts.stream().map(WeakReference::new).toList();
+            TestGR59795Language.innerContexts.clear();
+            return res;
+        }
+
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleContext innerContext = env.newInnerContextBuilder().build();
+            innerContext.initializePublic(node, TestUtils.getDefaultLanguageId(TestGR59795Language.class));
+            innerContexts.add(innerContext);
+            return true;
         }
     }
 
