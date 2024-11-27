@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionValues;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.util.json.JsonBuilder;
@@ -34,7 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
@@ -44,12 +45,12 @@ import java.util.Map;
 
 public final class AnalyzeReflectionUsageSupport {
     private final Map<String, List<String>> reflectiveCalls;
-    private final Set<String> jarPaths = new HashSet<>();
+    private final Set<String> jarPaths;
     private static final String ARTIFACT_FILE_NAME = "reflection-usage.json";
 
-    public AnalyzeReflectionUsageSupport(String paths) {
+    public AnalyzeReflectionUsageSupport() {
         this.reflectiveCalls = new TreeMap<>();
-        this.jarPaths.addAll(Arrays.asList(paths.split(":")));
+        this.jarPaths = Collections.unmodifiableSet(new HashSet<>(SubstrateOptions.TrackReflectionUsage.getValue().values()));
     }
 
     public static AnalyzeReflectionUsageSupport instance() {
@@ -89,7 +90,7 @@ public final class AnalyzeReflectionUsageSupport {
             }
             BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, getTargetPath()); // Maybe shouldn't be BUILD_INFO
         } catch (IOException e) {
-            System.out.println("Failed to print JSON:");
+            System.out.println("Failed to print JSON to " + getTargetPath() + ":");
             e.printStackTrace(System.out);
         }
     }
@@ -110,4 +111,3 @@ public final class AnalyzeReflectionUsageSupport {
         return jarPaths;
     }
 }
-

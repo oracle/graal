@@ -65,21 +65,20 @@ import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class SubstrateStrengthenGraphs extends StrengthenGraphs {
-    private final String reflectionUsageJarPaths;
-
+    private final Boolean trackReflectionUsage;
     private final Boolean trackJavaHomeAccess;
     private final Boolean trackJavaHomeAccessDetailed;
 
     public SubstrateStrengthenGraphs(Inflation bb, Universe converter) {
         super(bb, converter);
-        reflectionUsageJarPaths = SubstrateOptions.TrackReflectionUsage.getValue();
+        trackReflectionUsage = SubstrateOptions.TrackReflectionUsage.hasBeenSet();
         trackJavaHomeAccess = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccess.getValue();
         trackJavaHomeAccessDetailed = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccessDetailed.getValue();
     }
 
     @Override
     protected void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
-        if (reflectionUsageJarPaths != null) {
+        if (trackReflectionUsage) {
             new AnalyzeReflectionUsagePhase().apply(graph, bb.getProviders(method));
         }
     }

@@ -1352,6 +1352,6 @@ public class SubstrateOptions {
         }
     });
 
-    @Option(help = "Output all reflection usages in the reached parts of the project in a report file.")//
-    public static final HostedOptionKey<String> TrackReflectionUsage = new HostedOptionKey<>(null);
+    @Option(help = "Output all reflection usages in the reached parts of the project, limited to the provided comma-separated list of JAR files.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackReflectionUsage = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 }
