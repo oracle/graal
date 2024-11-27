@@ -1,8 +1,11 @@
-package com.oracle.svm.hosted.analysis.ai.fixpoint;
+package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
-import com.oracle.svm.hosted.analysis.ai.checker.rule.CheckerRule;
-import com.oracle.svm.hosted.analysis.ai.checker.rule.CheckerRuleResult;
+import com.oracle.svm.hosted.analysis.ai.checker.Checker;
+import com.oracle.svm.hosted.analysis.ai.checker.CheckerResult;
+import com.oracle.svm.hosted.analysis.ai.checker.CheckStatus;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.Environment;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.transfer.TransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -12,11 +15,12 @@ import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Queue;
 
 /**
- * Represents a very basic sequential inter procedural fixpoint iterator
- * that uses a work list to iterate over the graph
+ * Represents a basic sequential fixpoint iterator
+ * that uses a work list to keep track of the nodes to analyze
  *
  * @param <Domain> type of the derived AbstractDomain
  */
@@ -27,64 +31,60 @@ public class WorkListFixpointIterator<
     private final StructuredGraph graph;
     private final IteratorPolicy policy;
     private final TransferFunction<Domain> transferFunction;
-    private final CheckerRule<Domain> rule;
+    private final List<Checker> checkers;
     private final DebugContext debug;
     private final Environment<Domain> environment;
 
     public WorkListFixpointIterator(StructuredGraph graph,
                                     IteratorPolicy policy,
                                     TransferFunction<Domain> transferFunction,
-                                    CheckerRule<Domain> rule,
+                                    List<Checker> checkers,
                                     Domain initialDomain,
                                     DebugContext debug) {
         this.graph = graph;
         this.policy = policy;
         this.transferFunction = transferFunction;
-        this.rule = rule;
+        this.checkers = checkers;
         this.environment = new Environment<>(initialDomain, graph.getNodeCount());
         this.debug = debug;
     }
 
     public WorkListFixpointIterator(StructuredGraph graph,
                                     TransferFunction<Domain> transferFunction,
-                                    CheckerRule<Domain> rule,
+                                     List<Checker> checkers,
                                     Domain initialDomain,
                                     DebugContext debug) {
         this.graph = graph;
+        this.checkers = checkers;
         this.policy = IteratorPolicy.DEFAULT;
         this.transferFunction = transferFunction;
-        this.rule = rule;
         this.environment = new Environment<>(initialDomain, graph.getNodeCount());
         this.debug = debug;
     }
 
     public Environment<Domain> iterateUntilFixpoint() {
         Queue<Node> workList = new LinkedList<>();
-        // We will only iterate over controlFlowNodes -> FixedNodes // TODO: consult this
         graph.getNodes().filter(FixedNode.class::isInstance).forEach(workList::add);
 
         while (!workList.isEmpty()) {
             try {
                 var node = workList.poll();
-                debug.log("\t" + "Analyzing node: " + node);
                 mergeAllIncomingNodes(node, environment);
-                debug.log("\t" + "Domain postcondition: " + environment.getPostCondition(node));
-                debug.log("\t" + "Domain precondition: " + environment.getPreCondition(node));
                 var postCondition = transferFunction.computePostCondition(node, environment);
-                debug.log("\t" + "Domain postcondition: " + environment.getPostCondition(node));
-                debug.log("\t" + "Domain precondition: " + environment.getPreCondition(node));
-                debug.log("\t" + "computed precondition: " + postCondition);
                 if (!postCondition.equals(environment.getPreCondition(node))) {
                     updateNodeState(node);
                     debug.log("\t" + "node has changed " + node);
                     addSuccessorsToWorkList(node, workList);
                 }
 
-                var ruleResult = rule.evaluateRule(node, environment.getPostCondition(node));
-                if (ruleResult == CheckerRuleResult.ERROR) {
-                    debug.log("\t", "Encountering ERROR, stopping the analysis");
-                    return environment;
+                for (Checker checker : checkers) {
+                    CheckerResult result = checker.check(node, environment);
+                    if (result.result() == CheckStatus.ERROR) {
+                        debug.log("Checker error: " + result.details());
+                        return environment;
+                    }
                 }
+
             } catch (Exception e) {
                 debug.log("\t" + e.getMessage());
                 return environment;
@@ -104,7 +104,6 @@ public class WorkListFixpointIterator<
         }
 
         environment.clearPostCondition(node);
-
         if (state.getVisitedCount() > policy.maxWidenIterations()) {
             throw new RuntimeException("Exceeded maxWidenIterations!" +
                     " Consider increasing the limit, or refactor your widening operator");

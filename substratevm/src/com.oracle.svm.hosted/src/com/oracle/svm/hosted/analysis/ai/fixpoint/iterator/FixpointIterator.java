@@ -1,6 +1,7 @@
-package com.oracle.svm.hosted.analysis.ai.fixpoint;
+package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.Environment;
 
 /**
  * Represents a fixpoint iterator that can be used to perform a fixpoint iteration
