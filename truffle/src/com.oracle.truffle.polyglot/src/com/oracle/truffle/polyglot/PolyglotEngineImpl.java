@@ -1931,6 +1931,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             }
         }
+        /*
+         * When registerInActiveContext is false, the context is a local context decorated by its
+         * owning context. In this case, there's no need to process the reference queue, as it will
+         * be processed by the owner.
+         */
+        if (registerInActiveContexts) {
+            getAPIAccess().processReferenceQueue();
+        }
         return contextAPI;
     }
 

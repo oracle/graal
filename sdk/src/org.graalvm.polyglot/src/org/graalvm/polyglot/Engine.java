@@ -947,6 +947,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public void processReferenceQueue() {
+            CleanableReference.processReferenceQueue();
+        }
+
+        @Override
         public void engineClosed(Reference<Engine> engineReference) {
             ENGINES.remove(engineReference);
             if (engineReference.get() != null) {
@@ -2056,7 +2061,6 @@ public final class Engine implements AutoCloseable {
 
         protected CleanableReference(T referent) {
             super(referent, QUEUE);
-            processReferenceQueue();
         }
 
         protected abstract void clean();

@@ -614,7 +614,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             } else {
                 /*
                  * For an inner context, it may be necessary to recreate the embedder API object
-                 * when it is reintroduced from an existing TruffleContext doing host call.
+                 * when it is reintroduced from an existing TruffleContext doing host call. Avoid
+                 * processing the reference queue here, as the current thread may be holding locks.
+                 * The context's references are handled when the context or engine is created or
+                 * closed.
                  */
                 result = getAPIAccess().newInnerContext(getImpl().contextDispatch, this, parent.getContextAPI(), engine.getEngineAPI());
             }
@@ -645,6 +648,11 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                      * object for instrument notification during the close.
                      */
                     truffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, parent.getCreatorTruffleContext());
+                    /*
+                     * Avoid processing the reference queue here, as the current thread may be
+                     * holding locks. The context's references are handled when the context or
+                     * engine is created or closed.
+                     */
                     weakCreatorTruffleContext = new TruffleContextCleanableReference(truffleContext, this);
                 }
             }
@@ -3082,9 +3090,13 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
          * still be required to create a resulting Value, PolyglotException or ResourceLimitEvent.
          * Additionally, an active cancelled context may have submitted a thread-local action to
          * throw a CancelExecution exception. Closing a collected context at this place would
-         * execute this thread-local action, causing the exception to be lost.
+         * execute this thread-local action, causing the exception to be lost. Also avoid processing
+         * the reference queue while closing a child context as part of the parent context's
+         * closure. At this point, the parent's closeLock is still held. The reference queue will be
+         * processed later when the parent context itself is closed and the parent context's
+         * closeLock is no longer held.
          */
-        if (!active) {
+        if (!active && (parent == null || parent.closingThread != Thread.currentThread())) {
             CompilerAsserts.neverPartOfCompilation("Direct access to weakCreatorTruffleContext");
             getAPIAccess().contextClosed(weakAPI);
             if (parent == null) {
@@ -3469,8 +3481,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             unclosedChildContexts = getUnclosedChildContexts();
         }
         for (PolyglotContextImpl childCtx : unclosedChildContexts) {
-            if (childCtx.isActive()) {
-                throw new IllegalStateException("There is an active child contexts after finalizeContext!");
+            /*
+             * Another thread might be closing an unreachable child context. Closing a context
+             * requires it to be entered and made active. This situation is acceptable, as
+             * closeChildContexts will wait for the other thread to finish closing the context.
+             */
+            synchronized (childCtx) {
+                if (childCtx.isActive() && !childCtx.state.isClosing()) {
+                    throw new IllegalStateException("There is an active child context after finalizeContext!");
+                }
             }
         }
         if (!unclosedChildContexts.isEmpty()) {

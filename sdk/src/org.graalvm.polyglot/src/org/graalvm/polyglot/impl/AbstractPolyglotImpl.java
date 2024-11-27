@@ -160,6 +160,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Context newInnerContext(AbstractContextDispatch dispatch, Object receiver, Context parentContext, Engine engine);
 
+        public abstract void processReferenceQueue();
+
         public abstract Language newLanguage(AbstractLanguageDispatch dispatch, Object receiver, Engine engine);
 
         public abstract Instrument newInstrument(AbstractInstrumentDispatch dispatch, Object receiver, Engine engine);

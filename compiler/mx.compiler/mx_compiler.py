@@ -640,7 +640,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     }
 
     # Renaissance is missing the msvc redistributable on Windows [GR-50132]
-    if not mx.is_windows() and jdk.javaCompliance <= '21':
+    if not mx.is_windows():
         for name in renaissance_suite.benchmarkList(bmSuiteArgs):
             iterations = renaissance_gate_iterations.get(name, -1)
             with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
