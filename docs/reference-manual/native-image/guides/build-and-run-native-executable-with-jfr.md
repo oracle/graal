@@ -52,7 +52,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     It creates an event, annotated with `@Label` from the `jdk.jfr.*` package.
     If you run this application, it will not print anything and just run that event.
 
-2. Compile the Java file using the GraalVM JDK:
+2. Ccompile the application using the GraalVM JDK:
     ```shell 
     javac JFRDemo.java
     ```

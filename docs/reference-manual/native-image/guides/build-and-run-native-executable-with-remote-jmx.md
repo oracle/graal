@@ -79,13 +79,13 @@ For other installation options, visit the [Downloads section](https://www.graalv
     }
     ```
 
-2. Compile the Java file using the GraalVM JDK:
+2. Ccompile the application using the GraalVM JDK:
     ```shell 
     javac SimpleJmx.java
     ```
     This creates _SimpleJmx.class_, _SimpleJmx$Simple.class_, and _SimpleJmx$SimpleMBean.class_ files.
    
-3. Add dynamic proxy configuration. JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans. To be able to interact with the custom `SimpleMBean` at run time, you need to provide Native Image with additional [dynamic-proxy metadata](../ReachabilityMetadata.md#reflection) for the MBean interface. For this, create or modify a JSON file named _proxy-config.json_ with the following contents:
+3. Add dynamic proxy configuration. JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans. To be able to interact with the custom `SimpleMBean` at run time, you need to provide Native Image with additional [dynamic-proxy metadata](../ReachabilityMetadata.md#reflection) for the MBean interface. For this, create or modify a JSON file named _reachability-metadata.json_ with the following contents:
     ```json
     {
       "reflection": [
