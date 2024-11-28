@@ -40,12 +40,17 @@ public interface AMD64G1BarrierSetLIRTool extends G1BarrierSetLIRTool {
      */
     Register getThread(AMD64MacroAssembler masm);
 
-    void computeCardFromThread(Register cardAddress, Register storeAddress, Register threadAddress, AMD64MacroAssembler masm);
+    /**
+     * Compute the thread-local card address from {@code storeAddress} and stores it into
+     * {@code cardAddress}.
+     */
+    void computeCardThreadLocal(Register cardAddress, Register storeAddress, Register threadAddress, AMD64MacroAssembler masm);
 
     /**
-     * Compute the card address into {@code cardAddress}.
+     * Compute the global card address from {@code storeAddress} and stores it into
+     * {@code cardAddress}.
      */
-    void computeCard(Register cardAddress, Register storeAddress, Register cardtable, AMD64MacroAssembler masm);
+    void computeCard(Register cardAddress, Register storeAddress, Register cardTableAddress, AMD64MacroAssembler masm);
 
     /**
      * Load an object field from {@code immediateAddress} into value.

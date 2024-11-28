@@ -30,6 +30,7 @@ import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -41,6 +42,7 @@ import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrierNode;
@@ -66,6 +68,8 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
                     void.class, Word.class);
     public static final HotSpotForeignCallDescriptor VALIDATE_OBJECT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "validate_object", boolean.class, Word.class,
                     Word.class);
+
+    public static final LocationIdentity CARD_TABLE_BASE_LOCATION = NamedLocationIdentity.mutable("GC-Card-Table-Base");
 
     private final Register threadRegister;
 
@@ -129,13 +133,14 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
     }
 
     @Override
-    protected boolean usesNewStylePostBarriers() {
-        return HotSpotReplacementsUtil.supportsG1NewBarriers(INJECTED_VMCONFIG);
+    protected boolean supportsLowLatencyBarriers() {
+        return HotSpotReplacementsUtil.supportsG1LowLatencyBarriers(INJECTED_VMCONFIG);
     }
 
     @Override
     protected Word cardTableBase() {
-        if (usesNewStylePostBarriers()) {
+        // Low-latency barriers rely on thread-local card tables
+        if (supportsLowLatencyBarriers()) {
             return getThread().readWord(HotSpotReplacementsUtil.g1CardTableBaseOffset(INJECTED_VMCONFIG), CARD_TABLE_BASE_LOCATION);
         }
         return Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));

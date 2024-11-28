@@ -40,7 +40,7 @@ public interface G1BarrierSetLIRTool {
 
     int cardQueueIndexOffset();
 
-    boolean supportsCardless();
+    boolean supportsLowLatencyBarriers();
 
     boolean useConditionalCardMarking();
 

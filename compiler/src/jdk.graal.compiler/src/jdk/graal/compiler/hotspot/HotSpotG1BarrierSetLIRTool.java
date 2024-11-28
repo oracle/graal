@@ -86,8 +86,8 @@ public abstract class HotSpotG1BarrierSetLIRTool implements G1BarrierSetLIRTool 
     }
 
     @Override
-    public boolean supportsCardless() {
-        return HotSpotReplacementsUtil.supportsG1NewBarriers(config);
+    public boolean supportsLowLatencyBarriers() {
+        return HotSpotReplacementsUtil.supportsG1LowLatencyBarriers(config);
     }
 
     @Override

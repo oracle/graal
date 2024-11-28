@@ -95,7 +95,7 @@ public class AMD64G1PostWriteBarrierOp extends AMD64LIRInstruction {
         // storing region crossing non-null, is card already non-clean?
         Register cardAddress = tmp;
 
-        tool.computeCardFromThread(cardAddress, storeAddress, thread, masm);
+        tool.computeCardThreadLocal(cardAddress, storeAddress, thread, masm);
 
         if (tool.useConditionalCardMarking()) {
             masm.cmpb(new AMD64Address(cardAddress, 0), tool.cleanCardValue());

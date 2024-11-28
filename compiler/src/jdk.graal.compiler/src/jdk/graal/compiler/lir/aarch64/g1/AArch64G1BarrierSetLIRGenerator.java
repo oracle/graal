@@ -64,7 +64,7 @@ public class AArch64G1BarrierSetLIRGenerator implements G1WriteBarrierSetLIRGene
         AllocatableValue temp2 = lirTool.newVariable(LIRKind.value(AArch64Kind.QWORD));
 
         AArch64LIRInstruction op;
-        if (barrierSetLIRTool.supportsCardless()) {
+        if (barrierSetLIRTool.supportsLowLatencyBarriers()) {
             op = new AArch64G1PostWriteBarrierOp(address, value, temp, temp2, nonNull, barrierSetLIRTool);
         } else {
             ForeignCallLinkage callTarget = lirTool.getForeignCalls().lookupForeignCall(barrierSetLIRTool.postWriteBarrierDescriptor());

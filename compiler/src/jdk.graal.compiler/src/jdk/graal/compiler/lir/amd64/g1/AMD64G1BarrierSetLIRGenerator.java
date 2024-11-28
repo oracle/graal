@@ -62,7 +62,7 @@ public class AMD64G1BarrierSetLIRGenerator implements G1WriteBarrierSetLIRGenera
     public void emitPostWriteBarrier(LIRGeneratorTool lirTool, Value address, Value value, boolean nonNull) {
         AllocatableValue temp = lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD));
         AMD64LIRInstruction op;
-        if (barrierSetLIRTool.supportsCardless()) {
+        if (barrierSetLIRTool.supportsLowLatencyBarriers()) {
             op = new AMD64G1PostWriteBarrierOp(address, value, temp, nonNull, this.barrierSetLIRTool);
         } else {
             AllocatableValue temp2 = lirTool.newVariable(LIRKind.value(AMD64Kind.QWORD));

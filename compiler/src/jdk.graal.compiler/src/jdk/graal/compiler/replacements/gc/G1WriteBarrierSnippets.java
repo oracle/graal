@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,7 +77,6 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     public static final LocationIdentity CARD_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Buffer");
     public static final LocationIdentity CARD_QUEUE_LOG_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Log");
     public static final LocationIdentity CARD_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("GC-Card-Queue-Index");
-    public static final LocationIdentity CARD_TABLE_BASE_LOCATION = NamedLocationIdentity.mutable("GC-Card-Table-Base");
 
     protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, SATB_QUEUE_LOG_LOCATION};
     protected static final LocationIdentity[] KILLED_POST_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{CARD_QUEUE_INDEX_LOCATION, CARD_QUEUE_BUFFER_LOCATION, CARD_QUEUE_LOG_LOCATION,
@@ -218,7 +217,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
                 byte cardByte = cardAddress.readByte(0, GC_CARD_LOCATION);
                 counters.g1EffectiveAfterNullPostWriteBarrierCounter.inc();
 
-                if (usesNewStylePostBarriers()) {
+                if (supportsLowLatencyBarriers()) {
                     if (probability(NOT_FREQUENT_PROBABILITY, cardByte == cleanCardValue())) {
                         cardAddress.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);
                     }
@@ -299,7 +298,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word end = base.add(cardTableOffset(getPointerToLastArrayElement(addr, length, elementStride)));
 
         Word cur = start;
-        if (usesNewStylePostBarriers()) {
+        if (supportsLowLatencyBarriers()) {
             do {
                 byte cardByte = cur.readByte(0, GC_CARD_LOCATION);
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByte == cleanCardValue())) {
@@ -366,7 +365,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     public abstract byte cleanCardValue();
 
-    protected abstract boolean usesNewStylePostBarriers();
+    protected abstract boolean supportsLowLatencyBarriers();
 
     protected abstract Word cardTableBase();
 

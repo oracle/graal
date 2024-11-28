@@ -648,8 +648,8 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static boolean supportsG1NewBarriers(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.g1QueuelessPostWriteBarrier;
+    public static boolean supportsG1LowLatencyBarriers(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.g1LowLatencyPostWriteBarrierSupport;
     }
 
     @Fold
