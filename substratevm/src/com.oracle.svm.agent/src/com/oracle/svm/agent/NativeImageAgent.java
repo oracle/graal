@@ -224,6 +224,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
         }
 
+        if (!checkJVMVersion(jvmti)) {
+            return USAGE_ERROR;
+        }
+
         if (traceOutputFile == null && configOutputDir == null) {
             configOutputDir = transformPath(AGENT_NAME + "_config-pid{pid}-{datetime}/");
             inform("no output options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
@@ -418,6 +422,34 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         inform("Example usage: -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/");
         inform("For details, please read AutomaticMetadataCollection.md or https://www.graalvm.org/dev/reference-manual/native-image/metadata/AutomaticMetadataCollection/");
         return USAGE_ERROR;
+    }
+
+    private static boolean checkJVMVersion(JvmtiEnv jvmti) {
+        String agentVersion = System.getProperty("java.vm.version");
+        int agentMajorVersion = Runtime.version().feature();
+
+        String vmVersion = Support.getSystemProperty(jvmti, "java.vm.version");
+        if (vmVersion == null) {
+            warn(String.format("Unable to determine the \"java.vm.version\" of the running JVM. Note that the JVM should have major version %d, otherwise metadata may be incorrect.",
+                            agentMajorVersion));
+            return true;
+        }
+
+        // Fail if the major versions differ.
+        String[] parts = vmVersion.split("\\D");
+        if (parts.length == 0 || Integer.parseInt(parts[0]) != agentMajorVersion) {
+            return error(false, String.format(
+                            "The current VM (%s) is incompatible with the agent, which was built for a JVM with major version %d. To resolve this issue, run the agent using a JVM with major version %d.",
+                            vmVersion, agentMajorVersion, agentMajorVersion));
+        }
+
+        // Warn if the VM is different.
+        if (!vmVersion.startsWith(agentVersion)) {
+            warn(String.format(
+                            "The running JVM (%s) is different from the JVM used to build the agent (%s). If the generated metadata is incorrect or incomplete, consider running the agent using the same JVM that built it.",
+                            vmVersion, agentVersion));
+        }
+        return true;
     }
 
     private static AccessAdvisor createAccessAdvisor(boolean builtinHeuristicFilter, ConfigurationFilter callerFilter, ConfigurationFilter accessFilter) {
