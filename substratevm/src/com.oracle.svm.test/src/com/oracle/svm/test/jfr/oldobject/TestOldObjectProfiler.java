@@ -48,8 +48,10 @@ import jdk.graal.compiler.api.directives.GraalDirectives;
 
 public class TestOldObjectProfiler extends AbstractJfrTest {
 
-    /* Old object samples will not have allocation ticks set correctly if JfrTicks is not first initialized.
-    * We need to create the first JFR recording to lazily initialize JfrTicks.*/
+    /*
+     * Old object samples will not have allocation ticks set correctly if JfrTicks is not first
+     * initialized. We need to create the first JFR recording to lazily initialize JfrTicks.
+     */
     @BeforeClass
     public static void initializeJfrTicks() {
         GraalDirectives.blackhole(new Recording());
