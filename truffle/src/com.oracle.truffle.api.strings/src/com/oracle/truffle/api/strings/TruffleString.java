@@ -57,8 +57,10 @@ import static com.oracle.truffle.api.strings.TStringGuards.isStride0;
 import static com.oracle.truffle.api.strings.TStringGuards.isStride1;
 import static com.oracle.truffle.api.strings.TStringGuards.isSupportedEncoding;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
+import static com.oracle.truffle.api.strings.TStringGuards.isUTF16FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
+import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
 import static com.oracle.truffle.api.strings.TStringGuards.littleEndian;
@@ -1008,6 +1010,9 @@ public final class TruffleString extends AbstractTruffleString {
          */
         public static final Encoding UTF_16 = littleEndian() ? UTF_16LE : UTF_16BE;
 
+        static final Encoding UTF_32_FOREIGN_ENDIAN = littleEndian() ? UTF_32BE : UTF_32LE;
+        static final Encoding UTF_16_FOREIGN_ENDIAN = littleEndian() ? UTF_16BE : UTF_16LE;
+
         final byte id;
         final String jCodingName;
         final byte maxCompatibleCodeRange;
@@ -1604,11 +1609,13 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached InlinedConditionProfile bytesProfile,
                         @Cached InlinedConditionProfile utf8Profile,
                         @Cached InlinedConditionProfile utf16Profile,
+                        @Cached InlinedConditionProfile utf16FEProfile,
                         @Cached InlinedConditionProfile utf32Profile,
+                        @Cached InlinedConditionProfile utf32FEProfile,
                         @Cached InlinedConditionProfile exoticProfile,
                         @Cached InlinedConditionProfile bmpProfile,
                         @Cached InlinedBranchProfile invalidCodePoint) {
-            assert !allowUTF16Surrogates || isUTF16Or32(enc) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
+            assert !allowUTF16Surrogates || isUTF16Or32(enc) || isUTF16FE(enc) || isUTF32FE(enc) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
             CompilerAsserts.partialEvaluationConstant(allowUTF16Surrogates);
             if (is7BitCompatible(enc) && Integer.compareUnsigned(c, 0x7f) <= 0) {
                 return TStringConstants.getSingleByteAscii(enc, c);
@@ -1694,6 +1701,50 @@ public final class TruffleString extends AbstractTruffleString {
                     stride = 2;
                     TStringOps.writeToByteArray(bytes, 2, 0, c);
                 }
+            } else if (utf16FEProfile.profile(this, isUTF16FE(enc))) {
+                if (Integer.toUnsignedLong(c) > 0x10ffff) {
+                    invalidCodePoint.enter(this);
+                    return null;
+                }
+                bytes = new byte[c <= 0xffff ? 2 : 4];
+                stride = 0;
+                if (bmpProfile.profile(this, c <= 0xffff)) {
+                    length = 2;
+                    if (Encodings.isUTF16Surrogate(c)) {
+                        if (allowUTF16Surrogates) {
+                            codeRange = TSCodeRange.getBrokenMultiByte();
+                        } else {
+                            invalidCodePoint.enter(this);
+                            return null;
+                        }
+                    } else {
+                        codeRange = TSCodeRange.getValidMultiByte();
+                    }
+                    TStringOps.writeToByteArray(bytes, 1, 0, Character.reverseBytes((char) c));
+                } else {
+                    length = 4;
+                    codeRange = TSCodeRange.getValidMultiByte();
+                    Encodings.utf16FEEncodeSurrogatePair(c, bytes, 0);
+                }
+            } else if (utf32FEProfile.profile(this, isUTF32FE(enc))) {
+                if (Integer.toUnsignedLong(c) > 0x10ffff) {
+                    invalidCodePoint.enter(this);
+                    return null;
+                }
+                if (Encodings.isUTF16Surrogate(c)) {
+                    if (allowUTF16Surrogates) {
+                        codeRange = TSCodeRange.getBrokenMultiByte();
+                    } else {
+                        invalidCodePoint.enter(this);
+                        return null;
+                    }
+                } else {
+                    codeRange = TSCodeRange.getValidMultiByte();
+                }
+                bytes = new byte[4];
+                length = 4;
+                stride = 0;
+                TStringOps.writeToByteArray(bytes, 2, 0, Integer.reverseBytes(c));
             } else if (exoticProfile.profile(this, !isSupportedEncoding(enc))) {
                 assert !isBytes(enc);
                 length = JCodings.getInstance().getCodePointLength(enc, c);

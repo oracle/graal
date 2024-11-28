@@ -21,6 +21,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-55296 Added support for creation of strings from raw byte arrays and native memory using 
 `Value.fromByteBasedString(...)` `Value.fromNativeString(...)`. A `Value.StringEncoding` must be provided.
 * GR-55296 Added support to convert any string to a `byte[]` with a given `Value.StringEncoding` using `Value.asStringBytes(...)`. 
+* GR-55296 Added support for UTF-16 and UTF-32 in non-system-endianness without dependency on the JCodings library in TruffleString.
 
 
 * GR-54760 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, and the name of the declared meta-object to build `StackTraceElement` instances.

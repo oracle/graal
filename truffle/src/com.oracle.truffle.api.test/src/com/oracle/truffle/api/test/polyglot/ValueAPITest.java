@@ -2720,9 +2720,11 @@ public class ValueAPITest {
     static {
         List<TestEncoding> encodings = new ArrayList<>();
         encodings.add(new TestEncoding(StringEncoding.UTF_8, StandardCharsets.UTF_8));
-        encodings.add(new TestEncoding(StringEncoding.UTF_16, ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? Charset.forName("UTF-16LE") : Charset.forName("UTF-16BE")));
+        encodings.add(new TestEncoding(StringEncoding.UTF_16_LITTLE_ENDIAN, StandardCharsets.UTF_16LE));
+        encodings.add(new TestEncoding(StringEncoding.UTF_16_BIG_ENDIAN, StandardCharsets.UTF_16BE));
         try {
-            encodings.add(new TestEncoding(StringEncoding.UTF_32, ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? Charset.forName("UTF-32LE") : Charset.forName("UTF-32BE")));
+            encodings.add(new TestEncoding(StringEncoding.UTF_32_LITTLE_ENDIAN, Charset.forName("UTF-32LE")));
+            encodings.add(new TestEncoding(StringEncoding.UTF_32_BIG_ENDIAN, Charset.forName("UTF-32BE")));
         } catch (UnsupportedCharsetException e) {
             // expected for JDK 21
         }
