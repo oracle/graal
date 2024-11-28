@@ -420,7 +420,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         @JavaType(internalName = "Ljava/lang/invoke/MemberName;")
         StaticObject doCached(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
-                        @JavaType(value = Class.class) StaticObject caller,
+                        @JavaType(value = Class.class) StaticObject guestCaller,
                         @SuppressWarnings("unused") int lookupMode,
                         @Bind("getMeta()") Meta meta,
                         @Cached BranchProfile isMethodProfile,
@@ -448,7 +448,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Nothing to resolve.");
             }
             // Extract resolution information from member name.
-            Klass resolutionKlass = clazz.getMirrorKlass(meta);
             final int flags = meta.java_lang_invoke_MemberName_flags.getInt(memberName);
             if (Integer.bitCount(flags & ALL_KINDS) != 1) {
                 // Ensure the flags field is not ill-formed.
@@ -456,10 +455,27 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid MemberName flag format.");
             }
 
+            // Determine the holder klass
+            Klass resolutionKlass = clazz.getMirrorKlass(meta);
+            if (!(resolutionKlass instanceof ObjectKlass)) {
+                // Non-standard behavior: behave as HotSpot.
+                if (resolutionKlass.isArray()) {
+                    resolutionKlass = meta.java_lang_Object;
+                } else if (resolutionKlass.isPrimitive()) {
+                    throw defaultResolutionFailure(meta, flags);
+                }
+            }
+
+            // Determine caller klass
+            Klass callerKlass = StaticObject.isNull(guestCaller) ? null : guestCaller.getMirrorKlass(meta);
+            if (callerKlass != null && callerKlass.isPrimitive()) {
+                // HotSpot behavior: primitive caller klass skip checks.
+                callerKlass = null;
+            }
+
             EspressoContext ctx = meta.getContext();
             ByteSequence desc = asSignature(type, meta);
             Symbol<Name> name = lookupName(meta, meta.toHostString(guestName), (Constants.flagHas(flags, MN_IS_FIELD)) ? meta.java_lang_NoSuchFieldException : meta.java_lang_NoSuchMethodException);
-            ObjectKlass callerKlass = StaticObject.isNull(caller) ? null : (ObjectKlass) caller.getMirrorKlass(meta);
 
             boolean doAccessChecks = callerKlass != null;
             boolean doConstraintsChecks = (callerKlass != null && ((lookupMode & LM_UNCONDITIONAL) == 0));
@@ -509,6 +525,16 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             plantResolvedMethod(memberName, resolvedCall, meta);
 
             return memberName;
+        }
+
+        private static RuntimeException defaultResolutionFailure(Meta meta, int flags) {
+            if (Constants.flagHas(flags, MN_IS_FIELD)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, "Field resolution failed");
+            } else if (Constants.flagHas(flags, MN_IS_METHOD) || Constants.flagHas(flags, MN_IS_CONSTRUCTOR)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, "Method resolution failed");
+            } else {
+                throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "resolution failed");
+            }
         }
 
         private static PolySigIntrinsics getPolysignatureIntrinsicID(BranchProfile isHandleMethodProfile, int flags, Klass resolutionKlass, int refKind, Symbol<Name> name) {
