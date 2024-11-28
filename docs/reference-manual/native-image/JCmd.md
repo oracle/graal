@@ -20,7 +20,8 @@ native-image --enable-monitoring=jcmd YourApplication
 ```
 
 When enabling support for `jcmd`, you may also want to include additional monitoring features, such as JDK Flight Recorder or heap dumps.
-Including multiple monitoring features during the Native Image build process unlocks access to more diagnostic commands at runtime. For example:
+Including multiple monitoring features during the Native Image build process unlocks access to more diagnostic commands at runtime. 
+For example:
 ```shell
 native-image --enable-monitoring=jcmd,jfr,heapdump YourApplication
 ```
@@ -66,23 +67,23 @@ jcmd -l
 
 The following key-value pairs are supported:
 
-| Name                     | Included with `--enable-monitoring=`            | Description                                                                                         |
-|--------------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| Compiler.dump_code_cache | Only available with Truffle runtime compilation | Print information about all compiled methods in the code cache.                                     |
-| GC.heap_dump             | heapdump                                        | Generate a HPROF format dump of the Java heap.                                                      |
-| GC.run                   | Always available                                | Call `java.lang.System.gc()`.                                                                       |
-| JFR.start                | jfr                                             | Starts a new JFR recording.                                                                         |
-| JFR.stop                 | jfr                                             | Stops a JFR recording.                                                                              |
-| JFR.check                | jfr                                             | Checks running JFR recording(s).                                                                    |
-| JFR.dump                 | jfr                                             | Copies contents of a JFR recording to file. Either the name or the recording id must be specified.  |
-| Thread.dump_to_file      | Always available                                | Dump threads, with stack traces, to a file in plain text or JSON format.                            |
-| Thread.print             | Always available                                | Print all threads with stacktraces.                                                                 |
-| VM.command_line          | Always available                                | Print the command line used to start this VM instance.                                              |
-| VM.native_memory         | nmt                                             | Print native memory usage.                                                                          |
-| VM.system_properties     | Always available                                | Print native memory usage                                                                           |
-| VM.uptime                | Always available                                | Print VM uptime.                                                                                    |
-| VM.version               | Always available                                | Print JVM version information.                                                                      | 
-| help                     | Always available                                | Display help information.                                                                           |
+| Name                     | Included with `--enable-monitoring=`            | Description                                                                                        |
+|--------------------------|-------------------------------------------------|----------------------------------------------------------------------------------------------------|
+| Compiler.dump_code_cache | Only available with Truffle runtime compilation | Print information about all compiled methods in the code cache.                                    |
+| GC.heap_dump             | heapdump                                        | Generate a HPROF format dump of the Java heap.                                                     |
+| GC.run                   | Always available                                | Call `java.lang.System.gc()`.                                                                      |
+| JFR.start                | jfr                                             | Starts a new JFR recording.                                                                        |
+| JFR.stop                 | jfr                                             | Stops a JFR recording.                                                                             |
+| JFR.check                | jfr                                             | Checks running JFR recording(s).                                                                   |
+| JFR.dump                 | jfr                                             | Copies contents of a JFR recording to file. Either the name or the recording id must be specified. |
+| Thread.dump_to_file      | Always available                                | Dump threads, with stack traces, to a file in plain text or JSON format.                           |
+| Thread.print             | Always available                                | Print all threads with stacktraces.                                                                |
+| VM.command_line          | Always available                                | Print the command line used to start this VM instance.                                             |
+| VM.native_memory         | nmt                                             | Print native memory usage.                                                                         |
+| VM.system_properties     | Always available                                | Print system properties.                                                                           |
+| VM.uptime                | Always available                                | Print VM uptime.                                                                                   |
+| VM.version               | Always available                                | Print JVM version information.                                                                     | 
+| help                     | Always available                                | Display help information.                                                                          |
 
 ## Performance
 
