@@ -189,10 +189,10 @@ public abstract class ObjectHeader {
      * Helper interface to write to memory at an overridable {@link LocationIdentity}.
      * <p>
      * {@link #initializeObjectHeader} is used in multiple contexts which write to different memory
-     * locations. LocationIdentity arguments to {@link WordOperationPlugin WordOperationPlugins} are
-     * required to be constant at the time of bytecode parsing, meaning it's not possible to
-     * {@link Fold} a location identity in any way, it must be a compile-time constant. To avoid
-     * duplicating implementations of initializeObjectHeader, we get around this by delegating the
+     * locations. LocationIdentity arguments to {@link WordOperationPlugin}s are required to be
+     * constant at the time of bytecode parsing, meaning it's not possible to {@link Fold} a
+     * location identity in any way, it must be a compile-time constant. To avoid duplicating
+     * implementations of {@link #initializeObjectHeader}, we get around this by delegating the
      * writing to the MemWriter, whose implementations use different (constant) location identities.
      */
     protected interface MemWriter {
