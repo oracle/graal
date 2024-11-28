@@ -32,12 +32,17 @@ import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 
+import java.lang.invoke.LambdaMetafactory;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.CodeSource;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,35 +56,64 @@ import java.util.Set;
  * desired JAR path/s.
  */
 public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
-    private static final Map<String, Set<String>> reflectMethodNames = Map.of(
-                    Class.class.getTypeName(), Set.of(
-                                    "forName",
-                                    "getClasses",
-                                    "getDeclaredClasses",
-                                    "getConstructor",
-                                    "getConstructors",
-                                    "getDeclaredConstructor",
-                                    "getDeclaredConstructors",
-                                    "getField",
-                                    "getFields",
-                                    "getDeclaredField",
-                                    "getDeclaredFields",
-                                    "getMethod",
-                                    "getMethods",
-                                    "getDeclaredMethod",
-                                    "getDeclaredMethods",
-                                    "getNestMembers",
-                                    "getPermittedSubclasses",
-                                    "getRecordComponents",
-                                    "getSigners",
-                                    "arrayType",
-                                    "newInstance"),
-                    Method.class.getTypeName(), Set.of("invoke"),
-                    Constructor.class.getTypeName(), Set.of("newInstance"),
-                    Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"),
-                    "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
-                    "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
-                    "sun.misc.Unsafe", Set.of("allocateInstance"));
+    private static final Map<String, Set<String>> reflectMethodNames = new HashMap<>();
+
+    static {
+        reflectMethodNames.put(Class.class.getTypeName(), Set.of(
+                        "forName",
+                        "getClasses",
+                        "getDeclaredClasses",
+                        "getConstructor",
+                        "getConstructors",
+                        "getDeclaredConstructor",
+                        "getDeclaredConstructors",
+                        "getField",
+                        "getFields",
+                        "getDeclaredField",
+                        "getDeclaredFields",
+                        "getMethod",
+                        "getMethods",
+                        "getDeclaredMethod",
+                        "getDeclaredMethods",
+                        "getNestMembers",
+                        "getPermittedSubclasses",
+                        "getRecordComponents",
+                        "getSigners",
+                        "arrayType",
+                        "newInstance"));
+        reflectMethodNames.put(Method.class.getTypeName(), Set.of("invoke"));
+        reflectMethodNames.put(MethodHandles.class.getTypeName(), Set.of("arrayConstructor"));
+        reflectMethodNames.put(MethodHandles.Lookup.class.getTypeName(), Set.of(
+                        "defineClass",
+                        "defineHiddenClass",
+                        "defineHiddenClassWithClassData",
+                        "findVirtual",
+                        "findStatic",
+                        "findConstructor",
+                        "findSpecial",
+                        "findGetter",
+                        "findSetter",
+                        "findStaticGetter",
+                        "findStaticSetter",
+                        "findVarHandle",
+                        "findStaticVarHandle",
+                        "unreflect",
+                        "unreflectSpecial",
+                        "unreflectConstructor",
+                        "unreflectGetter",
+                        "unreflectSetter",
+                        "unreflectVarHandle",
+                        "arrayConstructor"));
+        reflectMethodNames.put(ClassLoader.class.getTypeName(), Set.of("loadClass", "findBootstrapClassOrNull", "findLoadedClass"));
+        reflectMethodNames.put(URLClassLoader.class.getTypeName(), Set.of("loadClass"));
+        reflectMethodNames.put(LambdaMetafactory.class.getTypeName(), Set.of("metafactory", "altMetafactory"));
+        reflectMethodNames.put(Array.class.getTypeName(), Set.of("newInstance"));
+        reflectMethodNames.put(Constructor.class.getTypeName(), Set.of("newInstance"));
+        reflectMethodNames.put(Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"));
+        reflectMethodNames.put("java.lang.reflect.ReflectAccess", Set.of("newInstance"));
+        reflectMethodNames.put("jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"));
+        reflectMethodNames.put("sun.misc.Unsafe", Set.of("allocateInstance"));
+    }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
