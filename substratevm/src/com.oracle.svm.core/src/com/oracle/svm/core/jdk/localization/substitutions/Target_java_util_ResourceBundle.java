@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-import static sun.security.util.SecurityConstants.GET_CLASSLOADER_PERMISSION;
-
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -39,11 +37,14 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.loader.BootLoader;
+import sun.security.util.SecurityConstants;
 
 @TargetClass(java.util.ResourceBundle.class)
 @SuppressWarnings({"unused"})
@@ -137,6 +138,7 @@ final class Target_java_util_ResourceBundle {
 
     @Substitute
     @SuppressWarnings({"removal", "deprecation"})
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static ResourceBundle getBundleFromModule(Class<?> caller,
                     Module module,
                     String baseName,
@@ -147,7 +149,8 @@ final class Target_java_util_ResourceBundle {
         if (callerModule != module) {
             SecurityManager sm = System.getSecurityManager();
             if (sm != null) {
-                sm.checkPermission(GET_CLASSLOADER_PERMISSION);
+                RuntimePermission getClassLoaderPermission = ReflectionUtil.readField(SecurityConstants.class, "GET_CLASSLOADER_PERMISSION", null);
+                sm.checkPermission(getClassLoaderPermission);
             }
         }
         if (!ImageSingletons.lookup(LocalizationSupport.class).isRegisteredBundleLookup(baseName, locale, control)) {
