@@ -61,6 +61,7 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     private MatchFound unAnchoredInitialState;
     private PositionAssertion anchoredFinalState;
     private MatchFound matchFound;
+    private MatchFound matchFoundChecked;
     private boolean visitorGroupVisited = false;
 
     private final SubTreeIndex subtrees = new SubTreeIndex();
@@ -229,5 +230,14 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     @Override
     protected JsonObject toJson(String typeName) {
         return super.toJson(typeName).append(Json.prop("group", astNodeId(group)));
+    }
+
+    public void setMatchFoundChecked(MatchFound matchFoundChecked) {
+        this.matchFoundChecked = matchFoundChecked;
+    }
+
+    public MatchFound getMatchFoundChecked() {
+        assert matchFoundChecked != null;
+        return matchFoundChecked;
     }
 }

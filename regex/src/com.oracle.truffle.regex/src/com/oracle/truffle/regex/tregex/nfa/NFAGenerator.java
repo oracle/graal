@@ -59,6 +59,7 @@ import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
@@ -76,6 +77,7 @@ public final class NFAGenerator {
     private final NFAState dummyInitialState;
     private final NFAState[] anchoredInitialStates;
     private final NFAState[] initialStates;
+    private NFAState checkFinalTransitionState;
     /**
      * These are like {@link #initialStates}, but with {@code mustAdvance} set to {@code false},
      * i.e. we have already advanced when we are in these states. In a regular expression with
@@ -151,6 +153,14 @@ public final class NFAGenerator {
         }
         NFAStateTransition[] dummyInitPrev = new NFAStateTransition[]{anchoredReverseEntry, unAnchoredReverseEntry};
         dummyInitialState.setPredecessors(dummyInitPrev);
+    }
+
+    private NFAState getFinalCheckedTransitionState() {
+        if (checkFinalTransitionState == null) {
+            checkFinalTransitionState = createFinalState(StateSet.create(ast, ast.getRoot().getSubTreeParent().getMatchFoundChecked()), ast.getOptions().isMustAdvance());
+            checkFinalTransitionState.setSuccessors(new NFAStateTransition[]{createNoCGTransition(checkFinalTransitionState, finalState, ast.getEncoding().getFullSet())}, true);
+        }
+        return checkFinalTransitionState;
     }
 
     public static NFA createNFA(RegexAST ast, CompilationBuffer compilationBuffer) {
@@ -301,12 +311,23 @@ public final class NFAGenerator {
                         }
                     } else if (stateSetCC == null) {
                         if (containsMatchFound) {
-                            transitionsBuffer.add(createTransition(sourceState, finalState, ast.getEncoding().getFullSet()));
-                            // Transitions dominated by a transition to a final state will never end
-                            // up being used, so we can skip generating them and return the current
-                            // list of transitions.
-                            clearGroupBoundaries();
-                            return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
+                            if (mergeBuilder.getCodePointSet().matchesEverything(ast.getEncoding())) {
+                                transitionsBuffer.add(createTransition(sourceState, finalState, ast.getEncoding().getFullSet()));
+                                // Transitions dominated by a transition to a final state will never
+                                // end up being used, so we can skip generating them and return the
+                                // current list of transitions.
+                                clearGroupBoundaries();
+                                return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
+                            }
+                            // This case is only reachable when merging a lookbehind with an empty
+                            // transition to the final state.
+                            // The issue is that the priority between transitions after running the
+                            // canonicalizer is lost, but that doesn't matter since
+                            // they have disjoint code point sets. But when the transition reaches
+                            // the final state, then it's cps is not checked.
+                            // In that case we use this special checkFinalTransitionState, which
+                            // will still check that last code point set matches.
+                            transitionsBuffer.add(createTransition(sourceState, getFinalCheckedTransitionState(), mergeBuilder.getCodePointSet()));
                         }
                     } else {
                         if (containsMatchFound && allCCInLookBehind) {
@@ -341,6 +362,10 @@ public final class NFAGenerator {
 
     private NFAStateTransition createTransition(NFAState source, NFAState target, CodePointSet codePointSet) {
         return new NFAStateTransition((short) transitionID.inc(), source, target, codePointSet, ast.createGroupBoundaries(transitionGBUpdateIndices, transitionGBClearIndices, -1, lastGroup));
+    }
+
+    private NFAStateTransition createNoCGTransition(NFAState source, NFAState target, CodePointSet codePointSet) {
+        return new NFAStateTransition((short) transitionID.inc(), source, target, codePointSet, GroupBoundaries.getEmptyInstance(ast.getLanguage()));
     }
 
     private NFAState registerMatcherState(StateSet<RegexAST, CharacterClass> stateSetCC,
