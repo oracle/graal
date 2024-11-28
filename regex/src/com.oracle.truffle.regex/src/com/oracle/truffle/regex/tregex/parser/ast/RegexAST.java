@@ -392,7 +392,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public void createNFAHelperNodes(RegexASTSubtreeRootNode rootNode) {
-        nodeCount.inc(4);
+        nodeCount.inc(5);
         PositionAssertion anchored = new PositionAssertion(PositionAssertion.Type.CARET);
         rootNode.setAnchoredInitialState(anchored);
         MatchFound unAnchored = new MatchFound();
@@ -401,6 +401,8 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         rootNode.setMatchFound(end);
         PositionAssertion anchoredEnd = new PositionAssertion(PositionAssertion.Type.DOLLAR);
         rootNode.setAnchoredFinalState(anchoredEnd);
+        MatchFound endChecked = new MatchFound();
+        rootNode.setMatchFoundChecked(endChecked);
     }
 
     public PositionAssertion createPositionAssertion(PositionAssertion.Type type) {

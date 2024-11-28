@@ -312,6 +312,14 @@ public class JsTests extends RegexTestBase {
     }
 
     @Test
+    public void emptyTransitionMergedWithLookAhead() {
+        test("a(?=b(?<=ab)()|)", "", "ab", 0, true, 0, 1, 2, 2);
+        test("a(?=b(?<=ab)()|)", "", "ac", 0, true, 0, 1, -1, -1);
+        test("a(?=b(?<=ab)()|)", "", "a", 0, true, 0, 1, -1, -1);
+        test("a?(?=b(?<=ab)()|)", "", "a", 0, true, 0, 1, -1, -1);
+    }
+
+    @Test
     public void generatedTests() {
         /* GENERATED CODE BEGIN - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
 
