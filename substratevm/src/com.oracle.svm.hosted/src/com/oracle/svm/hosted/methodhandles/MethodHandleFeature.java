@@ -167,6 +167,9 @@ public class MethodHandleFeature implements InternalFeature {
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         ImageHeapScanner heapScanner = access.getUniverse().getHeapScanner();
 
+        // GR-60093: currently, Species_L is needed at runtime but not seen by the analysis
+        access.registerAsInHeap(ReflectionUtil.lookupClass("java.lang.invoke.BoundMethodHandle$Species_L"));
+
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer"), "cache"),
                         new FieldValueTransformerWithAvailability() {

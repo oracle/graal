@@ -1336,12 +1336,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native Class<?>[] getPermittedSubclasses();
 
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     @Substitute
     @SuppressWarnings("unused")
     private void checkMemberAccess(SecurityManager sm, int which, Class<?> caller, boolean checkProxyInterfaces) {
         /* No runtime access checks. */
     }
 
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     @Substitute
     @SuppressWarnings({"deprecation", "unused"})
     private void checkPackageAccess(SecurityManager sm, ClassLoader ccl, boolean checkProxyInterfaces) {
@@ -1351,6 +1353,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /**
      * Never called as it is partially evaluated away due to SecurityManager.
      */
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     @KeepOriginal
     @SuppressWarnings({"deprecation", "unused"})
     private static native void checkPackageAccessForPermittedSubclasses(@SuppressWarnings("removal") SecurityManager sm,
@@ -1473,6 +1476,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     @CallerSensitiveAdapter
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
@@ -1493,6 +1497,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @CallerSensitiveAdapter
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();
