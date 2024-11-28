@@ -123,6 +123,8 @@ public final class ReflectionPlugins {
     private final FallbackFeature fallbackFeature;
     private final ClassInitializationSupport classInitializationSupport;
 
+    private final boolean analyzeReflectionUsage;
+
     private ReflectionPlugins(ImageClassLoader imageClassLoader, AnnotationSubstitutionProcessor annotationSubstitutions,
                     ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
         this.imageClassLoader = imageClassLoader;
@@ -131,6 +133,7 @@ public final class ReflectionPlugins {
         this.aUniverse = aUniverse;
         this.reason = reason;
         this.fallbackFeature = fallbackFeature;
+        this.analyzeReflectionUsage = AnalyzeReflectionUsageSupport.Options.TrackReflectionUsage.hasBeenSet();
 
         this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
@@ -575,7 +578,7 @@ public final class ReflectionPlugins {
         }
 
         b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
-        if (AnalyzeReflectionUsageSupport.Options.TrackReflectionUsage.getValue() != null) {
+        if (analyzeReflectionUsage) {
             AnalyzeReflectionUsageSupport.instance().addFoldEntry(b.bci(), b.getMethod());
         }
         return true;

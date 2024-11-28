@@ -122,22 +122,18 @@ public final class AnalyzeReflectionUsageSupport {
         return jarPaths;
     }
 
-    public Set<FoldEntry> getFoldEntries() {
-        return this.foldEntries;
-    }
-
     /*
      * Support data structure used to keep track of reflective calls which don't require metadata,
      * but can't be folded.
      */
     public static class FoldEntry {
+        private final int bci;
+        private final ResolvedJavaMethod method;
+
         public FoldEntry(int bci, ResolvedJavaMethod method) {
             this.bci = bci;
             this.method = method;
         }
-
-        int bci;
-        ResolvedJavaMethod method;
 
         @Override
         public boolean equals(Object obj) {
