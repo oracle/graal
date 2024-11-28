@@ -2354,16 +2354,19 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             case Ignore -> {
             }
             case Print -> {
-                PrintStream errStream = System.err;
-                errStream.printf("""
-                                [engine] WARNING: %s
-                                To customize the behavior of this warning, use 'engine.CloseOnGCFailureAction' option or the 'polyglot.engine.CloseOnGCFailureAction' system property.
-                                The accepted values are:
-                                  - Ignore:    Do not print this warning.
-                                  - Print:     Print this warning (default value).
-                                  - Throw:     Throw an exception instead of printing this warning.
-                                """, reason);
-                exception.printStackTrace(errStream);
+                StringWriter message = new StringWriter();
+                try (PrintWriter errWriter = new PrintWriter(message)) {
+                    errWriter.printf("""
+                                    [engine] WARNING: %s
+                                    To customize the behavior of this warning, use 'engine.CloseOnGCFailureAction' option or the 'polyglot.engine.CloseOnGCFailureAction' system property.
+                                    The accepted values are:
+                                      - Ignore:    Do not print this warning.
+                                      - Print:     Print this warning (default value).
+                                      - Throw:     Throw an exception instead of printing this warning.
+                                    """, reason);
+                    exception.printStackTrace(errWriter);
+                }
+                logFallback(message.toString());
             }
             case Throw -> throw new RuntimeException(reason, exception);
         }
@@ -2468,4 +2471,19 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         impl.getRootImpl().validateVirtualThreadCreation(getEngineOptionValues());
     }
 
+    /**
+     * Logs a message when other logging mechanisms, such as {@link TruffleLogger} or the context's
+     * error stream, are unavailable. This can occur, for instance, in the event of a log handler
+     * failure.
+     * <p>
+     * On HotSpot, this method writes the message to {@code System.err}. When running on a native
+     * image, this method is substituted to delegate logging to the native image's
+     * {@link org.graalvm.nativeimage.LogHandler}.
+     *
+     * @param message the message to log
+     */
+    static void logFallback(String message) {
+        PrintStream err = System.err;
+        err.println(message);
+    }
 }

@@ -59,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.logging.ErrorManager;
 import java.util.logging.Formatter;
@@ -300,7 +301,7 @@ final class PolyglotLoggers {
 
         final synchronized void reportHandlerError(int errorKind, Throwable t) {
             if (errorManager == null) {
-                errorManager = new ErrorManager();
+                errorManager = new PolyglotErrorManager();
             }
             Exception exception;
             if (t instanceof Exception) {
@@ -783,6 +784,33 @@ final class PolyglotLoggers {
                 }
             }
             return EngineAccessor.LANGUAGE.getLogger(loggerId, null, loggersCache);
+        }
+    }
+
+    private static final class PolyglotErrorManager extends ErrorManager {
+
+        private final AtomicBoolean reported = new AtomicBoolean();
+
+        PolyglotErrorManager() {
+        }
+
+        @Override
+        public void error(String msg, Exception ex, int code) {
+            if (reported.getAndSet(true)) {
+                return;
+            }
+            StringWriter content = new StringWriter();
+            try (PrintWriter out = new PrintWriter(content)) {
+                String text = "java.util.logging.ErrorManager: " + code;
+                if (msg != null) {
+                    text = text + ": " + msg;
+                }
+                out.println(text);
+                if (ex != null) {
+                    ex.printStackTrace(out);
+                }
+            }
+            PolyglotEngineImpl.logFallback(content.toString());
         }
     }
 }

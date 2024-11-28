@@ -61,6 +61,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.log.Log;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -1465,6 +1466,17 @@ final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             return SubstrateOptions.TruffleStableOptions.CopyLanguageResources.getValue();
+        }
+    }
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.PolyglotEngineImpl", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_PolyglotEngineImpl {
+    @Substitute
+    static void logFallback(String message) {
+        try (Log log = Log.log()) {
+            log.string(message.getBytes(StandardCharsets.UTF_8));
+            log.flush();
         }
     }
 }
