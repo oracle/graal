@@ -571,6 +571,7 @@ public class LibGraalCompilationDriver {
                     TTY.println("%s : Error compiling method: %s", compilation.testName(), compilation);
                     TTY.println(stackTrace);
                 }
+                failedCompilations.getAndAdd(1);
                 return null;
             }
             return new CompilationResult(installedCode, memTimeBuffer.readTimeElapsed(), memTimeBuffer.readBytesAllocated());
@@ -596,6 +597,11 @@ public class LibGraalCompilationDriver {
         int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
         HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
         return createCompilationTask(jvmciRuntime, compiler, request, useProfilingInfo, installAsDefault);
+    }
+
+    protected void handleFailure(HotSpotCompilationRequestResult result) {
+        failedCompilations.getAndAdd(1);
+        throw new GraalError("Compilation request failed: %s", result.getFailureMessage());
     }
 
     /**
@@ -624,14 +630,13 @@ public class LibGraalCompilationDriver {
             CompilationTask task = createCompilationTask(method, useProfilingInfo, installAsDefault);
             HotSpotCompilationRequestResult result = task.runCompilation(compileOptions);
             if (result.getFailure() != null) {
-                var error = new GraalError("Compilation request failed: %s", result.getFailureMessage());
                 if (result.getRetry() && !retried) {
-                    error.printStackTrace(TTY.out);
-                    TTY.println("Retrying...");
+                    TTY.println("Retrying %s after transient failure...", task);
                     retried = true;
                     continue;
                 }
-                throw error;
+                handleFailure(result);
+                return null;
             }
             HotSpotInstalledCode installedCode = task.getInstalledCode();
             assert installedCode != null : "installed code is null yet no failure detected";
@@ -715,7 +720,6 @@ public class LibGraalCompilationDriver {
                     Map<ResolvedJavaMethod, CompilationResult> results) {
         CompilationResult result = compile(task, libgraal, options);
         if (result == null) {
-            failedCompilations.getAndAdd(1);
             return;
         }
         compileTime.getAndAdd(result.compileTime());

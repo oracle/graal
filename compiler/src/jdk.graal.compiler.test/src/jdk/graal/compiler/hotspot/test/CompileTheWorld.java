@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,6 +90,7 @@ import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationTask;
 import jdk.graal.compiler.hotspot.CompileTheWorldFuzzedSuitesCompilationTask;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
+import jdk.graal.compiler.hotspot.HotSpotBytecodeParser;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -102,6 +103,7 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
@@ -935,6 +937,18 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
                 }
             }
             TTY.println("---------------------------------------------");
+        }
+    }
+
+    @Override
+    protected void handleFailure(HotSpotCompilationRequestResult result) {
+        /*
+         * Ignore bailouts caused by calling node intrinsics outside a Snippet. Since in CTW we try
+         * to compile all methods as compilation roots indiscriminately, we may hit upon a helper
+         * method that expects to only be inlined into a snippet.
+         */
+        if (!result.getFailureMessage().startsWith(HotSpotBytecodeParser.BAD_NODE_INTRINSIC_PLUGIN_CONTEXT)) {
+            super.handleFailure(result);
         }
     }
 
