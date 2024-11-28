@@ -46,6 +46,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -455,6 +456,41 @@ public class FileSystemsTest {
                 final String content = new String(file.readAllBytes(), StandardCharsets.UTF_8);
                 Assert.assertTrue(formatErrorMessage("Expected SecurityException", configurationName, path), canRead);
                 Assert.assertEquals(formatErrorMessage("Expected file content", configurationName, path), FILE_EXISTING_CONTENT, content);
+            } catch (SecurityException se) {
+                Assert.assertFalse(formatErrorMessage("Unexpected SecurityException", configurationName, path), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(formatErrorMessage(ioe.getMessage(), configurationName, path), ioe);
+            }
+            return null;
+        }
+    }
+
+    @Test
+    public void testReadIgnoresLinkOption() {
+        Context ctx = cfg.getContext();
+        String configuration = cfg.getName();
+        String path = cfg.getPath().toString();
+        boolean usePublicFile = cfg.usePublicFile;
+        boolean canRead = cfg.canRead();
+        AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestReadIgnoresLinkOptionLanguage.class, "", configuration, path, usePublicFile, canRead);
+    }
+
+    @Registration
+    public static final class TestReadIgnoresLinkOptionLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String configurationName = (String) contextArguments[0];
+            String path = (String) contextArguments[1];
+            boolean usePublicFile = (boolean) contextArguments[2];
+            boolean canRead = (boolean) contextArguments[3];
+            TruffleFile file = resolve(env, usePublicFile, path, FOLDER_EXISTING, FILE_EXISTING);
+            try {
+                try (BufferedReader in = new BufferedReader(new InputStreamReader(file.newInputStream(LinkOption.NOFOLLOW_LINKS), StandardCharsets.UTF_8))) {
+                    final String content = in.readLine();
+                    Assert.assertTrue(formatErrorMessage("Expected SecurityException", configurationName, path), canRead);
+                    Assert.assertEquals(formatErrorMessage("Expected file content", configurationName, path), FILE_EXISTING_CONTENT, content);
+                }
             } catch (SecurityException se) {
                 Assert.assertFalse(formatErrorMessage("Unexpected SecurityException", configurationName, path), canRead);
             } catch (IOException ioe) {

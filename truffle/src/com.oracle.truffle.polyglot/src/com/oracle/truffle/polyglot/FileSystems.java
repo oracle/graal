@@ -1524,12 +1524,13 @@ final class FileSystems {
                         AccessMode.READ,
                         AccessMode.EXECUTE);
 
-        private static final List<StandardOpenOption> READ_OPTIONS = Arrays.asList(
+        private static final Set<? extends OpenOption> READ_OPTIONS = Set.of(
                         StandardOpenOption.READ,
                         StandardOpenOption.DSYNC,
                         StandardOpenOption.SPARSE,
                         StandardOpenOption.SYNC,
-                        StandardOpenOption.TRUNCATE_EXISTING);
+                        StandardOpenOption.TRUNCATE_EXISTING,
+                        LinkOption.NOFOLLOW_LINKS);
 
         private final FileSystem delegateFileSystem;
 
