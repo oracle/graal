@@ -70,6 +70,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         CLASS_LAYOUT_1,
         CLASS_LAYOUT_2,
         CLASS_LAYOUT_3,
+        TYPE_POINTER_SIG,
         TYPE_POINTER,
         FOREIGN_TYPEDEF,
         FOREIGN_STRUCT,
@@ -77,7 +78,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         STATIC_FIELD_LOCATION,
         ARRAY_LAYOUT,
         INTERFACE_LAYOUT,
-        INDIRECT_LAYOUT,
+        COMPRESSED_LAYOUT,
         /* Level 2 DIEs. */
         METHOD_DECLARATION,
         METHOD_DECLARATION_STATIC,
@@ -128,7 +129,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * A prefix used to label indirect types used to ensure gdb performs oop reference --> raw
      * address translation
      */
-    public static final String INDIRECT_PREFIX = "_z_.";
+    public static final String COMPRESSED_PREFIX = "_z_.";
     /*
      * A prefix used for type signature generation to generate unique type signatures for type
      * layout type units

@@ -510,7 +510,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int writeDwarfUnitHeader(DwarfUnitHeader dwarfUnitHeader, byte[] buffer, int pos) {
-        return writeByte((byte) dwarfUnitHeader.value(), buffer, pos);
+        return writeByte(dwarfUnitHeader.value(), buffer, pos);
     }
 
     protected int writeTypeSignature(long typeSignature, byte[] buffer, int pos) {

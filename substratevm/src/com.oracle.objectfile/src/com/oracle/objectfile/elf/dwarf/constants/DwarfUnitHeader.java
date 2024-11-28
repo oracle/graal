@@ -29,16 +29,16 @@ package com.oracle.objectfile.elf.dwarf.constants;
  * All the Dwarf unit headers needed in the debug info section.
  */
 public enum DwarfUnitHeader {
-    DW_UT_compile(0x1),
-    DW_UT_type(0x2);
+    DW_UT_compile((byte) 0x1),
+    DW_UT_type((byte) 0x2);
 
-    private final int value;
+    private final byte value;
 
-    DwarfUnitHeader(int i) {
+    DwarfUnitHeader(byte i) {
         value = i;
     }
 
-    public int value() {
+    public byte value() {
         return value;
     }
 }

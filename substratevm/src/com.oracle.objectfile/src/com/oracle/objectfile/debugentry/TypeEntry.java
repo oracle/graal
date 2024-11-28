@@ -47,10 +47,15 @@ public abstract class TypeEntry {
     protected final String typeName;
 
     /**
-     * The type signature of this type.
+     * The type signature of this type. This is a pointer to the underlying layout of the type.
      */
     protected long typeSignature;
-    protected long indirectTypeSignature;
+
+    /**
+     * The type signature for the compressed type. This points to the compressed layout which
+     * resolves oops to the actual address of an instances.
+     */
+    protected long typeSignatureForCompressed;
 
     /**
      * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
@@ -68,15 +73,15 @@ public abstract class TypeEntry {
         this.size = size;
         this.classOffset = -1;
         this.typeSignature = 0;
-        this.indirectTypeSignature = 0;
+        this.typeSignatureForCompressed = 0;
     }
 
     public long getTypeSignature() {
         return typeSignature;
     }
 
-    public long getIndirectTypeSignature() {
-        return indirectTypeSignature;
+    public long getTypeSignatureForCompressed() {
+        return typeSignatureForCompressed;
     }
 
     public long getClassOffset() {
@@ -148,9 +153,9 @@ public abstract class TypeEntry {
         this.typeSignature = debugTypeInfo.typeSignature("");
         // primitives, header and foreign types are never stored compressed
         if (!debugInfoBase.useHeapBase() || this instanceof PrimitiveTypeEntry || this instanceof HeaderTypeEntry || this instanceof ForeignTypeEntry) {
-            this.indirectTypeSignature = typeSignature;
+            this.typeSignatureForCompressed = typeSignature;
         } else {
-            this.indirectTypeSignature = debugTypeInfo.typeSignature(DwarfDebugInfo.INDIRECT_PREFIX);
+            this.typeSignatureForCompressed = debugTypeInfo.typeSignature(DwarfDebugInfo.COMPRESSED_PREFIX);
         }
     }
 }

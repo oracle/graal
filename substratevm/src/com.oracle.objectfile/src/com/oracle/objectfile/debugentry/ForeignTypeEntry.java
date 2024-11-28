@@ -58,6 +58,11 @@ public class ForeignTypeEntry extends ClassEntry {
         return DebugInfoProvider.DebugTypeInfo.DebugTypeKind.FOREIGN;
     }
 
+    /*
+     * When we process a foreign pointer type for the .debug_info section we want to reuse its type
+     * signature. After sizing the .debug_info the layout type signature contains the type signature
+     * of the type this foreign pointer points to.
+     */
     public void setLayoutTypeSignature(long typeSignature) {
         this.layoutTypeSignature = typeSignature;
     }

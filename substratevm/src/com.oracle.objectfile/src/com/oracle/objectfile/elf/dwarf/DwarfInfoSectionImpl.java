@@ -344,7 +344,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (fieldEntry.isEmbedded()) {
             // the field type must be a foreign type
             ForeignTypeEntry foreignValueType = (ForeignTypeEntry) valueType;
-            /* use the indirect layout type for the field */
+            /* use the layout type for the field */
             /* handle special case when the field is an array */
             int fieldSize = fieldEntry.getSize();
             int valueSize = foreignValueType.getSize();
@@ -371,12 +371,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                     // at this point.
                     typeSignature = pointerTo.getTypeSignature();
                 } else {
-                    typeSignature = foreignValueType.getIndirectLayoutTypeSignature();
+                    typeSignature = foreignValueType.getLayoutTypeSignature();
                 }
             }
         } else {
-            /* use the indirect type for the field so pointers get translated */
-            typeSignature = valueType.getIndirectTypeSignature();
+            /* use the compressed type for the field so compressed pointers get translated */
+            typeSignature = valueType.getTypeSignatureForCompressed();
         }
         log(context, "  [0x%08x] struct field", pos);
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
@@ -426,10 +426,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 assert typeEntry instanceof ClassEntry;
                 pos = writeClassLayoutTypeUnit(context, (ClassEntry) typeEntry, buffer, pos);
             }
-            pos = writePointerTypeUnit(context, typeEntry, false, buffer, pos);
+            pos = writePointerTypeUnit(context, typeEntry, buffer, pos);
             if (dwarfSections.useHeapBase()) {
-                pos = writeIndirectLayoutTypeUnit(context, typeEntry, buffer, pos);
-                pos = writePointerTypeUnit(context, typeEntry, true, buffer, pos);
+                pos = writePointerTypeUnitForCompressed(context, typeEntry, buffer, pos);
             }
         }
         return pos;
@@ -460,7 +459,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writePointerTypeUnit(DebugContext context, StructureTypeEntry typeEntry, boolean indirect, byte[] buffer, int p) {
+    private int writePointerTypeUnit(DebugContext context, StructureTypeEntry typeEntry, byte[] buffer, int p) {
         int pos = p;
 
         String loaderId = "";
@@ -470,18 +469,18 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             loaderId = ((ClassEntry) typeEntry).getLoaderId();
         }
         int lengthPos = pos;
-        long typeSignature = indirect ? typeEntry.getIndirectTypeSignature() : typeEntry.getTypeSignature();
+        long typeSignature = typeEntry.getTypeSignature();
         pos = writeTUPreamble(context, typeSignature, loaderId, buffer, p);
 
         /* Define a pointer type referring to the underlying layout. */
-        log(context, "  [0x%08x] %s%s pointer type", pos, typeEntry.isInterface() ? "interface" : "class", indirect ? " indirect" : "");
-        AbbrevCode abbrevCode = AbbrevCode.TYPE_POINTER;
+        log(context, "  [0x%08x] %s pointer type", pos, typeEntry.isInterface() ? "interface" : "class");
+        AbbrevCode abbrevCode = AbbrevCode.TYPE_POINTER_SIG;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        int pointerSize = indirect ? dwarfSections.referenceSize() : dwarfSections.pointerSize();
+        int pointerSize = dwarfSections.pointerSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
         pos = writeAttrData1((byte) pointerSize, buffer, pos);
-        long layoutTypeSignature = indirect ? typeEntry.getIndirectLayoutTypeSignature() : typeEntry.getLayoutTypeSignature();
+        long layoutTypeSignature = typeEntry.getLayoutTypeSignature();
         log(context, "  [0x%08x]     type 0x%x", pos, layoutTypeSignature);
         pos = writeTypeSignature(layoutTypeSignature, buffer, pos);
 
@@ -498,42 +497,54 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeIndirectLayoutTypeUnit(DebugContext context, StructureTypeEntry typeEntry, byte[] buffer, int p) {
+    private int writePointerTypeUnitForCompressed(DebugContext context, StructureTypeEntry typeEntry, byte[] buffer, int p) {
         int pos = p;
+        long typeSignature = typeEntry.getTypeSignatureForCompressed();
 
+        // Write a type unit header
+        int lengthPos = pos;
+        pos = writeTUHeader(typeSignature, buffer, pos);
+        int typeOffsetPos = pos - 4;
+        assert pos == lengthPos + TU_DIE_HEADER_SIZE;
+        AbbrevCode abbrevCode = AbbrevCode.TYPE_UNIT;
+        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode.ordinal());
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
+        pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
+        log(context, "  [0x%08x]     use_UTF8", pos);
+        pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
+
+        /* if the class has a loader then embed the children in a namespace */
         String loaderId = "";
         if (typeEntry.isArray()) {
             loaderId = ((ArrayTypeEntry) typeEntry).getLoaderId();
         } else if (typeEntry.isClass()) {
             loaderId = ((ClassEntry) typeEntry).getLoaderId();
         }
-        int lengthPos = pos;
-        pos = writeTUPreamble(context, typeEntry.getIndirectLayoutTypeSignature(), loaderId, buffer, pos);
+        if (!loaderId.isEmpty()) {
+            pos = writeNameSpace(context, loaderId, buffer, pos);
+        }
 
         /*
-         * Write a wrapper type with a data_location attribute that can act as a target for an
-         * indirect pointer.
+         * Define a wrapper type with a data_location attribute that can act as a target for
+         * compressed oops
          */
-        log(context, "  [0x%08x] indirect %s layout", pos, typeEntry.isInterface() ? "interface" : "class");
-        AbbrevCode abbrevCode = AbbrevCode.INDIRECT_LAYOUT;
+        int refTypeIdx = pos;
+        pos = writeLayoutTypeForCompressed(context, typeEntry, buffer, pos);
+
+        /* Fix up the type offset. */
+        writeInt(pos - lengthPos, buffer, typeOffsetPos);
+
+        /* Define a pointer type referring to the underlying layout. */
+        log(context, "  [0x%08x] %s compressed pointer type", pos, typeEntry.isInterface() ? "interface" : "class");
+        abbrevCode = AbbrevCode.TYPE_POINTER;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        String indirectName = uniqueDebugString(DwarfDebugInfo.INDIRECT_PREFIX + typeEntry.getTypeName());
-        String name = uniqueDebugString(typeEntry.getTypeName());
-        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(indirectName), name);
-        pos = writeStrSectionOffset(indirectName, buffer, pos);
-        int size = typeEntry.getSize();
-        log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
-        pos = writeAttrData2((short) size, buffer, pos);
-        /* Write a data location expression to mask and/or rebase oop pointers. */
-        log(context, "  [0x%08x]     data_location", pos);
-        pos = writeIndirectOopConversionExpression(dwarfSections.isHubClassEntry(typeEntry), buffer, pos);
-
-        /* Now write the child field. */
-        pos = writeSuperReference(context, typeEntry.getLayoutTypeSignature(), name, buffer, pos);
-
-        /* Write a terminating null attribute for the indirect layout. */
-        pos = writeAttrNull(buffer, pos);
+        int pointerSize = dwarfSections.referenceSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
+        pos = writeAttrData1((byte) pointerSize, buffer, pos);
+        log(context, "  [0x%08x]     type 0x%x", pos, refTypeIdx);
+        pos = writeAttrRef4(refTypeIdx, buffer, pos);
 
         if (!loaderId.isEmpty()) {
             /* Write a terminating null attribute for the namespace. */
@@ -546,6 +557,34 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Fix up the TU length. */
         patchLength(lengthPos, buffer, pos);
         return pos;
+    }
+
+    private int writeLayoutTypeForCompressed(DebugContext context, StructureTypeEntry typeEntry, byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * Write a wrapper type with a data_location attribute that can act as a target for
+         * compressed oops.
+         */
+        log(context, "  [0x%08x] compressed %s layout", pos, typeEntry.isInterface() ? "interface" : "class");
+        AbbrevCode abbrevCode = AbbrevCode.COMPRESSED_LAYOUT;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        String compressedName = uniqueDebugString(DwarfDebugInfo.COMPRESSED_PREFIX + typeEntry.getTypeName());
+        String name = uniqueDebugString(typeEntry.getTypeName());
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(compressedName), name);
+        pos = writeStrSectionOffset(compressedName, buffer, pos);
+        int size = typeEntry.getSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, size);
+        pos = writeAttrData2((short) size, buffer, pos);
+        /* Write a data location expression to mask and/or rebase oop pointers. */
+        log(context, "  [0x%08x]     data_location", pos);
+        pos = writeCompressedOopConversionExpression(dwarfSections.isHubClassEntry(typeEntry), buffer, pos);
+
+        /* Now write the child field. */
+        pos = writeSuperReference(context, typeEntry.getLayoutTypeSignature(), name, buffer, pos);
+
+        /* Write a terminating null attribute for the compressed layout. */
+        return writeAttrNull(buffer, pos);
     }
 
     private int writeInterfaceLayoutTypeUnit(DebugContext context, InterfaceClassEntry interfaceClassEntry, byte[] buffer, int p) {
@@ -593,8 +632,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] type layout", pos);
         AbbrevCode abbrevCode = AbbrevCode.CLASS_LAYOUT_1;
         /*
-         * when we don't have a separate indirect type then hub layouts need an extra data_location
-         * attribute
+         * when we don't have a separate compressed type then hub layouts need an extra
+         * data_location attribute
          */
         if (!dwarfSections.useHeapBase() && dwarfSections.isHubClassEntry(classEntry)) {
             abbrevCode = AbbrevCode.CLASS_LAYOUT_2;
@@ -613,7 +652,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (abbrevCode == AbbrevCode.CLASS_LAYOUT_2) {
             /* Write a data location expression to mask and/or rebase oop pointers. */
             log(context, "  [0x%08x]     data_location", pos);
-            pos = writeIndirectOopConversionExpression(true, buffer, pos);
+            pos = writeCompressedOopConversionExpression(true, buffer, pos);
         }
 
         StructureTypeEntry superClassEntry = classEntry.getSuperClass();
@@ -672,7 +711,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Define a pointer type referring to the base type */
         int refTypeIdx = pos;
         log(context, "  [0x%08x] foreign pointer type", pos);
-        abbrevCode = AbbrevCode.TYPE_POINTER;
+        abbrevCode = AbbrevCode.TYPE_POINTER_SIG;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         int pointerSize = dwarfSections.pointerSize();
@@ -714,7 +753,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         String loaderId = foreignTypeEntry.getLoaderId();
         int lengthPos = pos;
-        pos = writeTUPreamble(context, foreignTypeEntry.getLayoutTypeSignature(), loaderId, buffer, pos);
+
+        /* Only write a TU preamble if we will write a new layout type. */
+        if (foreignTypeEntry.isWord() || foreignTypeEntry.isIntegral() || foreignTypeEntry.isFloat() || foreignTypeEntry.isStruct()) {
+            pos = writeTUPreamble(context, foreignTypeEntry.getLayoutTypeSignature(), loaderId, buffer, pos);
+        }
 
         int size = foreignTypeEntry.getSize();
         if (foreignTypeEntry.isWord()) {
@@ -741,9 +784,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 }
             }
             log(context, "  [0x%08x] foreign pointer type %s referent 0x%x (%s)", pos, foreignTypeEntry.getTypeName(), targetType.getTypeSignature(), targetType.getTypeName());
-            // set layout type as alias for pointer type
+            /*
+             * Setting the layout type to the type we point to reuses an available type unit, so we
+             * do not have to write are separate type unit.
+             *
+             * As we do not write anything, we can just return the initial position.
+             */
             foreignTypeEntry.setLayoutTypeSignature(targetType.getTypeSignature());
-            // do not write this type unit
             return p;
         }
 
@@ -969,8 +1016,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             /* At present we definitely don't have line numbers. */
         }
         TypeEntry valueType = fieldEntry.getValueType();
-        /* use the indirect type for the field so pointers get translated if needed */
-        long typeSignature = valueType.getIndirectTypeSignature();
+        /* use the compressed type for the field so pointers get translated if needed */
+        long typeSignature = valueType.getTypeSignatureForCompressed();
         log(context, "  [0x%08x]     type  0x%x (%s)", pos, typeSignature, valueType.getTypeName());
         pos = writeTypeSignature(typeSignature, buffer, pos);
         if (!isStatic) {
@@ -1448,8 +1495,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             /* At present we definitely don't have line numbers. */
         }
         TypeEntry valueType = fieldEntry.getValueType();
-        /* use the indirect type for the field so pointers get translated if needed */
-        long typeSignature = valueType.getIndirectTypeSignature();
+        /* use the compressed type for the field so pointers get translated if needed */
+        long typeSignature = valueType.getTypeSignatureForCompressed();
         log(context, "  [0x%08x]     type  0x%x (%s)", pos, typeSignature, valueType.getTypeName());
         pos = writeTypeSignature(typeSignature, buffer, pos);
         log(context, "  [0x%08x]     accessibility %s", pos, fieldEntry.getModifiersString());
@@ -1625,8 +1672,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         // Java arrays don't have a fixed byte_size
         String elementTypeName = elementType.getTypeName();
-        /* use the indirect type for the element type so pointers get translated */
-        long elementTypeSignature = elementType.getIndirectTypeSignature();
+        /* use the compressed type for the element type so pointers get translated */
+        long elementTypeSignature = elementType.getTypeSignatureForCompressed();
         log(context, "  [0x%08x]     type idx 0x%x (%s)", pos, elementTypeSignature, elementTypeName);
         pos = writeTypeSignature(elementTypeSignature, buffer, pos);
         return pos;
@@ -1659,7 +1706,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             elementTypeSignature = pointerTo.getTypeSignature();
         } else {
             // type the array using the layout type
-            elementTypeSignature = foreignValueType.getIndirectLayoutTypeSignature();
+            elementTypeSignature = foreignValueType.getLayoutTypeSignature();
         }
         log(context, "  [0x%08x]     type idx 0x%x (%s)", pos, elementTypeSignature, elementTypeName);
         pos = writeTypeSignature(elementTypeSignature, buffer, pos);
@@ -2071,7 +2118,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeByte(access.value(), buffer, p);
     }
 
-    public int writeIndirectOopConversionExpression(boolean isHub, byte[] buffer, int p) {
+    public int writeCompressedOopConversionExpression(boolean isHub, byte[] buffer, int p) {
         int pos = p;
         /*
          * For an explanation of the conversion rules @see com.oracle.svm.core.heap.ReferenceAccess

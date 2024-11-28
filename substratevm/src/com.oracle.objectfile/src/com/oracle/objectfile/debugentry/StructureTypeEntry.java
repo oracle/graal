@@ -49,24 +49,20 @@ public abstract class StructureTypeEntry extends TypeEntry {
     protected final List<FieldEntry> fields;
 
     /**
-     * The type signature of this types' layout.
+     * The type signature of this types' layout. The layout of a type contains debug info of fields
+     * and methods of a type, which is needed for representing the class hierarchy. The super type
+     * entry in the debug info needs to directly contain the type info instead of a pointer.
      */
     protected long layoutTypeSignature;
-    protected long indirectLayoutTypeSignature;
 
     public StructureTypeEntry(String typeName, int size) {
         super(typeName, size);
         this.fields = new ArrayList<>();
         this.layoutTypeSignature = 0;
-        this.indirectLayoutTypeSignature = 0;
     }
 
     public long getLayoutTypeSignature() {
         return layoutTypeSignature;
-    }
-
-    public long getIndirectLayoutTypeSignature() {
-        return indirectLayoutTypeSignature;
     }
 
     public Stream<FieldEntry> fields() {
@@ -146,12 +142,6 @@ public abstract class StructureTypeEntry extends TypeEntry {
             this.layoutTypeSignature = typeSignature;
         } else {
             this.layoutTypeSignature = debugTypeInfo.typeSignature(DwarfDebugInfo.LAYOUT_PREFIX);
-        }
-        // header and foreign types are never stored compressed
-        if (!debugInfoBase.useHeapBase() || this instanceof HeaderTypeEntry || this instanceof ForeignTypeEntry) {
-            this.indirectLayoutTypeSignature = layoutTypeSignature;
-        } else {
-            this.indirectLayoutTypeSignature = debugTypeInfo.typeSignature(DwarfDebugInfo.INDIRECT_PREFIX + DwarfDebugInfo.LAYOUT_PREFIX);
         }
     }
 }

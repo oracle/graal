@@ -143,13 +143,18 @@ import jdk.graal.compiler.debug.DebugContext;
  * <li><code>abbrev_code == CLASS_LAYOUT_3, tag == DW_TAG_class_type, parent = CLASS_UNIT_1/2</code>
  * - Skeleton Java instance type structure definition for compilation units
  *
- * <li><code>abbrev_code == TYPE_POINTER, tag == DW_TAG_pointer_type, parent = TYPE_UNIT</code> - Is
- * either of
+ * <li><code>abbrev_code == TYPE_POINTER_SIG, tag == DW_TAG_pointer_type, parent = TYPE_UNIT</code>
+ * - Points to a type using its type signature and is either of
  * <ul>
  * <li>Java instance ref type</li>
  * <li>Java interface ref type</li>
  * <li>Java array ref type</li>
- * <li>Java indirect ref type</li> - used to type indirect oops that encode the address of an
+ * </ul>
+ *
+ * <li><code>abbrev_code == TYPE_POINTER, tag == DW_TAG_pointer_type, parent = TYPE_UNIT</code> -
+ * Points to a type using a 4 byte offset and is used for
+ * <ul>
+ * <li>Java compressed ref type</li> - used to type compressed oops that encode the address of an
  * object, whether by adding tag bits or representing the address as an offset from some base
  * address. these are used to type object references stored in static and instance fields. They are
  * not needed when typing local vars and parameters held in registers or on the stack as they appear
@@ -174,7 +179,7 @@ import jdk.graal.compiler.debug.DebugContext;
  * <li><code>abbrev_code == INTERFACE_LAYOUT, tag == DW_TAG_union_type, parent = TYPE_UNIT</code> -
  * Java array type structure definition
  *
- * <li><code>abbrev_code == INDIRECT_LAYOUT, tag == DW_TAG_class_type, parent = TYPE_UNIT</code> -
+ * <li><code>abbrev_code == COMPRESSED_LAYOUT, tag == DW_TAG_class_type, parent = TYPE_UNIT</code> -
  * wrapper layout attaches address rewriting logic to the layout types that it wraps using a
  * <code>data_location</code> attribute
  *
@@ -386,7 +391,7 @@ import jdk.graal.compiler.debug.DebugContext;
  * which a debugger can use to decode the oop pointer to a raw address. n.b. this only applies in
  * the case where normal oop references are raw addresses (no compressed oops, no isolates). If a
  * heapbase register is being used then decoding logic is encoded for both normal classes and for
- * <code>java.lang.Class</code> using an indirect layout (see below).
+ * <code>java.lang.Class</code> using a compressed layout (see below).
  *
  * <ul>
  *
@@ -403,7 +408,9 @@ import jdk.graal.compiler.debug.DebugContext;
  *
  * <li><code>DW_AT_decl_file : ... DW_FORM_data1/2</code> only for CLASS_LAYOUT_1/2
  *
- * <li><code>DW_AT_data_location : ... DW_FORM_expr_loc</code> n.b. only for CLASS_LAYOUT_2
+ * <li><code>DW_AT_data_location : ... DW_FORM_expr_loc</code> only for CLASS_LAYOUT_2 - contains
+ * the decoding logic for the layout of <code>java.lang.Class</code> if no compressed layout is
+ * available
  *
  * </ul>
  *
@@ -537,21 +544,21 @@ import jdk.graal.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Indirect Instance Class Structure: The level 1 class layout DIE may be followed by a level 1
- * <code>INDIRECT_LAYOUT</code> DIE. The indirect layout is only needed when a heapbase register is
- * in use (isolates or compressed oops are enabled). This means that oop fields will hold encoded
- * oops. The indirect layout defines an empty wrapper class which declares the previous layout as
+ * Compressed Instance Class Structure: The level 1 class layout DIE may be followed by a level 1
+ * <code>COMPRESSED_LAYOUT</code> DIE. The compressed layout is only needed when a heapbase register
+ * is in use (isolates or compressed oops are enabled). This means that oop fields will hold encoded
+ * oops. The compressed layout defines an empty wrapper class which declares the previous layout as
  * its super class. This wrapper type also supplies a <code>data_location</code> attribute, ensuring
- * that indirect pointers to the class (see next item) are translated to raw addresses. The name of
- * the indirect type is constructed by prefixing the class name with
- * <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only one child DIE with type
- * SUPER_REFERENCE (see above). This effectively embeds the standard layout type in the indirect
- * layout as a type compatible referent for the Java oop. The size of the indirect layout is the
+ * that compressed pointers to the class (see next item) are translated to raw addresses. The name
+ * of the compressed type is constructed by prefixing the class name with
+ * <code>DwarfDebugInfo.COMPRESSED_PREFIX</code>. This DIE has only one child DIE with type
+ * SUPER_REFERENCE (see above). This effectively embeds the standard layout type in the compressed
+ * layout as a type compatible referent for the Java oop. The size of the compressed layout is the
  * same as the size of the class layout.
  *
  * <ul>
  *
- * <li><code>abbrev_code == INDIRECT_LAYOUT, tag == DW_TAG_class_type, has_children</code>
+ * <li><code>abbrev_code == COMPRESSED_LAYOUT, tag == DW_TAG_class_type, has_children</code>
  *
  * <li><code>DW_AT_name : ........ DW_FORM_strp</code>
  *
@@ -562,16 +569,16 @@ import jdk.graal.compiler.debug.DebugContext;
  * </ul>
  *
  * Instance Class Reference Types: The level 1 <code>CLASS_LAYOUT</code> and
- * <code>INDIRECT_LAYOUT</code> DIEs are followed by level 1 DIEs defining pointers to the
+ * <code>COMPRESSED_LAYOUT</code> DIEs are followed by level 1 DIEs defining pointers to the
  * respective class layouts. A <code>TYPE_POINTER</code> DIE defines a pointer type for the
  * <code>CLASS_LAYOUT</code> type and is used to type pointers which directly address an instance.
  * It is used to type local and parameter var references whether located in a register or on the
  * stack. It may be followed by another <code>TYPE_POINTER</code> DIE which defines a pointer type
- * for the class's <code>INDIRECT_LAYOUT</code> type. This is used to type references to instances
+ * for the class's <code>COMPRESSED_LAYOUT</code> type. This is used to type references to instances
  * of the class located in a static or instance field. These latter references require address
  * translation by masking off tag bits and/or rebasing from an offset to a raw address. The logic
  * for this translation is encoded in the <code>data_location</code> attribute of the corresponding
- * <code>INDIRECT_LAYOUT</code> DIE.
+ * <code>COMPRESSED_LAYOUT</code> DIE.
  *
  * <ul>
  *
@@ -767,19 +774,19 @@ import jdk.graal.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * The immediately following DIE is an INDIRECT_LAYOUT (see above) that wraps the array layout as
+ * The immediately following DIE is an COMPRESSED_LAYOUT (see above) that wraps the array layout as
  * its super type (just as with class layouts). The wrapper type supplies a data_location attribute,
- * allowing indirect pointers to the array to be translated to raw addresses. The name of the
- * indirect array type is constructed by prefixing the array name with
- * <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only one child DIE with type
+ * allowing compressed pointers to the array to be translated to raw addresses. The name of the
+ * compressed array type is constructed by prefixing the array name with
+ * <code>DwarfDebugInfo.COMPRESSED_PREFIX</code>. This DIE has only one child DIE with type
  * <code>SUPER_REFERENCE</code> (see above). The latter references the array layout DIE, effectively
- * embedding the standard array layout type in the indirect layout. The size of the indirect layout
- * is the same as the size of the array layout.
+ * embedding the standard array layout type in the compressed layout. The size of the compressed
+ * layout is the same as the size of the array layout.
  * <p>
  *
  * The third and fourth DIEs define array reference types as a pointers to the underlying structure
  * layout types. As with classes, there is a TYPE_POINTER type for raw address references used to
- * type local and param vars and a (indirect) TYPE_POINTER type (see above) for array references
+ * type local and param vars and a (compressed) TYPE_POINTER type (see above) for array references
  * stored in static and instance fields.
  *
  * n.b. the name used in the ARRAY_LAYOUT DIE is the Java array name. This is deliberately
@@ -821,18 +828,18 @@ import jdk.graal.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * A second level 1 DIE provides an indirect layout that wraps the interface layout as its super
+ * A second level 1 DIE provides a compressed layout that wraps the interface layout as its super
  * type (just as with class layouts). The wrapper type supplies a <code>data_location</code>
- * attribute, allowing indirect pointers to the interface to be translated to raw addresses. The
- * name of the indirect interface type is constructed by prefixing the interface name with
- * <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only one child DIE with type
+ * attribute, allowing compressed pointers to the interface to be translated to raw addresses. The
+ * name of the compressed interface type is constructed by prefixing the interface name with
+ * <code>DwarfDebugInfo.COMPRESSED_PREFIX</code>. This DIE has only one child DIE with type
  * <code>sup[er_reference</code> (see above). The latter references the interface layout DIE,
- * effectively embedding the standard interface layout type in the indirect layout. The size of the
- * indirect layout is the same as the size of the interface layout.
+ * effectively embedding the standard interface layout type in the compressed layout. The size of
+ * the compressed layout is the same as the size of the interface layout.
  *
  * The third and fourth DIEs define interface reference types as a pointers to the underlying
  * structure layout types. As with classes, there is an TYPE_POINTER type for raw address references
- * used to type local and param vars and an (indirect) TYPE_POINTER type (see above) for interface
+ * used to type local and param vars and a (compressed) TYPE_POINTER type (see above) for interface
  * references stored in static and instance fields.
  *
  * A second level 1 defines a pointer to this layout type.
@@ -918,7 +925,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeNamespaceAbbrev(context, buffer, pos);
 
         pos = writeClassLayoutAbbrevs(context, buffer, pos);
-        pos = writeClassReferenceAbbrev(context, buffer, pos);
+        pos = writeClassReferenceAbbrevs(context, buffer, pos);
         pos = writeMethodDeclarationAbbrevs(context, buffer, pos);
         pos = writeFieldDeclarationAbbrevs(context, buffer, pos);
 
@@ -943,16 +950,16 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeInlinedSubroutineAbbrev(buffer, pos, true);
 
         /*
-         * if we address rebasing is required then then we need to use indirect layout types
-         * supplied with a suitable data_location attribute and indirect pointer types to ensure
-         * that gdb converts offsets embedded in static or instance fields to raw pointers.
-         * Transformed addresses are typed using pointers to the underlying layout.
+         * if we address rebasing is required then we need to use compressed layout types supplied
+         * with a suitable data_location attribute and compressed pointer types to ensure that gdb
+         * converts offsets embedded in static or instance fields to raw pointers. Transformed
+         * addresses are typed using pointers to the underlying layout.
          *
-         * if address rebasing is not required then we a data_location attribute on the layout type
+         * if address rebasing is not required then a data_location attribute on the layout type
          * will ensure that address tag bits are removed.
          */
         if (dwarfSections.useHeapBase()) {
-            pos = writeIndirectLayoutAbbrev(context, buffer, pos);
+            pos = writeCompressedLayoutAbbrev(context, buffer, pos);
         }
 
         pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
@@ -1152,17 +1159,25 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeClassReferenceAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeClassReferenceAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeClassReferenceAbbrev(context, AbbrevCode.TYPE_POINTER_SIG, buffer, pos);
+        pos = writeClassReferenceAbbrev(context, AbbrevCode.TYPE_POINTER, buffer, pos);
+        return pos;
+    }
+
+    private int writeClassReferenceAbbrev(@SuppressWarnings("unused") DebugContext context, AbbrevCode abbrevCode, byte[] buffer, int p) {
         int pos = p;
 
         /* A pointer to the class struct type. */
-        pos = writeAbbrevCode(AbbrevCode.TYPE_POINTER, buffer, pos);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfTag.DW_TAG_pointer_type, buffer, pos);
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_byte_size, buffer, pos);
         pos = writeAttrForm(DwarfForm.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_type, buffer, pos);
-        pos = writeAttrForm(DwarfForm.DW_FORM_ref_sig8, buffer, pos);
+        pos = writeAttrForm(abbrevCode == AbbrevCode.TYPE_POINTER_SIG ? DwarfForm.DW_FORM_ref_sig8 : DwarfForm.DW_FORM_ref4, buffer, pos);
+
         /*
          * Now terminate.
          */
@@ -1563,18 +1578,18 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeIndirectLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+    private int writeCompressedLayoutAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
         int pos = p;
 
         /*
-         * oops are not necessarily raw addresses. they may contains pointer bits or be offsets from
-         * a base register. An indirect layout wraps a standard layout adding a data_location that
-         * translates indirect an oop to a raw address. It is used as the base for an indirect
+         * oops are not necessarily raw addresses. They may contain pointer bits or be offsets from
+         * a base register. A compressed layout wraps a standard layout adding a data_location that
+         * translates compressed oops to a raw addresses. It is used as the base for a compressed
          * pointer type that is used to type values that need translation to a raw address i.e.
          * values stored in static and instance fields.
          */
-        /* the type for an indirect layout that includes address translation info */
-        pos = writeAbbrevCode(AbbrevCode.INDIRECT_LAYOUT, buffer, pos);
+        /* The type for a compressed layout that includes address translation info */
+        pos = writeAbbrevCode(AbbrevCode.COMPRESSED_LAYOUT, buffer, pos);
         pos = writeTag(DwarfTag.DW_TAG_class_type, buffer, pos);
         pos = writeHasChildren(DwarfHasChildren.DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DwarfAttribute.DW_AT_name, buffer, pos);
