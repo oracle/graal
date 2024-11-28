@@ -356,7 +356,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         /* Make sure array classes don't need to be registered for reflection. */
         RuntimeReflection.register(Object.class.getDeclaredMethods());
 
-        if (SubstrateOptions.TrackReflectionUsage.getValue() != null) {
+        if (AnalyzeReflectionUsageSupport.Options.TrackReflectionUsage.getValue() != null) {
             ImageSingletons.add(AnalyzeReflectionUsageSupport.class, new AnalyzeReflectionUsageSupport());
         }
     }
@@ -369,7 +369,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        if (SubstrateOptions.TrackReflectionUsage.getValue() != null) {
+        if (AnalyzeReflectionUsageSupport.Options.TrackReflectionUsage.getValue() != null) {
             AnalyzeReflectionUsageSupport.instance().reportReflection();
         }
 

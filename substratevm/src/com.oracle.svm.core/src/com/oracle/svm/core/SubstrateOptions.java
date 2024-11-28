@@ -1351,7 +1351,4 @@ public class SubstrateOptions {
             throw UserError.invalidOptionValue(key, key.getValue(), "Mapping the image heap with mremap() is only supported on Linux.");
         }
     });
-
-    @Option(help = "Output all reflection usages in the reached parts of the project, limited to the provided comma-separated list of JAR files.")//
-    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackReflectionUsage = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 }

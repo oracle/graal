@@ -42,36 +42,44 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * This phase detects usages of reflective calls in reached parts of the project, given the JAR
+ * files in which to search, and outputs and serializes them to the image-build output. It is an
+ * optional phase that that happens before
+ * {@link com.oracle.graal.pointsto.results.StrengthenGraphs} by using the
+ * {@link AnalyzeReflectionUsageSupport.Options#TrackReflectionUsage} option and providing the
+ * desired JAR path/s.
+ */
 public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
     private static final Map<String, Set<String>> reflectMethodNames = Map.of(
-            Class.class.getTypeName(), Set.of(
-                    "forName",
-                    "getClasses",
-                    "getDeclaredClasses",
-                    "getConstructor",
-                    "getConstructors",
-                    "getDeclaredConstructor",
-                    "getDeclaredConstructors",
-                    "getField",
-                    "getFields",
-                    "getDeclaredField",
-                    "getDeclaredFields",
-                    "getMethod",
-                    "getMethods",
-                    "getDeclaredMethod",
-                    "getDeclaredMethods",
-                    "getNestMembers",
-                    "getPermittedSubclasses",
-                    "getRecordComponents",
-                    "getSigners",
-                    "arrayType",
-                    "newInstance"),
-            Method.class.getTypeName(), Set.of("invoke"),
-            Constructor.class.getTypeName(), Set.of("newInstance"),
-            Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"),
-            "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
-            "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
-            "sun.misc.Unsafe", Set.of("allocateInstance"));
+                    Class.class.getTypeName(), Set.of(
+                                    "forName",
+                                    "getClasses",
+                                    "getDeclaredClasses",
+                                    "getConstructor",
+                                    "getConstructors",
+                                    "getDeclaredConstructor",
+                                    "getDeclaredConstructors",
+                                    "getField",
+                                    "getFields",
+                                    "getDeclaredField",
+                                    "getDeclaredFields",
+                                    "getMethod",
+                                    "getMethods",
+                                    "getDeclaredMethod",
+                                    "getDeclaredMethods",
+                                    "getNestMembers",
+                                    "getPermittedSubclasses",
+                                    "getRecordComponents",
+                                    "getSigners",
+                                    "arrayType",
+                                    "newInstance"),
+                    Method.class.getTypeName(), Set.of("invoke"),
+                    Constructor.class.getTypeName(), Set.of("newInstance"),
+                    Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"),
+                    "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
+                    "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
+                    "sun.misc.Unsafe", Set.of("allocateInstance"));
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {

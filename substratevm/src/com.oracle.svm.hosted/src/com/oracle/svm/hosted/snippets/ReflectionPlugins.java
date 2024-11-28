@@ -48,6 +48,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.AnalyzeReflectionUsageSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -574,7 +575,9 @@ public final class ReflectionPlugins {
         }
 
         b.add(ReachabilityRegistrationNode.create(() -> registerForRuntimeReflection((T) receiverValue, registrationCallback), reason));
-        AnalyzeReflectionUsageSupport.instance().addFoldEntry(b.bci(), b.getMethod());
+        if (AnalyzeReflectionUsageSupport.Options.TrackReflectionUsage.getValue() != null) {
+            AnalyzeReflectionUsageSupport.instance().addFoldEntry(b.bci(), b.getMethod());
+        }
         return true;
     }
 

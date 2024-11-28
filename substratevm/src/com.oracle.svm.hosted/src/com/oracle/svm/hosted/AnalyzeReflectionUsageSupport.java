@@ -25,9 +25,11 @@
 package com.oracle.svm.hosted;
 
 import com.oracle.svm.core.BuildArtifacts;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.util.json.JsonBuilder;
 import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -46,6 +48,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * This is a support class that keeps track of reflection usages detected during
+ * {@link com.oracle.svm.hosted.phases.AnalyzeReflectionUsagePhase} and outputs them to the
+ * image-build output.
+ */
 public final class AnalyzeReflectionUsageSupport {
     private final Map<String, List<String>> reflectiveCalls;
     private final Set<String> jarPaths;
@@ -54,7 +61,7 @@ public final class AnalyzeReflectionUsageSupport {
 
     public AnalyzeReflectionUsageSupport() {
         this.reflectiveCalls = new TreeMap<>();
-        this.jarPaths = Collections.unmodifiableSet(new HashSet<>(SubstrateOptions.TrackReflectionUsage.getValue().values()));
+        this.jarPaths = Collections.unmodifiableSet(new HashSet<>(AnalyzeReflectionUsageSupport.Options.TrackReflectionUsage.getValue().values()));
     }
 
     public static AnalyzeReflectionUsageSupport instance() {
@@ -84,7 +91,7 @@ public final class AnalyzeReflectionUsageSupport {
 
     public void dumpReflectionReport() {
         try (var writer = new JsonWriter(getTargetPath());
-             var builder = writer.objectBuilder()) {
+                        var builder = writer.objectBuilder()) {
             for (Map.Entry<String, List<String>> entry : this.reflectiveCalls.entrySet()) {
                 try (JsonBuilder.ArrayBuilder array = builder.append(entry.getKey()).array()) {
                     for (String call : entry.getValue()) {
@@ -92,7 +99,7 @@ public final class AnalyzeReflectionUsageSupport {
                     }
                 }
             }
-            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, getTargetPath()); // Maybe shouldn't be BUILD_INFO
+            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, getTargetPath());
         } catch (IOException e) {
             System.out.println("Failed to print JSON to " + getTargetPath() + ":");
             e.printStackTrace(System.out);
@@ -120,7 +127,8 @@ public final class AnalyzeReflectionUsageSupport {
     }
 
     /*
-     * Support data structure used to keep track of reflective calls which don't require metadata, but can't be folded.
+     * Support data structure used to keep track of reflective calls which don't require metadata,
+     * but can't be folded.
      */
     public static class FoldEntry {
         public FoldEntry(int bci, ResolvedJavaMethod method) {
@@ -154,9 +162,16 @@ public final class AnalyzeReflectionUsageSupport {
     }
 
     /*
-     * If a fold entry exists for the given method, the method should be ignored by the analysis phase.
+     * If a fold entry exists for the given method, the method should be ignored by the analysis
+     * phase.
      */
     public boolean containsFoldEntry(int bci, ResolvedJavaMethod method) {
         return this.foldEntries.contains(new FoldEntry(bci, method));
+    }
+
+    public static class Options {
+        @Option(help = "Output all reflection usages in the reached parts of the project, limited to the provided comma-separated list of JAR files.")//
+        public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> TrackReflectionUsage = new HostedOptionKey<>(
+                        AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
     }
 }
