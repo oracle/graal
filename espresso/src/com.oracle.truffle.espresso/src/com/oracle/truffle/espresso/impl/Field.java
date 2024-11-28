@@ -214,6 +214,8 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
 
+    // region FieldAccess impl
+
     @Override
     public final void loadingConstraints(Klass accessingClass) {
         checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
@@ -225,6 +227,8 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
                         // HotSpot enforces this only for >= Java 9 (v53) .class files.
                         getDeclaringClass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
     }
+
+    // endregion FieldAccess impl
 
     // region Field accesses
 

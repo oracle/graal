@@ -245,11 +245,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getLinkedMethod().getRawSignature();
     }
 
-    @Override
-    public Symbol<Signature> getSymbolicSignature() {
-        return getRawSignature();
-    }
-
     public Symbol<Type>[] getParsedSignature() {
         assert parsedSignature != null;
         return parsedSignature;
@@ -950,16 +945,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    @Override
-    public void loadingConstraints(Klass accessingClass) {
-        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
-    }
-
-    @Override
-    public boolean shouldSkipLoadingConstraints() {
-        return isPolySignatureIntrinsic();
-    }
-
     public int getCatchLocation(int bci, StaticObject ex) {
         ExceptionHandler[] handlers = getExceptionHandlers();
         ExceptionHandler resolved = null;
@@ -1329,6 +1314,32 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
         return instance;
     }
+
+    // region MethodAccess impl
+
+    @Override
+    public Symbol<Signature> getSymbolicSignature() {
+        return getRawSignature();
+    }
+
+    @Override
+    @Idempotent
+    // Re-implement here for indempotent annotation. Some of our nodes benefit from it.
+    public boolean isAbstract() {
+        return super.isAbstract();
+    }
+
+    @Override
+    public boolean shouldSkipLoadingConstraints() {
+        return isPolySignatureIntrinsic();
+    }
+
+    @Override
+    public void loadingConstraints(Klass accessingClass) {
+        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
+    }
+
+    // endregion MethodAccess impl
 
     private static final class Continuum {
         Continuum(LivenessAnalysis livenessAnalysis) {

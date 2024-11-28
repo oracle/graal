@@ -1797,11 +1797,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     @Override
-    public Klass getSuperClass() {
-        return getSuperKlass();
-    }
-
-    @Override
     public byte getTagConstant() {
         return TagConstants.toTagConstant(getJavaKind());
     }
@@ -1879,7 +1874,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
 
     // endregion jdwp-specific
 
-    // TypeAccess impl
+    // region TypeAccess impl
 
     @Override
     public String getJavaName() {
@@ -1887,22 +1882,22 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     @Override
-    public Method lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+    public Klass getSuperClass() {
+        return getSuperKlass();
+    }
+
+    @Override
+    public Method lookupInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
         if (this instanceof ObjectKlass) {
-            return ((ObjectKlass) this).resolveInterfaceMethod(name, signature);
+            return ((ObjectKlass) this).resolveInterfaceMethod(methodName, methodSignature);
         }
         return null;
     }
 
     @Override
-    public Method lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature) {
-        return lookupMethod(name, signature, LookupMode.INSTANCE_ONLY);
+    public Method lookupInstanceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
+        return lookupMethod(methodName, methodSignature, LookupMode.INSTANCE_ONLY);
     }
 
-    @Idempotent
-    @Override
-    // Implement here for indempotent, and make sure arrays are not abstract.
-    public final boolean isAbstract() {
-        return !isArray() && TypeAccess.super.isAbstract();
-    }
+    // endregion TypeAccess impl
 }
