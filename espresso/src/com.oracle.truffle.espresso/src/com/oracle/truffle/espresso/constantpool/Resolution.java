@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNode;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.JavaKind;
 import com.oracle.truffle.espresso.shared.attributes.BootstrapMethodsAttribute;
@@ -66,7 +67,6 @@ import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.shared.perf.DebugCounter;
-import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class Resolution {
@@ -203,18 +203,17 @@ public final class Resolution {
         Symbol<Type> type = thiz.getType(pool);
 
         EspressoContext context = pool.getContext();
-        LinkResolver<EspressoContext, Klass, Method, Field> resolver = context.getLinkResolver();
         Field field;
         ClassRedefinition classRedefinition = null;
         try {
             try {
-                field = resolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
+                field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
             } catch (EspressoException e) {
                 classRedefinition = context.getClassRedefinition();
                 if (classRedefinition != null) {
                     // could be due to ongoing redefinition
                     classRedefinition.check();
-                    field = resolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
+                    field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
                 } else {
                     throw e;
                 }
@@ -357,11 +356,10 @@ public final class Resolution {
 
         Klass holderInterface = getResolvedHolderKlass(thiz, pool, accessingKlass);
         EspressoContext context = pool.getContext();
-        LinkResolver<EspressoContext, Klass, Method, Field> resolver = context.getLinkResolver();
         Symbol<Name> name = thiz.getName(pool);
         Symbol<Signature> signature = thiz.getSignature(pool);
 
-        Method method = resolver.resolveMethodSymbol(context, accessingKlass, name, signature, holderInterface, true, true, true);
+        Method method = EspressoLinkResolver.resolveMethodSymbol(context, accessingKlass, name, signature, holderInterface, true, true, true);
 
         return new ResolvedInterfaceMethodRefConstant(method);
     }
@@ -478,13 +476,12 @@ public final class Resolution {
         METHODREF_RESOLVE_COUNT.inc();
 
         EspressoContext context = pool.getContext();
-        LinkResolver<EspressoContext, Klass, Method, Field> resolver = context.getLinkResolver();
 
         Klass holderKlass = getResolvedHolderKlass(thiz, pool, accessingKlass);
         Symbol<Name> name = thiz.getName(pool);
         Symbol<Signature> signature = thiz.getSignature(pool);
 
-        Method method = resolver.resolveMethodSymbol(context, accessingKlass, name, signature, holderKlass, false, true, true);
+        Method method = EspressoLinkResolver.resolveMethodSymbol(context, accessingKlass, name, signature, holderKlass, false, true, true);
 
         if (method.isInvokeIntrinsic()) {
             MHInvokeGenericNode.MethodHandleInvoker invoker = MHInvokeGenericNode.linkMethod(context.getMeta().getLanguage(), context.getMeta(), accessingKlass, method, name, signature);

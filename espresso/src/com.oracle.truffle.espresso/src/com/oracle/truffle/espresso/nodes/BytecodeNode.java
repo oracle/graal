@@ -355,9 +355,9 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.shared.JavaKind;
 import com.oracle.truffle.espresso.shared.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.shared.attributes.LineNumberTableAttribute;
@@ -366,6 +366,7 @@ import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.shared.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.shared.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.shared.bytecode.VolatileArrayAccess;
+import com.oracle.truffle.espresso.shared.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.shared.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.shared.constantpool.DoubleConstant;
 import com.oracle.truffle.espresso.shared.constantpool.DynamicConstant;
@@ -2411,7 +2412,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private InvokeQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
 
         Klass symbolicRef = Resolution.getResolvedHolderKlass((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
-        ResolvedCall<Klass, Method, Field> resolvedCall = getContext().getLinkResolver().resolveCallSite(getContext(),
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(getContext(),
                         getDeclaringKlass(), resolutionSeed, SiteTypes.callSiteFromOpCode(opcode), symbolicRef);
 
         Method resolved = resolvedCall.getResolvedMethod();
@@ -2706,7 +2707,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.partialEvaluationConstant(field);
         CompilerAsserts.partialEvaluationConstant(mode);
 
-        getContext().getLinkResolver().resolveFieldAccess(getContext(), getDeclaringKlass(), getMethod(), field, mode);
+        EspressoLinkResolver.resolveFieldAccess(getContext(), field, mode, getDeclaringKlass(), getMethod());
 
         byte typeHeader = field.getType().byteAt(0);
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
@@ -2819,7 +2820,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         CompilerAsserts.partialEvaluationConstant(field);
 
-        getContext().getLinkResolver().resolveFieldAccess(getContext(), getDeclaringKlass(), getMethod(), field, mode);
+        EspressoLinkResolver.resolveFieldAccess(getContext(), field, mode, getDeclaringKlass(), getMethod());
 
         int slot = top - 1;
         StaticObject receiver;

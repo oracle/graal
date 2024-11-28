@@ -36,13 +36,8 @@ import com.oracle.truffle.espresso.shared.resolver.meta.TypeAccess;
 /**
  * Provides resolution capabilities according to the Java Virtual Machine Specification on behalf of
  * a VM.
- *
- * @param <R> The class providing VM access.
- * @param <C> The class representing the VM-side java {@link Class}.
- * @param <M> The class representing the VM-side java {@link java.lang.reflect.Method}.
- * @param <F> The class representing the VM-side java {@link java.lang.reflect.Field}.
  */
-public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
+public final class LinkResolver {
     /**
      * Symbolically resolves a field.
      *
@@ -52,11 +47,17 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
      * @param symbolicHolder The holder of the field, as described in the constant pool.
      * @param accessCheck Whether to perform access checks on the resolved field.
      * @param loadingConstraints Whether to check loading constraints on the resolved field.
+     *
+     * @param <R> The class providing VM access.
+     * @param <C> The class representing the VM-side java {@link Class}.
+     * @param <M> The class representing the VM-side java {@link java.lang.reflect.Method}.
+     * @param <F> The class representing the VM-side java {@link java.lang.reflect.Field}.
      */
-    public F resolveFieldSymbol(R meta, C accessingKlass,
+    public static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> F resolveFieldSymbol(
+                    R runtime, C accessingKlass,
                     Symbol<Name> name, Symbol<Type> type, C symbolicHolder,
                     boolean accessCheck, boolean loadingConstraints) {
-        return resolveFieldSymbolImpl(meta, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
+        return resolveFieldSymbolImpl(runtime, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
     }
 
     /**
@@ -65,14 +66,23 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
      * accessed with static accesses, and that field writes to final fields are done only in the
      * constructor or class initializer.
      *
-     * @param currentKlass The class in which the field access appears.
-     * @param currentMethod The method in which the field access appears.
      * @param symbolicResolution The result of symbolic resolution of the field declared in the
      *            access site.
      * @param fieldAccessType The {@link FieldAccessType} representing the access site to resolve.
+     * @param currentKlass The class in which the field access appears.
+     * @param currentMethod The method in which the field access appears.
+     *
+     * @param <R> The class providing VM access.
+     * @param <C> The class representing the VM-side java {@link Class}.
+     * @param <M> The class representing the VM-side java {@link java.lang.reflect.Method}.
+     * @param <F> The class representing the VM-side java {@link java.lang.reflect.Field}.
+     *
+     * @see FieldAccessType
      */
-    public F resolveFieldAccess(R meta, C currentKlass, M currentMethod, F symbolicResolution, FieldAccessType fieldAccessType) {
-        return resolveFieldAccessImpl(meta, symbolicResolution, fieldAccessType, currentKlass, currentMethod);
+    public static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> F resolveFieldAccess(
+                    R runtime, F symbolicResolution, FieldAccessType fieldAccessType,
+                    C currentKlass, M currentMethod) {
+        return resolveFieldAccessImpl(runtime, symbolicResolution, fieldAccessType, currentKlass, currentMethod);
     }
 
     /**
@@ -84,29 +94,52 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
      * @param symbolicHolder The holder of the method, as described in the constant pool.
      * @param accessCheck Whether to perform access checks on the resolved method.
      * @param loadingConstraints Whether to check loading constraints on the resolved method.
+     *
+     * @param <R> The class providing VM access.
+     * @param <C> The class representing the VM-side java {@link Class}.
+     * @param <M> The class representing the VM-side java {@link java.lang.reflect.Method}.
+     * @param <F> The class representing the VM-side java {@link java.lang.reflect.Field}.
      */
-    public M resolveMethodSymbol(R meta, C accessingKlass,
+    public static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> M resolveMethodSymbol(
+                    R runtime, C accessingKlass,
                     Symbol<Name> name, Symbol<Signature> signature, C symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
-        return resolveMethodSymbolImpl(meta, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
+        return resolveMethodSymbolImpl(runtime, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
     }
 
     /**
      * Resolve a call-site given the symbolic resolution of the method in the constant pool.
+     * <p>
+     * The returned {@link ResolvedCall} may be used to accurately dispatch at a call-site.
      *
      * @param currentKlass The class in which the call site to resolve appears.
      * @param symbolicResolution The result of the symbolic resolution of the method declared in the
      *            call site.
      * @param callSiteType The {@link CallSiteType} representing the call site to resolve.
-     * @param symbolicHolder The declared holder for symbolic resolution. May differ from
-     *            {@code symbolicResolution.getDeclaringKlass()}.
+     * @param symbolicHolder The declared holder for symbolic resolution, as seen in the constant
+     *            pool. May differ from {@link MethodAccess#getDeclaringClass()
+     *            symbolicResolution.getDeclaringClass()}.
+     *
+     * @param <R> The class providing VM access.
+     * @param <C> The class representing the VM-side java {@link Class}.
+     * @param <M> The class representing the VM-side java {@link java.lang.reflect.Method}.
+     * @param <F> The class representing the VM-side java {@link java.lang.reflect.Field}.
+     *
+     * @see CallSiteType
+     * @see CallKind
      */
-    public ResolvedCall<C, M, F> resolveCallSite(R meta, C currentKlass, M symbolicResolution, CallSiteType callSiteType, C symbolicHolder) {
-        return resolveCallSiteImpl(meta, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
+    public static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> ResolvedCall<C, M, F> resolveCallSite(
+                    R runtime, C currentKlass,
+                    M symbolicResolution, CallSiteType callSiteType,
+                    C symbolicHolder) {
+        return resolveCallSiteImpl(runtime, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
     }
 
     // Implementation
+
+    private LinkResolver() {
+    }
 
     private static final String AN_INTERFACE = "an interface";
     private static final String A_CLASS = "a class";
@@ -115,12 +148,13 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
     private static final String INIT = "<init>";
     private static final String CLINIT = "<clinit>";
 
-    private F resolveFieldSymbolImpl(R meta, C accessingKlass,
+    private static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> F resolveFieldSymbolImpl(
+                    R runtime, C accessingKlass,
                     Symbol<Name> name, Symbol<Type> type, C symbolicHolder,
                     boolean accessCheck, boolean loadingConstraints) {
         F f = symbolicHolder.lookupField(name, type);
         if (f == null) {
-            throw meta.throwError(ErrorType.NoSuchFieldError, "%s", name);
+            throw runtime.throwError(ErrorType.NoSuchFieldError, "%s", name);
         }
         if (accessCheck) {
             f.accessChecks(accessingKlass, symbolicHolder);
@@ -131,7 +165,8 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
         return f;
     }
 
-    private F resolveFieldAccessImpl(R meta, F field, FieldAccessType fieldAccessType,
+    private static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> F resolveFieldAccessImpl(
+                    R runtime, F field, FieldAccessType fieldAccessType,
                     C currentKlass, M currentMethod) {
         /*
          * PUTFIELD/GETFIELD: Otherwise, if the resolved field is a static field, putfield throws an
@@ -142,7 +177,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
          */
 
         if (fieldAccessType.isStatic() != field.isStatic()) {
-            throw meta.throwError(ErrorType.IncompatibleClassChangeError,
+            throw runtime.throwError(ErrorType.IncompatibleClassChangeError,
                             "Expected %s field %s.%s",
                             (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
                             field.getDeclaringClass().getJavaName(),
@@ -160,7 +195,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
              */
             if (field.isFinalFlagSet()) {
                 if (field.getDeclaringClass() != currentKlass) {
-                    throw meta.throwError(ErrorType.IllegalAccessError,
+                    throw runtime.throwError(ErrorType.IllegalAccessError,
                                     "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
                                     (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
                                     field.getDeclaringClass().getJavaName(),
@@ -171,7 +206,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
                 if (enforceInitializerCheck) {
                     if (!((fieldAccessType.isStatic() && currentMethod.isClassInitializer()) ||
                                     (!fieldAccessType.isStatic() && currentMethod.isConstructor()))) {
-                        throw meta.throwError(ErrorType.IllegalAccessError,
+                        throw runtime.throwError(ErrorType.IllegalAccessError,
                                         "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
                                         (fieldAccessType.isStatic()) ? STATIC : NON_STATIC,
                                         field.getDeclaringClass().getJavaName(),
@@ -185,7 +220,8 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
         return field;
     }
 
-    private M resolveMethodSymbolImpl(R meta, C accessingKlass, Symbol<Name> name,
+    private static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> M resolveMethodSymbolImpl(R runtime,
+                    C accessingKlass, Symbol<Name> name,
                     Symbol<Signature> signature, C symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
@@ -193,7 +229,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
         if (interfaceLookup != symbolicHolder.isInterface()) {
             String expected = interfaceLookup ? AN_INTERFACE : A_CLASS;
             String found = interfaceLookup ? A_CLASS : AN_INTERFACE;
-            throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Resolution failure for %s.\nIs %s, but %s was expected",
+            throw runtime.throwError(ErrorType.IncompatibleClassChangeError, "Resolution failure for %s.\nIs %s, but %s was expected",
                             symbolicHolder.getJavaName(), found, expected);
         }
 
@@ -203,7 +239,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
             resolved = symbolicHolder.lookupMethod(name, signature);
         }
         if (resolved == null) {
-            throw meta.throwError(ErrorType.NoSuchMethodError, "%s.%s%s", symbolicHolder.getJavaName(), name, signature);
+            throw runtime.throwError(ErrorType.NoSuchMethodError, "%s.%s%s", symbolicHolder.getJavaName(), name, signature);
         }
         if (accessCheck) {
             resolved.accessChecks(accessingKlass, symbolicHolder);
@@ -214,7 +250,9 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
         return resolved;
     }
 
-    private ResolvedCall<C, M, F> resolveCallSiteImpl(R meta, C currentKlass, M symbolicResolution,
+    private static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> ResolvedCall<C, M, F> resolveCallSiteImpl(
+                    R runtime,
+                    C currentKlass, M symbolicResolution,
                     CallSiteType callSiteType, C symbolicHolder) {
         M resolved = symbolicResolution;
         CallKind callKind;
@@ -223,7 +261,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
                 // Otherwise, if the resolved method is an instance method, the invokestatic
                 // instruction throws an IncompatibleClassChangeError.
                 if (!resolved.isStatic()) {
-                    throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Expected static method '%s.%s%s'",
+                    throw runtime.throwError(ErrorType.IncompatibleClassChangeError, "Expected static method '%s.%s%s'",
                                     resolved.getDeclaringClass().getJavaName(),
                                     resolved.getSymbolicName(),
                                     resolved.getSymbolicSignature());
@@ -234,14 +272,14 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
                 // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic() ||
-                                (meta.getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
-                    throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                                (runtime.getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
+                    throw runtime.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
                                     resolved.getDeclaringClass().getJavaName(),
                                     resolved.getSymbolicName(),
                                     resolved.getSymbolicSignature());
                 }
                 if (resolved.isPrivate()) {
-                    assert meta.getJavaVersion().java9OrLater() : "Should have thrown in previous check.";
+                    assert runtime.getJavaVersion().java9OrLater() : "Should have thrown in previous check.";
                     // Interface private methods do not appear in itables.
                     callKind = CallKind.DIRECT;
                 } else if (resolved.getDeclaringClass().isJavaLangObject()) {
@@ -255,7 +293,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
                 // Otherwise, if the resolved method is a class (static) method, the invokevirtual
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
-                    throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
+                    throw runtime.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance method '%s.%s%s'",
                                     resolved.getDeclaringClass().getJavaName(),
                                     resolved.getSymbolicName(),
                                     resolved.getSymbolicSignature());
@@ -272,7 +310,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
                 // instruction, a NoSuchMethodError is thrown.
                 if (resolved.isConstructor()) {
                     if (resolved.getDeclaringClass().getSymbolicName() != symbolicHolder.getSymbolicName()) {
-                        throw meta.throwError(ErrorType.NoSuchMethodError,
+                        throw runtime.throwError(ErrorType.NoSuchMethodError,
                                         "%s.%s%s",
                                         resolved.getDeclaringClass().getJavaName(),
                                         resolved.getSymbolicName(),
@@ -282,7 +320,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
                 // Otherwise, if the resolved method is a class (static) method, the invokespecial
                 // instruction throws an IncompatibleClassChangeError.
                 if (resolved.isStatic()) {
-                    throw meta.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
+                    throw runtime.throwError(ErrorType.IncompatibleClassChangeError, "Expected instance not static method '%s.%s%s'",
                                     resolved.getDeclaringClass().getJavaName(),
                                     resolved.getSymbolicName(),
                                     resolved.getSymbolicSignature());
@@ -311,7 +349,7 @@ public final class LinkResolver<R extends RuntimeAccess<C, M, F>, C extends Type
                 callKind = CallKind.DIRECT;
                 break;
             default:
-                throw meta.fatal("Resolution for %s", callSiteType);
+                throw runtime.fatal("Resolution for %s", callSiteType);
         }
         return new ResolvedCall<>(callKind, resolved);
     }

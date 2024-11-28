@@ -70,6 +70,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -472,7 +473,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                 // - Static fields are accessed statically
                 // - Final fields and ref_put*
                 // These are done when needed by JDK code.
-                Field f = ctx.getLinkResolver().resolveFieldSymbol(ctx, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
+                Field f = EspressoLinkResolver.resolveFieldSymbol(ctx, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
                 plantResolvedField(memberName, f, refKind, meta, meta.getLanguage());
                 return memberName;
             }
@@ -502,8 +503,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             }
 
             Symbol<Signature> sig = lookupSignature(meta, desc, mhMethodId);
-            Method m = ctx.getLinkResolver().resolveMethodSymbol(ctx, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
-            ResolvedCall<Klass, Method, Field> resolvedCall = ctx.getLinkResolver().resolveCallSite(ctx, callerKlass, m, SiteTypes.callSiteFromRefKind(refKind), resolutionKlass);
+            Method m = EspressoLinkResolver.resolveMethodSymbol(ctx, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
+            ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(ctx, callerKlass, m, SiteTypes.callSiteFromRefKind(refKind), resolutionKlass);
 
             plantResolvedMethod(memberName, resolvedCall, meta);
 

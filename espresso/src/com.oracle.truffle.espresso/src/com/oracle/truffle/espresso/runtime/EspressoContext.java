@@ -108,7 +108,6 @@ import com.oracle.truffle.espresso.shared.descriptors.Types;
 import com.oracle.truffle.espresso.shared.perf.DebugCloseable;
 import com.oracle.truffle.espresso.shared.perf.DebugTimer;
 import com.oracle.truffle.espresso.shared.perf.TimerCollection;
-import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
 import com.oracle.truffle.espresso.shared.resolver.meta.ErrorType;
 import com.oracle.truffle.espresso.shared.resolver.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -191,7 +190,6 @@ public final class EspressoContext
     @CompilationFinal private AgentLibraries agents;
     @CompilationFinal private NativeAccess nativeAccess;
     @CompilationFinal private JNIHandles handles;
-    private final LinkResolver<EspressoContext, Klass, Method, Field> linkResolver = new LinkResolver<>();
     // endregion VM
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -1257,10 +1255,6 @@ public final class EspressoContext
     }
 
     // RuntimeAccess impl
-
-    public LinkResolver<EspressoContext, Klass, Method, Field> getLinkResolver() {
-        return linkResolver;
-    }
 
     @Override
     @TruffleBoundary

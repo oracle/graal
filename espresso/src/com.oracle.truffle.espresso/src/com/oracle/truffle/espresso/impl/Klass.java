@@ -1042,20 +1042,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return this instanceof PrimitiveKlass;
     }
 
-    public static ObjectKlass asAccessingObjectKlass(Klass k) {
-        if (k == null) {
-            return null;
-        }
-        if (k.isPrimitive()) {
-            return null;
-        }
-        if (k.isArray()) {
-            return asAccessingObjectKlass(k.getElementalType());
-        }
-        assert k instanceof ObjectKlass;
-        return (ObjectKlass) k;
-    }
-
     /*
      * The setting of the final bit for types is a bit confusing since arrays are marked as final.
      * This method provides a semantically equivalent test that appropriate for types.
@@ -1582,11 +1568,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return lookupMethod(methodName, signature, LookupMode.ALL);
     }
 
-    @Override
-    public Method lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature) {
-        return lookupMethod(name, signature, LookupMode.INSTANCE_ONLY);
-    }
-
     public final Method vtableLookup(int vtableIndex) {
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).vtableLookupImpl(vtableIndex);
@@ -1911,6 +1892,11 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             return ((ObjectKlass) this).resolveInterfaceMethod(name, signature);
         }
         return null;
+    }
+
+    @Override
+    public Method lookupInstanceMethod(Symbol<Name> name, Symbol<Signature> signature) {
+        return lookupMethod(name, signature, LookupMode.INSTANCE_ONLY);
     }
 
     @Idempotent

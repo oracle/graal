@@ -36,6 +36,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.JavaKind;
 import com.oracle.truffle.espresso.shared.descriptors.Signatures;
@@ -306,7 +307,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         } else {
             callSiteType = CallSiteType.Virtual;
         }
-        ResolvedCall<Klass, Method, Field> resolvedCall = meta.getContext().getLinkResolver().resolveCallSite(
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(
                         meta.getContext(),
                         null, // No current class.
                         reflectedMethod, callSiteType, klass);
