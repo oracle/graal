@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodes.StaticDeoptimizingNode.mergeActions;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -355,7 +356,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
                                     Speculation speculation = trueGuard.getSpeculation();
                                     if (speculation == null) {
                                         speculation = falseGuard.getSpeculation();
-                                    } else if (falseGuard.getSpeculation() != null && falseGuard.getSpeculation() != speculation) {
+                                    } else if (falseGuard.getSpeculation() != null && !falseGuard.getSpeculation().equals(speculation)) {
                                         // Cannot optimize due to different speculations.
                                         continue;
                                     }
@@ -1107,7 +1108,7 @@ public class ConditionalEliminationPhase extends PostRunCanonicalizationPhase<Co
 
         protected boolean foldGuard(DeoptimizingGuard thisGuard, DeoptimizingGuard otherGuard, boolean outcome, Stamp guardedValueStamp, ConditionalEliminationUtil.GuardRewirer rewireGuardFunction) {
             DeoptimizationAction action = mergeActions(otherGuard.getAction(), thisGuard.getAction());
-            if (action != null && otherGuard.getSpeculation() == thisGuard.getSpeculation()) {
+            if (action != null && Objects.equals(otherGuard.getSpeculation(), thisGuard.getSpeculation())) {
                 LogicNode condition = (LogicNode) thisGuard.getCondition().copyWithInputs();
                 /*
                  * We have ...; guard(C1); guard(C2);...
