@@ -61,7 +61,6 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -137,6 +136,10 @@ public final class NativeImageClassLoaderSupport {
     private List<ClassLoader> classLoaders;
 
     private final Set<Class<?>> classesToIncludeUnconditionally = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    private final Method implAddReadsAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddReadsAllUnnamed");
+    private final Method implAddEnableNativeAccess = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccess");
+    private final Method implAddEnableNativeAccessToAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccessToAllUnnamed");
 
     @SuppressWarnings("this-escape")
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
@@ -402,39 +405,6 @@ public final class NativeImageClassLoaderSupport {
         serviceProviders.forEach((key, val) -> action.accept(key, Collections.unmodifiableCollection(val)));
     }
 
-    private static void implAddReadsAllUnnamed(Module module) {
-        try {
-            Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
-            implAddReadsAllUnnamed.setAccessible(true);
-            implAddReadsAllUnnamed.invoke(module);
-        } catch (ReflectiveOperationException | NoSuchElementException e) {
-            VMError.shouldNotReachHere("Could not reflectively call Module.implAddReadsAllUnnamed", e);
-        }
-    }
-
-    static void implAddEnableNativeAccess(Module module) {
-        try {
-            Method implAddEnableNativeAccess = Module.class.getDeclaredMethod("implAddEnableNativeAccess");
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
-            implAddEnableNativeAccess.setAccessible(true);
-            implAddEnableNativeAccess.invoke(module);
-        } catch (ReflectiveOperationException | NoSuchElementException e) {
-            VMError.shouldNotReachHere("Could not reflectively call Module.implAddEnableNativeAccess", e);
-        }
-    }
-
-    static void implAddEnableNativeAccessToAllUnnamed() {
-        try {
-            Method implAddEnableNativeAccess = Module.class.getDeclaredMethod("implAddEnableNativeAccessToAllUnnamed");
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
-            implAddEnableNativeAccess.setAccessible(true);
-            implAddEnableNativeAccess.invoke(null);
-        } catch (ReflectiveOperationException | NoSuchElementException e) {
-            VMError.shouldNotReachHere("Could not reflectively call Module.implAddEnableNativeAccessToAllUnnamed", e);
-        }
-    }
-
     protected List<Path> modulepath() {
         return Stream.concat(imagemp.stream(), buildmp.stream()).toList();
     }
@@ -481,7 +451,7 @@ public final class NativeImageClassLoaderSupport {
         });
         processOption(NativeImageClassLoaderOptions.AddReads).forEach(val -> {
             if (val.targetModules.isEmpty()) {
-                implAddReadsAllUnnamed(val.module);
+                ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, val.module);
             } else {
                 for (Module targetModule : val.targetModules) {
                     Modules.addReads(val.module, targetModule);
@@ -490,10 +460,10 @@ public final class NativeImageClassLoaderSupport {
         });
         NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().stream().flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ","))).forEach(moduleName -> {
             if ("ALL-UNNAMED".equals(moduleName)) {
-                implAddEnableNativeAccessToAllUnnamed();
+                ReflectionUtil.invokeMethod(implAddEnableNativeAccessToAllUnnamed, null);
             } else {
                 Module module = findModule(moduleName).orElseThrow(() -> userWarningModuleNotFound(NativeImageClassLoaderOptions.EnableNativeAccess, moduleName));
-                implAddEnableNativeAccess(module);
+                ReflectionUtil.invokeMethod(implAddEnableNativeAccess, module);
             }
         });
     }
