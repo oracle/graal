@@ -275,8 +275,13 @@ def ctw(args, extraVMarguments=None):
     parser.add_argument('--limitmods', action='store', help='limits the set of compiled classes to only those in the listed modules', metavar='<modulename>[,<modulename>...]')
 
     args, vmargs = parser.parse_known_args(args)
-
     vmargs.extend(_remove_empty_entries(extraVMarguments))
+
+    vmargs.append('-XX:+EnableJVMCI')
+
+    # Disable JVMCICompiler by default if not specified
+    if _get_XX_option_value(vmargs, 'UseJVMCICompiler', None) is None:
+        vmargs.append('-XX:-UseJVMCICompiler')
 
     if mx.get_os() == 'darwin':
         # suppress menubar and dock when running on Mac
@@ -284,8 +289,6 @@ def ctw(args, extraVMarguments=None):
 
     if args.cp:
         cp = os.path.abspath(args.cp)
-        if not _is_jvmci_enabled(vmargs):
-            mx.abort('Non-Graal CTW does not support specifying a specific class path or jar to compile')
     else:
         # Default to the CompileTheWorld.SUN_BOOT_CLASS_PATH token
         cp = None
@@ -300,24 +303,20 @@ def ctw(args, extraVMarguments=None):
             if _get_XX_option_value(vmargs, 'BootstrapJVMCI', False) is None:
                 vmargs.append('-XX:+BootstrapJVMCI')
 
-    mainClassAndArgs = []
-    if not _is_jvmci_enabled(vmargs):
-        vmargs.append('-XX:+CompileTheWorld')
-    else:
-        # To be able to load all classes in the JRT with Class.forName,
-        # all JDK modules need to be made root modules.
-        limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
-        graaljdk = get_graaljdk()
-        nonBootJDKModules = [m.name for m in graaljdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
-        if nonBootJDKModules:
-            vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
-        if args.limitmods:
-            vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
-        if cp is not None:
-            vmargs.append('-DCompileTheWorld.Classpath=' + cp)
-        cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=graaljdk))
-        vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
-        mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
+    # To be able to load all classes in the JRT with Class.forName,
+    # all JDK modules need to be made root modules.
+    limitmods = frozenset(args.limitmods.split(',')) if args.limitmods else None
+    graaljdk = get_graaljdk()
+    nonBootJDKModules = [m.name for m in graaljdk.get_modules() if not m.boot and (limitmods is None or m.name in limitmods)]
+    if nonBootJDKModules:
+        vmargs.append('--add-modules=' + ','.join(nonBootJDKModules))
+    if args.limitmods:
+        vmargs.append('-DCompileTheWorld.limitmods=' + args.limitmods)
+    if cp is not None:
+        vmargs.append('-DCompileTheWorld.Classpath=' + cp)
+    cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=graaljdk))
+    vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
+    mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
 
     run_vm(vmargs + mainClassAndArgs)
 
@@ -515,7 +514,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
 
     # Run ctw against rt.jar on hosted
     ctw_flags = [
-        '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-esa', '-XX:-UseJVMCICompiler', '-XX:+EnableJVMCI',
+        '-DCompileTheWorld.Config=Inline=false CompilationFailureAction=ExitVM CompilationBailoutAsFailure=false', '-ea', '-esa',
         '-DCompileTheWorld.MultiThreaded=true', '-Djdk.graal.InlineDuringParsing=false', '-Djdk.graal.TrackNodeSourcePosition=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
