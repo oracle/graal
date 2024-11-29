@@ -33,16 +33,47 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
-import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failFormat;
 import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failFormatNoFallback;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 
+/**
+ * Provides interactive parsing of a {@link StackMapTableAttribute stack map table}.
+ */
 public final class StackMapFrameParser<S extends StackMapFrameParser.FrameState<S, B>, B extends StackMapFrameParser.FrameBuilder<S, B>> {
+    /**
+     * Parses the given {@link StackMapTableAttribute}.
+     * <p>
+     * Each time a frame has been fully prepared, a call to {@link Builder#registerStackMapFrame} is
+     * made before continuing the processing.
+     *
+     * @param builder The builder used for parsing.
+     * @param stackMapTable The attribute containing the stack map table information.
+     * @param firstFrame The first frame of a method. Should contain a 0-size stack, and the locals
+     *            should be filled with the arguments of the method.
+     * @param initialLastLocal The slot in which the last local variable is written. Note that this
+     *            is different from the parameter count: The receiver (if any) counts for one slot,
+     *            and each one of {@code long} or {@code double} in the signature counts for two
+     *            slots, and wny other type in the signature counts for one slot.
+     */
+    @SuppressWarnings("all") // VerificationException is thrown sneakily.
+    public static <State extends FrameState<State, Builder>, Builder extends FrameBuilder<State, Builder>> void parse(Builder builder, StackMapTableAttribute stackMapTable, State firstFrame,
+                    int initialLastLocal)
+                    throws VerificationException {
+        new StackMapFrameParser<>(builder, stackMapTable).parseStackMapTableAttribute(firstFrame, initialLastLocal);
+    }
 
+    /**
+     * Represents the contents of a frame at a certain point in the method.
+     * <p>
+     * Since specification of the stack map frame state is relative to each previous one, creating
+     * frame states requires some interactivity with the actual implementation.
+     * <p>
+     * Each method of this interface therefore creates a new state from the current, based on the
+     * given additional information.
+     */
     public interface FrameState<S extends FrameState<S, B>, B extends FrameBuilder<S, B>> {
         /**
          * @return A copy of this FrameState, from which all Stack elements have been stripped.
@@ -93,6 +124,9 @@ public final class StackMapFrameParser<S extends StackMapFrameParser.FrameState<
     }
 
     public interface FrameBuilder<S extends FrameState<S, B>, B extends FrameBuilder<S, B>> {
+        /**
+         * Notifies the builder that the frame for bci is complete.
+         */
         void registerStackMapFrame(int bci, S frame);
 
         /**
@@ -110,6 +144,9 @@ public final class StackMapFrameParser<S extends StackMapFrameParser.FrameState<
          */
         FrameAndLocalEffect<S, B> newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal);
 
+        /**
+         * For error messages, describe what prompted the creation of the builder.
+         */
         String toExternalString();
     }
 
@@ -121,14 +158,8 @@ public final class StackMapFrameParser<S extends StackMapFrameParser.FrameState<
         this.stream = new ClassfileStream(stackMapTable.getData(), null);
     }
 
-    public static <State extends FrameState<State, Builder>, Builder extends FrameBuilder<State, Builder>> void parse(Builder builder, StackMapTableAttribute stackMapTable, State firstFrame,
-                    int initialLastLocal)
-                    throws ParserException.ClassFormatError {
-        new StackMapFrameParser<>(builder, stackMapTable).parseStackMapTableAttribute(firstFrame, initialLastLocal);
-    }
-
     @SuppressWarnings("unchecked")
-    private void parseStackMapTableAttribute(S firstFrame, int initialLastLocal) throws ParserException.ClassFormatError {
+    private void parseStackMapTableAttribute(S firstFrame, int initialLastLocal) {
         S previous = firstFrame;
         int bci = 0;
         boolean first = true;
@@ -162,7 +193,9 @@ public final class StackMapFrameParser<S extends StackMapFrameParser.FrameState<
         if (frameType < SAME_LOCALS_1_STACK_ITEM_BOUND || frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
             return new FrameAndLocalEffect<>(previous.sameLocalsWith1Stack(entry.getStackItem(), frameBuilder), 0);
         }
-        MethodVerifier.formatGuarantee(frameType >= SAME_LOCALS_1_STACK_ITEM_EXTENDED, "Encountered reserved StackMapFrame tag: " + frameType);
+        if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
+            throw failFormatNoFallback("Encountered reserved StackMapFrame tag: " + frameType);
+        }
         if (frameType < CHOP_BOUND) {
             return previous.chop(entry.getChopped(), lastLocal, frameBuilder);
         }
@@ -172,10 +205,10 @@ public final class StackMapFrameParser<S extends StackMapFrameParser.FrameState<
         if (frameType == FULL_FRAME) {
             return frameBuilder.newFullFrame(entry.getStack(), entry.getLocals(), lastLocal);
         }
-        throw EspressoError.shouldNotReachHere();
+        throw failFormatNoFallback("Unexpected frametype byte: " + frameType);
     }
 
-    private StackMapFrame parseStackMapFrame() throws ParserException.ClassFormatError {
+    private StackMapFrame parseStackMapFrame() {
         int frameType = stream.readU1();
         if (frameType < SAME_FRAME_BOUND) {
             return new SameFrame(frameType);
@@ -224,10 +257,10 @@ public final class StackMapFrameParser<S extends StackMapFrameParser.FrameState<
             }
             return new FullFrame(frameType, offsetDelta, locals, stack);
         }
-        throw failFormat("Unrecognized StackMapFrame tag: " + frameType);
+        throw failFormatNoFallback("Unrecognized StackMapFrame tag: " + frameType);
     }
 
-    private VerificationTypeInfo parseVerificationTypeInfo() throws ParserException.ClassFormatError {
+    private VerificationTypeInfo parseVerificationTypeInfo() {
         int tag = stream.readU1();
         if (tag < ITEM_InitObject) {
             return PrimitiveTypeInfo.get(tag);

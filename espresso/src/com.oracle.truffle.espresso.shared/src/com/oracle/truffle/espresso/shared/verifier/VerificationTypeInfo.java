@@ -32,13 +32,13 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
+import static com.oracle.truffle.espresso.shared.verifier.VerifierError.fatal;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class VerificationTypeInfo {
 
@@ -48,11 +48,11 @@ public abstract class VerificationTypeInfo {
     public abstract int getTag();
 
     public int getNewOffset() {
-        throw EspressoError.shouldNotReachHere("Asking for new offset of non Uninitialized variable verification_type_info");
+        throw fatal("Asking for new offset of non Uninitialized variable verification_type_info");
     }
 
     public int getConstantPoolOffset() {
-        throw EspressoError.shouldNotReachHere("Asking for CPI of non reference verification_type_info");
+        throw fatal("Asking for CPI of non reference verification_type_info");
     }
 
     public String toString(ConstantPool pool) {
@@ -75,7 +75,16 @@ public abstract class VerificationTypeInfo {
         }
     }
 
+    /**
+     * Returns the type of this verification type info object. If called on a VFI without a type
+     * ({@code null}, {@code illegal} or {@code uninitializedThis}), this method will throw a
+     * {@link VerifierError}.
+     */
     public abstract Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs);
+
+    public final boolean hasType() {
+        return !isNull() && !isIllegal() && !isUninitializedThis();
+    }
 
     public boolean isNull() {
         return false;
@@ -85,7 +94,11 @@ public abstract class VerificationTypeInfo {
         return false;
     }
 
-    @SuppressWarnings("unused")
+    public boolean isUninitializedThis() {
+        return false;
+    }
+
+    @SuppressWarnings("unused") // For debug purposes
     protected String fromCP(ConstantPool pool) {
         return "";
     }
@@ -102,6 +115,9 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
     private final int tag;
 
     private PrimitiveTypeInfo(int tag) {
+        if (tag < ITEM_Bogus || tag > ITEM_Null) {
+            fatal("Not a primitive verification type info tag: " + tag);
+        }
         this.tag = tag;
     }
 
@@ -125,7 +141,7 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
             case ITEM_Null:
                 return Null;
             default:
-                throw EspressoError.shouldNotReachHere();
+                throw fatal("Unrecognized VerificationTypeInfo tag: " + tag);
         }
     }
 
@@ -143,7 +159,7 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
             case ITEM_Null: // fall through
             case ITEM_Bogus: // fall through
             default:
-                throw EspressoError.shouldNotReachHere("'getType' was called Null or Invalid type info.");
+                throw fatal("'getType' was called Null or Invalid type info.");
         }
 
     }
@@ -181,7 +197,12 @@ final class UninitializedThis extends VerificationTypeInfo {
 
     @Override
     public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
-        throw EspressoError.shouldNotReachHere("newThis.getType() called.");
+        throw fatal("newThis.getType() called.");
+    }
+
+    @Override
+    public boolean isUninitializedThis() {
+        return true;
     }
 }
 

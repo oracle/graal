@@ -493,14 +493,17 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    public static FrameType fromTypeInfo(VerificationTypeInfo vfi, FrameAnalysis analysis) {
+    public static FrameType fromTypeInfo(VerificationTypeInfo vti, FrameAnalysis analysis) {
         FrameType k;
-        if (vfi.isIllegal()) {
+        if (vti.isIllegal()) {
             k = FrameType.ILLEGAL;
-        } else if (vfi.isNull()) {
+        } else if (vti.isNull()) {
             k = FrameType.NULL;
+        } else if (vti.isUninitializedThis()) {
+            k = FrameType.forType(analysis.targetKlass().getType());
         } else {
-            k = FrameType.forType(vfi.getType(analysis.pool(), analysis.targetKlass().getTypes(), analysis.stream()));
+            assert vti.hasType();
+            k = FrameType.forType(vti.getType(analysis.pool(), analysis.targetKlass().getTypes(), analysis.stream()));
         }
         return k;
     }

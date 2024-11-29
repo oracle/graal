@@ -390,7 +390,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
             assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
             if (other == this) {
-                throw fatal("Invalid invariant: ByteOrBoolean operand in stack.");
+                throw VerifierError.fatal("Invalid invariant: ByteOrBoolean operand in stack.");
             }
             if (other.isPrimitive()) {
                 if (other == Byte) {
@@ -578,12 +578,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     /**
-     * Utility for ease of use in Espresso.
-     *
      * @param m the method to verify
      *
      * @throws VerificationException if method verification fails, with
-     *             {@link VerificationException#kind} alluding to why verification failed.
+     *             {@link VerificationException#kind()} alluding to why verification failed.
      */
     @SuppressWarnings("try")
     public static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> void verify(R runtime, M m)
@@ -613,12 +611,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private boolean shouldFallBack(VerificationException e) {
-        if (!e.allowFallback) {
+        if (!e.allowFallback()) {
             return false;
         }
         if (majorVersion == ClassfileParser.JAVA_6_VERSION) {
             if (stackMapInitialized) {
-                return e.kind != VerificationException.Kind.ClassFormat;
+                return e.kind() != VerificationException.Kind.ClassFormat;
             }
             return true;
         }
@@ -728,7 +726,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             target = switchHelper.defaultTarget(code, bci);
             validateBCI(target);
         } else {
-            throw fatal("Unrecognized switch bytecode: " + opCode);
+            throw VerifierError.fatal("Unrecognized switch bytecode: " + opCode);
         }
     }
 
@@ -737,7 +735,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
      * attribute exists, it still constructs the first implicit StackFrame, with the method
      * arguments in the locals and an empty stack.
      */
-    private void initStackFrames() throws ParserException.ClassFormatError {
+    private void initStackFrames() throws VerificationException {
         // First implicit stack frame.
         StackFrame<R, C, M, F> previous = new StackFrame<>(this);
         assert stackFrames.length > 0;
@@ -747,7 +745,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             return;
         }
         if (stackMapTableAttribute == StackMapTableAttribute.EMPTY) {
-            throw fatal("Class " + thisKlass.getJavaName() + " needs stack map verification, but the stack map table attribute was not filled.");
+            throw VerifierError.fatal("Class " + thisKlass.getJavaName() + " needs stack map verification, but the stack map table attribute was not filled.");
         }
         StackMapFrameParser.parse(this, stackMapTableAttribute, previous, computeLastLocal(previous));
     }
@@ -820,14 +818,16 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             case ITEM_InitObject:
                 return new UninitReferenceOperand<>(thisKlass);
             case ITEM_Object:
+                assert vti.hasType();
                 return spawnFromType(vti.getType(pool, getTypes(), code));
             case ITEM_NewObject:
                 int newOffset = vti.getNewOffset();
                 validateFormatBCI(newOffset);
                 formatGuarantee(code.currentBC(newOffset) == NEW, "NewObject in stack map not referencing a NEW instruction! " + Bytecodes.nameOf(code.currentBC(newOffset)));
+                assert vti.hasType();
                 return new UninitReferenceOperand<>(vti.getType(pool, getTypes(), code), newOffset);
             default:
-                throw fatal("Unrecognized VerificationTypeInfo: " + vti);
+                throw VerifierError.fatal("Unrecognized VerificationTypeInfo: " + vti);
         }
     }
 
@@ -2251,7 +2251,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             case 10 : return new ArrayOperand<>(Int);
             case 11 : return new ArrayOperand<>(Long);
             default:
-                throw fatal("Unrecognized JVM array byte: " + jvmType);
+                throw VerifierError.fatal("Unrecognized JVM array byte: " + jvmType);
         }
         // @formatter:on
     }
@@ -2287,7 +2287,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             case Void   : return Void;
             case Object : return spawnFromType(type);
             default:
-                throw fatal("Obtaining an operand with an unrecognized type: " + type);
+                throw VerifierError.fatal("Obtaining an operand with an unrecognized type: " + type);
         }
         // @formatter:on
     }
@@ -2391,10 +2391,6 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     @Override
     public String toExternalString() {
         return getThisKlass().getHostType() + "." + getMethodName();
-    }
-
-    private static VerifierError fatal(String message) {
-        throw VerifierError.shouldNotReachHere(message);
     }
 
     private Types getTypes() {

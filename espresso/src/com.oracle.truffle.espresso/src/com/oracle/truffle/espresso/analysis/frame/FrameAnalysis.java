@@ -254,6 +254,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.shared.verifier.StackMapFrameParser;
+import com.oracle.truffle.espresso.shared.verifier.VerificationException;
 import com.oracle.truffle.espresso.shared.verifier.VerificationTypeInfo;
 
 /**
@@ -413,7 +414,11 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         withStackMaps = true;
         // localPos overshoots by 1
         int lastLocal = receiverShift + localPos - 1;
-        StackMapFrameParser.parse(this, stackMapFrame, frame, lastLocal);
+        try {
+            StackMapFrameParser.parse(this, stackMapFrame, frame, lastLocal);
+        } catch (VerificationException e) {
+            throw EspressoError.shouldNotReachHere("Class should have been verified!");
+        }
     }
 
     private void buildStates(int startBci) {

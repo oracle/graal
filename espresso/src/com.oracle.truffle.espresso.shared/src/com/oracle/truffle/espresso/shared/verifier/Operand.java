@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.shared.verifier;
 
 import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failNoClassDefFound;
 import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failVerify;
+import static com.oracle.truffle.espresso.shared.verifier.VerifierError.fatal;
 
 import java.util.ArrayList;
 
@@ -83,15 +84,15 @@ abstract class Operand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
     }
 
     Operand<R, C, M, F> getComponent() {
-        throw VerifierError.shouldNotReachHere("Calling getComponent of a non-array Operand");
+        throw fatal("Calling getComponent of a non-array Operand");
     }
 
     Operand<R, C, M, F> getElemental() {
-        throw VerifierError.shouldNotReachHere("Calling getElemental of a non-array Operand");
+        throw fatal("Calling getElemental of a non-array Operand");
     }
 
     int getDimensions() {
-        throw VerifierError.shouldNotReachHere("Calling getDimensions of a non-array Operand");
+        throw fatal("Calling getDimensions of a non-array Operand");
     }
 
     Symbol<Type> getType() {
@@ -249,7 +250,6 @@ class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
             try {
                 klass = methodVerifier.runtime.loadClass(type, methodVerifier.getThisKlass());
             } catch (ClassLoadingException e) {
-                // TODO(garcia) fine grain this catch
                 if (e.isClassNotFoundException()) {
                     throw failNoClassDefFound(type.toString());
                 }

@@ -25,11 +25,11 @@ package com.oracle.truffle.espresso.shared.verifier;
 
 import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
+import static com.oracle.truffle.espresso.shared.verifier.VerifierError.fatal;
 
 import java.io.PrintStream;
 
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 
 abstract class StackMapFrame {
     protected final int frameType;
@@ -43,19 +43,19 @@ abstract class StackMapFrame {
     }
 
     public int getChopped() {
-        throw EspressoError.shouldNotReachHere("Asking for chopped value of non chopped frame");
+        throw fatal("Asking for chopped value of non chopped frame");
     }
 
     public VerificationTypeInfo getStackItem() {
-        throw EspressoError.shouldNotReachHere("Asking for stack item of incompatible stackMap frame");
+        throw fatal("Asking for stack item of incompatible stackMap frame");
     }
 
     public VerificationTypeInfo[] getStack() {
-        throw EspressoError.shouldNotReachHere("Asking for stack of incompatible stackMap frame");
+        throw fatal("Asking for stack of incompatible stackMap frame");
     }
 
     public VerificationTypeInfo[] getLocals() {
-        throw EspressoError.shouldNotReachHere("Asking for locals of incompatible stackMap frame");
+        throw fatal("Asking for locals of incompatible stackMap frame");
     }
 
     public abstract int getOffset();
