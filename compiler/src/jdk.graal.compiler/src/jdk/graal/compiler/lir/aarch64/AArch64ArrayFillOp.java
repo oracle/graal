@@ -32,6 +32,7 @@ import static jdk.vm.ci.aarch64.AArch64.r6;
 import static jdk.vm.ci.aarch64.AArch64.r7;
 import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.aarch64.AArch64.r9;
+import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -49,6 +50,7 @@ import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
+import jdk.graal.compiler.nodes.ConstantNode;
 
 /**
  * Emits code which fills an array with a constant value.
@@ -59,11 +61,12 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
 
     private JavaKind kind;
     @Alive({REG}) protected Value array;
+    @Alive({REG}) protected Value arrayBaseOffset;
     @Alive({REG}) protected Value length;
     @Alive({REG}) protected Value value;
     @Temp protected Value[] temps;
 
-    public AArch64ArrayFillOp(LIRGeneratorTool tool, JavaKind kind, Value array, Value length, Value value) {
+    public AArch64ArrayFillOp(JavaKind kind, Value array, Value arrayBaseOffset, Value length, Value value) {
         super(TYPE);
 
         GraalError.guarantee(array.getPlatformKind() == AArch64Kind.QWORD, "pointer value expected");
@@ -72,6 +75,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
 
         this.kind = kind;
         this.array = array;
+        this.arrayBaseOffset = arrayBaseOffset;
         this.length = length;
         this.value = value;
 
@@ -80,7 +84,8 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
                         r6.asValue(),
                         r7.asValue(),
                         r8.asValue(),
-                        r9.asValue()};
+                        r9.asValue(),
+                        r10.asValue()};
     }
 
     /**
@@ -89,7 +94,9 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
      *
      */
     @Override
+    @SuppressWarnings("fallthrough")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+        int shift = -1;
         boolean aligned = false;
         int operation_width_B = 8;
         int operation_width_H = 16;
@@ -97,11 +104,13 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
         int operation_width_DW = 64;
         JavaKind element_type = this.kind;
 
-        try (ScratchRegister scr1 = masm.getScratchRegister(); ScratchRegister scr2 = masm.getScratchRegister()) {
+        // masm.brk(AArch64MacroAssembler.AArch64ExceptionCode.BREAKPOINT);
+
+        try (ScratchRegister scr1 = masm.getScratchRegister()) {
             Register target_array = r7;
             Register value_to_fill_with = r8;
             Register number_of_elements = r9;
-            Register cnt_words = scr1.getRegister();
+            Register number_of_eight_byte_words = r10;
 
             Label L_fill_elements = new Label();
             Label L_skip_align1 = new Label();
@@ -109,13 +118,15 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
             Label L_skip_align4 = new Label();
             Label L_fill_2 = new Label();
             Label L_fill_4 = new Label();
-            Label L_exit2 = new Label();
+            Label L_done = new Label();
 
-            masm.mov(64, target_array, asRegister(array));
+            masm.add(64, target_array, asRegister(this.array), asRegister(this.arrayBaseOffset));
             masm.mov(64, value_to_fill_with, asRegister(value));
             masm.mov(64, number_of_elements, asRegister(length));
 
-            int shift = -1;
+            // Will jump to L_fill_elements if there are less than 8 bytes to fill in target array.
+            // Before jumping, adjust value_to_fill_with to contain the 'pattern' to fill target
+            // array with.
             switch (element_type) {
                 case JavaKind.Byte:
                     shift = 0;
@@ -165,19 +176,27 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
                 }
             }
 
-            // Fill large chunks
-            masm.lsr(operation_width_W, cnt_words, number_of_elements, 3 - shift);
+            // Divide number_of_elements by 2^(3-shift), i.e., divide number_of_elements by the
+            // number of elements that fit into an 8 byte word.
+            masm.lsr(operation_width_W, number_of_eight_byte_words, number_of_elements, 3 - shift);
+
+            // expand from 32 bits to 64 bits
             masm.bfi(operation_width_DW, value_to_fill_with, value_to_fill_with, 32, 32);
-            masm.sub(operation_width_W, number_of_elements, number_of_elements, cnt_words, ShiftType.LSL, 3 - shift);
-            fillWords(masm, target_array, cnt_words, value_to_fill_with);
+
+            // number_of_elements = number_of_elements -
+            // number_of_eight_byte_words*(elements_by_eight_byte_word)
+            masm.sub(operation_width_W, number_of_elements, number_of_elements, number_of_eight_byte_words, ShiftType.LSL, 3 - shift);
+
+            // fill number_of_eight_byte_words bytes of the target array
+            fillWords(masm, target_array, number_of_eight_byte_words, value_to_fill_with);
 
             // Remaining number_of_elements is less than 8 bytes. Fill it by a single store.
             // Note that the total length is no less than 8 bytes.
             if (element_type == JavaKind.Byte || element_type == JavaKind.Short) {
-                masm.cbz(operation_width_W, number_of_elements, L_exit2);
+                masm.cbz(operation_width_W, number_of_elements, L_done);
                 masm.add(operation_width_DW, target_array, target_array, number_of_elements, ShiftType.LSL, shift);
                 masm.str(operation_width_DW, value_to_fill_with, masm.makeAddress(operation_width_DW, target_array, -8));
-                masm.jmp(L_exit2);
+                masm.jmp(L_done);
             }
 
             // Handle copies less than 8 bytes.
@@ -190,24 +209,24 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
                     masm.tbz(number_of_elements, 1, L_fill_4);
                     masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
                     masm.bind(L_fill_4);
-                    masm.tbz(number_of_elements, 2, L_exit2);
+                    masm.tbz(number_of_elements, 2, L_done);
                     masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
                     break;
                 case JavaKind.Short:
                     masm.tbz(number_of_elements, 0, L_fill_4);
                     masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
                     masm.bind(L_fill_4);
-                    masm.tbz(number_of_elements, 1, L_exit2);
+                    masm.tbz(number_of_elements, 1, L_done);
                     masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
                     break;
                 case JavaKind.Int:
-                    masm.cbz(operation_width_W, number_of_elements, L_exit2);
+                    masm.cbz(operation_width_W, number_of_elements, L_done);
                     masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
                     break;
                 default:
                     GraalError.shouldNotReachHere("Should not reach here.");
             }
-            masm.bind(L_exit2);
+            masm.bind(L_done);
         }
     }
 

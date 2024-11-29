@@ -428,9 +428,10 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ConstantNode arrayBaseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(this.kind), b.getGraph());
                 ValueNode nonNullArray = b.nullCheckedValue(arg1, DeoptimizationAction.None);
                 ValueNode arrayLength = b.add(new ArrayLengthNode(nonNullArray));
-                b.append(new ArrayFillNode(nonNullArray, arrayLength, value, this.kind, b.bci()));
+                b.add(new ArrayFillNode(nonNullArray, arrayBaseOffset, arrayLength, value, this.kind));
             }
             return true;
         }
@@ -452,27 +453,16 @@ public class StandardGraphBuilderPlugins {
             }
             try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                 ConstantNode arrayBaseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(kind), b.getGraph());
-
                 helper.emitReturnIf(b.add(new ObjectEqualsNode(arg1, arg2)), b.add(ConstantNode.forBoolean(true)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
-
                 GuardingNode nonNullArg1guard = helper.emitReturnIf(IsNullNode.create(arg1), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
-
                 GuardingNode nonNullArg2guard = helper.emitReturnIf(IsNullNode.create(arg2), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
-
                 Stamp stamp1 = AbstractPointerStamp.pointerNonNull(arg1.stamp(NodeView.DEFAULT));
-
                 ValueNode nonNullArg1 = b.add(new PiNode(arg1, stamp1, nonNullArg1guard.asNode()));
-
                 ValueNode arg1Length = b.add(new ArrayLengthNode(nonNullArg1));
-
                 Stamp stamp2 = AbstractPointerStamp.pointerNonNull(arg1.stamp(NodeView.DEFAULT));
-
                 ValueNode nonNullArg2 = b.add(new PiNode(arg2, stamp2, nonNullArg2guard.asNode()));
-
                 ValueNode arg2Length = b.add(new ArrayLengthNode(nonNullArg2));
-
                 helper.emitReturnIfNot(IntegerEqualsNode.create(arg1Length, arg2Length, NodeView.DEFAULT), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
-
                 helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(nonNullArg1, arrayBaseOffset, nonNullArg2, arrayBaseOffset, arg1Length, kind)));
             }
             return true;

@@ -24,19 +24,30 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 
 public final class ArrayFillForeignCalls {
-    private static final ForeignCallDescriptor STUB_BYTE_ARRAY_FILL = ForeignCalls.pureFunctionForeignCallDescriptor("byteArrayFill", void.class, Pointer.class, int.class, byte.class);
-    private static final ForeignCallDescriptor STUB_INT_ARRAY_FILL = ForeignCalls.pureFunctionForeignCallDescriptor("intArrayFill", void.class, Pointer.class, int.class, int.class);
+    private static final ForeignCallDescriptor STUB_BYTE_ARRAY_FILL = pureFunctionForeignCallDescriptor("byteArrayFill", JavaKind.Byte, void.class, Pointer.class, long.class, int.class, int.class);
+    private static final ForeignCallDescriptor STUB_INT_ARRAY_FILL = pureFunctionForeignCallDescriptor("intArrayFill", JavaKind.Int, void.class, Pointer.class, long.class, int.class, int.class);
 
     public static final ForeignCallDescriptor[] STUBS = {
                     STUB_BYTE_ARRAY_FILL,
                     STUB_INT_ARRAY_FILL,
     };
+
+    public static ForeignCallDescriptor pureFunctionForeignCallDescriptor(String name, JavaKind kind, Class<?> resultType, Class<?>... argTypes) {
+        LocationIdentity[] locs = new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(kind)};
+
+        return new ForeignCallDescriptor(name, resultType, argTypes, HAS_SIDE_EFFECT, locs, false, false);
+    }
 
     public static ForeignCallDescriptor getArrayFillStub(ArrayFillNode arrayFillNode) {
         JavaKind kind = arrayFillNode.getElementKind();

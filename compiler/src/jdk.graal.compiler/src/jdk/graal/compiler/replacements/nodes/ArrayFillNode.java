@@ -61,14 +61,14 @@ import jdk.vm.ci.meta.JavaKind;
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_UNKNOWN, allowedUsageTypes = InputType.Memory)
 public class ArrayFillNode extends MemoryKillStubIntrinsicNode
-                implements StateSplit, MemoryAccess, DeoptimizingNode, DeoptimizingNode.DeoptDuring, DeoptimizingNode.DeoptBefore, DeoptimizingNode.DeoptAfter, DeoptBciSupplier {
+                implements StateSplit, MemoryAccess {
 
     public static final NodeClass<ArrayFillNode> TYPE = NodeClass.create(ArrayFillNode.class);
 
-    public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte), NamedLocationIdentity.OFF_HEAP_LOCATION};
-
     /** One array to be tested for equality. */
     @Input protected ValueNode array;
+
+    @Input protected ValueNode arrayBaseOffset;
 
     /** Length of the array. */
     @Input protected ValueNode length;
@@ -79,26 +79,20 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
     /** {@link JavaKind} of the array to fill. */
     protected JavaKind elementKind;
 
-    @OptionalInput(State) FrameState stateBefore;
-    @OptionalInput(State) FrameState stateDuring;
-    @OptionalInput(State) FrameState stateAfter;
-
-    protected int bci;
-
-    public ArrayFillNode(ValueNode array, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind, int bci) {
+    public ArrayFillNode(ValueNode array, ValueNode arrayBaseOffset, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind) {
         super(TYPE, StampFactory.forVoid(), null, LocationIdentity.any());
-        this.bci = bci;
         this.array = array;
+        this.arrayBaseOffset = arrayBaseOffset;
         this.length = length;
         this.value = value;
         this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
     }
 
-    public ArrayFillNode(ValueNode array, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind, int bci,
+    public ArrayFillNode(ValueNode array, ValueNode arrayBaseOffset, ValueNode length, ValueNode value, @ConstantNodeParameter JavaKind elementKind,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
         super(TYPE, StampFactory.forVoid(), runtimeCheckedCPUFeatures, LocationIdentity.any());
-        this.bci = bci;
         this.array = array;
+        this.arrayBaseOffset = arrayBaseOffset;
         this.length = length;
         this.value = value;
         this.elementKind = elementKind != JavaKind.Illegal ? elementKind : null;
@@ -107,12 +101,12 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
     @NodeIntrinsic
     @GenerateStub(name = "byteArrayFill", parameters = {"Byte"})
     @GenerateStub(name = "intArrayFill", parameters = {"Int"})
-    public static native void fill(Pointer array, int length, int value,
-                    @ConstantNodeParameter JavaKind kind, int bci);
+    public static native void fill(Pointer array, long offset, int length, int value,
+                    @ConstantNodeParameter JavaKind kind);
 
     @NodeIntrinsic
-    public static native void fill(Pointer array, int length, int value,
-                    @ConstantNodeParameter JavaKind kind, int bci,
+    public static native void fill(Pointer array, long offset, int length, int value,
+                    @ConstantNodeParameter JavaKind kind,
                     @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @Override
@@ -122,22 +116,12 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
 
     @Override
     public ValueNode[] getForeignCallArguments() {
-        return new ValueNode[]{array, length, value};
+        return new ValueNode[]{array, arrayBaseOffset, length, value};
     }
 
     @Override
     public void emitIntrinsic(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitArrayFill(elementKind, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(length), gen.operand(value));
-    }
-
-    @Override
-    public int bci() {
-        return bci;
-    }
-
-    @Override
-    public void setBci(int bci) {
-        this.bci = bci;
+        gen.getLIRGeneratorTool().emitArrayFill(elementKind, getRuntimeCheckedCPUFeatures(), gen.operand(array), gen.operand(arrayBaseOffset), gen.operand(length), gen.operand(value));
     }
 
     @Override
@@ -152,7 +136,7 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
 
     @Override
     public LocationIdentity[] getKilledLocationIdentities() {
-        return KILLED_LOCATIONS;
+        return new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(this.elementKind)};
     }
 
     public JavaKind getElementKind() {
@@ -175,16 +159,6 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
     }
 
     @Override
-    public FrameState stateDuring() {
-        return stateDuring;
-    }
-
-    @Override
-    public FrameState stateBefore() {
-        return stateBefore;
-    }
-
-    @Override
     public FrameState stateAfter() {
         return stateAfter;
     }
@@ -193,28 +167,5 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
     public void setStateAfter(FrameState x) {
         updateUsages(this.stateAfter, x);
         this.stateAfter = x;
-    }
-
-    @Override
-    public void setStateBefore(FrameState x) {
-        updateUsages(this.stateBefore, x);
-        this.stateBefore = x;
-    }
-
-    @Override
-    public void setStateDuring(FrameState stateDuring) {
-        updateUsages(this.stateDuring, stateDuring);
-        this.stateDuring = stateDuring;
-    }
-
-    @Override
-    public void computeStateDuring(FrameState stateAfter1) {
-        FrameState newStateDuring = stateAfter1.duplicateModifiedDuringCall(bci, asNode().getStackKind());
-        setStateDuring(newStateDuring);
-    }
-
-    @Override
-    public boolean canDeoptimize() {
-        return true;
     }
 }

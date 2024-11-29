@@ -625,9 +625,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitArrayFill(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length, Value value) {
+    public void emitArrayFill(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
         GraalError.guarantee(kind.isPrimitive(), "Only Byte and Int are supported for now.");
-        append(new AArch64ArrayFillOp(this, kind, emitConvertNullToZero(array), asAllocatable(length), asAllocatable(value)));
+        append(new AArch64ArrayFillOp(kind, emitConvertNullToZero(array), asAllocatable(arrayBaseOffset), asAllocatable(length), asAllocatable(value)));
     }
 
     @Override
