@@ -133,6 +133,7 @@ import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.FieldAccessor;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.internal.vm.annotation.Stable;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
@@ -389,6 +390,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private CFunctionPointer[] vtable;
 
     /** Field used for module information access at run-time. */
+    @Stable //
     private Module module;
 
     /** The class that serves as the host for the nest. All nestmates have the same host. */
