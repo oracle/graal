@@ -63,11 +63,11 @@ final class WallClockTimerKey extends BaseTimerKey {
 
     @Override
     public String toHumanReadableFormat(long value) {
-        return String.format("%d ms", value);
+        return String.format("%d ns", value);
     }
 
     @Override
     public Pair<String, String> toCSVFormat(long value) {
-        return Pair.create(Long.toString(value), "ms");
+        return Pair.create(Long.toString(value), "ns");
     }
 }
