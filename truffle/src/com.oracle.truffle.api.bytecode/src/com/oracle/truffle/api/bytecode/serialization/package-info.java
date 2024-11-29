@@ -39,6 +39,12 @@
  * SOFTWARE.
  */
 
+/*
+ @ApiInfo(
+ group="Truffle"
+ )
+ */
+
 /**
  * Serialization-specific classes for the Bytecode DSL.
  *

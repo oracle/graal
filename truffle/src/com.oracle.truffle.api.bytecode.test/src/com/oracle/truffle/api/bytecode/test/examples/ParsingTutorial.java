@@ -60,10 +60,6 @@ import com.oracle.truffle.api.bytecode.test.examples.GettingStarted.GettingStart
  * This tutorial demonstrates how to programmatically parse bytecode for a Bytecode DSL interpreter.
  * It refers to the interpreter defined in the {@link GettingStarted} guide. It is recommended to
  * read that guide first.
- *
- * @see <a href=
- *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/GettingStarted.md">Getting
- *      started guide</a>
  */
 public class ParsingTutorial {
     /**
@@ -565,7 +561,25 @@ public class ParsingTutorial {
     }
 
     /**
-     * Now, let's test it.
+     * Finally, let's test it below.
+     *
+     * This tutorial demonstrated how to parse programs using visitors. It also demonstrated how to
+     * "desugar" complex nodes into simpler operations.
+     * <p>
+     * Still, some more advanced features (e.g., {@code TryFinally} operations) have not been
+     * covered. We encourage you to consult the other resources available:
+     *
+     * @see <a href=
+     *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">User
+     *      guide</a>.
+     *
+     * @see <a href=
+     *      "https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html">Javadoc
+     *      </a>.
+     *
+     * @see <a href=
+     *      "https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/bytecode/SLBytecodeRootNode.java">Simple
+     *      Language implementation</a>.
      */
     public void testForEach() {
         // @formatter:off
@@ -598,29 +612,5 @@ public class ParsingTutorial {
     private static BytecodeDSLTestLanguage getLanguage() {
         return null;
     }
-
-    /**
-     * This tutorial demonstrated how to parse programs using visitors. It also demonstrated how to
-     * "desugar" complex nodes into simpler operations.
-     * <p>
-     * Still, some more advanced features (e.g., {@code TryFinally} operations) have not been
-     * covered. We encourage you to consult the other resources available:
-     *
-     * @see <a href=
-     *      "https://github.com/oracle/graal/blob/master/truffle/docs/bytecode_dsl/UserGuide.md">User
-     *      guide</a>.
-     *
-     * @see <a href=
-     *      "https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html">Javadoc
-     *      </a>.
-     *
-     * @see <a href=
-     *      "https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.sl/src/com/oracle/truffle/sl/bytecode/SLBytecodeRootNode.java">Simple
-     *      Language implementation</a>.
-     *
-     * @see <a href=
-     *      "https://github.com/oracle/graalpython/blob/master/graalpython/com.oracle.graal.python/src/com/oracle/graal/python/nodes/bytecode_dsl/PBytecodeDSLRootNode.java">GraalPython
-     *      implementation</a>.
-     */
 
 }
