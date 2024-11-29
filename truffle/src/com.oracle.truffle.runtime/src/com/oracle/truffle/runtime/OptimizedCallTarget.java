@@ -84,6 +84,7 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime.CompilationActivityMode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -858,58 +859,60 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return compilationFailed;
     }
 
-    final boolean isCompilationStopped() {
-        OptimizedTruffleRuntime.CompilationActivityMode compilationActivityMode = runtime().getCompilationActivityMode();
+    final CompilationActivityMode getCompilationActivityMode() {
+        CompilationActivityMode compilationActivityMode = runtime().getCompilationActivityMode();
         long sct = runtime().stoppedCompilationTime().get();
-        if (compilationActivityMode == OptimizedTruffleRuntime.CompilationActivityMode.STOP_COMPILATION) {
+        if (compilationActivityMode == CompilationActivityMode.STOP_COMPILATION) {
             if (sct != 0 && System.currentTimeMillis() - sct > engine.stoppedCompilationRetryDelay) {
                 runtime().stoppedCompilationTime().compareAndSet(sct, 0);
-                // Try again every StoppedCompilationRetryDelay milliseconds to potentially trigger a code cache sweep.
-                compilationActivityMode = OptimizedTruffleRuntime.CompilationActivityMode.RUN_COMPILATION;
+                // Try again every StoppedCompilationRetryDelay milliseconds to potentially trigger
+                // a code cache sweep.
+                compilationActivityMode = CompilationActivityMode.RUN_COMPILATION;
             }
         }
 
         switch (compilationActivityMode) {
-            case RUN_COMPILATION : {
+            case RUN_COMPILATION: {
                 // This is the common case - compilations are not stopped.
-                return false;
+                return CompilationActivityMode.RUN_COMPILATION;
             }
-            case STOP_COMPILATION : {
+            case STOP_COMPILATION: {
                 if (sct == 0) {
                     runtime().stoppedCompilationTime().compareAndSet(0, System.currentTimeMillis());
                 }
                 // Flush the compilations queue for now. There's still a chance that compilation
                 // will be re-enabled eventually, if the hosts code cache can be cleaned up.
                 Collection<OptimizedCallTarget> targets = runtime().getCompileQueue().getQueuedTargets(null);
-                // If there's just a single compilation target in the queue, the chance is high that it is
-                // the one we've just added after the StoppedCompilationRetryDelay ran out, so keep it to
-                // potentially trigger a code cache sweep.
+                // If there's just a single compilation target in the queue, the chance is high that
+                // it is the one we've just added after the StoppedCompilationRetryDelay ran out, so
+                // keep it to potentially trigger a code cache sweep.
                 if (targets.size() > 1) {
                     for (OptimizedCallTarget target : targets) {
                         target.cancelCompilation("Compilation temporary disabled due to full code cache.");
                     }
                 }
-                return true;
+                return CompilationActivityMode.STOP_COMPILATION;
             }
-            case SHUTDOWN_COMPILATION : {
+            case SHUTDOWN_COMPILATION: {
                 // Compilation was shut down permanently because the hosts code cache ran full and
                 // the host was configured without support for code cache sweeping.
                 TruffleLogger logger = engine.getLogger("engine");
                 // The logger can be null if the engine is closed.
-                if (logger != null && runtime().logShutdownCompilations().compareAndExchange(true, false)) {
-                    logger.log(Level.WARNING, "Truffle compilations permanently disabled because of full code cache. "  +
-                            "Increase the code cache size using '-XX:ReservedCodeCacheSize=' and/or run with '-XX:+UseCodeCacheFlushing -XX:+MethodFlushing'.");
+                if (logger != null && engine.logShutdownCompilations().compareAndExchange(true, false)) {
+                    logger.log(Level.WARNING, "Truffle compilations permanently disabled because of full code cache. " +
+                                    "Increase the code cache size using '-XX:ReservedCodeCacheSize=' and/or run with '-XX:+UseCodeCacheFlushing -XX:+MethodFlushing'.");
                 }
-                try {
-                    runtime().getCompileQueue().shutdownAndAwaitTermination(100 /* milliseconds */);
-                } catch (RuntimeException re) {
-                    // Best effort, ignore failure
+                // Flush the compilation queue and mark all methods as not compilable.
+                for (OptimizedCallTarget target : runtime().getCompileQueue().getQueuedTargets(null)) {
+                    target.cancelCompilation("Compilation permanently disabled due to full code cache.");
+                    target.compilationFailed = true;
                 }
-                return true;
+                return CompilationActivityMode.SHUTDOWN_COMPILATION;
             }
-            default : CompilerDirectives.shouldNotReachHere("Invalid compilation activity mode: " + compilationActivityMode);
+            default:
+                CompilerDirectives.shouldNotReachHere("Invalid compilation activity mode: " + compilationActivityMode);
         }
-        return false;
+        return CompilationActivityMode.RUN_COMPILATION;
     }
 
     /**
@@ -931,16 +934,21 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
                 return false;
             }
 
+            CompilationActivityMode cam = getCompilationActivityMode();
+            if (cam != CompilationActivityMode.RUN_COMPILATION) {
+                if (cam == CompilationActivityMode.SHUTDOWN_COMPILATION) {
+                    // Compilation was shut down permanently.
+                    compilationFailed = true;
+                }
+                return false;
+            }
+
             CompilationTask task = null;
             // Do not try to compile this target concurrently,
             // but do not block other threads if compilation is not asynchronous.
             synchronized (this) {
                 if (!needsCompile(lastTier)) {
                     return true;
-                }
-
-                if (isCompilationStopped()) {
-                    return false;
                 }
 
                 ensureInitialized();

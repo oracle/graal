@@ -86,6 +86,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -493,6 +494,16 @@ public final class EngineData {
 
     public TruffleLogger getLogger(String loggerId) {
         return polyglotEngine != null ? loggerFactory.apply(loggerId) : null;
+    }
+
+    private final AtomicBoolean logShutdownCompilations = new AtomicBoolean(true);
+
+    /**
+     * Only log compilation shutdowns (see {@code OptimizedCallTarget.isCompilationStopped()}) once
+     * per engine.
+     */
+    public final AtomicBoolean logShutdownCompilations() {
+        return logShutdownCompilations;
     }
 
     @SuppressWarnings("static-method")

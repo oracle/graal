@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -914,17 +913,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected void onEngineCreated(EngineData engine) {
     }
 
-
     private final AtomicLong stoppedCompilationTime = new AtomicLong(0);
 
     public final AtomicLong stoppedCompilationTime() {
         return stoppedCompilationTime;
-    }
-
-    private final AtomicBoolean logShutdownCompilations = new AtomicBoolean(true);
-
-    public final AtomicBoolean logShutdownCompilations() {
-        return logShutdownCompilations;
     }
 
     @SuppressWarnings("try")
@@ -1499,9 +1491,9 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     /**
-     * Represents HotSpot's compilation activity mode which is one of:
-     * {@code stop_compilation = 0}, {@code run_compilation = 1} or {@code shutdown_compilation = 2}
-     * Should be in sync with the {@code CompilerActivity} enum in {@code hotspot/share/compiler/compileBroker.hpp}
+     * Represents HotSpot's compilation activity mode which is one of: {@code stop_compilation = 0},
+     * {@code run_compilation = 1} or {@code shutdown_compilation = 2} Should be in sync with the
+     * {@code CompilerActivity} enum in {@code hotspot/share/compiler/compileBroker.hpp}
      */
     public enum CompilationActivityMode {
         STOP_COMPILATION,
