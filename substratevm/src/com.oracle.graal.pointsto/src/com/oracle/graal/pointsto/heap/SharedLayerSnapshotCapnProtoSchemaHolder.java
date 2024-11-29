@@ -2246,7 +2246,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class ConstantReference {
-    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)2,(short)1);
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)1,(short)1);
     public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -2323,16 +2323,19 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean isPrimitiveValue() {
         return which() == ConstantReference.Which.PRIMITIVE_VALUE;
       }
-      public final PrimitiveValue.Builder getPrimitiveValue() {
-        return new ConstantReference.PrimitiveValue.Builder(segment, data, pointers, dataSize, pointerCount);
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Builder getPrimitiveValue() {
+        assert which() == ConstantReference.Which.PRIMITIVE_VALUE:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory, 0, null, 0);
       }
-      public final PrimitiveValue.Builder initPrimitiveValue() {
+      public final void setPrimitiveValue(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Reader value) {
         _setShortField(2, (short)ConstantReference.Which.PRIMITIVE_VALUE.ordinal());
-        _setByteField(0,(byte)0);
-        _setLongField(1,0L);
-  return new ConstantReference.PrimitiveValue.Builder(segment, data, pointers, dataSize, pointerCount);
+        _setPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,0, value);
       }
-
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Builder initPrimitiveValue() {
+        _setShortField(2, (short)ConstantReference.Which.PRIMITIVE_VALUE.ordinal());
+        return _initPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,0, 0);
+      }
       public final boolean isMethodPointer() {
         return which() == ConstantReference.Which.METHOD_POINTER;
       }
@@ -2407,8 +2410,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean isPrimitiveValue() {
         return which() == ConstantReference.Which.PRIMITIVE_VALUE;
       }
-      public PrimitiveValue.Reader getPrimitiveValue() {
-        return new ConstantReference.PrimitiveValue.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      public boolean hasPrimitiveValue() {
+        return !_pointerFieldIsNull(0);
+      }
+      public com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Reader getPrimitiveValue() {
+        assert which() == ConstantReference.Which.PRIMITIVE_VALUE:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,0,null, 0);
       }
 
       public final boolean isMethodPointer() {
@@ -2442,7 +2450,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       _NOT_IN_SCHEMA,
     }
     public static class ObjectConstant {
-      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)2,(short)1);
+      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)1,(short)1);
       public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
         public Factory() {
         }
@@ -2492,70 +2500,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
     }
 
 
-    public static class PrimitiveValue {
-      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)2,(short)1);
-      public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
-        public Factory() {
-        }
-        public final Reader constructReader(org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
-          return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
-        }
-        public final Builder constructBuilder(org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
-          return new Builder(segment, data, pointers, dataSize, pointerCount);
-        }
-        public final org.capnproto.StructSize structSize() {
-          return ConstantReference.PrimitiveValue.STRUCT_SIZE;
-        }
-        public final Reader asReader(Builder builder) {
-          return builder.asReader();
-        }
-      }
-      public static final Factory factory = new Factory();
-      public static final org.capnproto.StructList.Factory<Builder,Reader> listFactory =
-        new org.capnproto.StructList.Factory<Builder, Reader>(factory);
-      public static final class Builder extends org.capnproto.StructBuilder {
-        Builder(org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
-          super(segment, data, pointers, dataSize, pointerCount);
-        }
-        public final Reader asReader() {
-          return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
-        }
-        public final byte getTypeChar() {
-          return _getByteField(0);
-        }
-        public final void setTypeChar(byte value) {
-          _setByteField(0, value);
-        }
-
-        public final long getRawValue() {
-          return _getLongField(1);
-        }
-        public final void setRawValue(long value) {
-          _setLongField(1, value);
-        }
-
-      }
-
-      public static final class Reader extends org.capnproto.StructReader {
-        Reader(org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
-          super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
-        }
-
-        public final byte getTypeChar() {
-          return _getByteField(0);
-        }
-
-        public final long getRawValue() {
-          return _getLongField(1);
-        }
-
-      }
-
-    }
-
-
     public static class MethodPointer {
-      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)2,(short)1);
+      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)1,(short)1);
       public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
         public Factory() {
         }
@@ -2699,16 +2645,19 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean isPrimitiveData() {
         return which() == PersistedConstant.Which.PRIMITIVE_DATA;
       }
-      public final PrimitiveData.Builder getPrimitiveData() {
-        return new PersistedConstant.PrimitiveData.Builder(segment, data, pointers, dataSize, pointerCount);
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Builder getPrimitiveData() {
+        assert which() == PersistedConstant.Which.PRIMITIVE_DATA:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory, 0, null, 0);
       }
-      public final PrimitiveData.Builder initPrimitiveData() {
+      public final void setPrimitiveData(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Reader value) {
         _setShortField(16, (short)PersistedConstant.Which.PRIMITIVE_DATA.ordinal());
-        _setShortField(7,(short)0);
-        _clearPointerField(0);
-  return new PersistedConstant.PrimitiveData.Builder(segment, data, pointers, dataSize, pointerCount);
+        _setPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,0, value);
       }
-
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Builder initPrimitiveData() {
+        _setShortField(16, (short)PersistedConstant.Which.PRIMITIVE_DATA.ordinal());
+        return _initPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,0, 0);
+      }
       public final boolean isRelocatable() {
         return which() == PersistedConstant.Which.RELOCATABLE;
       }
@@ -2780,8 +2729,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final boolean isPrimitiveData() {
         return which() == PersistedConstant.Which.PRIMITIVE_DATA;
       }
-      public PrimitiveData.Reader getPrimitiveData() {
-        return new PersistedConstant.PrimitiveData.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      public boolean hasPrimitiveData() {
+        return !_pointerFieldIsNull(0);
+      }
+      public com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Reader getPrimitiveData() {
+        assert which() == PersistedConstant.Which.PRIMITIVE_DATA:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,0,null, 0);
       }
 
       public final boolean isRelocatable() {
@@ -3280,299 +3234,6 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
 
-    }
-
-
-    public static class PrimitiveData {
-      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)6,(short)3);
-      public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
-        public Factory() {
-        }
-        public final Reader constructReader(org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
-          return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
-        }
-        public final Builder constructBuilder(org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
-          return new Builder(segment, data, pointers, dataSize, pointerCount);
-        }
-        public final org.capnproto.StructSize structSize() {
-          return PersistedConstant.PrimitiveData.STRUCT_SIZE;
-        }
-        public final Reader asReader(Builder builder) {
-          return builder.asReader();
-        }
-      }
-      public static final Factory factory = new Factory();
-      public static final org.capnproto.StructList.Factory<Builder,Reader> listFactory =
-        new org.capnproto.StructList.Factory<Builder, Reader>(factory);
-      public static final class Builder extends org.capnproto.StructBuilder {
-        Builder(org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
-          super(segment, data, pointers, dataSize, pointerCount);
-        }
-        public Which which() {
-          switch(_getShortField(7)) {
-            case 0 : return Which.Z;
-            case 1 : return Which.B;
-            case 2 : return Which.S;
-            case 3 : return Which.C;
-            case 4 : return Which.I;
-            case 5 : return Which.F;
-            case 6 : return Which.J;
-            case 7 : return Which.D;
-            default: return Which._NOT_IN_SCHEMA;
-          }
-        }
-        public final Reader asReader() {
-          return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
-        }
-        public final boolean isZ() {
-          return which() == PersistedConstant.PrimitiveData.Which.Z;
-        }
-        public final boolean hasZ() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Boolean.Builder getZ() {
-          return _getPointerField(org.capnproto.PrimitiveList.Boolean.factory, 0, null, 0);
-        }
-        public final void setZ(org.capnproto.PrimitiveList.Boolean.Reader value) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.Z.ordinal());
-          _setPointerField(org.capnproto.PrimitiveList.Boolean.factory, 0, value);
-        }
-        public final org.capnproto.PrimitiveList.Boolean.Builder initZ(int size) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.Z.ordinal());
-          return _initPointerField(org.capnproto.PrimitiveList.Boolean.factory, 0, size);
-        }
-        public final boolean isB() {
-          return which() == PersistedConstant.PrimitiveData.Which.B;
-        }
-        public final boolean hasB() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Byte.Builder getB() {
-          return _getPointerField(org.capnproto.PrimitiveList.Byte.factory, 0, null, 0);
-        }
-        public final void setB(org.capnproto.PrimitiveList.Byte.Reader value) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.B.ordinal());
-          _setPointerField(org.capnproto.PrimitiveList.Byte.factory, 0, value);
-        }
-        public final org.capnproto.PrimitiveList.Byte.Builder initB(int size) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.B.ordinal());
-          return _initPointerField(org.capnproto.PrimitiveList.Byte.factory, 0, size);
-        }
-        public final boolean isS() {
-          return which() == PersistedConstant.PrimitiveData.Which.S;
-        }
-        public final boolean hasS() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Short.Builder getS() {
-          return _getPointerField(org.capnproto.PrimitiveList.Short.factory, 0, null, 0);
-        }
-        public final void setS(org.capnproto.PrimitiveList.Short.Reader value) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.S.ordinal());
-          _setPointerField(org.capnproto.PrimitiveList.Short.factory, 0, value);
-        }
-        public final org.capnproto.PrimitiveList.Short.Builder initS(int size) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.S.ordinal());
-          return _initPointerField(org.capnproto.PrimitiveList.Short.factory, 0, size);
-        }
-        public final boolean isC() {
-          return which() == PersistedConstant.PrimitiveData.Which.C;
-        }
-        public final boolean hasC() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Short.Builder getC() {
-          return _getPointerField(org.capnproto.PrimitiveList.Short.factory, 0, null, 0);
-        }
-        public final void setC(org.capnproto.PrimitiveList.Short.Reader value) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.C.ordinal());
-          _setPointerField(org.capnproto.PrimitiveList.Short.factory, 0, value);
-        }
-        public final org.capnproto.PrimitiveList.Short.Builder initC(int size) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.C.ordinal());
-          return _initPointerField(org.capnproto.PrimitiveList.Short.factory, 0, size);
-        }
-        public final boolean isI() {
-          return which() == PersistedConstant.PrimitiveData.Which.I;
-        }
-        public final boolean hasI() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Int.Builder getI() {
-          return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
-        }
-        public final void setI(org.capnproto.PrimitiveList.Int.Reader value) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.I.ordinal());
-          _setPointerField(org.capnproto.PrimitiveList.Int.factory, 0, value);
-        }
-        public final org.capnproto.PrimitiveList.Int.Builder initI(int size) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.I.ordinal());
-          return _initPointerField(org.capnproto.PrimitiveList.Int.factory, 0, size);
-        }
-        public final boolean isF() {
-          return which() == PersistedConstant.PrimitiveData.Which.F;
-        }
-        public final boolean hasF() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Float.Builder getF() {
-          return _getPointerField(org.capnproto.PrimitiveList.Float.factory, 0, null, 0);
-        }
-        public final void setF(org.capnproto.PrimitiveList.Float.Reader value) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.F.ordinal());
-          _setPointerField(org.capnproto.PrimitiveList.Float.factory, 0, value);
-        }
-        public final org.capnproto.PrimitiveList.Float.Builder initF(int size) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.F.ordinal());
-          return _initPointerField(org.capnproto.PrimitiveList.Float.factory, 0, size);
-        }
-        public final boolean isJ() {
-          return which() == PersistedConstant.PrimitiveData.Which.J;
-        }
-        public final boolean hasJ() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Long.Builder getJ() {
-          return _getPointerField(org.capnproto.PrimitiveList.Long.factory, 0, null, 0);
-        }
-        public final void setJ(org.capnproto.PrimitiveList.Long.Reader value) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.J.ordinal());
-          _setPointerField(org.capnproto.PrimitiveList.Long.factory, 0, value);
-        }
-        public final org.capnproto.PrimitiveList.Long.Builder initJ(int size) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.J.ordinal());
-          return _initPointerField(org.capnproto.PrimitiveList.Long.factory, 0, size);
-        }
-        public final boolean isD() {
-          return which() == PersistedConstant.PrimitiveData.Which.D;
-        }
-        public final boolean hasD() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Double.Builder getD() {
-          return _getPointerField(org.capnproto.PrimitiveList.Double.factory, 0, null, 0);
-        }
-        public final void setD(org.capnproto.PrimitiveList.Double.Reader value) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.D.ordinal());
-          _setPointerField(org.capnproto.PrimitiveList.Double.factory, 0, value);
-        }
-        public final org.capnproto.PrimitiveList.Double.Builder initD(int size) {
-          _setShortField(7, (short)PersistedConstant.PrimitiveData.Which.D.ordinal());
-          return _initPointerField(org.capnproto.PrimitiveList.Double.factory, 0, size);
-        }
-      }
-
-      public static final class Reader extends org.capnproto.StructReader {
-        Reader(org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
-          super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
-        }
-
-        public Which which() {
-          switch(_getShortField(7)) {
-            case 0 : return Which.Z;
-            case 1 : return Which.B;
-            case 2 : return Which.S;
-            case 3 : return Which.C;
-            case 4 : return Which.I;
-            case 5 : return Which.F;
-            case 6 : return Which.J;
-            case 7 : return Which.D;
-            default: return Which._NOT_IN_SCHEMA;
-          }
-        }
-        public final boolean isZ() {
-          return which() == PersistedConstant.PrimitiveData.Which.Z;
-        }
-        public final boolean hasZ() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Boolean.Reader getZ() {
-          return _getPointerField(org.capnproto.PrimitiveList.Boolean.factory, 0, null, 0);
-        }
-
-        public final boolean isB() {
-          return which() == PersistedConstant.PrimitiveData.Which.B;
-        }
-        public final boolean hasB() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Byte.Reader getB() {
-          return _getPointerField(org.capnproto.PrimitiveList.Byte.factory, 0, null, 0);
-        }
-
-        public final boolean isS() {
-          return which() == PersistedConstant.PrimitiveData.Which.S;
-        }
-        public final boolean hasS() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Short.Reader getS() {
-          return _getPointerField(org.capnproto.PrimitiveList.Short.factory, 0, null, 0);
-        }
-
-        public final boolean isC() {
-          return which() == PersistedConstant.PrimitiveData.Which.C;
-        }
-        public final boolean hasC() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Short.Reader getC() {
-          return _getPointerField(org.capnproto.PrimitiveList.Short.factory, 0, null, 0);
-        }
-
-        public final boolean isI() {
-          return which() == PersistedConstant.PrimitiveData.Which.I;
-        }
-        public final boolean hasI() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Int.Reader getI() {
-          return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
-        }
-
-        public final boolean isF() {
-          return which() == PersistedConstant.PrimitiveData.Which.F;
-        }
-        public final boolean hasF() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Float.Reader getF() {
-          return _getPointerField(org.capnproto.PrimitiveList.Float.factory, 0, null, 0);
-        }
-
-        public final boolean isJ() {
-          return which() == PersistedConstant.PrimitiveData.Which.J;
-        }
-        public final boolean hasJ() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Long.Reader getJ() {
-          return _getPointerField(org.capnproto.PrimitiveList.Long.factory, 0, null, 0);
-        }
-
-        public final boolean isD() {
-          return which() == PersistedConstant.PrimitiveData.Which.D;
-        }
-        public final boolean hasD() {
-          return !_pointerFieldIsNull(0);
-        }
-        public final org.capnproto.PrimitiveList.Double.Reader getD() {
-          return _getPointerField(org.capnproto.PrimitiveList.Double.factory, 0, null, 0);
-        }
-
-      }
-
-      public enum Which {
-        Z,
-        B,
-        S,
-        C,
-        I,
-        F,
-        J,
-        D,
-        _NOT_IN_SCHEMA,
-      }
     }
 
 
@@ -4231,8 +3892,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public Which which() {
         switch(_getShortField(0)) {
-          case 0 : return Which.OTHER;
-          case 1 : return Which.ENUM;
+          case 0 : return Which.STRING;
+          case 1 : return Which.PRIMITIVE;
+          case 2 : return Which.PRIMITIVE_ARRAY;
+          case 3 : return Which.ENUM;
+          case 4 : return Which.CLASS_NAME;
+          case 5 : return Which.ANNOTATION;
+          case 6 : return Which.MEMBERS;
           default: return Which._NOT_IN_SCHEMA;
         }
       }
@@ -4254,27 +3920,59 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final org.capnproto.Text.Builder initName(int size) {
         return _initPointerField(org.capnproto.Text.factory, 0, size);
       }
-      public final boolean isOther() {
-        return which() == AnnotationValue.Which.OTHER;
+      public final boolean isString() {
+        return which() == AnnotationValue.Which.STRING;
       }
-      public final boolean hasOther() {
-        if (which() != AnnotationValue.Which.OTHER) return false;
+      public final boolean hasString() {
+        if (which() != AnnotationValue.Which.STRING) return false;
         return !_pointerFieldIsNull(1);
       }
-      public final org.capnproto.Text.Builder getOther() {
+      public final org.capnproto.Text.Builder getString() {
         return _getPointerField(org.capnproto.Text.factory, 1, null, 0, 0);
       }
-      public final void setOther(org.capnproto.Text.Reader value) {
-        _setShortField(0, (short)AnnotationValue.Which.OTHER.ordinal());
+      public final void setString(org.capnproto.Text.Reader value) {
+        _setShortField(0, (short)AnnotationValue.Which.STRING.ordinal());
         _setPointerField(org.capnproto.Text.factory, 1, value);
       }
-      public final void setOther(String value) {
-        _setShortField(0, (short)AnnotationValue.Which.OTHER.ordinal());
+      public final void setString(String value) {
+        _setShortField(0, (short)AnnotationValue.Which.STRING.ordinal());
         _setPointerField(org.capnproto.Text.factory, 1, new org.capnproto.Text.Reader(value));
       }
-      public final org.capnproto.Text.Builder initOther(int size) {
-        _setShortField(0, (short)AnnotationValue.Which.OTHER.ordinal());
+      public final org.capnproto.Text.Builder initString(int size) {
+        _setShortField(0, (short)AnnotationValue.Which.STRING.ordinal());
         return _initPointerField(org.capnproto.Text.factory, 1, size);
+      }
+      public final boolean isPrimitive() {
+        return which() == AnnotationValue.Which.PRIMITIVE;
+      }
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Builder getPrimitive() {
+        assert which() == AnnotationValue.Which.PRIMITIVE:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory, 1, null, 0);
+      }
+      public final void setPrimitive(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Reader value) {
+        _setShortField(0, (short)AnnotationValue.Which.PRIMITIVE.ordinal());
+        _setPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,1, value);
+      }
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Builder initPrimitive() {
+        _setShortField(0, (short)AnnotationValue.Which.PRIMITIVE.ordinal());
+        return _initPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,1, 0);
+      }
+      public final boolean isPrimitiveArray() {
+        return which() == AnnotationValue.Which.PRIMITIVE_ARRAY;
+      }
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Builder getPrimitiveArray() {
+        assert which() == AnnotationValue.Which.PRIMITIVE_ARRAY:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory, 1, null, 0);
+      }
+      public final void setPrimitiveArray(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Reader value) {
+        _setShortField(0, (short)AnnotationValue.Which.PRIMITIVE_ARRAY.ordinal());
+        _setPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,1, value);
+      }
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Builder initPrimitiveArray() {
+        _setShortField(0, (short)AnnotationValue.Which.PRIMITIVE_ARRAY.ordinal());
+        return _initPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,1, 0);
       }
       public final boolean isEnum() {
         return which() == AnnotationValue.Which.ENUM;
@@ -4289,6 +3987,57 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   return new AnnotationValue.Enum.Builder(segment, data, pointers, dataSize, pointerCount);
       }
 
+      public final boolean isClassName() {
+        return which() == AnnotationValue.Which.CLASS_NAME;
+      }
+      public final boolean hasClassName() {
+        if (which() != AnnotationValue.Which.CLASS_NAME) return false;
+        return !_pointerFieldIsNull(1);
+      }
+      public final org.capnproto.Text.Builder getClassName() {
+        return _getPointerField(org.capnproto.Text.factory, 1, null, 0, 0);
+      }
+      public final void setClassName(org.capnproto.Text.Reader value) {
+        _setShortField(0, (short)AnnotationValue.Which.CLASS_NAME.ordinal());
+        _setPointerField(org.capnproto.Text.factory, 1, value);
+      }
+      public final void setClassName(String value) {
+        _setShortField(0, (short)AnnotationValue.Which.CLASS_NAME.ordinal());
+        _setPointerField(org.capnproto.Text.factory, 1, new org.capnproto.Text.Reader(value));
+      }
+      public final org.capnproto.Text.Builder initClassName(int size) {
+        _setShortField(0, (short)AnnotationValue.Which.CLASS_NAME.ordinal());
+        return _initPointerField(org.capnproto.Text.factory, 1, size);
+      }
+      public final boolean isAnnotation() {
+        return which() == AnnotationValue.Which.ANNOTATION;
+      }
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder getAnnotation() {
+        assert which() == AnnotationValue.Which.ANNOTATION:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.factory, 1, null, 0);
+      }
+      public final void setAnnotation(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader value) {
+        _setShortField(0, (short)AnnotationValue.Which.ANNOTATION.ordinal());
+        _setPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.factory,1, value);
+      }
+      public final com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Builder initAnnotation() {
+        _setShortField(0, (short)AnnotationValue.Which.ANNOTATION.ordinal());
+        return _initPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.factory,1, 0);
+      }
+      public final boolean isMembers() {
+        return which() == AnnotationValue.Which.MEMBERS;
+      }
+      public final Members.Builder getMembers() {
+        return new AnnotationValue.Members.Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final Members.Builder initMembers() {
+        _setShortField(0, (short)AnnotationValue.Which.MEMBERS.ordinal());
+        _clearPointerField(1);
+        _clearPointerField(2);
+  return new AnnotationValue.Members.Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+
     }
 
     public static final class Reader extends org.capnproto.StructReader {
@@ -4298,8 +4047,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
       public Which which() {
         switch(_getShortField(0)) {
-          case 0 : return Which.OTHER;
-          case 1 : return Which.ENUM;
+          case 0 : return Which.STRING;
+          case 1 : return Which.PRIMITIVE;
+          case 2 : return Which.PRIMITIVE_ARRAY;
+          case 3 : return Which.ENUM;
+          case 4 : return Which.CLASS_NAME;
+          case 5 : return Which.ANNOTATION;
+          case 6 : return Which.MEMBERS;
           default: return Which._NOT_IN_SCHEMA;
         }
       }
@@ -4310,15 +4064,39 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getPointerField(org.capnproto.Text.factory, 0, null, 0, 0);
       }
 
-      public final boolean isOther() {
-        return which() == AnnotationValue.Which.OTHER;
+      public final boolean isString() {
+        return which() == AnnotationValue.Which.STRING;
       }
-      public boolean hasOther() {
-        if (which() != AnnotationValue.Which.OTHER) return false;
+      public boolean hasString() {
+        if (which() != AnnotationValue.Which.STRING) return false;
         return !_pointerFieldIsNull(1);
       }
-      public org.capnproto.Text.Reader getOther() {
+      public org.capnproto.Text.Reader getString() {
         return _getPointerField(org.capnproto.Text.factory, 1, null, 0, 0);
+      }
+
+      public final boolean isPrimitive() {
+        return which() == AnnotationValue.Which.PRIMITIVE;
+      }
+      public boolean hasPrimitive() {
+        return !_pointerFieldIsNull(1);
+      }
+      public com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.Reader getPrimitive() {
+        assert which() == AnnotationValue.Which.PRIMITIVE:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue.factory,1,null, 0);
+      }
+
+      public final boolean isPrimitiveArray() {
+        return which() == AnnotationValue.Which.PRIMITIVE_ARRAY;
+      }
+      public boolean hasPrimitiveArray() {
+        return !_pointerFieldIsNull(1);
+      }
+      public com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.Reader getPrimitiveArray() {
+        assert which() == AnnotationValue.Which.PRIMITIVE_ARRAY:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray.factory,1,null, 0);
       }
 
       public final boolean isEnum() {
@@ -4328,11 +4106,46 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return new AnnotationValue.Enum.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
       }
 
+      public final boolean isClassName() {
+        return which() == AnnotationValue.Which.CLASS_NAME;
+      }
+      public boolean hasClassName() {
+        if (which() != AnnotationValue.Which.CLASS_NAME) return false;
+        return !_pointerFieldIsNull(1);
+      }
+      public org.capnproto.Text.Reader getClassName() {
+        return _getPointerField(org.capnproto.Text.factory, 1, null, 0, 0);
+      }
+
+      public final boolean isAnnotation() {
+        return which() == AnnotationValue.Which.ANNOTATION;
+      }
+      public boolean hasAnnotation() {
+        return !_pointerFieldIsNull(1);
+      }
+      public com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader getAnnotation() {
+        assert which() == AnnotationValue.Which.ANNOTATION:
+                    "Must check which() before get()ing a union member.";
+        return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.factory,1,null, 0);
+      }
+
+      public final boolean isMembers() {
+        return which() == AnnotationValue.Which.MEMBERS;
+      }
+      public Members.Reader getMembers() {
+        return new AnnotationValue.Members.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
     }
 
     public enum Which {
-      OTHER,
+      STRING,
+      PRIMITIVE,
+      PRIMITIVE_ARRAY,
       ENUM,
+      CLASS_NAME,
+      ANNOTATION,
+      MEMBERS,
       _NOT_IN_SCHEMA,
     }
     public static class Enum {
@@ -4412,6 +4225,87 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         }
         public org.capnproto.Text.Reader getName() {
           return _getPointerField(org.capnproto.Text.factory, 2, null, 0, 0);
+        }
+
+      }
+
+    }
+
+
+    public static class Members {
+      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)1,(short)3);
+      public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
+        public Factory() {
+        }
+        public final Reader constructReader(org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+          return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+        }
+        public final Builder constructBuilder(org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+          return new Builder(segment, data, pointers, dataSize, pointerCount);
+        }
+        public final org.capnproto.StructSize structSize() {
+          return AnnotationValue.Members.STRUCT_SIZE;
+        }
+        public final Reader asReader(Builder builder) {
+          return builder.asReader();
+        }
+      }
+      public static final Factory factory = new Factory();
+      public static final org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+        new org.capnproto.StructList.Factory<Builder, Reader>(factory);
+      public static final class Builder extends org.capnproto.StructBuilder {
+        Builder(org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+          super(segment, data, pointers, dataSize, pointerCount);
+        }
+        public final Reader asReader() {
+          return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+        }
+        public final boolean hasClassName() {
+          return !_pointerFieldIsNull(1);
+        }
+        public final org.capnproto.Text.Builder getClassName() {
+          return _getPointerField(org.capnproto.Text.factory, 1, null, 0, 0);
+        }
+        public final void setClassName(org.capnproto.Text.Reader value) {
+          _setPointerField(org.capnproto.Text.factory, 1, value);
+        }
+        public final void setClassName(String value) {
+          _setPointerField(org.capnproto.Text.factory, 1, new org.capnproto.Text.Reader(value));
+        }
+        public final org.capnproto.Text.Builder initClassName(int size) {
+          return _initPointerField(org.capnproto.Text.factory, 1, size);
+        }
+        public final boolean hasMemberValues() {
+          return !_pointerFieldIsNull(2);
+        }
+        public final org.capnproto.StructList.Builder<com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Builder> getMemberValues() {
+          return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 2, null, 0);
+        }
+        public final void setMemberValues(org.capnproto.StructList.Reader<com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Reader> value) {
+          _setPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 2, value);
+        }
+        public final org.capnproto.StructList.Builder<com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Builder> initMemberValues(int size) {
+          return _initPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 2, size);
+        }
+      }
+
+      public static final class Reader extends org.capnproto.StructReader {
+        Reader(org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+          super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+        }
+
+        public boolean hasClassName() {
+          return !_pointerFieldIsNull(1);
+        }
+        public org.capnproto.Text.Reader getClassName() {
+          return _getPointerField(org.capnproto.Text.factory, 1, null, 0, 0);
+        }
+
+        public final boolean hasMemberValues() {
+          return !_pointerFieldIsNull(2);
+        }
+        public final org.capnproto.StructList.Reader<com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Reader> getMemberValues() {
+          return _getPointerField(com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.listFactory, 2, null, 0);
         }
 
       }
@@ -4669,6 +4563,361 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
     }
 
+  }
+
+
+  public static class PrimitiveValue {
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)2,(short)0);
+    public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
+      public Factory() {
+      }
+      public final Reader constructReader(org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+        return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+      }
+      public final Builder constructBuilder(org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+        return new Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final org.capnproto.StructSize structSize() {
+        return PrimitiveValue.STRUCT_SIZE;
+      }
+      public final Reader asReader(Builder builder) {
+        return builder.asReader();
+      }
+    }
+    public static final Factory factory = new Factory();
+    public static final org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+      new org.capnproto.StructList.Factory<Builder, Reader>(factory);
+    public static final class Builder extends org.capnproto.StructBuilder {
+      Builder(org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+        super(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final Reader asReader() {
+        return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+      }
+      public final byte getTypeChar() {
+        return _getByteField(0);
+      }
+      public final void setTypeChar(byte value) {
+        _setByteField(0, value);
+      }
+
+      public final long getRawValue() {
+        return _getLongField(1);
+      }
+      public final void setRawValue(long value) {
+        _setLongField(1, value);
+      }
+
+    }
+
+    public static final class Reader extends org.capnproto.StructReader {
+      Reader(org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+        super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public final byte getTypeChar() {
+        return _getByteField(0);
+      }
+
+      public final long getRawValue() {
+        return _getLongField(1);
+      }
+
+    }
+
+  }
+
+
+  public static class PrimitiveArray {
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)1,(short)1);
+    public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
+      public Factory() {
+      }
+      public final Reader constructReader(org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+        return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+      }
+      public final Builder constructBuilder(org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+        return new Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final org.capnproto.StructSize structSize() {
+        return PrimitiveArray.STRUCT_SIZE;
+      }
+      public final Reader asReader(Builder builder) {
+        return builder.asReader();
+      }
+    }
+    public static final Factory factory = new Factory();
+    public static final org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+      new org.capnproto.StructList.Factory<Builder, Reader>(factory);
+    public static final class Builder extends org.capnproto.StructBuilder {
+      Builder(org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+        super(segment, data, pointers, dataSize, pointerCount);
+      }
+      public Which which() {
+        switch(_getShortField(0)) {
+          case 0 : return Which.Z;
+          case 1 : return Which.B;
+          case 2 : return Which.S;
+          case 3 : return Which.C;
+          case 4 : return Which.I;
+          case 5 : return Which.F;
+          case 6 : return Which.J;
+          case 7 : return Which.D;
+          default: return Which._NOT_IN_SCHEMA;
+        }
+      }
+      public final Reader asReader() {
+        return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+      }
+      public final boolean isZ() {
+        return which() == PrimitiveArray.Which.Z;
+      }
+      public final boolean hasZ() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Boolean.Builder getZ() {
+        return _getPointerField(org.capnproto.PrimitiveList.Boolean.factory, 0, null, 0);
+      }
+      public final void setZ(org.capnproto.PrimitiveList.Boolean.Reader value) {
+        _setShortField(0, (short)PrimitiveArray.Which.Z.ordinal());
+        _setPointerField(org.capnproto.PrimitiveList.Boolean.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Boolean.Builder initZ(int size) {
+        _setShortField(0, (short)PrimitiveArray.Which.Z.ordinal());
+        return _initPointerField(org.capnproto.PrimitiveList.Boolean.factory, 0, size);
+      }
+      public final boolean isB() {
+        return which() == PrimitiveArray.Which.B;
+      }
+      public final boolean hasB() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Byte.Builder getB() {
+        return _getPointerField(org.capnproto.PrimitiveList.Byte.factory, 0, null, 0);
+      }
+      public final void setB(org.capnproto.PrimitiveList.Byte.Reader value) {
+        _setShortField(0, (short)PrimitiveArray.Which.B.ordinal());
+        _setPointerField(org.capnproto.PrimitiveList.Byte.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Byte.Builder initB(int size) {
+        _setShortField(0, (short)PrimitiveArray.Which.B.ordinal());
+        return _initPointerField(org.capnproto.PrimitiveList.Byte.factory, 0, size);
+      }
+      public final boolean isS() {
+        return which() == PrimitiveArray.Which.S;
+      }
+      public final boolean hasS() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Short.Builder getS() {
+        return _getPointerField(org.capnproto.PrimitiveList.Short.factory, 0, null, 0);
+      }
+      public final void setS(org.capnproto.PrimitiveList.Short.Reader value) {
+        _setShortField(0, (short)PrimitiveArray.Which.S.ordinal());
+        _setPointerField(org.capnproto.PrimitiveList.Short.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Short.Builder initS(int size) {
+        _setShortField(0, (short)PrimitiveArray.Which.S.ordinal());
+        return _initPointerField(org.capnproto.PrimitiveList.Short.factory, 0, size);
+      }
+      public final boolean isC() {
+        return which() == PrimitiveArray.Which.C;
+      }
+      public final boolean hasC() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Short.Builder getC() {
+        return _getPointerField(org.capnproto.PrimitiveList.Short.factory, 0, null, 0);
+      }
+      public final void setC(org.capnproto.PrimitiveList.Short.Reader value) {
+        _setShortField(0, (short)PrimitiveArray.Which.C.ordinal());
+        _setPointerField(org.capnproto.PrimitiveList.Short.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Short.Builder initC(int size) {
+        _setShortField(0, (short)PrimitiveArray.Which.C.ordinal());
+        return _initPointerField(org.capnproto.PrimitiveList.Short.factory, 0, size);
+      }
+      public final boolean isI() {
+        return which() == PrimitiveArray.Which.I;
+      }
+      public final boolean hasI() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Int.Builder getI() {
+        return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
+      }
+      public final void setI(org.capnproto.PrimitiveList.Int.Reader value) {
+        _setShortField(0, (short)PrimitiveArray.Which.I.ordinal());
+        _setPointerField(org.capnproto.PrimitiveList.Int.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Int.Builder initI(int size) {
+        _setShortField(0, (short)PrimitiveArray.Which.I.ordinal());
+        return _initPointerField(org.capnproto.PrimitiveList.Int.factory, 0, size);
+      }
+      public final boolean isF() {
+        return which() == PrimitiveArray.Which.F;
+      }
+      public final boolean hasF() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Float.Builder getF() {
+        return _getPointerField(org.capnproto.PrimitiveList.Float.factory, 0, null, 0);
+      }
+      public final void setF(org.capnproto.PrimitiveList.Float.Reader value) {
+        _setShortField(0, (short)PrimitiveArray.Which.F.ordinal());
+        _setPointerField(org.capnproto.PrimitiveList.Float.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Float.Builder initF(int size) {
+        _setShortField(0, (short)PrimitiveArray.Which.F.ordinal());
+        return _initPointerField(org.capnproto.PrimitiveList.Float.factory, 0, size);
+      }
+      public final boolean isJ() {
+        return which() == PrimitiveArray.Which.J;
+      }
+      public final boolean hasJ() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Long.Builder getJ() {
+        return _getPointerField(org.capnproto.PrimitiveList.Long.factory, 0, null, 0);
+      }
+      public final void setJ(org.capnproto.PrimitiveList.Long.Reader value) {
+        _setShortField(0, (short)PrimitiveArray.Which.J.ordinal());
+        _setPointerField(org.capnproto.PrimitiveList.Long.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Long.Builder initJ(int size) {
+        _setShortField(0, (short)PrimitiveArray.Which.J.ordinal());
+        return _initPointerField(org.capnproto.PrimitiveList.Long.factory, 0, size);
+      }
+      public final boolean isD() {
+        return which() == PrimitiveArray.Which.D;
+      }
+      public final boolean hasD() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Double.Builder getD() {
+        return _getPointerField(org.capnproto.PrimitiveList.Double.factory, 0, null, 0);
+      }
+      public final void setD(org.capnproto.PrimitiveList.Double.Reader value) {
+        _setShortField(0, (short)PrimitiveArray.Which.D.ordinal());
+        _setPointerField(org.capnproto.PrimitiveList.Double.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Double.Builder initD(int size) {
+        _setShortField(0, (short)PrimitiveArray.Which.D.ordinal());
+        return _initPointerField(org.capnproto.PrimitiveList.Double.factory, 0, size);
+      }
+    }
+
+    public static final class Reader extends org.capnproto.StructReader {
+      Reader(org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+        super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public Which which() {
+        switch(_getShortField(0)) {
+          case 0 : return Which.Z;
+          case 1 : return Which.B;
+          case 2 : return Which.S;
+          case 3 : return Which.C;
+          case 4 : return Which.I;
+          case 5 : return Which.F;
+          case 6 : return Which.J;
+          case 7 : return Which.D;
+          default: return Which._NOT_IN_SCHEMA;
+        }
+      }
+      public final boolean isZ() {
+        return which() == PrimitiveArray.Which.Z;
+      }
+      public final boolean hasZ() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Boolean.Reader getZ() {
+        return _getPointerField(org.capnproto.PrimitiveList.Boolean.factory, 0, null, 0);
+      }
+
+      public final boolean isB() {
+        return which() == PrimitiveArray.Which.B;
+      }
+      public final boolean hasB() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Byte.Reader getB() {
+        return _getPointerField(org.capnproto.PrimitiveList.Byte.factory, 0, null, 0);
+      }
+
+      public final boolean isS() {
+        return which() == PrimitiveArray.Which.S;
+      }
+      public final boolean hasS() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Short.Reader getS() {
+        return _getPointerField(org.capnproto.PrimitiveList.Short.factory, 0, null, 0);
+      }
+
+      public final boolean isC() {
+        return which() == PrimitiveArray.Which.C;
+      }
+      public final boolean hasC() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Short.Reader getC() {
+        return _getPointerField(org.capnproto.PrimitiveList.Short.factory, 0, null, 0);
+      }
+
+      public final boolean isI() {
+        return which() == PrimitiveArray.Which.I;
+      }
+      public final boolean hasI() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Int.Reader getI() {
+        return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
+      }
+
+      public final boolean isF() {
+        return which() == PrimitiveArray.Which.F;
+      }
+      public final boolean hasF() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Float.Reader getF() {
+        return _getPointerField(org.capnproto.PrimitiveList.Float.factory, 0, null, 0);
+      }
+
+      public final boolean isJ() {
+        return which() == PrimitiveArray.Which.J;
+      }
+      public final boolean hasJ() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Long.Reader getJ() {
+        return _getPointerField(org.capnproto.PrimitiveList.Long.factory, 0, null, 0);
+      }
+
+      public final boolean isD() {
+        return which() == PrimitiveArray.Which.D;
+      }
+      public final boolean hasD() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Double.Reader getD() {
+        return _getPointerField(org.capnproto.PrimitiveList.Double.factory, 0, null, 0);
+      }
+
+    }
+
+    public enum Which {
+      Z,
+      B,
+      S,
+      C,
+      I,
+      F,
+      J,
+      D,
+      _NOT_IN_SCHEMA,
+    }
   }
 
 

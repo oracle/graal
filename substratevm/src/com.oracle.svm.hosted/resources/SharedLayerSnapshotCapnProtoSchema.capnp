@@ -148,15 +148,11 @@ struct ConstantReference {
     }
     nullPointer @1 :Void;
     notMaterialized @2 :Void;
-    primitiveValue :group {
-      typeChar @3 :Int8;
-      rawValue @4 :Int64;
-
-    }
+    primitiveValue @3 :PrimitiveValue;
     methodPointer :group {
-      methodId @5 :MethodId;
+      methodId @4 :MethodId;
     }
-    cEntryPointLiteralCodePointer @6 :CEntryPointLiteralReference;
+    cEntryPointLiteralCodePointer @5 :CEntryPointLiteralReference;
   }
 }
 
@@ -187,22 +183,13 @@ struct PersistedConstant {
         }
       }
     }
-    primitiveData :union {
-      z @13 :List(Bool);
-      b @14 :List(Int8);
-      s @15 :List(Int16);
-      c @16 :List(UInt16);
-      i @17 :List(Int32);
-      f @18 :List(Float32);
-      j @19 :List(Int64);
-      d @20 :List(Float64);
-    }
+    primitiveData @13 :PrimitiveArray;
     relocatable :group {
-      key @21 :Text;
+      key @14 :Text;
     }
   }
-  parentConstantId @22 :ConstantId;
-  parentIndex @23 :Int32;
+  parentConstantId @15 :ConstantId;
+  parentIndex @16 :Int32;
 }
 
 struct KeyStoreEntry {
@@ -237,10 +224,18 @@ struct Annotation {
 struct AnnotationValue {
   name @0 :Text;
   union {
-    other @1 :Text;
+    string @1 :Text;
+    primitive @2 :PrimitiveValue;
+    primitiveArray @3 :PrimitiveArray;
     enum :group {
-      className @2 :Text;
-      name @3 :Text;
+      className @4 :Text;
+      name @5 :Text;
+    }
+    className @6 :Text;
+    annotation @7 :Annotation;
+    members :group {
+      className @8 :Text;
+      memberValues @9 :List(AnnotationValue);
     }
   }
 }
@@ -260,4 +255,22 @@ struct SharedLayerSnapshot {
   singletonKeys @11 :List(ImageSingletonKey);
   singletonObjects @12 :List(ImageSingletonObject);
   fields @13 :List(PersistedAnalysisField);
+}
+
+struct PrimitiveValue {
+  typeChar @0 :Int8;
+  rawValue @1 :Int64;
+}
+
+struct PrimitiveArray {
+  union {
+    z @0 :List(Bool);
+    b @1 :List(Int8);
+    s @2 :List(Int16);
+    c @3 :List(UInt16);
+    i @4 :List(Int32);
+    f @5 :List(Float32);
+    j @6 :List(Int64);
+    d @7 :List(Float64);
+  }
 }

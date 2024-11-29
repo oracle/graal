@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.heap;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -153,20 +154,55 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     @Override
     protected Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> reader) {
-        return IntStream.range(0, reader.size()).mapToObj(reader::get).map(a -> {
-            String typeName = a.getTypeName().toString();
-            Class<? extends Annotation> annotationType = lookupBaseLayerTypeInHostVM(typeName).asSubclass(Annotation.class);
-            Map<String, Object> annotationValuesMap = new HashMap<>();
-            a.getValues().forEach(v -> {
-                Object value = switch (v.which()) {
-                    case ENUM -> getEnumValue(v.getEnum().getClassName(), v.getEnum().getName());
-                    case OTHER -> v.getOther().toString();
-                    default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value kind: " + v.which());
+        return IntStream.range(0, reader.size()).mapToObj(reader::get).map(this::getAnnotation).toArray(Annotation[]::new);
+    }
+
+    private Annotation getAnnotation(SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader a) {
+        String typeName = a.getTypeName().toString();
+        Class<? extends Annotation> annotationType = lookupBaseLayerTypeInHostVM(typeName).asSubclass(Annotation.class);
+        Map<String, Object> annotationValuesMap = new HashMap<>();
+        a.getValues().forEach(v -> {
+            Object value = getAnnotationValue(v);
+            annotationValuesMap.put(v.getName().toString(), value);
+        });
+        return AnnotationParser.annotationForMap(annotationType, annotationValuesMap);
+    }
+
+    private Object getAnnotationValue(SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Reader v) {
+        return switch (v.which()) {
+            case STRING -> v.getString().toString();
+            case ENUM -> getEnumValue(v.getEnum().getClassName(), v.getEnum().getName());
+            case PRIMITIVE -> {
+                var p = v.getPrimitive();
+                long rawValue = p.getRawValue();
+                char typeChar = (char) p.getTypeChar();
+                yield switch (JavaKind.fromPrimitiveOrVoidTypeChar(typeChar)) {
+                    case Boolean -> rawValue != 0;
+                    case Byte -> (byte) rawValue;
+                    case Char -> (char) rawValue;
+                    case Short -> (short) rawValue;
+                    case Int -> (int) rawValue;
+                    case Long -> rawValue;
+                    case Float -> Float.intBitsToFloat((int) rawValue);
+                    case Double -> Double.longBitsToDouble(rawValue);
+                    default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value type: " + typeChar);
                 };
-                annotationValuesMap.put(v.getName().toString(), value);
-            });
-            return AnnotationParser.annotationForMap(annotationType, annotationValuesMap);
-        }).toArray(Annotation[]::new);
+            }
+            case PRIMITIVE_ARRAY -> getArray(v.getPrimitiveArray());
+            case CLASS_NAME -> lookupClass(false, v.getClassName().toString());
+            case ANNOTATION -> getAnnotation(v.getAnnotation());
+            case MEMBERS -> {
+                var m = v.getMembers();
+                var mv = m.getMemberValues();
+                Class<?> membersClass = lookupClass(false, m.getClassName().toString());
+                var array = Array.newInstance(membersClass, mv.size());
+                for (int i = 0; i < mv.size(); ++i) {
+                    Array.set(array, i, getAnnotationValue(mv.get(i)));
+                }
+                yield array;
+            }
+            case _NOT_IN_SCHEMA -> throw AnalysisError.shouldNotReachHere("Unknown annotation value kind: " + v.which());
+        };
     }
 
     @Override
