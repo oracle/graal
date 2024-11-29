@@ -123,6 +123,7 @@ import jdk.graal.compiler.lir.amd64.AMD64PauseOp;
 import jdk.graal.compiler.lir.amd64.AMD64SHA1Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA256AVX2Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA256Op;
+import jdk.graal.compiler.lir.amd64.AMD64SHA3Op;
 import jdk.graal.compiler.lir.amd64.AMD64SHA512Op;
 import jdk.graal.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import jdk.graal.compiler.lir.amd64.AMD64StringUTF16CompressOp;
@@ -1005,6 +1006,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
             append(new AMD64SHA256AVX2Op(rBuf, rState));
         }
+    }
+
+    @Override
+    public void emitSha3ImplCompress(Value buf, Value state, Value blockSize) {
+        append(new AMD64SHA3Op(asAllocatable(buf), asAllocatable(state), asAllocatable(blockSize)));
     }
 
     @Override
