@@ -32,5 +32,6 @@ public enum ErrorType {
     IllegalAccessError,
     NoSuchFieldError,
     NoSuchMethodError,
-    IncompatibleClassChangeError;
+    IncompatibleClassChangeError,
+    LinkageError;
 }

@@ -2517,7 +2517,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         Klass symbolicRef = Resolution.getResolvedHolderKlass(getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
         CallSiteType callSiteType = SiteTypes.callSiteFromOpCode(opcode);
-        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(getContext(), getDeclaringKlass(), resolutionSeed, callSiteType, symbolicRef);
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrThrow(getContext(), getDeclaringKlass(), resolutionSeed, callSiteType, symbolicRef);
         MethodHandleInvoker invoker = null;
         // There might be an invoker if it's an InvokeGeneric
         if (methodRefConstant instanceof ResolvedWithInvokerClassMethodRefConstant withInvoker) {
@@ -2701,7 +2701,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerAsserts.partialEvaluationConstant(field);
         CompilerAsserts.partialEvaluationConstant(mode);
 
-        EspressoLinkResolver.resolveFieldAccess(getContext(), field, mode, getDeclaringKlass(), getMethod());
+        EspressoLinkResolver.checkFieldAccessOrThrow(getContext(), field, mode, getDeclaringKlass(), getMethod());
 
         byte typeHeader = field.getType().byteAt(0);
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
@@ -2814,7 +2814,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
         CompilerAsserts.partialEvaluationConstant(field);
 
-        EspressoLinkResolver.resolveFieldAccess(getContext(), field, mode, getDeclaringKlass(), getMethod());
+        EspressoLinkResolver.checkFieldAccessOrThrow(getContext(), field, mode, getDeclaringKlass(), getMethod());
 
         int slot = top - 1;
         StaticObject receiver;

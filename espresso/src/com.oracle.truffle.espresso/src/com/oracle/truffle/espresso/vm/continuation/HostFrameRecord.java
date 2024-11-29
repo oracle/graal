@@ -45,6 +45,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
@@ -141,9 +142,12 @@ public final class HostFrameRecord {
                 guarantee(next.methodVersion.getName() == name && next.methodVersion.getRawSignature() == signature, "Wrong method on the recorded frames", meta);
                 // Loading constraints are respected
                 Symbol<Type> returnType = Signatures.returnType(next.methodVersion.getMethod().getParsedSignature());
-                meta.getContext().getRegistries().checkLoadingConstraint(returnType,
+                EspressoContext context = meta.getContext();
+                context.getRegistries().checkLoadingConstraint(returnType,
                                 methodVersion.getDeclaringKlass().getDefiningClassLoader(),
-                                next.methodVersion.getDeclaringKlass().getDefiningClassLoader());
+                                next.methodVersion.getDeclaringKlass().getDefiningClassLoader(), m -> {
+                                    throw context.throwError(ErrorType.LinkageError, m);
+                                });
             } else {
                 // Last method on the stack must be the call to suspend.
                 guarantee(methodVersion.getMethod() == meta.continuum.org_graalvm_continuations_ContinuationImpl_suspend, "Last method on the record is not 'Continuation.suspend'", meta);

@@ -415,7 +415,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             // - Static fields are accessed statically
             // - Final fields and ref_put*
             // These are done when needed by JDK code.
-            Field f = EspressoLinkResolver.resolveFieldSymbol(ctx, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
+            Field f = EspressoLinkResolver.resolveFieldSymbolOrThrow(ctx, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
             plantResolvedField(memberName, f, refKind, meta, meta.getLanguage());
             return memberName;
         }
@@ -441,7 +441,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
         Symbol<Signature> sig = lookupSignature(meta, desc, mhMethodId);
         Method m = EspressoLinkResolver.resolveMethodSymbol(ctx, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
-        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(ctx, callerKlass, m, SiteTypes.callSiteFromRefKind(refKind), resolutionKlass);
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrThrow(ctx, callerKlass, m, SiteTypes.callSiteFromRefKind(refKind), resolutionKlass);
 
         plantResolvedMethod(memberName, resolvedCall, meta);
 

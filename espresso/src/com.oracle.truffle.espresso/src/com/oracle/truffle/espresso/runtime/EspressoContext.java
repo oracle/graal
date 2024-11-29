@@ -1276,6 +1276,12 @@ public final class EspressoContext
     }
 
     @Override
+    public RuntimeException fatal(Throwable t, String messageFormat, Object... args) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere(String.format(Locale.ENGLISH, messageFormat, args), t);
+    }
+
+    @Override
     public KnownTypes<Klass, Method, Field> getKnownTypes() {
         return meta;
     }
@@ -1295,15 +1301,35 @@ public final class EspressoContext
     }
 
     private ObjectKlass errorTypeToExceptionKlass(ErrorType errorType) {
-        switch (errorType) {
-            case IllegalAccessError:
-                return meta.java_lang_IllegalAccessError;
-            case NoSuchFieldError:
-                return meta.java_lang_NoSuchFieldError;
-            case NoSuchMethodError:
-                return meta.java_lang_NoSuchMethodError;
-            case IncompatibleClassChangeError:
-                return meta.java_lang_IncompatibleClassChangeError;
+        return switch (errorType) {
+            case IllegalAccessError -> meta.java_lang_IllegalAccessError;
+            case NoSuchFieldError -> meta.java_lang_NoSuchFieldError;
+            case NoSuchMethodError -> meta.java_lang_NoSuchMethodError;
+            case IncompatibleClassChangeError -> meta.java_lang_IncompatibleClassChangeError;
+            case LinkageError -> meta.java_lang_LinkageError;
+        };
+    }
+
+    @Override
+    public ErrorType getErrorType(Throwable error) {
+        if (!(error instanceof EspressoException espressoException)) {
+            return null;
+        }
+        Klass klass = espressoException.getGuestException().getKlass();
+        if (klass == meta.java_lang_IllegalAccessError) {
+            return ErrorType.IllegalAccessError;
+        }
+        if (klass == meta.java_lang_NoSuchFieldError) {
+            return ErrorType.NoSuchFieldError;
+        }
+        if (klass == meta.java_lang_NoSuchMethodError) {
+            return ErrorType.NoSuchMethodError;
+        }
+        if (klass == meta.java_lang_IncompatibleClassChangeError) {
+            return ErrorType.IncompatibleClassChangeError;
+        }
+        if (klass == meta.java_lang_LinkageError) {
+            return ErrorType.LinkageError;
         }
         return null;
     }

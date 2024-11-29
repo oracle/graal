@@ -27,7 +27,6 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -207,13 +206,13 @@ public final class Resolution {
         ClassRedefinition classRedefinition = null;
         try {
             try {
-                field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
+                field = EspressoLinkResolver.resolveFieldSymbolOrThrow(context, accessingKlass, name, type, holderKlass, true, true);
             } catch (EspressoException e) {
                 classRedefinition = context.getClassRedefinition();
                 if (classRedefinition != null) {
                     // could be due to ongoing redefinition
                     classRedefinition.check();
-                    field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
+                    field = EspressoLinkResolver.resolveFieldSymbolOrThrow(context, accessingKlass, name, type, holderKlass, true, true);
                 } else {
                     throw e;
                 }
@@ -227,15 +226,6 @@ public final class Resolution {
 
     public static Klass getResolvedHolderKlass(MemberRefConstant.Indexes thiz, RuntimeConstantPool pool, ObjectKlass accessingKlass) {
         return pool.resolvedKlassAt(accessingKlass, thiz.getHolderIndex());
-    }
-
-    @TruffleBoundary
-    public static void memberDoAccessCheck(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, Meta meta) {
-        assert accessingKlass != null && resolvedKlass != null && member != null : "pre-conditions failed.";
-        if (!memberCheckAccess(accessingKlass, resolvedKlass, member)) {
-            String message = "Class " + accessingKlass.getExternalName() + " cannot access method " + resolvedKlass.getExternalName() + "#" + member.getName();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(message));
-        }
     }
 
     /**
@@ -254,7 +244,7 @@ public final class Resolution {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean memberCheckAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
+    public static boolean memberCheckAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
         if (member.isPublic()) {
             return true;
         }

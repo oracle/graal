@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -44,6 +45,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class ClassRegistries {
@@ -295,17 +297,19 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
+    public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
         Symbol<Type> toCheck = context.getTypes().getElementalType(type);
         if (!Types.isPrimitive(toCheck) && loader1 != loader2) {
-            constraints.checkConstraint(toCheck, loader1, loader2);
+            constraints.checkConstraint(toCheck, loader1, loader2, errorHandler);
         }
     }
 
     void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
         assert !Types.isArray(type);
         if (!Types.isPrimitive(type)) {
-            constraints.recordConstraint(type, klass, loader);
+            constraints.recordConstraint(type, klass, loader, m -> {
+                throw context.throwError(ErrorType.LinkageError, m);
+            });
         }
     }
 

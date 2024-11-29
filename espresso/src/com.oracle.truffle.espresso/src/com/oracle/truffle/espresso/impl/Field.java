@@ -48,6 +48,8 @@ import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 
+import java.util.function.Function;
+
 /**
  * Represents a resolved Espresso field.
  *
@@ -210,16 +212,12 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         return target;
     }
 
-    public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
-        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
+    @Override
+    public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
+        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2, errorHandler);
     }
 
     // region FieldAccess impl
-
-    @Override
-    public final void loadingConstraints(Klass accessingClass) {
-        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
-    }
 
     @Override
     public final boolean shouldEnforceInitializerCheck() {

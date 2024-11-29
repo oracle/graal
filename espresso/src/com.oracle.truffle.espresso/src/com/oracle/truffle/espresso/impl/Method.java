@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
 
@@ -119,6 +120,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
@@ -940,9 +942,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     @TruffleBoundary
-    public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
+    @Override
+    public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
         for (Symbol<Type> type : getParsedSignature()) {
-            getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
+            getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2, errorHandler);
         }
     }
 
@@ -1343,11 +1346,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @Override
     public boolean shouldSkipLoadingConstraints() {
         return isPolySignatureIntrinsic();
-    }
-
-    @Override
-    public void loadingConstraints(Klass accessingClass) {
-        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
     }
 
     // endregion MethodAccess impl
@@ -2010,7 +2008,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
-            getMethod().checkLoadingConstraints(loader1, loader2);
+            getMethod().checkLoadingConstraints(loader1, loader2, m -> {
+                throw getContext().throwError(ErrorType.LinkageError, m);
+            });
         }
 
         public int getMaxLocals() {
