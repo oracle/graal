@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointe
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.CodeSource;
@@ -47,6 +46,7 @@ import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -65,6 +65,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
+import com.oracle.svm.core.thread.Target_java_lang_ThreadLocal;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -196,7 +197,13 @@ final class Target_java_security_Provider_ServiceKey {
 final class Target_java_security_Provider {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ServiceKeyComputer.class) //
-    private static Target_java_security_Provider_ServiceKey previousKey;
+    @TargetElement(name = "previousKey", onlyWith = JDK21OrEarlier.class) //
+    private static Target_java_security_Provider_ServiceKey previousKeyJDK21;
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadLocalServiceKeyComputer.class) //
+    @TargetElement(onlyWith = JDKLatest.class) //
+    private static Target_java_lang_ThreadLocal previousKey;
 }
 
 @TargetClass(value = java.security.Provider.class, innerClass = "Service")
@@ -211,17 +218,40 @@ final class Target_java_security_Provider_Service {
     private Object constructorCache;
 }
 
+class ServiceKeyProvider {
+    static Object getNewServiceKey() {
+        Class<?> serviceKey = ReflectionUtil.lookupClass("java.security.Provider$ServiceKey");
+        Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
+        return ReflectionUtil.newInstance(constructor, "", "", false);
+    }
+
+    /**
+     * Originally the thread local creates a new default service key each time. Here we always
+     * return the singleton default service key. This default key will be replaced with an actual
+     * key in {@code java.security.Provider.parseLegacy}
+     */
+    static Supplier<Object> getNewServiceKeySupplier() {
+        final Object singleton = ServiceKeyProvider.getNewServiceKey();
+        return () -> singleton;
+    }
+}
+
 @Platforms(Platform.HOSTED_ONLY.class)
 class ServiceKeyComputer implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        try {
-            Class<?> serviceKey = Class.forName("java.security.Provider$ServiceKey");
-            Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
-            return constructor.newInstance("", "", false);
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        return ServiceKeyProvider.getNewServiceKey();
+    }
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ThreadLocalServiceKeyComputer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        // Originally the thread local creates a new default service key each time.
+        // Here we always return the singleton default service key. This default key
+        // will be replaced with an actual key in Provider.parseLegacy
+        return ThreadLocal.withInitial(ServiceKeyProvider.getNewServiceKeySupplier());
     }
 }
 

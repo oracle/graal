@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import java.nio.charset.CharsetDecoder;
 import java.security.AccessControlContext;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.core.annotate.TargetElement;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -311,15 +312,6 @@ class ForkJoinPoolCommonAccessor {
         }
         return result;
     }
-}
-
-@TargetClass(value = java.util.concurrent.ForkJoinPool.class, innerClass = "DefaultForkJoinWorkerThreadFactory", onlyWith = JDKLatest.class)
-@SuppressWarnings("removal")
-final class Target_java_util_concurrent_ForkJoinPool_DefaultForkJoinWorkerThreadFactory {
-    @Alias @RecomputeFieldValue(kind = Reset) //
-    static AccessControlContext regularACC;
-    @Alias @RecomputeFieldValue(kind = Reset) //
-    static AccessControlContext commonACC;
 }
 
 /** Dummy class to have a class with the file's name. */
