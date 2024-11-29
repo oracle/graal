@@ -793,8 +793,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // * It has a single formal parameter of type Object[].
         // * It has the ACC_VARARGS and ACC_NATIVE flags set.
         // * ONLY JAVA <= 8: It has a return type of Object.
-        if (!(Type.java_lang_invoke_MethodHandle.equals(getDeclaringKlass().getType()) ||
-                        Type.java_lang_invoke_VarHandle.equals(getDeclaringKlass().getType()))) {
+        if (!Meta.isSignaturePolymorphicHolderType(getDeclaringKlass().getType())) {
             return false;
         }
         Symbol<Type>[] signature = getParsedSignature();
@@ -1132,7 +1131,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public SharedRedefinitionContent redefine(ObjectKlass.KlassVersion klassVersion, ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
-        RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), newKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
+        RuntimeConstantPool runtimePool = new RuntimeConstantPool(newKlass.getConstantPool(), klassVersion.getKlass());
         CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Name.Code);
         MethodVersion oldVersion = methodVersion;
         methodVersion = oldVersion.replace(klassVersion, runtimePool, newLinkedMethod, newCodeAttribute);
@@ -1419,7 +1418,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @CompilationFinal private int vtableIndex = -1;
         @CompilationFinal private int itableIndex = -1;
 
-        @CompilationFinal private int refKind;
+        @CompilationFinal private byte refKind;
 
         @CompilationFinal(dimensions = 1) //
         private ObjectKlass[] checkedExceptions;
@@ -1784,7 +1783,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             if (isNative()) {
                 return EspressoStackElement.NATIVE_BCI;
             }
-            return getCodeAttribute().bciToLineNumber(bci);
+            if (codeAttribute == null) {
+                assert isAbstract();
+                return EspressoStackElement.UNKNOWN_BCI;
+            }
+            return codeAttribute.bciToLineNumber(bci);
         }
 
         @Override
@@ -1953,6 +1956,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public boolean hasJsr() {
             return codeAttribute != null && codeAttribute.hasJsr();
+        }
+
+        public boolean usesIndy() {
+            return codeAttribute != null && codeAttribute.usesIndy();
         }
 
         public int getRefKind() {

@@ -55,19 +55,16 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class RuntimeConstantPool extends ConstantPool {
-
-    private final EspressoContext context;
     private final ImmutableConstantPool immutableConstantPool;
-    private final StaticObject classLoader;
+    private final ObjectKlass holder;
 
     @CompilationFinal(dimensions = 1) //
     private final Resolvable.ResolvedConstant[] resolvedConstants;
 
-    public RuntimeConstantPool(EspressoContext context, ImmutableConstantPool immutableConstantPool, StaticObject classLoader) {
-        this.context = context;
+    public RuntimeConstantPool(ImmutableConstantPool immutableConstantPool, ObjectKlass holder) {
         this.immutableConstantPool = immutableConstantPool;
+        this.holder = holder;
         this.resolvedConstants = new Resolvable.ResolvedConstant[immutableConstantPool.length()];
-        this.classLoader = classLoader;
     }
 
     @Override
@@ -87,6 +84,18 @@ public final class RuntimeConstantPool extends ConstantPool {
         } catch (ParserException.ClassFormatError e) {
             throw classFormatError(e.getMessage());
         }
+    }
+
+    @TruffleBoundary
+    public PoolConstant maybeResolvedAt(int index, Meta meta) {
+        if (index < 0 || index >= resolvedConstants.length) {
+            meta.throwIndexOutOfBoundsExceptionBoundary("Invalid constant pool index", index, resolvedConstants.length);
+        }
+        Resolvable.ResolvedConstant c = resolvedConstants[index];
+        if (c != null) {
+            return c;
+        }
+        return at(index);
     }
 
     private Resolvable.ResolvedConstant outOfLockResolvedAt(ObjectKlass accessingKlass, int index, String description) {
@@ -110,7 +119,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         return c;
     }
 
-    private Resolvable.ResolvedConstant resolvedAt(ObjectKlass accessingKlass, int index, String description) {
+    public Resolvable.ResolvedConstant resolvedAt(ObjectKlass accessingKlass, int index, String description) {
         Resolvable.ResolvedConstant c = resolvedConstants[index];
         if (c == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -177,7 +186,7 @@ public final class RuntimeConstantPool extends ConstantPool {
             // field that actually uses the latest known resolved field
             // underneath.
             synchronized (this) {
-                Field delegationField = context.getClassRedefinition().createDelegationFrom(realField);
+                Field delegationField = getContext().getClassRedefinition().createDelegationFrom(realField);
                 Resolvable.ResolvedConstant resolved = new ResolvedFieldRefConstant(delegationField);
                 resolvedConstants[index] = resolved;
                 return delegationField;
@@ -219,7 +228,7 @@ public final class RuntimeConstantPool extends ConstantPool {
         return (StaticObject) resolved.value();
     }
 
-    public CallSiteLink linkInvokeDynamic(ObjectKlass accessingKlass, int index, int bci, Method method) {
+    public CallSiteLink linkInvokeDynamic(ObjectKlass accessingKlass, int index, Method method, int bci) {
         LinkableInvokeDynamicConstant indy = (LinkableInvokeDynamicConstant) resolvedAt(accessingKlass, index, "indy");
         try {
             return indy.link(this, accessingKlass, index, method, bci);
@@ -244,11 +253,15 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public StaticObject getClassLoader() {
-        return classLoader;
+        return holder.getDefiningClassLoader();
     }
 
     public EspressoContext getContext() {
-        return context;
+        return holder.getContext();
+    }
+
+    public ObjectKlass getHolder() {
+        return holder;
     }
 
     public void setKlassAt(int index, ObjectKlass klass) {

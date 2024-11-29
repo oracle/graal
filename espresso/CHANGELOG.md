@@ -1,5 +1,9 @@
 # Espresso Changelog
 
+## Version 25.0.0
+### User-visible changes
+* Added experimental support for JVMCI. It can be enabled with the `java.EnableJVMCI` option.
+
 ## Version 24.1.0
 ### User-visible changes
 * Added `java.RuntimeResourceId` to allow customizing the truffle resource used to locate the java standard library used by espresso.

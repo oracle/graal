@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.INVOKEDYNAMIC;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR_W;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.MONITORENTER;
@@ -58,6 +59,7 @@ public final class CodeAttribute extends Attribute {
     private static final int FLAGS_READY = 0x1;
     private static final int FLAGS_HAS_JSR = 0x2;
     private static final int FLAGS_USES_MONITORS = 0x4;
+    private static final int FLAGS_HAS_INDY = 0x8;
     @CompilationFinal byte flags;
 
     public CodeAttribute(Symbol<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes, int majorVersion) {
@@ -115,6 +117,10 @@ public final class CodeAttribute extends Attribute {
         return (getFlags() & FLAGS_USES_MONITORS) != 0;
     }
 
+    public boolean usesIndy() {
+        return (getFlags() & FLAGS_HAS_INDY) != 0;
+    }
+
     private byte getFlags() {
         byte localFlags = flags;
         if (localFlags == 0) {
@@ -136,6 +142,8 @@ public final class CodeAttribute extends Attribute {
                     flags |= FLAGS_HAS_JSR;
                 case MONITORENTER, MONITOREXIT ->
                     flags |= FLAGS_USES_MONITORS;
+                case INVOKEDYNAMIC ->
+                    flags |= FLAGS_HAS_INDY;
             }
             bci = bs.nextBCI(bci);
         }

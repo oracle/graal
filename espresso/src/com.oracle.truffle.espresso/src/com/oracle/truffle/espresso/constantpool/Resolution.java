@@ -481,7 +481,7 @@ public final class Resolution {
         return new ResolvedClassMethodRefConstant(method);
     }
 
-    static StaticObject signatureToMethodType(Symbol<Type>[] signature, ObjectKlass accessingKlass, boolean failWithBME, Meta meta) {
+    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, ObjectKlass accessingKlass, boolean failWithBME, Meta meta) {
         Symbol<Type> rt = Signatures.returnType(signature);
         int pcount = Signatures.parameterCount(signature);
 

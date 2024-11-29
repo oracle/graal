@@ -28,12 +28,13 @@ import static java.util.Map.entry;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.api.staticobject.StaticShape.Builder;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange;
 import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
@@ -56,11 +57,11 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass) {
-        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(description.language);
-        StaticShape.Builder staticBuilder = StaticShape.newBuilder(description.language);
+    LinkedKlassFieldLayout(EspressoLanguage language, ParserKlass parserKlass, LinkedKlass superKlass) {
+        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(language);
+        StaticShape.Builder staticBuilder = StaticShape.newBuilder(language);
 
-        FieldCounter fieldCounter = new FieldCounter(parserKlass, description.javaVersion);
+        FieldCounter fieldCounter = new FieldCounter(parserKlass, language);
         int nextInstanceFieldIndex = 0;
         int nextStaticFieldIndex = 0;
         int nextInstanceFieldSlot = superKlass == null ? 0 : superKlass.getFieldTableLength();
@@ -80,7 +81,7 @@ final class LinkedKlassFieldLayout {
         }
 
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
-            if (hiddenField.versionRange.contains(description.javaVersion)) {
+            if (hiddenField.predicate.test(language)) {
                 ParserField hiddenParserField = new ParserField(ACC_HIDDEN | hiddenField.additionalFlags, hiddenField.name, hiddenField.type, null);
                 createAndRegisterLinkedField(parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
@@ -152,7 +153,7 @@ final class LinkedKlassFieldLayout {
         final int instanceFields;
         final int staticFields;
 
-        FieldCounter(ParserKlass parserKlass, JavaVersion version) {
+        FieldCounter(ParserKlass parserKlass, EspressoLanguage language) {
             int iFields = 0;
             int sFields = 0;
             for (ParserField f : parserKlass.getFields()) {
@@ -163,13 +164,14 @@ final class LinkedKlassFieldLayout {
                 }
             }
             // All hidden fields are of Object kind
-            hiddenFieldNames = HiddenField.getHiddenFields(parserKlass.getType(), version);
+            hiddenFieldNames = HiddenField.getHiddenFields(parserKlass.getType(), language);
             instanceFields = iFields + hiddenFieldNames.length;
             staticFields = sFields;
         }
     }
 
     private static class HiddenField {
+        private static final Predicate<EspressoLanguage> NO_PREDICATE = l -> true;
         private static final int NO_ADDITIONAL_FLAGS = 0;
         private static final HiddenField[] EMPTY = new HiddenField[0];
         private static final Map<Symbol<Type>, HiddenField[]> REGISTRY = Map.ofEntries(
@@ -218,7 +220,8 @@ final class LinkedKlassFieldLayout {
                         entry(Type.java_lang_Class, new HiddenField[]{
                                         new HiddenField(Name.HIDDEN_SIGNERS),
                                         new HiddenField(Name.HIDDEN_MIRROR_KLASS, Constants.ACC_FINAL),
-                                        new HiddenField(Name.HIDDEN_PROTECTION_DOMAIN)
+                                        new HiddenField(Name.HIDDEN_PROTECTION_DOMAIN),
+                                        new HiddenField(Name.HIDDEN_JVMCIINDY, Type.java_lang_Object, EspressoLanguage::isJVMCIEnabled, NO_ADDITIONAL_FLAGS)
                         }),
                         entry(Type.java_lang_ClassLoader, new HiddenField[]{
                                         new HiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY)
@@ -248,40 +251,56 @@ final class LinkedKlassFieldLayout {
                                         new HiddenField(Name.HIDDEN_INTERNAL_TYPE)}),
                         entry(Type.org_graalvm_continuations_ContinuationImpl, new HiddenField[]{
                                         new HiddenField(Name.HIDDEN_CONTINUATION_FRAME_RECORD)
+                        }),
+                        entry(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType, new HiddenField[]{
+                                        new HiddenField(Name.HIDDEN_OBJECTKLASS_MIRROR),
+                        }),
+                        entry(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField, new HiddenField[]{
+                                        new HiddenField(Name.HIDDEN_FIELD_MIRROR)
+                        }),
+                        entry(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod, new HiddenField[]{
+                                        new HiddenField(Name.HIDDEN_METHOD_MIRROR)
+                        }),
+                        entry(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant, new HiddenField[]{
+                                        new HiddenField(Name.HIDDEN_OBJECT_CONSTANT)
                         }));
 
         private final Symbol<Name> name;
         private final Symbol<Type> type;
-        private final VersionRange versionRange;
+        private final Predicate<EspressoLanguage> predicate;
         private final int additionalFlags;
 
         HiddenField(Symbol<Name> name) {
-            this(name, Type.java_lang_Object, VersionRange.ALL, NO_ADDITIONAL_FLAGS);
+            this(name, Type.java_lang_Object, NO_PREDICATE, NO_ADDITIONAL_FLAGS);
         }
 
         HiddenField(Symbol<Name> name, int additionalFlags) {
-            this(name, Type.java_lang_Object, VersionRange.ALL, additionalFlags);
+            this(name, Type.java_lang_Object, NO_PREDICATE, additionalFlags);
         }
 
         HiddenField(Symbol<Name> name, Symbol<Type> type, VersionRange versionRange, int additionalFlags) {
+            this(name, type, toPredicate(versionRange), additionalFlags);
+        }
+
+        HiddenField(Symbol<Name> name, Symbol<Type> type, Predicate<EspressoLanguage> predicate, int additionalFlags) {
             this.name = name;
             this.type = type;
-            this.versionRange = versionRange;
+            this.predicate = predicate;
             this.additionalFlags = additionalFlags;
         }
 
-        private boolean appliesTo(JavaVersion version) {
-            return versionRange.contains(version);
+        private boolean appliesTo(EspressoLanguage language) {
+            return predicate.test(language);
         }
 
-        static HiddenField[] getHiddenFields(Symbol<Type> holder, JavaVersion version) {
-            return applyFilter(getHiddenFieldsFull(holder), version);
+        static HiddenField[] getHiddenFields(Symbol<Type> holder, EspressoLanguage language) {
+            return applyFilter(getHiddenFieldsFull(holder), language);
         }
 
-        private static HiddenField[] applyFilter(HiddenField[] hiddenFields, JavaVersion version) {
+        private static HiddenField[] applyFilter(HiddenField[] hiddenFields, EspressoLanguage language) {
             int filtered = 0;
             for (HiddenField f : hiddenFields) {
-                if (!f.appliesTo(version)) {
+                if (!f.appliesTo(language)) {
                     filtered++;
                 }
             }
@@ -291,7 +310,7 @@ final class LinkedKlassFieldLayout {
             HiddenField[] result = new HiddenField[hiddenFields.length - filtered];
             int pos = 0;
             for (HiddenField f : hiddenFields) {
-                if (f.appliesTo(version)) {
+                if (f.appliesTo(language)) {
                     result[pos++] = f;
                 }
             }
@@ -300,6 +319,10 @@ final class LinkedKlassFieldLayout {
 
         private static HiddenField[] getHiddenFieldsFull(Symbol<Type> holder) {
             return REGISTRY.getOrDefault(holder, EMPTY);
+        }
+
+        private static Predicate<EspressoLanguage> toPredicate(VersionRange range) {
+            return d -> range.contains(d.getJavaVersion());
         }
     }
 }

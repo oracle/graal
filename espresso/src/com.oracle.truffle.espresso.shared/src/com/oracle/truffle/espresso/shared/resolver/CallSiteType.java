@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.shared.resolver;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 
 /**
@@ -36,4 +37,19 @@ public enum CallSiteType {
     Special,
     Virtual,
     Interface;
+
+    public static CallSiteType fromOpCode(int opcode) {
+        return switch (opcode) {
+            case Bytecodes.INVOKESTATIC -> CallSiteType.Static;
+            case Bytecodes.INVOKESPECIAL -> CallSiteType.Special;
+            case Bytecodes.INVOKEVIRTUAL -> CallSiteType.Virtual;
+            case Bytecodes.INVOKEINTERFACE -> CallSiteType.Interface;
+            default -> throw new IllegalStateException(unexpectedBytecodeError(opcode));
+        };
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static String unexpectedBytecodeError(int opcode) {
+        return "Unexpected bytecode " + Bytecodes.nameOf(opcode);
+    }
 }

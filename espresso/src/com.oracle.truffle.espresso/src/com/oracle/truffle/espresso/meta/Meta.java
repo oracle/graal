@@ -137,6 +137,11 @@ public final class Meta extends ContextAccessImpl
         java_lang_Class_getTypeName = java_lang_Class.requireDeclaredMethod(Name.getTypeName, Signature.String);
         java_lang_Class_forName_String = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
+        if (getLanguage().isJVMCIEnabled()) {
+            HIDDEN_JVMCIINDY = java_lang_Class.requireHiddenField(Name.HIDDEN_JVMCIINDY);
+        } else {
+            HIDDEN_JVMCIINDY = null;
+        }
 
         java_lang_String = knownKlass(Type.java_lang_String);
         java_lang_String_array = java_lang_String.array();
@@ -614,11 +619,15 @@ public final class Meta extends ContextAccessImpl
         java_lang_invoke_MethodHandle_linkToSpecial = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.linkToSpecial, Signature.Object_Object_array);
         java_lang_invoke_MethodHandle_linkToStatic = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.linkToStatic, Signature.Object_Object_array);
         java_lang_invoke_MethodHandle_linkToVirtual = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.linkToVirtual, Signature.Object_Object_array);
+        java_lang_invoke_MethodHandle_asFixedArity = java_lang_invoke_MethodHandle.requireDeclaredMethod(Name.asFixedArity, Signature.MethodHandle);
         java_lang_invoke_MethodHandle_type = java_lang_invoke_MethodHandle.requireDeclaredField(Name.type, Type.java_lang_invoke_MethodType);
         java_lang_invoke_MethodHandle_form = java_lang_invoke_MethodHandle.requireDeclaredField(Name.form, Type.java_lang_invoke_LambdaForm);
 
         java_lang_invoke_MethodHandles = knownKlass(Type.java_lang_invoke_MethodHandles);
         java_lang_invoke_MethodHandles_lookup = java_lang_invoke_MethodHandles.requireDeclaredMethod(Name.lookup, Signature.MethodHandles$Lookup);
+
+        java_lang_invoke_DirectMethodHandle = knownKlass(Type.java_lang_invoke_DirectMethodHandle);
+        java_lang_invoke_DirectMethodHandle_member = java_lang_invoke_DirectMethodHandle.requireDeclaredField(Name.member, Type.java_lang_invoke_MemberName);
 
         // j.l.i.VarHandles is there in JDK9+, but we only need it to be known for 14+
         java_lang_invoke_VarHandles = diff() //
@@ -634,6 +643,10 @@ public final class Meta extends ContextAccessImpl
         java_lang_invoke_LambdaForm = knownKlass(Type.java_lang_invoke_LambdaForm);
         java_lang_invoke_LambdaForm_vmentry = java_lang_invoke_LambdaForm.requireDeclaredField(Name.vmentry, Type.java_lang_invoke_MemberName);
         java_lang_invoke_LambdaForm_isCompiled = java_lang_invoke_LambdaForm.requireDeclaredField(Name.isCompiled, Type._boolean);
+        java_lang_invoke_LambdaForm_compileToBytecode = diff() //
+                        .method(VERSION_8_OR_LOWER, Name.compileToBytecode, Signature.MemberName) //
+                        .method(VERSION_9_OR_HIGHER, Name.compileToBytecode, Signature._void) //
+                        .method(java_lang_invoke_LambdaForm);
 
         java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
         java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.requireDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
@@ -1256,6 +1269,13 @@ public final class Meta extends ContextAccessImpl
         boolean polyglotSupport = getContext().getEspressoEnv().Polyglot;
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
 
+        // Load Espresso's JVMCI implementation.
+        if (getLanguage().isInternalJVMCIEnabled()) {
+            this.jvmci = new JVMCISupport();
+        } else {
+            this.jvmci = null;
+        }
+
         JImageExtensions jImageExtensions = getLanguage().getJImageExtensions();
         if (jImageExtensions != null && getJavaVersion().java9OrLater()) {
             for (Map.Entry<String, Set<String>> entry : jImageExtensions.getExtensions().entrySet()) {
@@ -1714,8 +1734,12 @@ public final class Meta extends ContextAccessImpl
     public final Method java_lang_invoke_MethodHandle_linkToSpecial;
     public final Method java_lang_invoke_MethodHandle_linkToStatic;
     public final Method java_lang_invoke_MethodHandle_linkToVirtual;
+    public final Method java_lang_invoke_MethodHandle_asFixedArity;
     public final Field java_lang_invoke_MethodHandle_type;
     public final Field java_lang_invoke_MethodHandle_form;
+
+    public final ObjectKlass java_lang_invoke_DirectMethodHandle;
+    public final Field java_lang_invoke_DirectMethodHandle_member;
 
     public final ObjectKlass java_lang_invoke_MethodHandles;
     public final Method java_lang_invoke_MethodHandles_lookup;
@@ -1729,6 +1753,7 @@ public final class Meta extends ContextAccessImpl
     public final ObjectKlass java_lang_invoke_LambdaForm;
     public final Field java_lang_invoke_LambdaForm_vmentry;
     public final Field java_lang_invoke_LambdaForm_isCompiled;
+    public final Method java_lang_invoke_LambdaForm_compileToBytecode;
 
     public final ObjectKlass java_lang_invoke_MethodHandleNatives;
     public final Method java_lang_invoke_MethodHandleNatives_linkMethod;
@@ -2157,6 +2182,190 @@ public final class Meta extends ContextAccessImpl
     @CompilationFinal //
     public PolyglotSupport polyglot;
 
+    // needed for external and internal JVMCI support
+    public final Field HIDDEN_JVMCIINDY;
+
+    // needed for internal JVMCI support only
+    public final class JVMCISupport {
+        public final ObjectKlass EspressoJVMCIRuntime;
+        public final Method EspressoJVMCIRuntime_runtime;
+
+        public final ObjectKlass DummyEspressoGraalJVMCICompiler;
+        public final Method DummyEspressoGraalJVMCICompiler_create;
+
+        public final ObjectKlass GraalJVMCICompiler;
+
+        public final ObjectKlass EspressoResolvedInstanceType;
+        public final Method EspressoResolvedInstanceType_init;
+        public final Field HIDDEN_OBJECTKLASS_MIRROR;
+
+        public final ObjectKlass EspressoResolvedJavaField;
+        public final Method EspressoResolvedJavaField_init;
+        public final Field HIDDEN_FIELD_MIRROR;
+
+        public final ObjectKlass EspressoResolvedJavaMethod;
+        public final Method EspressoResolvedJavaMethod_init;
+        public final Field EspressoResolvedJavaMethod_holder;
+        public final Field HIDDEN_METHOD_MIRROR;
+
+        public final ObjectKlass EspressoResolvedArrayType;
+        public final Method EspressoResolvedArrayType_init;
+
+        public final ObjectKlass EspressoResolvedPrimitiveType;
+        public final Method EspressoResolvedPrimitiveType_forBasicType;
+
+        public final ObjectKlass EspressoConstantPool;
+        public final Field EspressoConstantPool_holder;
+
+        public final ObjectKlass EspressoObjectConstant;
+        public final Method EspressoObjectConstant_init;
+        public final Field HIDDEN_OBJECT_CONSTANT;
+
+        public final ObjectKlass EspressoBootstrapMethodInvocation;
+        public final Method EspressoBootstrapMethodInvocation_init;
+
+        public final ObjectKlass Services;
+        public final Method Services_openJVMCITo;
+
+        public final ObjectKlass UnresolvedJavaType;
+        public final Method UnresolvedJavaType_init;
+        public final Field UnresolvedJavaType_name;
+
+        public final ObjectKlass UnresolvedJavaField;
+        public final Method UnresolvedJavaField_init;
+
+        public final ObjectKlass LineNumberTable;
+        public final Method LineNumberTable_init;
+
+        public final ObjectKlass LocalVariableTable;
+        public final Method LocalVariableTable_init;
+
+        public final ObjectKlass Local;
+        public final Method Local_init;
+
+        public final ObjectKlass ExceptionHandler;
+        public final Method ExceptionHandler_init;
+
+        public final ObjectKlass JavaConstant;
+        public final Field JavaConstant_NULL_POINTER;
+        public final Field JavaConstant_ILLEGAL;
+        public final Method JavaConstant_forInt;
+        public final Method JavaConstant_forLong;
+        public final Method JavaConstant_forFloat;
+        public final Method JavaConstant_forDouble;
+        public final Method JavaConstant_forPrimitive;
+
+        public final StaticObject IntrinsicMethod_INVOKE_BASIC;
+        public final StaticObject IntrinsicMethod_LINK_TO_VIRTUAL;
+        public final StaticObject IntrinsicMethod_LINK_TO_STATIC;
+        public final StaticObject IntrinsicMethod_LINK_TO_SPECIAL;
+        public final StaticObject IntrinsicMethod_LINK_TO_INTERFACE;
+        public final StaticObject IntrinsicMethod_LINK_TO_NATIVE;
+
+        private JVMCISupport() {
+            // JVMCI
+            EspressoJVMCIRuntime = knownKlass(Type.com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime);
+            EspressoJVMCIRuntime_runtime = EspressoJVMCIRuntime.requireDeclaredMethod(Name.runtime, Signature.EspressoJVMCIRuntime);
+
+            EspressoResolvedInstanceType = knownKlass(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+            EspressoResolvedInstanceType_init = EspressoResolvedInstanceType.requireDeclaredMethod(Name._init_, Signature._void);
+            HIDDEN_OBJECTKLASS_MIRROR = EspressoResolvedInstanceType.requireHiddenField(Name.HIDDEN_OBJECTKLASS_MIRROR);
+
+            EspressoResolvedJavaField = knownKlass(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField);
+            EspressoResolvedJavaField_init = EspressoResolvedJavaField.requireDeclaredMethod(Name._init_, Signature._void_EspressoResolvedInstanceType);
+            HIDDEN_FIELD_MIRROR = EspressoResolvedJavaField.requireHiddenField(Name.HIDDEN_FIELD_MIRROR);
+
+            EspressoResolvedJavaMethod = knownKlass(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod);
+            EspressoResolvedJavaMethod_init = EspressoResolvedJavaMethod.requireDeclaredMethod(Name._init_, Signature._void_EspressoResolvedInstanceType);
+            HIDDEN_METHOD_MIRROR = EspressoResolvedJavaMethod.requireHiddenField(Name.HIDDEN_METHOD_MIRROR);
+            EspressoResolvedJavaMethod_holder = EspressoResolvedJavaMethod.requireDeclaredField(Name.holder, Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+
+            EspressoResolvedArrayType = knownKlass(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedArrayType);
+            EspressoResolvedArrayType_init = EspressoResolvedArrayType.requireDeclaredMethod(Name._init_, Signature._void_EspressoResolvedJavaType_int_Class);
+
+            EspressoResolvedPrimitiveType = knownKlass(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedPrimitiveType);
+            EspressoResolvedPrimitiveType_forBasicType = EspressoResolvedPrimitiveType.requireDeclaredMethod(Name.forBasicType, Signature.EspressoResolvedPrimitiveType_int);
+
+            EspressoConstantPool = knownKlass(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool);
+            EspressoConstantPool_holder = EspressoConstantPool.requireDeclaredField(Name.holder, Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+
+            EspressoObjectConstant = knownKlass(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant);
+            EspressoObjectConstant_init = EspressoObjectConstant.requireDeclaredMethod(Name._init_, Signature._void);
+            HIDDEN_OBJECT_CONSTANT = EspressoObjectConstant.requireHiddenField(Name.HIDDEN_OBJECT_CONSTANT);
+
+            EspressoBootstrapMethodInvocation = knownKlass(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoBootstrapMethodInvocation);
+            EspressoBootstrapMethodInvocation_init = EspressoBootstrapMethodInvocation.requireDeclaredMethod(Name._init_,
+                            Signature._void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array);
+
+            Services = knownKlass(Type.jdk_vm_ci_services_Services);
+            Services_openJVMCITo = Services.requireDeclaredMethod(Name.openJVMCITo, Signature._void_Module);
+
+            UnresolvedJavaType = knownKlass(Type.jdk_vm_ci_meta_UnresolvedJavaType);
+            UnresolvedJavaType_init = UnresolvedJavaType.requireDeclaredMethod(Name._init_, Signature._void_String);
+            UnresolvedJavaType_name = UnresolvedJavaType.requireDeclaredField(Name.name, Type.java_lang_String);
+
+            UnresolvedJavaField = knownKlass(Type.jdk_vm_ci_meta_UnresolvedJavaField);
+            UnresolvedJavaField_init = UnresolvedJavaField.requireDeclaredMethod(Name._init_, Signature._void_JavaType_String_JavaType);
+
+            LineNumberTable = knownKlass(Type.jdk_vm_ci_meta_LineNumberTable);
+            LineNumberTable_init = LineNumberTable.requireDeclaredMethod(Name._init_, Signature._void_int_array_int_array);
+
+            LocalVariableTable = knownKlass(Type.jdk_vm_ci_meta_LocalVariableTable);
+            LocalVariableTable_init = LocalVariableTable.requireDeclaredMethod(Name._init_, Signature._void_Local_array);
+
+            Local = knownKlass(Type.jdk_vm_ci_meta_Local);
+            Local_init = Local.requireDeclaredMethod(Name._init_, Signature._void_String_JavaType_int_int_int);
+
+            ExceptionHandler = knownKlass(Type.jdk_vm_ci_meta_ExceptionHandler);
+            ExceptionHandler_init = ExceptionHandler.requireDeclaredMethod(Name._init_, Signature._void_int_int_int_int_JavaType);
+
+            JavaConstant = knownKlass(Type.jdk_vm_ci_meta_JavaConstant);
+            JavaConstant_NULL_POINTER = JavaConstant.requireDeclaredField(Name.NULL_POINTER, Type.jdk_vm_ci_meta_JavaConstant);
+            JavaConstant_ILLEGAL = JavaConstant.requireDeclaredField(Name.ILLEGAL, Type.jdk_vm_ci_meta_PrimitiveConstant);
+            JavaConstant_forInt = JavaConstant.requireDeclaredMethod(Name.forInt, Signature.PrimitiveConstant_int);
+            JavaConstant_forLong = JavaConstant.requireDeclaredMethod(Name.forLong, Signature.PrimitiveConstant_long);
+            JavaConstant_forFloat = JavaConstant.requireDeclaredMethod(Name.forFloat, Signature.PrimitiveConstant_float);
+            JavaConstant_forDouble = JavaConstant.requireDeclaredMethod(Name.forDouble, Signature.PrimitiveConstant_double);
+            JavaConstant_forPrimitive = JavaConstant.requireDeclaredMethod(Name.forPrimitive, Signature.PrimitiveConstant_char_long);
+
+            ObjectKlass IntrinsicMethod = knownKlass(Type.jdk_vm_ci_meta_MethodHandleAccessProvider$IntrinsicMethod);
+            IntrinsicMethod_INVOKE_BASIC = IntrinsicMethod.requireEnumConstant(Name.INVOKE_BASIC);
+            IntrinsicMethod_LINK_TO_VIRTUAL = IntrinsicMethod.requireEnumConstant(Name.LINK_TO_VIRTUAL);
+            IntrinsicMethod_LINK_TO_STATIC = IntrinsicMethod.requireEnumConstant(Name.LINK_TO_STATIC);
+            IntrinsicMethod_LINK_TO_SPECIAL = IntrinsicMethod.requireEnumConstant(Name.LINK_TO_SPECIAL);
+            IntrinsicMethod_LINK_TO_INTERFACE = IntrinsicMethod.requireEnumConstant(Name.LINK_TO_INTERFACE);
+            IntrinsicMethod_LINK_TO_NATIVE = IntrinsicMethod.lookupEnumConstant(Name.LINK_TO_NATIVE);
+
+            // Compiler
+            DummyEspressoGraalJVMCICompiler = loadPlatformKlassOrNull(Type.jdk_graal_compiler_espresso_DummyEspressoGraalJVMCICompiler);
+            if (DummyEspressoGraalJVMCICompiler != null) {
+                DummyEspressoGraalJVMCICompiler_create = DummyEspressoGraalJVMCICompiler.requireDeclaredMethod(Name.create, Signature.DummyEspressoGraalJVMCICompiler_JVMCIRuntime);
+            } else {
+                DummyEspressoGraalJVMCICompiler_create = null;
+            }
+
+            GraalJVMCICompiler = loadPlatformKlassOrNull(Type.jdk_graal_compiler_api_runtime_GraalJVMCICompiler);
+        }
+
+        public StaticObject boxInt(int value) {
+            return (StaticObject) JavaConstant_forInt.invokeDirectStatic(value);
+        }
+
+        public StaticObject boxLong(long value) {
+            return (StaticObject) JavaConstant_forLong.invokeDirectStatic(value);
+        }
+
+        public StaticObject boxFloat(float value) {
+            return (StaticObject) JavaConstant_forFloat.invokeDirectStatic(value);
+        }
+
+        public StaticObject boxDouble(double value) {
+            return (StaticObject) JavaConstant_forDouble.invokeDirectStatic(value);
+        }
+    }
+
+    @CompilationFinal public JVMCISupport jvmci;
+
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
 
@@ -2363,8 +2572,28 @@ public final class Meta extends ContextAccessImpl
     }
 
     @TruffleBoundary
+    public EspressoException throwNullPointerExceptionBoundary() {
+        throw throwNullPointerException();
+    }
+
+    @TruffleBoundary
     public EspressoException throwIllegalArgumentExceptionBoundary() {
         throw throwException(java_lang_IllegalArgumentException);
+    }
+
+    @TruffleBoundary
+    public EspressoException throwIllegalArgumentExceptionBoundary(String message) {
+        throw throwExceptionWithMessage(java_lang_IllegalArgumentException, message);
+    }
+
+    @TruffleBoundary
+    public EspressoException throwNoClassDefFoundErrorBoundary(String message) {
+        throw throwExceptionWithMessage(java_lang_NoClassDefFoundError, message);
+    }
+
+    @TruffleBoundary
+    public void throwIndexOutOfBoundsExceptionBoundary(String message, int index, int length) {
+        throw throwExceptionWithMessage(java_lang_IndexOutOfBoundsException, message + ": index=" + index + " length=" + length);
     }
 
     // endregion Guest exception handling (throw)
@@ -2397,6 +2626,26 @@ public final class Meta extends ContextAccessImpl
         }
     }
 
+    private ObjectKlass loadPlatformKlassOrNull(Symbol<Type> type) {
+        // platform classes are loaded by the platform loader on JDK 11 and
+        // by the boot classloader on JDK 8
+        Klass result;
+        StaticObject classLoader = getJavaVersion().java8OrEarlier() ? StaticObject.NULL : getPlatformClassLoader();
+        try {
+            result = getRegistries().loadKlass(type, classLoader, StaticObject.NULL);
+        } catch (EspressoClassLoadingException.ClassDefNotFoundError e) {
+            return null;
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(this);
+        } catch (EspressoException e) {
+            if (e.getGuestException().getKlass() == java_lang_NoClassDefFoundError || e.getGuestException().getKlass() == java_lang_ClassNotFoundException) {
+                return null;
+            }
+            throw e;
+        }
+        return (ObjectKlass) result;
+    }
+
     public Class<?> resolveDispatch(Klass k) {
         return interopDispatch.resolveDispatch(k);
     }
@@ -2424,7 +2673,7 @@ public final class Meta extends ContextAccessImpl
 
     /**
      * Same as {@link #loadKlassOrFail(Symbol, StaticObject, StaticObject)}, except this method
-     * returns null instead of throwing if class is not found. Note that this mthod can still throw
+     * returns null instead of throwing if class is not found. Note that this method can still throw
      * due to other errors (class file malformed, etc...)
      *
      * @see #loadKlassOrFail(Symbol, StaticObject, StaticObject)
@@ -2576,11 +2825,12 @@ public final class Meta extends ContextAccessImpl
         return ByteSequence.create(toHostString(str));
     }
 
-    public StaticObject toGuestString(Symbol<?> symbol) {
-        if (symbol == null) {
+    @TruffleBoundary
+    public StaticObject toGuestString(ByteSequence byteSequence) {
+        if (byteSequence == null) {
             return StaticObject.NULL;
         }
-        return toGuestString(symbol.toString());
+        return toGuestString(byteSequence.toString());
     }
 
     public static boolean isString(Object string) {
@@ -2633,6 +2883,10 @@ public final class Meta extends ContextAccessImpl
             return unboxGuest((StaticObject) object);
         }
         return object;
+    }
+
+    public static boolean isSignaturePolymorphicHolderType(Symbol<Type> type) {
+        return type == Type.java_lang_invoke_MethodHandle || type == Type.java_lang_invoke_VarHandle;
     }
 
     // region Guest Unboxing

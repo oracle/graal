@@ -76,7 +76,8 @@ public final class Arguments {
                     // `TieredStopAtLevel=0` is handled separately, other values are ignored
                     "TieredStopAtLevel",
                     "MaxMetaspaceSize",
-                    "HeapDumpOnOutOfMemoryError");
+                    "HeapDumpOnOutOfMemoryError",
+                    "UseJVMCICompiler");
 
     private static final Map<String, String> MAPPED_XX_OPTIONS = Map.of(
                     "TieredCompilation", "engine.MultiTier");
@@ -214,7 +215,7 @@ public final class Arguments {
                         builder.option("engine.CompileImmediately", "true");
                     } else if (optionString.startsWith("-Xint") || "-XX:TieredStopAtLevel=0".equals(optionString)) {
                         builder.option("engine.Compilation", "false");
-                    } else if (optionString.startsWith("-Xshare:auto") || "-Xshare:off".equals(optionString)) {
+                    } else if ("-Xshare:auto".equals(optionString) || "-Xshare:off".equals(optionString)) {
                         // ignore
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);

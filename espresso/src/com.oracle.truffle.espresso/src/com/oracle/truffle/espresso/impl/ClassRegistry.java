@@ -475,9 +475,8 @@ public abstract class ClassRegistry {
 
         try (DebugCloseable define = KLASS_DEFINE.scope(env.getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            ContextDescription description = new ContextDescription(env.getLanguage(), env.getJavaVersion());
             LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
-            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(env, description, getClassLoader(), parserKlass, linkedSuperKlass, linkedInterfaces, info);
+            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(env, env.getLanguage(), getClassLoader(), parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
@@ -575,6 +574,7 @@ public abstract class ClassRegistry {
         } catch (EspressoException e) {
             throw EspressoClassLoadingException.wrapClassNotFoundGuestException(env, e);
         }
+        assert klass != null;
         if (notInterface == klass.isInterface()) {
             throw EspressoClassLoadingException.incompatibleClassChangeError("Super interface of " + type + " is in fact not an interface.");
         }

@@ -381,6 +381,7 @@ public final class ClassRegistries {
         private volatile Set<StaticObject> domains = null;
 
         RegistryEntry(Klass k) {
+            assert k != null;
             this.klass = k;
         }
 

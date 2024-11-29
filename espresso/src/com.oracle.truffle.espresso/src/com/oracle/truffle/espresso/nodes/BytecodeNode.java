@@ -2474,7 +2474,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == Bytecodes.INVOKEDYNAMIC;
         BaseQuickNode quick = tryPatchQuick(curBCI,
-                        cpi -> getConstantPool().linkInvokeDynamic(getMethod().getDeclaringKlass(), cpi, curBCI, getMethod()),
+                        cpi -> getConstantPool().linkInvokeDynamic(getMethod().getDeclaringKlass(), cpi, getMethod(), curBCI),
                         link -> new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMethod().getMeta(), top, curBCI));
         return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
     }

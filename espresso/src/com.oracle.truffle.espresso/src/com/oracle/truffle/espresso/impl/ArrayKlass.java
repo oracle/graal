@@ -172,7 +172,7 @@ public final class ArrayKlass extends Klass {
             if (klass.isPrimitive() || other1.isPrimitive()) {
                 // Reference equality is enough within the same context.
                 assert klass.getContext() == other1.getContext();
-                return klass == other1;
+                return false;
             }
             if (klass.isInterface()) {
                 return klass.checkInterfaceSubclassing(other1);

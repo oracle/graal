@@ -146,6 +146,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     @CompilationFinal private boolean previewEnabled;
     @CompilationFinal private boolean whiteBoxEnabled;
     @CompilationFinal private boolean eagerFrameAnalysis;
+    @CompilationFinal private boolean internalJvmciEnabled;
     // endregion Options
 
     // region Allocation
@@ -241,6 +242,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
         previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
         whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
+        internalJvmciEnabled = env.getOptions().get(EspressoOptions.EnableJVMCI);
 
         EspressoOptions.GuestFieldOffsetStrategyEnum strategy = env.getOptions().get(EspressoOptions.GuestFieldOffsetStrategy);
         guestFieldOffsetStrategy = switch (strategy) {
@@ -336,6 +338,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnableJVMCI) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.GuestFieldOffsetStrategy);
     }
 
@@ -552,6 +555,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public boolean isEagerFrameAnalysisEnabled() {
         return eagerFrameAnalysis;
+    }
+
+    public boolean isInternalJVMCIEnabled() {
+        return internalJvmciEnabled;
+    }
+
+    public boolean isJVMCIEnabled() {
+        return internalJvmciEnabled;
     }
 
     public EspressoLanguageCache getLanguageCache() {

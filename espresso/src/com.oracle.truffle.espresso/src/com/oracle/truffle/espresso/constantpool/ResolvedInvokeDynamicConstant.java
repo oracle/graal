@@ -80,14 +80,13 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
      *     4: invokedynamic #1 // Immediately fails without calling MHN.linkCallSite
      * </pre>
      *
-     * @see RuntimeConstantPool#linkInvokeDynamic(ObjectKlass, int, int,
-     *      com.oracle.truffle.espresso.impl.Method)
+     * @see RuntimeConstantPool#linkInvokeDynamic(ObjectKlass, int, Method, int)
      */
     @Override
     public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
-        int existingIndex = findCallSiteLinkIndex(method, bci);
-        if (existingIndex >= 0) {
-            return getCallSiteLink(existingIndex);
+        CallSiteLink existingLink = getCallSiteLink(method, bci);
+        if (existingLink != null) {
+            return existingLink;
         }
         // The call site linking must not happen under the lock, it is racy
         // However insertion should be done under a lock
@@ -99,7 +98,6 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
                 CallSiteLink[] newLinks = new CallSiteLink[1];
                 newLinks[0] = newLink;
                 callSiteLinks = newLinks;
-                return newLink;
             } else {
                 int i = 0;
                 for (; i < existingLinks.length; i++) {
@@ -118,9 +116,24 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
                 CallSiteLink[] newLinks = Arrays.copyOf(existingLinks, existingLinks.length * 2);
                 newLinks[i] = newLink;
                 callSiteLinks = newLinks;
-                return newLink;
+            }
+            return newLink;
+        }
+    }
+
+    public CallSiteLink getCallSiteLink(Method method, int bci) {
+        CallSiteLink[] existingLinks = callSiteLinks;
+        if (existingLinks != null) {
+            for (CallSiteLink link : existingLinks) {
+                if (link == null) {
+                    break;
+                }
+                if (link.matchesCallSite(method, bci)) {
+                    return link;
+                }
             }
         }
+        return null;
     }
 
     private CallSiteLink createCallSiteLink(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
@@ -162,27 +175,6 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
         } catch (EspressoException e) {
             throw new CallSiteLinkingFailure(e);
         }
-    }
-
-    public int findCallSiteLinkIndex(Method method, int bci) {
-        CallSiteLink[] existingLinks = callSiteLinks;
-        if (existingLinks == null) {
-            return -1;
-        }
-        for (int i = 0; i < existingLinks.length; i++) {
-            CallSiteLink link = existingLinks[i];
-            if (link == null) {
-                break;
-            }
-            if (link.matchesCallSite(method, bci)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    public CallSiteLink getCallSiteLink(int index) {
-        return callSiteLinks[index];
     }
 
     public Symbol<Type>[] getParsedSignature() {
