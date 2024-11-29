@@ -1,4 +1,4 @@
-package com.oracle.truffle.espresso.verifier;
+package com.oracle.truffle.espresso.shared.verifier;
 
 import java.io.Serial;
 

@@ -42,9 +42,9 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
-import com.oracle.truffle.espresso.verifier.StackMapFrameParser.FrameAndLocalEffect;
-import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
+import com.oracle.truffle.espresso.shared.verifier.StackMapFrameParser;
+import com.oracle.truffle.espresso.shared.verifier.StackMapFrameParser.FrameAndLocalEffect;
+import com.oracle.truffle.espresso.shared.verifier.VerificationTypeInfo;
 
 /**
  * Provides a description of an Espresso frame, used in bytecode execution.

@@ -20,11 +20,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.verifier;
+package com.oracle.truffle.espresso.shared.verifier;
 
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failVerify;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.formatGuarantee;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.verifyGuarantee;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failVerify;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.formatGuarantee;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.verifyGuarantee;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;

@@ -253,8 +253,8 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
-import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
-import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
+import com.oracle.truffle.espresso.shared.verifier.StackMapFrameParser;
+import com.oracle.truffle.espresso.shared.verifier.VerificationTypeInfo;
 
 /**
  * Statically analyses bytecodes to produce a {@link EspressoFrameDescriptor frame description} for

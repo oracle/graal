@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.verifier;
+package com.oracle.truffle.espresso.shared.verifier;
 
 import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
@@ -33,14 +33,13 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
 import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormat;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormatNoFallback;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failFormat;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failFormatNoFallback;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
-import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class StackMapFrameParser<S extends StackMapFrameParser.FrameState<S, B>, B extends StackMapFrameParser.FrameBuilder<S, B>> {
 

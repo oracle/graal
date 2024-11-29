@@ -96,7 +96,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.verifier.VerificationException;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -744,21 +743,9 @@ public final class ObjectKlass extends Klass {
                 return;
             }
             for (Method m : getDeclaredMethods()) {
-                try {
-                    EspressoVerifier.verify(getContext(), m);
-                    if (m.getCodeAttribute() != null && getLanguage().isEagerFrameAnalysisEnabled()) {
-                        eagerFrameAnalysis(m);
-                    }
-                } catch (VerificationException e) {
-                    String message = String.format("Verification for class `%s` failed for method `%s` with message `%s`", getExternalName(), m.getNameAsString(), e.getMessage());
-                    switch (e.kind()) {
-                        case Verify:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
-                        case ClassFormat:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
-                        case NoClassDefFound:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
-                    }
+                EspressoVerifier.verify(getContext(), m);
+                if (m.getCodeAttribute() != null && getLanguage().isEagerFrameAnalysisEnabled()) {
+                    eagerFrameAnalysis(m);
                 }
             }
         }

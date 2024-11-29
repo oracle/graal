@@ -20,10 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.verifier;
+package com.oracle.truffle.espresso.shared.verifier;
 
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failNoClassDefFound;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failVerify;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failNoClassDefFound;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failVerify;
 
 import java.util.ArrayList;
 
