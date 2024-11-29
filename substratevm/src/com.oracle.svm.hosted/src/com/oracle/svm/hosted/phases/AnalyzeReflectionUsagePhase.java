@@ -34,13 +34,13 @@ import jdk.graal.compiler.phases.BasePhase;
 
 import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.security.CodeSource;
 import java.util.HashMap;
 import java.util.List;
@@ -80,10 +80,24 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
                         "getRecordComponents",
                         "getSigners",
                         "arrayType",
-                        "newInstance"));
+                        "newInstance"
+        ));
         reflectMethodNames.put(Method.class.getTypeName(), Set.of("invoke"));
-        reflectMethodNames.put(MethodHandles.class.getTypeName(), Set.of("arrayConstructor"));
+        reflectMethodNames.put(MethodHandles.class.getTypeName(), Set.of(
+                        "arrayLength",
+                        "arrayElementGetter",
+                        "arrayElementSetter",
+                        "arrayElementVarHandle",
+                        "byteArrayViewVarHandle",
+                        "byteBufferViewVarHandle",
+                        "publicLookup",
+                        "privateLookupIn",
+                        "arrayConstructor"
+        ));
         reflectMethodNames.put(MethodHandles.Lookup.class.getTypeName(), Set.of(
+                        "in",
+                        "findClass",
+                        "accessClass",
                         "defineClass",
                         "defineHiddenClass",
                         "defineHiddenClassWithClassData",
@@ -102,10 +116,34 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
                         "unreflectConstructor",
                         "unreflectGetter",
                         "unreflectSetter",
-                        "unreflectVarHandle",
-                        "arrayConstructor"));
-        reflectMethodNames.put(ClassLoader.class.getTypeName(), Set.of("loadClass", "findBootstrapClassOrNull", "findLoadedClass"));
-        reflectMethodNames.put(URLClassLoader.class.getTypeName(), Set.of("loadClass"));
+                        "unreflectVarHandle"
+        ));
+        reflectMethodNames.put(ClassLoader.class.getTypeName(), Set.of(
+                        "loadClass",
+                        "defineClass",
+                        "findBootstrapClassOrNull",
+                        "findClass",
+                        "findSystemClass",
+                        "findLoadedClass"
+        ));
+        reflectMethodNames.put(MethodType.class.getTypeName(), Set.of(
+                        "methodType",
+                        "genericMethodType",
+                        "makeImpl",
+                        "changeParameterType",
+                        "insertParameterTypes",
+                        "appendParameterTypes",
+                        "replaceParameterTypes",
+                        "dropParameterTypes",
+                        "changeReturnType",
+                        "erase",
+                        "generic",
+                        "wrap",
+                        "unwrap",
+                        "parameterType",
+                        "returnType",
+                        "lastParameterType"
+        ));
         reflectMethodNames.put(LambdaMetafactory.class.getTypeName(), Set.of("metafactory", "altMetafactory"));
         reflectMethodNames.put(Array.class.getTypeName(), Set.of("newInstance"));
         reflectMethodNames.put(Constructor.class.getTypeName(), Set.of("newInstance"));
@@ -141,7 +179,7 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
         if (reflectMethodNames.containsKey(declaringClass)) {
             if (reflectMethodNames.get(declaringClass).contains(methodName)) {
-                return methodName;
+                return declaringClass + "#" + methodName;
             }
         }
         return null;
