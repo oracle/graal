@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InterfaceMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
@@ -80,7 +81,7 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     @Override
-    public PoolConstant at(int index, String description) {
+    public ImmutablePoolConstant at(int index, String description) {
         try {
             return immutableConstantPool.at(index, description);
         } catch (ParserException.ClassFormatError e) {

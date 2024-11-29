@@ -134,7 +134,7 @@ public final class HostFrameRecord {
             if (next != null) {
                 // Ensures the next method is a valid invoke
                 ConstantPool pool = methodVersion.getPool();
-                MethodRefConstant ref = pool.methodAt(bs.readCPI(bci()));
+                MethodRefConstant.Indexes ref = pool.methodAt(bs.readCPI(bci()));
                 Symbol<Name> name = ref.getName(pool);
                 Symbol<Signature> signature = ref.getSignature(pool);
                 // Compatible method reference

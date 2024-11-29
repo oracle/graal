@@ -27,7 +27,12 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
-public final class DoubleConstant implements PoolConstant {
+public final class DoubleConstant implements ImmutablePoolConstant {
+    private final double value;
+
+    DoubleConstant(double value) {
+        this.value = value;
+    }
 
     public static DoubleConstant create(double value) {
         return new DoubleConstant(value);
@@ -38,14 +43,16 @@ public final class DoubleConstant implements PoolConstant {
         return Tag.DOUBLE;
     }
 
-    private final double value;
-
-    DoubleConstant(double value) {
-        this.value = value;
-    }
-
     public double value() {
         return value;
+    }
+
+    @Override
+    public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!(other instanceof DoubleConstant otherConstant)) {
+            return false;
+        }
+        return Double.doubleToRawLongBits(value) == Double.doubleToRawLongBits(otherConstant.value);
     }
 
     @Override

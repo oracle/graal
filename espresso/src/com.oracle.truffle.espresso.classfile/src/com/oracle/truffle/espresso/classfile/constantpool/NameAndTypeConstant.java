@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
-public interface NameAndTypeConstant extends PoolConstant {
+public interface NameAndTypeConstant extends ImmutablePoolConstant {
 
     static NameAndTypeConstant create(int nameIndex, int typeIndex) {
         return new Indexes(nameIndex, typeIndex);
@@ -89,6 +89,14 @@ public interface NameAndTypeConstant extends PoolConstant {
         @Override
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
             return pool.symbolAt(typeIndex);
+        }
+
+        @Override
+        public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+            if (!(other instanceof Indexes otherConstant)) {
+                return false;
+            }
+            return getName(thisPool) == otherConstant.getName(otherPool) && getDescriptor(thisPool) == otherConstant.getDescriptor(otherPool);
         }
 
         @Override

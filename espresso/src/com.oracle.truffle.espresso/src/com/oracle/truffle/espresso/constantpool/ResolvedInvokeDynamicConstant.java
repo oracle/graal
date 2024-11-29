@@ -26,12 +26,9 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -188,31 +185,6 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
         return callSiteLinks[index];
     }
 
-    @Override
-    public int getBootstrapMethodAttrIndex() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("String already resolved");
-    }
-
-    @Override
-    public Symbol<Name> getName(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("String already resolved");
-    }
-
-    @Override
-    public Symbol<Signature> getSignature(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("String already resolved");
-    }
-
-    @Override
-    public NameAndTypeConstant getNameAndType(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("String already resolved");
-    }
-
-    @Override
     public Symbol<Type>[] getParsedSignature() {
         return parsedInvokeSignature;
     }

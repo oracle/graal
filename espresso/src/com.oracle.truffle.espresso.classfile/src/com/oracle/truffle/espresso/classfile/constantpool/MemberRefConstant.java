@@ -35,34 +35,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
  */
 public interface MemberRefConstant extends PoolConstant {
 
-    /**
-     * Gets the class in which this method or field is declared. Note that the actual holder after
-     * resolution may be a super class of the class described by the one returned by this method.
-     */
-    Symbol<Name> getHolderKlassName(ConstantPool pool);
-
-    /**
-     * Gets the name of this field or method.
-     *
-     * @param pool the constant pool that maybe be required to convert a constant pool index to a
-     *            name
-     */
-    Symbol<Name> getName(ConstantPool pool);
-
-    /**
-     * Gets the descriptor (type or signature) of this field or method.
-     *
-     * @param pool the constant pool that maybe be required to convert a constant pool index to a
-     *            name
-     */
-    Symbol<? extends Descriptor> getDescriptor(ConstantPool pool);
-
-    @Override
-    default String toString(ConstantPool pool) {
-        return getHolderKlassName(pool) + "." + getName(pool) + getDescriptor(pool);
-    }
-
-    abstract class Indexes implements MemberRefConstant {
+    abstract class Indexes implements MemberRefConstant, ImmutablePoolConstant {
 
         final char classIndex;
 
@@ -73,35 +46,73 @@ public interface MemberRefConstant extends PoolConstant {
             this.nameAndTypeIndex = PoolConstant.u2(nameAndTypeIndex);
         }
 
-        public char getClassIndex() {
+        /**
+         * Gets the constant pool index of the class in which this method or field is declared.
+         */
+        public int getHolderIndex() {
             return classIndex;
         }
 
-        @Override
+        /**
+         * Gets the class in which this method or field is declared. Note that the actual holder
+         * after resolution may be a super class of the class described by the one returned by this
+         * method.
+         */
         public Symbol<Name> getHolderKlassName(ConstantPool pool) {
-            return pool.classAt(classIndex).getName(pool);
+            return getHolderClassConstant(pool).getName(pool);
         }
 
-        @Override
+        public ClassConstant.ImmutableClassConstant getHolderClassConstant(ConstantPool pool) {
+            return pool.classAt(getHolderIndex());
+        }
+
+        /**
+         * Gets the name of this field or method.
+         *
+         * @param pool the constant pool that maybe be required to convert a constant pool index to
+         *            a name
+         */
         public Symbol<Name> getName(ConstantPool pool) {
-            return pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
+            return getNameAndType(pool).getName(pool);
         }
 
-        @Override
+        private NameAndTypeConstant getNameAndType(ConstantPool pool) {
+            return pool.nameAndTypeAt(nameAndTypeIndex);
+        }
+
+        /**
+         * Gets the descriptor (type or signature) of this field or method.
+         *
+         * @param pool the constant pool that maybe be required to convert a constant pool index to
+         *            a name
+         */
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
-            return pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
+            return getNameAndType(pool).getDescriptor(pool);
         }
 
         @Override
         public void validate(ConstantPool pool) throws ValidationException {
             pool.classAt(classIndex).validate(pool);
-            pool.nameAndTypeAt(nameAndTypeIndex).validate(pool);
+            getNameAndType(pool).validate(pool);
+        }
+
+        @Override
+        public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+            if (!(other instanceof Indexes otherConstant)) {
+                return false;
+            }
+            return getHolderKlassName(thisPool) == otherConstant.getHolderKlassName(otherPool) && getNameAndType(thisPool).isSame(otherConstant.getNameAndType(otherPool), thisPool, otherPool);
         }
 
         @Override
         public void dump(ByteBuffer buf) {
             buf.putChar(classIndex);
             buf.putChar(nameAndTypeIndex);
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return getHolderKlassName(pool) + "." + getName(pool) + getDescriptor(pool);
         }
     }
 }

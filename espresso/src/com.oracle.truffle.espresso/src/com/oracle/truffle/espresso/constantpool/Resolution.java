@@ -226,7 +226,7 @@ public final class Resolution {
     }
 
     public static Klass getResolvedHolderKlass(MemberRefConstant.Indexes thiz, RuntimeConstantPool pool, ObjectKlass accessingKlass) {
-        return pool.resolvedKlassAt(accessingKlass, thiz.getClassIndex());
+        return pool.resolvedKlassAt(accessingKlass, thiz.getHolderIndex());
     }
 
     @TruffleBoundary
@@ -653,7 +653,7 @@ public final class Resolution {
              * have an interface as declaring klass however if the refKind is invokeVirtual, it
              * would be illegal to use the interface type
              */
-            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getClassIndex());
+            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getHolderIndex());
             refName = target.getName();
         } else {
             assert refTag == Tag.FIELD_REF;
@@ -679,17 +679,16 @@ public final class Resolution {
 
         Tag refTag = pool.tagAt(thiz.getRefIndex());
         if (refTag == Tag.METHOD_REF || refTag == Tag.INTERFACE_METHOD_REF) {
-            MethodRefConstant ref = pool.methodAt(thiz.getRefIndex());
+            MethodRefConstant.Indexes ref = pool.methodAt(thiz.getRefIndex());
             Symbol<Signature> signature = ref.getSignature(pool);
             Symbol<Type>[] parsed = meta.getSignatures().parsed(signature);
 
             mtype = signatureToMethodType(parsed, accessingKlass, false, meta);
-            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getClassIndex());
+            mklass = pool.resolvedKlassAt(accessingKlass, ref.getHolderIndex());
             refName = ref.getName(pool);
         } else {
             assert refTag == Tag.FIELD_REF;
-            assert pool.fieldAt(thiz.getRefIndex()) instanceof FieldRefConstant.Indexes;
-            FieldRefConstant.Indexes ref = (FieldRefConstant.Indexes) pool.fieldAt(thiz.getRefIndex());
+            FieldRefConstant.Indexes ref = pool.fieldAt(thiz.getRefIndex());
 
             Symbol<Type> type = ref.getType(pool);
             mtype = meta.resolveSymbolAndAccessCheck(type, accessingKlass).mirror();

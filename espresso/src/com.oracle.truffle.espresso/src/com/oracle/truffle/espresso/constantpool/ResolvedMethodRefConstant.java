@@ -22,27 +22,26 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
+import java.util.Objects;
+
+import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.impl.Method;
 
-public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.ResolvedConstant {
-    void putResolved(VirtualFrame frame, int top, BytecodeNode node);
+public abstract class ResolvedMethodRefConstant implements MethodRefConstant, Resolvable.ResolvedConstant {
+    private final Method resolved;
 
-    JavaKind getKind();
-
-    default StaticObject guestBoxedValue(Meta meta) {
-        Object value = value();
-        if (value instanceof StaticObject) {
-            return (StaticObject) value;
-        }
-        return Meta.box(meta, value);
+    ResolvedMethodRefConstant(Method resolved) {
+        this.resolved = Objects.requireNonNull(resolved);
     }
 
-    default void checkFail() {
+    @Override
+    public final Method value() {
+        return resolved;
+    }
+
+    @Override
+    public String toString() {
+        return resolved.toString();
     }
 }

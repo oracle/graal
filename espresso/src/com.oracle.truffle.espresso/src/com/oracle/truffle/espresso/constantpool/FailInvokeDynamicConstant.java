@@ -25,11 +25,6 @@ package com.oracle.truffle.espresso.constantpool;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -51,30 +46,6 @@ public final class FailInvokeDynamicConstant implements LinkableInvokeDynamicCon
     public Object value() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Use indy.link() rather than Resolved.value()");
-    }
-
-    @Override
-    public int getBootstrapMethodAttrIndex() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
-    }
-
-    @Override
-    public Symbol<Name> getName(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
-    }
-
-    @Override
-    public Symbol<Signature> getSignature(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
-    }
-
-    @Override
-    public NameAndTypeConstant getNameAndType(ConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
     }
 
     @Override

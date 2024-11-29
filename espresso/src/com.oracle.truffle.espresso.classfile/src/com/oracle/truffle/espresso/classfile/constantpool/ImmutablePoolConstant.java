@@ -20,29 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.constantpool;
+package com.oracle.truffle.espresso.classfile.constantpool;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
-public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.ResolvedConstant {
-    void putResolved(VirtualFrame frame, int top, BytecodeNode node);
+public interface ImmutablePoolConstant extends PoolConstant {
 
-    JavaKind getKind();
+    /**
+     * Checks if this constant is symbolically the same as the {@code other} constant.
+     */
+    boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool);
 
-    default StaticObject guestBoxedValue(Meta meta) {
-        Object value = value();
-        if (value instanceof StaticObject) {
-            return (StaticObject) value;
-        }
-        return Meta.box(meta, value);
+    /**
+     * Throws {@link ValidationException} if the constant is ill-formed (/ex: a StringConstant does
+     * not refer to an UTF8Constant).
+     * <p>
+     * Resolved entries are not validated.
+     *
+     * @param pool The constant pool in which this constant appears.
+     */
+    @SuppressWarnings("unused")
+    default void validate(ConstantPool pool) throws ValidationException {
+        /* nop */
     }
 
-    default void checkFail() {
-    }
+    String toString(ConstantPool pool);
 }

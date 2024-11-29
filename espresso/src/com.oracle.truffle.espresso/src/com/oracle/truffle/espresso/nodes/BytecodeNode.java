@@ -2515,7 +2515,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         MethodRefConstant methodRefConstant = getConstantPool().resolvedMethodRefAt(getDeclaringKlass(), cpi);
         Method resolutionSeed = (Method) ((Resolvable.ResolvedConstant) methodRefConstant).value();
 
-        Klass symbolicRef = Resolution.getResolvedHolderKlass((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
+        Klass symbolicRef = Resolution.getResolvedHolderKlass(getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
         CallSiteType callSiteType = SiteTypes.callSiteFromOpCode(opcode);
         ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(getContext(), getDeclaringKlass(), resolutionSeed, callSiteType, symbolicRef);
         MethodHandleInvoker invoker = null;
