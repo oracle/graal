@@ -71,7 +71,7 @@ final class Target_jdk_internal_foreign_MemorySessionImpl {
 final class Target_java_lang_foreign_Arena {
 }
 
-@TargetClass(className = "jdk.internal.foreign.ArenaImpl", onlyWith = ForeignDisabled.class)
+@TargetClass(className = "jdk.internal.foreign.ArenaImpl", onlyWith = {ForeignDisabled.class, JDKLatest.class})
 final class Target_jdk_internal_foreign_ArenaImpl {
 }
 
