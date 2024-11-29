@@ -33,7 +33,6 @@ import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public final class CachedParserKlassProvider extends AbstractCachedKlassProvider implements ParserKlassProvider {
     private final ParserKlassProvider fallbackProvider;

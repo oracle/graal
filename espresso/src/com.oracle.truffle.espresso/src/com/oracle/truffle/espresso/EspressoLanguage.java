@@ -430,14 +430,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
         return utf8Constants;
     }
 
+    @Override
     public Names getNames() {
         return names;
     }
 
+    @Override
     public Types getTypes() {
         return types;
     }
 
+    @Override
     public Signatures getSignatures() {
         return signatures;
     }

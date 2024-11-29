@@ -121,6 +121,7 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -1325,6 +1326,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @Override
     public Symbol<Signature> getSymbolicSignature() {
         return getRawSignature();
+    }
+
+    @Override
+    public Symbol<Type>[] getParsedSymbolicSignature(SymbolPool symbolPool) {
+        return getParsedSignature();
     }
 
     @Override

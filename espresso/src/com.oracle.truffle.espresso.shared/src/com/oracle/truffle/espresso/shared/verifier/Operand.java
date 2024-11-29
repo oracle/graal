@@ -248,7 +248,7 @@ class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
     C getKlass(MethodVerifier<R, C, M, F> methodVerifier) {
         if (klass == null) {
             try {
-                klass = methodVerifier.runtime.loadClass(type, methodVerifier.getThisKlass());
+                klass = methodVerifier.runtime.lookupOrLoadType(type, methodVerifier.getThisKlass());
             } catch (ClassLoadingException e) {
                 if (e.isClassNotFoundException()) {
                     throw failNoClassDefFound(type.toString());

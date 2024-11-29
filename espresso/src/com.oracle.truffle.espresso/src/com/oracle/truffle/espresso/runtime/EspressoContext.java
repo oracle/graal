@@ -1275,8 +1275,12 @@ public final class EspressoContext
     }
 
     @Override
-    public Klass loadClass(Symbol<Type> type, Klass accessingClass) throws ClassLoadingException {
-        return getMeta().loadKlassOrFail(type, accessingClass.getDefiningClassLoader(), accessingClass.protectionDomain());
+    public Klass lookupOrLoadType(Symbol<Type> type, Klass accessingClass) throws ClassLoadingException {
+        try {
+            return getMeta().loadKlassOrFail(type, accessingClass.getDefiningClassLoader(), accessingClass.protectionDomain());
+        } catch (EspressoException e) {
+            throw new ClassLoadingException(e, getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass()));
+        }
     }
 
     @Override

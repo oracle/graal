@@ -135,7 +135,7 @@ class StackFrame<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>
                     pos--;
                 }
             }
-            newLocals[pos] = verifier.Invalid;
+            newLocals[pos] = verifier.invalidOp;
             pos--;
         }
         return new StackMapFrameParser.FrameAndLocalEffect<>(new StackFrame<>(mv, Operand.emptyArray(), 0, 0, newLocals), pos - lastLocal);
@@ -150,7 +150,7 @@ class StackFrame<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>
             Operand<R, C, M, F> op = verifier.getOperandFromVerificationType(vti);
             verifier.setLocal(newLocals, op, ++pos, "Append frame entry in stack map appends more locals than allowed.");
             if (op.isType2()) {
-                verifier.setLocal(newLocals, verifier.Invalid, ++pos, "Append frame entry in stack map appends more locals than allowed.");
+                verifier.setLocal(newLocals, verifier.invalidOp, ++pos, "Append frame entry in stack map appends more locals than allowed.");
             }
         }
         return new StackMapFrameParser.FrameAndLocalEffect<>(new StackFrame<>(mv, Operand.emptyArray(), 0, 0, newLocals), pos - lastLocal);
@@ -186,25 +186,25 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
     }
 
     void pushInt() {
-        push(mv.Int);
+        push(mv.intOp);
     }
 
     void pushFloat() {
-        push(mv.Float);
+        push(mv.floatOp);
     }
 
     void pushDouble() {
-        push(mv.Double);
+        push(mv.doubleOp);
     }
 
     void pushLong() {
-        push(mv.Long);
+        push(mv.longOp);
     }
 
     void push(Operand<R, C, M, F> kind) {
         procSize(kind.slots());
         if (kind.getKind().isStackInt()) {
-            stack[top++] = mv.Int;
+            stack[top++] = mv.intOp;
         } else {
             stack[top++] = kind;
         }
@@ -237,24 +237,24 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
 
     Operand<R, C, M, F> popArray() {
         Operand<R, C, M, F> op = popRef();
-        verifyGuarantee(op == mv.Null || op.isArrayType(), "Invalid operand. Expected array, found: " + op);
+        verifyGuarantee(op == mv.nullOp || op.isArrayType(), "Invalid operand. Expected array, found: " + op);
         return op;
     }
 
     void popInt() {
-        pop(mv.Int);
+        pop(mv.intOp);
     }
 
     void popFloat() {
-        pop(mv.Float);
+        pop(mv.floatOp);
     }
 
     void popDouble() {
-        pop(mv.Double);
+        pop(mv.doubleOp);
     }
 
     void popLong() {
-        pop(mv.Long);
+        pop(mv.longOp);
     }
 
     Operand<R, C, M, F> popObjOrRA() {
@@ -264,12 +264,12 @@ final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
     }
 
     Operand<R, C, M, F> pop(Operand<R, C, M, F> k) {
-        if (!k.getKind().isStackInt() || k == mv.Int) {
+        if (!k.getKind().isStackInt() || k == mv.intOp) {
             Operand<R, C, M, F> op = popAny();
             verifyGuarantee(op.compliesWith(k, mv), op + " on stack, required: " + k);
             return op;
         } else {
-            return pop(mv.Int);
+            return pop(mv.intOp);
         }
     }
 
@@ -483,16 +483,16 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
         for (int i = 0; i < parsedSig.length - 1; i++) {
             Operand<R, C, M, F> op = parsedSig[i];
             if (op.getKind().isStackInt()) {
-                registers[index++] = mv.Int;
+                registers[index++] = mv.intOp;
             } else {
                 registers[index++] = op;
             }
             if (op.isType2()) {
-                registers[index++] = mv.Invalid;
+                registers[index++] = mv.invalidOp;
             }
         }
         for (; index < mv.getMaxLocals(); index++) {
-            registers[index] = mv.Invalid;
+            registers[index] = mv.invalidOp;
         }
     }
 
@@ -534,14 +534,14 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
         }
         if (index >= 1) {
             if (registers[index - 1].isType2()) {
-                registers[index - 1] = mv.Invalid;
+                registers[index - 1] = mv.invalidOp;
                 if (subRoutine) {
                     subRoutineModifications.subRoutineModifications[index - 1] = true;
                 }
             }
         }
         if (op.isType2()) {
-            registers[index + 1] = mv.Invalid;
+            registers[index + 1] = mv.invalidOp;
             if (subRoutine) {
                 subRoutineModifications.subRoutineModifications[index + 1] = true;
             }

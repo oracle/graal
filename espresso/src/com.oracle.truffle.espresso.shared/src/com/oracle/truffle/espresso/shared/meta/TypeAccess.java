@@ -43,10 +43,19 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      */
     String getJavaName();
 
+    /**
+     * Returns the symbolic reference of this class.
+     */
     Symbol<Type> getSymbolicType();
 
+    /**
+     * Returns whether this class and the other class share the same defining class loader.
+     */
     boolean hasSameDefiningClassLoader(C other);
 
+    /**
+     * Finds the least common ancestor between this class and the other class.
+     */
     C findLeastCommonAncestor(C other);
 
     /**
@@ -54,8 +63,22 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      */
     C getSuperClass();
 
+    /**
+     * Returns the host class of this VM-anonymous class, or {@code null} if this class is not a
+     * VM-anonymous class.
+     *
+     * @apiNote A VM-anonymous class is a class defined through
+     *          {@code Unsafe.defineAnonymousClass()} and is unrelated to the
+     *          {@link Class#isAnonymousClass() Java concept of anonymous classes}.
+     * @implNote The concept of VM-anonymous classes was removed from Java 17 onwards, and this
+     *           method should therefore always return {@code null} for implementations of Java 17
+     *           or later.
+     */
     C getHostType();
 
+    /**
+     * Returns the name of the runtime package in which this class is defined.
+     */
     Symbol<Name> getSymbolicRuntimePackage();
 
     /**
@@ -157,7 +180,13 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
         return getSuperClass() == null;
     }
 
+    /**
+     * Whether this class extends the "magic accessor".
+     */
     boolean isMagicAccessor();
 
+    /**
+     * The {@link ConstantPool} associated with this class.
+     */
     ConstantPool getConstantPool();
 }

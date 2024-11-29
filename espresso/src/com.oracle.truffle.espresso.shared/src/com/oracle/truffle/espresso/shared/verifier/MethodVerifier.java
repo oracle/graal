@@ -362,15 +362,15 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     // Define all operands that can appear on the stack / locals.
-    final PrimitiveOperand<R, C, M, F> Int = new PrimitiveOperand<>(JavaKind.Int);
-    final PrimitiveOperand<R, C, M, F> Byte = new PrimitiveOperand<>(JavaKind.Byte);
-    final PrimitiveOperand<R, C, M, F> Char = new PrimitiveOperand<>(JavaKind.Char);
-    final PrimitiveOperand<R, C, M, F> Short = new PrimitiveOperand<>(JavaKind.Short);
-    final PrimitiveOperand<R, C, M, F> Float = new PrimitiveOperand<>(JavaKind.Float);
-    final PrimitiveOperand<R, C, M, F> Double = new PrimitiveOperand<>(JavaKind.Double);
-    final PrimitiveOperand<R, C, M, F> Long = new PrimitiveOperand<>(JavaKind.Long);
-    final PrimitiveOperand<R, C, M, F> Void = new PrimitiveOperand<>(JavaKind.Void);
-    final PrimitiveOperand<R, C, M, F> Invalid = new PrimitiveOperand<>(JavaKind.Illegal);
+    final PrimitiveOperand<R, C, M, F> intOp = new PrimitiveOperand<>(JavaKind.Int);
+    final PrimitiveOperand<R, C, M, F> byteOp = new PrimitiveOperand<>(JavaKind.Byte);
+    final PrimitiveOperand<R, C, M, F> charOp = new PrimitiveOperand<>(JavaKind.Char);
+    final PrimitiveOperand<R, C, M, F> shortOp = new PrimitiveOperand<>(JavaKind.Short);
+    final PrimitiveOperand<R, C, M, F> floatOp = new PrimitiveOperand<>(JavaKind.Float);
+    final PrimitiveOperand<R, C, M, F> doubleOp = new PrimitiveOperand<>(JavaKind.Double);
+    final PrimitiveOperand<R, C, M, F> longOp = new PrimitiveOperand<>(JavaKind.Long);
+    final PrimitiveOperand<R, C, M, F> voidOp = new PrimitiveOperand<>(JavaKind.Void);
+    final PrimitiveOperand<R, C, M, F> invalidOp = new PrimitiveOperand<>(JavaKind.Illegal);
 
     /*
      * Special handling:
@@ -380,7 +380,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     final PrimitiveOperand<R, C, M, F> booleanOperand;
 
     /* Special operand used for BA{LOAD, STORE}. Should never be pushed to stack */
-    final PrimitiveOperand<R, C, M, F> ByteOrBoolean = new PrimitiveOperand<>(JavaKind.Byte) {
+    final PrimitiveOperand<R, C, M, F> byteOrBooleanOp = new PrimitiveOperand<>(JavaKind.Byte) {
         @Override
         boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
             return other.isTopOperand() || other.getKind() == JavaKind.Boolean || other.getKind() == JavaKind.Byte;
@@ -393,8 +393,8 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 throw VerifierError.fatal("Invalid invariant: ByteOrBoolean operand in stack.");
             }
             if (other.isPrimitive()) {
-                if (other == Byte) {
-                    return Byte;
+                if (other == byteOp) {
+                    return byteOp;
                 }
                 if (other.getKind() == JavaKind.Boolean) {
                     return other;
@@ -405,11 +405,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         @Override
         public PrimitiveOperand<R, C, M, F> toStack() {
-            return Byte;
+            return byteOp;
         }
     };
 
-    final Operand<R, C, M, F> Null = new Operand<>(JavaKind.Object) {
+    final Operand<R, C, M, F> nullOp = new Operand<>(JavaKind.Object) {
         @Override
         boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
             return other.isTopOperand() || other.isReference();
@@ -525,7 +525,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // Extract method info
         this.pool = m.getDeclaringClass().getConstantPool();
-        this.sig = runtime.getSymbolPool().getParsedSignature(m);
+        this.sig = m.getParsedSymbolicSignature(runtime.getSymbolPool());
         this.isStatic = m.isStatic();
         this.thisKlass = m.getDeclaringClass();
         this.methodName = m.getSymbolicName();
@@ -534,7 +534,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         this.handlerStatus = new byte[exceptionHandlers.length];
         Arrays.fill(handlerStatus, UNENCOUNTERED);
 
-        booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : Byte;
+        booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : byteOp;
 
         thisOperand = new ReferenceOperand<>(thisKlass);
         returnOperand = kindToOperand(Signatures.returnType(sig));
@@ -781,7 +781,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             fullStack.push(op);
         }
         Operand<R, C, M, F>[] newLocals = new Operand[maxLocals];
-        Arrays.fill(newLocals, Invalid);
+        Arrays.fill(newLocals, invalidOp);
         int pos = -1;
         for (VerificationTypeInfo vti : locals) {
             Operand<R, C, M, F> op = getOperandFromVerificationType(vti);
@@ -789,7 +789,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             boolean result;
             result = op.isType2();
             if (result) {
-                setLocal(newLocals, Invalid, ++pos, "Full frame entry in stack map has more locals than allowed.");
+                setLocal(newLocals, invalidOp, ++pos, "Full frame entry in stack map has more locals than allowed.");
             }
         }
         return new StackMapFrameParser.FrameAndLocalEffect<>(new StackFrame<>(this, fullStack, newLocals), pos - lastLocal);
@@ -804,17 +804,17 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Note: JSR/RET is mutually exclusive with stack maps.
         switch (vti.getTag()) {
             case ITEM_Bogus:
-                return Invalid;
+                return invalidOp;
             case ITEM_Integer:
-                return Int;
+                return intOp;
             case ITEM_Float:
-                return Float;
+                return floatOp;
             case ITEM_Double:
-                return Double;
+                return doubleOp;
             case ITEM_Long:
-                return Long;
+                return longOp;
             case ITEM_Null:
-                return Null;
+                return nullOp;
             case ITEM_InitObject:
                 return new UninitReferenceOperand<>(thisKlass);
             case ITEM_Object:
@@ -1071,7 +1071,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         if (frame == null) {
             // If there is no stack map when verifying a handler, all locals are illegal.
             Operand<R, C, M, F>[] registers = new Operand[maxLocals];
-            Arrays.fill(registers, Invalid);
+            Arrays.fill(registers, invalidOp);
             locals = new Locals<>(this, registers);
             stack = new OperandStack<>(this, maxStack);
             Symbol<Type> catchType = handler.getCatchType();
@@ -1216,10 +1216,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // @formatter:off
         // checkstyle: stop
         switch (pc.tag()) {
-            case INTEGER:       return Int;
-            case FLOAT:         return Float;
-            case LONG:          return Long;
-            case DOUBLE:        return Double;
+            case INTEGER:       return intOp;
+            case FLOAT:         return floatOp;
+            case LONG:          return longOp;
+            case DOUBLE:        return doubleOp;
             case CLASS:         return jlClass;
             case STRING:        return jlString;
             case METHODHANDLE:
@@ -1266,7 +1266,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         while (true) {
             switch (curOpcode) {
                 case NOP: break;
-                case ACONST_NULL: stack.push(Null); break;
+                case ACONST_NULL: stack.push(nullOp); break;
 
                 case ICONST_M1:
                 case ICONST_0:
@@ -1296,7 +1296,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     Operand<R, C, M, F> op = ldcFromTag(pc);
                     verifyGuarantee(!op.isType2(), "Loading Long or Double with LDC or LDC_W, please use LDC2_W.");
                     if (earlierThan49()) {
-                        verifyGuarantee(op == Int || op == Float || op.getType() == jlString.getType(), "Loading non Int, Float or String with LDC in classfile version < 49.0");
+                        verifyGuarantee(op == intOp || op == floatOp || op.getType() == jlString.getType(), "Loading non Int, Float or String with LDC in classfile version < 49.0");
                     }
                     stack.push(op);
                     break;
@@ -1310,31 +1310,31 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     break;
                 }
 
-                case ILOAD: locals.load(code.readLocalIndex(bci), Int);     stack.pushInt();    break;
-                case LLOAD: locals.load(code.readLocalIndex(bci), Long);    stack.pushLong();   break;
-                case FLOAD: locals.load(code.readLocalIndex(bci), Float);   stack.pushFloat();  break;
-                case DLOAD: locals.load(code.readLocalIndex(bci), Double);  stack.pushDouble(); break;
+                case ILOAD: locals.load(code.readLocalIndex(bci), intOp);     stack.pushInt();    break;
+                case LLOAD: locals.load(code.readLocalIndex(bci), longOp);    stack.pushLong();   break;
+                case FLOAD: locals.load(code.readLocalIndex(bci), floatOp);   stack.pushFloat();  break;
+                case DLOAD: locals.load(code.readLocalIndex(bci), doubleOp);  stack.pushDouble(); break;
                 case ALOAD: stack.push(locals.loadRef(code.readLocalIndex(bci))); break;
 
                 case ILOAD_0:
                 case ILOAD_1:
                 case ILOAD_2:
-                case ILOAD_3: locals.load(curOpcode - ILOAD_0, Int); stack.pushInt(); break;
+                case ILOAD_3: locals.load(curOpcode - ILOAD_0, intOp); stack.pushInt(); break;
 
                 case LLOAD_0:
                 case LLOAD_1:
                 case LLOAD_2:
-                case LLOAD_3: locals.load(curOpcode - LLOAD_0, Long); stack.pushLong(); break;
+                case LLOAD_3: locals.load(curOpcode - LLOAD_0, longOp); stack.pushLong(); break;
 
                 case FLOAD_0:
                 case FLOAD_1:
                 case FLOAD_2:
-                case FLOAD_3: locals.load(curOpcode - FLOAD_0, Float); stack.pushFloat(); break;
+                case FLOAD_3: locals.load(curOpcode - FLOAD_0, floatOp); stack.pushFloat(); break;
 
                 case DLOAD_0:
                 case DLOAD_1:
                 case DLOAD_2:
-                case DLOAD_3: locals.load(curOpcode - DLOAD_0, Double); stack.pushDouble(); break;
+                case DLOAD_3: locals.load(curOpcode - DLOAD_0, doubleOp); stack.pushDouble(); break;
 
                 case ALOAD_0:
                 case ALOAD_1:
@@ -1342,72 +1342,72 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case ALOAD_3: stack.push(locals.loadRef(curOpcode - ALOAD_0)); break;
 
 
-                case IALOAD: xaload(stack, Int);    break;
-                case LALOAD: xaload(stack, Long);   break;
-                case FALOAD: xaload(stack, Float);  break;
-                case DALOAD: xaload(stack, Double); break;
+                case IALOAD: xaload(stack, intOp);    break;
+                case LALOAD: xaload(stack, longOp);   break;
+                case FALOAD: xaload(stack, floatOp);  break;
+                case DALOAD: xaload(stack, doubleOp); break;
 
                 case AALOAD: {
                     stack.popInt();
                     Operand<R, C, M, F> op = stack.popArray();
-                    verifyGuarantee(op == Null || op.getComponent().isReference(), "Loading reference from " + op + " array.");
+                    verifyGuarantee(op == nullOp || op.getComponent().isReference(), "Loading reference from " + op + " array.");
                     stack.push(op.getComponent());
                     break;
                 }
 
-                case BALOAD: xaload(stack, ByteOrBoolean);  break;
-                case CALOAD: xaload(stack, Char);  break;
-                case SALOAD: xaload(stack, Short); break;
+                case BALOAD: xaload(stack, byteOrBooleanOp);  break;
+                case CALOAD: xaload(stack, charOp);  break;
+                case SALOAD: xaload(stack, shortOp); break;
 
-                case ISTORE: stack.popInt();     locals.store(code.readLocalIndex(bci), Int);    break;
-                case LSTORE: stack.popLong();    locals.store(code.readLocalIndex(bci), Long);   break;
-                case FSTORE: stack.popFloat();   locals.store(code.readLocalIndex(bci), Float);  break;
-                case DSTORE: stack.popDouble();  locals.store(code.readLocalIndex(bci), Double); break;
+                case ISTORE: stack.popInt();     locals.store(code.readLocalIndex(bci), intOp);    break;
+                case LSTORE: stack.popLong();    locals.store(code.readLocalIndex(bci), longOp);   break;
+                case FSTORE: stack.popFloat();   locals.store(code.readLocalIndex(bci), floatOp);  break;
+                case DSTORE: stack.popDouble();  locals.store(code.readLocalIndex(bci), doubleOp); break;
 
                 case ASTORE: locals.store(code.readLocalIndex(bci), stack.popObjOrRA()); break;
 
                 case ISTORE_0:
                 case ISTORE_1:
                 case ISTORE_2:
-                case ISTORE_3: stack.popInt(); locals.store(curOpcode - ISTORE_0, Int); break;
+                case ISTORE_3: stack.popInt(); locals.store(curOpcode - ISTORE_0, intOp); break;
 
                 case LSTORE_0:
                 case LSTORE_1:
                 case LSTORE_2:
-                case LSTORE_3: stack.popLong(); locals.store(curOpcode - LSTORE_0, Long); break;
+                case LSTORE_3: stack.popLong(); locals.store(curOpcode - LSTORE_0, longOp); break;
 
                 case FSTORE_0:
                 case FSTORE_1:
                 case FSTORE_2:
-                case FSTORE_3: stack.popFloat(); locals.store(curOpcode - FSTORE_0, Float); break;
+                case FSTORE_3: stack.popFloat(); locals.store(curOpcode - FSTORE_0, floatOp); break;
 
                 case DSTORE_0:
                 case DSTORE_1:
                 case DSTORE_2:
-                case DSTORE_3: stack.popDouble(); locals.store(curOpcode - DSTORE_0, Double); break;
+                case DSTORE_3: stack.popDouble(); locals.store(curOpcode - DSTORE_0, doubleOp); break;
 
                 case ASTORE_0:
                 case ASTORE_1:
                 case ASTORE_2:
                 case ASTORE_3: locals.store(curOpcode - ASTORE_0, stack.popObjOrRA()); break;
 
-                case IASTORE: xastore(stack, Int);      break;
-                case LASTORE: xastore(stack, Long);     break;
-                case FASTORE: xastore(stack, Float);    break;
-                case DASTORE: xastore(stack, Double);   break;
+                case IASTORE: xastore(stack, intOp);      break;
+                case LASTORE: xastore(stack, longOp);     break;
+                case FASTORE: xastore(stack, floatOp);    break;
+                case DASTORE: xastore(stack, doubleOp);   break;
 
                 case AASTORE: {
                     Operand<R, C, M, F> toStore = stack.popRef();
                     stack.popInt();
                     Operand<R, C, M, F> array = stack.popArray();
-                    verifyGuarantee(array == Null || array.getComponent().isReference(), "Trying to store " + toStore + " in " + array);
+                    verifyGuarantee(array == nullOp || array.getComponent().isReference(), "Trying to store " + toStore + " in " + array);
                     // Other checks are done at runtime
                     break;
                 }
 
-                case BASTORE: xastore(stack, ByteOrBoolean); break;
-                case CASTORE: xastore(stack, Char); break;
-                case SASTORE: xastore(stack, Short); break;
+                case BASTORE: xastore(stack, byteOrBooleanOp); break;
+                case CASTORE: xastore(stack, charOp); break;
+                case SASTORE: xastore(stack, shortOp); break;
 
                 case POP:   stack.pop();    break;
                 case POP2:  stack.pop2();   break;
@@ -1466,7 +1466,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case IXOR: stack.popInt(); stack.popInt(); stack.pushInt(); break;
                 case LXOR: stack.popLong(); stack.popLong(); stack.pushLong(); break;
 
-                case IINC: locals.load(code.readLocalIndex(bci), Int); break;
+                case IINC: locals.load(code.readLocalIndex(bci), intOp); break;
 
                 case I2L: stack.popInt(); stack.pushLong(); break;
                 case I2F: stack.popInt(); stack.pushFloat(); break;
@@ -1528,16 +1528,16 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case LOOKUPSWITCH: return verifyLookupSwitch(bci, stack, locals);
 
                 case IRETURN: {
-                    stack.pop(Int);
+                    stack.pop(intOp);
                     verifyGuarantee(returnOperand.getKind().isStackInt(), "Found an IRETURN when return type is " + returnOperand);
                     return bci;
                 }
-                case LRETURN: doReturn(stack, Long);       return bci;
-                case FRETURN: doReturn(stack, Float);      return bci;
-                case DRETURN: doReturn(stack, Double);     return bci;
+                case LRETURN: doReturn(stack, longOp);       return bci;
+                case FRETURN: doReturn(stack, floatOp);      return bci;
+                case DRETURN: doReturn(stack, doubleOp);     return bci;
                 case ARETURN: stack.popRef(returnOperand); return bci;
                 case RETURN:
-                    verifyGuarantee(returnOperand == Void, "Encountered RETURN, but method return type is not void: " + returnOperand);
+                    verifyGuarantee(returnOperand == voidOp, "Encountered RETURN, but method return type is not void: " + returnOperand);
                     // Only j.l.Object.<init> can omit calling another initializer.
                     if (isInstanceInit(methodName) && thisKlass.getSymbolicType() != Type.java_lang_Object) {
                         verifyGuarantee(calledConstructor, "Did not call super() or this() in constructor " + thisKlass.getJavaName() + "." + methodName);
@@ -1614,7 +1614,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // push result
         Operand<R, C, M, F> returnKind = parsedSig[parsedSig.length - 1];
-        if (returnKind != Void) {
+        if (returnKind != voidOp) {
             stack.push(returnKind);
         }
     }
@@ -1923,7 +1923,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         checkInit(stack.popRef(methodHolderOp));
 
         Operand<R, C, M, F> returnOp = parsedSig[parsedSig.length - 1];
-        if (!(returnOp == Void)) {
+        if (!(returnOp == voidOp)) {
             stack.push(returnOp);
         }
     }
@@ -1947,7 +1947,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Operand<R, C, M, F> returnOp = popSignatureGetReturnOp(stack, mrc);
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
 
-        if (!(returnOp == Void)) {
+        if (!(returnOp == voidOp)) {
             stack.push(returnOp);
         }
     }
@@ -2011,7 +2011,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
              */
             verifyGuarantee(checkReceiverSpecialAccess(stackOp), "Invalid use of INVOKESPECIAL");
         }
-        if (!(returnOp == Void)) {
+        if (!(returnOp == voidOp)) {
             stack.push(returnOp);
         }
     }
@@ -2039,7 +2039,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Perform protected method access checks
         checkProtectedMember(stackOp, methodHolder, mrc, true);
 
-        if (!(returnOp == Void)) {
+        if (!(returnOp == voidOp)) {
             stack.push(returnOp);
         }
     }
@@ -2243,13 +2243,13 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // @formatter:off
         switch (jvmType) {
             case 4  : return new ArrayOperand<>(booleanOperand);
-            case 5  : return new ArrayOperand<>(Char);
-            case 6  : return new ArrayOperand<>(Float);
-            case 7  : return new ArrayOperand<>(Double);
-            case 8  : return new ArrayOperand<>(Byte);
-            case 9  : return new ArrayOperand<>(Short);
-            case 10 : return new ArrayOperand<>(Int);
-            case 11 : return new ArrayOperand<>(Long);
+            case 5  : return new ArrayOperand<>(charOp);
+            case 6  : return new ArrayOperand<>(floatOp);
+            case 7  : return new ArrayOperand<>(doubleOp);
+            case 8  : return new ArrayOperand<>(byteOp);
+            case 9  : return new ArrayOperand<>(shortOp);
+            case 10 : return new ArrayOperand<>(intOp);
+            case 11 : return new ArrayOperand<>(longOp);
             default:
                 throw VerifierError.fatal("Unrecognized JVM array byte: " + jvmType);
         }
@@ -2277,14 +2277,14 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // @formatter:off
         switch (Types.getJavaKind(type)) {
             case Boolean: return booleanOperand;
-            case Byte   : return Byte;
-            case Short  : return Short;
-            case Char   : return Char;
-            case Int    : return Int;
-            case Float  : return Float;
-            case Long   : return Long;
-            case Double : return Double;
-            case Void   : return Void;
+            case Byte   : return byteOp;
+            case Short  : return shortOp;
+            case Char   : return charOp;
+            case Int    : return intOp;
+            case Float  : return floatOp;
+            case Long   : return longOp;
+            case Double : return doubleOp;
+            case Void   : return voidOp;
             case Object : return spawnFromType(type);
             default:
                 throw VerifierError.fatal("Obtaining an operand with an unrecognized type: " + type);
@@ -2303,7 +2303,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void xaload(OperandStack<R, C, M, F> stack, PrimitiveOperand<R, C, M, F> kind) {
         stack.popInt();
         Operand<R, C, M, F> op = stack.popArray();
-        verifyGuarantee(op == Null || kind.compliesWith(op.getComponent(), this), "Loading " + kind + " from " + op + " array.");
+        verifyGuarantee(op == nullOp || kind.compliesWith(op.getComponent(), this), "Loading " + kind + " from " + op + " array.");
         stack.push(kind.toStack());
     }
 
@@ -2311,7 +2311,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         stack.pop(kind);
         stack.popInt();
         Operand<R, C, M, F> array = stack.popArray();
-        verifyGuarantee(array == Null || kind.compliesWith(array.getComponent(), this), "got array of type: " + array + ", while storing a " + kind);
+        verifyGuarantee(array == nullOp || kind.compliesWith(array.getComponent(), this), "got array of type: " + array + ", while storing a " + kind);
     }
 
     private static boolean wideOpcodes(int op) {
@@ -2365,7 +2365,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 if (!localsOp.compliesWithInMerge(frameOp, this)) {
                     Operand<R, C, M, F> result = localsOp.mergeWith(frameOp, this);
                     // We can ALWAYS merge locals. just put Invalid if failure
-                    mergedLocals[i] = Objects.requireNonNullElse(result, Invalid);
+                    mergedLocals[i] = Objects.requireNonNullElse(result, invalidOp);
                 } else {
                     mergedLocals[i] = frameOp;
                 }

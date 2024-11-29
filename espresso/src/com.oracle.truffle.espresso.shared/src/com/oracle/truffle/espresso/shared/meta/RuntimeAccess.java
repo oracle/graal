@@ -50,8 +50,24 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      */
     RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
 
-    C loadClass(Symbol<Type> type, C accessingClass) throws ClassLoadingException;
+    /**
+     * Performs class loading on behalf of the given accessing class.
+     * <p>
+     * Its defining class loader is the one to be used for loading.
+     * <p>
+     * Any exception that arises during class loading must be wrapped into a
+     * {@link ClassLoadingException}, correctly specifying if the original exception is this
+     * runtime's equivalent of {@link ClassNotFoundException}.
+     *
+     * @return The loaded class.
+     *
+     * @throws ClassLoadingException If any exception is thrown during loading
+     */
+    C lookupOrLoadType(Symbol<Type> type, C accessingClass) throws ClassLoadingException;
 
+    /**
+     * Obtains and returns an object containing the various symbol pools for this runtime.
+     */
     SymbolPool getSymbolPool();
 
     /**
