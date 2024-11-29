@@ -22,19 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot;
+package com.oracle.svm.graal.hotspot.libgraal;
 
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotSignature;
-import jdk.vm.ci.meta.JavaType;
-import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -51,13 +41,19 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotSignature;
+import jdk.vm.ci.meta.JavaType;
 
 /**
  * Registers the JNI configuration for libgraal by parsing the output of the
  * {@code -XX:JVMCILibDumpJNIConfig} VM option.
  */
-public final class GetJNIConfig implements AutoCloseable {
+final class GetJNIConfig implements AutoCloseable {
     /**
      * VM command executed to read the JNI config.
      */
@@ -94,7 +90,7 @@ public final class GetJNIConfig implements AutoCloseable {
         try {
             p = pb.start();
         } catch (IOException e) {
-            throw UserError.abort("Could not run command: %s%n%s", quotedCommand, e);
+            throw new GraalError(e, "Could not run command: %s", quotedCommand);
         }
 
         String nl = System.lineSeparator();
@@ -105,23 +101,24 @@ public final class GetJNIConfig implements AutoCloseable {
         try {
             exitValue = p.waitFor();
         } catch (InterruptedException e) {
-            throw UserError.abort("Interrupted waiting for command: %s%n%s", quotedCommand, out);
+            throw new GraalError(e, "Interrupted waiting for command: %s%n%s", quotedCommand, out);
         }
         if (exitValue != 0) {
-            throw UserError.abort("Command finished with exit value %d: %s%n%s", exitValue, quotedCommand, out);
+            throw new GraalError("Command finished with exit value %d: %s%n%s", exitValue, quotedCommand, out);
         }
         try {
             lines = Files.readAllLines(configFilePath);
         } catch (IOException e) {
             configFilePath = null;
-            throw UserError.abort("Reading JNI config in %s dumped by command: %s%n%s", configFilePath, quotedCommand, out);
+            throw new GraalError("Reading JNI config in %s dumped by command: %s%n%s", configFilePath, quotedCommand, out);
         }
     }
 
     static Path getJavaExe(Path javaHome) {
-        Path javaExe = javaHome.resolve(Path.of("bin", OS.WINDOWS.isCurrent() ? "java.exe" : "java"));
+        boolean isWindows = System.getProperty("os.name").contains("Windows");
+        Path javaExe = javaHome.resolve(Path.of("bin", isWindows ? "java.exe" : "java"));
         if (!Files.isExecutable(javaExe)) {
-            throw UserError.abort("Java launcher %s does not exist or is not executable", javaExe);
+            throw new GraalError("Java launcher %s does not exist or is not executable", javaExe);
         }
         return javaExe;
     }
@@ -133,9 +130,24 @@ public final class GetJNIConfig implements AutoCloseable {
                 Files.delete(configFilePath);
                 configFilePath = null;
             } catch (IOException e) {
-                LogUtils.warning("Could not delete %s: %s", configFilePath, e);
+                throw new GraalError(e, "Could not delete %s", configFilePath);
             }
         }
+    }
+
+    public static Class<?> forPrimitive(String name) {
+        return switch (name) {
+            case "boolean" -> boolean.class;
+            case "char" -> char.class;
+            case "float" -> float.class;
+            case "double" -> double.class;
+            case "byte" -> byte.class;
+            case "short" -> short.class;
+            case "int" -> int.class;
+            case "long" -> long.class;
+            case "void" -> void.class;
+            default -> null;
+        };
     }
 
     private Class<?> findClass(String name) {
@@ -143,14 +155,14 @@ public final class GetJNIConfig implements AutoCloseable {
         if (name.startsWith("L") && name.endsWith(";")) {
             internalName = name.substring(1, name.length() - 1);
         }
-        var primitive = ImageClassLoader.forPrimitive(internalName);
+        var primitive = forPrimitive(internalName);
         if (primitive != null) {
             return primitive;
         }
         try {
             return Class.forName(internalName, false, loader);
         } catch (ClassNotFoundException e) {
-            throw VMError.shouldNotReachHere("Cannot find class during LibGraal JNIConfiguration registration", e);
+            throw new GraalError(e, "Cannot find class during LibGraal JNIConfiguration registration");
         }
     }
 
@@ -160,12 +172,12 @@ public final class GetJNIConfig implements AutoCloseable {
         }
     }
 
-    private UserError.UserException error(String format, Object... args) {
+    private GraalError error(String format, Object... args) {
         Path path = configFilePath;
         configFilePath = null; // prevent deletion
         String errorMessage = String.format(format, args);
         String errorLine = lines.get(lineNo - 1);
-        throw UserError.abort("Line %d of %s: %s%n%s%n%s generated by command: %s",
+        throw new GraalError("Line %d of %s: %s%n%s%n%s generated by command: %s",
                         lineNo, path.toAbsolutePath(), errorMessage, errorLine, path, quotedCommand);
 
     }
@@ -179,7 +191,7 @@ public final class GetJNIConfig implements AutoCloseable {
     @SuppressWarnings("try")
     public static void register(ClassLoader loader) {
         // Export all JVMCI packages to this class
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, GetJNIConfig.class, false, "jdk.internal.vm.ci");
+        LibGraalFeature.exportModulesToLibGraal("jdk.internal.vm.ci");
 
         try (GetJNIConfig source = new GetJNIConfig(loader)) {
             Map<String, Class<?>> classes = new HashMap<>();

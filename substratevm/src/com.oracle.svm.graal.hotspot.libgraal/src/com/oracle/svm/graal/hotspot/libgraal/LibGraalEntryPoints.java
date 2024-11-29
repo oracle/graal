@@ -44,7 +44,6 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.graal.hotspot.LibGraalJNIMethodScope;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot;
+package com.oracle.svm.graal.hotspot.libgraal;
 
 import java.io.BufferedReader;
 import java.io.IOException;

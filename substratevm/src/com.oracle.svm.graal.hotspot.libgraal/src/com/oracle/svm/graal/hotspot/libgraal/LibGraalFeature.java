@@ -60,8 +60,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.graal.hotspot.GetCompilerConfig;
-import com.oracle.svm.graal.hotspot.GetJNIConfig;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ModuleSupport.Access;
@@ -198,11 +196,11 @@ public final class LibGraalFeature implements Feature {
         return LibGraalReflectionUtil.newInstance((Class<LibGraalLoader>) hostedLibGraalClassLoaderClass);
     }
 
-    private static void exportModulesToLibGraal(String... moduleNames) {
+    static void exportModulesToLibGraal(String... moduleNames) {
         accessModulesToClass(Access.EXPORT, LibGraalFeature.class, moduleNames);
     }
 
-    private static void accessModulesToClass(ModuleSupport.Access access, Class<?> accessingClass, String... moduleNames) {
+    static void accessModulesToClass(ModuleSupport.Access access, Class<?> accessingClass, String... moduleNames) {
         for (String moduleName : moduleNames) {
             var module = getBootModule(moduleName);
             ModuleSupport.accessPackagesToClass(access, accessingClass, false,

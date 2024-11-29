@@ -1354,33 +1354,6 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.graal.hotspot" : {
-            "subDir": "src",
-            "sourceDirs" : [
-                "src"
-            ],
-            "dependencies": [
-                "sdk:JNIUTILS",
-                "compiler:GRAAL",
-                "SVM",
-            ],
-            "requiresConcealed" : {
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.services",
-                    "jdk.vm.ci.runtime",
-                    "jdk.vm.ci.hotspot",
-                    "jdk.vm.ci.meta"
-                ],
-            },
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
-            "workingSets" : "SVM",
-            "jacoco" : "exclude",
-        },
-
         "com.oracle.svm.graal.hotspot.libgraal" : {
             "subDir": "src",
             "sourceDirs" : [
@@ -1388,7 +1361,7 @@ suite = {
                 "resources",
             ],
             "dependencies": [
-                "com.oracle.svm.graal.hotspot",
+                "sdk:JNIUTILS",
                 "sdk:NATIVEIMAGE",
                 "sdk:NATIVEBRIDGE",
                 "compiler:GRAAL",
@@ -1403,6 +1376,7 @@ suite = {
                     "jdk.internal.misc",
                 ],
                 "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
                     "jdk.vm.ci.services",
                     "jdk.vm.ci.runtime",
                     "jdk.vm.ci.code",
