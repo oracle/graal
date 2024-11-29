@@ -91,8 +91,8 @@ public class TypeCheckSnippetUtils {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/79345bbbae2564f9f523859d1227a1784293b20f/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4953-L5170",
-              sha1 = "c85e27deb4a1173cb8aa1ed6c938a2cd628c8360")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/eb0d1ce9487df000b4675901cc0d18f6a1c86348/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L4957-L5175",
+              sha1 = "10849f217123323ad73af5fe2aee2876a2943e1d")
     // @formatter:on
     static boolean checkSecondarySubType(KlassPointer t, KlassPointer s, boolean isTAlwaysAbstract, Counters counters) {
         // if (S.cache == T) return true
