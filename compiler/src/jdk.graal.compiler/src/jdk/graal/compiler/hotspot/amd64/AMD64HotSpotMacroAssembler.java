@@ -36,6 +36,7 @@ import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
+import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.lir.amd64.AMD64Move;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.vm.ci.code.Register;
@@ -143,6 +144,10 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
         bind(ok);
     }
 
+    // @formatter:off
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/08d51003d142e89b9d2f66187a4ea50e12b94fbb/src/hotspot/cpu/x86/assembler_x86.cpp#L234-L268",
+              sha1 = "7e213e437f5d3e7740874d69457de4ffebbee1c5")
+    // @formatter:on
     @Override
     protected final int membarOffset() {
         // All usable chips support "locked" instructions which suffice

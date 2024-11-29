@@ -637,6 +637,10 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, DEFAULT_DISP8_SCALE);
     }
 
+    protected final void emitOperandHelper(int reg, AMD64Address addr, int additionalInstructionSize, int evexDisp8Scale) {
+        emitOperandHelper(reg, addr, false, additionalInstructionSize, evexDisp8Scale);
+    }
+
     protected final void emitOperandHelper(Register reg, AMD64Address addr, int additionalInstructionSize, int evexDisp8Scale) {
         assert !isInvalidEncoding(reg);
         emitOperandHelper(encode(reg), addr, false, additionalInstructionSize, evexDisp8Scale);
