@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.shared.meta;
 
+import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 
@@ -57,4 +59,8 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
      * which should skip loading constraints are the polymorphic signature methods.
      */
     boolean shouldSkipLoadingConstraints();
+
+    CodeAttribute getCodeAttribute();
+
+    ExceptionHandler[] getExceptionHandlers();
 }

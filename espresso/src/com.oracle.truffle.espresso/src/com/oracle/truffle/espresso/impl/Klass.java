@@ -1899,5 +1899,30 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
         return lookupMethod(methodName, methodSignature, LookupMode.INSTANCE_ONLY);
     }
 
+    @Override
+    public Symbol<Type> getSymbolicType() {
+        return getType();
+    }
+
+    @Override
+    public boolean hasSameDefiningClassLoader(Klass other) {
+        return getDefiningClassLoader() == other.getDefiningClassLoader();
+    }
+
+    @Override
+    public Klass getHostType() {
+        return getHostClass();
+    }
+
+    @Override
+    public Symbol<Name> getSymbolicRuntimePackage() {
+        return getRuntimePackage();
+    }
+
+    @Override
+    public boolean isMagicAccessor() {
+        return getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(this);
+    }
+
     // endregion TypeAccess impl
 }

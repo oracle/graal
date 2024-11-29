@@ -28,8 +28,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 
 import java.io.PrintStream;
 
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
 
 abstract class StackMapFrame {
     protected final int frameType;
@@ -60,8 +60,8 @@ abstract class StackMapFrame {
 
     public abstract int getOffset();
 
-    @SuppressWarnings("unused")
-    public void print(Klass klass, PrintStream out) {
+    @SuppressWarnings("unused") // For debug purposes
+    public void print(ConstantPool pool, PrintStream out) {
         out.println("        " + this.getClass().getSimpleName() + " {");
         out.println("            Offset: " + getOffset());
     }
@@ -79,7 +79,7 @@ final class SameFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass, PrintStream out) {
+    public void print(ConstantPool pool, PrintStream out) {
         out.println("        " + this.getClass().getSimpleName() + " {");
         out.println("            Offset: " + getOffset());
         out.println("        }");
@@ -105,9 +105,9 @@ final class SameLocals1StackItemFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass, PrintStream out) {
-        super.print(klass, out);
-        out.println("            Stack: " + stackItem.toString(klass));
+    public void print(ConstantPool pool, PrintStream out) {
+        super.print(pool, out);
+        out.println("            Stack: " + stackItem.toString(pool));
         out.println("        }");
     }
 
@@ -134,9 +134,9 @@ final class SameLocals1StackItemFrameExtended extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass, PrintStream out) {
-        super.print(klass, out);
-        out.println("            Stack: " + stackItem.toString(klass));
+    public void print(ConstantPool pool, PrintStream out) {
+        super.print(pool, out);
+        out.println("            Stack: " + stackItem.toString(pool));
         out.println("        }");
     }
 }
@@ -160,8 +160,8 @@ final class ChopFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass, PrintStream out) {
-        super.print(klass, out);
+    public void print(ConstantPool pool, PrintStream out) {
+        super.print(pool, out);
         out.println("            cut locals: " + getChopped());
         out.println("        }");
     }
@@ -181,8 +181,8 @@ final class SameFrameExtended extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass, PrintStream out) {
-        super.print(klass, out);
+    public void print(ConstantPool pool, PrintStream out) {
+        super.print(pool, out);
         out.println("        }");
     }
 }
@@ -208,11 +208,11 @@ final class AppendFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass, PrintStream out) {
-        super.print(klass, out);
+    public void print(ConstantPool pool, PrintStream out) {
+        super.print(pool, out);
         out.println("            Add Locals: [");
         for (VerificationTypeInfo vti : newLocals) {
-            out.println("                " + vti.toString(klass));
+            out.println("                " + vti.toString(pool));
         }
         out.println("            ]");
         out.println("        }");
@@ -248,16 +248,16 @@ final class FullFrame extends StackMapFrame {
     }
 
     @Override
-    public void print(Klass klass, PrintStream out) {
-        super.print(klass, out);
+    public void print(ConstantPool pool, PrintStream out) {
+        super.print(pool, out);
         out.println("            Locals: [");
         for (VerificationTypeInfo vti : locals) {
-            out.println("                " + vti.toString(klass));
+            out.println("                " + vti.toString(pool));
         }
         out.println("            ]");
         out.println("            Stack: [");
         for (VerificationTypeInfo vti : stack) {
-            out.println("                " + vti.toString(klass));
+            out.println("                " + vti.toString(pool));
         }
         out.println("            ]");
         out.println("        }");

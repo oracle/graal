@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.shared.meta;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
@@ -42,10 +43,20 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      */
     String getJavaName();
 
+    Symbol<Type> getSymbolicType();
+
+    boolean hasSameDefiningClassLoader(C other);
+
+    C findLeastCommonAncestor(C other);
+
     /**
      * Returns the superclass of this class, or {@code null} if this class is {@link Object}.
      */
     C getSuperClass();
+
+    C getHostType();
+
+    Symbol<Name> getSymbolicRuntimePackage();
 
     /**
      * Performs field lookup on this class for the given field name and field type, according to
@@ -145,4 +156,8 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
     default boolean isJavaLangObject() {
         return getSuperClass() == null;
     }
+
+    boolean isMagicAccessor();
+
+    ConstantPool getConstantPool();
 }

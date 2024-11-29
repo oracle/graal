@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
@@ -58,7 +59,7 @@ public final class CachedParserKlassProvider extends AbstractCachedKlassProvider
                 parserKlass = bootParserKlassCache.get(typeOrNull);
             } else if (loaderIsApp) {
                 // For other class loaders, query the application cache
-                boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
+                boolean verifiable = EspressoVerifier.needsVerify(env.getLanguage(), loader);
                 assert !info.isAnonymousClass() && !info.isHidden() && info.patches == null;
                 key = new ParserKlassCacheKey(bytes, typeOrNull, verifiable);
                 parserKlass = appParserKlassCache.get(key);

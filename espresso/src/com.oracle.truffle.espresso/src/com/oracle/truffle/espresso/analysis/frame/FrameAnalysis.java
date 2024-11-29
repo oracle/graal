@@ -260,7 +260,7 @@ import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
  * Statically analyses bytecodes to produce a {@link EspressoFrameDescriptor frame description} for
  * the given BCI.
  */
-public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Builder> {
+public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Builder, FrameAnalysis> {
     private final EspressoLanguage lang;
     private final Method.MethodVersion m;
     private final Function<Symbol<Type>, Klass> klassResolver;
@@ -940,7 +940,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     }
 
     @Override
-    public StackMapFrameParser.FrameAndLocalEffect newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal) {
+    public StackMapFrameParser.FrameAndLocalEffect<Builder, FrameAnalysis> newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal) {
         Builder fullFrame = new Builder(m.getMaxLocals(), m.getMaxStackSize());
         for (VerificationTypeInfo vti : stack) {
             FrameType k = EspressoFrameDescriptor.fromTypeInfo(vti, this);
@@ -956,7 +956,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
             }
             pos++;
         }
-        return new StackMapFrameParser.FrameAndLocalEffect(fullFrame,
+        return new StackMapFrameParser.FrameAndLocalEffect<>(fullFrame,
                         // pos overshoots the actual last local position by one.
                         (pos - 1) - lastLocal);
     }

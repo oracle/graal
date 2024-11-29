@@ -85,6 +85,7 @@ import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.CompactGuestFieldOffsetStrategy;
@@ -100,7 +101,7 @@ import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.SafetyGu
                 dependentLanguages = {"nfi"}, //
                 website = "https://www.graalvm.org/dev/reference-manual/java-on-truffle/")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
-public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
+public final class EspressoLanguage extends TruffleLanguage<EspressoContext> implements SymbolPool {
 
     public static final String ID = "java";
     public static final String NAME = "Java";

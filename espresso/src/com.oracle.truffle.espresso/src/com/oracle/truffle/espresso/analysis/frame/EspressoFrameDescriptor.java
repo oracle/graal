@@ -272,7 +272,7 @@ public class EspressoFrameDescriptor {
         }
     }
 
-    public static class Builder implements StackMapFrameParser.FrameState {
+    public static class Builder implements StackMapFrameParser.FrameState<Builder, FrameAnalysis> {
         int bci = -1;
 
         final FrameType[] types;
@@ -455,19 +455,16 @@ public class EspressoFrameDescriptor {
         }
 
         @Override
-        public Builder sameLocalsWith1Stack(VerificationTypeInfo vfi, StackMapFrameParser.FrameBuilder<?> builder) {
-            if (builder instanceof FrameAnalysis analysis) {
-                Builder newFrame = copy().clearStack();
-                newFrame.clearStack();
-                FrameType k = fromTypeInfo(vfi, analysis);
-                newFrame.push(k);
-                return newFrame;
-            }
-            throw EspressoError.shouldNotReachHere();
+        public Builder sameLocalsWith1Stack(VerificationTypeInfo vfi, FrameAnalysis analysis) {
+            Builder newFrame = copy().clearStack();
+            newFrame.clearStack();
+            FrameType k = fromTypeInfo(vfi, analysis);
+            newFrame.push(k);
+            return newFrame;
         }
 
         @Override
-        public FrameAndLocalEffect chop(int chop, int lastLocal) {
+        public FrameAndLocalEffect<Builder, FrameAnalysis> chop(int chop, int lastLocal, FrameAnalysis analysis) {
             Builder newFrame = copy().clearStack();
             int pos = lastLocal;
             for (int i = 0; i < chop; i++) {
@@ -478,24 +475,21 @@ public class EspressoFrameDescriptor {
                     pos--;
                 }
             }
-            return new FrameAndLocalEffect(newFrame, pos - lastLocal);
+            return new FrameAndLocalEffect<>(newFrame, pos - lastLocal);
         }
 
         @Override
-        public FrameAndLocalEffect append(VerificationTypeInfo[] vtis, StackMapFrameParser.FrameBuilder<?> builder, int lastLocal) {
-            if (builder instanceof FrameAnalysis analysis) {
-                Builder newFrame = copy().clearStack();
-                int pos = lastLocal;
-                for (VerificationTypeInfo vti : vtis) {
-                    FrameType k = fromTypeInfo(vti, analysis);
-                    newFrame.putLocal(++pos, k);
-                    if (k.kind().needsTwoSlots()) {
-                        pos++;
-                    }
+        public FrameAndLocalEffect<Builder, FrameAnalysis> append(VerificationTypeInfo[] vtis, FrameAnalysis analysis, int lastLocal) {
+            Builder newFrame = copy().clearStack();
+            int pos = lastLocal;
+            for (VerificationTypeInfo vti : vtis) {
+                FrameType k = fromTypeInfo(vti, analysis);
+                newFrame.putLocal(++pos, k);
+                if (k.kind().needsTwoSlots()) {
+                    pos++;
                 }
-                return new FrameAndLocalEffect(newFrame, pos - lastLocal);
             }
-            throw EspressoError.shouldNotReachHere();
+            return new FrameAndLocalEffect<>(newFrame, pos - lastLocal);
         }
     }
 
@@ -506,7 +500,7 @@ public class EspressoFrameDescriptor {
         } else if (vfi.isNull()) {
             k = FrameType.NULL;
         } else {
-            k = FrameType.forType(vfi.getType(analysis.pool(), analysis.targetKlass(), analysis.stream()));
+            k = FrameType.forType(vfi.getType(analysis.pool(), analysis.targetKlass().getTypes(), analysis.stream()));
         }
         return k;
     }

@@ -38,8 +38,6 @@ import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class VerificationTypeInfo {
@@ -57,7 +55,7 @@ public abstract class VerificationTypeInfo {
         throw EspressoError.shouldNotReachHere("Asking for CPI of non reference verification_type_info");
     }
 
-    public String toString(Klass klass) {
+    public String toString(ConstantPool pool) {
         // Note: JSR/RET is mutually exclusive with stack maps.
         switch (getTag()) {
             case ITEM_Bogus:
@@ -73,11 +71,11 @@ public abstract class VerificationTypeInfo {
             case ITEM_Null:
                 return "null";
             default:
-                return fromCP(klass);
+                return fromCP(pool);
         }
     }
 
-    public abstract Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs);
+    public abstract Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs);
 
     public boolean isNull() {
         return false;
@@ -88,7 +86,7 @@ public abstract class VerificationTypeInfo {
     }
 
     @SuppressWarnings("unused")
-    protected String fromCP(Klass klass) {
+    protected String fromCP(ConstantPool pool) {
         return "";
     }
 }
@@ -132,7 +130,7 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
+    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
         switch (tag) {
             case ITEM_Integer:
                 return Type._int;
@@ -145,7 +143,7 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
             case ITEM_Null: // fall through
             case ITEM_Bogus: // fall through
             default:
-                throw EspressoError.shouldNotReachHere();
+                throw EspressoError.shouldNotReachHere("'getType' was called Null or Invalid type info.");
         }
 
     }
@@ -177,13 +175,13 @@ final class UninitializedThis extends VerificationTypeInfo {
     }
 
     @Override
-    protected String fromCP(Klass klass) {
+    protected String fromCP(ConstantPool pool) {
         return "newThis";
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
-        return thisKlass.getType();
+    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
+        throw EspressoError.shouldNotReachHere("newThis.getType() called.");
     }
 }
 
@@ -205,13 +203,12 @@ final class UninitializedVariable extends VerificationTypeInfo {
     }
 
     @Override
-    protected String fromCP(Klass klass) {
-        return "new " + klass.getConstantPool().classAt(newOffset).getName(klass.getConstantPool());
+    protected String fromCP(ConstantPool pool) {
+        return "new " + pool.classAt(newOffset).getName(pool);
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
-        Types types = thisKlass.getMeta().getTypes();
+    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
         return types.fromName(pool.classAt(bs.readCPI(getNewOffset())).getName(pool));
     }
 }
@@ -235,13 +232,12 @@ final class ReferenceVariable extends VerificationTypeInfo {
     }
 
     @Override
-    protected String fromCP(Klass klass) {
-        return "" + klass.getConstantPool().classAt(constantPoolOffset).getName(klass.getConstantPool());
+    protected String fromCP(ConstantPool pool) {
+        return "" + pool.classAt(constantPoolOffset).getName(pool);
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
-        Types types = thisKlass.getMeta().getTypes();
+    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
         return types.fromName(pool.classAt(getConstantPoolOffset()).getName(pool));
     }
 }

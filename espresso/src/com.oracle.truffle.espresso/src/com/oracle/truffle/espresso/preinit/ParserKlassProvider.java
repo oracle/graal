@@ -35,8 +35,8 @@ import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public interface ParserKlassProvider {
     ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info);
@@ -46,7 +46,7 @@ public interface ParserKlassProvider {
     }
 
     static ParserKlass parseKlass(ClassRegistry.ClassDefinitionInfo info, ClassLoadingEnv env, StaticObject loader, Symbol<Type> typeOrNull, byte[] bytes) {
-        boolean verifiable = MethodVerifier.needsVerify(env.getLanguage(), loader);
+        boolean verifiable = EspressoVerifier.needsVerify(env.getLanguage(), loader);
         boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
         Meta meta = env.getMeta();
         try {

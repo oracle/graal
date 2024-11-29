@@ -108,8 +108,10 @@ import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import com.oracle.truffle.espresso.runtime.panama.Platform;
 import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ClassLoadingException;
 import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
+import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -1270,6 +1272,16 @@ public final class EspressoContext
     public RuntimeException fatal(String messageFormat, Object... args) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere(String.format(Locale.ENGLISH, messageFormat, args));
+    }
+
+    @Override
+    public Klass loadClass(Symbol<Type> type, Klass accessingClass) throws ClassLoadingException {
+        return getMeta().loadKlassOrFail(type, accessingClass.getDefiningClassLoader(), accessingClass.protectionDomain());
+    }
+
+    @Override
+    public SymbolPool getSymbolPool() {
+        return getLanguage();
     }
 
     private ObjectKlass errorTypeToExceptionKlass(ErrorType errorType) {

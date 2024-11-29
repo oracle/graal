@@ -24,6 +24,8 @@
 package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 
 /**
  * Provides access to some VM-specific capabilities, such as throwing exceptions, or obtaining the
@@ -47,6 +49,10 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
      */
     RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
+
+    C loadClass(Symbol<Type> type, C accessingClass) throws ClassLoadingException;
+
+    SymbolPool getSymbolPool();
 
     /**
      * Signals that an unexpected state has been reached and that the current operation must be
