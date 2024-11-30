@@ -7,12 +7,12 @@ permalink: /reference-manual/native-image/guides/build-and-run-native-executable
 
 # Build and Run Native Executables with JFR
 
-[JDK Flight Recorder (JFR](https://docs.oracle.com/javacomponents/jmc-5-4/jfr-runtime-guide/about.htm) is a tool for collecting diagnostic and profiling data about a running Java application, built into the JVM. 
+[JDK Flight Recorder (JFR)](https://docs.oracle.com/javacomponents/jmc-5-4/jfr-runtime-guide/about.htm) is a tool for collecting diagnostic and profiling data about a running Java application, built into the JVM. 
 GraalVM Native Image supports JFR events and users can use the [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/22/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
 
 To collect JFR events when running a native executable, enable JFR support and JFR event recording as described in this guide.
 
-> Note: JFR event recording is not yet available in GraalVM JDK on Windows.
+> Note: JFR event recording is not yet available with Native Image on Windows.
 
 ## Enable JFR Support and Record Events at Runtime
 
@@ -52,13 +52,13 @@ For other installation options, visit the [Downloads section](https://www.graalv
     It creates an event, annotated with `@Label` from the `jdk.jfr.*` package.
     If you run this application, it will not print anything and just run that event.
 
-2. Compile the Java file using the GraalVM JDK:
+2. Ccompile the application using the GraalVM JDK:
     ```shell 
     javac JFRDemo.java
     ```
     It creates two class files: _JFRDemo$HelloWorldEvent.class_	and _JFRDemo.class_.
 
-3. Build a native executable with VM inspection enabled:
+3. Build a native executable with the VM inspection enabled:
     ```shell
     native-image --enable-monitoring=jfr JFRDemo
     ```
@@ -90,4 +90,3 @@ It will look something like this:
 ### Related Documentation
 
 - Learn more about [Native Image support for JFR events](../JFR.md) and how to further configure JFR recording and system logging.
-- [Create and record your first event with Java](https://docs.oracle.com/en/java/javase/22/jfapi/creating-and-recording-your-first-event.html).
