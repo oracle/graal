@@ -1869,7 +1869,11 @@ def parse_prefixed_args(prefix, args):
     ret = []
     for arg in args:
         if arg.startswith(prefix):
-            parsed = arg.split(' ')[0].split(prefix)[1]
+            words_in_arg = arg.split(' ')
+            if len(words_in_arg) > 1:
+                # We will monitor our logs for this warning and then fix this method once we are certain no jobs break (GR-60134)
+                mx.warn(f"A prefixed arg that includes spaces is being parsed, ignoring everything that comes after the first space! The arg in question is: '{arg}'")
+            parsed = words_in_arg[0].split(prefix)[1]
             if parsed not in ret:
                 ret.append(parsed)
     return ret
