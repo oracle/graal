@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -912,6 +913,12 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected void onEngineCreated(EngineData engine) {
     }
 
+    private final AtomicLong stoppedCompilationTime = new AtomicLong(0);
+
+    public final AtomicLong stoppedCompilationTime() {
+        return stoppedCompilationTime;
+    }
+
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
@@ -1483,4 +1490,30 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
     }
 
+    /**
+     * Represents HotSpot's compilation activity mode which is one of: {@code stop_compilation = 0},
+     * {@code run_compilation = 1} or {@code shutdown_compilation = 2}. Should be in sync with the
+     * {@code CompilerActivity} enum in {@code hotspot/share/compiler/compileBroker.hpp}.
+     */
+    public enum CompilationActivityMode {
+        STOP_COMPILATION,
+        RUN_COMPILATION,
+        SHUTDOWN_COMPILATION;
+
+        public static CompilationActivityMode fromInteger(int i) {
+            return switch (i) {
+                case 0 -> STOP_COMPILATION;
+                case 1 -> RUN_COMPILATION;
+                case 2 -> SHUTDOWN_COMPILATION;
+                default -> throw new RuntimeException("Invalid CompilationActivityMode " + i);
+            };
+        }
+    }
+
+    /**
+     * Returns the current host compilation activity mode. The default is to run compilations.
+     */
+    public CompilationActivityMode getCompilationActivityMode() {
+        return CompilationActivityMode.RUN_COMPILATION;
+    }
 }
