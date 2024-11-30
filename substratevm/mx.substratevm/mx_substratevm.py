@@ -1515,8 +1515,9 @@ libgraal_build_args = [
     ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
     # LibGraalFeature implements com.oracle.svm.core.feature.InternalFeature (needed to be able to instantiate LibGraalFeature)
     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
-    # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
-    '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+    # Make jdk.internal.module.Modules accessible to do the remaining opening-up in LibGraalFeature constructor
+    #'--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+    '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
     # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
 

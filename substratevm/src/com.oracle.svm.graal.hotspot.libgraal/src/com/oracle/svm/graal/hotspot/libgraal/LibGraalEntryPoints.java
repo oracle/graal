@@ -43,11 +43,10 @@ import java.util.stream.Collectors;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.XOptions;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ClassUtil;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.libgraal.BuildTime;
 import jdk.graal.compiler.hotspot.libgraal.RunTime;
 import jdk.graal.compiler.options.OptionDescriptor;
@@ -78,6 +77,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
@@ -132,7 +132,7 @@ final class LibGraalEntryPoints {
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
-            throw VMError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
@@ -145,7 +145,7 @@ final class LibGraalEntryPoints {
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
-            throw VMError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
@@ -158,7 +158,7 @@ final class LibGraalEntryPoints {
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
-            throw VMError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
@@ -171,7 +171,7 @@ final class LibGraalEntryPoints {
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
-            throw VMError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
@@ -184,7 +184,7 @@ final class LibGraalEntryPoints {
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
-            throw VMError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
@@ -429,48 +429,48 @@ final class LibGraalTruffleToLibGraalEntryPoints {
                 String methodName = id.getMethodName();
                 Method method = graalMethodByName.get(methodName);
                 if (method == null) {
-                    throw VMError.shouldNotReachHere("Missing libgraal entry method %s.%s corresponding to TruffleToLibGraal.Id.%s. " +
+                    throw new GraalError("Missing libgraal entry method %s.%s corresponding to TruffleToLibGraal.Id.%s. " +
                                     "To resolve this, add `public static <return_type> %s(<arguments>)` in %s, where the <return_type> and <arguments> correspond to TruffleToLibGraalCalls.%s.",
-                                    ClassUtil.getUnqualifiedName(graalEntryPoints), methodName, id, methodName, graalEntryPoints.getName(), methodName);
+                                    LibGraalUtil.getUnqualifiedName(graalEntryPoints), methodName, id, methodName, graalEntryPoints.getName(), methodName);
                 }
                 if (!hostMethodByName.contains(methodName)) {
-                    throw VMError.shouldNotReachHere("Missing C entry point method %s.%s corresponding to TruffleToLibGraal.Id.%s. " +
+                    throw new GraalError("Missing C entry point method %s.%s corresponding to TruffleToLibGraal.Id.%s. " +
                                     "To resolve this, add `@CEntryPoint(\"Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_%s\") " +
                                     "@TruffleToLibGraal(Id.%s) static <return_type> %s(JNIEnv env, JClass jclass, @IsolateThreadContext long isolateThreadId, " +
                                     "<arguments>)` in %s, where the <return_type> and <arguments> correspond to TruffleToLibGraalCalls.%s. " +
                                     "Use a MethodHandle to delegate to %s.%s.",
-                                    ClassUtil.getUnqualifiedName(getClass()), methodName, id, methodName, id, methodName, getClass().getName(), methodName,
+                                    LibGraalUtil.getUnqualifiedName(getClass()), methodName, id, methodName, id, methodName, getClass().getName(), methodName,
                                     graalEntryPoints.getName(), methodName);
                 }
                 Field methodHandleField;
                 try {
                     methodHandleField = getClass().getDeclaredField(methodName);
                 } catch (NoSuchFieldException nsf) {
-                    throw VMError.shouldNotReachHere("Missing field %s.%s corresponding to TruffleToLibGraal.Id.%s. " +
+                    throw new GraalError("Missing field %s.%s corresponding to TruffleToLibGraal.Id.%s. " +
                                     "To resolve this, add `private final MethodHandle %s = null;` to %s.",
-                                    ClassUtil.getUnqualifiedName(getClass()), methodName, id, methodName, getClass().getName());
+                                    LibGraalUtil.getUnqualifiedName(getClass()), methodName, id, methodName, getClass().getName());
                 }
                 methodHandleField.setAccessible(true);
                 methodHandleField.set(this, libgraalLookup.unreflect(method));
             }
             Method m = graalMethodByName.get("getCurrentJavaThread");
             if (m == null) {
-                throw VMError.shouldNotReachHere("Missing libgraal entry method %s.getCurrentJavaThread.", ClassUtil.getUnqualifiedName(graalEntryPoints));
+                throw new GraalError("Missing libgraal entry method %s.getCurrentJavaThread.", LibGraalUtil.getUnqualifiedName(graalEntryPoints));
             }
             getCurrentJavaThread = libgraalLookup.unreflect(m);
             m = graalMethodByName.get("getLastJavaPCOffset");
             if (m == null) {
-                throw VMError.shouldNotReachHere("Missing libgraal entry method %s.getLastJavaPCOffset.", ClassUtil.getUnqualifiedName(graalEntryPoints));
+                throw new GraalError("Missing libgraal entry method %s.getLastJavaPCOffset.", LibGraalUtil.getUnqualifiedName(graalEntryPoints));
             }
             getLastJavaPCOffset = libgraalLookup.unreflect(m);
         } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e);
         }
     }
 
     private static JNIMethodScope openScope(Enum<?> id, JNIEnv env) throws Throwable {
         Objects.requireNonNull(id, "Id must be non null.");
-        String scopeName = ClassUtil.getUnqualifiedName(LibGraalTruffleToLibGraalEntryPoints.class) + "::" + id;
+        String scopeName = LibGraalUtil.getUnqualifiedName(LibGraalTruffleToLibGraalEntryPoints.class) + "::" + id;
         int offset = lastJavaPCOffset;
         if (offset == -1) {
             offset = (int) singleton().getLastJavaPCOffset.invoke();

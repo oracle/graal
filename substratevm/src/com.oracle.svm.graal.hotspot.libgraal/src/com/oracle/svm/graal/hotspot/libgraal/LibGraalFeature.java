@@ -61,8 +61,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ModuleSupport.Access;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.debug.DebugContext;
@@ -186,24 +184,24 @@ public final class LibGraalFeature implements Feature {
 
         // Guest JVMCI and Graal need access to some JDK internal packages
         String[] basePackages = {"jdk.internal.misc", "jdk.internal.util", "jdk.internal.vm"};
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, null, false, "java.base", basePackages);
+        LibGraalUtil.accessPackagesToClass(LibGraalUtil.Access.EXPORT, null, false, "java.base", basePackages);
     }
 
     @SuppressWarnings("unchecked")
     private static LibGraalLoader createHostedLibGraalClassLoader(AfterRegistrationAccess access) {
         var hostedLibGraalClassLoaderClass = access.findClassByName("jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader");
-        ModuleSupport.accessPackagesToClass(Access.EXPORT, hostedLibGraalClassLoaderClass, false, "java.base", "jdk.internal.module");
-        return LibGraalReflectionUtil.newInstance((Class<LibGraalLoader>) hostedLibGraalClassLoaderClass);
+        LibGraalUtil.accessPackagesToClass(LibGraalUtil.Access.EXPORT, hostedLibGraalClassLoaderClass, false, "java.base", "jdk.internal.module");
+        return LibGraalUtil.newInstance((Class<LibGraalLoader>) hostedLibGraalClassLoaderClass);
     }
 
     static void exportModulesToLibGraal(String... moduleNames) {
-        accessModulesToClass(Access.EXPORT, LibGraalFeature.class, moduleNames);
+        accessModulesToClass(LibGraalUtil.Access.EXPORT, LibGraalFeature.class, moduleNames);
     }
 
-    static void accessModulesToClass(ModuleSupport.Access access, Class<?> accessingClass, String... moduleNames) {
+    static void accessModulesToClass(LibGraalUtil.Access access, Class<?> accessingClass, String... moduleNames) {
         for (String moduleName : moduleNames) {
             var module = getBootModule(moduleName);
-            ModuleSupport.accessPackagesToClass(access, accessingClass, false,
+            LibGraalUtil.accessPackagesToClass(access, accessingClass, false,
                             module.getName(), module.getPackages().toArray(String[]::new));
         }
     }
@@ -339,9 +337,9 @@ public final class LibGraalFeature implements Feature {
         FieldOffsetsTransformer() {
             edgesClass = loadClassOrFail(Edges.class.getName());
             fieldsClass = loadClassOrFail(Fields.class.getName());
-            fieldsOffsetsField = LibGraalReflectionUtil.lookupField(fieldsClass, "offsets");
-            edgesIterationMaskField = LibGraalReflectionUtil.lookupField(edgesClass, "iterationMask");
-            recomputeOffsetsAndIterationMaskMethod = LibGraalReflectionUtil.lookupMethod(fieldsClass, "recomputeOffsetsAndIterationMask", BeforeCompilationAccess.class);
+            fieldsOffsetsField = LibGraalUtil.lookupField(fieldsClass, "offsets");
+            edgesIterationMaskField = LibGraalUtil.lookupField(edgesClass, "iterationMask");
+            recomputeOffsetsAndIterationMaskMethod = LibGraalUtil.lookupMethod(fieldsClass, "recomputeOffsetsAndIterationMask", BeforeCompilationAccess.class);
         }
 
         void register(BeforeAnalysisAccess access) {
@@ -388,7 +386,7 @@ public final class LibGraalFeature implements Feature {
 
         void register(BeforeAnalysisAccess access) {
             Class<?> globalAtomicLongClass = loadClassOrFail(GlobalAtomicLong.class.getName());
-            Field addressSupplierField = LibGraalReflectionUtil.lookupField(globalAtomicLongClass, "addressSupplier");
+            Field addressSupplierField = LibGraalUtil.lookupField(globalAtomicLongClass, "addressSupplier");
             access.registerFieldValueTransformer(addressSupplierField, this);
             try {
                 globalAtomicLongGetInitialValue = mhl.findVirtual(globalAtomicLongClass, "getInitialValue", methodType(long.class));
@@ -424,15 +422,15 @@ public final class LibGraalFeature implements Feature {
 
         /* Needed for runtime calls to BoxingSnippets.Templates.getCacheClass(JavaKind) */
         RuntimeReflection.registerAllDeclaredClasses(Character.class);
-        RuntimeReflection.register(LibGraalReflectionUtil.lookupField(LibGraalReflectionUtil.lookupClass("java.lang.Character$CharacterCache"), "cache"));
+        RuntimeReflection.register(LibGraalUtil.lookupField(LibGraalUtil.lookupClass("java.lang.Character$CharacterCache"), "cache"));
         RuntimeReflection.registerAllDeclaredClasses(Byte.class);
-        RuntimeReflection.register(LibGraalReflectionUtil.lookupField(LibGraalReflectionUtil.lookupClass("java.lang.Byte$ByteCache"), "cache"));
+        RuntimeReflection.register(LibGraalUtil.lookupField(LibGraalUtil.lookupClass("java.lang.Byte$ByteCache"), "cache"));
         RuntimeReflection.registerAllDeclaredClasses(Short.class);
-        RuntimeReflection.register(LibGraalReflectionUtil.lookupField(LibGraalReflectionUtil.lookupClass("java.lang.Short$ShortCache"), "cache"));
+        RuntimeReflection.register(LibGraalUtil.lookupField(LibGraalUtil.lookupClass("java.lang.Short$ShortCache"), "cache"));
         RuntimeReflection.registerAllDeclaredClasses(Integer.class);
-        RuntimeReflection.register(LibGraalReflectionUtil.lookupField(LibGraalReflectionUtil.lookupClass("java.lang.Integer$IntegerCache"), "cache"));
+        RuntimeReflection.register(LibGraalUtil.lookupField(LibGraalUtil.lookupClass("java.lang.Integer$IntegerCache"), "cache"));
         RuntimeReflection.registerAllDeclaredClasses(Long.class);
-        RuntimeReflection.register(LibGraalReflectionUtil.lookupField(LibGraalReflectionUtil.lookupClass("java.lang.Long$LongCache"), "cache"));
+        RuntimeReflection.register(LibGraalUtil.lookupField(LibGraalUtil.lookupClass("java.lang.Long$LongCache"), "cache"));
 
         /* Configure static state of Graal. */
         try {
@@ -456,11 +454,11 @@ public final class LibGraalFeature implements Feature {
                                             String.class, // nativeImageLocationQualifier
                                             byte[].class // encodedGuestObjects
                             ));
-            Path libGraalJavaHome = LibGraalReflectionUtil.readField(loader.getClass(), "libGraalJavaHome", loader);
+            Path libGraalJavaHome = LibGraalUtil.readField(loader.getClass(), "libGraalJavaHome", loader);
             GetCompilerConfig.Result configResult = GetCompilerConfig.from(libGraalJavaHome);
             for (var e : configResult.opens().entrySet()) {
                 for (String source : e.getValue()) {
-                    ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, buildTimeClass, false, e.getKey(), source);
+                    LibGraalUtil.accessPackagesToClass(LibGraalUtil.Access.OPEN, buildTimeClass, false, e.getKey(), source);
                 }
             }
 
