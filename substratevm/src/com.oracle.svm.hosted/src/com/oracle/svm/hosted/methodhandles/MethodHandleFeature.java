@@ -25,14 +25,12 @@
 package com.oracle.svm.hosted.methodhandles;
 
 import java.lang.invoke.CallSite;
-import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Array;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.Iterator;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -107,7 +105,7 @@ public class MethodHandleFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        Class<?> memberNameClass = access.findClassByName("java.lang.invoke.MemberName");
+        Class<?> memberNameClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MemberName");
         memberNameIsMethod = ReflectionUtil.lookupMethod(memberNameClass, "isMethod");
         memberNameIsConstructor = ReflectionUtil.lookupMethod(memberNameClass, "isConstructor");
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
@@ -119,10 +117,10 @@ public class MethodHandleFeature implements InternalFeature {
         lambdaFormNFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "NF_identity");
         lambdaFormNFZero = ReflectionUtil.lookupField(lambdaFormClass, "NF_zero");
 
-        Class<?> arrayAccessorClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
+        Class<?> arrayAccessorClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodHandleImpl$ArrayAccessor");
         typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
 
-        Class<?> concurrentWeakInternSetClass = access.findClassByName("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
+        Class<?> concurrentWeakInternSetClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodType$ConcurrentWeakInternSet");
         runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
         concurrentWeakInternSetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
 
@@ -139,43 +137,21 @@ public class MethodHandleFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        /* java.lang.invoke functions called through reflection */
-        Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
 
-        access.registerReachabilityHandler(MethodHandleFeature::registerMHImplFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(mhImplClazz, "getFunction", byte.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerMHImplConstantHandlesForReflection,
-                        ReflectionUtil.lookupMethod(mhImplClazz, "makeConstantHandle", int.class));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerMHImplCountingWrapperFunctionsForReflection,
-                        access.findClassByName("java.lang.invoke.MethodHandleImpl$CountingWrapper"));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerInvokersFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(access.findClassByName("java.lang.invoke.Invokers"), "getFunction", byte.class));
-
+        eagerlyInitializeMHImplFunctions();
+        eagerlyInitializeMHImplConstantHandles();
+        eagerlyInitializeInvokersFunctions();
         eagerlyInitializeValueConversionsCaches();
+        eagerlyInitializeCallSite();
 
-        access.registerClassInitializerReachabilityHandler(MethodHandleFeature::registerDelegatingMHFunctionsForReflection,
-                        access.findClassByName("java.lang.invoke.DelegatingMethodHandle"));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerCallSiteGetTargetForReflection,
-                        ReflectionUtil.lookupMethod(CallSite.class, "getTargetHandle"));
-
-        access.registerReachabilityHandler(MethodHandleFeature::registerUninitializedCallSiteForReflection,
-                        ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSiteHandle"));
-
-        access.registerSubtypeReachabilityHandler(MethodHandleFeature::registerVarHandleMethodsForReflection,
-                        access.findClassByName("java.lang.invoke.VarHandle"));
-
-        access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle,
-                        access.findClassByName("java.lang.invoke.BoundMethodHandle"));
+        access.registerSubtypeReachabilityHandler(MethodHandleFeature::registerVarHandleMethodsForReflection, VarHandle.class);
+        access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, ReflectionUtil.lookupClass(false, "java.lang.invoke.BoundMethodHandle"));
 
         AnalysisMetaAccess metaAccess = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getMetaAccess();
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer"), "cache"),
                         new FieldValueTransformerWithAvailability() {
-                            private static final Class<?> speciesDataClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData");
+                            private static final Class<?> SPECIES_DATA_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData");
 
                             /*
                              * The value of the ClassSpecializer.cache is not seen by the analysis
@@ -204,7 +180,7 @@ public class MethodHandleFeature implements InternalFeature {
                             }
 
                             private boolean isSpeciesReachable(Object speciesData) {
-                                Class<?> speciesClass = ReflectionUtil.readField(speciesDataClass, "speciesCode", speciesData);
+                                Class<?> speciesClass = ReflectionUtil.readField(SPECIES_DATA_CLASS, "speciesCode", speciesData);
                                 Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
                                 return analysisType.isPresent() && analysisType.get().isReachable();
                             }
@@ -214,43 +190,31 @@ public class MethodHandleFeature implements InternalFeature {
                         (receiver, originalValue) -> runtimeMethodTypeInternTable);
     }
 
-    private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
-        Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "checkSpreadArgument", Object.class, int.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "guardWithCatch", MethodHandle.class, Class.class, MethodHandle.class, Object[].class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "tryFinally", MethodHandle.class, MethodHandle.class, Object[].class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "loop", access.findClassByName("[Ljava.lang.invoke.LambdaForm$BasicType;"),
-                        access.findClassByName("java.lang.invoke.MethodHandleImpl$LoopClauses"), Object[].class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "throwException", Throwable.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "profileBoolean", boolean.class, int[].class));
+    private static void eagerlyInitializeMHImplFunctions() {
+        var methodHandleImplClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodHandleImpl");
+        int count = ((Object[]) ReflectionUtil.readStaticField(methodHandleImplClass, "NFS")).length;
+        var getFunctionMethod = ReflectionUtil.lookupMethod(methodHandleImplClass, "getFunction", byte.class);
+        for (int i = 0; i < count; i++) {
+            ReflectionUtil.invokeMethod(getFunctionMethod, null, (byte) i);
+        }
     }
 
-    private static void registerMHImplConstantHandlesForReflection(DuringAnalysisAccess access) {
-        Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "selectAlternative", boolean.class, MethodHandle.class, MethodHandle.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "countedLoopPredicate", int.class, int.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "countedLoopStep", int.class, int.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "initIterator", Iterable.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "iteratePredicate", Iterator.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "iterateNext", Iterator.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(Array.class, "newInstance", Class.class, int.class));
+    private static void eagerlyInitializeMHImplConstantHandles() {
+        var methodHandleImplClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodHandleImpl");
+        int count = ((Object[]) ReflectionUtil.readStaticField(methodHandleImplClass, "HANDLES")).length;
+        var getConstantHandleMethod = ReflectionUtil.lookupMethod(methodHandleImplClass, "getConstantHandle", int.class);
+        for (int i = 0; i < count; i++) {
+            ReflectionUtil.invokeMethod(getConstantHandleMethod, null, i);
+        }
     }
 
-    private static void registerMHImplCountingWrapperFunctionsForReflection(DuringAnalysisAccess access) {
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(access.findClassByName("java.lang.invoke.MethodHandleImpl$CountingWrapper"), "maybeStopCounting", Object.class));
-    }
-
-    private static void registerInvokersFunctionsForReflection(DuringAnalysisAccess access) {
-        Class<?> invokersClazz = access.findClassByName("java.lang.invoke.Invokers");
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkExactType", MethodHandle.class, MethodType.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkGenericType", MethodHandle.class, MethodType.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "getCallSiteTarget", CallSite.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkCustomized", MethodHandle.class));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkVarHandleGenericType", access.findClassByName("java.lang.invoke.VarHandle"),
-                        access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkVarHandleExactType", access.findClassByName("java.lang.invoke.VarHandle"),
-                        access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "directVarHandleTarget", access.findClassByName("java.lang.invoke.VarHandle")));
+    private static void eagerlyInitializeInvokersFunctions() {
+        var invokerksClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.Invokers");
+        int count = ((Object[]) ReflectionUtil.readStaticField(invokerksClass, "NFS")).length;
+        var getFunctionMethod = ReflectionUtil.lookupMethod(invokerksClass, "getFunction", byte.class);
+        for (int i = 0; i < count; i++) {
+            ReflectionUtil.invokeMethod(getFunctionMethod, null, (byte) i);
+        }
     }
 
     /**
@@ -279,21 +243,13 @@ public class MethodHandleFeature implements InternalFeature {
         }
     }
 
-    private static void registerDelegatingMHFunctionsForReflection(DuringAnalysisAccess access) {
-        Class<?> delegatingMHClazz = access.findClassByName("java.lang.invoke.DelegatingMethodHandle");
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(delegatingMHClazz, "getTarget"));
-    }
-
-    private static void registerCallSiteGetTargetForReflection(DuringAnalysisAccess access) {
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(CallSite.class, "getTarget"));
-    }
-
-    private static void registerUninitializedCallSiteForReflection(DuringAnalysisAccess access) {
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSite", Object[].class));
+    private static void eagerlyInitializeCallSite() {
+        ReflectionUtil.invokeMethod(ReflectionUtil.lookupMethod(CallSite.class, "getTargetHandle"), null);
+        ReflectionUtil.invokeMethod(ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSiteHandle"), null);
     }
 
     private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {
-        if (subtype.getPackage().getName().equals("java.lang.invoke") && subtype != access.findClassByName("java.lang.invoke.VarHandle")) {
+        if (subtype.getPackage().getName().equals("java.lang.invoke") && subtype != VarHandle.class) {
             RuntimeReflection.register(subtype.getDeclaredMethods());
         }
     }
