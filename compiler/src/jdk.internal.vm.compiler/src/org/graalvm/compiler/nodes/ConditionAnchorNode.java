@@ -32,12 +32,12 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
@@ -83,10 +83,12 @@ public final class ConditionAnchorNode extends FixedWithNextNode implements Cano
         }
         if (forValue instanceof LogicConstantNode) {
             LogicConstantNode c = (LogicConstantNode) forValue;
-            if (c.getValue() != negated) {
-                return null;
-            } else {
+            // An anchor that still has usages must still exist since it's possible the condition is
+            // true for control flow reasons so the Pi stamp is also only valid for those reason.
+            if (c.getValue() == negated || hasUsages()) {
                 return new ValueAnchorNode();
+            } else {
+                return null;
             }
         }
         if (tool.allUsagesAvailable() && this.hasNoUsages()) {

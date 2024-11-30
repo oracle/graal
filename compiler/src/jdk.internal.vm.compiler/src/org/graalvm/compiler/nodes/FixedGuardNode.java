@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
@@ -88,8 +89,27 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
                 GraphUtil.killCFG(this);
                 return;
             }
-            this.replaceAtUsages(null);
-            graph().removeFixed(this);
+            if (hasUsages()) {
+                /*
+                 * Try to eliminate any exposed usages. We could always just insert the
+                 * ValueAnchorNode and let canonicalization clean it up but since it's almost always
+                 * trivially removable it's better to clean it up here. This also means that any
+                 * actual insertions of a ValueAnchorNode by this code indicates a real mismatch
+                 * between the piStamp and its input.
+                 */
+                PiNode.tryEvacuate(tool, this);
+            }
+            if (hasUsages()) {
+                /*
+                 * There are still guard usages after simplification so preserve this anchor point.
+                 * It may still go away after further simplification but any uses that hang around
+                 * are required to be anchored. After guard lowering it might be possible to replace
+                 * the ValueAnchorNode with the Begin of the current block.
+                 */
+                graph().replaceFixedWithFixed(this, graph().add(new ValueAnchorNode()));
+            } else {
+                graph().removeFixed(this);
+            }
         } else if (getCondition() instanceof ShortCircuitOrNode) {
             ShortCircuitOrNode shortCircuitOr = (ShortCircuitOrNode) getCondition();
             if (isNegated() && hasNoUsages()) {
