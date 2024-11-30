@@ -17,13 +17,11 @@ The agent generates the configuration for you automatically when you run an appl
 
 To learn how to build a native executable with the metadata precomputed in the code, [see the documentation](../ReachabilityMetadata.md).
 
-The example application in this guide uses Java reflection. 
-The `native-image` tool only partially detects application elements that are accessed using the Java Reflection API. 
-So, you need to provide it with details about reflectively accessed classes, methods, and fields.
+The example application in this guide makes use of reflection.
+The `native-image` tool can only partially detect application elements accessed through the Java Reflection API.
+Therefore, you need to explicitly provide details about the classes, methods, and fields accessed reflectively.
 
 ## Example with No Configuration
-
-The following application demonstrates the use of Java reflection.
 
 ### Prerequisite 
 Make sure you have installed a GraalVM JDK.
@@ -79,9 +77,8 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
 3. Create a native executable, as follows:
     ```shell
-    native-image --no-fallback ReflectionExample
+    native-image ReflectionExample
     ```
-    > **NOTE:** The `--no-fallback` option to `native-image` causes the utility to fail if it can not create an executable file.
 
 4. Run the resulting native executable, using the following command:
     ```bash
@@ -90,9 +87,9 @@ For other installation options, visit the [Downloads section](https://www.graalv
     You should see an exception, similar to:
     ```
     Exception in thread "main" java.lang.ClassNotFoundException: StringReverser
-        at java.lang.Class.forName(DynamicHub.java:1338)
-        at java.lang.Class.forName(DynamicHub.java:1313)
-        at ReflectionExample.main(ReflectionExample.java:25)
+        at org.graalvm.nativeimage.builder/com.oracle.svm.core.hub.ClassForNameSupport.forName(ClassForNameSupport.java:190)
+        ...
+        at ReflectionExample.main(ReflectionExample.java:68)
     ```
     This shows that, from its static analysis, the `native-image` tool was unable to determine that class `StringReverser` is used by the application and therefore did not include it in the native executable. 
 
@@ -112,10 +109,17 @@ The following steps demonstrate how to use the agent, and its output, to create 
     This command creates a file named _rechability-metadata.json_ containing the name of the class `StringReverser` and its `reverse()` method.
     ```json
     {
-      "reflection": [
+    "reflection": [
         {
-        "type":"StringReverser",
-        "methods":[{"name":"reverse","parameterTypes":["java.lang.String"] }]
+          "type": "StringReverser",
+          "methods": [
+            {
+              "name": "reverse",
+              "parameterTypes": [
+                  "java.lang.String"
+              ]
+            }
+          ]
         }
       ]
     }
@@ -140,12 +144,12 @@ The following steps demonstrate how to use the agent, and its output, to create 
     You should see again an exception, similar to:
     ```
     Exception in thread "main" java.lang.ClassNotFoundException: StringCapitalizer
-        at java.lang.Class.forName(DynamicHub.java:1338)
-	    at java.lang.Class.forName(DynamicHub.java:1313)
-	    at ReflectionExample.main(ReflectionExample.java:25)
+        at org.graalvm.nativeimage.builder/com.oracle.svm.core.hub.ClassForNameSupport.forName(ClassForNameSupport.java:190)
+        ...
+        at ReflectionExample.main(ReflectionExample.java:68)
     ```
     Neither the Tracing Agent nor the `native-image` tool can ensure that the configuration file is complete.
-    The agent observes and records which program elements are accessed using reflection when you run the program. 
+    The agent observes and records which program elements are accessed using reflection when you run the application. 
     In this case, the `native-image` tool has not been configured to include references to class `StringCapitalizer`.
 
 5. Update the configuration to include class `StringCapitalizer`.
@@ -159,15 +163,29 @@ The following steps demonstrate how to use the agent, and its output, to create 
     {
       "reflection": [
         {
-        "type":"StringCapitalizer",
-        "methods":[{"name":"capitalize","parameterTypes":["java.lang.String"] }]
+          "type": "StringCapitalizer",
+          "methods": [
+            {
+              "name": "capitalize",
+              "parameterTypes": [
+                "java.lang.String"
+              ]
+            }
+          ]
         },
         {
-        "type":"StringReverser",
-        "methods":[{"name":"reverse","parameterTypes":["java.lang.String"] }]
+          "type": "StringReverser",
+          "methods": [
+            {
+              "name": "reverse",
+              "parameterTypes": [
+                "java.lang.String"
+              ]
+            }
+          ]
         }
       ]
-   }
+    }
     ```
 
 6. Rebuild the native executable and run it.
@@ -184,4 +202,3 @@ The following steps demonstrate how to use the agent, and its output, to create 
 
 * [Assisted Configuration with Tracing Agent](../AutomaticMetadataCollection.md#tracing-agent)
 * [Reachability Metadata: Reflection](../ReachabilityMetadata.md#reflection)
-* [java.lang.reflect Javadoc](https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/lang/reflect/package-summary.html)
