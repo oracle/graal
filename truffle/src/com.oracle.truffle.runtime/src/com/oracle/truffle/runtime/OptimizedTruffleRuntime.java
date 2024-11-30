@@ -1492,15 +1492,15 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     /**
      * Represents HotSpot's compilation activity mode which is one of: {@code stop_compilation = 0},
-     * {@code run_compilation = 1} or {@code shutdown_compilation = 2} Should be in sync with the
-     * {@code CompilerActivity} enum in {@code hotspot/share/compiler/compileBroker.hpp}
+     * {@code run_compilation = 1} or {@code shutdown_compilation = 2}. Should be in sync with the
+     * {@code CompilerActivity} enum in {@code hotspot/share/compiler/compileBroker.hpp}.
      */
     public enum CompilationActivityMode {
         STOP_COMPILATION,
         RUN_COMPILATION,
         SHUTDOWN_COMPILATION;
 
-        static public CompilationActivityMode fromInteger(int i) {
+        public static CompilationActivityMode fromInteger(int i) {
             return switch (i) {
                 case 0 -> STOP_COMPILATION;
                 case 1 -> RUN_COMPILATION;

@@ -502,7 +502,7 @@ public final class EngineData {
      * Only log compilation shutdowns (see {@code OptimizedCallTarget.isCompilationStopped()}) once
      * per engine.
      */
-    public final AtomicBoolean logShutdownCompilations() {
+    public AtomicBoolean logShutdownCompilations() {
         return logShutdownCompilations;
     }
 
