@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.module.FindException;
+import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.lang.module.ModuleReference;
 import java.lang.reflect.Method;
@@ -53,8 +54,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Queue;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.BiConsumer;
@@ -1589,6 +1592,15 @@ public class NativeImage {
         }
         List<Path> finalImageModulePath = applicationModules.values().stream().toList();
 
+        /*
+         * Make sure to add all system modules required by the application that might not be part of
+         * the boot module layer of image builder. If we do not do this, the image builder will fail
+         * to create the image-build module layer, as it will attempt to define system modules to
+         * the host VM.
+         */
+        Set<String> implicitlyRequiredSystemModules = getImplicitlyRequiredSystemModules(finalImageModulePath);
+        addModules.addAll(implicitlyRequiredSystemModules);
+
         if (!addModules.isEmpty()) {
 
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
@@ -1777,6 +1789,41 @@ public class NativeImage {
             throw showError("Failed to collect ModuleReferences for module-path entries " + modulePath, e);
         }
         return mrefs;
+    }
+
+    private Set<String> getImplicitlyRequiredSystemModules(Collection<Path> modulePath) {
+        if (!config.modulePathBuild || modulePath.isEmpty()) {
+            return Set.of();
+        }
+
+        ModuleFinder systemModuleFinder = ModuleFinder.ofSystem();
+        ModuleFinder appModuleFinder = ModuleFinder.of(modulePath.toArray(Path[]::new));
+        ModuleFinder finder = ModuleFinder.compose(appModuleFinder, systemModuleFinder);
+        Map<String, ModuleReference> modules = finder.findAll().stream()
+                        .collect(Collectors.toMap(m -> m.descriptor().name(), m -> m));
+
+        Set<String> applicationModulePathRequiredModules = new HashSet<>();
+        Queue<ModuleReference> discoveryQueue = new ArrayDeque<>(modules.values());
+
+        while (!discoveryQueue.isEmpty()) {
+            ModuleReference module = discoveryQueue.poll();
+            Set<String> requiredModules = getRequiredModules(module);
+            List<ModuleReference> requiredModuleReferences = requiredModules.stream()
+                            .map(mn -> modules.getOrDefault(mn, null))
+                            .filter(Objects::nonNull)
+                            .toList();
+            discoveryQueue.addAll(requiredModuleReferences);
+            applicationModulePathRequiredModules.addAll(requiredModules);
+        }
+
+        applicationModulePathRequiredModules.retainAll(getBuiltInModules());
+        return applicationModulePathRequiredModules;
+    }
+
+    private static Set<String> getRequiredModules(ModuleReference mref) {
+        return mref.descriptor().requires().stream()
+                        .map(ModuleDescriptor.Requires::name)
+                        .collect(Collectors.toSet());
     }
 
     boolean useBundle() {
