@@ -33,9 +33,7 @@ import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
 import java.security.Permission;
-import java.util.Arrays;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -81,7 +79,6 @@ import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOpera
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import jdk.internal.loader.ClassLoaderValue;
-import jdk.internal.module.ServicesCatalog;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
@@ -725,24 +722,7 @@ final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransf
         if (originalValue == null) {
             return null;
         }
-
-        ConcurrentHashMap<?, ?> original = (ConcurrentHashMap<?, ?>) originalValue;
-        List<ClassLoaderValue<?>> clvs = Arrays.asList(
-                        ReflectionUtil.readField(ServicesCatalog.class, "CLV", null),
-                        ReflectionUtil.readField(ModuleLayer.class, "CLV", null));
-
-        var res = new ConcurrentHashMap<>();
-        for (ClassLoaderValue<?> clv : clvs) {
-            if (clv == null) {
-                throw VMError.shouldNotReachHere("Field must not be null. Please check what changed in the JDK.");
-            }
-            var catalog = original.get(clv);
-            if (catalog != null) {
-                res.put(clv, catalog);
-            }
-        }
-
-        return res;
+        return RuntimeClassLoaderValueSupport.instance().getClassLoaderValueMapForLoader((ClassLoader) receiver);
     }
 }
 
