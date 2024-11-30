@@ -31,4 +31,6 @@ public interface LibGraalRuntimeSupport {
     void notifyLowMemoryPoint(boolean suggestFullGC);
 
     long getIsolateID();
+
+    void fatalError(String message);
 }

@@ -29,17 +29,15 @@ import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import jdk.graal.nativeimage.LibGraalRuntime;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -202,29 +200,6 @@ public class LibGraalSubstitutions {
         }
 
         @Substitute
-        public static void fatalError(String message, int delayMS) {
-            LogHandler handler = ImageSingletons.lookup(LogHandler.class);
-            if (handler instanceof FunctionPointerLogHandler) {
-                try {
-                    Thread.sleep(delayMS);
-                } catch (InterruptedException e) {
-                    // ignore
-                }
-                GraalError.shouldNotReachHere(message);
-            }
-        }
-
-        @Substitute
-        public static void startupLibGraal() {
-            VMRuntime.initialize();
-        }
-
-        @Substitute
-        public static void shutdownLibGraal() {
-            VMRuntime.shutdown();
-        }
-
-        @Substitute
         public static void invokeShutdownCallback(String cbClassName, String cbMethodName) {
             JNI.JNIEnv env = LibGraalEntryPoints.getJNIEnv();
             JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
@@ -276,7 +251,9 @@ class LibGraalClassLoaderSupplier implements Supplier<ClassLoader> {
     @Override
     public ClassLoader get() {
         ClassLoader loader = ImageSingletons.lookup(LibGraalFeature.class).loader;
-        GraalError.guarantee(loader != null, "NPE");
+        if (loader == null) {
+            LibGraalRuntime.fatalError("loader is null");
+        }
         return loader;
     }
 }

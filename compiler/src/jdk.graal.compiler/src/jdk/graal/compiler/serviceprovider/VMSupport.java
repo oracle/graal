@@ -39,28 +39,6 @@ public final class VMSupport {
     }
 
     /**
-     * Notifies that a fatal error has occurred.
-     *
-     * @param message description of the error
-     * @param delayMS milliseconds to sleep before exiting the VM
-     */
-    public static void fatalError(String message, int delayMS) {
-
-    }
-
-    /**
-     * Notifies libgraal when a Graal runtime is being started.
-     */
-    public static void startupLibGraal() {
-    }
-
-    /**
-     * Notifies libgraal when a Graal runtime is being shutdown.
-     */
-    public static void shutdownLibGraal() {
-    }
-
-    /**
      * @param cbClassName name of class declaring the call back method
      * @param cbMethodName name of the call back method
      */

@@ -76,6 +76,7 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.runtime.JVMCIBackend;
+import org.graalvm.nativeimage.VMRuntime;
 
 //JaCoCo Exclude
 
@@ -194,7 +195,9 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         this.compilerProfiler = GraalServices.loadSingle(CompilerProfiler.class, false);
 
-        VMSupport.startupLibGraal();
+        if (ImageInfo.inImageRuntimeCode()) {
+            VMRuntime.initialize();
+        }
     }
 
     /**
@@ -429,9 +432,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
                 }
                 String cbClassName = callback.substring(0, lastDot);
                 String cbMethodName = callback.substring(lastDot + 1);
+
                 VMSupport.invokeShutdownCallback(cbClassName, cbMethodName);
             }
-            VMSupport.shutdownLibGraal();
+            VMRuntime.initialize();
         }
     }
 

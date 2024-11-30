@@ -63,6 +63,11 @@ public final class RuntimeSupport implements VMRuntimeSupport, LibGraalRuntimeSu
         return ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
     }
 
+    @Override
+    public void fatalError(String message) {
+        throw VMError.shouldNotReachHere(message);
+    }
+
     @FunctionalInterface
     public interface Hook {
         void execute(boolean isFirstIsolate);

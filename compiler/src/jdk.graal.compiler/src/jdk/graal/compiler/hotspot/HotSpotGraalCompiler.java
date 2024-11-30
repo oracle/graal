@@ -64,6 +64,7 @@ import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.VMSupport;
+import jdk.graal.nativeimage.LibGraalRuntime;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
@@ -386,7 +387,13 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             } else {
                 int crashAtIsFatal = HotSpotGraalCompiler.Options.CrashAtIsFatal.getValue(options);
                 if (crashAtIsFatal != 0) {
-                    VMSupport.fatalError(crashMessage, crashAtIsFatal);
+                    try {
+                        Thread.sleep(crashAtIsFatal);
+                    } catch (InterruptedException e) {
+                        // ignore
+                    }
+                    LibGraalRuntime.fatalError(crashMessage);
+
                     // If changing this message, update the test for it in mx_vm_gate.py
                     System.out.println("CrashAtIsFatal: no fatalError function pointer installed");
                 }

@@ -75,6 +75,10 @@ public final class LibGraalRuntime {
         return ImageSingletons.lookup(LibGraalRuntimeSupport.class).getIsolateID();
     }
 
+    public static void fatalError(String message) {
+        ImageSingletons.lookup(LibGraalRuntimeSupport.class).fatalError(message);
+    }
+
     private LibGraalRuntime() {
     }
 }
