@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.fixpoint;
+package com.oracle.svm.hosted.analysis.ai.fixpoint.policy;
 
 /**
  * Represents the scope of a fixpoint iterator.
