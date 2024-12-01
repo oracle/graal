@@ -82,12 +82,6 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerUnsafeAllocated(UnresolvedConfigurationCondition condition, ConfigurationType type) {
-        VMError.guarantee(condition.equals(type.getCondition()), "condition is here part of the type");
-        type.setUnsafeAllocated();
-    }
-
-    @Override
     public void registerMethod(UnresolvedConfigurationCondition condition, boolean queriedOnly, ConfigurationType type, String methodName, List<ConfigurationType> methodParameterTypes) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         type.addMethod(methodName, ConfigurationMethod.toInternalParamsSignature(methodParameterTypes), ConfigurationMemberDeclaration.PRESENT,

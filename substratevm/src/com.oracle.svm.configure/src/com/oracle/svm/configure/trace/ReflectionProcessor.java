@@ -283,7 +283,8 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
             case "allocateInstance": {
-                configuration.getOrCreateType(condition, clazz).setUnsafeAllocated();
+                /* Reflectively-accessed types are unsafe-allocatable by default */
+                configuration.getOrCreateType(condition, clazz);
                 break;
             }
             default:
