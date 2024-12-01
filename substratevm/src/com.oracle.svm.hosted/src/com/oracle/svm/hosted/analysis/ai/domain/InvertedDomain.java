@@ -1,14 +1,14 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
 /**
- * Reverse Adaptor of an {@link AbstractDomain}.
- *
+ * Reverse Adaptor of an {@link AbstractDomain}
  * Reverses the top and bottom elements of an abstract domain
  * and also reverses meet and join operations
  */
 public final class InvertedDomain<
         Domain extends InvertedDomain<Domain>>
         extends AbstractDomain<Domain> {
+
     private final Domain domain;
 
     public InvertedDomain(Domain domain) {
