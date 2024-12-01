@@ -32,7 +32,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -40,25 +40,17 @@ import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.option.XOptions;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.libgraal.BuildTime;
 import jdk.graal.compiler.hotspot.libgraal.RunTime;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionDescriptorsMap;
-import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.options.OptionsParser;
-import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.collections.EconomicMap;
+import jdk.graal.compiler.word.Word;
 import jdk.graal.nativeimage.LibGraalRuntime;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JByteArray;
@@ -77,6 +69,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
@@ -309,45 +302,45 @@ final class LibGraalEntryPoints {
         }
     }
 
-    /**
-     * Options configuring the VM in which libgraal is running.
-     */
-    @UnknownObjectField(fullyQualifiedTypes = "org.graalvm.collections.EconomicMapImpl") //
-    static EconomicMap<String, OptionDescriptor> vmOptionDescriptors = EconomicMap.create();
+    static EconomicSet<String> explicitOptions = EconomicSet.create();
 
     static void initializeOptions(Map<String, String> settings) {
-        EconomicMap<String, String> nonXSettings = processXOptions(settings);
-        EconomicMap<OptionKey<?>, Object> vmOptionValues = OptionValues.newOptionMap();
-        Iterable<OptionDescriptors> vmOptionLoader = List.of(new OptionDescriptorsMap(vmOptionDescriptors));
-        OptionsParser.parseOptions(nonXSettings, vmOptionValues, vmOptionLoader);
-        RuntimeOptionValues.singleton().update(vmOptionValues);
-    }
-
-    /**
-     * Extracts and processes the {@link XOptions} in {@code settings}.
-     *
-     * @return the entries in {@code settings} that do not correspond to {@link XOptions}
-     */
-    private static EconomicMap<String, String> processXOptions(Map<String, String> settings) {
-        EconomicMap<String, String> nonXSettings = EconomicMap.create(settings.size());
         for (var e : settings.entrySet()) {
-            String key = e.getKey();
-            String value = e.getValue();
-            if (key.startsWith("X") && value.isEmpty()) {
-                String xarg = key.substring(1);
-                if (XOptions.setOption(xarg)) {
-                    continue;
+            String name = e.getKey();
+            String stringValue = e.getValue();
+            Object value;
+            if (name.startsWith("X") && stringValue.isEmpty()) {
+                name = name.substring(1);
+                value = stringValue;
+            } else {
+                RuntimeOptions.Descriptor desc = RuntimeOptions.getDescriptor(name);
+                if (desc == null) {
+                    throw new IllegalArgumentException("Could not find option " + name);
                 }
+                value = desc.convertValue(stringValue);
+                explicitOptions.add(name);
             }
-            nonXSettings.put(key, value);
+            try {
+                RuntimeOptions.set(name, value);
+            } catch (RuntimeException ex) {
+                throw new IllegalArgumentException(ex);
+            }
         }
-        return nonXSettings;
     }
 
     static void printOptions(PrintStream out, String prefix) {
-        RuntimeOptionValues vmOptions = RuntimeOptionValues.singleton();
-        Iterable<OptionDescriptors> vmOptionLoader = Collections.singletonList(new OptionDescriptorsMap(vmOptionDescriptors));
-        vmOptions.printHelp(vmOptionLoader, out, prefix, true);
+        Comparator<RuntimeOptions.Descriptor> comparator = Comparator.comparing(RuntimeOptions.Descriptor::name);
+        RuntimeOptions.listDescriptors().stream().sorted(comparator).forEach(d -> {
+            String assign = explicitOptions.contains(d.name()) ? ":=" : "=";
+            OptionValues.printHelp(out, prefix,
+                            d.name(),
+                            RuntimeOptions.get(d.name()),
+                            d.valueType(),
+                            assign,
+                            "[community edition]",
+                            d.help(),
+                            List.of());
+        });
     }
 }
 

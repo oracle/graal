@@ -180,6 +180,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "GRAAL_NATIVEIMAGE",
+        "sdk:JNIUTILS",
         "sdk:WORD",
         "sdk:COLLECTIONS",
         "sdk:NATIVEIMAGE",
@@ -645,6 +646,7 @@ suite = {
         "sdk:COLLECTIONS",
         "sdk:WORD",
         "sdk:NATIVEIMAGE",
+        "sdk:JNIUTILS",
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,

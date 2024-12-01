@@ -215,7 +215,7 @@ public final class LibGraalFeature implements Feature {
         ClassLoader runtimeLoader = libgraalLoader.getRuntimeClassLoader();
         access.registerObjectReplacer(obj -> obj == loader ? runtimeLoader : obj);
 
-        optionCollector = new OptionCollector(LibGraalEntryPoints.vmOptionDescriptors);
+        optionCollector = new OptionCollector();
         access.registerObjectReachabilityHandler(optionCollector::accept, OptionKey.class);
         access.registerObjectReachabilityHandler(optionCollector::accept, loadClassOrFail(OptionKey.class));
         GetJNIConfig.register(loader);
@@ -236,7 +236,7 @@ public final class LibGraalFeature implements Feature {
         /**
          * Libgraal VM options.
          */
-        private final EconomicMap<String, OptionDescriptor> vmOptionDescriptors;
+        private final EconomicMap<String, OptionDescriptor> vmOptionDescriptors = EconomicMap.create();
 
         /**
          * Libgraal compiler options info.
@@ -245,8 +245,7 @@ public final class LibGraalFeature implements Feature {
 
         private boolean sealed;
 
-        OptionCollector(EconomicMap<String, OptionDescriptor> vmOptionDescriptors) {
-            this.vmOptionDescriptors = vmOptionDescriptors;
+        OptionCollector() {
             try {
                 MethodType mt = methodType(Object.class);
                 MethodHandle mh = mhl.findStatic(buildTimeClass, "initLibgraalOptions", mt);
