@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
@@ -55,6 +56,8 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
     public void parseAndRegister(Object json, URI origin) {
         parseClassArray(asList(json, "first level of document must be an array of class descriptors"));
     }
+
+    private boolean unsafeAllocatedWarningTriggered = false;
 
     @Override
     protected void parseClass(EconomicMap<String, Object> data) {
@@ -93,6 +96,11 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
         T clazz = result.get();
         delegate.registerType(conditionResult.get(), clazz);
 
+        if (!unsafeAllocatedWarningTriggered && data.containsKey("unsafeAllocated")) {
+            unsafeAllocatedWarningTriggered = true;
+            LogUtils.warning("\"unsafeAllocated\" is deprecated in reflection-config.json. All reflectively-accessed classes can be instantiated through unsafe without the use of the flag.");
+        }
+
         registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz));
         registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz));
         registerIfNotDefault(data, false, clazz, "allDeclaredMethods", () -> delegate.registerDeclaredMethods(condition, false, clazz));
@@ -117,7 +125,6 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
             delegate.registerDeclaredFields(queryCondition, true, clazz);
             delegate.registerPublicFields(queryCondition, true, clazz);
         }
-        registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
         MapCursor<String, Object> cursor = data.getEntries();
         while (cursor.advance()) {
             String name = cursor.getKey();
