@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 
 /**
- * Abstract domain for flat lattice, also known as 3 level lattice
+ * Abstract domain for flat lattice, also known as a 3 level lattice.
  * For domains that can be represented as a constant value and have infinite ascending and descending chains.
  *         ⊤
  *       / | \

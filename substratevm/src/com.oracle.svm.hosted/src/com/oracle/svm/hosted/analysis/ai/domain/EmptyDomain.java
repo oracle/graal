@@ -3,7 +3,6 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 /**
  * Represents an empty {@link AbstractDomain}.
  * Mostly used for testing purposes.
- *
  * This class is used as a placeholder for an abstract domain that does not contain any elements.
  * It is useful in scenarios where an abstract domain is required by the framework, but no actual
  * domain-specific logic is needed.
