@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
-import com.oracle.svm.hosted.analysis.ai.fixpoint.Environment;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
 
 /*
@@ -10,5 +10,5 @@ public interface Checker {
 
     String getDescription();
 
-    CheckerResult check(Node node, Environment<?> domain);
+    CheckerResult check(Node node, AbstractStateMap<?> abstractStateMap);
 }
