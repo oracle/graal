@@ -8,30 +8,28 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-/*
-    Represents a map of elements (variables, memory locations, etc.) to a common abstract domain.
-    It is used by MapDomain to map elements to abstract domains.
+/**
+ * Represents an AbstractValue that maps keys to a common abstract domain
+ *
+ * @param <Key>    type of the Key
+ * @param <Domain> type of the derived {@link AbstractDomain}
  */
 public final class MapValue<
         Key,
         Domain extends AbstractDomain<Domain>>
         implements AbstractValue<MapValue<Key, Domain>> {
+
     private final HashMap<Key, Domain> map;
-    private final Class<Domain> domainClass;
+    private final Domain initialDomain;
 
-    public MapValue(Class<Domain> domainClass) {
+    public MapValue(Domain initialDomain) {
         this.map = new HashMap<>();
-        this.domainClass = domainClass;
+        this.initialDomain = initialDomain;
     }
 
-    public MapValue(Map<Key, Domain> map, Class<Domain> domainClass) {
-        this.map = new HashMap<>(map);
-        this.domainClass = domainClass;
-    }
-
-    public MapValue(MapValue<Key, Domain> other) {
-        this.map = new HashMap<>(other.map);
-        this.domainClass = other.domainClass;
+    public MapValue(Map<Key, Domain> other, Domain initialDomain) {
+        this.map = new HashMap<>(other);
+        this.initialDomain = initialDomain;
     }
 
     public Map<Key, Domain> getMap() {
@@ -46,7 +44,7 @@ public final class MapValue<
     @Override
     public boolean leq(MapValue<Key, Domain> other) {
         for (Map.Entry<Key, Domain> entry : map.entrySet()) {
-            if (!entry.getValue().leq(other.map.getOrDefault(entry.getKey(), AbstractDomain.createTop(domainClass)))) {
+            if (!entry.getValue().leq(other.map.getOrDefault(entry.getKey(), AbstractDomain.createTop(initialDomain)))) {
                 return false;
             }
         }
@@ -100,7 +98,7 @@ public final class MapValue<
     }
 
     public Domain getDomainAtKey(Key key) {
-        return map.getOrDefault(key, AbstractDomain.createTop(domainClass));
+        return map.getOrDefault(key, AbstractDomain.createTop(initialDomain));
     }
 
     public void insertOrAssign(Key key, Domain value) {

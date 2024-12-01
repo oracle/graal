@@ -27,20 +27,14 @@ public class LatticeDomain<
         extends AbstractDomain<Domain> {
     protected AbstractValueKind kind;
     private Value value;
-    private final Supplier<Value> valueSupplier;
 
     public LatticeDomain(Supplier<Value> valueSupplier) {
-        this.valueSupplier = valueSupplier;
         this.value = valueSupplier.get();
         this.kind = AbstractValueKind.VAL;
     }
 
-    public LatticeDomain(AbstractValueKind kind, Supplier<Value> valueSupplier) throws IllegalAccessException {
-        if (kind == AbstractValueKind.VAL) {
-            throw new IllegalAccessException("Cannot initialize with VAL kind directly");
-        }
+    public LatticeDomain(AbstractValueKind kind, Supplier<Value> valueSupplier) {
         this.kind = kind;
-        this.valueSupplier = valueSupplier;
         this.value = valueSupplier.get();
     }
 

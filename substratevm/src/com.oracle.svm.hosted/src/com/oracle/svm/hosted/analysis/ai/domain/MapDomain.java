@@ -16,28 +16,27 @@ public final class MapDomain<
         Key,
         Domain extends AbstractDomain<Domain>>
         extends LatticeDomain<MapValue<Key, Domain>, MapDomain<Key, Domain>> {
-    private final Class<Domain> domainClass;
+    private final Domain initialDomain;
 
-    public MapDomain(Class<Domain> domainClass) {
-        super(() -> new MapValue<>(domainClass));
-        this.domainClass = domainClass;
+    public MapDomain(Domain initialDomain) {
+        super(() -> new MapValue<>(initialDomain));
+        this.initialDomain = initialDomain;
     }
 
     public MapDomain(AbstractValueKind kind,
-                     Class<Domain> domainClass) throws IllegalAccessException {
-        super(kind, () -> new MapValue<>(domainClass));
-        this.domainClass = domainClass;
+                     Domain initialDomain) {
+        super(kind, () -> new MapValue<>(initialDomain));
+        this.initialDomain = initialDomain;
     }
 
-    public MapDomain(MapValue<Key, Domain> mapValue,
-                     Class<Domain> domainClass) {
+    public MapDomain(MapValue<Key, Domain> mapValue, Domain initialDomain) {
         super(() -> mapValue);
-        this.domainClass = domainClass;
+        this.initialDomain = initialDomain;
     }
 
     public MapDomain(MapDomain<Key, Domain> other) {
-        super(() -> new MapValue<>(other.getValue()));
-        this.domainClass = other.domainClass;
+        super(() -> new MapValue<>(other.initialDomain));
+        this.initialDomain = other.initialDomain.copyOf();
         this.kind = other.kind;
     }
 
@@ -51,7 +50,6 @@ public final class MapDomain<
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
         return "MapDomain{" +
                 "mapValue=" + getValue() +
                 '}';
