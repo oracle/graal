@@ -1,19 +1,15 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import java.lang.reflect.InvocationTargetException;
-
 /**
- * Basic API for Abstract Domains
- * <p>
+ * Basic API for Abstract Domains.
  * More detailed description can be found here:
  * Patrick Cousot & Radhia Cousot. Abstract interpretation: a unified lattice
  * model for static analysis of programs by construction or approximation of
  * fixpoints.
  * <p>
- * We do not use narrowing operation in our abstract interpretation
+ * NOTE: We do not use narrowing operation in our abstract interpretation.
  * All derived generic domains need to extend this class
  * Sample usage:
- * <p>
  * public final class MyCustomDomain extends AbstractDomain<MyCustomDomain> {
  * public MyCustomDomain() {}
  * public MyCustomDomain(MyCustomDomain other) {}
@@ -139,34 +135,27 @@ public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
     }
 
     /**
-     * Creates a top value of the domain using reflection
+     * Creates a top value of the domain
      *
+     * @param domain of which we want to get a top value
      * @return a new instance of the domain set to top
      */
-    public static <Derived extends AbstractDomain<Derived>> Derived createTop(Class<Derived> domainClass) {
-        try {
-            Derived instance = domainClass.getDeclaredConstructor().newInstance();
-            instance.setToTop();
-            return instance;
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                 NoSuchMethodException e) {
-            throw new RuntimeException("Failed to create top value for domain: " + domainClass.getName(), e);
-        }
+
+    public static <Domain extends AbstractDomain<Domain>> Domain createTop(Domain domain) {
+        Domain copy = domain.copyOf();
+        copy.setToTop();
+        return copy;
     }
 
     /**
-     * Creates a bot value of the domain using reflection
+     * Creates a bot value of the domain
      *
+     * @param domain of which we want to get a bot value
      * @return a new instance of the domain set to bot
      */
-    public static <Derived extends AbstractDomain<Derived>> Derived createBot(Class<Derived> domainClass) {
-        try {
-            Derived instance = domainClass.getDeclaredConstructor().newInstance();
-            instance.setToBot();
-            return instance;
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
-                 NoSuchMethodException e) {
-            throw new RuntimeException("Failed to create bot value for domain: " + domainClass.getName(), e);
-        }
+    public static <Domain extends AbstractDomain<Domain>> Domain createBot(Domain domain) {
+        Domain copy = domain.copyOf();
+        copy.setToBot();
+        return copy;
     }
 }
