@@ -14,12 +14,12 @@ import java.util.Map;
  *
  * @param <Domain> type of the derived abstract domain
  */
-public class Environment<Domain extends AbstractDomain<Domain>> {
+public class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
 
     private final Domain initialDomain;
     private final Map<Node, AbstractState<Domain>> stateMap;
 
-    public Environment(Domain initialDomain, int nodeCount) {
+    public AbstractStateMap(Domain initialDomain, int nodeCount) {
         this.initialDomain = initialDomain;
         this.stateMap = new HashMap<>(nodeCount);
     }
@@ -79,5 +79,9 @@ public class Environment<Domain extends AbstractDomain<Domain>> {
 
     public void clearPostCondition(Node node) {
         getState(node).setPostCondition(initialDomain.copyOf());
+    }
+
+    public void clear() {
+        stateMap.clear();
     }
 }

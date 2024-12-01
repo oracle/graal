@@ -8,6 +8,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
  * @param <Domain> type of the derived AbstractDomain
  */
 public class AbstractState<Domain extends AbstractDomain<Domain>> {
+
     private int visitedCount = 0;
     private Domain preCondition;
     private Domain postCondition;
