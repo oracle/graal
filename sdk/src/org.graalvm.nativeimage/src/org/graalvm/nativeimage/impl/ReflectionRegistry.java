@@ -46,10 +46,10 @@ import java.util.Arrays;
 
 public interface ReflectionRegistry {
     default void register(ConfigurationCondition condition, Class<?>... classes) {
-        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
+        Arrays.stream(classes).forEach(clazz -> register(condition, clazz));
     }
 
-    void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz);
+    void register(ConfigurationCondition condition, Class<?> clazz);
 
     void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods);
 

@@ -34,6 +34,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
+import com.oracle.svm.util.LogUtils;
 
 class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T> {
     private static final List<String> OPTIONAL_REFLECT_METADATA_ATTRS = Arrays.asList(CONDITIONAL_KEY,
@@ -55,6 +56,8 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
             parseClassArray(asList(reflectionJson, "first level of document must be an array of class descriptors"));
         }
     }
+
+    private boolean unsafeAllocatedWarningTriggered = false;
 
     @Override
     protected void parseClass(EconomicMap<String, Object> data) {
@@ -84,7 +87,7 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
 
         C queryCondition = conditionResolver.alwaysTrue();
         T clazz = result.get();
-        delegate.registerType(conditionResult.get(), clazz);
+        delegate.registerType(condition, clazz);
 
         delegate.registerDeclaredClasses(queryCondition, clazz);
         delegate.registerRecordComponents(queryCondition, clazz);
@@ -98,6 +101,10 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
         delegate.registerPublicMethods(queryCondition, true, clazz);
         delegate.registerDeclaredFields(queryCondition, true, clazz);
         delegate.registerPublicFields(queryCondition, true, clazz);
+        if (!unsafeAllocatedWarningTriggered && data.containsKey("unsafeAllocated")) {
+            unsafeAllocatedWarningTriggered = true;
+            LogUtils.warning("\"unsafeAllocated\" is deprecated in reachability-metadata.json. All reflectively-accessed classes can be instantiated through unsafe without the use of the flag.");
+        }
 
         registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz));
         registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz));
@@ -105,7 +112,6 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
         registerIfNotDefault(data, false, clazz, "allPublicMethods", () -> delegate.registerPublicMethods(condition, false, clazz));
         registerIfNotDefault(data, false, clazz, "allDeclaredFields", () -> delegate.registerDeclaredFields(condition, false, clazz));
         registerIfNotDefault(data, false, clazz, "allPublicFields", () -> delegate.registerPublicFields(condition, false, clazz));
-        registerIfNotDefault(data, false, clazz, "unsafeAllocated", () -> delegate.registerUnsafeAllocated(condition, clazz));
 
         MapCursor<String, Object> cursor = data.getEntries();
         while (cursor.advance()) {
