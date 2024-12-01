@@ -89,10 +89,10 @@ class JniProcessor extends AbstractProcessor {
             case "AllocObject":
                 expectSize(args, 0);
                 /*
-                 * AllocObject is implemented via Unsafe.allocateInstance, so we need to set the
-                 * "unsafe allocated" flag in the reflection configuration file.
+                 * AllocObject is implemented via Unsafe.allocateInstance, so we need to add the
+                 * type to the reflection configuration file.
                  */
-                configurationSet.getReflectionConfiguration().getOrCreateType(condition, clazz).setUnsafeAllocated();
+                configurationSet.getReflectionConfiguration().getOrCreateType(condition, clazz);
                 break;
             case "GetStaticMethodID":
             case "GetMethodID": {

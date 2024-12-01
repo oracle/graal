@@ -331,11 +331,11 @@ In case the field-value-access metadata is missing, the following methods will t
 
 ### Unsafe Allocation of a Type
 
-For unsafe allocation of a type via `sun.misc.Unsafe#allocateInstance(Class<?>)`, or from native code via `AllocObject(jClass)`, we must provide the following metadata:
+For unsafe allocation of a type via `sun.misc.Unsafe#allocateInstance(Class<?>)`, or from native code via `AllocObject(jClass)`, the type must be registered for reflection.
+The following metadata is sufficient:
 ```json
 {
-  "type": "FullyQualifiedUnsafeAllocatedType",
-  "unsafeAllocated": true
+  "type": "FullyQualifiedUnsafeAllocatedType"
 }
 ```
 Otherwise, these methods will throw a `MissingReflectionRegistrationError`.
@@ -360,8 +360,7 @@ The overall definition of a type in JSON can have the following values:
   "allDeclaredMethods": true,
   "allPublicMethods": true,
   "allDeclaredFields": true,
-  "allPublicFields": true,
-  "unsafeAllocated": true
+  "allPublicFields": true
 }
 ```
 
@@ -430,13 +429,12 @@ As a convenience, one can allow method invocation for groups of methods by addin
 `allDeclaredConstructors` and `allDeclaredMethods` allow calls invocations of methods declared on a given type.
 `allPublicConstructors` and `allPublicMethods` allow invocations of all public methods defined on a type and all of its supertypes.
 
-To allocate objects of a type with `AllocObject`, the metadata must be stored in the `reflection` section:
+To allocate objects of a type with `AllocObject`, the type must be registered in the `reflection` section:
 ```json
 {
   "reflection": [
     {
-      "type": "jni.accessed.Type",
-      "unsafeAllocated": true
+      "type": "jni.unsafe.allocated.Type"
     }
   ]
 }
@@ -699,8 +697,7 @@ See below is a sample reachability metadata configuration that you can use in _r
       "allDeclaredFields": true,
       "allPublicFields": true,
       "allDeclaredMethods": true,
-      "allPublicMethods": true,
-      "unsafeAllocated": true
+      "allPublicMethods": true
     }
   ],
   "jni": [
