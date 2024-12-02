@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ import org.openjdk.jmh.infra.Blackhole;
  */
 @State(Scope.Thread)
 public class ArrayFillBenchmark extends BenchmarkBase {
-    @Param({"1", "4", "16", "1024", "4096"}) private int size;
+    @Param({"16", "128", "1024", "4096"}) private int size;
 
     // Just a random index that we'll use to feed to bh.consume
     public int index_check;
