@@ -62,7 +62,7 @@ public class GR51148Test {
 
         @Specialization(guards = "arg0 == 0")
         Object s0(int arg0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared InlinedConditionProfile profile0,
                         @Cached @Exclusive InlinedConditionProfile cachedProfile0,
                         // use a number of cached profiles to force trigger a specialization data
@@ -90,7 +90,7 @@ public class GR51148Test {
         @SuppressWarnings("truffle-interpreted-performance")
         @Specialization(guards = "arg0 == 1")
         Object s1(int arg0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared InlinedConditionProfile profile0,
                         @Cached @Exclusive InlinedConditionProfile cachedProfile0,
                         @Cached @Exclusive ConditionProfile cachedProfile1,
@@ -110,7 +110,7 @@ public class GR51148Test {
         @SuppressWarnings("truffle-interpreted-performance")
         @Specialization(guards = "arg0 == 2")
         Object s2(int arg0,
-                        @Bind("this") Node node,
+                        @Bind Node node,
                         @Cached @Shared InlinedConditionProfile profile0,
                         @Cached @Exclusive InlinedConditionProfile cachedProfile0,
                         @Cached @Exclusive ConditionProfile cachedProfile1,

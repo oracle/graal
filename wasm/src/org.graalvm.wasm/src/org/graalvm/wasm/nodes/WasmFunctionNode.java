@@ -4560,7 +4560,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         if (unresolvedCallNode instanceof WasmCallStubNode) {
             final WasmFunction function = ((WasmCallStubNode) unresolvedCallNode).function();
             final CallTarget target = instance.target(function.index());
-            callNodes[callNodeIndex] = WasmDirectCallNode.create(target, bytecodeOffset);
+            callNodes[callNodeIndex] = insert(WasmDirectCallNode.create(target, bytecodeOffset));
         } else {
             assert unresolvedCallNode instanceof WasmIndirectCallNode : unresolvedCallNode;
         }

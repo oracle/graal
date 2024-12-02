@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.java.compiler;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -423,6 +424,36 @@ public class JDTCompiler extends AbstractCompiler {
             return true;
         } else {
             return false;
+        }
+    }
+
+    @Override
+    public File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element) {
+
+        boolean isIde = false;
+        Class<?> c = processingEnv.getClass();
+        while (c != Object.class) {
+            if (c.getSimpleName().equals("IdeProcessingEnvImpl")) {
+                isIde = true;
+                break;
+            }
+            c = c.getSuperclass();
+        }
+
+        try {
+            if (isIde) {
+                // the getEnclosingIFile is only available in the IDE
+                Object iFile = method(processingEnv, "getEnclosingIFile", new Class<?>[]{Element.class},
+                                element);
+                return (File) method(method(iFile, "getRawLocation"), "toFile");
+            } else {
+                // in IDE, this only returns the project-relative path
+                Object binding = field(element, "_binding");
+                char[] fileName = (char[]) field(binding, "fileName");
+                return new File(new String(fileName));
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new UnsupportedOperationException(e);
         }
     }
 }

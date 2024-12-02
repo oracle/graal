@@ -48,7 +48,6 @@ public abstract class CompositeValue extends Value {
 
     public CompositeValue(ValueKind<?> kind) {
         super(kind);
-        assert CompositeValueClass.get(getClass()) != null;
     }
 
     /**
@@ -64,10 +63,11 @@ public abstract class CompositeValue extends Value {
 
     protected abstract void visitEachComponent(LIRInstruction inst, LIRInstruction.OperandMode mode, InstructionValueConsumer proc);
 
+    /**
+     * Must be implemented by subclasses.
+     */
     @Override
-    public String toString() {
-        return CompositeValueClass.format(this);
-    }
+    public abstract String toString();
 
     @Override
     public int hashCode() {

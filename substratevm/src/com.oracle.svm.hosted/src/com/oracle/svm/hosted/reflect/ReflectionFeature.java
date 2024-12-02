@@ -63,6 +63,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.hub.ClassForNameSupport;
+import com.oracle.svm.core.hub.ClassForNameSupportFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -72,7 +73,6 @@ import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.ClassForNameSupportFeature;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
@@ -260,7 +260,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         return expandSignatureMethods.computeIfAbsent(new SignatureKey(member, callerSensitiveAdapter), signatureKey -> {
             ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(callerSensitiveAdapter ? invokePrototypeForCallerSensitiveAdapter : invokePrototype).getWrapped();
             return asMethodPointer(new ReflectionExpandSignatureMethod("invoke_" + signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind,
-                            signatureKey.callerSensitiveAdapter));
+                            signatureKey.callerSensitiveAdapter, member));
         });
     }
 

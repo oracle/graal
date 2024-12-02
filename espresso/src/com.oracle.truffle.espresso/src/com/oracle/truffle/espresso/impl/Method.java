@@ -1300,11 +1300,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private static final class Continuum {
+        Continuum(LivenessAnalysis livenessAnalysis) {
+            this.livenessAnalysis = livenessAnalysis;
+        }
+
         private record ContinuumData(int bci, CallTarget continuable, EspressoFrameDescriptor frameDescriptor) {
         }
 
         private static final ContinuumData[] EMPTY_DATA = new ContinuumData[0];
 
+        // Force Liveness Analysis for all method in a continuation frame record.
+        private final LivenessAnalysis livenessAnalysis;
         @CompilationFinal(dimensions = 1) //
         private volatile ContinuumData[] continuumData = EMPTY_DATA;
 
@@ -1326,7 +1332,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
                 int prevSize = continuumData.length;
                 localData = Arrays.copyOf(continuumData, prevSize + 1);
-                EspressoFrameDescriptor fd = FrameAnalysis.apply(mv, bci);
+                EspressoFrameDescriptor fd = FrameAnalysis.apply(mv, bci, livenessAnalysis);
                 CallTarget ct = EspressoRootNode.createContinuable(mv, bci, fd).getCallTarget();
                 ContinuumData data = new ContinuumData(bci, ct, fd);
                 localData[prevSize] = data;
@@ -1544,9 +1550,19 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private Continuum getContinuum() {
             if (continuum == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
+                // Compute LA out of lock.
+                LivenessAnalysis la = getLivenessAnalysis();
+                if (la.isEmpty()) {
+                    /*
+                     * Ensure we compute and use a full liveness analysis for all method in the
+                     * continuation records, so that the frame capture prunes as much unneeded data
+                     * as possible in order to make the records slimmer.
+                     */
+                    la = LivenessAnalysis.analyze(EspressoOptions.LivenessAnalysisMode.ALL, this);
+                }
                 synchronized (this) {
                     if (continuum == null) {
-                        Continuum c = new Continuum();
+                        Continuum c = new Continuum(la);
                         VarHandle.releaseFence();
                         continuum = c;
                     }
@@ -1920,7 +1936,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 synchronized (this) {
                     result = this.livenessAnalysis;
                     if (result == null) {
-                        this.livenessAnalysis = result = LivenessAnalysis.analyze(this);
+                        this.livenessAnalysis = result = LivenessAnalysis.analyze(getLanguage().getLivenessAnalysisMode(), this);
                     }
                 }
             }

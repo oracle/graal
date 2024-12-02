@@ -27,6 +27,8 @@ package com.oracle.svm.core.jdk;
 
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.svm.core.util.TimeUtils;
+
 /**
  * RandomAccessors initializes a seeder at run time, on first access. The mechanism is used by both
  * SplittableRandomAccessors and ThreadLocalRandomAccessors since they share the same seeder
@@ -76,7 +78,7 @@ public abstract class RandomAccessors {
                 seed = (seed << 8) | (seedBytes[i] & 0xffL);
             }
         } else {
-            seed = mix64(System.currentTimeMillis()) ^ mix64(System.nanoTime());
+            seed = mix64(TimeUtils.currentTimeMillis()) ^ mix64(System.nanoTime());
         }
 
         result = new AtomicLong(seed);

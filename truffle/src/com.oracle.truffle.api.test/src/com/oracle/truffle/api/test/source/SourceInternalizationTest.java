@@ -48,7 +48,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -64,8 +63,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Assert;
-import org.junit.Assume;
+import com.oracle.truffle.api.test.SubprocessTestUtils;
+import org.graalvm.nativeimage.ImageInfo;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -219,27 +218,25 @@ public class SourceInternalizationTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testSourceInterning() {
-        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+    public void testSourceInterning() throws IOException, InterruptedException {
+        Runnable action = () -> {
+            byte[] bytes = new byte[16 * 1024 * 1024];
+            byte byteValue = (byte) 'a';
+            Arrays.fill(bytes, byteValue);
+            String testString = new String(bytes); // big string
 
-        byte[] bytes = new byte[16 * 1024 * 1024];
-        byte byteValue = (byte) 'a';
-        Arrays.fill(bytes, byteValue);
-        String testString = new String(bytes); // big string
+            List<WeakReference<Object>> sources = new ArrayList<>();
+            for (int i = 0; i < GCUtils.GC_TEST_ITERATIONS; i++) {
+                sources.add(new WeakReference<>(createTestSource(testString, i)));
+            }
 
-        ReferenceQueue<Object> queue = new ReferenceQueue<>();
-        List<WeakReference<Object>> sources = new ArrayList<>();
-        for (int i = 0; i < GCUtils.GC_TEST_ITERATIONS; i++) {
-            sources.add(new WeakReference<>(createTestSource(testString, i), queue));
-            System.gc();
+            GCUtils.assertGc("Sources not referenced from a language must be collected", sources);
+        };
+        if (ImageInfo.inImageCode()) {
+            action.run();
+        } else {
+            SubprocessTestUtils.newBuilder(SourceInternalizationTest.class, action).run();
         }
-
-        int refsCleared = 0;
-        while (queue.poll() != null) {
-            refsCleared++;
-        }
-        // we need to have any refs cleared for this test to have any value
-        Assert.assertTrue(refsCleared > 0);
     }
 
     private static Object createTestSource(String testString, int i) {

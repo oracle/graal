@@ -1030,7 +1030,7 @@ public final class Deoptimizer {
     }
 
     private static void printDeoptimizedFrame(Log log, Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult sourceFrameInfo, boolean printOnlyTopFrames) {
-        log.string("[Deoptimization of frame (").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s)").newline();
+        log.string("[Deoptimization of frame (").rational(Isolates.getUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s)").newline();
 
         SubstrateInstalledCode installedCode = deoptimizedFrame.getSourceInstalledCode();
         if (installedCode != null) {

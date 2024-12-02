@@ -291,7 +291,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
         NodeConstants nodeConstants = new NodeConstants();
         try {
-            type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, constants, nodeConstants).create(type);
+            type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, constants, nodeConstants, NodeGeneratorPlugs.DEFAULT).create(type);
         } catch (Throwable t) {
             Exception e = new Exception("Generating node " + node.getNodeId());
             e.setStackTrace(new StackTraceElement[0]);

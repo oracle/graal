@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -53,7 +54,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.core.graal.nodes.LoadImageSingletonNode;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
@@ -81,7 +81,9 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.InvocationPluginHelper;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
@@ -101,7 +103,8 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
     }
 
     /*
-     * Cache for objects created by the calls to getAllLayers within the application layer.
+     * Cache for objects created by the calls to getAllLayers. This cache is only used in the
+     * application layer.
      */
     private final Map<Class<?>, JavaConstant> keyToMultiLayerConstantMap = new ConcurrentHashMap<>();
     /*
@@ -116,29 +119,43 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
     @Override
     public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        BiFunction<GraphBuilderContext, ValueNode, ValueNode> loadMultiLayeredImageSingleton = (b, classNode) -> {
+            Class<?> key = b.getSnippetReflection().asObject(Class.class, classNode.asJavaConstant());
+
+            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                /*
+                 * Load reference to the proper slot within the cross-layer singleton table.
+                 */
+                return LoadImageSingletonFactory.loadLayeredImageSingleton(key, b.getMetaAccess());
+            } else {
+                /*
+                 * Can directly load the array of all objects
+                 */
+                JavaConstant multiLayerArray = keyToMultiLayerConstantMap.computeIfAbsent(key,
+                                k -> createMultiLayerArray(key, (AnalysisType) b.getMetaAccess().lookupJavaType(k.arrayType()), b.getSnippetReflection()));
+                return ConstantNode.forConstant(multiLayerArray, 1, true, b.getMetaAccess());
+            }
+        };
+
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), MultiLayeredImageSingleton.class);
         r.register(new InvocationPlugin.RequiredInvocationPlugin("getAllLayers", Class.class) {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
+                b.addPush(JavaKind.Object, loadMultiLayeredImageSingleton.apply(b, classNode));
+                return true;
+            }
+        });
 
-                Class<?> key = b.getSnippetReflection().asObject(Class.class, classNode.asJavaConstant());
+        r.register(new InvocationPlugin.RequiredInvocationPlugin("getForLayer", Class.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode, ValueNode indexNode) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode layerArray = b.add(loadMultiLayeredImageSingleton.apply(b, classNode));
 
-                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    /*
-                     * Load reference to the proper slot within the cross-layer singleton table.
-                     */
-                    LoadImageSingletonNode layeredSingleton = LoadImageSingletonFactory.loadLayeredImageSingleton(key, b.getMetaAccess());
-                    b.addPush(JavaKind.Object, layeredSingleton);
-                    return true;
-                } else {
-                    /*
-                     * Can directly load the array of all objects
-                     */
-                    JavaConstant multiLayerArray = keyToMultiLayerConstantMap.computeIfAbsent(key,
-                                    k -> createMultiLayerArray(key, (AnalysisType) b.getMetaAccess().lookupJavaType(k.arrayType()), b.getSnippetReflection()));
-                    var node = ConstantNode.forConstant(multiLayerArray, b.getMetaAccess());
-                    b.addPush(JavaKind.Object, node);
+                    helper.intrinsicArrayRangeCheck(layerArray, indexNode, ConstantNode.forInt(1));
+                    var arrayElem = LoadIndexedNode.create(null, layerArray, indexNode, null, JavaKind.Object, b.getMetaAccess(), b.getConstantReflection());
+                    helper.emitFinalReturn(JavaKind.Object, arrayElem);
                     return true;
                 }
             }

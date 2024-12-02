@@ -1278,7 +1278,7 @@ public abstract class TruffleLanguage<C> {
      * with. If the thread is stored in the context it must be referenced using
      * {@link WeakReference} to avoid leaking thread objects.
      * <p>
-     * The {@link Thread#currentThread() current thread} may differ from the initialized thread.
+     * The {@link Thread#currentThread() current thread} is equal to the initialized thread.
      * <p>
      * If this method throws an {@link com.oracle.truffle.api.exception.AbstractTruffleException}
      * the exception interop messages may be executed without a context being entered.

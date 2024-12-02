@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
@@ -48,7 +47,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.Word;
@@ -137,8 +135,9 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @AlwaysInline(INLINE_INITIALIZE_HEADER_INIT_REASON)
     @Override
-    public void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub, boolean isArrayLike) {
+    protected void initializeObjectHeader(Pointer objectPointer, Word encodedHub, boolean isArrayLike, MemWriter writer) {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         boolean isIdentityHashFieldInObjectHeader = ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset() && isArrayLike;
         if (getReferenceSize() == Integer.BYTES) {
@@ -146,17 +145,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             if (isIdentityHashFieldInObjectHeader) {
                 /* Use a single 64-bit write to initialize the hub and the identity hashcode. */
                 dynamicAssert(ol.getObjectHeaderIdentityHashOffset() == getHubOffset() + 4, "assumed layout to optimize initializing write");
-                objectPointer.writeLong(getHubOffset(), encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
+                writer.writeLong(objectPointer, getHubOffset(), encodedHub.rawValue());
             } else {
-                objectPointer.writeInt(getHubOffset(), (int) encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
+                writer.writeInt(objectPointer, getHubOffset(), (int) encodedHub.rawValue());
             }
         } else {
-            objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
+            writer.writeWord(objectPointer, getHubOffset(), encodedHub);
             if (isIdentityHashFieldInObjectHeader) {
-                objectPointer.writeInt(ol.getObjectHeaderIdentityHashOffset(), 0, LocationIdentity.INIT_LOCATION);
+                writer.writeInt(objectPointer, ol.getObjectHeaderIdentityHashOffset(), 0);
             }
         }
-        MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.INIT_LOCATION);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

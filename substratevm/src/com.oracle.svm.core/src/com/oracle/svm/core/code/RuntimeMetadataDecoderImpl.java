@@ -96,7 +96,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
     public static final int CLASS_ACCESS_FLAGS_MASK = 0x1FFF;
 
     static byte[] getEncoding(DynamicHub hub) {
-        return MultiLayeredImageSingleton.getAllLayers(RuntimeMetadataEncoding.class)[hub.getLayerId()].getEncoding();
+        return MultiLayeredImageSingleton.getForLayer(RuntimeMetadataEncoding.class, hub.getLayerId()).getEncoding();
     }
 
     static List<byte[]> getEncodings() {

@@ -442,9 +442,9 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             }
             args.add("expectedObject", expected);
 
-            args.addConst("doLoad", barrier.doLoad());
-            args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
-            args.addConst("counters", counters);
+            args.add("doLoad", barrier.doLoad());
+            args.add("traceStartCycle", traceStartCycle(barrier.graph()));
+            args.add("counters", counters);
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -462,8 +462,8 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             }
 
             args.add("expectedObject", expected);
-            args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
-            args.addConst("counters", counters);
+            args.add("traceStartCycle", traceStartCycle(barrier.graph()));
+            args.add("counters", counters);
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -490,9 +490,9 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             }
             args.add("value", value);
 
-            args.addConst("usePrecise", barrier.usePrecise());
-            args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
-            args.addConst("counters", counters);
+            args.add("usePrecise", barrier.usePrecise());
+            args.add("traceStartCycle", traceStartCycle(barrier.graph()));
+            args.add("counters", counters);
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -501,7 +501,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());
-            args.addConst("elementStride", barrier.getElementStride());
+            args.add("elementStride", barrier.getElementStride());
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -510,7 +510,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             SnippetTemplate.Arguments args = new SnippetTemplate.Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
             args.add("length", barrier.getLengthAsLong());
-            args.addConst("elementStride", barrier.getElementStride());
+            args.add("elementStride", barrier.getElementStride());
 
             templates.template(tool, barrier, args).instantiate(tool.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
         }

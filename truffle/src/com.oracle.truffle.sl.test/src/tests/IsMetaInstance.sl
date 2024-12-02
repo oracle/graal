@@ -23,12 +23,12 @@ function main() {
   boolean = typeOf(42 == 42);
   object = typeOf(new());
   f = typeOf(null);
-  null = typeOf(null());
+  null_type = typeOf(null());
   
   printTypes(number);
   printTypes(string);
   printTypes(boolean);
   printTypes(object);
   printTypes(f);
-  printTypes(null);
+  printTypes(null_type);
 }

@@ -103,6 +103,7 @@ class SVMUtil:
     compression_shift = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_compression_shift')), 0, gdb.error)
     reserved_bits_mask = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_reserved_bits_mask')), 0, gdb.error)
     object_alignment = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_object_alignment')), 0, gdb.error)
+    heap_base_regnum = try_or_else(lambda: int(gdb.parse_and_eval('(int)__svm_heap_base_regnum')), 0, gdb.error)
 
     string_type = gdb.lookup_type("java.lang.String")
     enum_type = gdb.lookup_type("java.lang.Enum")
@@ -124,38 +125,12 @@ class SVMUtil:
     deopt_stub_adr = 0
 
     @classmethod
-    def get_architecture(cls) -> str:
+    def get_heap_base(cls) -> gdb.Value:
         try:
-            arch_name = gdb.selected_frame().architecture().name()
+            return gdb.selected_frame().read_register(cls.heap_base_regnum)
         except gdb.error:
             # no frame available
-            arch_name = ""
-
-        if "x86-64" in arch_name:
-            return "amd64"
-        elif "aarch64" in arch_name:
-            return "arm64"
-        else:
-            return arch_name
-
-    @classmethod
-    def get_isolate_thread(cls) -> gdb.Value:
-        arch = cls.get_architecture()
-        if arch == "amd64":
-            return gdb.selected_frame().read_register('r15')
-        elif arch == "arm64":
-            return gdb.selected_frame().read_register('r28')
-        else:
             return cls.null
-
-    @classmethod
-    def get_heap_base(cls) -> gdb.Value:
-        arch = cls.get_architecture()
-        if arch == "amd64":
-            return gdb.selected_frame().read_register('r14')
-        elif arch == "arm64":
-            return gdb.selected_frame().read_register('r29')
-        return cls.null
 
     @classmethod
     def is_null(cls, obj: gdb.Value) -> bool:
@@ -211,7 +186,7 @@ class SVMUtil:
             compressed_oop -= int(SVMUtil.get_heap_base())
             assert compression_shift >= 0
             compressed_oop = compressed_oop >> compression_shift
-        if is_hub:
+        if is_hub and num_reserved_bits != 0:
             assert compression_shift >= 0
             compressed_oop = compressed_oop << compression_shift
             assert num_alignment_bits >= 0

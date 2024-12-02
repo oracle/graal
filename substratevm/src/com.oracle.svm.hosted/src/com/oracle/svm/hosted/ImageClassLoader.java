@@ -408,8 +408,8 @@ public final class ImageClassLoader {
         return classLoaderSupport.getClassLoader();
     }
 
-    public Optional<String> getMainClassFromModule(Object module) {
-        return classLoaderSupport.getMainClassFromModule(module);
+    public static Optional<String> getMainClassFromModule(Object module) {
+        return NativeImageClassLoaderSupport.getMainClassFromModule(module);
     }
 
     public Optional<Module> findModule(String moduleName) {

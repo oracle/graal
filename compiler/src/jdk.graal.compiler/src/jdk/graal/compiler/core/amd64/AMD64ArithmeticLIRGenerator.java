@@ -98,6 +98,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64SIMDInstructionEncoding;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64Shift;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEMROp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSERMIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexFloatCompareOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMVOp;
@@ -1539,9 +1540,9 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         Variable result = getLIRGen().newVariable(LIRKind.combine(value));
         assert ((AMD64Kind) value.getPlatformKind()).isXMM();
         if (value.getPlatformKind() == AMD64Kind.SINGLE) {
-            getLIRGen().append(new AMD64Binary.RMIOp(AMD64RMIOp.ROUNDSS, OperandSize.PD, result, asAllocatable(value), mode.encoding));
+            getLIRGen().append(new AMD64Binary.RMIOp(SSERMIOp.ROUNDSS, OperandSize.PD, result, asAllocatable(value), mode.encoding));
         } else {
-            getLIRGen().append(new AMD64Binary.RMIOp(AMD64RMIOp.ROUNDSD, OperandSize.PD, result, asAllocatable(value), mode.encoding));
+            getLIRGen().append(new AMD64Binary.RMIOp(SSERMIOp.ROUNDSD, OperandSize.PD, result, asAllocatable(value), mode.encoding));
         }
         return result;
     }

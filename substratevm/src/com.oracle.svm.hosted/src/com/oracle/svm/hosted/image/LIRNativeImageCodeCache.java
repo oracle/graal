@@ -40,6 +40,7 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
@@ -336,6 +337,10 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
         // in each compilation result...
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+
+            /* Ensure a full watchdog interval is available per method */
+            DeadlockWatchdog.singleton().recordActivity();
+
             HostedMethod method = pair.getLeft();
             CompilationResult compilation = pair.getRight();
 

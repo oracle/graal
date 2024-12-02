@@ -515,8 +515,8 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
             long deoptFrameSize = StackOverflowCheckImpl.computeDeoptFrameSize(graph);
 
             Arguments args = new Arguments(stackOverflowCheck, graph.getGuardsStage(), tool.getLoweringStage());
-            args.addConst("mustNotAllocate", mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(graph.method()));
-            args.addConst("hasDeoptFrameSize", deoptFrameSize > 0);
+            args.add("mustNotAllocate", mustNotAllocatePredicate != null && mustNotAllocatePredicate.test(graph.method()));
+            args.add("hasDeoptFrameSize", deoptFrameSize > 0);
             args.add("deoptFrameSize", deoptFrameSize);
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }

@@ -45,6 +45,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -383,6 +385,63 @@ public class RootNodeTest {
                 }
             }
         }
+    }
+
+    static final class TestFindInstrumentableRootNode extends RootNode {
+
+        Node instrumentableNode;
+
+        TestFindInstrumentableRootNode(Node instrumentableNode) {
+            super(null);
+            this.instrumentableNode = instrumentableNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            assertStacks();
+            return null;
+        }
+
+        @TruffleBoundary
+        private void assertStacks() {
+            Truffle.getRuntime().iterateFrames((e) -> {
+                if (e.getCallTarget() == getCallTarget()) {
+                    assertSame(instrumentableNode, e.getInstrumentableCallNode());
+                }
+                return e;
+            });
+
+            boolean found = false;
+            List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(new Exception());
+            for (TruffleStackTraceElement e : stackTrace) {
+                if (e.getTarget() == getCallTarget()) {
+                    assertSame(instrumentableNode, e.getInstrumentableLocation());
+                    found = true;
+                }
+            }
+            assertTrue(found);
+        }
+
+        @Override
+        protected Node findInstrumentableCallNode(Node callNode, Frame frame, int bytecodeIndex) {
+            return instrumentableNode;
+        }
+
+    }
+
+    @Test
+    public void testGetInstrumentableNode() {
+        new TestFindInstrumentableRootNode(null).getCallTarget().call();
+        Node node = new Node() {
+        };
+        RootNode root = new TestFindInstrumentableRootNode(node);
+        root.insert(node);
+        root.getCallTarget().call();
+
+        node = new Node() {
+        };
+        RootNode invalidRoot = new TestFindInstrumentableRootNode(node);
+        assertThrows(AssertionError.class, () -> invalidRoot.getCallTarget().call());
     }
 
     private static TruffleStackTraceElement getStackTraceElementFor(Throwable t, RootNode rootNode) {

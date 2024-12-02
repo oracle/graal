@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,7 +99,7 @@ public final class NodeInlineTest extends InteropLibraryBaseTest {
 
             @Specialization(guards = {"compareNode.execute(node, key, cachedKey)"}, limit = "LIMIT")
             static boolean doCached(@SuppressWarnings("unused") Hash receiver, @SuppressWarnings("unused") Object key,
-                            @SuppressWarnings("unused") @Bind("$node") Node node,
+                            @SuppressWarnings("unused") @Bind Node node,
                             @SuppressWarnings("unused") @Cached("key") Object cachedKey,
                             @SuppressWarnings("unused") @Exclusive @Cached CompareInlineNode compareNode,
                             @Cached("doGeneric(receiver, key)") boolean cachedReadable) {
@@ -108,7 +108,7 @@ public final class NodeInlineTest extends InteropLibraryBaseTest {
 
             @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
             static boolean doGeneric(@SuppressWarnings("unused") Hash receiver, Object key,
-                            @Bind("$node") Node node,
+                            @Bind Node node,
                             @Shared("keyLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary keyLibrary,
                             @Exclusive @Cached InlinedBranchProfile seenLong,
                             @Exclusive @Cached InlinedBranchProfile seenDouble,
@@ -146,7 +146,7 @@ public final class NodeInlineTest extends InteropLibraryBaseTest {
 
             @Specialization(guards = {"compareNode.execute(node, key, cachedKey)"}, limit = "LIMIT")
             static boolean doCached(@SuppressWarnings("unused") Hash receiver, @SuppressWarnings("unused") Object key,
-                            @SuppressWarnings("unused") @Bind("$node") Node node,
+                            @SuppressWarnings("unused") @Bind Node node,
                             @SuppressWarnings("unused") @Cached("key") Object cachedKey,
                             @SuppressWarnings("unused") @Exclusive @Cached CompareInlineNode compareNode,
                             @Cached("doGeneric(receiver, key)") boolean cachedInsertable) {
@@ -155,7 +155,7 @@ public final class NodeInlineTest extends InteropLibraryBaseTest {
 
             @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
             static boolean doGeneric(@SuppressWarnings("unused") Hash receiver, Object key,
-                            @Bind("$node") Node node,
+                            @Bind Node node,
                             @Shared("keyLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary keyLibrary,
                             @Exclusive @Cached InlinedBranchProfile seenLong,
                             @Exclusive @Cached InlinedBranchProfile seenDouble,
@@ -188,7 +188,7 @@ public final class NodeInlineTest extends InteropLibraryBaseTest {
 
             @Specialization(guards = {"compareNode.execute(node, key, cachedKey)"}, limit = "LIMIT")
             static boolean doCached(@SuppressWarnings("unused") Hash receiver, @SuppressWarnings("unused") Object key,
-                            @SuppressWarnings("unused") @Bind("$node") Node node,
+                            @SuppressWarnings("unused") @Bind Node node,
                             @SuppressWarnings("unused") @Cached("key") Object cachedKey,
                             @SuppressWarnings("unused") @Exclusive @Cached CompareInlineNode compareNode,
                             @Cached("doGeneric(receiver, key)") boolean cachedModifiable) {
@@ -197,7 +197,7 @@ public final class NodeInlineTest extends InteropLibraryBaseTest {
 
             @Specialization(replaces = "doCached", guards = "!receiver.isNull()")
             static boolean doGeneric(@SuppressWarnings("unused") Hash receiver, Object key,
-                            @Bind("$node") Node node,
+                            @Bind Node node,
                             @Shared("keyLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary keyLibrary,
                             @Exclusive @Cached InlinedBranchProfile seenLong,
                             @Exclusive @Cached InlinedBranchProfile seenDouble,

@@ -30,6 +30,18 @@ import static jdk.graal.compiler.nodes.UnreachableNode.unreachable;
 
 import java.util.Map;
 
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+import org.graalvm.word.Pointer;
+
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.snippets.ExceptionUnwind;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -45,17 +57,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate;
 import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
 import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-import org.graalvm.word.Pointer;
-
-import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
-import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.snippets.ExceptionUnwind;
 
 public final class ExceptionSnippets extends SubstrateTemplates implements Snippets {
 
@@ -100,7 +101,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
             }
             Arguments args = new Arguments(unwind, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("exception", node.exception());
-            args.addConst("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());
+            args.add("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }

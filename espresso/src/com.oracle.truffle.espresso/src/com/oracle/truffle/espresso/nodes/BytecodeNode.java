@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STRICT;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ACONST_NULL;
@@ -305,19 +304,16 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
+import com.oracle.truffle.espresso.bytecode.MapperBCI;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.bytecode.MapperBCI;
-import com.oracle.truffle.espresso.constantpool.CallSiteLink;
-import com.oracle.truffle.espresso.constantpool.Resolution;
-import com.oracle.truffle.espresso.constantpool.ResolvedDynamicConstant;
-import com.oracle.truffle.espresso.constantpool.ResolvedWithInvokerClassMethodRefConstant;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.bytecode.VolatileArrayAccess;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
@@ -332,6 +328,12 @@ import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.constantpool.CallSiteLink;
+import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.constantpool.ResolvedDynamicConstant;
+import com.oracle.truffle.espresso.constantpool.ResolvedWithInvokerClassMethodRefConstant;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -339,8 +341,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.ExceptionHandler;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
@@ -348,7 +348,6 @@ import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
-import com.oracle.truffle.espresso.classfile.bytecode.VolatileArrayAccess;
 import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayLoadQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ByteArrayStoreQuickNode;
@@ -377,9 +376,9 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
-import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
 import com.oracle.truffle.espresso.resolver.CallKind;
 import com.oracle.truffle.espresso.resolver.CallSiteType;
+import com.oracle.truffle.espresso.resolver.FieldAccessType;
 import com.oracle.truffle.espresso.resolver.LinkResolver;
 import com.oracle.truffle.espresso.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -740,7 +739,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
         boolean skipEntryInstrumentation = isOSR;
-        boolean skipLivenessActions = false;
+        boolean skipLivenessActions = instrument != null;
         boolean shouldResumeContinuation = resumeContinuation;
 
         final Counter loopCount = new Counter();
@@ -1308,17 +1307,28 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         curBCI = returnValueBci;
                         continue loop;
                     }
-                    // @formatter:off
                     // TODO(peterssen): Order shuffled.
-                    case GETSTATIC : // fall through
-                    case GETFIELD  : top += getField(frame, top,
-                                     resolveField(curOpcode, /* Quickenable -> read from original code for thread safety */ readOriginalCPI(curBCI)),
-                                     curBCI, curOpcode, statementIndex); break;
-                    case PUTSTATIC : // fall through
-                    case PUTFIELD  : top += putField(frame, top,
-                                     resolveField(curOpcode, /* Quickenable -> read from original code for thread safety */ readOriginalCPI(curBCI)),
-                                     curBCI, curOpcode, statementIndex); break;
-
+                    case GETSTATIC:
+                        top += getField(frame, top,
+                                        resolveField(curOpcode, /*- Quickenable -> read from original code for thread safety */ readOriginalCPI(curBCI)),
+                                        curBCI, curOpcode, statementIndex, FieldAccessType.GetStatic);
+                        break;
+                    case GETFIELD:
+                        top += getField(frame, top,
+                                        resolveField(curOpcode, /*- Quickenable -> read from original code for thread safety */ readOriginalCPI(curBCI)),
+                                        curBCI, curOpcode, statementIndex, FieldAccessType.GetInstance);
+                        break;
+                    case PUTSTATIC:
+                        top += putField(frame, top,
+                                        resolveField(curOpcode, /*- Quickenable -> read from original code for thread safety */ readOriginalCPI(curBCI)),
+                                        curBCI, curOpcode, statementIndex, FieldAccessType.PutStatic);
+                        break;
+                    case PUTFIELD:
+                        top += putField(frame, top,
+                                        resolveField(curOpcode, /*- Quickenable -> read from original code for thread safety */ readOriginalCPI(curBCI)),
+                                        curBCI, curOpcode, statementIndex, FieldAccessType.PutInstance);
+                        break;
+                    // @formatter:off
                     case INVOKEVIRTUAL: // fall through
                     case INVOKESPECIAL: // fall through
                     case INVOKESTATIC:  // fall through
@@ -2691,72 +2701,19 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int putField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
+    private int putField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex, FieldAccessType mode) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
         CompilerAsserts.partialEvaluationConstant(field);
+        CompilerAsserts.partialEvaluationConstant(mode);
 
-        /*
-         * PUTFIELD: Otherwise, if the resolved field is a static field, putfield throws an
-         * IncompatibleClassChangeError.
-         *
-         * PUTSTATIC: Otherwise, if the resolved field is not a static (class) field or an interface
-         * field, putstatic throws an IncompatibleClassChangeError.
-         */
-        if (field.isStatic() != (opcode == PUTSTATIC)) {
-            enterLinkageExceptionProfile();
-            throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
-                            "Expected %s field %s.%s",
-                            (opcode == PUTSTATIC) ? "static" : "non-static",
-                            field.getDeclaringKlass().getName(),
-                            field.getName());
-        }
-
-        /*
-         * PUTFIELD: Otherwise, if the field is final, it must be declared in the current class, and
-         * the instruction must occur in an instance initialization method (<init>) of the current
-         * class. Otherwise, an IllegalAccessError is thrown.
-         *
-         * PUTSTATIC: Otherwise, if the field is final, it must be declared in the current class,
-         * and the instruction must occur in the <clinit> method of the current class. Otherwise, an
-         * IllegalAccessError is thrown.
-         */
-        if (field.isFinalFlagSet()) {
-            if (field.getDeclaringKlass() != getDeclaringKlass()) {
-                enterLinkageExceptionProfile();
-                throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
-                                "Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
-                                (opcode == PUTSTATIC) ? "static" : "non-static",
-                                field.getDeclaringKlass().getName(),
-                                field.getName(),
-                                getDeclaringKlass().getName());
-            }
-
-            boolean enforceInitializerCheck = (getLanguage().getSpecComplianceMode() == STRICT) ||
-                            // HotSpot enforces this only for >= Java 9 (v53) .class files.
-                            field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
-
-            if (enforceInitializerCheck &&
-                            ((opcode == PUTFIELD && !getMethod().isConstructor()) ||
-                                            (opcode == PUTSTATIC && !getMethod().isClassInitializer()))) {
-                enterLinkageExceptionProfile();
-                throw throwBoundary(getMethod().getMeta().java_lang_IllegalAccessError,
-                                "Update to %s final field %s.%s attempted from a different method (%s) than the initializer method %s ",
-                                (opcode == PUTSTATIC) ? "static" : "non-static",
-                                field.getDeclaringKlass().getName(),
-                                field.getName(),
-                                getMethod().getName(),
-                                (opcode == PUTSTATIC) ? "<clinit>" : "<init>");
-            }
-        }
-
-        assert field.isStatic() == (opcode == PUTSTATIC);
+        LinkResolver.resolveFieldAccess(getMeta(), getDeclaringKlass(), getMethod(), field, mode);
 
         byte typeHeader = field.getType().byteAt(0);
         int slotCount = (typeHeader == 'J' || typeHeader == 'D') ? 2 : 1;
         assert slotCount == field.getKind().getSlotCount();
         int slot = top - slotCount - 1; // -receiver
         StaticObject receiver;
-        if (opcode == PUTSTATIC) {
+        if (mode.isStatic()) {
             receiver = initializeAndGetStatics(field);
         } else {
             if (!noForeignObjects.isValid()) {
@@ -2857,31 +2814,16 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int getField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
+    private int getField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex, FieldAccessType mode) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
 
         CompilerAsserts.partialEvaluationConstant(field);
-        /*
-         * GETFIELD: Otherwise, if the resolved field is a static field, getfield throws an
-         * IncompatibleClassChangeError.
-         *
-         * GETSTATIC: Otherwise, if the resolved field is not a static (class) field or an interface
-         * field, getstatic throws an IncompatibleClassChangeError.
-         */
-        if (field.isStatic() != (opcode == GETSTATIC)) {
-            enterLinkageExceptionProfile();
-            throw throwBoundary(getMethod().getMeta().java_lang_IncompatibleClassChangeError,
-                            "Expected %s field %s.%s",
-                            (opcode == GETSTATIC) ? "static" : "non-static",
-                            field.getDeclaringKlass().getNameAsString(),
-                            field.getNameAsString());
-        }
 
-        assert field.isStatic() == (opcode == GETSTATIC);
+        LinkResolver.resolveFieldAccess(getMeta(), getDeclaringKlass(), getMethod(), field, mode);
 
         int slot = top - 1;
         StaticObject receiver;
-        if (opcode == GETSTATIC) {
+        if (mode.isStatic()) {
             receiver = initializeAndGetStatics(field);
         } else {
             if (!noForeignObjects.isValid()) {
@@ -2903,7 +2845,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             instrumentation.notifyFieldAccess(frame, statementIndex, field, receiver);
         }
 
-        int resultAt = field.isStatic() ? top : (top - 1);
+        int resultAt = mode.isStatic() ? top : (top - 1);
         // @formatter:off
         byte typeHeader = field.getType().byteAt(0);
         switch (typeHeader) {

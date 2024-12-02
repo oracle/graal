@@ -729,4 +729,26 @@ public class GraalOSRLockTest extends GraalOSRTestBase {
         }
         return ret;
     }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testLocksAtOSREntry() {
+        run(() -> {
+            OptionValues options = new OptionValues(getInitialOptions(), osrLockDeopt());
+            testOSR(options, "testLocksAtOSREntrySnippet", null, new Object(), false);
+        });
+    }
+
+    private static Object staticLock = new Object();
+
+    static synchronized Object testLocksAtOSREntrySnippet(Object object, boolean alwaysFalse) {
+        synchronized (staticLock) {
+            synchronized (object) {
+                while (GraalDirectives.injectBranchProbability(0.001, alwaysFalse)) {
+                    GraalDirectives.sideEffect();
+                }
+            }
+        }
+        return ReturnValue.SUCCESS;
+    }
 }

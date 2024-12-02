@@ -92,7 +92,11 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine, sandboxPolicy, tmpDir);
         HostContext context = new HostContext(engine, guestContextId, localContext);
         hostToGuest.registerHostContext(guestContextId, context);
-        return polyglot.getAPIAccess().newContext(remoteContext, context, engineApi, registerInActiveContexts);
+        Context contextApi = polyglot.getAPIAccess().newContext(remoteContext, context, engineApi, registerInActiveContexts);
+        if (registerInActiveContexts) {
+            polyglot.getAPIAccess().processReferenceQueue();
+        }
+        return contextApi;
     }
 
     @Override

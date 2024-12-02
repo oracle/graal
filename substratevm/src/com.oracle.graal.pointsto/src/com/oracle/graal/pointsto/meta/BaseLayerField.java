@@ -40,18 +40,20 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class BaseLayerField extends BaseLayerElement implements ResolvedJavaField {
     private final int id;
     private final String name;
-    private final AnalysisType declaringClass;
-    private final AnalysisType type;
+    private final ResolvedJavaType declaringClass;
+    private final ResolvedJavaType type;
     private final boolean isInternal;
+    private final boolean isSynthetic;
     private final int modifiers;
 
-    public BaseLayerField(int id, String name, AnalysisType declaringClass, AnalysisType type, boolean isInternal, int modifiers, Annotation[] annotations) {
+    public BaseLayerField(int id, String name, ResolvedJavaType declaringClass, ResolvedJavaType type, boolean isInternal, boolean isSynthetic, int modifiers, Annotation[] annotations) {
         super(annotations);
         this.id = id;
         this.name = name;
         this.declaringClass = declaringClass;
         this.type = type;
         this.isInternal = isInternal;
+        this.isSynthetic = isSynthetic;
         this.modifiers = modifiers;
     }
 
@@ -76,7 +78,7 @@ public class BaseLayerField extends BaseLayerElement implements ResolvedJavaFiel
 
     @Override
     public boolean isSynthetic() {
-        throw GraalError.unimplemented("This field is incomplete and should not be used.");
+        return isSynthetic;
     }
 
     @Override
@@ -86,12 +88,12 @@ public class BaseLayerField extends BaseLayerElement implements ResolvedJavaFiel
 
     @Override
     public JavaType getType() {
-        return type.getWrapped();
+        return type;
     }
 
     @Override
     public ResolvedJavaType getDeclaringClass() {
-        return declaringClass.getWrapped();
+        return declaringClass;
     }
 
     @Override

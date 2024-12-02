@@ -40,6 +40,16 @@ public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
         throw VMError.shouldNotReachHere("This can only be called during runtime");
     }
 
+    /**
+     * Retrieve a specific layer from a MultiLayeredImageSingleton. Note if a
+     * MultiLayeredImageSingleton is not installed in all layers, then the singletons index will not
+     * match the layer number it was installed in.
+     */
+    @SuppressWarnings("unused")
+    static <T extends MultiLayeredImageSingleton> T getForLayer(Class<T> key, int index) {
+        throw VMError.shouldNotReachHere("This can only be called during runtime");
+    }
+
     default <T extends MultiLayeredImageSingleton, U> U getSingletonData(T singleton, T[] singletons, Function<T, U> getSingletonDataFunction) {
         if (ImageLayerBuildingSupport.buildingImageLayer()) {
             for (var layerSingleton : singletons) {

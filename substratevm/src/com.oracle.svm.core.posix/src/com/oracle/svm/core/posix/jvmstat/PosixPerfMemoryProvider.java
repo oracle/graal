@@ -52,12 +52,11 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import com.oracle.svm.core.jdk.management.Target_jdk_internal_vm_VMSupport;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
 import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
@@ -378,7 +377,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isDirectorySecure(CCharPointer directory) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableLstat(directory, buf);
+        int result = PosixStat.restartableLstat(directory, buf);
         if (result == -1) {
             return false;
         }
@@ -393,7 +392,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L249-L260")
     private static boolean isDirFdSecure(int dirFd) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableFstat(dirFd, buf);
+        int result = PosixStat.restartableFstat(dirFd, buf);
         if (result == -1) {
             return false;
         }
@@ -403,7 +402,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L408-L429")
     private static boolean isFileSecure(int fd) {
         PosixStat.stat buf = StackValue.get(PosixStat.sizeOfStatStruct());
-        int result = restartableFstat(fd, buf);
+        int result = PosixStat.restartableFstat(fd, buf);
         if (result == -1) {
             return false;
         }
@@ -513,26 +512,6 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         return result;
     }
 
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private static int restartableFstat(int fd, PosixStat.stat buf) {
-        int result;
-        do {
-            result = PosixStat.NoTransitions.fstat(fd, buf);
-        } while (result == -1 && LibC.errno() == Errno.EINTR());
-
-        return result;
-    }
-
-    @Uninterruptible(reason = "LibC.errno() must not be overwritten accidentally.")
-    private static int restartableLstat(CCharPointer directory, PosixStat.stat buf) {
-        int result;
-        do {
-            result = PosixStat.NoTransitions.lstat(directory, buf);
-        } while (result == -1 && LibC.errno() == Errno.EINTR());
-
-        return result;
-    }
-
     @Override
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L1112-L1128")
     public void teardown() {
@@ -560,7 +539,6 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 }
 
 @AutomaticallyRegisteredFeature
-@Platforms({LINUX.class, Platform.DARWIN.class})
 class PosixPerfMemoryFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -571,11 +549,4 @@ class PosixPerfMemoryFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(PerfMemoryProvider.class, new PosixPerfMemoryProvider());
     }
-}
-
-@TargetClass(className = "jdk.internal.vm.VMSupport")
-final class Target_jdk_internal_vm_VMSupport {
-
-    @Alias
-    public static native String getVMTemporaryDirectory();
 }

@@ -703,6 +703,13 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") public static final OptionKey<Boolean> EagerFrameAnalysis = new OptionKey<>(false);
 
+    /**
+     * Property used to force liveness analysis to also be applied by the interpreter. For testing
+     * purpose only. Use a host property rather than an option. An option would slow interpreter
+     * considerably.
+     */
+    public static final boolean LivenessAnalysisInInterpreter = booleanProperty("espresso.liveness.interpreter", false);
+
     // Properties for FinalizationSupport e.g. --vm.Despresso.finalization.UnsafeOverride=false .
     public static final boolean UnsafeOverride = booleanProperty("espresso.finalization.UnsafeOverride", true);
     public static final boolean InjectClasses = booleanProperty("espresso.finalization.InjectClasses", !JavaVersion.HOST_VERSION.java19OrLater());

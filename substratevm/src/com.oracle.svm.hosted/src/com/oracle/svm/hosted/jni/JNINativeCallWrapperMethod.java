@@ -118,6 +118,27 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
             callAddress = kit.invokeNativeCallAddress(kit.createObject(linkage));
         }
 
+        List<ValueNode> javaArguments = kit.getInitialArguments();
+
+        /*
+         * Acquire the lock upfront because when in a virtual thread, contention could cause
+         * migration to a different carrier thread with a different JNI environment and local handle
+         * set before the native call.
+         */
+        if (getOriginal().isSynchronized()) {
+            ValueNode monitorObject;
+            if (method.isStatic()) {
+                JavaConstant hubConstant = (JavaConstant) kit.getConstantReflection().asObjectHub(method.getDeclaringClass());
+                monitorObject = ConstantNode.forConstant(hubConstant, kit.getMetaAccess(), kit.getGraph());
+            } else {
+                monitorObject = kit.maybeCreateExplicitNullCheck(javaArguments.get(0));
+            }
+            MonitorIdNode monitorId = kit.getGraph().add(new MonitorIdNode(kit.getFrameState().lockDepth(false)));
+            MonitorEnterNode monitorEnter = kit.append(new MonitorEnterNode(monitorObject, monitorId));
+            kit.getFrameState().pushLock(monitorEnter.object(), monitorEnter.getMonitorId());
+            monitorEnter.setStateAfter(kit.getFrameState().create(kit.bci(), monitorEnter));
+        }
+
         ValueNode environment = kit.invokeEnvironment();
 
         /* After the JNI prologue, we must not invoke methods that may throw an exception. */
@@ -125,7 +146,6 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
         AnalysisType javaReturnType = method.getSignature().getReturnType();
         List<AnalysisType> javaArgumentTypes = method.toParameterList();
-        List<ValueNode> javaArguments = kit.getInitialArguments();
 
         List<ValueNode> jniArguments = new ArrayList<>(2 + javaArguments.size());
         List<AnalysisType> jniArgumentTypes = new ArrayList<>(2 + javaArguments.size());
@@ -157,21 +177,6 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         AnalysisType jniReturnType = javaReturnType;
         if (jniReturnType.getJavaKind().isObject()) {
             jniReturnType = objectHandleType;
-        }
-
-        /* Thrown exceptions may cause a memory leak, see GR-54276. */
-        if (getOriginal().isSynchronized()) {
-            ValueNode monitorObject;
-            if (method.isStatic()) {
-                JavaConstant hubConstant = (JavaConstant) kit.getConstantReflection().asObjectHub(method.getDeclaringClass());
-                monitorObject = ConstantNode.forConstant(hubConstant, kit.getMetaAccess(), kit.getGraph());
-            } else {
-                monitorObject = kit.maybeCreateExplicitNullCheck(javaArguments.get(0));
-            }
-            MonitorIdNode monitorId = kit.getGraph().add(new MonitorIdNode(kit.getFrameState().lockDepth(false)));
-            MonitorEnterNode monitorEnter = kit.append(new MonitorEnterNode(monitorObject, monitorId));
-            kit.getFrameState().pushLock(monitorEnter.object(), monitorEnter.getMonitorId());
-            monitorEnter.setStateAfter(kit.getFrameState().create(kit.bci(), monitorEnter));
         }
 
         kit.getFrameState().clearLocals();

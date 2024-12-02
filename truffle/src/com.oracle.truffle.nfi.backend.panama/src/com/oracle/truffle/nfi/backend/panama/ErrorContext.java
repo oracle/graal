@@ -46,7 +46,6 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource.OS;
 
 public class ErrorContext {
@@ -87,20 +86,7 @@ public class ErrorContext {
     }
 
     private MemorySegment getErrnoLocation() {
-        if (errnoLocation == null) {
-            // FIXME: GR-30264
-            /*
-             * This thread was initialized externally, and we were called before the first truffle
-             * safepoint after thread initialization. Unfortunately there is not much we can do here
-             * except deopt and lazy initialize. This should be very rare.
-             *
-             * The actual fix for this is that Truffle should take care of doing the thread
-             * initialization on the correct thread. Truffle has enough control over safepoints that
-             * it can make sure this is guaranteed to happen before any guest code runs.
-             */
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            errnoLocation = lookupErrnoLocation();
-        }
+        assert errnoLocation != null;
         return errnoLocation;
     }
 

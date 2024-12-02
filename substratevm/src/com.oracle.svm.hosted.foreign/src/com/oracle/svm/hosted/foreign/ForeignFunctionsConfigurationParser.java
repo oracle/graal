@@ -26,10 +26,12 @@ package com.oracle.svm.hosted.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.foreign.Linker.Option;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
@@ -38,9 +40,11 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+23/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";
@@ -58,25 +62,26 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     @Override
     public void parseAndRegister(Object json, URI origin) {
         var topLevel = asMap(json, "first level of document must be a map");
-        checkAttributes(topLevel, "foreign methods categories", List.of(), List.of("downcalls"));
+        checkAttributes(topLevel, "foreign methods categories", List.of(), List.of("downcalls", "upcalls"));
 
         var downcalls = asList(topLevel.get("downcalls", List.of()), "downcalls must be an array of method signatures");
         for (Object downcall : downcalls) {
-            parseAndRegisterForeignCall(downcall, (descriptor, options) -> accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options));
+            parseAndRegisterForeignCall(downcall, this::parseDowncallOptions, (descriptor, options) -> accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options));
         }
 
         var upcalls = asList(topLevel.get("upcalls", List.of()), "upcalls must be an array of method signatures");
         for (Object upcall : upcalls) {
-            parseAndRegisterForeignCall(upcall, (descriptor, options) -> accessSupport.registerForUpcall(ConfigurationCondition.alwaysTrue(), descriptor, options));
+            parseAndRegisterForeignCall(upcall, this::parseUpcallOptions, (descriptor, options) -> accessSupport.registerForUpcall(ConfigurationCondition.alwaysTrue(), descriptor, options));
         }
     }
 
-    private void parseAndRegisterForeignCall(Object call, BiConsumer<Object, Object[]> register) {
+    private void parseAndRegisterForeignCall(Object call, Function<EconomicMap<String, Object>, List<Option>> optionsParser, BiConsumer<Object, Object[]> register) {
         var map = asMap(call, "a foreign call must be a map");
         checkAttributes(map, "foreign call", List.of("descriptor"), List.of("options"));
         var descriptor = parseDescriptor(map.get("descriptor"));
-        var options = parseOptions(map.get("options", null));
-        register.accept(descriptor, options.toArray());
+        var options = map.get("options", EconomicMap.create());
+        List<Option> parsedOptions = optionsParser.apply(asMap(options, "options must be a map"));
+        register.accept(descriptor, parsedOptions.toArray());
     }
 
     private FunctionDescriptor parseDescriptor(Object signature) {
@@ -84,15 +89,14 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
         return FunctionDescriptorParser.parse(input);
     }
 
-    private List<Linker.Option> parseOptions(Object options) {
-        if (options == null) {
-            return List.of();
-        }
-
-        ArrayList<Linker.Option> res = new ArrayList<>();
-        var map = asMap(options, "options must be a map");
+    /**
+     * Parses the options allowed for downcalls. This needs to be consistent with
+     * 'jdk.internal.foreign.abi.LinkerOptions.forDowncall'.
+     */
+    private List<Linker.Option> parseDowncallOptions(EconomicMap<String, Object> map) {
         checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_CRITICAL));
 
+        ArrayList<Linker.Option> res = new ArrayList<>();
         if (map.containsKey(DOWNCALL_OPTION_FIRST_VARIADIC_ARG)) {
             int firstVariadic = (int) asLong(map.get(DOWNCALL_OPTION_FIRST_VARIADIC_ARG), "");
             res.add(Linker.Option.firstVariadicArg(firstVariadic));
@@ -127,5 +131,14 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
         }
 
         return res;
+    }
+
+    /**
+     * Parses the options allowed for upcalls (currently, no options are allowed). This needs to be
+     * consistent with 'jdk.internal.foreign.abi.LinkerOptions.forUpcall'.
+     */
+    private List<Linker.Option> parseUpcallOptions(EconomicMap<String, Object> map) {
+        checkAttributes(map, "options", List.of(), List.of());
+        return List.of();
     }
 }

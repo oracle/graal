@@ -51,8 +51,6 @@ import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.lir.CompositeValue;
-import jdk.graal.compiler.lir.CompositeValueClass;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.internal.misc.Unsafe;
@@ -167,8 +165,6 @@ public class FieldsOffsetsFeature implements Feature {
         } else if (LIRInstruction.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != LIRInstruction.class) {
             FieldsOffsetsFeature.<LIRInstructionClass<?>> registerClass(newlyReachableClass, GraalCompilerSupport.get().instructionClasses, LIRInstructionClass::get, true, access);
 
-        } else if (CompositeValue.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != CompositeValue.class) {
-            FieldsOffsetsFeature.<CompositeValueClass<?>> registerClass(newlyReachableClass, GraalCompilerSupport.get().compositeValueClasses, CompositeValueClass::get, true, access);
         }
     }
 

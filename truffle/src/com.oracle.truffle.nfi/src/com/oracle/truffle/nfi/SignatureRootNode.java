@@ -74,7 +74,7 @@ final class SignatureRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        API api = NFIContext.get(this).getAPI(backendId);
+        API api = NFIContext.get(this).getAPI(backendId, this);
         return buildSignature.execute(api);
     }
 

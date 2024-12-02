@@ -29,8 +29,9 @@ import java.security.ProtectionDomain;
 import java.util.ArrayDeque;
 import java.util.Objects;
 
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * Stack for storing AccessControlContexts. Used in conjunction with
@@ -104,10 +105,7 @@ public class AccessControllerUtil {
     public static final AccessControlContext DISALLOWED_CONTEXT_MARKER;
 
     static {
-        try {
-            DISALLOWED_CONTEXT_MARKER = ReflectionUtil.lookupConstructor(AccessControlContext.class, ProtectionDomain[].class, boolean.class).newInstance(new ProtectionDomain[0], true);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
+        DISALLOWED_CONTEXT_MARKER = JavaVersionUtil.JAVA_SPEC > 21 ? null
+                        : ReflectionUtil.newInstance(ReflectionUtil.lookupConstructor(AccessControlContext.class, ProtectionDomain[].class, boolean.class), new ProtectionDomain[0], true);
     }
 }

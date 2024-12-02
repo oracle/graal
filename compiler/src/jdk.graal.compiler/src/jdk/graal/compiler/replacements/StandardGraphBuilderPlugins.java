@@ -543,7 +543,7 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
                 ValueNode componentTypeNonNull = b.nullCheckedValue(componentType);
                 ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(length);
-                if (b.currentBlockCatchesOOM()) {
+                if (b.currentBlockCatchesOOME()) {
                     b.addPush(JavaKind.Object, new DynamicNewArrayWithExceptionNode(componentTypeNonNull, lengthPositive));
                 } else {
                     b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentTypeNonNull, lengthPositive, true));
@@ -1430,6 +1430,13 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+            if (b.currentBlockCatchesOOME()) {
+                /*
+                 * Avoid intrinsification as it exposes deopt with scalar replaced objects to out of
+                 * memory conditions that cause the exception handler to be bypassed.
+                 */
+                return false;
+            }
             MetaAccessProvider metaAccess = b.getMetaAccess();
             if (b.parsingIntrinsic()) {
                 ResolvedJavaMethod rootMethod = b.getGraph().method();
@@ -2616,6 +2623,28 @@ public class StandardGraphBuilderPlugins {
 
         Registration rMD5 = new Registration(plugins, "sun.security.provider.MD5", replacements);
         rMD5.register(new MessageDigestPlugin(MD5Node::new));
+
+        Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
+        rSha3.registerConditional(MessageDigestNode.SHA3Node.isSupported(arch), new InvocationPlugin("implCompress0", InvocationPlugin.Receiver.class, byte[].class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode buf, ValueNode ofs) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
+                    ResolvedJavaField stateField = helper.getField(receiverType, "state");
+                    ResolvedJavaField blockSizeField = helper.getField(receiverType, "blockSize");
+
+                    ValueNode nonNullReceiver = receiver.get(true);
+                    ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
+                    ValueNode state = helper.loadField(nonNullReceiver, stateField);
+                    assert stateField.getType().isArray() : "SHA3.state expected to be an array, got: " + stateField.getType();
+                    JavaKind stateElementKind = stateField.getType().getComponentType().getJavaKind();
+                    ValueNode stateStart = helper.arrayStart(state, stateElementKind);
+                    ValueNode blockSize = helper.loadField(nonNullReceiver, blockSizeField);
+                    b.add(new MessageDigestNode.SHA3Node(bufStart, stateStart, blockSize));
+                    return true;
+                }
+            }
+        });
     }
 
     private static void registerStringCodingPlugins(InvocationPlugins plugins, Replacements replacements) {

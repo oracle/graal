@@ -185,10 +185,20 @@ public class ProcessBuilderTest {
                 p.destroy();
                 Assert.fail("Process did not finish in expected time.");
             }
-            Assert.assertEquals(0, p.exitValue());
-            Assert.assertEquals(Main.expectedStdOut(), stdout.toString(StandardCharsets.UTF_8));
-            Assert.assertEquals(Main.expectedStdErr(), stderr.toString(StandardCharsets.UTF_8));
+            Assert.assertEquals(formatErrorMessage("Expected 0 subprocess exit code.", stdout, stderr), 0, p.exitValue());
+            Assert.assertEquals(formatErrorMessage("Expected stdout content.", stdout, stderr), Main.expectedStdOut(), stdout.toString(StandardCharsets.UTF_8));
+            Assert.assertEquals(formatErrorMessage("Expected stderr content.", stdout, stderr), Main.expectedStdErr(), stderr.toString(StandardCharsets.UTF_8));
             return null;
+        }
+
+        private static String formatErrorMessage(String reason, ByteArrayOutputStream stdout, ByteArrayOutputStream stderr) {
+            return String.format("""
+                            %s
+                            stdout:
+                            %s
+                            stderr:
+                            %s
+                            """, reason, stdout, stderr);
         }
     }
 

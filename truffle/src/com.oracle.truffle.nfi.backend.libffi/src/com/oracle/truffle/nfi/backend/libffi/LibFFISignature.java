@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,7 +120,7 @@ final class LibFFISignature {
 
         @Specialization
         static Object callLibFFI(LibFFISignature self, LibFFISymbol functionPointer, Object[] args,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
             long pointer = functionPointer.asPointer();
             return functionExecute.execute(node, pointer, self, args);
@@ -130,7 +130,7 @@ final class LibFFISignature {
         @GenerateAOT.Exclude
         static Object callGeneric(LibFFISignature self, Object functionPointer, Object[] args,
                         @CachedLibrary("functionPointer") InteropLibrary interop,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached InlinedBranchProfile isExecutable,
                         @Cached InlinedBranchProfile toNative,
                         @Cached InlinedBranchProfile error,

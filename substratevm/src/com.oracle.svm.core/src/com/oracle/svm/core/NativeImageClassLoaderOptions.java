@@ -48,6 +48,11 @@ public class NativeImageClassLoaderOptions {
                     " <target-module> can be ALL-UNNAMED to read all unnamed modules.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> AddReads = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
+    @APIOption(name = "enable-native-access", launcherOption = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
+    @Option(help = "A comma-separated list of modules that are permitted to perform restricted native operations." +
+                    " The module name can also be ALL-UNNAMED.")//
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableNativeAccess = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
     @APIOption(name = "list-modules")//
     @Option(help = "List observable modules and exit.")//
     public static final HostedOptionKey<Boolean> ListModules = new HostedOptionKey<>(false);

@@ -1026,9 +1026,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                 module_names = frozenset((m.name for m in modules))
                 all_module_names = frozenset(list(jdk_modules.keys())) | module_names
 
-        # Edit lib/security/default.policy in java.base
-        patched_java_base = _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir)
-
         # Now build the new JDK image with jlink
         jlink = [jdk.javac.replace('javac', 'jlink')]
         jlink_persist = []
@@ -1040,7 +1037,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink.append('--add-modules=' + ','.join(_get_image_root_modules(root_module_names, module_names, jdk_modules.keys(), use_upgrade_module_path)))
         jlink_persist.append('--add-modules=jdk.internal.vm.ci')
 
-        module_path = patched_java_base + os.pathsep + jmods_dir
+        # Edit lib/security/default.policy in java.base if prior to JDK 24.
+        # GR-59085 deprecated the security manager in JDK 24 so no policy exists.
+        module_path = jmods_dir
+        if jdk.javaCompliance < '24':
+            patched_java_base = _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir)
+            module_path = patched_java_base + os.pathsep + jmods_dir
 
         class TempJmods:
             """

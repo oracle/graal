@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.nodes.expression;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -72,6 +73,7 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * is generated that provides, e.g., {@link SLAddNodeGen#create node creation}.
  */
 @NodeInfo(shortName = "+")
+@OperationProxy.Proxyable(allowUncached = true)
 public abstract class SLAddNode extends SLBinaryNode {
 
     /**
@@ -90,7 +92,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      * operand are {@code long} values.
      */
     @Specialization(rewriteOn = ArithmeticException.class)
-    protected long doLong(long left, long right) {
+    public static long doLong(long left, long right) {
         return Math.addExact(left, right);
     }
 
@@ -106,9 +108,9 @@ public abstract class SLAddNode extends SLBinaryNode {
      * specialization} has the {@code rewriteOn} attribute, this specialization is also taken if
      * both input values are {@code long} values but the primitive addition overflows.
      */
-    @Specialization
+    @Specialization(replaces = "doLong")
     @TruffleBoundary
-    protected SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
+    public static SLBigInteger doSLBigInteger(SLBigInteger left, SLBigInteger right) {
         return new SLBigInteger(left.getValue().add(right.getValue()));
     }
 
@@ -127,7 +129,7 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization(replaces = "doSLBigInteger", guards = {"leftLibrary.fitsInBigInteger(left)", "rightLibrary.fitsInBigInteger(right)"}, limit = "3")
     @TruffleBoundary
-    protected SLBigInteger doInteropBigInteger(Object left, Object right,
+    public static SLBigInteger doInteropBigInteger(Object left, Object right,
                     @CachedLibrary("left") InteropLibrary leftLibrary,
                     @CachedLibrary("right") InteropLibrary rightLibrary) {
         try {
@@ -147,8 +149,8 @@ public abstract class SLAddNode extends SLBinaryNode {
      */
     @Specialization(guards = "isString(left, right)")
     @TruffleBoundary
-    protected static TruffleString doString(Object left, Object right,
-                    @Bind("this") Node node,
+    public static TruffleString doString(Object left, Object right,
+                    @Bind Node node,
                     @Cached SLToTruffleStringNode toTruffleStringNodeLeft,
                     @Cached SLToTruffleStringNode toTruffleStringNodeRight,
                     @Cached TruffleString.ConcatNode concatNode) {
@@ -159,12 +161,12 @@ public abstract class SLAddNode extends SLBinaryNode {
      * Guard for TruffleString concatenation: returns true if either the left or the right operand
      * is a {@link TruffleString}.
      */
-    protected boolean isString(Object a, Object b) {
+    public static boolean isString(Object a, Object b) {
         return a instanceof TruffleString || b instanceof TruffleString;
     }
 
     @Fallback
-    protected Object typeError(Object left, Object right) {
-        throw SLException.typeError(this, left, right);
+    public static Object typeError(Object left, Object right, @Bind Node node) {
+        throw SLException.typeError(node, "+", left, right);
     }
 }

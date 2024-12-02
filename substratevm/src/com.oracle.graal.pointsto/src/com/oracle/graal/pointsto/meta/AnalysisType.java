@@ -1324,6 +1324,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return null;
     }
 
+    public boolean isOpenTypeWorldDispatchTableMethodsCalculated() {
+        return dispatchTableMethods != null;
+    }
+
     public Set<AnalysisMethod> getOpenTypeWorldDispatchTableMethods() {
         Objects.requireNonNull(dispatchTableMethods);
         return dispatchTableMethods;
@@ -1358,6 +1362,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             }
             try {
                 AnalysisMethod aMethod = universe.lookup(m);
+                assert aMethod != null : m;
                 resultSet.add(aMethod);
             } catch (UnsupportedFeatureException t) {
                 /*

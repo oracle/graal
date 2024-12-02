@@ -117,23 +117,23 @@
 
   // START MAIN BUILD DEFINITION
   local task_dict = {
-    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + maven + mx_build_exploded + gdb("10.2") + platform_spec(no_jobs) + platform_spec({
+    "style-fullbuild": mxgate("fullbuild,style,nativeimagehelp,check_libcontainer_annotations,check_libcontainer_namespace") + eclipse + jdt + maven + mx_build_exploded + gdb("14.2") + platform_spec(no_jobs) + platform_spec({
       // We could run the style gate on JDK 22 as well, and use old JDKs for running tools like StopBugs etc.,
       // but since we support JDK 21 anyways, there is not good reason to do so.
       "linux:amd64:jdk21": gate + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule,java_agent") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
+      "linux:amd64:jdk-latest": gate + gdb("14.2") + t("55:00"),
       "windows:amd64:jdk-latest": gate + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {
         "windows:amd64:jdk-latest": gate + t("1:30:00"),
       },
       "libc:musl_static": {
-        "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
+        "linux:amd64:jdk-latest": gate + gdb("14.2") + t("55:00"),
       },
       "java-compiler:ecj": {
-        "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
+        "linux:amd64:jdk-latest": gate + gdb("14.2") + t("55:00"),
       },
     }),
     "oraclejdk-helloworld": mxgate("build,helloworld,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({

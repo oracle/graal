@@ -86,7 +86,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-aarch64": {},
     "gate-vm-libgraal_compiler-labsjdk-latest-darwin-aarch64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {},
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude,
 
     "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {}

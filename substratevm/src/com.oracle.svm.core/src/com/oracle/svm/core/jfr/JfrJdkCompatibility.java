@@ -27,12 +27,16 @@ package com.oracle.svm.core.jfr;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
+import java.time.LocalDateTime;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
@@ -53,7 +57,6 @@ import jdk.jfr.internal.SecuritySupport;
  * go away.
  */
 @SuppressWarnings("unused")
-
 public final class JfrJdkCompatibility {
     private JfrJdkCompatibility() {
     }
@@ -126,23 +129,33 @@ public final class JfrJdkCompatibility {
 
 @TargetClass(className = "jdk.jfr.internal.Utils", onlyWith = {JDK21OrEarlier.class, HasJfrSupport.class})
 final class Target_jdk_jfr_internal_Utils {
-    @Alias
-    public static native String makeFilename(Recording recording);
+    @Substitute
+    public static String makeFilename(Recording recording) {
+        return JfrFilenameUtil.makeFilename(recording);
+    }
 
     @Alias
     public static native String formatTimespan(Duration dValue, String separation);
+
+    @Alias
+    public static native String formatDateTime(LocalDateTime time);
 }
 
 @TargetClass(className = "jdk.jfr.internal.JVMSupport", onlyWith = {JDKLatest.class, HasJfrSupport.class})
 final class Target_jdk_jfr_internal_JVMSupport {
-    @Alias
-    public static native String makeFilename(Recording recording);
+    @Substitute
+    public static String makeFilename(Recording recording) {
+        return JfrFilenameUtil.makeFilename(recording);
+    }
 }
 
 @TargetClass(className = "jdk.jfr.internal.util.ValueFormatter", onlyWith = {JDKLatest.class, HasJfrSupport.class})
 final class Target_jdk_jfr_internal_util_ValueFormatter {
     @Alias
     public static native String formatTimespan(Duration dValue, String separation);
+
+    @Alias
+    public static native String formatDateTime(LocalDateTime time);
 }
 
 @TargetClass(className = "jdk.jfr.internal.PlatformRecording")
@@ -154,4 +167,22 @@ final class Target_jdk_jfr_internal_PlatformRecording {
     @Alias
     @TargetElement(onlyWith = JDK21OrEarlier.class)
     public native void setDumpOnExitDirectory(SecuritySupport.SafePath directory);
+}
+
+final class JfrFilenameUtil {
+    public static String makeFilename(Recording recording) {
+        long pid = ProcessProperties.getProcessID();
+        String date = getFormatDateTime();
+        String idText = recording == null ? "" : "-id-" + recording.getId();
+        String imageName = SubstrateOptions.Name.getValue();
+        return imageName + "-pid-" + pid + idText + "-" + date + ".jfr";
+    }
+
+    private static String getFormatDateTime() {
+        LocalDateTime now = LocalDateTime.now();
+        if (JavaVersionUtil.JAVA_SPEC >= 24) {
+            return Target_jdk_jfr_internal_util_ValueFormatter.formatDateTime(now);
+        }
+        return Target_jdk_jfr_internal_Utils.formatDateTime(now);
+    }
 }

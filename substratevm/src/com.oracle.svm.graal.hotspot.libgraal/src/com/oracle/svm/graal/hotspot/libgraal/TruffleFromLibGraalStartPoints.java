@@ -24,24 +24,6 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI.JClass;
-import org.graalvm.jniutils.JNI.JObject;
-import org.graalvm.jniutils.JNI.JByteArray;
-import org.graalvm.jniutils.JNI.JNIEnv;
-import org.graalvm.jniutils.JNI.JavaVM;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativebridge.BinaryInput;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordFactory;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callAddInlinedTarget;
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callAddTargetToDequeue;
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callAsJavaConstant;
@@ -90,26 +72,58 @@ import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPoin
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callRegisterOptimizedAssumptionDependency;
 import static com.oracle.svm.graal.hotspot.libgraal.TruffleFromLibGraalStartPointsGen.callSetCallCounts;
 import static org.graalvm.jniutils.JNIMethodScope.env;
+import static org.graalvm.jniutils.JNIUtil.ExceptionClear;
+import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
 import static org.graalvm.jniutils.JNIUtil.createString;
+import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JByteArray;
+import org.graalvm.jniutils.JNI.JClass;
+import org.graalvm.jniutils.JNI.JMethodID;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JValue;
+import org.graalvm.jniutils.JNI.JavaVM;
+import org.graalvm.jniutils.JNICalls.JNIMethod;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativebridge.BinaryInput;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
 /**
  * JNI calls to HotSpot called by guest Graal using method handles.
  */
 public final class TruffleFromLibGraalStartPoints {
 
-    private static TruffleFromLibGraalCalls calls;
+    private static volatile TruffleFromLibGraalCalls calls;
     private static JavaVM javaVM;
 
     private TruffleFromLibGraalStartPoints() {
     }
 
     static void initializeJNI(JClass runtimeClass) {
-        if (calls == null) {
-            calls = new TruffleFromLibGraalCalls(JNIMethodScope.env(), runtimeClass);
-            JavaVM vm = JNIUtil.GetJavaVM(JNIMethodScope.env());
-            assert javaVM.isNull() || javaVM.equal(vm);
-            javaVM = vm;
+        TruffleFromLibGraalCalls localCalls = calls;
+        if (localCalls == null) {
+            initialize(runtimeClass);
         }
+    }
+
+    private static synchronized void initialize(JClass runtimeClass) {
+        calls = new TruffleFromLibGraalCalls(JNIMethodScope.env(), runtimeClass);
+        JavaVM vm = JNIUtil.GetJavaVM(JNIMethodScope.env());
+        assert javaVM.isNull() || javaVM.equal(vm);
+        javaVM = vm;
     }
 
     @TruffleFromLibGraal(Id.OnIsolateShutdown)
@@ -211,9 +225,60 @@ public final class TruffleFromLibGraalStartPoints {
     }
 
     @TruffleFromLibGraal(Id.PrepareForCompilation)
-    public static void prepareForCompilation(Object hsHandle) {
+    public static boolean prepareForCompilation(Object hsHandle, boolean p1, int p2, boolean p3) {
         JNIEnv env = JNIMethodScope.env();
-        callPrepareForCompilation(calls, env, ((HSObject) hsHandle).getHandle());
+        JNIMethod newMethod = findPrepareForCompilationNewMethod(env);
+        if (newMethod != null) {
+            return callPrepareForCompilationNew(newMethod, env, ((HSObject) hsHandle).getHandle(), p1, p2, p3);
+        } else {
+            callPrepareForCompilation(calls, env, ((HSObject) hsHandle).getHandle());
+            return true;
+        }
+    }
+
+    private static volatile JNIMethod prepareForCompilationNewMethod;
+
+    private static JNIMethod findPrepareForCompilationNewMethod(JNIEnv env) {
+        JNIMethod res = prepareForCompilationNewMethod;
+        if (res == null) {
+            res = findJNIMethod(env, "prepareForCompilation", boolean.class, Object.class, boolean.class, int.class, boolean.class);
+            prepareForCompilationNewMethod = res;
+        }
+        return res.getJMethodID().isNonNull() ? res : null;
+    }
+
+    static boolean callPrepareForCompilationNew(JNIMethod method, JNIEnv env, JObject p0, boolean p1, int p2, boolean p3) {
+        JValue args = StackValue.get(4, JValue.class);
+        args.addressOf(0).setJObject(p0);
+        args.addressOf(1).setBoolean(p1);
+        args.addressOf(2).setInt(p2);
+        args.addressOf(3).setBoolean(p3);
+        return calls.getJNICalls().callStaticBoolean(env, calls.getPeer(), method, args);
+    }
+
+    private static JNIMethod findJNIMethod(JNIEnv env, String methodName, Class<?> returnType, Class<?>... parameterTypes) {
+        try (CTypeConversion.CCharPointerHolder cname = toCString(methodName);
+                        CTypeConversion.CCharPointerHolder csig = toCString(FromLibGraalId.encodeMethodSignature(returnType, parameterTypes))) {
+            JMethodID jniId = GetStaticMethodID(env, calls.getPeer(), cname.get(), csig.get());
+            if (jniId.isNull()) {
+                /*
+                 * The `onFailure` method with 7 arguments is not available in Truffle runtime 24.0,
+                 * clear pending NoSuchMethodError.
+                 */
+                ExceptionClear(env);
+            }
+            return new JNIMethod() {
+                @Override
+                public JMethodID getJMethodID() {
+                    return jniId;
+                }
+
+                @Override
+                public String getDisplayName() {
+                    return methodName;
+                }
+            };
+        }
     }
 
     @TruffleFromLibGraal(Id.IsTrivial)

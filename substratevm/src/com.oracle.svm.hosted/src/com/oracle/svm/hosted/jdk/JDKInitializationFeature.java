@@ -24,17 +24,31 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.util.ConstantFoldUtil;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 public class JDKInitializationFeature implements InternalFeature {
@@ -228,6 +242,61 @@ public class JDKInitializationFeature implements InternalFeature {
         while (currentHolderClass.isPresent()) {
             rci.initializeAtRunTime(currentHolderClass.get(), "Fails build-time initialization");
             currentHolderClass = imageClassLoader.findClass("jdk.internal.foreign.abi.fallback.FallbackLinker$%dHolder".formatted(i++));
+        }
+    }
+
+    @Override
+    public void registerInvocationPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        var enableNativeAccessClass = ReflectionUtil.lookupClass("java.lang.Module$EnableNativeAccess");
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), enableNativeAccessClass);
+        r.register(new ModuleEnableNativeAccessPlugin());
+    }
+
+    /**
+     * Inlines calls to {@code Module$EnableNativeAccess#isNativeAccessEnabled()} if and only if
+     * {@code Module#enableNativeAccess} is true. This is ok because the field is {@code @Stable},
+     * meaning that a non-default value (i.e., {@code true}, will never change again. Thus, we can
+     * constant-fold the call to enable optimizations, most importantly dead code elimination.
+     */
+    private static final class ModuleEnableNativeAccessPlugin extends InvocationPlugin.InlineOnlyInvocationPlugin {
+
+        private static final Field ENABLE_NATIVE_ACCESS_FIELD = ReflectionUtil.lookupField(Module.class, "enableNativeAccess");
+
+        ModuleEnableNativeAccessPlugin() {
+            super("isNativeAccessEnabled", Module.class);
+        }
+
+        /**
+         * See {@code java.lang.Module$EnableNativeAccess#isNativeAccessEnabled(Module target)}.
+         */
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode targetNode) {
+            JavaConstant moduleConstant = targetNode.asJavaConstant();
+            if (moduleConstant != null) {
+                var enableNativeAccessField = b.getMetaAccess().lookupJavaField(ENABLE_NATIVE_ACCESS_FIELD);
+                if (enableNativeAccessField != null) {
+                    var constant = ConstantFoldUtil.tryConstantFold(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
+                                    enableNativeAccessField, moduleConstant, b.getOptions(), targetMethod);
+                    /*
+                     * ConstantFoldUtil.tryConstantFold adheres to the @Stable field semantics,
+                     * i.e., it only constant folds if the field has a non-default value (in this
+                     * case `true`). See
+                     * jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider#
+                     * readConstantField. In other words, if the field is `false`, `constant` would
+                     * be null.
+                     */
+                    if (constant != null) {
+                        /*
+                         * Booleans are represented as int on the VM level so checking for int 1
+                         * instead of boolean true.
+                         */
+                        assert constant.isJavaConstant() && constant.asJavaConstant().asInt() == 1 : "Must not constant fold if enableNativeAccess is false (@Stable semantics)";
+                        b.push(JavaKind.Boolean, b.add(constant));
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     }
 }

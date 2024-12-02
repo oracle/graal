@@ -62,6 +62,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -130,27 +131,26 @@ public final class ModuleLayerFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
-
-        RuntimeModuleSupport.instance().setHostedToRuntimeModuleMapper(moduleLayerFeatureUtils::getOrCreateRuntimeModuleForHostedModule);
+        RuntimeModuleSupport.instance().setHostedToRuntimeModuleMapper(m -> moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(m, accessImpl));
 
         /*
          * Register an object replacer that will ensure all references to hosted module instances
          * are replaced with the appropriate runtime module instance.
          */
-        access.registerObjectReplacer(this::replaceHostedModules);
+        access.registerObjectReplacer(source -> replaceHostedModules(source, accessImpl));
     }
 
-    private Object replaceHostedModules(Object source) {
+    private Object replaceHostedModules(Object source, AnalysisAccessBase access) {
         if (source instanceof Module module) {
-            return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module);
+            return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module, access);
         } else if (source instanceof Class<?> clazz) {
             /*
              * If the field Class(=DynamicHub).module is not reachable, we do not see all Module
              * instances directly. So we also need to scan the module in Class/DynamicHub objects.
              */
-            moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(clazz.getModule());
+            moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(clazz.getModule(), access);
         } else if (source instanceof DynamicHub hub) {
-            moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(hub.getModule());
+            moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(hub.getModule(), access);
         }
         return source;
     }
@@ -451,7 +451,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             runtimeModuleLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(runtimeModuleLayerConfiguration);
             Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(accessImpl, runtimeModuleLayer, clf);
             for (Module syntheticModule : syntheticModules) {
-                Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule);
+                Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule, accessImpl);
                 nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
                 moduleLayerFeatureUtils.patchModuleLayerField(accessImpl, runtimeSyntheticModule, runtimeModuleLayer);
             }
@@ -538,8 +538,10 @@ public final class ModuleLayerFeature implements InternalFeature {
         for (Map.Entry<Module, Module> modulesPair : modulePairs.entrySet()) {
             Module hosted = modulesPair.getKey();
             Module runtime = modulesPair.getValue();
-            if (moduleLayerFeatureUtils.allowsNativeAccess(hosted)) {
-                moduleLayerFeatureUtils.setNativeAccess(accessImpl, runtime, true);
+            if (moduleLayerFeatureUtils.allowsNativeAccess(hosted) || moduleLayerFeatureUtils.isNativeAccessEnabledForRuntimeModule(runtime)) {
+                if (!moduleLayerFeatureUtils.allowsNativeAccess(runtime)) {
+                    moduleLayerFeatureUtils.enableNativeAccess(accessImpl, runtime);
+                }
             }
         }
 
@@ -630,10 +632,14 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Field moduleLayerModulesField;
         private final Field moduleReferenceLocationField;
         private final Field moduleReferenceImplLocationField;
+        private final Set<String> nativeAccessEnabled;
 
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
             runtimeModules = new HashMap<>();
             imageClassLoader = cl;
+            nativeAccessEnabled = NativeImageClassLoaderOptions.EnableNativeAccess.getValue().values().stream().flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ",")))
+                            .collect(Collectors.toSet());
+
             Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
             try {
                 ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ModuleLayerFeature.class, Module.class);
@@ -692,6 +698,15 @@ public final class ModuleLayerFeature implements InternalFeature {
             } catch (ReflectiveOperationException | NoSuchElementException ex) {
                 throw VMError.shouldNotReachHere("Failed to retrieve fields of the Module/ModuleLayer class.", ex);
             }
+        }
+
+        private boolean isNativeAccessEnabledForRuntimeBootLayerModule(String runtimeModuleName) {
+            return nativeAccessEnabled.contains(runtimeModuleName);
+        }
+
+        private boolean isNativeAccessEnabledForRuntimeModule(Module runtimeModule) {
+            String runtimeModuleName = runtimeModule.getName();
+            return RuntimeModuleSupport.instance().getBootLayer() == runtimeModule.getLayer() && isNativeAccessEnabledForRuntimeBootLayerModule(runtimeModuleName);
         }
 
         /**
@@ -797,7 +812,7 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule) {
+        public Module getOrCreateRuntimeModuleForHostedModule(Module hostedModule, AnalysisAccessBase access) {
             /*
              * Special module instances such as ALL_UNNAMED and EVERYONE_MODULE are not replicated
              * as they only serve as marker modules (all their fields are null, including the loader
@@ -806,11 +821,13 @@ public final class ModuleLayerFeature implements InternalFeature {
             if (hostedModule == allUnnamedModule || hostedModule == everyoneModule) {
                 return hostedModule;
             } else {
-                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), hostedModule.getDescriptor());
+                boolean enableNativeAccess = allowsNativeAccess(hostedModule) || isNativeAccessEnabledForRuntimeBootLayerModule(hostedModule.getName());
+                return getOrCreateRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), hostedModule.getDescriptor(), access, enableNativeAccess);
             }
         }
 
-        public Module getOrCreateRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor) {
+        public Module getOrCreateRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor, AnalysisAccessBase access,
+                        boolean enableNativeAccess) {
             synchronized (runtimeModules) {
                 Module runtimeModule = getRuntimeModuleForHostedModule(loader, hostedModuleName, true);
                 if (runtimeModule != null) {
@@ -828,6 +845,9 @@ public final class ModuleLayerFeature implements InternalFeature {
                 }
                 runtimeModules.putIfAbsent(loader, new HashMap<>());
                 runtimeModules.get(loader).put(hostedModuleName, runtimeModule);
+                if (enableNativeAccess) {
+                    enableNativeAccess(access, runtimeModule);
+                }
                 return runtimeModule;
             }
         }
@@ -855,7 +875,8 @@ public final class ModuleLayerFeature implements InternalFeature {
                 ModuleDescriptor descriptor = mref.descriptor();
                 String name = descriptor.name();
                 ClassLoader loader = clf.apply(name);
-                Module m = getOrCreateRuntimeModuleForHostedModule(loader, name, descriptor);
+                boolean nativeAccess = false;
+                Module m = getOrCreateRuntimeModuleForHostedModule(loader, name, descriptor, access, nativeAccess);
                 if (!descriptor.equals(m.getDescriptor())) {
                     moduleDescriptorField.set(m, descriptor);
                     access.rescanField(m, moduleDescriptorField);
@@ -1123,11 +1144,15 @@ public final class ModuleLayerFeature implements InternalFeature {
 
         }
 
-        void setNativeAccess(AfterAnalysisAccessImpl accessImpl, Module module, boolean value) {
+        /**
+         * Allows the given module to perform native access.
+         */
+        void enableNativeAccess(AnalysisAccessBase access, Module module) {
+            VMError.guarantee(!allowsNativeAccess(module), "Cannot reset native access");
             assert moduleEnableNativeAccessField != null : "Only available on JDK19+";
             try {
-                moduleEnableNativeAccessField.set(module, value);
-                accessImpl.rescanField(module, moduleEnableNativeAccessField);
+                moduleEnableNativeAccessField.set(module, true);
+                access.rescanField(module, moduleEnableNativeAccessField);
             } catch (IllegalAccessException e) {
                 throw VMError.shouldNotReachHere("Failed to reflectively set Module.enableNativeAccess.", e);
             }

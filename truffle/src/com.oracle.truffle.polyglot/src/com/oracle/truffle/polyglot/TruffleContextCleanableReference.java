@@ -56,7 +56,6 @@ final class TruffleContextCleanableReference extends WeakReference<TruffleContex
     TruffleContextCleanableReference(TruffleContext referent, PolyglotContextImpl polyglotContext) {
         super(referent, queue);
         this.polyglotContext = Objects.requireNonNull(polyglotContext, "PolyglotContext must be non null");
-        processReferenceQueue();
     }
 
     static void processReferenceQueue() {

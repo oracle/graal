@@ -163,4 +163,10 @@ public final class AArch64AddressValue extends CompositeValue {
         proc.visitValue(inst, base, mode, flags);
         proc.visitValue(inst, offset, mode, flags);
     }
+
+    @Override
+    public String toString() {
+        return String.format("{base: %s, offset: %s} bitMemoryTransferSize: %s displacement: %s scaleFactor: %s addressingMode: %s",
+                        base, offset, bitMemoryTransferSize, displacement, scaleFactor, addressingMode);
+    }
 }

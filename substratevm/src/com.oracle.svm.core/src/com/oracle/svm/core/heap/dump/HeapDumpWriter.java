@@ -85,6 +85,7 @@ import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSupport;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -504,7 +505,7 @@ public class HeapDumpWriter {
         writeUTF8("JAVA PROFILE 1.0.2");
         writeByte((byte) 0);
         writeInt(wordSize());
-        writeLong(System.currentTimeMillis());
+        writeLong(TimeUtils.currentTimeMillis());
     }
 
     private void startTopLevelRecord(HProfTopLevelRecord tag) {

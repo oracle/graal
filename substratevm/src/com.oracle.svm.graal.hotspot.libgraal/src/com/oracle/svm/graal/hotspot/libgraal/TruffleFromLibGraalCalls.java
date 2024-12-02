@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
+
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIUtil;
 
-import static org.graalvm.jniutils.JNIUtil.NewGlobalRef;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
 final class TruffleFromLibGraalCalls extends FromLibGraalCalls<Id> {
 

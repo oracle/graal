@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.ReservedRegisters;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.PointerBase;
@@ -121,10 +122,12 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         CGlobalData<PointerBase> useHeapBase = CGlobalDataFactory.createWord(WordFactory.unsigned(compressEncoding.hasBase() ? 1 : 0), "__svm_use_heap_base");
         CGlobalData<PointerBase> reservedBitsMask = CGlobalDataFactory.createWord(WordFactory.unsigned(Heap.getHeap().getObjectHeader().getReservedBitsMask()), "__svm_reserved_bits_mask");
         CGlobalData<PointerBase> objectAlignment = CGlobalDataFactory.createWord(WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment()), "__svm_object_alignment");
+        CGlobalData<PointerBase> heapBaseRegnum = CGlobalDataFactory.createWord(WordFactory.unsigned(ReservedRegisters.singleton().getHeapBaseRegister().number), "__svm_heap_base_regnum");
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(compressionShift);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(useHeapBase);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(reservedBitsMask);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(objectAlignment);
+        CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(heapBaseRegnum);
     }
 
     @Override

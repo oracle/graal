@@ -92,9 +92,6 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
     private Class<?> lirInstructionClass;
     private Class<?> lirInstructionClassClass;
     private MethodHandle lirInstructionClassClassGetMethod;
-    private Class<?> compositeValueClass;
-    private Class<?> compositeValueClassClass;
-    private MethodHandle compositeValueClassClassGetMethod;
 
     private static class FieldsOffsetsReplacement {
         protected final Object fields;
@@ -128,8 +125,6 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
         nodeClassClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.NodeClass");
         lirInstructionClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.lir.LIRInstruction");
         lirInstructionClassClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.lir.LIRInstructionClass");
-        compositeValueClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.lir.CompositeValue");
-        compositeValueClassClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.lir.CompositeValueClass");
         fieldIntrospectionClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.core.common.FieldIntrospection");
         inputEdgesClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.InputEdges");
         successorEdgesClass = libGraalFeature.loadClassOrFail("jdk.graal.compiler.graph.SuccessorEdges");
@@ -151,7 +146,6 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
             nodeClassClassComputeIterationMaskMethod = mhl.findStatic(nodeClassClass, "computeIterationMask", MethodType.methodType(long.class, edgesTypeClass, int.class, long[].class));
 
             lirInstructionClassClassGetMethod = mhl.findStatic(lirInstructionClassClass, "get", MethodType.methodType(lirInstructionClassClass, Class.class));
-            compositeValueClassClassGetMethod = mhl.findStatic(compositeValueClassClass, "get", MethodType.methodType(compositeValueClassClass, Class.class));
 
             fieldIntrospectionClassGetDataMethod = mhl.findVirtual(fieldIntrospectionClass, "getData", MethodType.methodType(fieldsClass));
             fieldIntrospectionClassGetAllFieldsMethod = mhl.findVirtual(fieldIntrospectionClass, "getAllFields", MethodType.methodType(fieldsClass.arrayType()));
@@ -251,8 +245,6 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
             registerClass(newlyReachableClass, LibGraalCompilerSupport.get().nodeClasses, this::getNodeClassFromNode, false, access);
         } else if (!newlyReachableClass.equals(lirInstructionClass) && lirInstructionClass.isAssignableFrom(newlyReachableClass)) {
             registerClass(newlyReachableClass, LibGraalCompilerSupport.get().instructionClasses, this::getLIRInstructionClassFromLIRInstruction, true, access);
-        } else if (!newlyReachableClass.equals(compositeValueClass) && compositeValueClass.isAssignableFrom(newlyReachableClass)) {
-            registerClass(newlyReachableClass, LibGraalCompilerSupport.get().compositeValueClasses, this::getCompositeValueClassFromCompositeValue, true, access);
         }
     }
 
@@ -481,17 +473,6 @@ public final class LibGraalFieldsOffsetsFeature implements InternalFeature {
             assert lirInstructionClass.isAssignableFrom(clazz);
             Object nodeClassInstance = lirInstructionClassClassGetMethod.invoke(clazz);
             assert lirInstructionClassClass.isInstance(nodeClassInstance);
-            return nodeClassInstance;
-        } catch (Throwable e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private Object getCompositeValueClassFromCompositeValue(Class<?> clazz) {
-        try {
-            assert compositeValueClass.isAssignableFrom(clazz);
-            Object nodeClassInstance = compositeValueClassClassGetMethod.invoke(clazz);
-            assert compositeValueClassClass.isInstance(nodeClassInstance);
             return nodeClassInstance;
         } catch (Throwable e) {
             throw VMError.shouldNotReachHere(e);

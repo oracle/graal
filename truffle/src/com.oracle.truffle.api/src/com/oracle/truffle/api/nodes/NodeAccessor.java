@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -133,6 +133,11 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
+        public void prepareForInstrumentation(RootNode root, Set<Class<?>> tags) {
+            root.prepareForInstrumentation(tags);
+        }
+
+        @Override
         public int getRootNodeBits(RootNode root) {
             return root.instrumentationBits;
         }
@@ -207,6 +212,19 @@ final class NodeAccessor extends Accessor {
         public boolean isCaptureFramesForTrace(RootNode rootNode, boolean compiled) {
             return rootNode.isCaptureFramesForTrace(compiled);
         }
+
+        @Override
+        public boolean prepareForCompilation(RootNode rootNode, boolean rootCompilation, int compilationTier, boolean lastTier) {
+            return rootNode.prepareForCompilation(rootCompilation, compilationTier, lastTier);
+        }
+
+        @Override
+        public Node findInstrumentableCallNode(RootNode root, Node callNode, Frame frame, int bytecodeIndex) {
+            Node node = root.findInstrumentableCallNode(callNode, frame, bytecodeIndex);
+            assert node == null || node.getRootNode() != null : "Invariant violated: Returned instrumentable call node is not adopted.";
+            return node;
+        }
+
     }
 
 }

@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted.fieldfolding;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.hosted.code.AnalysisToHostedGraphTransplanter;
+import com.oracle.svm.hosted.meta.HostedField;
+
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeCycles;
@@ -35,11 +39,6 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
 import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
-
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.hosted.code.AnalysisToHostedGraphTransplanter;
-import com.oracle.svm.hosted.meta.HostedField;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -89,7 +88,7 @@ public final class IsStaticFinalFieldInitializedNode extends FixedWithNextNode i
 
         } else {
             StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
-            Integer fieldCheckIndex = feature.fieldCheckIndexMap.get(StaticFinalFieldFoldingFeature.toAnalysisField(field));
+            Integer fieldCheckIndex = feature.getFieldCheckIndex(field);
             assert fieldCheckIndex != null : "Field must be optimizable: " + field;
             ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
             ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());

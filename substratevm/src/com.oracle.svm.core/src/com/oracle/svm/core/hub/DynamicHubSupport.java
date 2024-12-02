@@ -38,7 +38,6 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
@@ -57,11 +56,7 @@ public final class DynamicHubSupport implements MultiLayeredImageSingleton, Unsa
     @AlwaysInline("Performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DynamicHubSupport forLayer(int layerIndex) {
-        if (!ImageLayerBuildingSupport.buildingImageLayer()) {
-            return ImageSingletons.lookup(DynamicHubSupport.class);
-        }
-        DynamicHubSupport[] supports = MultiLayeredImageSingleton.getAllLayers(DynamicHubSupport.class);
-        return supports[layerIndex];
+        return MultiLayeredImageSingleton.getForLayer(DynamicHubSupport.class, layerIndex);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

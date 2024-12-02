@@ -279,14 +279,14 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
         @Specialization(guards = {"ident == CREATE_NATIVE_CLOSURE", "ctxExtKey != null"})
         static boolean doCreate(@SuppressWarnings("unused") LLVMFunctionDescriptor function, @SuppressWarnings("unused") String ident,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached(value = "getCtxExtKey()", allowUncached = true) ContextExtension.Key<NativeContextExtension> ctxExtKey) {
             return ctxExtKey.get(LLVMContext.get(node)) != null;
         }
 
         @Specialization(guards = {"CREATE_NATIVE_CLOSURE.equals(ident)", "ctxExtKey != null"}, replaces = "doCreate")
         static boolean doEqualsCheck(@SuppressWarnings("unused") LLVMFunctionDescriptor function, @SuppressWarnings("unused") String ident,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached(value = "getCtxExtKey()", allowUncached = true) ContextExtension.Key<NativeContextExtension> ctxExtKey) {
             return doCreate(function, ident, node, ctxExtKey);
         }
@@ -406,7 +406,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
         @Specialization(guards = "ident == CREATE_NATIVE_CLOSURE")
         static Object doCreate(LLVMFunctionDescriptor function, String ident, Object[] args,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached CreateNativeClosureNode createNativeClosure) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
             assert CREATE_NATIVE_CLOSURE.equals(ident);
             try {
@@ -418,7 +418,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
         @Specialization(guards = "CREATE_NATIVE_CLOSURE.equals(ident)", replaces = "doCreate")
         static Object doEqualsCheck(LLVMFunctionDescriptor function, String ident, Object[] args,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached CreateNativeClosureNode createNativeClosure) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
             return doCreate(function, ident, args, node, createNativeClosure);
         }
@@ -446,7 +446,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
         @ExportMessage
         Object execute(Object[] args,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached CreateNativeClosureNode createNativeClosure) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
             return createNativeClosure.execute(node, function, args);
         }
@@ -457,7 +457,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
         @Specialization(guards = {"ident == CREATE_NATIVE_CLOSURE", "ctxExtKey != null"})
         static Object doCreate(LLVMFunctionDescriptor function, String ident,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached(value = "getCtxExtKey()", allowUncached = true) ContextExtension.Key<NativeContextExtension> ctxExtKey,
                         @Cached InlinedBranchProfile exception) throws UnknownIdentifierException {
             assert CREATE_NATIVE_CLOSURE.equals(ident);
@@ -470,7 +470,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
         @Specialization(guards = {"CREATE_NATIVE_CLOSURE.equals(ident)", "ctxExtKey != null"}, replaces = "doCreate")
         static Object doEqualsCheck(LLVMFunctionDescriptor function, String ident,
-                        @Bind("$node") Node node,
+                        @Bind Node node,
                         @Cached(value = "getCtxExtKey()", allowUncached = true) ContextExtension.Key<NativeContextExtension> ctxExtKey,
                         @Cached InlinedBranchProfile exception) throws UnknownIdentifierException {
             return doCreate(function, ident, node, ctxExtKey, exception);
@@ -518,7 +518,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                    @Bind("$node") Node node,
+                    @Bind Node node,
                     @Cached(value = "getCtxExtKey()", allowUncached = true) ContextExtension.Key<NativeContextExtension> ctxExtKey) {
         boolean hasCreateNativeClosure = ctxExtKey != null && ctxExtKey.get(LLVMContext.get(node)) != null;
         return new MembersList(hasCreateNativeClosure);

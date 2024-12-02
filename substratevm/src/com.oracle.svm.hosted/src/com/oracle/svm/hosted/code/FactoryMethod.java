@@ -114,4 +114,8 @@ public final class FactoryMethod extends NonBytecodeMethod {
     public boolean throwAllocatedObject() {
         return throwAllocatedObject;
     }
+
+    public ResolvedJavaType getInstantiatedType() {
+        return instantiatedType;
+    }
 }

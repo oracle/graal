@@ -1189,6 +1189,7 @@ _baristaConfig = {
         "micronaut-hello-world": {},
         "micronaut-shopcart": {},
         "micronaut-similarity": {},
+        "micronaut-pegasus": {},
         "quarkus-hello-world": {},
         "quarkus-tika-odt": {
             "barista-bench-name": "quarkus-tika",
@@ -1260,7 +1261,10 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
         return "graal-compiler"
 
     def benchmarkList(self, bmSuiteArgs):
-        return self.completeBenchmarkList(bmSuiteArgs)
+        exclude = []
+        # Barista currently does not support running 'micronaut-pegasus' on the JVM - running it results in a crash
+        exclude.append("micronaut-pegasus")
+        return [b for b in self.completeBenchmarkList(bmSuiteArgs) if not b in exclude]
 
     def completeBenchmarkList(self, bmSuiteArgs):
         return _baristaConfig["benchmarks"].keys()
@@ -1613,6 +1617,13 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["gauss-mix"]
             del benchmarks["page-rank"]
             del benchmarks["movie-lens"]
+            if mx.get_jdk().javaCompliance >= '24':
+                # JEP 486 Security Manager removal causes the following benchmarks to fail unconditionally.
+                # See https://github.com/renaissance-benchmarks/renaissance/pull/453 for a temporary fix.
+                del benchmarks["als"]
+                del benchmarks["dec-tree"]
+                del benchmarks["log-regression"]
+                del benchmarks["naive-bayes"]
 
         return benchmarks
 
@@ -1623,7 +1634,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["0.14.1", "0.15.0"]
+        return ["0.14.1", "0.15.0", "0.16.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -1650,9 +1661,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 
     def vmArgs(self, bmSuiteArgs):
         vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
-
-        # Renaissance issue #439
-        vm_args.append("-Djava.security.manager=allow")
         return vm_args
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
@@ -1861,7 +1869,11 @@ def parse_prefixed_args(prefix, args):
     ret = []
     for arg in args:
         if arg.startswith(prefix):
-            parsed = arg.split(' ')[0].split(prefix)[1]
+            words_in_arg = arg.split(' ')
+            if len(words_in_arg) > 1:
+                # We will monitor our logs for this warning and then fix this method once we are certain no jobs break (GR-60134)
+                mx.warn(f"A prefixed arg that includes spaces is being parsed, ignoring everything that comes after the first space! The arg in question is: '{arg}'")
+            parsed = words_in_arg[0].split(prefix)[1]
             if parsed not in ret:
                 ret.append(parsed)
     return ret

@@ -86,13 +86,15 @@ This would lead to the inlining phase choosing to inline `handleNotEnoughArgumen
 Hence, the goal is to gather profiles on workload that match the production workloads as much as possible.
 The gold standard for this is to run the exact same workloads you expect to run in production on the instrumented binary.
 
-For a more detailed usage overview, go to [Basic Usage of Profile-Guided Optimizations](PGO-Basic-Usage.md) documentation.
+For a more detailed usage overview, go to [Basic Usage of Profile-Guided Optimization](PGO-Basic-Usage.md) documentation.
 
 ### Further Reading
 
-* [Basic Usage of Profile-Guided Optimizations](PGO-Basic-Usage.md)
+* [Basic Usage of Profile-Guided Optimization](PGO-Basic-Usage.md)
 * [Inspecting a Profile in a Build Report](PGO-Build-Report.md)
 * [Creating LCOV Coverage Reports](PGO-LCOV.md)
 * [Merging Profiles from Multiple Sources](PGO-Merging-Profiles.md)
 * [Tracking Profile Quality Over Time](PGO-Profile-Quality.md)
+* [The _iprof_ File Format](PGO-IprofFileFormat.md)
+* [The _iprof_ JSON Schema](assets/iprof-v1.0.0.schema.json)
 * [Frequently Asked Questions](PGO-FAQ.md)

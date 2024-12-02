@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import java.util.WeakHashMap;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
 @TargetClass(className = "jdk.internal.loader.URLClassPath")
 @SuppressWarnings({"unused", "static-method"})
@@ -54,6 +55,7 @@ final class Target_jdk_internal_loader_URLClassPath {
 
     /* Reset acc to null, since contexts in image heap are replaced */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = JDK21OrEarlier.class)//
     private AccessControlContext acc;
 }
 

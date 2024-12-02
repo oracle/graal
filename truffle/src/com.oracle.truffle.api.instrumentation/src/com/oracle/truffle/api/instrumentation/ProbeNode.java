@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -158,6 +158,8 @@ public final class ProbeNode extends Node {
     @CompilationFinal private volatile Assumption version;
     @CompilationFinal private volatile int seen = 0;
 
+    private final boolean eagerProbe;
+
     private static final boolean ASSERT_ENTER_RETURN_PARITY;
 
     static {
@@ -166,10 +168,28 @@ public final class ProbeNode extends Node {
         ASSERT_ENTER_RETURN_PARITY = assertsOn;
     }
 
+    /**
+     * Constructor for eager probes.
+     */
+    ProbeNode(InstrumentableNode node, SourceSection sourceSection) {
+        this.handler = findInstrumentationHandler(node);
+        this.context = new EventContext(this, sourceSection);
+        this.eagerProbe = true;
+    }
+
+    private static InstrumentationHandler findInstrumentationHandler(InstrumentableNode node) {
+        RootNode root = ((Node) node).getRootNode();
+        if (root == null) {
+            throw new IllegalArgumentException("Unadopted nodes cannot be used to create probes.");
+        }
+        return (InstrumentationHandler) InstrumentAccessor.ENGINE.getInstrumentationHandler(root);
+    }
+
     /** Instantiated by the instrumentation framework. */
     ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
         this.handler = handler;
         this.context = new EventContext(this, sourceSection);
+        this.eagerProbe = false;
     }
 
     RetiredNodeReference getRetiredNodeReference() {
@@ -218,7 +238,7 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onEnter(VirtualFrame frame) {
-        if (ASSERT_ENTER_RETURN_PARITY) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe) {
             InstrumentAccessor.ENGINE.assertReturnParityEnter(this, handler.getSourceVM());
         }
         EventChainNode localChain = lazyUpdate(frame);
@@ -236,7 +256,7 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onReturnValue(VirtualFrame frame, Object result) {
-        if (ASSERT_ENTER_RETURN_PARITY) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe) {
             InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
         }
         EventChainNode localChain = lazyUpdate(frame);
@@ -296,7 +316,7 @@ public final class ProbeNode extends Node {
      * @since 0.31
      */
     public Object onReturnExceptionalOrUnwind(VirtualFrame frame, Throwable exception, boolean isReturnCalled) {
-        if (ASSERT_ENTER_RETURN_PARITY && !isReturnCalled) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe && !isReturnCalled) {
             InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
         }
         UnwindException unwind = null;
@@ -363,7 +383,7 @@ public final class ProbeNode extends Node {
      * @since 24.0
      */
     public void onYield(VirtualFrame frame, Object result) {
-        if (ASSERT_ENTER_RETURN_PARITY) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe) {
             InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
         }
         EventChainNode localChain = lazyUpdate(frame);
@@ -384,7 +404,7 @@ public final class ProbeNode extends Node {
      * @since 24.0
      */
     public void onResume(VirtualFrame frame) {
-        if (ASSERT_ENTER_RETURN_PARITY) {
+        if (ASSERT_ENTER_RETURN_PARITY && !eagerProbe) {
             InstrumentAccessor.ENGINE.assertReturnParityEnter(this, handler.getSourceVM());
         }
         EventChainNode localChain = lazyUpdate(frame);
@@ -399,7 +419,7 @@ public final class ProbeNode extends Node {
 
     WrapperNode findWrapper() throws AssertionError {
         Node parent = getParent();
-        if (!(parent instanceof WrapperNode)) {
+        if (!(parent instanceof WrapperNode wrapper)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (parent == null) {
                 throw new AssertionError("Probe node disconnected from AST.");
@@ -407,7 +427,20 @@ public final class ProbeNode extends Node {
                 throw new AssertionError("ProbeNodes must have a parent Node that implements NodeWrapper.");
             }
         }
-        return (WrapperNode) parent;
+        return wrapper;
+    }
+
+    InstrumentableNode findInstrumentableNode() throws AssertionError {
+        Node parent = getParent();
+        while (parent != null) {
+            if (parent instanceof WrapperNode n) {
+                return (InstrumentableNode) n.getDelegateNode();
+            } else if (parent instanceof InstrumentableNode n) {
+                return n;
+            }
+            parent = parent.getParent();
+        }
+        throw CompilerDirectives.shouldNotReachHere("Instrumentable node not found.");
     }
 
     synchronized void invalidate() {
@@ -445,8 +478,15 @@ public final class ProbeNode extends Node {
                     // chain is null -> remove wrapper;
                     // Note: never set child nodes to null, can cause races
                     if (retiredNodeReference == null) {
-                        InstrumentationHandler.removeWrapper(ProbeNode.this);
-                        return null;
+                        if (eagerProbe) {
+                            // eager probes cannot be removed
+                            oldChain = this.chain;
+                            this.chain = null;
+                        } else {
+                            // wrappers can just be removed for the next exection
+                            InstrumentationHandler.removeWrapper(ProbeNode.this);
+                            return null;
+                        }
                     } else {
                         oldChain = this.chain;
                         this.chain = null;
@@ -660,26 +700,39 @@ public final class ProbeNode extends Node {
         return visitor.index;
     }
 
-    private EventChainNode findParentChain(VirtualFrame frame, EventBinding<?> binding) {
+    ProbeNode findParentProbe() {
         Node node = getParent().getParent();
         while (node != null) {
-            if (node instanceof WrapperNode) {
-                ProbeNode probe = ((WrapperNode) node).getProbeNode();
-                EventChainNode c = probe.lazyUpdate(frame);
-                if (c != null) {
-                    c = c.find(binding);
-                }
-                if (c != null) {
-                    return c;
+            ProbeNode probe = null;
+            if (node instanceof WrapperNode wrapper) {
+                return wrapper.getProbeNode();
+            } else if (node instanceof InstrumentableNode instrumentable) {
+                probe = instrumentable.findProbe();
+                if (probe != null && probe.eagerProbe && probe != this) {
+                    assert probe != this;
+                    return probe;
                 }
             } else if (node instanceof RootNode) {
-                break;
+                return null;
             }
             node = node.getParent();
         }
-        if (node == null) {
-            throw new IllegalStateException("The AST node is not yet adopted. ");
+        throw new IllegalStateException("The AST node is not yet adopted. ");
+    }
+
+    private EventChainNode findParentChain(VirtualFrame frame, EventBinding<?> binding) {
+        ProbeNode probe = this;
+        while ((probe = probe.findParentProbe()) != null) {
+            assert probe != this;
+            EventChainNode c = probe.lazyUpdate(frame);
+            if (c != null) {
+                c = c.find(binding);
+            }
+            if (c != null) {
+                return c;
+            }
         }
+
         return null;
 
     }

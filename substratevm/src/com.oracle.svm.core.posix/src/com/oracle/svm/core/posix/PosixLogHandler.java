@@ -52,7 +52,7 @@ public class PosixLogHandler implements LogHandler {
         /* Save and restore errno around calls that would otherwise change errno. */
         final int savedErrno = LibC.errno();
         try {
-            if (!PosixUtils.writeBytes(getOutputFile(), bytes, length)) {
+            if (!PosixUtils.write(getOutputFile(), bytes, length)) {
                 /*
                  * We are in a low-level log routine and output failed, so there is little we can
                  * do.

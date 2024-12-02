@@ -57,8 +57,6 @@ import jdk.graal.compiler.serviceprovider.GraalServices;
 
 public class NativeImageOptions {
 
-    public static final int DEFAULT_MAX_ANALYSIS_SCALING = 16;
-
     @Option(help = "Comma separated list of CPU features that will be enabled while building the " +
                     "target executable, irrespective of whether they are supported by the hosted " +
                     "environment. Note that enabling features not present within the target environment " +
@@ -88,7 +86,7 @@ public class NativeImageOptions {
     public static final String MICRO_ARCHITECTURE_LIST = "list";
 
     @APIOption(name = "-march")//
-    @Option(help = "Generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8-a' on AArch64. " +
+    @Option(help = "Generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8.1-a' on AArch64. " +
                     "Use -march=" + MICRO_ARCHITECTURE_COMPATIBILITY + " for best compatibility, or -march=" + MICRO_ARCHITECTURE_NATIVE +
                     " for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. " +
                     "To list all available machine types, use -march=" + MICRO_ARCHITECTURE_LIST + ".", type = User)//
@@ -307,4 +305,7 @@ public class NativeImageOptions {
             }
         }
     };
+
+    @Option(help = "file:doc-files/LibGraalClassLoader.txt")//
+    public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
 }

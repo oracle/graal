@@ -61,7 +61,6 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -72,10 +71,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -98,13 +97,16 @@ import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ModuleSupport.Access;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.libgraal.LibGraalClassLoaderBase;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.module.Modules;
 
-public class NativeImageClassLoaderSupport {
+public final class NativeImageClassLoaderSupport {
 
     private final List<Path> imagecp;
     private final List<Path> buildcp;
@@ -119,7 +121,6 @@ public class NativeImageClassLoaderSupport {
     private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
 
     private final NativeImageClassLoader classLoader;
-    private final ClassLoader customLoader;
 
     public final ModuleFinder upgradeAndSystemModuleFinder;
     public final ModuleLayer moduleLayerForImageBuild;
@@ -131,7 +132,14 @@ public class NativeImageClassLoaderSupport {
     private Set<Path> javaPathsToInclude;
     private boolean includeAllFromClassPath;
 
+    private Optional<LibGraalClassLoaderBase> libGraalLoader;
+    private List<ClassLoader> classLoaders;
+
     private final Set<Class<?>> classesToIncludeUnconditionally = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    private final Method implAddReadsAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddReadsAllUnnamed");
+    private final Method implAddEnableNativeAccess = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccess");
+    private final Method implAddEnableNativeAccessToAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccessToAllUnnamed");
 
     @SuppressWarnings("this-escape")
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
@@ -189,23 +197,6 @@ public class NativeImageClassLoaderSupport {
 
         classLoader = new NativeImageClassLoader(imagecp, configuration, defaultSystemClassLoader);
 
-        String customLoaderPropertyKey = "org.graalvm.nativeimage.experimental.loader";
-        String customLoaderPropertyValue = System.getProperty(customLoaderPropertyKey);
-        if (customLoaderPropertyValue != null) {
-            try {
-                Class<?> customLoaderClass = Class.forName(customLoaderPropertyValue, true, classLoader);
-                customLoader = (ClassLoader) ReflectionUtil.newInstance(customLoaderClass);
-            } catch (ClassNotFoundException e) {
-                throw VMError.shouldNotReachHere("Custom ClassLoader " + customLoaderPropertyValue +
-                                " set via system property " + customLoaderPropertyKey + " could not be found.", e);
-            } catch (ClassCastException e) {
-                throw VMError.shouldNotReachHere("Custom ClassLoader " + customLoaderPropertyValue +
-                                " set via system property " + customLoaderPropertyKey + " does not extend class ClassLoader.", e);
-            }
-        } else {
-            customLoader = null;
-        }
-
         ModuleLayer moduleLayer = ModuleLayer.defineModules(configuration, List.of(ModuleLayer.boot()), ignored -> classLoader).layer();
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
@@ -238,8 +229,14 @@ public class NativeImageClassLoaderSupport {
         return classLoader;
     }
 
-    public ClassLoader getCustomLoader() {
-        return customLoader;
+    public LibGraalClassLoaderBase getLibGraalLoader() {
+        VMError.guarantee(libGraalLoader != null, "Invalid access to libGraalLoader before getting set up");
+        return libGraalLoader.orElse(null);
+    }
+
+    public List<ClassLoader> getClassLoaders() {
+        VMError.guarantee(classLoaders != null, "Invalid access to classLoaders before getting set up");
+        return classLoaders;
     }
 
     private static Path stringToPath(String path) {
@@ -270,13 +267,16 @@ public class NativeImageClassLoaderSupport {
 
         new LoadClassHandler(executor, imageClassLoader).run();
 
-        if (customLoader != null) {
-            /* If we have a customLoader, allow it to register its classes to the image builder */
-            Class<? extends ClassLoader> customLoaderClass = customLoader.getClass();
-            Method customLoaderForEachClass = ReflectionUtil.lookupMethod(true, customLoaderClass, "forEachClass", Consumer.class);
-            if (customLoaderForEachClass != null) {
-                Consumer<Class<?>> handleClass = imageClassLoader::handleClass;
-                ReflectionUtil.invokeMethod(customLoaderForEachClass, customLoader, handleClass);
+        LibGraalClassLoaderBase graalLoader = getLibGraalLoader();
+        if (graalLoader != null) {
+            /* If we have a customLoader, register its classes to the image builder */
+            for (String fqn : graalLoader.getAllClassNames()) {
+                try {
+                    var clazz = graalLoader.getClassLoader().loadClass(fqn);
+                    imageClassLoader.handleClass(clazz);
+                } catch (ClassNotFoundException e) {
+                    throw GraalError.shouldNotReachHere(e, graalLoader + " could not load class " + fqn);
+                }
             }
         }
     }
@@ -405,17 +405,6 @@ public class NativeImageClassLoaderSupport {
         serviceProviders.forEach((key, val) -> action.accept(key, Collections.unmodifiableCollection(val)));
     }
 
-    private static void implAddReadsAllUnnamed(Module module) {
-        try {
-            Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
-            implAddReadsAllUnnamed.setAccessible(true);
-            implAddReadsAllUnnamed.invoke(module);
-        } catch (ReflectiveOperationException | NoSuchElementException e) {
-            VMError.shouldNotReachHere("Could reflectively call Module.implAddReadsAllUnnamed", e);
-        }
-    }
-
     protected List<Path> modulepath() {
         return Stream.concat(imagemp.stream(), buildmp.stream()).toList();
     }
@@ -462,11 +451,19 @@ public class NativeImageClassLoaderSupport {
         });
         processOption(NativeImageClassLoaderOptions.AddReads).forEach(val -> {
             if (val.targetModules.isEmpty()) {
-                implAddReadsAllUnnamed(val.module);
+                ReflectionUtil.invokeMethod(implAddReadsAllUnnamed, val.module);
             } else {
                 for (Module targetModule : val.targetModules) {
                     Modules.addReads(val.module, targetModule);
                 }
+            }
+        });
+        NativeImageClassLoaderOptions.EnableNativeAccess.getValue(parsedHostedOptions).values().stream().flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ","))).forEach(moduleName -> {
+            if ("ALL-UNNAMED".equals(moduleName)) {
+                ReflectionUtil.invokeMethod(implAddEnableNativeAccessToAllUnnamed, null);
+            } else {
+                Module module = findModule(moduleName).orElseThrow(() -> userWarningModuleNotFound(NativeImageClassLoaderOptions.EnableNativeAccess, moduleName));
+                ReflectionUtil.invokeMethod(implAddEnableNativeAccess, module);
             }
         });
     }
@@ -569,6 +566,30 @@ public class NativeImageClassLoaderSupport {
         return parsedOptions;
     }
 
+    public void setupLibGraalClassLoader() {
+        var libGraalClassLoaderFQN = NativeImageOptions.LibGraalClassLoader.getValue(parsedHostedOptions);
+        if (!libGraalClassLoaderFQN.isEmpty()) {
+            ModuleSupport.accessModule(Access.EXPORT, classLoader.getUnnamedModule(), LibGraalClassLoaderBase.class.getModule(), LibGraalClassLoaderBase.class.getPackageName());
+            try {
+                Class<?> loaderClass = Class.forName(libGraalClassLoaderFQN, true, classLoader);
+                LibGraalClassLoaderBase loaderInstance = (LibGraalClassLoaderBase) ReflectionUtil.newInstance(loaderClass);
+                libGraalLoader = Optional.of(loaderInstance);
+                classLoaders = List.of(loaderInstance.getClassLoader(), getClassLoader());
+            } catch (ClassNotFoundException e) {
+                throw VMError.shouldNotReachHere("LibGraalClassLoader " + libGraalClassLoaderFQN +
+                                " set via " + SubstrateOptionsParser.commandArgument(NativeImageOptions.LibGraalClassLoader, libGraalClassLoaderFQN) +
+                                " could not be found.", e);
+            } catch (ClassCastException e) {
+                throw VMError.shouldNotReachHere("LibGraalClassLoader " + libGraalClassLoaderFQN +
+                                " set via " + SubstrateOptionsParser.commandArgument(NativeImageOptions.LibGraalClassLoader, libGraalClassLoaderFQN) +
+                                " does not extend class " + LibGraalClassLoaderBase.class.getName() + '.', e);
+            }
+        } else {
+            libGraalLoader = Optional.empty();
+            classLoaders = List.of(getClassLoader());
+        }
+    }
+
     private record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
                     List<Module> targetModules) {
     }
@@ -667,7 +688,7 @@ public class NativeImageClassLoaderSupport {
         }
     }
 
-    Optional<String> getMainClassFromModule(Object module) {
+    static Optional<String> getMainClassFromModule(Object module) {
         assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
         return ((Module) module).getDescriptor().mainClass();
     }

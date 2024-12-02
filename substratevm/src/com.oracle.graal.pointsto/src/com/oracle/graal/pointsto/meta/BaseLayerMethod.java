@@ -166,7 +166,7 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
 
     @Override
     public StackTraceElement asStackTraceElement(int bci) {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        return new StackTraceElement(declaringClass.toClassName(), name, declaringClass.getSourceFileName(), -1);
     }
 
     @Override

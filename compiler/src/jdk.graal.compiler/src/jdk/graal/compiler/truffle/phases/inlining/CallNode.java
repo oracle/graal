@@ -37,7 +37,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
-import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.core.common.GraalBailoutException;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -278,6 +278,13 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     }
 
     public void expand() {
+        if (state == State.Expanded) {
+            /*
+             * The CallNode may be already expanded for trivial call nodes which are expanded in the
+             * afterExpand method.
+             */
+            return;
+        }
         assert state == State.Cutoff : "Cannot expand a non-cutoff node. Node is " + state;
         assert getParent() != null;
         state = State.Expanded;
@@ -288,7 +295,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         GraphManager manager = getCallTree().getGraphManager();
         try {
             entry = manager.pe(directCallTarget);
-        } catch (PermanentBailoutException e) {
+        } catch (GraalBailoutException e) {
             state = State.BailedOut;
             return;
         }
@@ -466,17 +473,25 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     }
 
     public void finalizeGraph() {
-        if (state == State.Inlined) {
-            for (CallNode child : children) {
-                child.finalizeGraph();
-            }
-        }
-        if (state == State.Cutoff || state == State.Expanded || state == State.BailedOut) {
-            if (invoke.isAlive()) {
-                getCallTree().getGraphManager().finalizeGraph(invoke, directCallTarget);
-            } else {
-                state = State.Removed;
-            }
+        switch (state) {
+            case Inlined:
+                for (CallNode child : children) {
+                    child.finalizeGraph();
+                }
+                break;
+            case Cutoff:
+            case Expanded:
+            case BailedOut:
+                if (invoke.isAlive()) {
+                    getCallTree().getGraphManager().finalizeGraph(invoke, directCallTarget);
+                } else {
+                    state = State.Removed;
+                }
+                break;
+            case Indirect:
+            case Removed:
+                // nothing to finalize
+                break;
         }
     }
 

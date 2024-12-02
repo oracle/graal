@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,25 +40,66 @@
  */
 package com.oracle.truffle.sl.nodes;
 
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
 /**
  * The initial {@link RootNode} of {@link SLFunction functions} when they are created, i.e., when
- * they are still undefined. Executing it throws an
- * {@link SLUndefinedNameException#undefinedFunction exception}.
+ * they are still undefined. Executing it throws an {@link SLException#undefinedFunction exception}.
  */
-public class SLUndefinedFunctionRootNode extends SLRootNode {
+public final class SLUndefinedFunctionRootNode extends SLRootNode {
+
+    private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+
+    private final TruffleString name;
+
     public SLUndefinedFunctionRootNode(SLLanguage language, TruffleString name) {
-        super(language, null, null, null, name);
+        super(language, null);
+        this.name = name;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        throw SLUndefinedNameException.undefinedFunction(null, getTSName());
+        throw SLException.undefinedFunction(null, name);
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return null;
+    }
+
+    @Override
+    public SourceSection ensureSourceSection() {
+        return null;
+    }
+
+    @Override
+    public SLExpressionNode getBodyNode() {
+        return null;
+    }
+
+    @Override
+    public Object[] getLocalNames(FrameInstance frame) {
+        return EMPTY_OBJECT_ARRAY;
+    }
+
+    @Override
+    public Object[] getLocalValues(FrameInstance frame) {
+        return EMPTY_OBJECT_ARRAY;
+    }
+
+    @Override
+    public void setLocalValues(FrameInstance frame, Object[] args) {
+    }
+
+    @Override
+    public TruffleString getTSName() {
+        return name;
     }
 }

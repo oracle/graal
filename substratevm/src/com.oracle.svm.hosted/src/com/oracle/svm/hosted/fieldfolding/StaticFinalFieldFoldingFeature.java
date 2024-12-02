@@ -33,12 +33,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -54,6 +48,12 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedField;
 
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.java.StoreFieldNode;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -99,7 +99,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * </ul>
  */
 @AutomaticallyRegisteredFeature
-final class StaticFinalFieldFoldingFeature implements InternalFeature {
+public final class StaticFinalFieldFoldingFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Optimize static final fields that get a constant assigned in the class initializer.")//
@@ -109,6 +109,14 @@ final class StaticFinalFieldFoldingFeature implements InternalFeature {
     BigBang bb;
     final Map<AnalysisField, JavaConstant> foldedFieldValues = new ConcurrentHashMap<>();
     Map<AnalysisField, Integer> fieldCheckIndexMap;
+    /**
+     * Stores the field check index from the base layer.
+     *
+     * GR-59855: This is currently only used to determine that a field was folded in a previous
+     * layer already. The value from the base layer should also be reused in extension layers to
+     * ensure valid field folding across layers.
+     */
+    Map<Integer, Integer> baseLayerFieldCheckIndexMap = new HashMap<>();
     boolean[] fieldInitializationStatus;
 
     public static StaticFinalFieldFoldingFeature singleton() {
@@ -161,6 +169,7 @@ final class StaticFinalFieldFoldingFeature implements InternalFeature {
         fieldCheckIndexMap = new HashMap<>();
         int fieldCheckIndex = 0;
         for (AnalysisField field : foldedFields) {
+            assert !baseLayerFieldCheckIndexMap.containsKey(field.getId()) : "The field %s was already assigned an index in the base layer".formatted(field);
             fieldCheckIndexMap.put(field, fieldCheckIndex);
             fieldCheckIndex++;
         }
@@ -198,7 +207,7 @@ final class StaticFinalFieldFoldingFeature implements InternalFeature {
             if (n instanceof StoreFieldNode) {
                 StoreFieldNode node = (StoreFieldNode) n;
                 AnalysisField field = (AnalysisField) node.field();
-                if (field.isStatic() && field.isFinal()) {
+                if (field.isStatic() && field.isFinal() && !field.isInBaseLayer()) {
                     if (isClassInitializer && field.getDeclaringClass().equals(method.getDeclaringClass())) {
                         analyzeStoreInClassInitializer(node, field, optimizableFields, ineligibleFields);
                     } else {
@@ -276,5 +285,21 @@ final class StaticFinalFieldFoldingFeature implements InternalFeature {
         } else {
             return (AnalysisField) field;
         }
+    }
+
+    public Integer getFieldCheckIndex(ResolvedJavaField field) {
+        return getFieldCheckIndex(toAnalysisField(field));
+    }
+
+    public Integer getFieldCheckIndex(AnalysisField field) {
+        if (field.isInBaseLayer()) {
+            return baseLayerFieldCheckIndexMap.get(field.getId());
+        } else {
+            return fieldCheckIndexMap.get(field);
+        }
+    }
+
+    public void putBaseLayerFieldCheckIndex(int id, Integer fieldCheckIndex) {
+        baseLayerFieldCheckIndexMap.put(id, fieldCheckIndex);
     }
 }

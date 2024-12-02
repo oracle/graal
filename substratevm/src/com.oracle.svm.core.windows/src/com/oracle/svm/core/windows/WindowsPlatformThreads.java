@@ -216,7 +216,7 @@ class WindowsParker extends Parker {
         if (time == 0) {
             millis = SynchAPI.INFINITE() & 0xFFFFFFFFL;
         } else if (isAbsolute) {
-            millis = time - System.currentTimeMillis();
+            millis = time - TimeUtils.currentTimeMillis();
             if (millis <= 0) {
                 /* Already elapsed. */
                 return;

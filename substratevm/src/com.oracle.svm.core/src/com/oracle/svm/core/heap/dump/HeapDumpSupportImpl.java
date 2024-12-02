@@ -118,10 +118,10 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
         try {
             Log.log().string("Dumping heap to ").string(path).string(" ...").newline();
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();
             if (dumpHeap(fd, false)) {
                 long fileSize = getFileSupport().size(fd);
-                long elapsedMs = System.currentTimeMillis() - start;
+                long elapsedMs = TimeUtils.millisSinceNanos(start);
                 long seconds = elapsedMs / TimeUtils.millisPerSecond;
                 long ms = elapsedMs % TimeUtils.millisPerSecond;
                 Log.log().string("Heap dump file created [").signed(fileSize).string(" bytes in ").signed(seconds).character('.').signed(ms).string(" secs]").newline();
@@ -132,8 +132,9 @@ public class HeapDumpSupportImpl extends HeapDumping {
     }
 
     @Override
-    public void dumpHeap(String filename, boolean gcBefore) throws IOException {
-        RawFileDescriptor fd = getFileSupport().create(filename, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
+    public void dumpHeap(String filename, boolean gcBefore, boolean overwrite) throws IOException {
+        FileCreationMode creationMode = overwrite ? FileCreationMode.CREATE_OR_REPLACE : FileCreationMode.CREATE;
+        RawFileDescriptor fd = getFileSupport().create(filename, creationMode, RawFileOperationSupport.FileAccessMode.READ_WRITE);
         if (!getFileSupport().isValid(fd)) {
             throw new IOException("Could not create the heap dump file: " + filename);
         }

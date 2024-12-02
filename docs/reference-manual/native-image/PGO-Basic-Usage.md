@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: pgo
-link_title: Basic Usage of Profile-Guided Optimizations
+link_title: Basic Usage of Profile-Guided Optimization
 permalink: /reference-manual/native-image/optimizations-and-performance/PGO/basic-usage/
 ---
 

@@ -133,6 +133,7 @@ import jdk.internal.reflect.ConstructorAccessor;
 import jdk.internal.reflect.FieldAccessor;
 import jdk.internal.reflect.Reflection;
 import jdk.internal.reflect.ReflectionFactory;
+import jdk.internal.vm.annotation.Stable;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
@@ -389,6 +390,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private CFunctionPointer[] vtable;
 
     /** Field used for module information access at run-time. */
+    @Stable //
     private Module module;
 
     /** The class that serves as the host for the nest. All nestmates have the same host. */
@@ -1336,12 +1338,14 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @KeepOriginal
     private native Class<?>[] getPermittedSubclasses();
 
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     @Substitute
     @SuppressWarnings("unused")
     private void checkMemberAccess(SecurityManager sm, int which, Class<?> caller, boolean checkProxyInterfaces) {
         /* No runtime access checks. */
     }
 
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     @Substitute
     @SuppressWarnings({"deprecation", "unused"})
     private void checkPackageAccess(SecurityManager sm, ClassLoader ccl, boolean checkProxyInterfaces) {
@@ -1351,6 +1355,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /**
      * Never called as it is partially evaluated away due to SecurityManager.
      */
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     @KeepOriginal
     @SuppressWarnings({"deprecation", "unused"})
     private static native void checkPackageAccessForPermittedSubclasses(@SuppressWarnings("removal") SecurityManager sm,
@@ -1473,6 +1478,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     @CallerSensitiveAdapter
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
@@ -1493,6 +1499,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     @CallerSensitiveAdapter
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();
@@ -1528,11 +1535,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.getPackageName(this);
     }
 
+    private boolean isHybrid() {
+        if (SubstrateUtil.HOSTED) {
+            return AnnotationAccess.isAnnotationPresent(hostedJavaClass, Hybrid.class);
+        } else {
+            return LayoutEncoding.isHybrid(getLayoutEncoding());
+        }
+    }
+
     String computePackageName() {
         String pn = null;
         DynamicHub me = this;
-        while (me.hubIsArray()) {
-            me = me.getComponentType();
+        if (!isHybrid()) {
+            while (me.hubIsArray()) {
+                me = me.getComponentType();
+            }
         }
         if (me.isPrimitive()) {
             pn = "java.lang";

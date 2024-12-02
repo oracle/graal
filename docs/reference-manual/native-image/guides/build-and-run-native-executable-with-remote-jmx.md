@@ -19,8 +19,8 @@ It also shows you how to register a custom managed bean (MBean) with the JMX ser
 A JMX connection from a client to a remote MBean server is supported. 
 The client, the server, or both may be a native executable.
 Only MXBeans, and standard user-defined MBeans, are supported. 
-Dynamic and model MBeans are not supported because their management interfaces are defined at runtime. 
-Although remote management of MXBeans is supported, not all platform MXBean functionality is implemented or is applicable in a native executable produced by Native Image. 
+Dynamic and model MBeans are not supported because their management interfaces are defined at run time. 
+Although remote management of MXBeans is supported, not all platform MXBean functionality is implemented or is applicable in a native executable. 
 Additionally, to define and use standard MBeans, you must specify metadata configuration. 
 This is further explained in this guide.
 
@@ -79,13 +79,13 @@ For other installation options, visit the [Downloads section](https://www.graalv
     }
     ```
 
-2. Change your working directory to where you saved the file. Then compile the application using the GraalVM JDK:
+2. Ccompile the application using the GraalVM JDK:
     ```shell 
     javac SimpleJmx.java
     ```
     This creates _SimpleJmx.class_, _SimpleJmx$Simple.class_, and _SimpleJmx$SimpleMBean.class_ files.
    
-3. Add dynamic proxy configuration. JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans. To be able to interact with the custom `SimpleMBean` at runtime, you need to provide Native Image with additional [dynamic-proxy metadata](../ReachabilityMetadata.md#reflection) for the MBean interface. For this, create or modify a JSON file named _reachability-metadata.json_ with the following contents:
+3. Add dynamic proxy configuration. JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans. To be able to interact with the custom `SimpleMBean` at run time, you need to provide Native Image with additional [dynamic-proxy metadata](../ReachabilityMetadata.md#reflection) for the MBean interface. For this, create or modify a JSON file named _reachability-metadata.json_ with the following contents:
     ```json
     {
       "reflection": [
@@ -98,7 +98,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     }
     ```
 
-4. Build a native executable with VM monitoring enabled and pass the JSON configuration file to `native-image`:
+4. Build a native executable with the VM inspection enabled and pass the JSON configuration file to `native-image`:
     ```shell
     native-image --enable-monitoring=jmxserver,jmxclient,jvmstat -H:DynamicProxyConfigurationFiles=proxy-config.json SimpleJmx
     ```
@@ -142,4 +142,3 @@ Users can enable the JMX agent in a native executable to monitor a client applic
 
 - [Enabling and disabling JMX](https://docs.oracle.com/javadb/10.10.1.2/adminguide/radminjmxenabledisable.html)
 - [Create Heap Dumps with VisualVM](create-heap-dump-from-native-executable.md)
-- [Dynamic Proxy](../ReachabilityMetadata.md#reflection)

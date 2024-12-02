@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,8 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.collections.Pair;
+
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -61,8 +63,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
-
-import org.graalvm.collections.Pair;
 
 /**
  * {@link InitializeGlobalNode} initializes the value of all defined global symbols.
@@ -99,7 +99,7 @@ public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatal
         LLVMContext context = LLVMContext.get(this);
 
         // try-with-resources is not PE-safe (blocklisted method Throwable.addSuppressed)
-        TLSInitializerAccess access = context.getTLSInitializerAccess();
+        TLSInitializerAccess access = context.getTLSInitializerAccess(true);
         try {
             Thread[] threads = access.getAllRunningThreads();
             for (Thread thread : threads) {

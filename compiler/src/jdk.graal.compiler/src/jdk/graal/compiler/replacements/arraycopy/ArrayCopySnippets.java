@@ -661,22 +661,22 @@ public abstract class ArrayCopySnippets implements Snippets {
             args.add("length", arraycopy.getLength());
             if (snippetInfo != arraycopyNativeExceptionSnippet) {
                 assert arrayTypeCheck != ArrayCopyTypeCheck.UNDEFINED_ARRAY_TYPE_CHECK : "Must not be arrayTypeCheck " + Assertions.errorMessageContext("arrayCopy", arraycopy);
-                args.addConst("arrayTypeCheck", arrayTypeCheck);
+                args.add("arrayTypeCheck", arrayTypeCheck);
             }
             Object locationIdentity = arraycopy.killsAnyLocation() ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(elementKind);
             if (snippetInfo == arraycopyExactStubCallSnippet || snippetInfo == delayedExactArraycopyWithExpandedLoopSnippet) {
                 assert elementKind != null;
-                args.addConst("elementKind", elementKind);
-                args.addConst("locationIdentity", locationIdentity);
-                args.addConst("elementKindCounter", counters.arraycopyCallCounters.get(elementKind));
-                args.addConst("elementKindCopiedCounter", counters.arraycopyCallCopiedCounters.get(elementKind));
+                args.add("elementKind", elementKind);
+                args.add("locationIdentity", locationIdentity);
+                args.add("elementKindCounter", counters.arraycopyCallCounters.get(elementKind));
+                args.add("elementKindCopiedCounter", counters.arraycopyCallCopiedCounters.get(elementKind));
             }
-            args.addConst("counters", counters);
+            args.add("counters", counters);
             if (snippetInfo == delayedCheckcastArraycopySnippet) {
-                args.addConst("elementKind", JavaKind.Illegal);
+                args.add("elementKind", JavaKind.Illegal);
             }
             if (snippetInfo == delayedGenericArraycopySnippet) {
-                args.addConst("elementKind", JavaKind.Illegal);
+                args.add("elementKind", JavaKind.Illegal);
             }
 
             instantiate(tool, args, arraycopy);
@@ -695,11 +695,11 @@ public abstract class ArrayCopySnippets implements Snippets {
             args.add("length", arraycopy.getLength());
 
             JavaKind elementKind = arraycopy.getElementKind();
-            args.addConst("elementKind", (elementKind == null) ? JavaKind.Illegal : elementKind);
+            args.add("elementKind", (elementKind == null) ? JavaKind.Illegal : elementKind);
 
             Object locationIdentity = (elementKind == null) ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(arraycopy.getElementKind());
-            args.addConst("arrayLocation", locationIdentity);
-            args.addConst("counters", counters);
+            args.add("arrayLocation", locationIdentity);
+            args.add("counters", counters);
             instantiate(tool, args, arraycopy);
         }
 

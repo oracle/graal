@@ -10,11 +10,13 @@ At runtime, premain runtime options are set along with main class' arguments in 
   The warning is planned to be replaced by an error in GraalVM for JDK 25.
 * (GR-48384) Added a GDB Python script (`gdb-debughelpers.py`) to improve the Native Image debugging experience.
 * (GR-49517) Add support for emitting Windows x64 unwind info. This enables stack walking in native tooling such as debuggers and profilers.
+* (GR-56601) Together with Red Hat, we added experimental support for `jcmd` on Linux and macOS. Add `--enable-monitoring=jcmd` to your build arguments to try it out.
 * (GR-57384) Preserve the origin of a resource included in a native image. The information is included in the report produced by -H:+GenerateEmbeddedResourcesFile.
 * (GR-58000) Support for `GetStringUTFLengthAsLong` added in JNI_VERSION_24 ([JDK-8328877](https://bugs.openjdk.org/browse/JDK-8328877))
 * (GR-58383) The length of the printed stack trace when using `-XX:MissingRegistrationReportingMode=Warn` can now be set with `-XX:MissingRegistrationWarnContextLines=` and its default length is now 8.
 * (GR-58914) `ActiveProcessorCount` must be set at isolate or VM creation time.
 * (GR-59326) Ensure builder ForkJoin commonPool parallelism always respects NativeImageOptions.NumberOfThreads.
+* (GR-60081) Native Image now targets `armv8.1-a` by default on AArch64. Use `-march=compatibility` for best compatibility or `-march=native` for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
 
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
