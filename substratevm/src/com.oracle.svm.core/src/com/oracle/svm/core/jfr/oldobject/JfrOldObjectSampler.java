@@ -120,9 +120,12 @@ final class JfrOldObjectSampler {
             next.increaseSpan(sample.getSpan());
             queue.add(next);
         } else {
-            /* No remaining elements, we can't redistribute the weight. */
+            /*
+             * No younger element, we can't redistribute the weight. The next sample should absorb
+             * the extra span.
+             */
             totalInQueue = totalInQueue.subtract(sample.getSpan());
-            assert totalInQueue.equal(0);
+            assert totalInQueue.aboveOrEqual(0);
         }
         queue.remove(sample);
         release(sample);
