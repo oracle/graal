@@ -33,8 +33,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import jdk.jfr.Recording;
 import org.graalvm.word.WordFactory;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -45,6 +47,16 @@ import com.oracle.svm.test.jfr.AbstractJfrTest;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 
 public class TestOldObjectProfiler extends AbstractJfrTest {
+
+    /*
+     * Old object samples will not have allocation ticks set correctly if JfrTicks is not first
+     * initialized. We need to create the first JFR recording to lazily initialize JfrTicks.
+     */
+    @BeforeClass
+    public static void initializeJfrTicks() {
+        GraalDirectives.blackhole(new Recording());
+    }
+
     @Test
     public void testScavenge() {
         int count = 10;
