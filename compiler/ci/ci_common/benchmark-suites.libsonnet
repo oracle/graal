@@ -70,7 +70,7 @@
     run+: [
       self.benchmark_cmd + ["scala-dacapo:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "01:00:00",
+    timelimit: "01:30:00",
     forks_batches:: 2,
     bench_forks_per_batch:: 3,
     forks_timelimit:: "02:30:00",
@@ -105,7 +105,7 @@
     run+: [
       self.benchmark_cmd + ["renaissance:*"] + suite_version_args + ["--"] + self.extra_vm_args
     ],
-    timelimit: "2:00:00",
+    timelimit: "2:30:00",
     forks_batches:: 4,
     bench_forks_per_batch:: 2,
     forks_timelimit:: "4:00:00",
