@@ -56,6 +56,14 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
         this.peer = peer;
     }
 
+    JClass getPeer() {
+        return peer;
+    }
+
+    JNICalls getJNICalls() {
+        return hotSpotCalls;
+    }
+
     /**
      * Describes a class and holds a reference to its {@linkplain #jclass JNI value}.
      */

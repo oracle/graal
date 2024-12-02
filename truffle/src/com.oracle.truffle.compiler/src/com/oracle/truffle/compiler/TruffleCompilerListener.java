@@ -194,6 +194,7 @@ public interface TruffleCompilerListener {
      *
      */
     default void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
+        onFailure(compilable, reason, bailout, permanentBailout, tier);
     }
 
     /**
