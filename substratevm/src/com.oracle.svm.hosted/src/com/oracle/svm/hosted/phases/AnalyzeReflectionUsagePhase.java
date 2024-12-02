@@ -162,8 +162,8 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
                 if (nspToShow != null) {
                     int bci = nspToShow.getBCI();
-                    if (!AnalyzeReflectionUsageSupport.instance().containsFoldEntry(bci, nspToShow.getMethod())) {
-                        AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getMethod().asStackTraceElement(bci).toString());
+                    if (!AnalyzeReflectionUsageSupport.instance().containsFoldEntry(bci, nspToShow.getRootMethod())) {
+                        AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getRootMethod().asStackTraceElement(bci).toString());
                     }
                 }
             }
@@ -179,6 +179,8 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
         if (reflectMethodNames.containsKey(declaringClass)) {
             if (reflectMethodNames.get(declaringClass).contains(methodName)) {
+                System.out.println(callerClass);
+                System.out.println(declaringClass);
                 return declaringClass + "#" + methodName;
             }
         }
