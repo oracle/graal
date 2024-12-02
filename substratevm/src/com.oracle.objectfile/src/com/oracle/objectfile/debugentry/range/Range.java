@@ -172,7 +172,7 @@ public abstract class Range {
                 // difference between the caller SP and the pre-extend callee SP
                 // because of a stacked return address.
                 int adjustment = frameSize - preExtendFrameSize;
-                newRange.localValueInfos.add(new LocalValueEntry(localInfo.line(), localInfo.name(), localInfo.type(), localInfo.regIndex(), localInfo.stackSlot() + adjustment, localInfo.heapOffset(), localInfo.constant(), localInfo.localKind(), localInfo.local()));
+                newRange.localValueInfos.add(new LocalValueEntry(localInfo.regIndex(), localInfo.stackSlot() + adjustment, localInfo.heapOffset(), localInfo.constant(), localInfo.localKind(), localInfo.local()));
             } else {
                 newRange.localValueInfos.add(localInfo);
             }

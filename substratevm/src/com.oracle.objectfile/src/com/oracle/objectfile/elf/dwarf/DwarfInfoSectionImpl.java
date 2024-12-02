@@ -1268,12 +1268,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodLocalDeclarations(DebugContext context, ClassEntry classEntry, MethodEntry method, int fileIdx, int level, byte[] buffer, int p) {
         int pos = p;
-        int refAddr;
-        for (int i = 0; i < method.getLocalCount(); i++) {
-            refAddr = pos;
-            LocalEntry localInfo = method.getLocal(i);
-            setMethodLocalIndex(classEntry, method, localInfo, refAddr);
-            pos = writeMethodLocalDeclaration(context, localInfo, fileIdx, level, buffer, pos);
+        for (LocalEntry local : method.getLocals()) {
+            setMethodLocalIndex(classEntry, method, local, pos);
+            pos = writeMethodLocalDeclaration(context, local, fileIdx, level, buffer, pos);
         }
         return pos;
     }
@@ -1829,11 +1826,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             assert !range.isLeaf() : "should only be looking up var ranges for inlined calls";
             methodEntry = range.getCallees().getFirst().getMethodEntry();
         }
-        int count = methodEntry.getLocalCount();
-        for (int i = 0; i < count; i++) {
-            LocalEntry localInfo = methodEntry.getLocal(i);
-            int refAddr = getMethodLocalIndex(classEntry, methodEntry, localInfo);
-            pos = writeMethodLocalLocation(context, range, localInfo, varRangeMap, refAddr, depth, false, buffer, pos);
+
+        for (LocalEntry local : methodEntry.getLocals()) {
+            int refAddr = getMethodLocalIndex(classEntry, methodEntry, local);
+            pos = writeMethodLocalLocation(context, range, local, varRangeMap, refAddr, depth, false, buffer, pos);
         }
         return pos;
     }
@@ -1847,7 +1843,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         for (Range subrange : varRangeMap.getOrDefault(localInfo, new ArrayList<>())) {
             LocalValueEntry value = subrange.lookupValue(localInfo);
             if (value != null) {
-                log(context, "  [0x%08x]     local  %s:%s [0x%x, 0x%x] = %s", pos, value.name(), value.type().getTypeName(), subrange.getLo(), subrange.getHi(), formatValue(value));
+                log(context, "  [0x%08x]     local  %s:%s [0x%x, 0x%x] = %s", pos, value.local().name(), value.local().type().getTypeName(), subrange.getLo(), subrange.getHi(), formatValue(value));
                 DebugInfoProvider.LocalValueKind localKind = value.localKind();
                 // can only handle primitive or null constants just now
                 if (localKind == DebugInfoProvider.LocalValueKind.REGISTER || localKind == DebugInfoProvider.LocalValueKind.STACK || (

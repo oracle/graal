@@ -26,9 +26,6 @@
 
 package com.oracle.objectfile.debugentry;
 
-import jdk.vm.ci.meta.JavaKind;
-
-import java.util.ArrayList;
 import java.util.List;
 
 public class MethodEntry extends MemberEntry {
@@ -50,7 +47,7 @@ public class MethodEntry extends MemberEntry {
     public MethodEntry(FileEntry fileEntry, int line, String methodName, StructureTypeEntry ownerType,
                        TypeEntry valueType, int modifiers, List<LocalEntry> paramInfos, LocalEntry thisParam,
                        String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor, int vtableOffset,
-                       int firstLocalSlot) {
+                       int firstLocalSlot, List<LocalEntry> locals) {
         super(fileEntry, line, methodName, ownerType, valueType, modifiers);
         this.paramInfos = paramInfos;
         this.thisParam = thisParam;
@@ -60,8 +57,8 @@ public class MethodEntry extends MemberEntry {
         this.isConstructor = isConstructor;
         this.vtableOffset = vtableOffset;
         this.firstLocalSlot = firstLocalSlot;
+        this.locals = locals;
 
-        this.locals = new ArrayList<>();
         this.isInRange = false;
         this.isInlined = false;
     }
@@ -90,39 +87,48 @@ public class MethodEntry extends MemberEntry {
         return paramInfos.stream().map(LocalEntry::type).toList();
     }
 
-    public String getParamTypeName(int idx) {
-        assert idx < paramInfos.size();
-        return paramInfos.get(idx).type().getTypeName();
-    }
-
-    public String getParamName(int idx) {
-        assert idx < paramInfos.size();
-        /* N.b. param names may be null. */
-        return paramInfos.get(idx).name();
-    }
-
-    public int getParamLine(int idx) {
-        assert idx < paramInfos.size();
-        /* N.b. param names may be null. */
-        return paramInfos.get(idx).line();
-    }
-
     public LocalEntry getParam(int i) {
         assert i >= 0 && i < paramInfos.size() : "bad param index";
         return paramInfos.get(i);
+    }
+
+    public List<LocalEntry> getParams() {
+        return List.copyOf(paramInfos);
     }
 
     public LocalEntry getThisParam() {
         return thisParam;
     }
 
-    public int getLocalCount() {
-        return locals.size();
+    public LocalEntry getLocalEntry(String name, int slot, TypeEntry type) {
+        if (slot < 0) {
+            return null;
+        }
+
+        if (slot < firstLocalSlot) {
+            if (thisParam != null) {
+                if (thisParam.slot() == slot && thisParam.name().equals(name) && thisParam.type() == type) {
+                    return thisParam;
+                }
+            }
+            for (LocalEntry param : paramInfos) {
+                if (param.slot() == slot && param.name().equals(name) && param.type() == type) {
+                    return param;
+                }
+            }
+        } else {
+            for (LocalEntry local : locals) {
+                if (local.slot() == slot && local.name().equals(name) && local.type() == type) {
+                    return local;
+                }
+            }
+        }
+
+        return null;
     }
 
-    public LocalEntry getLocal(int i) {
-        assert i >= 0 && i < locals.size() : "bad param index";
-        return locals.get(i);
+    public List<LocalEntry> getLocals() {
+        return List.copyOf(locals);
     }
 
     public boolean isDeopt() {
@@ -163,39 +169,5 @@ public class MethodEntry extends MemberEntry {
 
     public String getSymbolName() {
         return symbolName;
-    }
-
-    public LocalEntry lookupLocalEntry(String name, int slot, TypeEntry type, JavaKind kind, int line) {
-        if (slot < 0) {
-            return null;
-        } else if (slot < firstLocalSlot) {
-            if (thisParam != null) {
-                if (thisParam.slot() == slot && thisParam.name().equals(name) && thisParam.type() == type) {
-                    return thisParam;
-                }
-            }
-            for (LocalEntry param : paramInfos) {
-                if (param.slot() == slot && param.name().equals(name) && param.type() == type) {
-                    return param;
-                }
-            }
-            return null;
-        } else {
-            for (LocalEntry local : locals) {
-                if (local.slot() == slot && local.name().equals(name) && local.type() == type) {
-                    if (line >= 0 && (local.line() < 0 || line < local.line())) {
-                        local.setLine(line);
-                    }
-                    return local;
-                } else if (local.slot() > slot) {
-                    LocalEntry newLocal = new LocalEntry(name, type, kind, slot, line);
-                    locals.add(locals.indexOf(local), newLocal);
-                    return newLocal;
-                }
-            }
-            LocalEntry newLocal = new LocalEntry(name, type, kind, slot, line);
-            locals.add(newLocal);
-            return newLocal;
-        }
     }
 }

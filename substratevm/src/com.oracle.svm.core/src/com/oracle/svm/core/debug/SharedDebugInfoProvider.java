@@ -69,9 +69,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -220,6 +219,13 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
         // create the header type
         lookupHeaderTypeEntry();
+
+        // collect all files and directories referenced by each classEntry
+        typeIndex.values().stream().parallel().forEach(typeEntry -> {
+            if (typeEntry instanceof ClassEntry classEntry) {
+                classEntry.collectFilesAndDirs();
+            }
+        });
     }
 
     private void handleDataInfo(Object data) {
@@ -318,9 +324,14 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         TypeEntry valueType = lookupTypeEntry((SharedType) method.getSignature().getReturnType(null));
         int modifiers = getModifiers(method);
 
+        // check the local variable table for parameters
+        // if the params are not in the table, we create synthetic ones from the method signature
         List<LocalEntry> paramInfos = getParamEntries(method, line);
         int firstLocalSlot = paramInfos.isEmpty() ? 0 : paramInfos.getLast().slot() + paramInfos.getLast().kind().getSlotCount();
         LocalEntry thisParam = Modifier.isStatic(modifiers) ? null : paramInfos.removeFirst();
+
+        // look for locals in the methods local variable table
+        List<LocalEntry> locals = getLocalEntries(method, firstLocalSlot);
 
         String symbolName = getSymbolName(method); //stringTable.uniqueDebugString(getSymbolName(method));
         int vTableOffset = getVTableOffset(method);
@@ -331,7 +342,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
         return methodIndex.computeIfAbsent(method, m -> new MethodEntry(fileEntry, line, methodName, ownerType,
                 valueType, modifiers, paramInfos, thisParam, symbolName, isDeopt, isOverride, isConstructor,
-                vTableOffset, firstLocalSlot));
+                vTableOffset, firstLocalSlot, locals));
     }
 
     private TypeEntry installTypeEntry(SharedType type) {
@@ -395,6 +406,47 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return name;
     }
 
+    public List<LocalEntry> getLocalEntries(SharedMethod method, int firstLocalSlot) {
+        ArrayList<LocalEntry> localEntries = new ArrayList<>();
+
+        LineNumberTable lnt = method.getLineNumberTable();
+        LocalVariableTable lvt = method.getLocalVariableTable();
+
+        // we do not have any information on local variables
+        if (lvt == null) {
+            return localEntries;
+        }
+
+        SharedType ownerType = (SharedType) method.getDeclaringClass();
+        for (Local local : lvt.getLocals()) {
+            // check if this is a local (slot is after last param slot)
+            if (local != null && local.getSlot() >= firstLocalSlot) {
+                // we have a local with a known name, type and slot
+                String name = local.getName(); //stringTable.uniqueDebugString(l.getName());
+                SharedType type = (SharedType) local.getType().resolve(ownerType);
+                int slot = local.getSlot();
+                JavaKind storageKind = type.getStorageKind();
+                int bciStart = local.getStartBCI();
+                int line = lnt == null ? 0 : lnt.getLineNumber(bciStart);
+                TypeEntry typeEntry = lookupTypeEntry(type);
+
+                Optional<LocalEntry> existingEntry = localEntries.stream()
+                        .filter(le -> le.slot() == slot && le.type() == typeEntry && le.name().equals(name))
+                        .findFirst();
+
+                LocalEntry localEntry = new LocalEntry(name, typeEntry, storageKind, slot, line);
+                if (existingEntry.isEmpty()) {
+                    localEntries.add(localEntry);
+                } else if (existingEntry.get().line() > line) {
+                    localEntries.remove(existingEntry.get());
+                    localEntries.add(localEntry);
+                }
+            }
+        }
+
+        return localEntries;
+    }
+
     public List<LocalEntry> getParamEntries(SharedMethod method, int line) {
         Signature signature = method.getSignature();
         int parameterCount = signature.getParameterCount(false);
@@ -404,17 +456,17 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         SharedType ownerType = (SharedType) method.getDeclaringClass();
         if (!method.isStatic()) {
             JavaKind kind = ownerType.getJavaKind();
-            JavaKind storageKind = isForeignWordType(ownerType, ownerType) ? JavaKind.Long : kind;
+            JavaKind storageKind = ownerType.getStorageKind(); // isForeignWordType(ownerType, ownerType) ? JavaKind.Long : kind;
             assert kind == JavaKind.Object : "must be an object";
             paramInfos.add(new LocalEntry("this", lookupTypeEntry(ownerType), storageKind, slot, line));
             slot += kind.getSlotCount();
         }
         for (int i = 0; i < parameterCount; i++) {
-            Local local = (table == null ? null : table.getLocal(slot, 0));
+            Local local = table == null ? null : table.getLocal(slot, 0);
             String name = local != null ? local.getName() : "__" + i; // stringTable.uniqueDebugString(local != null ? local.getName() : "__" + i);
             SharedType paramType = (SharedType) signature.getParameterType(i, null);
             JavaKind kind = paramType.getJavaKind();
-            JavaKind storageKind = isForeignWordType(paramType, ownerType) ? JavaKind.Long : kind;
+            JavaKind storageKind = paramType.getStorageKind(); // isForeignWordType(paramType, ownerType) ? JavaKind.Long : kind;
             paramInfos.add(new LocalEntry(name, lookupTypeEntry(paramType), storageKind, slot, line));
             slot += kind.getSlotCount();
         }
@@ -654,7 +706,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         MethodEntry methodEntry = lookupMethodEntry(method);
         Range locationInfo = Range.createSubrange(primary, methodEntry, 0, firstLocationOffset, methodEntry.getLine(), primary, true, true);
 
-        locationInfo.setLocalValueInfo(initSyntheticInfoList(locProducer, method));
+        locationInfo.setLocalValueInfo(initSyntheticInfoList(locProducer, methodEntry));
 
         // if the prologue extends beyond the stack extend and uses the stack then the info
         // needs
@@ -666,39 +718,20 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         locationInfos.addFirst(locationInfo);
     }
 
-    private List<LocalValueEntry> initSyntheticInfoList(ParamLocationProducer locProducer, SharedMethod method) {
-        Signature signature = method.getSignature();
-        int parameterCount = signature.getParameterCount(false);
-        ArrayList<LocalValueEntry> localInfos = new ArrayList<>();
-        LocalVariableTable table = method.getLocalVariableTable();
-        LineNumberTable lineNumberTable = method.getLineNumberTable();
-        int firstLine = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
-        int slot = 0;
-        SharedType ownerType = (SharedType) method.getDeclaringClass();
-        if (!method.isStatic()) {
-            String name = "this"; //stringTable.uniqueDebugString("this");
-            JavaKind kind = ownerType.getJavaKind();
-            JavaKind storageKind = isForeignWordType(ownerType, ownerType) ? JavaKind.Long : kind;
-            assert kind == JavaKind.Object : "must be an object";
+    private List<LocalValueEntry> initSyntheticInfoList(ParamLocationProducer locProducer, MethodEntry methodEntry) {
+        ArrayList<LocalValueEntry> localValueInfos = new ArrayList<>();
+        if (methodEntry.getThisParam() != null) {
             JavaValue value = locProducer.thisLocation();
-            TypeEntry type = lookupTypeEntry(ownerType);
-            LocalEntry local = lookupMethodEntry(method).lookupLocalEntry(name, slot, type, storageKind, firstLine);
-            localInfos.add(createLocalValueEntry(name, value, PRE_EXTEND_FRAME_SIZE, storageKind, type, slot, firstLine, local));
-            slot += kind.getSlotCount();
+            LocalEntry thisParam = methodEntry.getThisParam();
+            localValueInfos.add(createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE, thisParam));
         }
-        for (int i = 0; i < parameterCount; i++) {
-            Local local = (table == null ? null : table.getLocal(slot, 0));
-            String name = local != null ? local.getName() : "__" + i; //stringTable.uniqueDebugString(local != null ? local.getName() : "__" + i);
-            SharedType paramType = (SharedType) signature.getParameterType(i, ownerType);
-            JavaKind kind = paramType.getJavaKind();
-            JavaKind storageKind = isForeignWordType(paramType, ownerType) ? JavaKind.Long : kind;
-            JavaValue value = locProducer.paramLocation(i);
-            TypeEntry type = lookupTypeEntry(paramType);
-            LocalEntry localEntry = lookupMethodEntry(method).lookupLocalEntry(name, slot, type, storageKind, firstLine);
-            localInfos.add(createLocalValueEntry(name, value, PRE_EXTEND_FRAME_SIZE, storageKind, type, slot, firstLine, localEntry));
-            slot += kind.getSlotCount();
+        int paramIdx = 0;
+        for (LocalEntry param : methodEntry.getParams()) {
+            JavaValue value = locProducer.paramLocation(paramIdx);
+            localValueInfos.add(createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE, param));
+            paramIdx++;
         }
-        return localInfos;
+        return localValueInfos;
     }
 
 
@@ -865,40 +898,26 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
         if (pos instanceof BytecodeFrame frame && frame.numLocals > 0) {
             // deal with any inconsistencies in the layout of the frame locals
-            LineNumberTable lineNumberTable = frame.getMethod().getLineNumberTable();
-
             LocalVariableTable lvt = pos.getMethod().getLocalVariableTable();
-            Local[] localsBySlot = null;
-            if (lvt != null) {
-                Local[] locals = lvt.getLocalsAt(pos.getBCI());
-                if (locals != null && locals.length > 0) {
-                    localsBySlot = Arrays.copyOf(locals, locals.length);
-                    Arrays.sort(localsBySlot, Comparator.comparingInt(Local::getSlot));
-                }
-            }
 
-            if (localsBySlot != null) {
-                int count = Integer.min(localsBySlot.length, frame.numLocals);
-                for (int i = 0; i < count; i++) {
-                    Local l = localsBySlot[i];
-                    if (l != null) {
+            if (lvt != null) {
+                SharedType ownerType = (SharedType) pos.getMethod().getDeclaringClass();
+                for (Local local : lvt.getLocalsAt(pos.getBCI())) {
+                    if (local != null) {
                         // we have a local with a known name, type and slot
-                        String name = l.getName(); //stringTable.uniqueDebugString(l.getName());
-                        SharedType ownerType = (SharedType) pos.getMethod().getDeclaringClass();
-                        SharedType type = (SharedType) l.getType().resolve(ownerType);
+                        String name = local.getName(); //stringTable.uniqueDebugString(l.getName());
+                        int slot = local.getSlot();
+                        SharedType type = (SharedType) local.getType().resolve(ownerType);
+                        TypeEntry typeEntry = lookupTypeEntry(type);
+
                         JavaKind kind = type.getJavaKind();
-                        int slot = l.getSlot();
                         JavaValue value = (slot < frame.numLocals ? frame.getLocalValue(slot) : Value.ILLEGAL);
                         JavaKind storageKind = (slot < frame.numLocals ? frame.getLocalValueKind(slot) : JavaKind.Illegal);
-                        int bciStart = l.getStartBCI();
-                        int firstLine = (lineNumberTable != null ? lineNumberTable.getLineNumber(bciStart) : -1);
-                        // only add the local if the kinds match
-                        if ((storageKind == kind) ||
-                                isIntegralKindPromotion(storageKind, kind) ||
+
+                        if ((storageKind == kind) || isIntegralKindPromotion(storageKind, kind) ||
                                 (isForeignWordType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
-                            TypeEntry typeEntry = lookupTypeEntry(type);
-                            LocalEntry localEntry = method.lookupLocalEntry(name, slot, typeEntry, storageKind, firstLine);
-                            localInfos.add(createLocalValueEntry(name, value, frameSize, storageKind, typeEntry, slot, firstLine, localEntry));
+                            LocalEntry localEntry = method.getLocalEntry(name, slot, typeEntry);
+                            localInfos.add(createLocalValueEntry(value, frameSize, localEntry));
                         }
                     }
                 }
@@ -908,7 +927,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return localInfos;
     }
 
-    private LocalValueEntry createLocalValueEntry(String name, JavaValue value, int frameSize, JavaKind kind, TypeEntry type, int slot, int line, LocalEntry local) {
+    private LocalValueEntry createLocalValueEntry(JavaValue value, int frameSize, LocalEntry local) {
         LocalValueKind localKind;
         int regIndex = -1;
         int stackSlot = -1;
@@ -941,7 +960,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             case null, default -> localKind = LocalValueKind.UNDEFINED;
         }
 
-        return new LocalValueEntry(line, name, type, regIndex, stackSlot, heapOffset, constant, localKind, local);
+        return new LocalValueEntry(regIndex, stackSlot, heapOffset, constant, localKind, local);
     }
 
 
