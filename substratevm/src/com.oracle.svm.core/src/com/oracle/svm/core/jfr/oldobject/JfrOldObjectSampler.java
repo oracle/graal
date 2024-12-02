@@ -30,6 +30,7 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.collections.UninterruptibleLinkedList;
 import com.oracle.svm.core.collections.UninterruptiblePriorityQueue;
@@ -54,6 +55,7 @@ final class JfrOldObjectSampler {
     private UnsignedWord totalAllocated;
     private UnsignedWord totalInQueue;
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/sampling/objectSampler.cpp#L111-L119")
     JfrOldObjectSampler(int queueSize) {
         this.queue = new UninterruptiblePriorityQueue(new JfrOldObject[queueSize]);
         this.usedList = new UninterruptibleLinkedList();
@@ -64,6 +66,7 @@ final class JfrOldObjectSampler {
         }
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/sampling/objectSampler.cpp#L239-L299")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     boolean sample(Object obj, UnsignedWord allocatedSize, int arrayLength) {
         totalAllocated = totalAllocated.add(allocatedSize);
@@ -93,6 +96,7 @@ final class JfrOldObjectSampler {
         return true;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/sampling/objectSampler.cpp#L301-L310")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private int scavenge() {
         int numDead = 0;
@@ -108,6 +112,7 @@ final class JfrOldObjectSampler {
         return numDead;
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/sampling/objectSampler.cpp#L312-L324")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void remove(JfrOldObject sample) {
         JfrOldObject next = (JfrOldObject) sample.getNext();
@@ -144,6 +149,7 @@ final class JfrOldObjectSampler {
         sample.reset();
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/sampling/samplePriorityQueue.cpp#L44-L53")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void store(Object obj, UnsignedWord span, UnsignedWord allocatedSize, int arrayLength) {
         Thread thread = JavaThreads.getCurrentThreadOrNull();
@@ -166,6 +172,7 @@ final class JfrOldObjectSampler {
         }
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/checkpoint/eventEmitter.cpp#L97-L106")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void emitUnchained() {
         long startTicks = JfrTicks.elapsedTicks();
