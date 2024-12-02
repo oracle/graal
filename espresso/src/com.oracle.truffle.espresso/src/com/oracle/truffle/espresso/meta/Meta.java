@@ -2383,11 +2383,18 @@ public final class Meta extends ContextAccessImpl
         CompilerAsserts.neverPartOfCompilation();
         assert !Types.isArray(type);
         assert !Types.isPrimitive(type);
-        ObjectKlass k = loadKlassOrNull(type, classLoader);
-        if (k == null) {
-            throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
+        try {
+            ObjectKlass k = loadKlassOrNull(type, classLoader);
+            if (k == null) {
+                throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
+            }
+            return k;
+        } catch (EspressoException e) {
+            if (e.getGuestException().getKlass() == java_lang_ClassNotFoundException) {
+                throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + " (CNFE), discovered java version: " + getJavaVersion());
+            }
+            throw e;
         }
-        return k;
     }
 
     public Class<?> resolveDispatch(Klass k) {
