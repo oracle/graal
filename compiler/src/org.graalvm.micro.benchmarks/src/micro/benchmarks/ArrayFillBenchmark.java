@@ -25,40 +25,56 @@
 package micro.benchmarks;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.infra.Blackhole;
 
 /**
  * Benchmarks for java.util.Arrays.fill.
  */
-@State(Scope.Benchmark)
+@State(Scope.Thread)
 public class ArrayFillBenchmark extends BenchmarkBase {
-    @Param({"1", "4", "16", "128", "1024", "8192"}) public static int size;
+    @Param({"1", "4", "16", "1024", "4096"}) private int size;
 
-    public boolean[] bools = new boolean[size];
-    public byte[] bytes = new byte[size];
-    public char[] chars = new char[size];
-    public short[] shorts = new short[size];
-    public int[] ints = new int[size];
-    public long[] longs = new long[size];
-    public float[] floats = new float[size];
-    public double[] doubles = new double[size];
+    // Just a random index that we'll use to feed to bh.consume
+    public int index_check;
+
+    // Target arrays
+    public byte[] bytes;
+    public short[] shorts;
+    public int[] ints;
+
+    @Setup
+    public void setup() {
+        Random rnd = new Random();
+
+        index_check = rnd.nextInt(size);
+
+        bytes = new byte[size];
+        shorts = new short[size];
+        ints = new int[size];
+    }
 
     @Benchmark
-    public void fill_bytes() {
+    public void fill_bytes(Blackhole bh) {
         Arrays.fill(bytes, (byte) 123);
+        bh.consume(bytes[index_check]);
     }
 
     @Benchmark
-    public void fill_shorts() {
+    public void fill_shorts(Blackhole bh) {
         Arrays.fill(shorts, (short) 123123);
+        bh.consume(shorts[index_check]);
     }
 
     @Benchmark
-    public void fill_ints() {
+    public void fill_ints(Blackhole bh) {
         Arrays.fill(ints, 123123123);
+        bh.consume(ints[index_check]);
     }
 }

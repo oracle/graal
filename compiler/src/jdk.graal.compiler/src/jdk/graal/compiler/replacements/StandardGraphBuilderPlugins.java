@@ -531,8 +531,9 @@ public class StandardGraphBuilderPlugins {
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Int, int[].class, int[].class));
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Long, long[].class, long[].class));
 
-        r.register(new ArrayFillInvocationPlugin(JavaKind.Byte, byte[].class, byte.class));
-        r.register(new ArrayFillInvocationPlugin(JavaKind.Int, int[].class, int.class));
+        // r.register(new ArrayFillInvocationPlugin(JavaKind.Byte, byte[].class, byte.class));
+        // r.register(new ArrayFillInvocationPlugin(JavaKind.Short, short[].class, short.class));
+        // r.register(new ArrayFillInvocationPlugin(JavaKind.Int, int[].class, int.class));
     }
 
     private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements) {

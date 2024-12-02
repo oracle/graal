@@ -24,33 +24,31 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
+import static jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
 import static jdk.vm.ci.aarch64.AArch64.r7;
 import static jdk.vm.ci.aarch64.AArch64.r8;
 import static jdk.vm.ci.aarch64.AArch64.r9;
-import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 
-import jdk.vm.ci.meta.JavaKind;
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
-import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
-import jdk.graal.compiler.nodes.ConstantNode;
 
 /**
  * Emits code which fills an array with a constant value.
@@ -97,137 +95,130 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
     @SuppressWarnings("fallthrough")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         int shift = -1;
-        boolean aligned = false;
         int operation_width_B = 8;
         int operation_width_H = 16;
         int operation_width_W = 32;
         int operation_width_DW = 64;
         JavaKind element_type = this.kind;
 
-        // masm.brk(AArch64MacroAssembler.AArch64ExceptionCode.BREAKPOINT);
+        Register target_array = r7;
+        Register value_to_fill_with = r8;
+        Register number_of_elements = r9;
+        Register number_of_eight_byte_words = r10;
 
-        try (ScratchRegister scr1 = masm.getScratchRegister()) {
-            Register target_array = r7;
-            Register value_to_fill_with = r8;
-            Register number_of_elements = r9;
-            Register number_of_eight_byte_words = r10;
+        Label L_fill_elements = new Label();
+        Label L_skip_align1 = new Label();
+        Label L_skip_align2 = new Label();
+        Label L_skip_align4 = new Label();
+        Label L_fill_2 = new Label();
+        Label L_fill_4 = new Label();
+        Label L_done = new Label();
 
-            Label L_fill_elements = new Label();
-            Label L_skip_align1 = new Label();
-            Label L_skip_align2 = new Label();
-            Label L_skip_align4 = new Label();
-            Label L_fill_2 = new Label();
-            Label L_fill_4 = new Label();
-            Label L_done = new Label();
+        masm.add(operation_width_DW, target_array, asRegister(this.array), asRegister(this.arrayBaseOffset));
+        masm.mov(operation_width_DW, value_to_fill_with, asRegister(value));
+        masm.mov(operation_width_DW, number_of_elements, asRegister(length));
 
-            masm.add(64, target_array, asRegister(this.array), asRegister(this.arrayBaseOffset));
-            masm.mov(64, value_to_fill_with, asRegister(value));
-            masm.mov(64, number_of_elements, asRegister(length));
-
-            // Will jump to L_fill_elements if there are less than 8 bytes to fill in target array.
-            // Before jumping, adjust value_to_fill_with to contain the 'pattern' to fill target
-            // array with.
-            switch (element_type) {
-                case JavaKind.Byte:
-                    shift = 0;
-                    masm.compare(operation_width_W, number_of_elements, 8 >> shift);
-                    masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 8, 8);
-                    masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 16, 16);
-                    masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
-                    break;
-                case JavaKind.Short:
-                    shift = 1;
-                    masm.compare(operation_width_W, number_of_elements, 8 >> shift);
-                    masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 16, 16);
-                    masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
-                    break;
-                case JavaKind.Int:
-                    shift = 2;
-                    masm.compare(operation_width_W, number_of_elements, 8 >> shift);
-                    masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
-                    break;
-                default:
-                    GraalError.shouldNotReachHere("Should not reach here.");
-            }
-
-            // Align source address at 8 bytes address boundary.
-            if (!aligned) {
-                switch (element_type) {
-                    case JavaKind.Byte:
-                        masm.tbz(target_array, 0, L_skip_align1);
-                        masm.str(operation_width_B, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_B, IMMEDIATE_POST_INDEXED, target_array, 1));
-                        masm.sub(operation_width_W, number_of_elements, number_of_elements, 1);
-                        masm.bind(L_skip_align1);
-                        // Fallthrough
-                    case JavaKind.Short:
-                        masm.tbz(target_array, 1, L_skip_align2);
-                        masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
-                        masm.sub(operation_width_W, number_of_elements, number_of_elements, 2 >> shift);
-                        masm.bind(L_skip_align2);
-                        // Fallthrough
-                    case JavaKind.Int:
-                        masm.tbz(target_array, 2, L_skip_align4);
-                        masm.str(operation_width_W, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_W, IMMEDIATE_POST_INDEXED, target_array, 4));
-                        masm.sub(operation_width_W, number_of_elements, number_of_elements, 4 >> shift);
-                        masm.bind(L_skip_align4);
-                        break;
-                    default:
-                        GraalError.shouldNotReachHere("Should not reach here.");
-                }
-            }
-
-            // Divide number_of_elements by 2^(3-shift), i.e., divide number_of_elements by the
-            // number of elements that fit into an 8 byte word.
-            masm.lsr(operation_width_W, number_of_eight_byte_words, number_of_elements, 3 - shift);
-
-            // expand from 32 bits to 64 bits
-            masm.bfi(operation_width_DW, value_to_fill_with, value_to_fill_with, 32, 32);
-
-            // number_of_elements = number_of_elements -
-            // number_of_eight_byte_words*(elements_by_eight_byte_word)
-            masm.sub(operation_width_W, number_of_elements, number_of_elements, number_of_eight_byte_words, ShiftType.LSL, 3 - shift);
-
-            // fill number_of_eight_byte_words bytes of the target array
-            fillWords(masm, target_array, number_of_eight_byte_words, value_to_fill_with);
-
-            // Remaining number_of_elements is less than 8 bytes. Fill it by a single store.
-            // Note that the total length is no less than 8 bytes.
-            if (element_type == JavaKind.Byte || element_type == JavaKind.Short) {
-                masm.cbz(operation_width_W, number_of_elements, L_done);
-                masm.add(operation_width_DW, target_array, target_array, number_of_elements, ShiftType.LSL, shift);
-                masm.str(operation_width_DW, value_to_fill_with, masm.makeAddress(operation_width_DW, target_array, -8));
-                masm.jmp(L_done);
-            }
-
-            // Handle copies less than 8 bytes.
-            masm.bind(L_fill_elements);
-            switch (element_type) {
-                case JavaKind.Byte:
-                    masm.tbz(number_of_elements, 0, L_fill_2);
-                    masm.str(operation_width_B, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_B, IMMEDIATE_POST_INDEXED, target_array, 1));
-                    masm.bind(L_fill_2);
-                    masm.tbz(number_of_elements, 1, L_fill_4);
-                    masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
-                    masm.bind(L_fill_4);
-                    masm.tbz(number_of_elements, 2, L_done);
-                    masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
-                    break;
-                case JavaKind.Short:
-                    masm.tbz(number_of_elements, 0, L_fill_4);
-                    masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
-                    masm.bind(L_fill_4);
-                    masm.tbz(number_of_elements, 1, L_done);
-                    masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
-                    break;
-                case JavaKind.Int:
-                    masm.cbz(operation_width_W, number_of_elements, L_done);
-                    masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
-                    break;
-                default:
-                    GraalError.shouldNotReachHere("Should not reach here.");
-            }
-            masm.bind(L_done);
+        // Will jump to L_fill_elements if there are less than 8 bytes to fill in target array.
+        // Before jumping, adjust value_to_fill_with to contain the 'pattern' to fill target
+        // array with.
+        switch (element_type) {
+            case JavaKind.Byte:
+                shift = 0;
+                masm.compare(operation_width_W, number_of_elements, 8 >> shift);
+                masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 8, 8);
+                masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 16, 16);
+                masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
+                break;
+            case JavaKind.Short:
+                shift = 1;
+                masm.compare(operation_width_W, number_of_elements, 8 >> shift);
+                masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 16, 16);
+                masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
+                break;
+            case JavaKind.Int:
+                shift = 2;
+                masm.compare(operation_width_W, number_of_elements, 8 >> shift);
+                masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
+                break;
+            default:
+                GraalError.shouldNotReachHere("Should not reach here.");
         }
+
+        // Align source address at 8 bytes address boundary.
+        switch (element_type) {
+            case JavaKind.Byte:
+                masm.tbz(target_array, 0, L_skip_align1);
+                masm.str(operation_width_B, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_B, IMMEDIATE_POST_INDEXED, target_array, 1));
+                masm.sub(operation_width_W, number_of_elements, number_of_elements, 1);
+                masm.bind(L_skip_align1);
+                // Fallthrough
+            case JavaKind.Short:
+                masm.tbz(target_array, 1, L_skip_align2);
+                masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
+                masm.sub(operation_width_W, number_of_elements, number_of_elements, 2 >> shift);
+                masm.bind(L_skip_align2);
+                // Fallthrough
+            case JavaKind.Int:
+                masm.tbz(target_array, 2, L_skip_align4);
+                masm.str(operation_width_W, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_W, IMMEDIATE_POST_INDEXED, target_array, 4));
+                masm.sub(operation_width_W, number_of_elements, number_of_elements, 4 >> shift);
+                masm.bind(L_skip_align4);
+                break;
+            default:
+                GraalError.shouldNotReachHere("Should not reach here.");
+        }
+
+        // Divide number_of_elements by 2^(3-shift), i.e., divide number_of_elements by the
+        // number of elements that fit into an 8 byte word.
+        masm.lsr(operation_width_W, number_of_eight_byte_words, number_of_elements, 3 - shift);
+
+        // expand from 32 bits to 64 bits
+        masm.bfi(operation_width_DW, value_to_fill_with, value_to_fill_with, 32, 32);
+
+        // number_of_elements = number_of_elements -
+        // number_of_eight_byte_words*(elements_by_eight_byte_word)
+        masm.sub(operation_width_W, number_of_elements, number_of_elements, number_of_eight_byte_words, ShiftType.LSL, 3 - shift);
+
+        // fill number_of_eight_byte_words bytes of the target array
+        fillWords(masm, target_array, number_of_eight_byte_words, value_to_fill_with);
+
+        // Remaining number_of_elements is less than 8 bytes. Fill it by a single store.
+        // Note that the total length is no less than 8 bytes.
+        if (element_type == JavaKind.Byte || element_type == JavaKind.Short) {
+            masm.cbz(operation_width_W, number_of_elements, L_done);
+            masm.add(operation_width_DW, target_array, target_array, number_of_elements, ShiftType.LSL, shift);
+            masm.str(operation_width_DW, value_to_fill_with, masm.makeAddress(operation_width_DW, target_array, -8));
+            masm.jmp(L_done);
+        }
+
+        // Handle copies less than 8 bytes.
+        masm.bind(L_fill_elements);
+        switch (element_type) {
+            case JavaKind.Byte:
+                masm.tbz(number_of_elements, 0, L_fill_2);
+                masm.str(operation_width_B, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_B, IMMEDIATE_POST_INDEXED, target_array, 1));
+                masm.bind(L_fill_2);
+                masm.tbz(number_of_elements, 1, L_fill_4);
+                masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
+                masm.bind(L_fill_4);
+                masm.tbz(number_of_elements, 2, L_done);
+                masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
+                break;
+            case JavaKind.Short:
+                masm.tbz(number_of_elements, 0, L_fill_4);
+                masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
+                masm.bind(L_fill_4);
+                masm.tbz(number_of_elements, 1, L_done);
+                masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
+                break;
+            case JavaKind.Int:
+                masm.cbz(operation_width_W, number_of_elements, L_done);
+                masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
+                break;
+            default:
+                GraalError.shouldNotReachHere("Should not reach here.");
+        }
+        masm.bind(L_done);
     }
 
     /**
@@ -296,6 +287,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
         masm.sub(operation_width_DW, r6, r6, r5, ShiftType.LSL, 1);
         masm.jmp(r6);
 
+        masm.align(PREFERRED_LOOP_ALIGNMENT);
         masm.bind(loop);
         masm.add(operation_width_DW, target_array, target_array, unroll * 16);
         for (int i = -unroll; i < 0; i++) {
