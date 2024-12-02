@@ -38,6 +38,7 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
@@ -74,8 +75,8 @@ public class Isolates {
     /* Only used if SpawnIsolates is disabled. */
     private static final CGlobalData<Pointer> SINGLE_ISOLATE_ALREADY_CREATED = CGlobalDataFactory.createWord();
 
-    private static long startTimeMillis;
-    private static long startNanoTime;
+    private static long startTimeNanos;
+    private static long initDoneTimeMillis;
     private static long isolateId = -1;
 
     /**
@@ -107,29 +108,30 @@ public class Isolates {
         }
     }
 
-    public static void assignCurrentStartTime() {
-        assert startTimeMillis == 0 : startTimeMillis;
-        assert startNanoTime == 0 : startNanoTime;
-        startTimeMillis = System.currentTimeMillis();
-        startNanoTime = System.nanoTime();
+    public static void assignStartTime() {
+        assert startTimeNanos == 0 : startTimeNanos;
+        assert initDoneTimeMillis == 0 : initDoneTimeMillis;
+        startTimeNanos = System.nanoTime();
+        initDoneTimeMillis = TimeUtils.currentTimeMillis();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getCurrentStartTimeMillis() {
-        assert startTimeMillis != 0;
-        return startTimeMillis;
+    /** Epoch-based timestamp. If possible, {@link #getStartTimeNanos()} should be used instead. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getInitDoneTimeMillis() {
+        assert initDoneTimeMillis != 0;
+        return initDoneTimeMillis;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getCurrentUptimeMillis() {
-        assert startTimeMillis != 0;
-        return System.currentTimeMillis() - startTimeMillis;
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getUptimeMillis() {
+        assert startTimeNanos != 0;
+        return TimeUtils.millisSinceNanos(startTimeNanos);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getCurrentStartNanoTime() {
-        assert startNanoTime != 0;
-        return startNanoTime;
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static long getStartTimeNanos() {
+        assert startTimeNanos != 0;
+        return startTimeNanos;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -169,7 +171,7 @@ public class Isolates {
         return CEntryPointErrors.NO_ERROR;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static PointerBase getHeapBase(Isolate isolate) {
         return isolate;
     }

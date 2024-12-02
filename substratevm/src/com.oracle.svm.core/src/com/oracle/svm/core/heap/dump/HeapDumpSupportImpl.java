@@ -118,10 +118,10 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
         try {
             Log.log().string("Dumping heap to ").string(path).string(" ...").newline();
-            long start = System.currentTimeMillis();
+            long start = System.nanoTime();
             if (dumpHeap(fd, false)) {
                 long fileSize = getFileSupport().size(fd);
-                long elapsedMs = System.currentTimeMillis() - start;
+                long elapsedMs = TimeUtils.millisSinceNanos(start);
                 long seconds = elapsedMs / TimeUtils.millisPerSecond;
                 long ms = elapsedMs % TimeUtils.millisPerSecond;
                 Log.log().string("Heap dump file created [").signed(fileSize).string(" bytes in ").signed(seconds).character('.').signed(ms).string(" secs]").newline();

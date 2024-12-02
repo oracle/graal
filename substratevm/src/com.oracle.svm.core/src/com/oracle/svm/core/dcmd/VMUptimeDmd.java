@@ -44,7 +44,7 @@ public class VMUptimeDmd extends AbstractDCmd {
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L393-L400")
     public String execute(DCmdArguments args) throws Throwable {
         StringBuilderLog log = new StringBuilderLog();
-        log.rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string(" s").newline();
+        log.rational(Isolates.getUptimeMillis(), TimeUtils.millisPerSecond, 3).string(" s").newline();
         return log.getResult();
     }
 }

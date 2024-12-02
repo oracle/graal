@@ -127,7 +127,7 @@ public final class GCImpl implements GC {
     private final CollectionPolicy policy;
     private boolean completeCollection = false;
     private UnsignedWord collectionEpoch = WordFactory.zero();
-    private long lastWholeHeapExaminedTimeMillis = -1;
+    private long lastWholeHeapExaminedNanos = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
@@ -332,7 +332,7 @@ public final class GCImpl implements GC {
 
         doCollectCore(!complete);
         if (complete) {
-            lastWholeHeapExaminedTimeMillis = System.currentTimeMillis();
+            lastWholeHeapExaminedNanos = System.nanoTime();
         }
 
         accounting.afterCollectOnce(completeCollection);
@@ -446,7 +446,7 @@ public final class GCImpl implements GC {
     }
 
     private Log printGCPrefixAndTime() {
-        long uptimeMs = Isolates.getCurrentUptimeMillis();
+        long uptimeMs = Isolates.getUptimeMillis();
         return Log.log().string("[").rational(uptimeMs, TimeUtils.millisPerSecond, 3).string("s").string("] GC(").unsigned(collectionEpoch).string(") ");
     }
 
@@ -1145,14 +1145,14 @@ public final class GCImpl implements GC {
     }
 
     public long getMillisSinceLastWholeHeapExamined() {
-        long startMillis;
-        if (lastWholeHeapExaminedTimeMillis < 0) {
+        long start;
+        if (lastWholeHeapExaminedNanos < 0) {
             // no full GC has yet been run, use time since the first allocation
-            startMillis = Isolates.getCurrentStartTimeMillis();
+            start = Isolates.getStartTimeNanos();
         } else {
-            startMillis = lastWholeHeapExaminedTimeMillis;
+            start = lastWholeHeapExaminedNanos;
         }
-        return System.currentTimeMillis() - startMillis;
+        return TimeUtils.millisSinceNanos(start);
     }
 
     @Fold
