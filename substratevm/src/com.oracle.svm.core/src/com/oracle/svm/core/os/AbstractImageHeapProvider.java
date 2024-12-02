@@ -41,7 +41,7 @@ public abstract class AbstractImageHeapProvider implements ImageHeapProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static UnsignedWord getImageHeapSizeInFile() {
+    public static UnsignedWord getImageHeapSizeInFile() {
         Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
         return IMAGE_HEAP_END.get().subtract(imageHeapBegin);
     }

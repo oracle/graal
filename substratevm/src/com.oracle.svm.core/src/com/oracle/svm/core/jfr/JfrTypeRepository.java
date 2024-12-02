@@ -313,9 +313,8 @@ public class JfrTypeRepository implements JfrRepository {
                 return flushedClassLoaders.get(classLoader);
             }
             return typeInfo.classLoaders.get(classLoader);
-        } else {
-            return 0;
         }
+        return 0;
     }
 
     private void clearEpochData() {
