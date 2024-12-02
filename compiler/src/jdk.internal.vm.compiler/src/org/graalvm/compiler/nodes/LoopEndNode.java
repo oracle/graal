@@ -119,7 +119,7 @@ public final class LoopEndNode extends AbstractEndNode {
 
     /**
      * Disables safepoints for only this loop end (in contrast to disabling it for
-     * {@link LoopBeginNode#disableSafepoint(jdk.graal.compiler.nodes.LoopBeginNode.SafepointState)
+     * {@link LoopBeginNode#disableSafepoint(org.graalvm.compiler.nodes.LoopBeginNode.SafepointState)
      * the whole loop}.
      */
     public void disableSafepoint() {
