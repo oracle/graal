@@ -133,6 +133,7 @@ class PrimitiveOperand extends Operand {
 
     @Override
     Operand mergeWith(Operand other) {
+        assert !compliesWithInMerge(other) : "mergeWith method should only be called for non-compatible operands.";
         return this == other ? this : null;
     }
 
@@ -189,6 +190,7 @@ final class ReturnAddressOperand extends PrimitiveOperand {
 
     @Override
     Operand mergeWith(Operand other) {
+        assert !compliesWithInMerge(other) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReturnAddress()) {
             return null;
         }
@@ -308,6 +310,7 @@ class ReferenceOperand extends Operand {
 
     @Override
     Operand mergeWith(Operand other) {
+        assert !compliesWithInMerge(other) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReference()) {
             return null;
         }
@@ -368,6 +371,7 @@ final class ArrayOperand extends Operand {
 
     @Override
     Operand mergeWith(Operand other) {
+        assert !compliesWithInMerge(other) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReference()) {
             return null;
         }
@@ -383,8 +387,17 @@ final class ArrayOperand extends Operand {
         int thisDim = getDimensions();
         if (otherDim == thisDim) {
             if (thisElemental.isPrimitive() || otherElemental.isPrimitive()) {
-                return new ArrayOperand(jlObject, thisDim);
+                // We already know they are both different primitives, as this was called because
+                // this and other are not compatible.
+                assert !compliesWithInMerge(other);
+                if (thisDim == 1) {
+                    // example: (byte[] U int[]) -> Object
+                    return jlObject;
+                }
+                // example: (byte[][] U int[][]) -> Object[]
+                return new ArrayOperand(jlObject, thisDim - 1);
             }
+            // example: (A[][] U B[][]) -> (A U B)[][]
             return new ArrayOperand(thisElemental.mergeWith(otherElemental), thisDim);
         }
         Operand smallestElemental;
@@ -393,13 +406,21 @@ final class ArrayOperand extends Operand {
         } else {
             smallestElemental = otherElemental;
         }
+        int newDim = Math.min(thisDim, otherDim);
         if (smallestElemental.isPrimitive()) {
-            return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
+            if (newDim == 1) {
+                // example: (byte[] U _[][]) -> Object
+                return jlObject;
+            }
+            // example: (byte[][] U _[][][]) -> Object[]
+            return new ArrayOperand(jlObject, newDim - 1);
         }
         if (smallestElemental.getType() == Type.java_lang_Cloneable || smallestElemental.getType() == Type.java_io_Serializable) {
-            return new ArrayOperand(smallestElemental, Math.min(thisDim, otherDim));
+            // example: (Cloneable[][] U _[][][]) -> Cloneable[][]
+            return new ArrayOperand(smallestElemental, newDim);
         }
-        return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
+        // example: (Object[][] U _[][][]) -> Object[][]
+        return new ArrayOperand(jlObject, newDim);
     }
 
     @Override
@@ -476,6 +497,7 @@ final class UninitReferenceOperand extends ReferenceOperand {
 
     @Override
     Operand mergeWith(Operand other) {
+        assert !compliesWithInMerge(other) : "mergeWith method should only be called for non-compatible operands.";
         if (other.isUninit()) {
             return super.mergeWith(other);
         }
