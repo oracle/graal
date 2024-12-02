@@ -237,7 +237,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         for (LocalValueExtent extent : extents) {
             LocalValueEntry value = extent.value;
             assert (value != null);
-            log(context, "  [0x%08x]     local  %s:%s [0x%x, 0x%x] = %s", pos, value.name(), value.type().getTypeName(), extent.getLo(), extent.getHi(), formatValue(value));
+            log(context, "  [0x%08x]     local  %s:%s [0x%x, 0x%x] = %s", pos, value.local().name(), value.local().type().getTypeName(), extent.getLo(), extent.getHi(), formatValue(value));
             pos = writeLocationListEntry(DwarfLocationListEntry.DW_LLE_offset_pair, buffer, pos);
             pos = writeULEB(extent.getLo() - base, buffer, pos);
             pos = writeULEB(extent.getHi() - base, buffer, pos);

@@ -29,7 +29,7 @@ package com.oracle.objectfile.debugentry;
 import com.oracle.objectfile.debugentry.range.Range;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -76,38 +76,43 @@ public class ClassEntry extends StructureTypeEntry {
         this.superClass = superClass;
         this.fileEntry = fileEntry;
         this.loader = loader;
-
         this.methods = new ArrayList<>();
         this.compiledMethods = new ArrayList<>();
         this.files = new ArrayList<>();
         this.dirs = new ArrayList<>();
-
-        // add own file to file/dir entries
-        if (fileEntry != null && !fileEntry.fileName().isEmpty()) {
-            files.add(fileEntry);
-            DirEntry dirEntry = fileEntry.dirEntry();
-            if (dirEntry != null && !dirEntry.getPathString().isEmpty()) {
-                dirs.add(dirEntry);
-            }
-        }
     }
 
-    @Override
-    public void addField(FieldEntry field) {
-        addFile(field.getFileEntry());
-        super.addField(field);
+    public void collectFilesAndDirs() {
+        HashSet<FileEntry> fileSet = new HashSet<>();
+
+        // add containing file
+        fileSet.add(fileEntry);
+
+        // add all files of declared methods
+        fileSet.addAll(methods.parallelStream().map(MethodEntry::getFileEntry).toList());
+
+        // add all files required for compilations
+        // no need to add the primary range as this is the same as the corresponding method declaration file
+        fileSet.addAll(compiledMethods.parallelStream()
+                .flatMap(CompiledMethodEntry::topDownRangeStream)
+                .map(Range::getFileEntry)
+                .toList()
+        );
+
+        // add all files of fields
+        fileSet.addAll(getFields().parallelStream().map(FieldEntry::getFileEntry).toList());
+
+        // fill file list from set
+        fileSet.forEach(this::addFile);
     }
 
     public void addMethod(MethodEntry methodEntry) {
         if (!methods.contains(methodEntry)) {
-            addFile(methodEntry.getFileEntry());
             methods.add(methodEntry);
         }
     }
 
     public void addCompiledMethod(CompiledMethodEntry compiledMethodEntry) {
-        addFile(compiledMethodEntry.primary().getFileEntry());
-        compiledMethodEntry.topDownRangeStream().forEach(subRange -> addFile(subRange.getFileEntry()));
         compiledMethods.add(compiledMethodEntry);
     }
 
@@ -163,7 +168,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public int getFileIdx(FileEntry file) {
-        if (file == null || files.isEmpty()) {
+        if (file == null || files.isEmpty() || !files.contains(file)) {
             return 0;
         }
         return files.indexOf(file) + 1;
@@ -198,7 +203,7 @@ public class ClassEntry extends StructureTypeEntry {
      * @return a list of all compiled method entries for this class.
      */
     public List<CompiledMethodEntry> compiledMethods() {
-        return Collections.unmodifiableList(compiledMethods);
+        return List.copyOf(compiledMethods);
     }
 
     public boolean hasCompiledMethods() {
@@ -210,7 +215,7 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public List<MethodEntry> getMethods() {
-        return Collections.unmodifiableList(methods);
+        return List.copyOf(methods);
     }
 
     /**
@@ -243,7 +248,7 @@ public class ClassEntry extends StructureTypeEntry {
      * @return a stream of all referenced files
      */
     public List<FileEntry> getFiles() {
-        return Collections.unmodifiableList(files);
+        return List.copyOf(files);
     }
 
     /**
@@ -253,6 +258,6 @@ public class ClassEntry extends StructureTypeEntry {
      * @return a stream of all referenced directories
      */
     public List<DirEntry> getDirs() {
-        return Collections.unmodifiableList(dirs);
+        return List.copyOf(dirs);
     }
 }
