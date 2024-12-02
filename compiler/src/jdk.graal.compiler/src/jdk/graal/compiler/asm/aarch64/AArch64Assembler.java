@@ -3286,11 +3286,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         assert size == 8 || size == 16 || size == 32 || size == 64 || size == 128 : size;
         assert verifyRegistersF(rt);
 
-<<<<<<< HEAD
-        loadStoreInstruction(Instruction.STR, rt, address, true, getLog2TransferSize(size), 0);
-=======
         loadStoreInstruction(Instruction.STR, rt, address, true, getLog2TransferSize(size));
->>>>>>> origin/master
     }
 
     /**
