@@ -143,6 +143,7 @@ class PrimitiveOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
 
     @Override
     Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         return this == other ? this : null;
     }
 
@@ -200,6 +201,7 @@ final class ReturnAddressOperand<R extends RuntimeAccess<C, M, F>, C extends Typ
 
     @Override
     Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReturnAddress()) {
             return null;
         }
@@ -311,6 +313,7 @@ class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
 
     @Override
     Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReference()) {
             return null;
         }
@@ -371,6 +374,7 @@ final class ArrayOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
 
     @Override
     Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReference()) {
             return null;
         }
@@ -386,8 +390,17 @@ final class ArrayOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
         int thisDim = getDimensions();
         if (otherDim == thisDim) {
             if (thisElemental.isPrimitive() || otherElemental.isPrimitive()) {
-                return new ArrayOperand<>(methodVerifier.jlObject, thisDim);
+                // We already know they are both different primitives, as this was called because
+                // this and other are not compatible.
+                assert !compliesWithInMerge(other, methodVerifier);
+                if (thisDim == 1) {
+                    // example: (byte[] U int[]) -> Object
+                    return methodVerifier.jlObject;
+                }
+                // example: (byte[][] U int[][]) -> Object[]
+                return new ArrayOperand<>(methodVerifier.jlObject, thisDim - 1);
             }
+            // example: (A[][] U B[][]) -> (A U B)[][]
             return new ArrayOperand<>(thisElemental.mergeWith(otherElemental, methodVerifier), thisDim);
         }
         Operand<R, C, M, F> smallestElemental;
@@ -396,13 +409,21 @@ final class ArrayOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
         } else {
             smallestElemental = otherElemental;
         }
+        int newDim = Math.min(thisDim, otherDim);
         if (smallestElemental.isPrimitive()) {
-            return new ArrayOperand<>(methodVerifier.jlObject, Math.min(thisDim, otherDim));
+            if (newDim == 1) {
+                // example: (byte[] U _[][]) -> Object
+                return methodVerifier.jlObject;
+            }
+            // example: (byte[][] U _[][][]) -> Object[]
+            return new ArrayOperand<>(methodVerifier.jlObject, newDim - 1);
         }
         if (smallestElemental.getType() == Type.java_lang_Cloneable || smallestElemental.getType() == Type.java_io_Serializable) {
-            return new ArrayOperand<>(smallestElemental, Math.min(thisDim, otherDim));
+            // example: (Cloneable[][] U _[][][]) -> Cloneable[][]
+            return new ArrayOperand<>(smallestElemental, newDim);
         }
-        return new ArrayOperand<>(methodVerifier.jlObject, Math.min(thisDim, otherDim));
+        // example: (Object[][] U _[][][]) -> Object[][]
+        return new ArrayOperand<>(methodVerifier.jlObject, newDim);
     }
 
     @Override
@@ -480,6 +501,7 @@ final class UninitReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends T
 
     @Override
     Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (other.isUninit()) {
             return super.mergeWith(other, methodVerifier);
         }
