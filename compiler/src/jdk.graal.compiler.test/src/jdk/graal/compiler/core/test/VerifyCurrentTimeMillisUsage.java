@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.core.test;
 
+import jdk.graal.compiler.core.test.CheckGraalInvariants.InvariantsTool;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -40,6 +41,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class VerifyCurrentTimeMillisUsage extends VerifyPhase<CoreProviders> {
     private static final String CURRENT_TIME_MILLIS_NAME = "currentTimeMillis";
 
+    private final InvariantsTool tool;
+
+    public VerifyCurrentTimeMillisUsage(InvariantsTool tool) {
+        this.tool = tool;
+    }
+
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
         final ResolvedJavaType systemType = context.getMetaAccess().lookupJavaType(System.class);
@@ -48,11 +55,8 @@ public class VerifyCurrentTimeMillisUsage extends VerifyPhase<CoreProviders> {
             if (callee.getDeclaringClass().equals(systemType)) {
                 String calleeName = callee.getName();
                 if (calleeName.equals(CURRENT_TIME_MILLIS_NAME)) {
-                    final ResolvedJavaType services = context.getMetaAccess().lookupJavaType(GraalServices.class);
-                    if (graph.method().getDeclaringClass().equals(services)) {
-                        return;
-                    }
-                    throw new VerificationError(t, "Should use System.nanoTime for measuring elapsed time or GraalServices.milliTimeStamp for the time since the epoch");
+                    final ResolvedJavaType declaringClass = graph.method().getDeclaringClass();
+                    tool.verifyCurrentTimeMillis(context.getMetaAccess(), t, declaringClass);
                 }
             }
         }

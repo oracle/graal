@@ -84,6 +84,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugi
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MultiMemoryKill;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
@@ -101,6 +102,7 @@ import jdk.graal.compiler.phases.contract.VerifyNodeCosts;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.test.AddExports;
 import jdk.graal.compiler.test.SubprocessUtil;
 import jdk.internal.misc.Unsafe;
@@ -195,8 +197,11 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             return true;
         }
 
-        public boolean shouldVerifyCurrentTimeMillis() {
-            return true;
+        public void verifyCurrentTimeMillis(MetaAccessProvider meta, MethodCallTargetNode t, ResolvedJavaType declaringClass) {
+            final ResolvedJavaType services = meta.lookupJavaType(GraalServices.class);
+            if (!declaringClass.equals(services)) {
+                throw new VerificationError(t, "Should use System.nanoTime() for measuring elapsed time or GraalServices.milliTimeStamp() for the time since the epoch");
+            }
         }
 
         /**
@@ -366,9 +371,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             verifiers.add(foldableMethodsVerifier);
         }
 
-        if (tool.shouldVerifyCurrentTimeMillis()) {
-            verifiers.add(new VerifyCurrentTimeMillisUsage());
-        }
+        verifiers.add(new VerifyCurrentTimeMillisUsage(tool));
 
         tool.updateVerifiers(verifiers);
 

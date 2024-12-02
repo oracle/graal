@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.attach.AttachApiSupport;
@@ -147,7 +148,7 @@ class SystemCounters implements PerfDataHolder, VMOperationListener {
         daemonThreads.allocate();
         processCPUTimeCounter.allocate();
 
-        initDoneTime.allocate(System.currentTimeMillis());
+        initDoneTime.allocate(Isolates.getInitDoneTimeMillis());
     }
 
     private static String getSystemProperty(String s) {

@@ -28,12 +28,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.util.TimeUtils;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public abstract class HeapDumping implements HeapDumpSupport {
     @Fold
@@ -58,7 +60,7 @@ public abstract class HeapDumping implements HeapDumpSupport {
     }
 
     public void dumpHeap(boolean gcBefore) throws IOException {
-        String suffix = Long.toString(System.currentTimeMillis());
+        String suffix = Long.toString(TimeUtils.currentTimeMillis());
         String defaultFilename = getDefaultHeapDumpFilename(suffix);
         dumpHeap(getHeapDumpPath(defaultFilename), gcBefore);
     }
