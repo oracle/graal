@@ -63,6 +63,38 @@ public class ArraysSubstitutionsTestBase extends MethodSubstitutionTest {
         return Arrays.equals(a, b);
     }
 
+    public static void arraysFillBoolean(boolean[] a, boolean b) {
+        Arrays.fill(a, b);
+    }
+
+    public static void arraysFillByte(byte[] a, byte b) {
+        Arrays.fill(a, b);
+    }
+
+    public static void arraysFillChar(char[] a, char b) {
+        Arrays.fill(a, b);
+    }
+
+    public static void arraysFillShort(short[] a, short b) {
+        Arrays.fill(a, b);
+    }
+
+    public static void arraysFillInt(int[] a, int b) {
+        Arrays.fill(a, b);
+    }
+
+    public static void arraysFillLong(long[] a, long b) {
+        Arrays.fill(a, b);
+    }
+
+    public static void arraysFillFloat(float[] a, float b) {
+        Arrays.fill(a, b);
+    }
+
+    public static void arraysFillDouble(double[] a, double b) {
+        Arrays.fill(a, b);
+    }
+
     interface ArrayBuilder {
         Object newArray(int length, int firstValue, int lastValue);
     }
@@ -139,6 +171,34 @@ public class ArraysSubstitutionsTestBase extends MethodSubstitutionTest {
 
     static long[] longArray(int length, int firstValue, int lastValue) {
         long[] arr = new long[length];
+        for (int i = 0; i < length; i++) {
+            arr[i] = i;
+        }
+        if (length > 0) {
+            arr[0] = firstValue;
+        }
+        if (length > 1) {
+            arr[length - 1] = lastValue;
+        }
+        return arr;
+    }
+
+    static float[] floatArray(int length, float firstValue, float lastValue) {
+        float[] arr = new float[length];
+        for (int i = 0; i < length; i++) {
+            arr[i] = i;
+        }
+        if (length > 0) {
+            arr[0] = firstValue;
+        }
+        if (length > 1) {
+            arr[length - 1] = lastValue;
+        }
+        return arr;
+    }
+
+    static double[] doubleArray(int length, double firstValue, double lastValue) {
+        double[] arr = new double[length];
         for (int i = 0; i < length; i++) {
             arr[i] = i;
         }

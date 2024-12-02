@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayCompareToOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayCopyWithConversionsOp;
+import jdk.graal.compiler.lir.aarch64.AArch64ArrayFillOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayEqualsOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayRegionCompareToOp;
@@ -621,6 +622,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     public void emitArrayCopyWithConversion(EnumSet<?> runtimeCheckedCPUFeatures, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value dynamicStrides) {
         append(new AArch64ArrayCopyWithConversionsOp(this, null, null,
                         emitConvertNullToZero(arrayDst), asAllocatable(offsetDst), emitConvertNullToZero(arraySrc), asAllocatable(offsetSrc), asAllocatable(length), asAllocatable(dynamicStrides)));
+    }
+
+    @Override
+    public void emitArrayFill(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
+        append(new AArch64ArrayFillOp(kind, emitConvertNullToZero(array), asAllocatable(arrayBaseOffset), asAllocatable(length), asAllocatable(value)));
     }
 
     @Override
