@@ -51,13 +51,14 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Emits code which fills an array with a constant value.
+ * Emits code which fills an array with a constant value. The assembly code in this intrinsic was
+ * based in the HotSpot's version of the same intrinsic.
  */
 @Opcode("ARRAYS_FILL")
 public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
     public static final LIRInstructionClass<AArch64ArrayFillOp> TYPE = LIRInstructionClass.create(AArch64ArrayFillOp.class);
 
-    private JavaKind kind;
+    private JavaKind element_type;
     @Alive({REG}) protected Value array;
     @Alive({REG}) protected Value arrayBaseOffset;
     @Alive({REG}) protected Value length;
@@ -71,7 +72,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
         GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "integer value expected in 'length'");
         GraalError.guarantee(value.getPlatformKind() == AArch64Kind.DWORD, "integer value expected in 'value'.");
 
-        this.kind = kind;
+        this.element_type = kind;
         this.array = array;
         this.arrayBaseOffset = arrayBaseOffset;
         this.length = length;
@@ -86,11 +87,6 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
                         r10.asValue()};
     }
 
-    /**
-     * Generate stub for array fill. If "aligned" is true, the "to" address is assumed to be
-     * heapword aligned.
-     *
-     */
     @Override
     @SuppressWarnings("fallthrough")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
@@ -99,7 +95,6 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
         int operation_width_H = 16;
         int operation_width_W = 32;
         int operation_width_DW = 64;
-        JavaKind element_type = this.kind;
 
         Register target_array = r7;
         Register value_to_fill_with = r8;
@@ -121,7 +116,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
         // Will jump to L_fill_elements if there are less than 8 bytes to fill in target array.
         // Before jumping, adjust value_to_fill_with to contain the 'pattern' to fill target
         // array with.
-        switch (element_type) {
+        switch (this.element_type) {
             case JavaKind.Byte:
                 shift = 0;
                 masm.compare(operation_width_W, number_of_elements, 8 >> shift);
@@ -145,7 +140,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
         }
 
         // Align source address at 8 bytes address boundary.
-        switch (element_type) {
+        switch (this.element_type) {
             case JavaKind.Byte:
                 masm.tbz(target_array, 0, L_skip_align1);
                 masm.str(operation_width_B, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_B, IMMEDIATE_POST_INDEXED, target_array, 1));
@@ -184,7 +179,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
 
         // Remaining number_of_elements is less than 8 bytes. Fill it by a single store.
         // Note that the total length is no less than 8 bytes.
-        if (element_type == JavaKind.Byte || element_type == JavaKind.Short) {
+        if (this.element_type == JavaKind.Byte || this.element_type == JavaKind.Short) {
             masm.cbz(operation_width_W, number_of_elements, L_done);
             masm.add(operation_width_DW, target_array, target_array, number_of_elements, ShiftType.LSL, shift);
             masm.str(operation_width_DW, value_to_fill_with, masm.makeAddress(operation_width_DW, target_array, -8));
@@ -193,7 +188,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
 
         // Handle copies less than 8 bytes.
         masm.bind(L_fill_elements);
-        switch (element_type) {
+        switch (this.element_type) {
             case JavaKind.Byte:
                 masm.tbz(number_of_elements, 0, L_fill_2);
                 masm.str(operation_width_B, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_B, IMMEDIATE_POST_INDEXED, target_array, 1));
