@@ -1463,8 +1463,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
 libgraal_jar_distributions = [
     'sdk:NATIVEBRIDGE',
     'sdk:JNIUTILS',
-    'compiler:LIBGRAAL_LOADER',
-    'substratevm:LIBGRAAL_LIBRARY']
+    'compiler:LIBGRAAL_LOADER']
 
 def allow_build_path_in_libgraal():
     """
@@ -1495,7 +1494,7 @@ def prevent_build_path_in_libgraal():
     return []
 
 libgraal_features = [
-    'com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'
+    'jdk.graal.compiler.libgraal.LibGraalFeature'
 ]
 
 libgraal_build_args = [
@@ -1512,11 +1511,11 @@ libgraal_build_args = [
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage/com.oracle.svm.core.annotate=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.option=ALL-UNNAMED',
+    '-J--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.word/org.graalvm.word.impl=ALL-UNNAMED',
     ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
-    # LibGraalFeature implements com.oracle.svm.core.feature.InternalFeature (needed to be able to instantiate LibGraalFeature)
     '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
     # Make jdk.internal.module.Modules accessible to do the remaining opening-up in LibGraalFeature constructor
-    #'--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
     '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
     # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
@@ -1531,6 +1530,7 @@ libgraal_build_args = [
     # If building on the console, use as many cores as available
     f'--parallelism={mx.cpu_count()}',
 ] if mx.is_interactive() else []) + svm_experimental_options([
+    "-H:LibGraalClassLoader=jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader",
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Dtruffle.TruffleRuntime=',

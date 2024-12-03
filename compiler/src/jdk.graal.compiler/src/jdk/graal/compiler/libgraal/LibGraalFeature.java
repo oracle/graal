@@ -22,9 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
+package jdk.graal.compiler.libgraal;
 
 import static java.lang.invoke.MethodType.methodType;
+import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperty;
 
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
@@ -46,6 +47,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import jdk.vm.ci.code.Architecture;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -55,12 +57,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.reports.CallTreePrinter;
-import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.debug.DebugContext;
@@ -76,8 +72,6 @@ import jdk.graal.compiler.serviceprovider.LibGraalService;
 import jdk.graal.nativeimage.LibGraalFeatureComponent;
 import jdk.graal.nativeimage.LibGraalLoader;
 import jdk.graal.nativeimage.hosted.GlobalData;
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotModifiers;
 
 /**
@@ -176,9 +170,8 @@ public final class LibGraalFeature implements Feature {
 
         ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
 
-        libgraalLoader = createHostedLibGraalClassLoader(access);
+        libgraalLoader = (LibGraalLoader) getClass().getClassLoader();// createHostedLibGraalClassLoader(access);
         loader = libgraalLoader.getClassLoader();
-        ImageSingletons.lookup(ClassForNameSupport.class).setLibGraalLoader(loader);
 
         buildTimeClass = loadClassOrFail(BuildTime.class);
 
@@ -187,12 +180,14 @@ public final class LibGraalFeature implements Feature {
         LibGraalUtil.accessPackagesToClass(LibGraalUtil.Access.EXPORT, null, false, "java.base", basePackages);
     }
 
-    @SuppressWarnings("unchecked")
-    private static LibGraalLoader createHostedLibGraalClassLoader(AfterRegistrationAccess access) {
-        var hostedLibGraalClassLoaderClass = access.findClassByName("jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader");
-        LibGraalUtil.accessPackagesToClass(LibGraalUtil.Access.EXPORT, hostedLibGraalClassLoaderClass, false, "java.base", "jdk.internal.module");
-        return LibGraalUtil.newInstance((Class<LibGraalLoader>) hostedLibGraalClassLoaderClass);
-    }
+// @SuppressWarnings("unchecked")
+// private static LibGraalLoader createHostedLibGraalClassLoader(AfterRegistrationAccess access) {
+// var hostedLibGraalClassLoaderClass =
+// access.findClassByName("jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader");
+// LibGraalUtil.accessPackagesToClass(LibGraalUtil.Access.EXPORT, hostedLibGraalClassLoaderClass,
+// false, "java.base", "jdk.internal.module");
+// return LibGraalUtil.newInstance((Class<LibGraalLoader>) hostedLibGraalClassLoaderClass);
+// }
 
     static void exportModulesToLibGraal(String... moduleNames) {
         accessModulesToClass(LibGraalUtil.Access.EXPORT, LibGraalFeature.class, moduleNames);
@@ -226,7 +221,7 @@ public final class LibGraalFeature implements Feature {
     /**
      * Collects all options that are reachable at run time. Reachable options are the
      * {@link OptionKey} instances reached by the static analysis. The VM options are instances of
-     * {@link OptionKey} loaded by the {@link com.oracle.svm.hosted.NativeImageClassLoader} and
+     * {@link OptionKey} loaded by the {@code com.oracle.svm.hosted.NativeImageClassLoader} and
      * compiler options are instances of {@link OptionKey} loaded by the
      * {@code HostedLibGraalClassLoader}.
      */
@@ -461,8 +456,7 @@ public final class LibGraalFeature implements Feature {
                 }
             }
 
-            Architecture arch = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch;
-            configureGraalForLibGraal.invoke(arch.getName(),
+            configureGraalForLibGraal.invoke(getJVMCIArch(),
                             libGraalFeatureComponents,
                             guestServiceClasses,
                             registerAsInHeap,
@@ -475,6 +469,20 @@ public final class LibGraalFeature implements Feature {
         } catch (Throwable e) {
             throw GraalError.shouldNotReachHere(e);
         }
+    }
+
+    /**
+     * Gets a name for the current architecture that is compatible with
+     * {@link Architecture#getName()}.
+     */
+    private static String getJVMCIArch() {
+        String rawArch = getSavedProperty("os.arch");
+        return switch (rawArch) {
+            case "x86_64" -> "AMD64";
+            case "aarch64" -> "aarch64";
+            case "riscv64" -> "riscv64";
+            default -> throw new GraalError("Unknown or unsupported arch: %s", rawArch);
+        };
     }
 
     @Override
@@ -501,72 +509,7 @@ public final class LibGraalFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        checkForbiddenTypes((AfterAnalysisAccessImpl) access);
         optionCollector.afterAnalysis(access);
-    }
-
-    @SuppressWarnings("try")
-    private void checkForbiddenTypes(AfterAnalysisAccessImpl access) {
-        /*
-         * Verify we only have JVMCI & Graal classes reachable that are coming from
-         * LibGraalClassLoader except for hosted JVMCI & Graal classes that are legitimately used by
-         * SubstrateVM runtime implementation classes (mostly from package com.oracle.svm.core).
-         */
-        List<Pattern> hostedAllowed = List.of(
-                        classesPattern("jdk.graal.compiler.core.common",
-                                        "NumUtil"),
-                        classesPattern("jdk.graal.compiler.core.common.util",
-                                        "AbstractTypeReader", "TypeConversion", "TypeReader", "UnsafeArrayTypeReader"),
-                        classesPattern("jdk.graal.compiler.core.common.type",
-                                        "CompressibleConstant"),
-                        classesPattern("jdk.graal.compiler.debug",
-                                        "GraalError"),
-                        classesPattern("jdk.graal.compiler.options",
-                                        "ModifiableOptionValues", "Option.*"),
-                        classesPattern("jdk.graal.compiler.util.json",
-                                        "JsonWriter", "JsonBuilder.*"),
-                        classesPattern("org.graalvm.collections",
-                                        "EconomicMap.*", "EmptyMap.*", "Equivalence.*", "Pair"),
-                        classesPattern("jdk.vm.ci.amd64",
-                                        "AMD64.*"),
-                        classesPattern("jdk.vm.ci.aarch64",
-                                        "AArch64.*"),
-                        classesPattern("jdk.vm.ci.riscv64",
-                                        "RISCV64.*"),
-                        classesPattern("jdk.vm.ci.code",
-                                        "Architecture", "Register.*", "TargetDescription"),
-                        classesPattern("jdk.vm.ci.meta",
-                                        "JavaConstant", "JavaKind", "MetaUtil", "NullConstant", "PrimitiveConstant"));
-
-        Set<String> forbiddenHostedModules = Set.of("jdk.internal.vm.ci", "org.graalvm.collections", "org.graalvm.word", "jdk.graal.compiler");
-
-        BigBang bigBang = access.getBigBang();
-        CallTreePrinter callTreePrinter = new CallTreePrinter(bigBang);
-        callTreePrinter.buildCallTree();
-
-        DebugContext debug = bigBang.getDebug();
-        List<String> forbiddenReachableTypes = new ArrayList<>();
-        try (DebugContext.Scope ignored = debug.scope("LibGraalEntryPoints")) {
-            for (AnalysisType analysisType : callTreePrinter.usedAnalysisTypes()) {
-                Class<?> reachableType = analysisType.getJavaClass();
-                if (reachableType.getClassLoader() == loader || reachableType.isArray()) {
-                    continue;
-                }
-                Module module = reachableType.getModule();
-                if (module.isNamed() && forbiddenHostedModules.contains(module.getName())) {
-                    String fqn = reachableType.getName();
-                    if (hostedAllowed.stream().anyMatch(pattern -> pattern.matcher(fqn).matches())) {
-                        debug.log("Allowing hosted class %s from %s", fqn, module);
-                        continue;
-                    }
-                    forbiddenReachableTypes.add(String.format("%s/%s", module.getName(), fqn));
-                }
-            }
-        }
-        if (!forbiddenReachableTypes.isEmpty()) {
-            CallTreePrinter.print(bigBang, "reports", "report");
-            throw new GraalError("LibGraalEntryPoints build found forbidden hosted types as reachable: %s", String.join(", ", forbiddenReachableTypes));
-        }
     }
 
     private static Pattern classesPattern(String packageName, String... regexes) {

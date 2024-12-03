@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
+package jdk.graal.compiler.libgraal;
 
 import java.io.PrintStream;
 import java.lang.ref.ReferenceQueue;
@@ -87,13 +87,6 @@ class LibGraalJVMCISubstitutions {
 
     @TargetClass(className = "jdk.vm.ci.hotspot.Cleaner", classLoader = LibGraalClassLoaderSupplier.class, onlyWith = LibGraalFeature.IsEnabled.class)
     static final class Target_jdk_vm_ci_hotspot_Cleaner {
-        /*
-         * Ensure the ReferenceQueue<Object> instance in Cleaner.queue that is in libgraal is not
-         * tainted by any use of the Cleaner class at image build-time.
-         */
-        @Alias //
-        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true, declClass = ReferenceQueue.class)//
-        private static ReferenceQueue<Object> queue;
 
         /*
          * Make package-private clean() accessible so that it can be called from

@@ -22,9 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
-
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+package jdk.graal.compiler.libgraal;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -34,6 +32,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -41,13 +40,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.util.SignatureUtil;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotSignature;
-import jdk.vm.ci.meta.JavaType;
 
 /**
  * Registers the JNI configuration for libgraal by parsing the output of the
@@ -137,14 +134,23 @@ final class GetJNIConfig implements AutoCloseable {
 
     public static Class<?> forPrimitive(String name) {
         return switch (name) {
+            case "Z" -> boolean.class;
             case "boolean" -> boolean.class;
+            case "C" -> char.class;
             case "char" -> char.class;
+            case "F" -> float.class;
             case "float" -> float.class;
+            case "D" -> double.class;
             case "double" -> double.class;
+            case "B" -> byte.class;
             case "byte" -> byte.class;
+            case "S" -> short.class;
             case "short" -> short.class;
+            case "I" -> int.class;
             case "int" -> int.class;
+            case "J" -> long.class;
             case "long" -> long.class;
+            case "V" -> void.class;
             case "void" -> void.class;
             default -> null;
         };
@@ -162,7 +168,12 @@ final class GetJNIConfig implements AutoCloseable {
         try {
             return Class.forName(internalName, false, loader);
         } catch (ClassNotFoundException e) {
-            throw new GraalError(e, "Cannot find class during LibGraal JNIConfiguration registration");
+            String externalName = internalName.replace('/', '.');
+            try {
+                return Class.forName(externalName, false, loader);
+            } catch (ClassNotFoundException e3) {
+            }
+            throw new GraalError(e, "Cannot find class %s during LibGraal JNIConfiguration registration", name);
         }
     }
 
@@ -225,13 +236,13 @@ final class GetJNIConfig implements AutoCloseable {
                     case "method": {
                         source.check(tokens.length == 4, "Expected 4 tokens for a method");
                         String methodName = tokens[2];
-                        HotSpotJVMCIRuntime runtime = runtime();
                         String signature = tokens[3];
-                        HotSpotSignature descriptor = new HotSpotSignature(runtime, signature);
-                        Class<?>[] parameters = Stream.of(descriptor.toParameterTypes(null))//
-                                        .map(JavaType::toClassName).map(source::findClass)//
+                        ArrayList<String> buffer = new ArrayList<>();
+                        SignatureUtil.parseSignature(signature, buffer);
+                        Class<?>[] parameters = buffer.stream()//
+                                        .map(source::findClass)//
                                         .toList()//
-                                        .toArray(new Class<?>[descriptor.getParameterCount(false)]);
+                                        .toArray(new Class<?>[0]);
                         assert Arrays.stream(parameters).allMatch(pclazz -> pclazz.getClassLoader() == null || pclazz.getClassLoader() == loader);
                         try {
                             if ("<init>".equals(methodName)) {
@@ -247,9 +258,9 @@ final class GetJNIConfig implements AutoCloseable {
                                 RuntimeJNIAccess.register(clazz.getDeclaredMethod(methodName, parameters));
                             }
                         } catch (NoSuchMethodException e) {
-                            throw source.error("Method %s.%s%s not found: %s", clazz.getTypeName(), methodName, descriptor, e);
+                            throw source.error("Method %s.%s%s not found: %s", clazz.getTypeName(), methodName, signature, e);
                         } catch (NoClassDefFoundError e) {
-                            throw source.error("Could not register method %s.%s%s: %s", clazz.getTypeName(), methodName, descriptor, e);
+                            throw source.error("Could not register method %s.%s%s: %s", clazz.getTypeName(), methodName, signature, e);
                         }
                         break;
                     }

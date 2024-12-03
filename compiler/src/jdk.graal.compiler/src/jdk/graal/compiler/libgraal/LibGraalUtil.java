@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
+package jdk.graal.compiler.libgraal;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;

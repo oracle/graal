@@ -184,6 +184,7 @@ suite = {
         "sdk:WORD",
         "sdk:COLLECTIONS",
         "sdk:NATIVEIMAGE",
+        "sdk:NATIVEBRIDGE",
         "truffle:TRUFFLE_COMPILER",
       ],
       "requires" : [
@@ -192,6 +193,7 @@ suite = {
       ],
       "requiresConcealed" : {
         "java.base" : [
+          "jdk.internal.module",
           "jdk.internal.misc"
         ],
         "jdk.internal.vm.ci" : [
@@ -222,7 +224,8 @@ suite = {
         "jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider"
       ],
       "annotationProcessors" : [
-        "GRAAL_PROCESSOR"
+        "GRAAL_PROCESSOR",
+        "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
       ],
       "checkPackagePrefix": "false",
       "checkstyleVersion" : "10.7.0",
@@ -646,6 +649,7 @@ suite = {
         "sdk:COLLECTIONS",
         "sdk:WORD",
         "sdk:NATIVEIMAGE",
+        "sdk:NATIVEBRIDGE",
         "sdk:JNIUTILS",
         "truffle:TRUFFLE_COMPILER",
       ],

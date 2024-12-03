@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
+package jdk.graal.compiler.libgraal;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -112,15 +112,16 @@ public class GetCompilerConfig {
                         "-XX:+UnlockExperimentalVMOptions",
                         "-XX:+EnableJVMCI",
                         "-XX:-UseJVMCICompiler", // avoid deadlock with jargraal
+
+                        // Required to use Modules class
+                        "--add-exports=java.base/jdk.internal.module=jdk.graal.compiler",
                         addExports,
                         "-Djdk.vm.ci.services.aot=true",
                         "-D%s=%s".formatted(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME)));
 
-        Module module = ObjectCopier.class.getModule();
-        String target = module.isNamed() ? module.getName() : "ALL-UNNAMED";
         for (var e : opens.entrySet()) {
             for (String source : e.getValue()) {
-                command.add("--add-opens=%s/%s=%s".formatted(e.getKey(), source, target));
+                command.add("--add-opens=%s/%s=jdk.graal.compiler".formatted(e.getKey(), source));
             }
         }
 
