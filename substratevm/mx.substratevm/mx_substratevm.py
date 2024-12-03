@@ -1193,6 +1193,19 @@ def mx_post_parse_cmd_line(opts):
     for dist in suite.dists:
         if dist.isJARDistribution():
             dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
+    # Compilation of module-info.java classes need upgrade-module path arguments to
+    # when javac is invoked. This is in particular needed when the base JDK includes no
+    # JMODs.
+    if opts.no_jlinking:
+        all_jar_dists = set()
+        for p in suite.projects_recursive():
+            if p.isJavaProject():
+                jd = p.get_declaring_module_distribution()
+                if jd:
+                    all_jar_dists.add(jd)
+        for d in all_jar_dists:
+            d.add_module_info_compilation_participant(NoJlinkModuleInfoCompilationParticipant(d, "jdk.graal.compiler").__process__)
+
 
 def native_image_context_run(func, func_args=None, config=None, build_if_missing=False):
     func_args = [] if func_args is None else func_args
@@ -1876,6 +1889,33 @@ def clinittest(args):
         check_class_initialization(all_classes_file)
 
     native_image_context_run(build_and_test_clinittest_image, args)
+
+class NoJlinkModuleInfoCompilationParticipant:
+
+    def __init__(self, dist, module_name):
+        self.dist = dist
+        self.module_name = module_name
+
+    # Upgrade module path for compilation of module-info.java files when not using jmods from the JDK
+    def __process__(self, module_desc):
+        """
+        :param module_desc: The JavaModuleDescriptor for this distribution
+        :rtype: list of strings with extra javac arguments
+        """
+        def safe_path_arg(p):
+            r"""
+            Return `p` with all `\` characters replaced with `\\`, all spaces replaced
+            with `\ ` and the result enclosed in double quotes.
+            """
+            return '"' + p.replace('\\', '\\\\').replace(' ', '\\ ')  + '"'
+        graal_mod = None
+        for m in module_desc.modulepath:
+            if m.name == self.module_name:
+                graal_mod = m
+                break
+        if graal_mod:
+            return [ '--upgrade-module-path=' + safe_path_arg(graal_mod.jarpath) ]
+        return []
 
 
 class SubstrateJvmFuncsFallbacksBuilder(mx.Project):
