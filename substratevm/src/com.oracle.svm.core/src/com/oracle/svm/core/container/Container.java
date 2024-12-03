@@ -39,6 +39,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -124,7 +125,7 @@ public class Container {
     public int getActiveProcessorCount() {
         VMError.guarantee(isContainerized());
 
-        long currentMs = System.currentTimeMillis();
+        long currentMs = TimeUtils.currentTimeMillis();
         if (currentMs > activeProcessorCountTimeoutMs) {
             cachedActiveProcessorCount = ContainerLibrary.getActiveProcessorCount();
             activeProcessorCountTimeoutMs = currentMs + CACHE_MS;
@@ -142,7 +143,7 @@ public class Container {
     public UnsignedWord getPhysicalMemory() {
         VMError.guarantee(isContainerized());
 
-        long currentMs = System.currentTimeMillis();
+        long currentMs = TimeUtils.currentTimeMillis();
         if (currentMs > physicalMemoryTimeoutMs) {
             cachedPhysicalMemorySize = ContainerLibrary.physicalMemory();
             physicalMemoryTimeoutMs = currentMs + CACHE_MS;
@@ -160,7 +161,7 @@ public class Container {
     public long getMemoryLimitInBytes() {
         VMError.guarantee(isContainerized());
 
-        long currentMs = System.currentTimeMillis();
+        long currentMs = TimeUtils.currentTimeMillis();
         if (currentMs > memoryLimitInBytesTimeoutMs) {
             cachedMemoryLimitInBytes = ContainerLibrary.getMemoryLimitInBytes();
             memoryLimitInBytesTimeoutMs = currentMs + CACHE_MS;

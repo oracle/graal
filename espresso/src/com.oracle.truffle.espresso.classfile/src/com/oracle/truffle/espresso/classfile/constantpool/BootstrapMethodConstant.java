@@ -33,7 +33,9 @@ public interface BootstrapMethodConstant extends PoolConstant {
 
     int getBootstrapMethodAttrIndex();
 
-    Symbol<Name> getName(ConstantPool pool);
+    default Symbol<Name> getName(ConstantPool pool) {
+        return getNameAndType(pool).getName(pool);
+    }
 
     NameAndTypeConstant getNameAndType(ConstantPool pool);
 

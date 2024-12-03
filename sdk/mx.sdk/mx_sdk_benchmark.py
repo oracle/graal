@@ -1191,13 +1191,7 @@ _baristaConfig = {
         "micronaut-similarity": {},
         "micronaut-pegasus": {},
         "quarkus-hello-world": {},
-        "quarkus-tika-odt": {
-            "barista-bench-name": "quarkus-tika",
-        },
-        "quarkus-tika-pdf": {
-            "barista-bench-name": "quarkus-tika",
-            "workload": "pdf-workload.barista.json",
-        },
+        "quarkus-tika": {},
         "spring-hello-world": {},
         "spring-petclinic": {},
     },
@@ -1262,7 +1256,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
     def benchmarkList(self, bmSuiteArgs):
         exclude = []
-        # Barista currently does not support running 'micronaut-pegasus' on the JVM - running it results in a crash
+        # Barista currently does not support running 'micronaut-pegasus' on the JVM - running it results in a crash (GR-59793)
         exclude.append("micronaut-pegasus")
         return [b for b in self.completeBenchmarkList(bmSuiteArgs) if not b in exclude]
 
@@ -1869,7 +1863,11 @@ def parse_prefixed_args(prefix, args):
     ret = []
     for arg in args:
         if arg.startswith(prefix):
-            parsed = arg.split(' ')[0].split(prefix)[1]
+            words_in_arg = arg.split(' ')
+            if len(words_in_arg) > 1:
+                # We will monitor our logs for this warning and then fix this method once we are certain no jobs break (GR-60134)
+                mx.warn(f"A prefixed arg that includes spaces is being parsed, ignoring everything that comes after the first space! The arg in question is: '{arg}'")
+            parsed = words_in_arg[0].split(prefix)[1]
             if parsed not in ret:
                 ret.append(parsed)
     return ret

@@ -915,8 +915,8 @@ public class SubstrateDiagnostics {
 
             log.string("Page size: ").unsigned(VirtualMemoryProvider.get().getGranularity()).newline();
             if (!SubstrateOptions.AsyncSignalSafeDiagnostics.getValue()) {
-                log.string("VM uptime: ").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
-                log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
+                log.string("VM uptime: ").rational(Isolates.getUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
+                log.string("Current timestamp: ").unsigned(TimeUtils.currentTimeMillis()).newline();
             }
 
             CodeInfo info = CodeInfoTable.getFirstImageCodeInfo();

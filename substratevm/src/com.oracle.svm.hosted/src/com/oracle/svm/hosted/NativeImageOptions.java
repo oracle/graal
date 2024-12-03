@@ -86,7 +86,7 @@ public class NativeImageOptions {
     public static final String MICRO_ARCHITECTURE_LIST = "list";
 
     @APIOption(name = "-march")//
-    @Option(help = "Generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8-a' on AArch64. " +
+    @Option(help = "Generate instructions for a specific machine type. Defaults to 'x86-64-v3' on AMD64 and 'armv8.1-a' on AArch64. " +
                     "Use -march=" + MICRO_ARCHITECTURE_COMPATIBILITY + " for best compatibility, or -march=" + MICRO_ARCHITECTURE_NATIVE +
                     " for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. " +
                     "To list all available machine types, use -march=" + MICRO_ARCHITECTURE_LIST + ".", type = User)//

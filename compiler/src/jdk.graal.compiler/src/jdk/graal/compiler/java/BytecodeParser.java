@@ -2457,6 +2457,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     @Override
+    public boolean canInvokeFallback() {
+        return true;
+    }
+
+    @Override
     public Invoke invokeFallback(FixedWithNextNode predecessor, EndNode end) {
         assert isParsingInvocationPlugin();
         assert currentInvoke != null : "must be processing invoke";

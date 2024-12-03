@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 
@@ -42,6 +43,11 @@ public final class ResolvedFloatDynamicConstant implements ResolvedDynamicConsta
     @Override
     public Object value() {
         return resolved;
+    }
+
+    @Override
+    public JavaKind getKind() {
+        return JavaKind.Float;
     }
 
     @Override

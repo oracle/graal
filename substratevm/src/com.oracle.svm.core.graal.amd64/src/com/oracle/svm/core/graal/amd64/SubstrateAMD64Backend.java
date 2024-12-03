@@ -459,7 +459,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         if (SubstrateUtil.HOSTED) {
             /*
              * AOT compilation during image generation happens before the image heap objects are
-             * layouted. So the offset of the constant is not known yet during compilation time, and
+             * laid out. So the offset of the constant is not known yet during compilation time, and
              * instead needs to be patched in later. We annotate the machine code with the constant
              * that needs to be patched in.
              */

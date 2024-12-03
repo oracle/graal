@@ -31,6 +31,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
@@ -540,17 +541,18 @@ public final class Resolution {
     }
 
     private static ResolvedDynamicConstant makeResolved(Klass type, StaticObject result) {
-        switch (type.getJavaKind()) {
+        JavaKind kind = type.getJavaKind();
+        switch (kind) {
             case Boolean:
             case Byte:
             case Short:
             case Char: {
-                int value = (int) MHLinkToNode.rebasic(type.getMeta().unboxGuest(result), type.getJavaKind());
-                return new ResolvedIntDynamicConstant(value);
+                int value = (int) MHLinkToNode.rebasic(type.getMeta().unboxGuest(result), kind);
+                return new ResolvedIntDynamicConstant(value, kind);
             }
             case Int: {
                 int value = type.getMeta().unboxInteger(result);
-                return new ResolvedIntDynamicConstant(value);
+                return new ResolvedIntDynamicConstant(value, JavaKind.Int);
             }
             case Float: {
                 float value = type.getMeta().unboxFloat(result);

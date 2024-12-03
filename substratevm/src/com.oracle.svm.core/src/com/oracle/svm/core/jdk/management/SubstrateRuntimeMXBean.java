@@ -70,22 +70,16 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         return Util.newObjectName(ManagementFactory.RUNTIME_MXBEAN_NAME);
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public String getName() {
-        long id;
-        String hostName;
-        try {
-            id = ProcessProperties.getProcessID();
-        } catch (Throwable t) {
-            id = Isolates.getCurrentStartTimeMillis();
-        }
+        long pid = ProcessProperties.getProcessID();
+        String hostName = "localhost";
         try {
             hostName = InetAddress.getLocalHost().getHostName();
         } catch (UnknownHostException e) {
-            hostName = "localhost";
+            // ignore
         }
-        return id + "@" + hostName;
+        return pid + "@" + hostName;
     }
 
     /* All remaining methods are unsupported on Substrate VM. */
@@ -147,13 +141,13 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public long getUptime() {
-        return Isolates.getCurrentUptimeMillis();
+        return Isolates.getUptimeMillis();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getStartTime() {
-        return Isolates.getCurrentStartTimeMillis();
+        return Isolates.getInitDoneTimeMillis();
     }
 
     /** Copied from {@code sun.management.RuntimeImpl#getSystemProperties()}. */

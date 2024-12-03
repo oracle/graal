@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,9 +26,11 @@ package com.oracle.svm.core.heap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -36,8 +38,10 @@ import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.word.ObjectAccess;
 import jdk.graal.compiler.word.Word;
+import jdk.graal.compiler.word.WordOperationPlugin;
 
 /**
  * An object header is a reference-sized collection of bits in each object instance. The object
@@ -49,6 +53,8 @@ import jdk.graal.compiler.word.Word;
  * of this instance if the object has been moved by the collector.
  */
 public abstract class ObjectHeader {
+    protected static final String INLINE_INITIALIZE_HEADER_INIT_REASON = "Methods that write to INIT_LOCATION must be inlined into a caller that emits an ALLOCATION_INIT barrier.";
+
     @Platforms(Platform.HOSTED_ONLY.class)
     protected ObjectHeader() {
     }
@@ -107,8 +113,37 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract Pointer extractPotentialDynamicHubFromHeader(Word header);
 
+    /**
+     * Initializes the header of a newly allocated heap object (i.e. writing to
+     * {@link LocationIdentity#INIT_LOCATION})
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract void initializeHeaderOfNewObject(Pointer ptr, Word header, boolean isArrayLike);
+    @AlwaysInline(INLINE_INITIALIZE_HEADER_INIT_REASON)
+    public final void initializeHeaderOfNewObjectInit(Pointer ptr, Word header, boolean isArrayLike) {
+        initializeObjectHeader(ptr, header, isArrayLike, InitLocationMemWriter.INSTANCE);
+    }
+
+    /**
+     * Initializes the header of a newly allocated object located anywhere in memory (i.e. writing
+     * to {@link LocationIdentity#ANY_LOCATION})
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void initializeHeaderOfNewObjectAny(Pointer ptr, Word header, boolean isArrayLike) {
+        initializeObjectHeader(ptr, header, isArrayLike, AnyLocationMemWriter.INSTANCE);
+    }
+
+    /**
+     * Initializes the header of a newly allocated object located off the heap (i.e. writing to
+     * {@link NamedLocationIdentity#OFF_HEAP_LOCATION})
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void initializeHeaderOfNewObjectOffHeap(Pointer ptr, Word header, boolean isArrayLike) {
+        initializeObjectHeader(ptr, header, isArrayLike, OffHeapLocationMemWriter.INSTANCE);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @AlwaysInline(INLINE_INITIALIZE_HEADER_INIT_REASON)
+    protected abstract void initializeObjectHeader(Pointer ptr, Word header, boolean isArrayLike, MemWriter writer);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean pointsToObjectHeader(Pointer ptr) {
@@ -148,5 +183,95 @@ public abstract class ObjectHeader {
     @Fold
     protected static int getHubOffset() {
         return ConfigurationValues.getObjectLayout().getHubOffset();
+    }
+
+    /**
+     * Helper interface to write to memory at an overridable {@link LocationIdentity}.
+     * <p>
+     * {@link #initializeObjectHeader} is used in multiple contexts which write to different memory
+     * locations. LocationIdentity arguments to {@link WordOperationPlugin}s are required to be
+     * constant at the time of bytecode parsing, meaning it's not possible to {@link Fold} a
+     * location identity in any way, it must be a compile-time constant. To avoid duplicating
+     * implementations of {@link #initializeObjectHeader}, we get around this by delegating the
+     * writing to the MemWriter, whose implementations use different (constant) location identities.
+     */
+    protected interface MemWriter {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        void writeWord(Pointer ptr, int offset, Word word);
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        void writeInt(Pointer ptr, int offset, int val);
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        void writeLong(Pointer ptr, int offset, long val);
+    }
+
+    private static final class AnyLocationMemWriter implements MemWriter {
+        private static final AnyLocationMemWriter INSTANCE = new AnyLocationMemWriter();
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void writeWord(Pointer ptr, int offset, Word word) {
+            ptr.writeWord(offset, word, LocationIdentity.ANY_LOCATION);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void writeInt(Pointer ptr, int offset, int val) {
+            ptr.writeInt(offset, val, LocationIdentity.ANY_LOCATION);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void writeLong(Pointer ptr, int offset, long val) {
+            ptr.writeLong(offset, val, LocationIdentity.ANY_LOCATION);
+        }
+    }
+
+    private static final class OffHeapLocationMemWriter implements MemWriter {
+        private static final OffHeapLocationMemWriter INSTANCE = new OffHeapLocationMemWriter();
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void writeWord(Pointer ptr, int offset, Word word) {
+            ptr.writeWord(offset, word, NamedLocationIdentity.OFF_HEAP_LOCATION);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void writeInt(Pointer ptr, int offset, int val) {
+            ptr.writeInt(offset, val, NamedLocationIdentity.OFF_HEAP_LOCATION);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public void writeLong(Pointer ptr, int offset, long val) {
+            ptr.writeLong(offset, val, NamedLocationIdentity.OFF_HEAP_LOCATION);
+        }
+    }
+
+    private static final class InitLocationMemWriter implements MemWriter {
+        private static final InitLocationMemWriter INSTANCE = new InitLocationMemWriter();
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @AlwaysInline(INLINE_INITIALIZE_HEADER_INIT_REASON)
+        public void writeWord(Pointer ptr, int offset, Word word) {
+            ptr.writeWord(offset, word, LocationIdentity.INIT_LOCATION);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @AlwaysInline(INLINE_INITIALIZE_HEADER_INIT_REASON)
+        public void writeInt(Pointer ptr, int offset, int val) {
+            ptr.writeInt(offset, val, LocationIdentity.INIT_LOCATION);
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @AlwaysInline(INLINE_INITIALIZE_HEADER_INIT_REASON)
+        public void writeLong(Pointer ptr, int offset, long val) {
+            ptr.writeLong(offset, val, LocationIdentity.INIT_LOCATION);
+        }
     }
 }

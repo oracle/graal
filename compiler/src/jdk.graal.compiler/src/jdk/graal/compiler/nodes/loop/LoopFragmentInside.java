@@ -343,6 +343,11 @@ public class LoopFragmentInside extends LoopFragment {
                         lastCodeNode = newAnchoringPointAfterPrevIteration;
                     }
                     newSegmentBegin.replaceAtUsages(lastCodeNode, InputType.Guard, InputType.Anchor);
+
+                    // at this point only safepoint usages can live here
+                    assert newSegmentBegin.usages().filter(x -> !(x instanceof SafepointNode)).count() == 0 : "Must only have safepoint(association) usages left for " + newSegmentBegin + " usages=" +
+                                    newSegmentBegin.usages();
+                    newSegmentBegin.replaceAtUsages(mainLoopBegin, InputType.Association);
                 }
                 lastCodeNode.replaceFirstSuccessor(loopEndNode, newSegmentFirstNode);
                 newSegmentLastNode.replaceFirstSuccessor(newSegmentEnd, loopEndNode);

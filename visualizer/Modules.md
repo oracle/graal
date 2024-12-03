@@ -181,7 +181,7 @@ organized into stages:
 
 - base diagram,
 - filtered diagram (including scripts),
-- layouted diagram,
+- laid out diagram,
 - extracted diagram
 
 Output of each stage is weakly cached, with respect to the settings / applied function; this allows to e.g. quickly change extraction, since

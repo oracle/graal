@@ -307,6 +307,7 @@ suite = {
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
+                    "jdk.internal.vm.annotation",
                     "jdk.internal.util",
                     "jdk.internal.org.objectweb.asm",
                 ],
