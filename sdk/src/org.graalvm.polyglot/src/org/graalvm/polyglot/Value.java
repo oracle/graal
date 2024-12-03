@@ -539,7 +539,7 @@ public final class Value extends AbstractValue {
      * Invoking this message does not cause any observable side-effects.
      * <p>
      * <b>Example</b> reading into an output stream using a 4k auxiliary byte array:
-     * 
+     *
      * <pre>
      * Value val = ...
      * assert val.hasBufferElements();
@@ -556,11 +556,11 @@ public final class Value extends AbstractValue {
      *
      * In case the goal is to read the whole contents into a single byte array, the easiest way is
      * to do that through {@link ByteSequence}:
-     * 
+     *
      * <pre>
      * byte[] byteArray = val.as(ByteSequence.class).toByteArray();
      * </pre>
-     * 
+     *
      * @param byteOffset offset in the buffer to start reading from.
      * @param destination byte array to write the read bytes into.
      * @param destinationOffset offset in the destination array to start writing from.
@@ -1193,6 +1193,34 @@ public final class Value extends AbstractValue {
         } finally {
             Reference.reachabilityFence(creatorContext);
         }
+    }
+
+    /**
+     * Returns the bytes of a given string value without converting it to a Java {@link String}.
+     * <p>
+     * This method retrieves the raw bytes of the string in the specified {@link StringEncoding},
+     * avoiding intermediate conversions to a Java {@code String}. This is particularly useful for
+     * performance-sensitive scenarios where the overhead of creating a Java {@code String} is
+     * undesirable.
+     * <p>
+     * If the string is not already encoded in the specified encoding, it will be re-encoded before
+     * the bytes are returned. Note that re-encoding may involve additional computational overhead
+     * depending on the size of the string and the differences between its current encoding and the
+     * target encoding.
+     *
+     * <b>Usage Note:</b> The returned byte array represents the raw data of the string in the
+     * requested encoding. Modifications to the array will not affect the underlying string value.
+     *
+     * @param encoding the desired encoding for the string. Must not be <code>null</code>. Supported
+     *            encodings are defined in {@link StringEncoding}.
+     * @return a byte array containing the string's raw bytes in the specified encoding
+     * @throws NullPointerException if {@code encoding} is <code>null</code>
+     * @throws IllegalStateException if the string value is no longer valid (e.g., the associated
+     *             context has been closed)
+     * @since 24.2
+     */
+    public byte[] asStringBytes(StringEncoding encoding) {
+        return dispatch.asStringBytes(this.context, receiver, encoding.value);
     }
 
     /**
@@ -2576,6 +2604,182 @@ public final class Value extends AbstractValue {
         dispatch.pin(this.context, receiver);
         Reference.reachabilityFence(creatorContext);
     }
+
+    /**
+     * Creates a byte-based string value that can be passed to polyglot languages.
+     * <p>
+     * The returned value is guaranteed to return <code>true</code> for {@link Value#isString()}.
+     * The string can later be retrieved as a byte array using
+     * {@link Value#asStringBytes(StringEncoding)}. This method ensures immutability by
+     * conservatively copying the byte array before passing it to the underlying implementation.
+     * </p>
+     *
+     * <b>Performance Note:</b> Copying the byte array can have a performance impact. Use this
+     * method when immutability is required, or use the more flexible overloaded method
+     * {@link #fromByteBasedString(byte[], int, int, StringEncoding, boolean)} to control copying
+     * behavior.
+     *
+     * @param bytes the byte array representing the string
+     * @param encoding the encoding of the byte array
+     * @return a polyglot string {@link Value}
+     * @throws NullPointerException if either {@code bytes} or {@code encoding} is null
+     * @since 24.2
+     */
+    public static Value fromByteBasedString(byte[] bytes, StringEncoding encoding) {
+        Objects.requireNonNull(bytes);
+        Objects.requireNonNull(encoding);
+        return Engine.getImpl().fromByteBasedString(bytes, 0, bytes.length, encoding.value, true);
+    }
+
+    /**
+     * Creates a byte-based string value with more granular control over the byte array's usage.
+     * <p>
+     * This method provides additional flexibility by allowing a subset of the byte array to be
+     * passed and controlling whether the byte array should be copied to ensure immutability.
+     *
+     * @param bytes the byte array representing the string
+     * @param offset the starting offset in the byte array
+     * @param length the number of bytes to include starting from {@code offset}
+     * @param encoding the encoding of the byte array
+     * @param copy whether to copy the byte array to ensure immutability
+     * @return a polyglot string {@link Value}
+     * @since 24.2
+     */
+    public static Value fromByteBasedString(byte[] bytes, int offset, int length, StringEncoding encoding, boolean copy) {
+        Objects.requireNonNull(bytes);
+        Objects.requireNonNull(encoding);
+        if (offset < 0) {
+            throw new IndexOutOfBoundsException("byteLength must not be negative");
+        }
+        if (length < 0) {
+            throw new IndexOutOfBoundsException("byteOffset must not be negative");
+        }
+        if (offset + length > bytes.length) {
+            throw new IndexOutOfBoundsException("byte index is out of bounds");
+        }
+        return Engine.getImpl().fromByteBasedString(bytes, offset, length, encoding.value, copy);
+    }
+
+    /**
+     * Creates a native string object that can be passed to polyglot languages.
+     * <p>
+     * Native strings avoid copying, offering better performance for certain use cases. However,
+     * clients must guarantee the lifetime of the native string as long as the {@link Value} is
+     * alive. The returned value is guaranteed to return <code>true</code> for
+     * {@link Value#isString()}.
+     * <p>
+     * <b>Usage Warning:</b> The polyglot context or engine does not manage the lifetime of the
+     * native pointer. Clients must ensure that the pointer remains valid and that the memory is not
+     * deallocated while the string is in use. Passing a deallocated or invalid pointer can result
+     * in crashes or undefined behavior.
+     * <p>
+     * <b>Note:</b> Whenever possible, use {@link #fromByteBasedString(byte[], StringEncoding)} to
+     * avoid the risks associated with native memory management.
+     *
+     * <ul>
+     * <li>The native string's memory must remain valid for the lifetime of the context it is passed
+     * to.
+     * <li>The native bytes must not be mutated after being passed to this method.
+     * <li>The bytes must already be encoded with the specified encoding.
+     * </ul>
+     *
+     * @param basePointer the raw base pointer to the native string in memory
+     * @param byteLength the length of the string in bytes
+     * @param encoding the encoding of the native string
+     * @param copy whether to copy the native string bytes for additional safety
+     * @return a polyglot string {@link Value}
+     * @since 24.2
+     */
+    public static Value fromNativeString(long basePointer, int byteOffset, int byteLength, StringEncoding encoding, boolean copy) {
+        Objects.requireNonNull(encoding);
+        if (basePointer == 0L) {
+            throw new NullPointerException("Null base pointer provided.");
+        }
+        if (byteLength < 0) {
+            throw new IndexOutOfBoundsException("byteLength must not be negative");
+        }
+        if (byteOffset < 0) {
+            throw new IndexOutOfBoundsException("byteOffset must not be negative");
+        }
+        return Engine.getImpl().fromNativeString(basePointer, byteOffset, byteLength, encoding.value, copy);
+    }
+
+    /**
+     * Creates a native string object with default safety settings.
+     * <p>
+     * This method is equivalent to calling
+     * {@link #fromNativeString(long, int, int, StringEncoding, boolean)} with {@code copy} set to
+     * {@code true}.
+     * </p>
+     *
+     * @param basePointer the raw base pointer to the native string in memory
+     * @param byteLength the length of the string in bytes
+     * @param encoding the encoding of the native string
+     * @return a polyglot string {@link Value}
+     * @since 24.2
+     */
+    public static Value fromNativeString(long basePointer, int byteLength, StringEncoding encoding) {
+        return fromNativeString(basePointer, 0, byteLength, encoding, true);
+    }
+
+    /**
+     * Enum like class representing the supported string encodings. The encodings determine how byte
+     * arrays or native strings are interpreted when creating or retrieving string values. This
+     * class is not directly a enum to support compatible evolution.
+     *
+     * @since 24.2
+     */
+    public static final class StringEncoding {
+
+        /**
+         * @since 24.2
+         */
+        public static final StringEncoding UTF_8 = new StringEncoding(0);
+
+        /**
+         * @since 24.2
+         */
+        public static final StringEncoding UTF_16_LITTLE_ENDIAN = new StringEncoding(1);
+        /**
+         * @since 24.2
+         */
+        public static final StringEncoding UTF_16_BIG_ENDIAN = new StringEncoding(2);
+        /**
+         * @since 24.2
+         */
+        public static final StringEncoding UTF_32_LITTLE_ENDIAN = new StringEncoding(3);
+        /**
+         * @since 24.2
+         */
+        public static final StringEncoding UTF_32_BIG_ENDIAN = new StringEncoding(4);
+
+        /**
+         * The native UTF 16 encoding for the current platform.
+         *
+         * @see ByteOrder#nativeOrder()
+         * @since 24.2
+         */
+        public static final StringEncoding UTF_16 = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? UTF_16_LITTLE_ENDIAN : UTF_16_BIG_ENDIAN;
+
+        /**
+         * The native UTF 32 encoding for the current platform.
+         *
+         * @see ByteOrder#nativeOrder()
+         * @since 24.2
+         */
+        public static final StringEncoding UTF_32 = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? UTF_32_LITTLE_ENDIAN : UTF_32_BIG_ENDIAN;
+
+        /*
+         * Mapping table to PolyglotImpl.LazyEncodings.TABLE. Keep in sync.
+         */
+        final int value;
+
+        private StringEncoding(int value) {
+            this.value = value;
+        }
+
+    }
+
 }
 
 abstract class AbstractValue {

@@ -716,6 +716,23 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     @Override
+    public byte[] asStringBytes(Object languageContext, Object receiver, int encoding) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return asStringBytesUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    protected static byte[] asStringBytesUnsupported(PolyglotLanguageContext context, Object receiver) {
+        return invalidCastPrimitive(context, receiver, byte[].class, "asStringBytes(StringEncoding)", "isString()", "Invalid coercion.");
+    }
+
+    @Override
     public boolean asBoolean(Object languageContext, Object receiver) {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
@@ -1751,6 +1768,17 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
 
         @Override
+        public byte[] asStringBytes(Object languageContext, Object receiver, int encoding) {
+            try {
+                TruffleString s = interop.asTruffleString(receiver);
+                TruffleString.Encoding e = PolyglotImpl.mapStringEncoding(encoding);
+                return s.switchEncodingUncached(e).copyToByteArrayUncached(e);
+            } catch (UnsupportedMessageException e) {
+                return super.asStringBytes(languageContext, receiver, encoding);
+            }
+        }
+
+        @Override
         public boolean isNumber(Object languageContext, Object receiver) {
             return interop.isNumber(receiver);
         }
@@ -2738,6 +2766,28 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return UNCACHED_INTEROP.asString(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asStringUnsupported(context, receiver);
+                }
+            } catch (Throwable e) {
+                throw guestToHostException(context, e, true);
+            } finally {
+                hostLeave(context, c);
+            }
+        }
+
+        @Override
+        public byte[] asStringBytes(Object languageContext, Object receiver, int encoding) {
+            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+            Object c = hostEnter(context);
+            try {
+                try {
+                    if (isNullUncached(receiver)) {
+                        return null;
+                    }
+                    TruffleString s = UNCACHED_INTEROP.asTruffleString(receiver);
+                    TruffleString.Encoding e = PolyglotImpl.mapStringEncoding(encoding);
+                    return s.switchEncodingUncached(e).copyToByteArrayUncached(e);
+                } catch (UnsupportedMessageException e) {
+                    return asStringBytesUnsupported(context, receiver);
                 }
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
