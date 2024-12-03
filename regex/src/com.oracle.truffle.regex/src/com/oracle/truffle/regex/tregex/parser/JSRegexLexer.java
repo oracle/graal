@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.regex.tregex.parser;
 
 import static com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor.UNICODE;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 
@@ -65,16 +67,34 @@ public final class JSRegexLexer extends RegexLexer {
     private static final TBitSet CLASS_SET_SYNTAX_CHARS = TBitSet.valueOf('(', ')', '-', '/', '[', '\\', ']', '{', '|', '}');
     private static final TBitSet CLASS_SET_RESERVED_PUNCTUATORS = TBitSet.valueOf('!', '#', '%', '&', ',', '-', ':', ';', '<', '=', '>', '@', '`', '~');
     private static final TBitSet CLASS_SET_RESERVED_DOUBLE_PUNCTUATORS = TBitSet.valueOf('!', '#', '$', '%', '&', '*', '+', ',', '.', ':', ';', '<', '=', '>', '?', '@', '^', '`', '~');
-    private final RegexFlags flags;
+
+    private final Deque<RegexFlags> flagsStack = new ArrayDeque<>();
+    private RegexFlags globalFlags;
 
     public JSRegexLexer(RegexSource source, RegexFlags flags, CompilationBuffer compilationBuffer) {
         super(source, compilationBuffer);
-        this.flags = flags;
+        this.globalFlags = flags;
+    }
+
+    public RegexFlags getGlobalFlags() {
+        return globalFlags;
+    }
+
+    public RegexFlags getLocalFlags() {
+        return flagsStack.isEmpty() ? globalFlags : flagsStack.peek();
+    }
+
+    public void pushLocalFlags(RegexFlags localFlags) {
+        flagsStack.push(localFlags);
+    }
+
+    public void popLocalFlags() {
+        flagsStack.pop();
     }
 
     @Override
     protected boolean featureEnabledIgnoreCase() {
-        return flags.isIgnoreCase();
+        return getLocalFlags().isIgnoreCase();
     }
 
     @Override
@@ -144,7 +164,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledOctalEscapes() {
-        return !flags.isEitherUnicode();
+        return !getLocalFlags().isEitherUnicode();
     }
 
     @Override
@@ -154,24 +174,25 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledUnicodePropertyEscapes() {
-        return flags.isEitherUnicode();
+        return getLocalFlags().isEitherUnicode();
     }
 
     @Override
     protected boolean featureEnabledClassSetExpressions() {
-        return flags.isUnicodeSets();
+        return getLocalFlags().isUnicodeSets();
     }
 
     @Override
     protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
-        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = flags.isEitherUnicode() ? CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode : CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode;
+        CaseFoldData.CaseFoldUnfoldAlgorithm caseFolding = getLocalFlags().isEitherUnicode() ? CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode
+                        : CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptNonUnicode;
         CodePointSetAccumulator tmp = compilationBuffer.getCodePointSetAccumulator1();
         CaseFoldData.applyCaseFoldUnfold(charClass, tmp, caseFolding);
     }
 
     @Override
     protected CodePointSet complementClassSet(CodePointSet codePointSet) {
-        if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
+        if (getLocalFlags().isUnicodeSets() && getLocalFlags().isIgnoreCase()) {
             return codePointSet.createInverse(CaseFoldData.FOLDED_CHARACTERS, compilationBuffer);
         } else {
             return codePointSet.createInverse(source.getEncoding());
@@ -180,7 +201,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected ClassSetContents caseFoldClassSetAtom(ClassSetContents classSetContents) {
-        if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
+        if (getLocalFlags().isUnicodeSets() && getLocalFlags().isIgnoreCase()) {
             return classSetContents.caseFold(compilationBuffer.getCodePointSetAccumulator1());
         } else {
             return classSetContents;
@@ -189,7 +210,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected CodePointSet getDotCodePointSet() {
-        return flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT;
+        return getLocalFlags().isDotAll() ? Constants.DOT_ALL : Constants.DOT;
     }
 
     @Override
@@ -227,17 +248,17 @@ public final class JSRegexLexer extends RegexLexer {
             case 'D':
                 return Constants.NON_DIGITS;
             case 'w':
-                if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
+                if (getLocalFlags().isUnicodeSets() && getLocalFlags().isIgnoreCase()) {
                     return Constants.WORD_CHARS_UNICODE_SETS_IGNORE_CASE;
-                } else if (flags.isUnicode() && flags.isIgnoreCase()) {
+                } else if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
                     return Constants.WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.WORD_CHARS;
                 }
             case 'W':
-                if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
+                if (getLocalFlags().isUnicodeSets() && getLocalFlags().isIgnoreCase()) {
                     return Constants.NON_WORD_CHARS_UNICODE_SETS_IGNORE_CASE;
-                } else if (flags.isUnicode() && flags.isIgnoreCase()) {
+                } else if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
                     return Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.NON_WORD_CHARS;
@@ -272,7 +293,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected Token handleBoundedQuantifierEmptyOrMissingMin() throws RegexSyntaxException {
-        if (flags.isEitherUnicode()) {
+        if (getLocalFlags().isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INCOMPLETE_QUANTIFIER);
         }
         position = getLastTokenPosition() + 1;
@@ -301,7 +322,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void handleCCRangeWithPredefCharClass(int startPos, ClassSetContents firstAtom, ClassSetContents secondAtom) {
-        if (flags.isEitherUnicode()) {
+        if (getLocalFlags().isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_CHARACTER_CLASS);
         }
     }
@@ -333,14 +354,14 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void handleIncompleteEscapeX() {
-        if (flags.isEitherUnicode()) {
+        if (getLocalFlags().isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
         }
     }
 
     @Override
     protected Token handleInvalidBackReference(int reference) {
-        if (flags.isEitherUnicode()) {
+        if (getLocalFlags().isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
         }
         return null;
@@ -352,7 +373,7 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     private int handleInvalidEscape(int c) {
-        if (flags.isEitherUnicode()) {
+        if (getLocalFlags().isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
         }
         return c;
@@ -403,7 +424,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void handleUnmatchedRightBrace() {
-        if (flags.isEitherUnicode()) {
+        if (getLocalFlags().isEitherUnicode()) {
             // In ECMAScript regular expressions, syntax characters such as '}' and ']'
             // cannot be used as atomic patterns. However, Annex B relaxes this condition
             // and allows the use of unmatched '}' and ']', which then match themselves.
@@ -419,7 +440,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void handleUnmatchedRightBracket() {
-        if (flags.isEitherUnicode()) {
+        if (getLocalFlags().isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.UNMATCHED_RIGHT_BRACKET);
         }
     }
@@ -463,7 +484,7 @@ public final class JSRegexLexer extends RegexLexer {
         } else if (c == 'B') {
             return Token.createNonWordBoundary();
         } else if (c == 'k') {
-            if (flags.isEitherUnicode() || hasNamedCaptureGroups()) {
+            if (getLocalFlags().isEitherUnicode() || hasNamedCaptureGroups()) {
                 if (atEnd()) {
                     handleUnfinishedEscape();
                 }
@@ -492,10 +513,10 @@ public final class JSRegexLexer extends RegexLexer {
     protected int parseCustomEscapeChar(char c, boolean inCharClass) {
         switch (c) {
             case '0':
-                if (flags.isEitherUnicode() && lookahead(RegexLexer::isDecimalDigit, 1)) {
+                if (getLocalFlags().isEitherUnicode() && lookahead(RegexLexer::isDecimalDigit, 1)) {
                     throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
                 }
-                if (!flags.isEitherUnicode() && lookahead(RegexLexer::isOctalDigit, 1)) {
+                if (!getLocalFlags().isEitherUnicode() && lookahead(RegexLexer::isOctalDigit, 1)) {
                     return parseOctal(0, 2);
                 }
                 return '\0';
@@ -505,7 +526,7 @@ public final class JSRegexLexer extends RegexLexer {
                     return handleInvalidControlEscape();
                 }
                 final char controlLetter = curChar();
-                if (!flags.isEitherUnicode() && (isDecimalDigit(controlLetter) || controlLetter == '_') && inCharClass) {
+                if (!getLocalFlags().isEitherUnicode() && (isDecimalDigit(controlLetter) || controlLetter == '_') && inCharClass) {
                     advance();
                     return controlLetter % 32;
                 }
@@ -516,7 +537,7 @@ public final class JSRegexLexer extends RegexLexer {
                 advance();
                 return Character.toUpperCase(controlLetter) - ('A' - 1);
             case 'u':
-                final int unicodeEscape = parseUnicodeEscapeChar(flags.isEitherUnicode());
+                final int unicodeEscape = parseUnicodeEscapeChar(getLocalFlags().isEitherUnicode());
                 return unicodeEscape < 0 ? c : unicodeEscape;
             default:
                 return -1;
@@ -525,7 +546,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected int parseCustomEscapeCharFallback(int c, boolean inCharClass) {
-        if (inCharClass && flags.isUnicodeSets()) {
+        if (inCharClass && getLocalFlags().isUnicodeSets()) {
             // parsing a ClassSetCharacter in ClassSetExpression
             if (!SYNTAX_CHARS.get(c) && !CLASS_SET_RESERVED_PUNCTUATORS.get(c)) {
                 return handleInvalidEscape(c);
@@ -545,7 +566,7 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     private char handleInvalidControlEscape() throws RegexSyntaxException {
-        if (flags.isEitherUnicode()) {
+        if (getLocalFlags().isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_CONTROL_CHAR_ESCAPE);
         }
         return '\\';
@@ -553,7 +574,68 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected Token parseCustomGroupBeginQ(char charAfterQuestionMark) {
-        return null;
+        if (RegexFlags.isValidFlagChar(charAfterQuestionMark) || charAfterQuestionMark == '-') {
+            return parseFlagModifier(charAfterQuestionMark);
+        } else {
+            return null;
+        }
+    }
+
+    private RegexFlags parseLocalFlags(char firstChar) {
+        char ch = firstChar;
+        RegexFlags flags = RegexFlags.DEFAULT;
+        while (RegexFlags.isValidFlagChar(ch)) {
+            if (!RegexFlags.isValidLocalFlagChar(ch)) {
+                throw syntaxError(JsErrorMessages.flagNotAllowedInModifier(ch));
+            }
+            flags = flags.addNewFlagModifier(source, ch);
+            if (atEnd()) {
+                throw syntaxError(JsErrorMessages.INCOMPLETE_MODIFIER);
+            }
+            ch = consumeChar();
+        }
+        return flags;
+    }
+
+    private Token parseFlagModifier(char charAfterQuestionMark) {
+        RegexFlags addFlags = parseLocalFlags(charAfterQuestionMark);
+        char ch = prevChar();
+        switch (ch) {
+            case ':':
+                return finishFlagModifier(addFlags, RegexFlags.DEFAULT);
+            case '-':
+                if (atEnd()) {
+                    throw syntaxError(JsErrorMessages.INCOMPLETE_MODIFIER);
+                }
+                ch = consumeChar();
+                RegexFlags removeFlags = parseLocalFlags(ch);
+                ch = prevChar();
+                if (ch != ':') {
+                    if (Character.isAlphabetic(ch)) {
+                        throw syntaxError(JsErrorMessages.UNSUPPORTED_FLAG_IN_MODIFIER);
+                    } else {
+                        throw syntaxError(JsErrorMessages.INVALID_MODIFIER);
+                    }
+                }
+                return finishFlagModifier(addFlags, removeFlags);
+            default:
+                if (Character.isAlphabetic(ch)) {
+                    throw syntaxError(JsErrorMessages.UNSUPPORTED_FLAG_IN_MODIFIER);
+                } else {
+                    throw syntaxError(JsErrorMessages.INVALID_MODIFIER);
+                }
+        }
+    }
+
+    private Token finishFlagModifier(RegexFlags addFlags, RegexFlags removeFlags) {
+        if (addFlags.overlaps(removeFlags)) {
+            throw syntaxError(JsErrorMessages.MODIFIER_BOTH_ADDING_AND_REMOVING_FLAG);
+        }
+        if (addFlags.isNone() && removeFlags.isNone()) {
+            throw syntaxError(JsErrorMessages.EMPTY_MODIFIER);
+        }
+        RegexFlags newFlags = getLocalFlags().addFlags(addFlags).delFlags(removeFlags);
+        return Token.createInlineFlags(newFlags, false);
     }
 
     @Override
@@ -600,7 +682,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     private int parseHexUnicode(int minDigits, int maxDigits, int maxValue) {
         return parseHex(minDigits, maxDigits, maxValue, () -> {
-            if (flags.isEitherUnicode()) {
+            if (getLocalFlags().isEitherUnicode()) {
                 throw syntaxError(JsErrorMessages.INVALID_UNICODE_ESCAPE);
             }
         }, () -> {
