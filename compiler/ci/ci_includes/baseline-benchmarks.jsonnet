@@ -6,20 +6,14 @@
   local bench = (import '../ci_common/benchmark-suites.libsonnet'),
   local hw = bc.bench_hw,
 
-  local hotspot_amd64_builds = [
-    c.weekly + hw.e3 + jdk + cc.c2 + suite
+  local hotspot_builds = std.flattenArrays([
+    [
+      c.weekly + hw.e3 + jdk + cc.c2 + suite,
+      c.weekly + hw.a12c + jdk + cc.c2 + suite
+    ]
   for jdk in cc.jdks_of_interest
   for suite in bench.groups.all_suites
-  ],
-
-  local hotspot_aarch64_builds = [
-    c.weekly + hw.a12c + jdk + cc.c2 + suite
-  for jdk in cc.jdks_of_interest
-  for suite in bench.groups.main_suites
-  ] + [
-    c.monthly + hw.a12c + jdk + cc.c2 + bench.specjbb2015,
-  for jdk in cc.product_jdks
-  ],
+  ]),
 
   local hotspot_profiling_builds = std.flattenArrays([
     [
@@ -73,7 +67,7 @@
     ]
   for jdk in cc.product_jdks
   ]),
-  local all_builds = hotspot_amd64_builds + hotspot_aarch64_builds + hotspot_profiling_builds +
+  local all_builds = hotspot_builds + hotspot_profiling_builds +
     weekly_forks_amd64_builds + weekly_forks_aarch64_builds + economy_builds + no_tiered_builds + gc_variants_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version) && b.is_arch_supported(b.arch)],
 
