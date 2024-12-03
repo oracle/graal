@@ -46,23 +46,28 @@ final class ObjectStorageOptions {
     private ObjectStorageOptions() {
     }
 
-    public static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
-    public static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
-    public static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
-    public static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
-    public static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
-    public static final boolean TypedObjectLocations = booleanOption(OPTION_PREFIX + "TypedObjectLocations", true);
+    static final boolean PrimitiveLocations = booleanOption(OPTION_PREFIX + "PrimitiveLocations", true);
+    static final boolean IntegerLocations = booleanOption(OPTION_PREFIX + "IntegerLocations", true);
+    static final boolean DoubleLocations = booleanOption(OPTION_PREFIX + "DoubleLocations", true);
+    static final boolean LongLocations = booleanOption(OPTION_PREFIX + "LongLocations", true);
+    static final boolean BooleanLocations = booleanOption(OPTION_PREFIX + "BooleanLocations", true);
+    static final boolean TypedObjectLocations = booleanOption(OPTION_PREFIX + "TypedObjectLocations", true);
 
     /**
      * Allocation of in-object fields.
      */
-    public static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
+    static final boolean InObjectFields = booleanOption(OPTION_PREFIX + "InObjectFields", true);
+
+    /**
+     * If set to true, use VarHandle rather than Unsafe to implement field accesses.
+     */
+    static final boolean UseVarHandle = booleanOption(OPTION_PREFIX + "UseVarHandle", false);
 
     static final boolean TriePropertyMap = booleanOption(OPTION_PREFIX + "TriePropertyMap", true);
     static final boolean TrieTransitionMap = booleanOption(OPTION_PREFIX + "TrieTransitionMap", true);
 
     // Debug options (should be final)
-    public static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
+    static final boolean TraceReshape = booleanOption(OPTION_PREFIX + "TraceReshape", false);
 
     static final boolean DebugCounters = booleanOption(OPTION_PREFIX + "DebugCounters", false);
     static final boolean DumpDebugCounters = booleanOption(OPTION_PREFIX + "DumpDebugCounters", true);
@@ -76,7 +81,7 @@ final class ObjectStorageOptions {
     static final boolean Profile = booleanOption(OPTION_PREFIX + "Profile", false);
     static final int ProfileTopResults = Integer.getInteger(OPTION_PREFIX + "ProfileTopResults", -1);
 
-    public static boolean booleanOption(String name, boolean defaultValue) {
+    static boolean booleanOption(String name, boolean defaultValue) {
         String value = System.getProperty(name);
         return value == null ? defaultValue : value.equalsIgnoreCase("true");
     }

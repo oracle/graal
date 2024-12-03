@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.object;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -168,6 +170,7 @@ public abstract class Shape {
     public static final class Builder extends AbstractBuilder<Builder> {
 
         private Class<? extends DynamicObject> layoutClass = DynamicObject.class;
+        private MethodHandles.Lookup layoutLookup = DynamicObject.internalLookup();
         private Object dynamicType = ObjectType.DEFAULT;
         private int shapeFlags;
         private boolean allowImplicitCastIntToDouble;
@@ -212,7 +215,9 @@ public abstract class Shape {
          *
          * @param layoutClass custom object layout class
          * @since 20.2.0
+         * @deprecated Use {@link #layout(Class, MethodHandles.Lookup)} instead.
          */
+        @Deprecated(since = "24.2")
         public Builder layout(Class<? extends DynamicObject> layoutClass) {
             CompilerAsserts.neverPartOfCompilation();
             if (!DynamicObject.class.isAssignableFrom(layoutClass)) {
@@ -220,6 +225,85 @@ public abstract class Shape {
                                 DynamicObject.class.getName(), layoutClass.getTypeName()));
             }
             this.layoutClass = layoutClass;
+            this.layoutLookup = null;
+            return this;
+        }
+
+        /**
+         * Sets a custom object layout class (default: <code>{@link DynamicObject}.class</code>) and
+         * a corresponding {@link MethodHandles.Lookup} created by the layout class, or a class in
+         * the same module, that has full privilege access in order to provide access to its fields.
+         * <p>
+         * Enables the allocation of any additional {@code DynamicField}-annotated fields declared
+         * in the {@link DynamicObject} layout subclass as storage locations. By default, only
+         * extension array based storage locations in the {@link DynamicObject} base class are used.
+         * <p>
+         * Also restricts the shape to a specific {@link DynamicObject} subclass and subclasses
+         * thereof, i.e. shapes created for a {@link DynamicObject} layout subclass, and any derived
+         * shapes, can only be used to instantiate, and be assigned to, instances of that class
+         * (regardless of whether the class actually contains any dynamic fields).
+         *
+         * <p>
+         * Example:
+         *
+         * <pre>
+         * <code>
+         * public class MyObject extends DynamicObject implements TruffleObject {
+         *
+         *     &#64;DynamicField private Object _obj1;
+         *     &#64;DynamicField private Object _obj2;
+         *     &#64;DynamicField private long _long1;
+         *     &#64;DynamicField private long _long2;
+         *
+         *     public MyObject(Shape shape) {
+         *         super(shape);
+         *     }
+         *
+         *     static MethodHandles.Lookup lookup() {
+         *         return MethodHandles.lookup();
+         *     }
+         * }
+         *
+         *
+         * Shape myObjShape = Shape.newBuilder().layout(MyObject.class, MyObject.lookup()).build();
+         * MyObject obj = new MyObject(myObjShape);
+         * </code>
+         * </pre>
+         *
+         * @param layoutClass a {@link DynamicObject} layout subclass or the default
+         *            <code>{@link DynamicObject}.class</code>.
+         * @param layoutClassLookup a {@link Lookup} that has full privilege access, created using
+         *            {@link MethodHandles#lookup()}, either by the layout class itself, or a class
+         *            in the same module. If <code>layoutClass == DynamicObject.class</code>, and
+         *            only then, this parameter is ignored and may be <code>null</code>.
+         * @throws IllegalArgumentException if <code>layoutClass != DynamicObject.class</code> and
+         *             the lookup does not have {@link MethodHandles.Lookup#hasFullPrivilegeAccess()
+         *             full privilege access} or is not from the layout class or a class within the
+         *             same module as the layout class.
+         * @throws NullPointerException if <code>layoutClass == null</code>, or
+         *             <code>lookup == null</code> and
+         *             <code>layoutClass != {@link DynamicObject}.class</code>.
+         * @since 24.2.0
+         */
+        public Builder layout(Class<? extends DynamicObject> layoutClass, Lookup layoutClassLookup) {
+            CompilerAsserts.neverPartOfCompilation();
+            if (!DynamicObject.class.isAssignableFrom(layoutClass)) {
+                throw new IllegalArgumentException(String.format("Expected a subclass of %s but got: %s",
+                                DynamicObject.class.getName(), layoutClass.getTypeName()));
+            }
+            if (layoutClass == DynamicObject.class) {
+                this.layoutClass = DynamicObject.class;
+                this.layoutLookup = DynamicObject.internalLookup();
+                return this;
+            }
+            if (!layoutClassLookup.hasFullPrivilegeAccess()) {
+                throw new IllegalArgumentException("Lookup must have full privilege access");
+            }
+            if (layoutClassLookup.lookupClass().getModule() != layoutClass.getModule()) {
+                throw new IllegalArgumentException("Lookup must be from the same module as the layout class");
+            }
+            this.layoutClass = layoutClass;
+            this.layoutLookup = layoutClassLookup;
             return this;
         }
 
@@ -343,7 +427,6 @@ public abstract class Shape {
          * Allows values to be implicitly cast from int to long in this shape and any derived
          * shapes.
          *
-         * @see #layout(Class)
          * @since 20.2.0
          */
         public Builder allowImplicitCastIntToLong(boolean allow) {
@@ -355,7 +438,6 @@ public abstract class Shape {
          * Allows values to be implicitly cast from int to double in this shape and any derived
          * shapes.
          *
-         * @see #layout(Class)
          * @since 20.2.0
          */
         public Builder allowImplicitCastIntToDouble(boolean allow) {
@@ -379,7 +461,15 @@ public abstract class Shape {
             }
 
             int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
-            Shape shape = Layout.getFactory().createShape(new Object[]{layoutClass, implicitCastFlags, dynamicType, sharedData, flags, properties, singleContextAssumption});
+            Shape shape = Layout.getFactory().createShape(new Object[]{
+                            layoutClass,
+                            implicitCastFlags,
+                            dynamicType,
+                            sharedData,
+                            flags,
+                            properties,
+                            singleContextAssumption,
+                            layoutLookup});
 
             assert shape.isShared() == shared && shape.getFlags() == shapeFlags && shape.getDynamicType() == dynamicType;
             return shape;
@@ -745,16 +835,17 @@ public abstract class Shape {
     /**
      * Get the shape's layout.
      *
-     * @see Shape.Builder#layout(Class)
      * @since 0.8 or earlier
+     * @deprecated No replacement. Use {@link #getLayoutClass()} to get the layout class.
      */
+    @Deprecated(since = "24.2")
     @SuppressWarnings("deprecation")
     protected abstract Layout getLayout();
 
     /**
      * Get the shape's layout class.
      *
-     * @see Shape.Builder#layout(Class)
+     * @see Shape.Builder#layout(Class, Lookup)
      * @since 21.1
      */
     @SuppressWarnings("deprecation")
