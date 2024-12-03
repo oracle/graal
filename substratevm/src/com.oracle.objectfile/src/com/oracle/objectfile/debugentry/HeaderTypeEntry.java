@@ -26,11 +26,11 @@
 
 package com.oracle.objectfile.debugentry;
 
-import jdk.graal.compiler.debug.DebugContext;
-
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugHeaderTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+
+import jdk.graal.compiler.debug.DebugContext;
 
 public class HeaderTypeEntry extends StructureTypeEntry {
 
