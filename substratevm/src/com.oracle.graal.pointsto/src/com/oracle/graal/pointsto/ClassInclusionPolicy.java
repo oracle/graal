@@ -54,12 +54,17 @@ public abstract class ClassInclusionPolicy {
         this.bb = bb;
     }
 
+    public static boolean isClassIncludedBase(Class<?> cls) {
+        Class<?> enclosingClass = cls.getEnclosingClass();
+        return !Feature.class.isAssignableFrom(cls) && !AnnotationAccess.isAnnotationPresent(cls, TargetClass.class) && (enclosingClass == null || isClassIncludedBase(enclosingClass));
+    }
+
     /**
      * Determine if the given class needs to be included in the image according to the policy.
      */
     public boolean isClassIncluded(Class<?> cls) {
         Class<?> enclosingClass = cls.getEnclosingClass();
-        return !Feature.class.isAssignableFrom(cls) && !AnnotationAccess.isAnnotationPresent(cls, TargetClass.class) && (enclosingClass == null || isClassIncluded(enclosingClass));
+        return isClassIncludedBase(cls) && (enclosingClass == null || isClassIncluded(enclosingClass));
     }
 
     /**

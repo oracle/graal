@@ -27,6 +27,9 @@ package com.oracle.svm.hosted;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromClassPath;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
+import static com.oracle.svm.core.SubstrateOptions.IncludeAllMetadataForModule;
+import static com.oracle.svm.core.SubstrateOptions.IncludeAllMetadataForClassPath;
+import static com.oracle.svm.core.SubstrateOptions.IncludeAllMetadataForClassPathEntry;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -129,13 +132,20 @@ public final class NativeImageClassLoaderSupport {
     public final AnnotationExtractor annotationExtractor;
 
     private Set<String> javaModuleNamesToInclude;
+    private Set<String> moduleNamesToIncludeMetadata;
+
     private Set<Path> javaPathsToInclude;
+    private Set<Path> pathsToIncludeMetadata;
+
     private boolean includeAllFromClassPath;
+    private boolean includeAllMetadataFromClassPath;
 
     private Optional<LibGraalClassLoaderBase> libGraalLoader;
     private List<ClassLoader> classLoaders;
 
     private final Set<Class<?>> classesToIncludeUnconditionally = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Class<?>> classesToIncludeMetadata = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> classNamesToIncludeMetadata = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     private final Method implAddReadsAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddReadsAllUnnamed");
     private final Method implAddEnableNativeAccess = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccess");
@@ -245,25 +255,15 @@ public final class NativeImageClassLoaderSupport {
 
     public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
         guarantee(javaModuleNamesToInclude == null, "This method should be executed only once.");
-        javaModuleNamesToInclude = Collections.unmodifiableSet(new HashSet<>(IncludeAllFromModule.getValue(parsedHostedOptions).values()));
-        /* Verify all modules are present */
-        final Set<String> allModules = Stream.concat(modulepathModuleFinder.findAll().stream(), upgradeAndSystemModuleFinder.findAll().stream())
-                        .map(m -> m.descriptor().name())
-                        .collect(Collectors.toSet());
-        javaModuleNamesToInclude.stream()
-                        .filter(m -> !allModules.contains(m))
-                        .findAny().ifPresent(m -> missingFromSetOfEntriesError(m, allModules, "module-path", IncludeAllFromModule));
 
-        javaPathsToInclude = IncludeAllFromPath.getValue(parsedHostedOptions).values().stream()
-                        .map(NativeImageClassLoaderSupport::stringToPath)
-                        .map(Path::toAbsolutePath)
-                        .collect(Collectors.toUnmodifiableSet());
-        /* Verify all paths are present */
-        javaPathsToInclude.stream()
-                        .filter(p -> !classpath().contains(p))
-                        .findAny().ifPresent(p -> missingFromSetOfEntriesError(p, classpath(), "classpath", IncludeAllFromPath));
+        javaModuleNamesToInclude = collectAndVerifyModulesFromOption(IncludeAllFromModule);
+        moduleNamesToIncludeMetadata = collectAndVerifyModulesFromOption(IncludeAllMetadataForModule);
+
+        javaPathsToInclude = collectAndVerifyPathsFromOption(IncludeAllFromPath);
+        pathsToIncludeMetadata = collectAndVerifyPathsFromOption(IncludeAllMetadataForClassPathEntry);
 
         includeAllFromClassPath = IncludeAllFromClassPath.getValue(parsedHostedOptions);
+        includeAllMetadataFromClassPath = IncludeAllMetadataForClassPath.getValue(parsedHostedOptions);
 
         new LoadClassHandler(executor, imageClassLoader).run();
 
@@ -279,6 +279,36 @@ public final class NativeImageClassLoaderSupport {
                 }
             }
         }
+    }
+
+    private Set<String> collectAndVerifyModulesFromOption(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
+        var moduleNamesToInclude = Collections.unmodifiableSet(new HashSet<>(option.getValue(parsedHostedOptions).values()));
+
+        /* Verify all modules are present */
+        final Set<String> allModules = Stream.concat(modulepathModuleFinder.findAll().stream(), upgradeAndSystemModuleFinder.findAll().stream())
+                        .map(m -> m.descriptor().name())
+                        .collect(Collectors.toSet());
+        moduleNamesToInclude.stream()
+                        .filter(m -> !allModules.contains(m))
+                        .findAny()
+                        .ifPresent(m -> missingFromSetOfEntriesError(m, allModules, "module-path", option));
+
+        return moduleNamesToInclude;
+    }
+
+    private Set<Path> collectAndVerifyPathsFromOption(HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
+        var pathsToInclude = option.getValue(parsedHostedOptions).values().stream()
+                        .map(NativeImageClassLoaderSupport::stringToPath)
+                        .map(Path::toAbsolutePath)
+                        .collect(Collectors.toUnmodifiableSet());
+
+        /* Verify all paths are present */
+        pathsToInclude.stream()
+                        .filter(p -> !classpath().contains(p))
+                        .findAny()
+                        .ifPresent(p -> missingFromSetOfEntriesError(p, classpath(), "classpath", option));
+
+        return pathsToInclude;
     }
 
     private static void missingFromSetOfEntriesError(Object entry, Collection<?> allEntries, String typeOfEntry,
@@ -590,6 +620,10 @@ public final class NativeImageClassLoaderSupport {
         }
     }
 
+    public Set<String> getClassNamesToIncludeMetadata() {
+        return new HashSet<>(classNamesToIncludeMetadata);
+    }
+
     private record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
                     List<Module> targetModules) {
     }
@@ -729,7 +763,7 @@ public final class NativeImageClassLoaderSupport {
                                 "org.graalvm.nativebridge"));
 
                 Set<String> additionalSystemModules = upgradeAndSystemModuleFinder.findAll().stream().map(v -> v.descriptor().name()).collect(Collectors.toSet());
-                additionalSystemModules.retainAll(getJavaModuleNamesToInclude());
+                additionalSystemModules.retainAll(getModuleNamesToIncludeMetadata());
                 requiresInit.addAll(additionalSystemModules);
 
                 for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
@@ -757,6 +791,7 @@ public final class NativeImageClassLoaderSupport {
             try (ModuleReader moduleReader = moduleReference.open()) {
                 Module module = optionalModule.get();
                 final boolean includeUnconditionally = javaModuleNamesToInclude.contains(module.getName());
+                final boolean includeForReflection = moduleNamesToIncludeMetadata.contains(module.getName());
                 var container = moduleReference.location().orElseThrow();
                 if (ModuleLayer.boot().equals(module.getLayer())) {
                     builderURILocations.add(container);
@@ -766,7 +801,7 @@ public final class NativeImageClassLoaderSupport {
                     String className = extractClassName(moduleResource, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
-                        executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally));
+                        executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, includeForReflection));
                     }
                     entriesProcessed.increment();
                 });
@@ -777,6 +812,7 @@ public final class NativeImageClassLoaderSupport {
 
         private void loadClassesFromPath(Path path) {
             final boolean includeUnconditionally = javaPathsToInclude.contains(path) || includeAllFromClassPath;
+            final boolean includeAllMetadata = pathsToIncludeMetadata.contains(path) || includeAllMetadataFromClassPath;
             if (ClasspathUtils.isJar(path)) {
                 try {
                     URI container = path.toAbsolutePath().toUri();
@@ -790,7 +826,7 @@ public final class NativeImageClassLoaderSupport {
                     }
                     if (probeJarFileSystem != null) {
                         try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally);
+                            loadClassesFromPath(container, jarFileSystem.getPath("/"), null, Collections.emptySet(), includeUnconditionally, includeAllMetadata);
                         }
                     }
                 } catch (ClosedByInterruptException ignored) {
@@ -800,13 +836,14 @@ public final class NativeImageClassLoaderSupport {
                 }
             } else {
                 URI container = path.toUri();
-                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES, includeUnconditionally);
+                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES, includeUnconditionally,
+                                includeAllMetadata);
             }
         }
 
         private static final String CLASS_EXTENSION = ".class";
 
-        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally) {
+        private void loadClassesFromPath(URI container, Path root, Path excludeRoot, Set<Path> excludes, boolean includeUnconditionally, boolean includeAllMetadata) {
             boolean useFilter = root.equals(excludeRoot);
             if (useFilter) {
                 String excludesStr = excludes.stream().map(Path::toString).collect(Collectors.joining(", "));
@@ -832,7 +869,7 @@ public final class NativeImageClassLoaderSupport {
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = file.toUri().toString();
-                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally));
+                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally, includeAllMetadata));
                     }
                     entriesProcessed.increment();
                     return FileVisitResult.CONTINUE;
@@ -916,7 +953,7 @@ public final class NativeImageClassLoaderSupport {
             return strippedClassFileName.equals("module-info") ? null : strippedClassFileName.replace(fileSystemSeparatorChar, '.');
         }
 
-        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally) {
+        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally, boolean includeAllMetadata) {
             synchronized (classes) {
                 EconomicSet<String> classNames = classes.get(container);
                 if (classNames == null) {
@@ -942,11 +979,17 @@ public final class NativeImageClassLoaderSupport {
             } catch (AssertionError error) {
                 VMError.shouldNotReachHere(error);
             } catch (Throwable t) {
+                if (includeAllMetadata) {
+                    classNamesToIncludeMetadata.add(className);
+                }
                 ImageClassLoader.handleClassLoadingError(t);
             }
             if (clazz != null) {
                 if (includeUnconditionally) {
                     classesToIncludeUnconditionally.add(clazz);
+                }
+                if (includeAllMetadata) {
+                    classesToIncludeMetadata.add(clazz);
                 }
                 imageClassLoader.handleClass(clazz);
             }
@@ -987,20 +1030,38 @@ public final class NativeImageClassLoaderSupport {
         }
     }
 
-    public Set<String> getJavaModuleNamesToInclude() {
+    public Set<String> getModuleNamesToInclude() {
         return javaModuleNamesToInclude;
+    }
+
+    public Set<String> getModuleNamesToIncludeMetadata() {
+        return moduleNamesToIncludeMetadata;
     }
 
     public Set<Path> getJavaPathsToInclude() {
         return javaPathsToInclude;
     }
 
+    public Set<Path> getPathsToIncludeMetadata() {
+        return pathsToIncludeMetadata;
+    }
+
     public boolean includeAllFromClassPath() {
         return includeAllFromClassPath;
     }
 
+    public boolean isIncludeAllMetadataFromClassPath() {
+        return includeAllMetadataFromClassPath;
+    }
+
     public List<Class<?>> getClassesToIncludeUnconditionally() {
         return classesToIncludeUnconditionally.stream()
+                        .sorted(Comparator.comparing(Class::getTypeName))
+                        .collect(Collectors.toList());
+    }
+
+    public List<Class<?>> getClassesToIncludeMetadata() {
+        return classesToIncludeMetadata.stream()
                         .sorted(Comparator.comparing(Class::getTypeName))
                         .collect(Collectors.toList());
     }
