@@ -141,6 +141,7 @@ final class EngineAccessor extends Accessor {
     static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
+    static final StringsSupport STRINGS = ACCESSOR.stringsSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();

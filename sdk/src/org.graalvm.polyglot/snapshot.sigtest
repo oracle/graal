@@ -90,7 +90,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation
@@ -147,7 +147,7 @@ meth public void leave()
 meth public void resetLimits()
 meth public void safepoint()
 supr java.lang.Object
-hfds ALL_HOST_CLASSES,EMPTY,NO_HOST_CLASSES,UNSET_HOST_LOOKUP,currentAPI,dispatch,engine,receiver
+hfds ALL_HOST_CLASSES,EMPTY,NO_HOST_CLASSES,UNSET_HOST_LOOKUP,creatorContext,currentAPI,dispatch,engine,parent,receiver
 
 CLSS public final org.graalvm.polyglot.Context$Builder
  outer org.graalvm.polyglot.Context
@@ -213,8 +213,8 @@ meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
 meth public void close()
 meth public void close(boolean)
 supr java.lang.Object
-hfds EMPTY,ENGINES,currentAPI,dispatch,initializationException,receiver,shutdownHookInitialized
-hcls APIAccessImpl,ClassPathIsolation,EngineShutDownHook,ImplHolder,PolyglotInvalid
+hfds EMPTY,ENGINES,creatorEngine,currentAPI,dispatch,initializationException,receiver,shutdownHookInitialized
+hcls APIAccessImpl,CleanableReference,ContextReference,EngineReference,EngineShutDownHook,ImplHolder,PolyglotInvalid
 
 CLSS public final org.graalvm.polyglot.Engine$Builder
  outer org.graalvm.polyglot.Engine
@@ -336,16 +336,20 @@ supr java.lang.Enum<org.graalvm.polyglot.HostAccess$TargetMappingPrecedence>
 
 CLSS public final org.graalvm.polyglot.Instrument
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
+meth public boolean equals(java.lang.Object)
+meth public int hashCode()
 meth public java.lang.String getId()
 meth public java.lang.String getName()
 meth public java.lang.String getVersion()
 meth public java.lang.String getWebsite()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
-hfds dispatch,receiver
+hfds dispatch,engine,receiver
 
 CLSS public final org.graalvm.polyglot.Language
+meth public boolean equals(java.lang.Object)
 meth public boolean isInteractive()
+meth public int hashCode()
 meth public java.lang.String getDefaultMimeType()
 meth public java.lang.String getId()
 meth public java.lang.String getImplementationName()
@@ -355,7 +359,7 @@ meth public java.lang.String getWebsite()
 meth public java.util.Set<java.lang.String> getMimeTypes()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
-hfds dispatch,receiver
+hfds dispatch,engine,receiver
 
 CLSS public final org.graalvm.polyglot.PolyglotAccess
 fld public final static org.graalvm.polyglot.PolyglotAccess ALL
@@ -403,7 +407,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.RuntimeException
-hfds dispatch,impl
+hfds anchor,dispatch,impl
 
 CLSS public final org.graalvm.polyglot.PolyglotException$StackFrame
  outer org.graalvm.polyglot.PolyglotException
@@ -540,6 +544,7 @@ supr java.lang.Object
 hfds rawType,type
 
 CLSS public final org.graalvm.polyglot.Value
+innr public final static StringEncoding
 meth public !varargs org.graalvm.polyglot.Value execute(java.lang.Object[])
 meth public !varargs org.graalvm.polyglot.Value invokeMember(java.lang.String,java.lang.Object[])
 meth public !varargs org.graalvm.polyglot.Value newInstance(java.lang.Object[])
@@ -591,6 +596,7 @@ meth public boolean removeHashEntry(java.lang.Object)
 meth public boolean removeMember(java.lang.String)
 meth public byte asByte()
 meth public byte readBufferByte(long)
+meth public byte[] asStringBytes(org.graalvm.polyglot.Value$StringEncoding)
 meth public double asDouble()
 meth public double readBufferDouble(java.nio.ByteOrder,long)
 meth public float asFloat()
@@ -632,6 +638,10 @@ meth public org.graalvm.polyglot.Value getMetaParents()
 meth public short asShort()
 meth public short readBufferShort(java.nio.ByteOrder,long)
 meth public static org.graalvm.polyglot.Value asValue(java.lang.Object)
+meth public static org.graalvm.polyglot.Value fromByteBasedString(byte[],int,int,org.graalvm.polyglot.Value$StringEncoding,boolean)
+meth public static org.graalvm.polyglot.Value fromByteBasedString(byte[],org.graalvm.polyglot.Value$StringEncoding)
+meth public static org.graalvm.polyglot.Value fromNativeString(long,int,int,org.graalvm.polyglot.Value$StringEncoding,boolean)
+meth public static org.graalvm.polyglot.Value fromNativeString(long,int,org.graalvm.polyglot.Value$StringEncoding)
 meth public void pin()
 meth public void putHashEntry(java.lang.Object,java.lang.Object)
 meth public void putMember(java.lang.String,java.lang.Object)
@@ -644,6 +654,18 @@ meth public void writeBufferInt(java.nio.ByteOrder,long,int)
 meth public void writeBufferLong(java.nio.ByteOrder,long,long)
 meth public void writeBufferShort(java.nio.ByteOrder,long,short)
 supr java.lang.Object
+
+CLSS public final static org.graalvm.polyglot.Value$StringEncoding
+ outer org.graalvm.polyglot.Value
+fld public final static org.graalvm.polyglot.Value$StringEncoding UTF_16
+fld public final static org.graalvm.polyglot.Value$StringEncoding UTF_16_BIG_ENDIAN
+fld public final static org.graalvm.polyglot.Value$StringEncoding UTF_16_LITTLE_ENDIAN
+fld public final static org.graalvm.polyglot.Value$StringEncoding UTF_32
+fld public final static org.graalvm.polyglot.Value$StringEncoding UTF_32_BIG_ENDIAN
+fld public final static org.graalvm.polyglot.Value$StringEncoding UTF_32_LITTLE_ENDIAN
+fld public final static org.graalvm.polyglot.Value$StringEncoding UTF_8
+supr java.lang.Object
+hfds value
 
 CLSS public abstract interface org.graalvm.polyglot.io.ByteSequence
 meth public abstract byte byteAt(int)
@@ -772,7 +794,7 @@ intf java.lang.AutoCloseable
 meth public static org.graalvm.polyglot.management.ExecutionListener$Builder newBuilder()
 meth public void close()
 supr java.lang.Object
-hfds EMPTY,dispatch,receiver
+hfds EMPTY,creatorEngine,dispatch,receiver
 
 CLSS public final org.graalvm.polyglot.management.ExecutionListener$Builder
  outer org.graalvm.polyglot.management.ExecutionListener
