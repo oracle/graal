@@ -222,7 +222,7 @@ def enable_sun_misc_unsafe(vmArgs):
     list of JVM arguments if the JDK version is 23 or higher. It then returns the
     updated list of arguments.
     """
-    if mx.VersionSpec("23.0.0") <= mx.get_jdk(tag="graalvm").version:
+    if mx.VersionSpec("23.0.0") <= mx.get_jdk(tag="default").version:
         vmArgs.extend(['--sun-misc-unsafe-memory-access=allow'])
     return vmArgs
 
