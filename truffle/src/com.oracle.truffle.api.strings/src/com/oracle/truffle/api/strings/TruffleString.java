@@ -128,6 +128,7 @@ import com.oracle.truffle.api.strings.TStringInternalNodesFactory.CalcStringAttr
  * @since 22.1
  */
 public final class TruffleString extends AbstractTruffleString {
+    static final Object ETERNAL_POINTER = new Object();
     private static final VarHandle NEXT_UPDATER = initializeNextUpdater();
 
     @TruffleBoundary
@@ -2317,6 +2318,11 @@ public final class TruffleString extends AbstractTruffleString {
         return FromNativePointerNode.getUncached().execute(pointerObject, byteOffset, byteLength, encoding, copy);
     }
 
+    @TruffleBoundary
+    static TruffleString fromNativePointerEmbedder(long rawPointer, int byteOffset, int byteLength, Encoding encoding, boolean copy) {
+        return TStringInternalNodesFactory.FromNativePointerEmbedderNodeGen.getUncached().execute(rawPointer, byteOffset, byteLength, encoding, copy);
+    }
+
     /**
      * Node to get the given {@link AbstractTruffleString} as a {@link TruffleString}. See
      * {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for details.
@@ -3898,14 +3904,14 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Returns the byte index of the first codepoint present in the given {@link CodePointSet},
          * bounded by {@code fromByteIndex} (inclusive) and {@code toByteIndex} (exclusive).
-         * 
+         *
          * @param usePreciseCodeRange If this parameter is set to {@code true}, the node may
          *            evaluate the input string's precise code range for better search performance.
          *            For more details, see {@link GetCodeRangeNode} and
          *            {@link GetCodeRangeImpreciseNode}. This parameter is expected to be
          *            {@link CompilerAsserts#partialEvaluationConstant(Object) partial evaluation
          *            constant}.
-         * 
+         *
          * @since 24.1
          */
         public abstract int execute(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet, boolean usePreciseCodeRange);

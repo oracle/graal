@@ -83,6 +83,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -340,6 +342,25 @@ final class TStringInternalNodes {
         static FromBufferWithStringCompactionKnownAttributesNode getUncached() {
             return TStringInternalNodesFactory.FromBufferWithStringCompactionKnownAttributesNodeGen.getUncached();
         }
+    }
+
+    @GenerateInline(false)
+    @GenerateCached(false)
+    abstract static class FromNativePointerEmbedderNode extends AbstractInternalNode {
+
+        abstract TruffleString execute(long rawPointer, int byteOffset, int byteLength, Encoding encoding, boolean copy);
+
+        @Specialization
+        final TruffleString fromNativePointer(long rawPointer, int byteOffset, int byteLength, Encoding enc, boolean copy,
+                        @Cached TStringInternalNodes.FromNativePointerNode fromNativePointerNode,
+                        @Cached TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode) {
+            NativePointer pointer = new NativePointer(TruffleString.ETERNAL_POINTER, rawPointer);
+            if (copy) {
+                return fromBufferWithStringCompactionNode.execute(this, pointer, byteOffset, byteLength, enc, true, true);
+            }
+            return fromNativePointerNode.execute(this, pointer, byteOffset, byteLength, enc, true);
+        }
+
     }
 
     abstract static class FromNativePointerNode extends AbstractInternalNode {

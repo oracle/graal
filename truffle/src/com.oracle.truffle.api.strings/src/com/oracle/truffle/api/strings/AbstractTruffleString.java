@@ -1472,7 +1472,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         private byte[] bytes;
         private volatile boolean byteArrayIsValid = false;
 
-        private NativePointer(Object pointerObject, long pointer) {
+        NativePointer(Object pointerObject, long pointer) {
             this.pointerObject = pointerObject;
             this.pointer = pointer;
         }
