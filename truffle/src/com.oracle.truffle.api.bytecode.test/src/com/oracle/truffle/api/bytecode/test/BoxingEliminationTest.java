@@ -66,9 +66,11 @@ import com.oracle.truffle.api.bytecode.test.BoxingEliminationTest.BoxingEliminat
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 public class BoxingEliminationTest extends AbstractInstructionTest {
@@ -1516,6 +1518,61 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
     }
 
     @Test
+    public void testTimesTwo() {
+        BoxingEliminationTestRootNode node = parse(b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.beginAbs();
+            b.beginTimesTwo();
+            b.emitLoadArgument(0);
+            b.endTimesTwo();
+            b.endAbs();
+            b.endReturn();
+            b.endRoot();
+        });
+
+        assertQuickenings(node, 0, 0);
+        assertInstructions(node,
+                        "load.argument",
+                        "c.TimesTwo",
+                        "c.Abs",
+                        "return");
+        assertEquals(42L, node.getCallTarget().call(-21L));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.TimesTwo$long",
+                        "c.Abs$LessThanZero",
+                        "return");
+
+        assertEquals(42L, node.getCallTarget().call(21L));
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.TimesTwo$long",
+                        "c.Abs$GreaterZero#LessThanZero",
+                        "return");
+
+        assertEquals(42, node.getCallTarget().call(-21));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.TimesTwo$Generic",
+                        "c.Abs",
+                        "return");
+
+        assertEquals("lala", node.getCallTarget().call("la"));
+        assertInstructions(node,
+                        "load.argument",
+                        "c.TimesTwo$Generic",
+                        "c.Abs",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 9, 5);
+        assertStable(quickenings, node, 42);
+        assertStable(quickenings, node, 42L);
+        assertStable(quickenings, node, "la");
+    }
+
+    @Test
     public void testBinarySubscriptInt() {
         BoxingEliminationTestRootNode node = parse(b -> {
             b.beginRoot();
@@ -2014,6 +2071,67 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             public static Object doObject(Object obj) {
                 return obj;
             }
+        }
+
+        @Operation
+        public static final class TimesTwo {
+
+            @Specialization(rewriteOn = UnexpectedResultException.class)
+            public static int doInt(Object obj, @Cached @Shared TimesTwoNode doubleNode) throws UnexpectedResultException {
+                return doubleNode.executeInt(obj);
+            }
+
+            @Specialization(rewriteOn = UnexpectedResultException.class)
+            public static long doLong(Object obj, @Cached @Shared TimesTwoNode doubleNode) throws UnexpectedResultException {
+                return doubleNode.executeLong(obj);
+            }
+
+            @Specialization(replaces = {"doInt", "doLong"})
+            public static Object doObject(Object obj, @Cached @Shared TimesTwoNode doubleNode) {
+                return doubleNode.executeObject(obj);
+            }
+
+            @SuppressWarnings("truffle-inlining")
+            abstract static class TimesTwoNode extends Node {
+
+                int executeInt(Object x) throws UnexpectedResultException {
+                    Object result = executeObject(x);
+                    if (result instanceof Integer i) {
+                        return i;
+                    }
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new UnexpectedResultException(result);
+                }
+
+                long executeLong(Object x) throws UnexpectedResultException {
+                    Object result = executeObject(x);
+                    if (result instanceof Long l) {
+                        return l;
+                    }
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw new UnexpectedResultException(result);
+                }
+
+                abstract Object executeObject(Object x);
+
+                @Specialization
+                public int doInt(int x) {
+                    return x + x;
+                }
+
+                @Specialization
+                public long doLong(long x) {
+                    return x + x;
+                }
+
+                @Specialization
+                @TruffleBoundary
+                public Object doObject(Object x) {
+                    String asString = x.toString();
+                    return asString + asString;
+                }
+            }
+
         }
 
         @Operation
