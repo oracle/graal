@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between TRegex versions relevant to language implementors integrating TRegex into their language. This document will focus on API changes relevant to integrators of TRegex.
 
+## Version 24.2.0
+
+* Implemented the [Regular Expression Pattern Modifiers](https://github.com/tc39/proposal-regexp-modifiers) proposal for ECMAScript regular expressions.
+
 ## Version 24.0.0
 
 * Added support for atomic groups and possessive quantifiers in Python regular expressions.
