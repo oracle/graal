@@ -27,14 +27,14 @@ For the demo, run a "fortune teller" application that simulates the traditional 
     
 2. Change directory to _fortune-demo/fortune-maven_:
     ```bash
-    cd fortune-demo/fortune-maven
+    cd native-image/native-build-tools/maven-plugin
     ```
 
 ## Build a Native Executable with Default Configuration
 
-1. Create a native executable using the [Maven plugin for Native Image](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html){:target="_blank"}:
+1. Create a native executable using the [Maven plugin for Native Image building](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html){:target="_blank"}:
     ```bash
-    mvn -Pnative package
+    ./mvnw -Pnative package
     ```
     The command compiles the project, creates a JAR file with all dependencies, and then generates a native executable, `fortune`, in the _target_ directory.
 
@@ -53,7 +53,7 @@ For the demo, run a "fortune teller" application that simulates the traditional 
 
 Next create a native executable with the size optimization on, giving a different name for the output file to differentiate it from the previous build.
 
-1. Open the _pom.xml_ file. Find the `native-maven-plugin` declaration, and add the following build arguments within the `<configuration>` element. The configuration should look like this:
+1. Open the _pom.xml_ file. Find the `native-maven-plugin` declaration, and notice the following build arguments within the `<configuration>` element:
     ```xml
     <configuration>
         <imageName>fortune-optimized</imageName>
@@ -68,7 +68,7 @@ Next create a native executable with the size optimization on, giving a differen
 
 2. Create the second native executable:
     ```bash
-    mvn -Pnative package
+    ./mvnw -Pnative package
     ```
     The command generates an executable file, `fortune-optimized`, in the _target_ directory.
 

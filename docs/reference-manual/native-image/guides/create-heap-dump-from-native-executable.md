@@ -25,7 +25,7 @@ All approaches are described below.
 > Note: By default, a heap dump is created in the current working directory. The `-XX:HeapDumpPath` option can be used to specify an alternative filename or directory. For example:  
 > `./helloworld -XX:HeapDumpPath=$HOME/helloworld.hprof`
 
-> Also note: It is not possible to create a heap dump on the Microsoft Windows platform.
+> Creating a heap dump on the Microsoft Windows platform is not supported.
 
 ## Create a Heap Dump with VisualVM
 
@@ -168,8 +168,8 @@ For other installation options, visit the [Downloads section](https://www.graalv
     native-image SVMHeapDump --enable-monitoring=heapdump
     ```
 
-    (The `native-image` builder creates a native executable from the file _SVMHeapDump.class_.
-    When the command completes, the native executable _svmheapdump_ is created in the current directory.)
+    The `native-image` builder creates a native executable from the file _SVMHeapDump.class_.
+    When the command completes, the native executable _svmheapdump_ is created in the current directory.
 
 3. Run the application, send it a signal, and check the heap dump:
 
