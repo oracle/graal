@@ -327,7 +327,7 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_threadObj");
 
-    public static final LocationIdentity JAVA_THREAD_LOCK_ID_LOCATION = NamedLocationIdentity.mutable("JavaThread::_lock_id");
+    public static final LocationIdentity JAVA_THREAD_MONITOR_OWNER_ID_LOCATION = NamedLocationIdentity.mutable("JavaThread::_monitor_owner_id");
 
     public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
 
@@ -756,8 +756,8 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    static int javaThreadLockIDOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.javaThreadLockIDOffset;
+    static int javaThreadMonitorOwnerIDOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.javaThreadMonitorOwnerIDOffset;
     }
 
     @Fold
