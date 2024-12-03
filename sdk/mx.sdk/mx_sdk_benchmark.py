@@ -1191,13 +1191,7 @@ _baristaConfig = {
         "micronaut-similarity": {},
         "micronaut-pegasus": {},
         "quarkus-hello-world": {},
-        "quarkus-tika-odt": {
-            "barista-bench-name": "quarkus-tika",
-        },
-        "quarkus-tika-pdf": {
-            "barista-bench-name": "quarkus-tika",
-            "workload": "pdf-workload.barista.json",
-        },
+        "quarkus-tika": {},
         "spring-hello-world": {},
         "spring-petclinic": {},
     },
@@ -1262,7 +1256,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
     def benchmarkList(self, bmSuiteArgs):
         exclude = []
-        # Barista currently does not support running 'micronaut-pegasus' on the JVM - running it results in a crash
+        # Barista currently does not support running 'micronaut-pegasus' on the JVM - running it results in a crash (GR-59793)
         exclude.append("micronaut-pegasus")
         return [b for b in self.completeBenchmarkList(bmSuiteArgs) if not b in exclude]
 
