@@ -26,14 +26,17 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.graal.compiler.debug.DebugContext;
-
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
+
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * An intermediate type that provides behaviour for managing fields. This unifies code for handling
@@ -45,9 +48,21 @@ public abstract class StructureTypeEntry extends TypeEntry {
      */
     protected final List<FieldEntry> fields;
 
+    /**
+     * The type signature of this types' layout. The layout of a type contains debug info of fields
+     * and methods of a type, which is needed for representing the class hierarchy. The super type
+     * entry in the debug info needs to directly contain the type info instead of a pointer.
+     */
+    protected long layoutTypeSignature;
+
     public StructureTypeEntry(String typeName, int size) {
         super(typeName, size);
         this.fields = new ArrayList<>();
+        this.layoutTypeSignature = 0;
+    }
+
+    public long getLayoutTypeSignature() {
+        return layoutTypeSignature;
     }
 
     public Stream<FieldEntry> fields() {
@@ -117,5 +132,16 @@ public abstract class StructureTypeEntry extends TypeEntry {
         }
 
         return builder.toString();
+    }
+
+    @Override
+    public void addDebugInfo(@SuppressWarnings("unused") DebugInfoBase debugInfoBase, DebugInfoProvider.DebugTypeInfo debugTypeInfo, @SuppressWarnings("unused") DebugContext debugContext) {
+        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
+        // header type does not have a separate layout type
+        if (this instanceof HeaderTypeEntry) {
+            this.layoutTypeSignature = typeSignature;
+        } else {
+            this.layoutTypeSignature = debugTypeInfo.typeSignature(DwarfDebugInfo.LAYOUT_PREFIX);
+        }
     }
 }

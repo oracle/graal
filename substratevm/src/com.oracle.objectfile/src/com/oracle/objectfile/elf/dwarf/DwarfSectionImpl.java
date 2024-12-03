@@ -55,8 +55,11 @@ import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfFlag;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLocationListEntry;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfRangeListEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfTag;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfUnitHeader;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 
 import jdk.graal.compiler.debug.DebugContext;
@@ -485,6 +488,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return writeSLEB(code.ordinal(), buffer, pos);
     }
 
+    protected int writeRangeListEntry(DwarfRangeListEntry rangeListEntry, byte[] buffer, int pos) {
+        return writeByte(rangeListEntry.value(), buffer, pos);
+    }
+
+    protected int writeLocationListEntry(DwarfLocationListEntry locationListEntry, byte[] buffer, int pos) {
+        return writeByte(locationListEntry.value(), buffer, pos);
+    }
+
     protected int writeTag(DwarfTag dwarfTag, byte[] buffer, int pos) {
         int code = dwarfTag.value();
         if (code == 0) {
@@ -496,6 +507,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected int writeDwarfVersion(DwarfVersion dwarfVersion, byte[] buffer, int pos) {
         return writeShort(dwarfVersion.value(), buffer, pos);
+    }
+
+    protected int writeDwarfUnitHeader(DwarfUnitHeader dwarfUnitHeader, byte[] buffer, int pos) {
+        return writeByte(dwarfUnitHeader.value(), buffer, pos);
+    }
+
+    protected int writeTypeSignature(long typeSignature, byte[] buffer, int pos) {
+        return writeLong(typeSignature, buffer, pos);
     }
 
     protected int writeFlag(DwarfFlag flag, byte[] buffer, int pos) {
@@ -531,8 +550,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LINE_SECTION, pos);
     }
 
-    protected int writeRangesSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_RANGES_SECTION, pos);
+    protected int writeRangeListsSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_RNGLISTS_SECTION, pos);
     }
 
     protected int writeAbbrevSectionOffset(int offset, byte[] buffer, int pos) {
@@ -550,7 +569,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int writeLocSectionOffset(int offset, byte[] buffer, int pos) {
-        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LOC_SECTION, pos);
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LOCLISTS_SECTION, pos);
     }
 
     protected int writeDwarfSectionOffset(int offset, byte[] buffer, DwarfSectionName referencedSectionName, int pos) {
@@ -597,15 +616,16 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      */
     protected int writeHeapLocationLocList(long offset, byte[] buffer, int p) {
         int pos = p;
-        short len = 0;
+        int len = 0;
         int lenPos = pos;
         // write dummy length
-        pos = writeShort(len, buffer, pos);
+        pos = writeULEB(len, buffer, pos);
+        int zeroPos = pos;
         pos = writeHeapLocation(offset, buffer, pos);
         pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_stack_value, buffer, pos);
         // backpatch length
-        len = (short) (pos - (lenPos + 2));
-        writeShort(len, buffer, lenPos);
+        len = pos - zeroPos;
+        writeULEB(len, buffer, lenPos);
         return pos;
     }
 
@@ -841,28 +861,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.lookupObjectClass();
     }
 
-    protected int getTypeIndex(TypeEntry typeEntry) {
-        if (!contentByteArrayCreated()) {
-            return -1;
-        }
-        return dwarfSections.getTypeIndex(typeEntry);
-    }
-
-    protected void setTypeIndex(TypeEntry typeEntry, int pos) {
-        dwarfSections.setTypeIndex(typeEntry, pos);
-    }
-
-    protected int getIndirectTypeIndex(TypeEntry typeEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getIndirectTypeIndex(typeEntry);
-    }
-
-    protected void setIndirectTypeIndex(TypeEntry typeEntry, int pos) {
-        dwarfSections.setIndirectTypeIndex(typeEntry, pos);
-    }
-
     protected int getCUIndex(ClassEntry classEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
@@ -874,28 +872,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         dwarfSections.setCUIndex(classEntry, idx);
     }
 
-    protected void setLayoutIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setLayoutIndex(classEntry, pos);
-    }
-
-    protected int getLayoutIndex(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getLayoutIndex(classEntry);
-    }
-
-    protected void setIndirectLayoutIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setIndirectLayoutIndex(classEntry, pos);
-    }
-
-    protected int getIndirectLayoutIndex(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getIndirectLayoutIndex(classEntry);
-    }
-
     protected void setCodeRangesIndex(ClassEntry classEntry, int pos) {
         dwarfSections.setCodeRangesIndex(classEntry, pos);
     }
@@ -905,6 +881,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             return 0;
         }
         return dwarfSections.getCodeRangesIndex(classEntry);
+    }
+
+    protected void setLocationListIndex(ClassEntry classEntry, int pos) {
+        dwarfSections.setLocationListIndex(classEntry, pos);
+    }
+
+    protected int getLocationListIndex(ClassEntry classEntry) {
+        return dwarfSections.getLocationListIndex(classEntry);
     }
 
     protected void setLineIndex(ClassEntry classEntry, int pos) {
@@ -998,7 +982,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @param range the top level (primary) or inline range to which the local (or parameter)
      *            belongs.
      * @param localInfo the local or param whose index is to be recorded.
-     * @param index the info section offset to be recorded.
+     * @param index the info section offset index to be recorded.
      */
     protected void setRangeLocalIndex(Range range, DebugLocalInfo localInfo, int index) {
         dwarfSections.setRangeLocalIndex(range, localInfo, index);
@@ -1014,9 +998,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * @return the associated info section offset.
      */
     protected int getRangeLocalIndex(Range range, DebugLocalInfo localInfo) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
         return dwarfSections.getRangeLocalIndex(range, localInfo);
     }
 }

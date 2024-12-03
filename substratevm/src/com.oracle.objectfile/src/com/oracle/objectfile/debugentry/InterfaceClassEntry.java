@@ -26,14 +26,15 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInterfaceTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import jdk.graal.compiler.debug.DebugContext;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInterfaceTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+
+import jdk.graal.compiler.debug.DebugContext;
 
 public class InterfaceClassEntry extends ClassEntry {
     private final List<ClassEntry> implementors;

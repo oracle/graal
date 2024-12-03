@@ -27,10 +27,11 @@
 package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugForeignTypeInfo;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ForeignTypeEntry extends ClassEntry {
     private static final int FLAG_WORD = 1 << 0;
@@ -55,6 +56,15 @@ public class ForeignTypeEntry extends ClassEntry {
     @Override
     public DebugInfoProvider.DebugTypeInfo.DebugTypeKind typeKind() {
         return DebugInfoProvider.DebugTypeInfo.DebugTypeKind.FOREIGN;
+    }
+
+    /*
+     * When we process a foreign pointer type for the .debug_info section we want to reuse its type
+     * signature. After sizing the .debug_info the layout type signature contains the type signature
+     * of the type this foreign pointer points to.
+     */
+    public void setLayoutTypeSignature(long typeSignature) {
+        this.layoutTypeSignature = typeSignature;
     }
 
     @Override

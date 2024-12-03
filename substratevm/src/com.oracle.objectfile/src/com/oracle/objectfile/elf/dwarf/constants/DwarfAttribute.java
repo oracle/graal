@@ -66,7 +66,9 @@ public enum DwarfAttribute {
     DW_AT_call_file(0x58),
     DW_AT_call_line(0x59),
     DW_AT_object_pointer(0x64),
-    DW_AT_linkage_name(0x6e);
+    DW_AT_signature(0x69),
+    DW_AT_linkage_name(0x6e),
+    DW_AT_loclists_base(0x8c);
 
     private final int value;
 
