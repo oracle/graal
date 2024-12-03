@@ -163,7 +163,6 @@ public final class JavaRegexParser implements RegexParser {
                     // flagStack push is handled in the lexer
                     if (!((Token.InlineFlags) token).isGlobal()) {
                         astBuilder.pushGroup(token);
-                        astBuilder.getCurGroup().setLocalFlags(true);
                         lexer.pushLocalFlags();
                     }
                     lexer.setCurrentFlags((JavaFlags) ((Token.InlineFlags) token).getFlags());
