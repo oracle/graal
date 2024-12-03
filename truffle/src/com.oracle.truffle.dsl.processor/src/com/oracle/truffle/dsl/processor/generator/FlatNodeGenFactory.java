@@ -2735,7 +2735,7 @@ public class FlatNodeGenFactory {
                     List<SpecializationData> specializations, boolean skipStateChecks) {
         final List<SpecializationData> allSpecializations = specializations;
         int signatureSize = node.getPolymorphicExecutable().getSignatureParameters().size();
-        ExecutableTypeData type = new ExecutableTypeData(node, baseMethod, signatureSize, List.of(node.getFrameType()), false);
+        ExecutableTypeData type = new ExecutableTypeData(node, baseMethod, signatureSize, List.of(node.getFrameType()), false, true);
 
         List<SpecializationData> implementedSpecializations = allSpecializations;
         CodeExecutableElement method = createExecuteMethod(type);
@@ -2838,20 +2838,19 @@ public class FlatNodeGenFactory {
             effectiveEvaluatedCount++;
         }
 
-        boolean isExecutableInUncached = effectiveEvaluatedCount != node.getExecutionCount() && !node.getChildren().isEmpty();
-        if (!isExecutableInUncached) {
-            GeneratorUtils.addBoundaryOrTransferToInterpreter(method, builder);
-        }
-
         if (forType.getMethod() != null) {
             method.getModifiers().addAll(forType.getMethod().getModifiers());
             method.getModifiers().remove(Modifier.ABSTRACT);
         }
 
+        boolean isExecutableInUncached = effectiveEvaluatedCount != node.getExecutionCount() && !node.getChildren().isEmpty();
         if (isExecutableInUncached) {
             builder.tree(GeneratorUtils.createShouldNotReachHere("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
                             "Use an execute method that takes all arguments as parameters."));
         } else {
+            if (forType.isReachableForRuntimeCompilation()) {
+                GeneratorUtils.addBoundaryOrTransferToInterpreter(method, builder);
+            }
             generateTraceOnEnterCall(builder, frameState);
             generateTraceOnExceptionStart(builder);
             SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
