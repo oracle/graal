@@ -71,8 +71,20 @@ It outputs the SBOM in the following format:
 
 ## Vulnerability Scanning
 
-To scan for any vulnerable libraries, submit the SBOM to a vulnerability scanner.
-For example, the popular [Anchore software supply chain management platform](https://anchore.com/) makes the `grype` scanner freely available.
+To scan for vulnerable libraries, use either the [GraalVM GitHub Action](https://github.com/marketplace/actions/github-action-for-graalvm) for automated scanning, or submit the SBOM to a vulnerability scanner directly.
+
+### GitHub Integration
+
+When using the [GraalVM GitHub Action](https://github.com/marketplace/actions/github-action-for-graalvm), the SBOM can be automatically generated and submitted to GitHub's dependency submission API for continuous scanning. 
+This enables: 
+- Vulnerability tracking with GitHub's Dependabot.
+- Dependency tracking with GitHub's Dependency Graph.
+
+If you use GitHub, this integration offers you the simplest setup and powerful security tooling.
+
+### Command-Line Scanning 
+
+The popular [Anchore software supply chain management platform](https://anchore.com/) makes the `grype` scanner available for free.
 You can check whether the libraries given in your SBOMs have known vulnerabilities documented in Anchore's database.
 For this purpose, the output of the tool can be fed directly to the `grype` scanner to check for vulnerable libraries, using the command `$JAVA_HOME/bin/native-image-inspect --sbom <path_to_binary> | grype` which produces the following output:
 ```shell
@@ -90,6 +102,8 @@ The SBOM provides information about component relationships through its `depende
 This dependency information is derived from Native Image's static analysis call graph.
 Analyzing the dependency graph can help you understand why specific components are included in your application.
 For example, discovering an unexpected component in the SBOM allows for tracing its inclusion through the dependency graph to identify which parts of the application are using it.
+
+With the GraalVM GitHub Action, you get access to GitHub's Dependency Graph feature.
 
 ## Enhanced SBOMs with Maven Plugin for Native Image
 
