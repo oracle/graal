@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.LOGGER;
 import static com.oracle.truffle.espresso.jvmci.JVMCIUtils.findType;
 import static com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIType;
@@ -32,7 +33,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -143,6 +143,6 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaFi
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         Field field = (Field) meta.jvmci.HIDDEN_FIELD_MIRROR.getHiddenObject(self);
-        return field.getAttribute(Symbol.Name.RuntimeVisibleAnnotations) != null;
+        return field.getAttribute(Names.RuntimeVisibleAnnotations) != null;
     }
 }

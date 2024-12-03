@@ -32,9 +32,9 @@ import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -126,7 +126,7 @@ public abstract class ClassInfo {
     }
 
     public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context, boolean isNewInnerTestKlass) {
-        Symbol<Type> type = context.getTypes().fromName(name);
+        Symbol<Type> type = context.getTypes().fromClassNameEntry(name);
         ParserKlass parserKlass = ParserKlassProvider.parseKlass(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), definingLoader, type, bytes);
 
         StringBuilder hierarchy = new StringBuilder();

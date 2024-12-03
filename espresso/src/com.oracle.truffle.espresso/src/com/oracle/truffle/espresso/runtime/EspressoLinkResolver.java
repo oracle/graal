@@ -23,7 +23,10 @@
 
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -38,13 +41,13 @@ public final class EspressoLinkResolver {
     }
 
     public static Field resolveFieldSymbolOrThrow(EspressoContext ctx, Klass accessingKlass,
-                    Symbol<Symbol.Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
+                    Symbol<Name> name, Symbol<Type> type, Klass symbolicHolder,
                     boolean accessCheck, boolean loadingConstraints) {
         return LinkResolver.resolveFieldSymbolOrThrow(ctx, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
     }
 
     public static Field resolveFieldSymbolOrNull(EspressoContext ctx, Klass accessingKlass,
-                    Symbol<Symbol.Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
+                    Symbol<Name> name, Symbol<Type> type, Klass symbolicHolder,
                     boolean accessCheck, boolean loadingConstraints) {
         return LinkResolver.resolveFieldSymbolOrNull(ctx, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
     }
@@ -58,14 +61,14 @@ public final class EspressoLinkResolver {
     }
 
     public static Method resolveMethodSymbol(EspressoContext ctx, Klass accessingKlass,
-                    Symbol<Symbol.Name> name, Symbol<Symbol.Signature> signature, Klass symbolicHolder,
+                    Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
         return LinkResolver.resolveMethodSymbol(ctx, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
     }
 
     public static Method resolveMethodSymbolOrNull(EspressoContext ctx, Klass accessingKlass,
-                    Symbol<Symbol.Name> name, Symbol<Symbol.Signature> signature, Klass symbolicHolder,
+                    Symbol<Name> name, Symbol<Signature> signature, Klass symbolicHolder,
                     boolean interfaceLookup,
                     boolean accessCheck, boolean loadingConstraints) {
         return LinkResolver.resolveMethodSymbolOrNull(ctx, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);

@@ -39,7 +39,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -118,10 +118,10 @@ final class Target_com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime {
 
     static StaticObject lookupNonPrimitiveType(ByteSequence typeDescriptor, ObjectKlass accessingKlass, boolean resolve, DirectCallNode objectTypeConstructor, DirectCallNode arrayTypeConstructor,
                     DirectCallNode forBasicType, InitCheck initCheck, DirectCallNode unresolvedTypeConstructor, EspressoContext context, Meta meta) {
-        Symbol<Type> symbol = meta.getTypes().lookupType(typeDescriptor);
+        Symbol<Type> symbol = meta.getTypes().lookupValidType(typeDescriptor);
         if (symbol == null) {
             if (resolve) {
-                symbol = meta.getTypes().getOrCreate(typeDescriptor);
+                symbol = meta.getTypes().getOrCreateValidType(typeDescriptor);
             }
             if (symbol == null) {
                 return toJVMCIUnresolvedType(typeDescriptor, unresolvedTypeConstructor, context, meta);

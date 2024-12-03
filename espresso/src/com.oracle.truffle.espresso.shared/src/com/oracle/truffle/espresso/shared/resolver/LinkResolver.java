@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.shared.resolver;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;

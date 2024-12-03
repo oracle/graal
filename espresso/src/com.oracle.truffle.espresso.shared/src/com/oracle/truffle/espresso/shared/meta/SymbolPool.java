@@ -23,28 +23,29 @@
 
 package com.oracle.truffle.espresso.shared.meta;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Names;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 
 /**
  * Provides access to various Symbol pools.
  */
 public interface SymbolPool {
     /**
-     * @return The {@link Names} pool.
+     * @return The {@link Name} pool.
      */
-    Names getNames();
+    NameSymbols getNames();
 
     /**
      * @return The {@link Type} pool.
      */
-    Types getTypes();
+    TypeSymbols getTypes();
 
     /**
      * @return The {@link Signature} pool.
      */
-    Signatures getSignatures();
+    SignatureSymbols getSignatures();
 }

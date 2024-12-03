@@ -24,10 +24,10 @@
 package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
 
 /**

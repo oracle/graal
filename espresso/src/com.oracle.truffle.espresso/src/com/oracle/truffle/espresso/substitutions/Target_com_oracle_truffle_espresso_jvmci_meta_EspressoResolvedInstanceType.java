@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import static com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_jvmci_meta_EspressoMetaAccessProvider.toJVMCIInstanceType;
 import static com.oracle.truffle.espresso.substitutions.Target_jdk_vm_ci_runtime_JVMCI.checkJVMCIAvailable;
 
@@ -31,7 +32,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -126,10 +127,10 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
     private static StaticObject toJVMCIMethods(Method[] methods, boolean constructors, StaticObject holder, DirectCallNode methodConstructor, EspressoContext context, Meta meta) {
         int count = 0;
         for (Method m : methods) {
-            if (Symbol.Name._clinit_.equals(m.getName())) {
+            if (Names._clinit_.equals(m.getName())) {
                 continue;
             }
-            if (Symbol.Name._init_.equals(m.getName()) == constructors) {
+            if (Names._init_.equals(m.getName()) == constructors) {
                 count++;
             }
 
@@ -138,10 +139,10 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
         StaticObject[] underlying = result.unwrap(context.getLanguage());
         int i = 0;
         for (Method m : methods) {
-            if (Symbol.Name._clinit_.equals(m.getName())) {
+            if (Names._clinit_.equals(m.getName())) {
                 continue;
             }
-            if (Symbol.Name._init_.equals(m.getName()) == constructors) {
+            if (Names._init_.equals(m.getName()) == constructors) {
                 StaticObject jvmciMirror = toJVMCIMethod(m, holder, methodConstructor, context, meta);
                 underlying[i++] = jvmciMirror;
             }

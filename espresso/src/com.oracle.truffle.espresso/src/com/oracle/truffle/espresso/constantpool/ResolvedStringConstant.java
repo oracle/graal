@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
@@ -32,7 +32,7 @@ public class ResolvedStringConstant implements StringConstant, Resolvable.Resolv
     private final @JavaType(String.class) StaticObject resolved;
 
     ResolvedStringConstant(@JavaType(String.class) StaticObject resolved) {
-        assert Type.java_lang_String == resolved.getKlass().getType();
+        assert Types.java_lang_String == resolved.getKlass().getType();
         this.resolved = resolved;
     }
 

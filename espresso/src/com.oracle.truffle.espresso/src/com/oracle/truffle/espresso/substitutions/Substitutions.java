@@ -37,12 +37,12 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.descriptors.StaticSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Method;
@@ -192,7 +192,7 @@ public final class Substitutions extends ContextAccessImpl {
 
         @Override
         public String toString() {
-            return Types.binaryName(clazz) + "#" + methodName + signature;
+            return TypeSymbols.binaryName(clazz) + "#" + methodName + signature;
         }
     }
 
@@ -201,17 +201,17 @@ public final class Substitutions extends ContextAccessImpl {
         List<Symbol<Type>> parameterTypes = new ArrayList<>();
         for (int i = substitutorFactory.hasReceiver() ? 1 : 0; i < substitutorFactory.parameterTypes().length; i++) {
             String type = substitutorFactory.parameterTypes()[i];
-            parameterTypes.add(StaticSymbols.putType(type));
+            parameterTypes.add(EspressoSymbols.SYMBOLS.putType(type));
         }
-        Symbol<Type> returnType = StaticSymbols.putType(substitutorFactory.returnType());
-        Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY));
+        Symbol<Type> returnType = EspressoSymbols.SYMBOLS.putType(substitutorFactory.returnType());
+        Symbol<Signature> signature = EspressoSymbols.SYMBOLS.putSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY));
 
         String[] classNames = substitutorFactory.substitutionClassNames();
         String[] methodNames = substitutorFactory.getMethodNames();
         for (int i = 0; i < classNames.length; i++) {
             assert classNames[i].startsWith("Target_");
-            Symbol<Type> classType = StaticSymbols.putType("L" + classNames[i].substring("Target_".length()).replace('_', '/') + ";");
-            Symbol<Name> methodName = StaticSymbols.putName(methodNames[i]);
+            Symbol<Type> classType = EspressoSymbols.SYMBOLS.putType("L" + classNames[i].substring("Target_".length()).replace('_', '/') + ";");
+            Symbol<Name> methodName = EspressoSymbols.SYMBOLS.putName(methodNames[i]);
             registerStaticSubstitution(classType, methodName, signature, substitutorFactory, true);
         }
     }

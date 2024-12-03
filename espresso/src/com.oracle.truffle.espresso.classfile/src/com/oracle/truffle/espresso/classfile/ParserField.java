@@ -28,10 +28,10 @@ import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 
 public final class ParserField {
     public static final ParserField[] EMPTY_ARRAY = new ParserField[0];
@@ -42,6 +42,7 @@ public final class ParserField {
     private final int flags;
     private final Symbol<Name> name;
     private final Symbol<Type> type;
+
     @CompilationFinal(dimensions = 1) //
     private final Attribute[] attributes;
 
@@ -85,6 +86,6 @@ public final class ParserField {
     }
 
     public JavaKind getKind() {
-        return Types.getJavaKind(type);
+        return TypeSymbols.getJavaKind(type);
     }
 }

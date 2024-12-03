@@ -43,8 +43,8 @@ import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -188,7 +188,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
                         ObjectKlass catchKlass = (ObjectKlass) ((Resolvable.ResolvedConstant) classConstant).value();
                         catchType = toJVMCIInstanceType(catchKlass, objectTypeConstructor, context, meta);
                     } else {
-                        ByteSequence type = Types.nameToType(((ClassConstant.ImmutableClassConstant) classConstant).getName(method.getConstantPool()));
+                        ByteSequence type = TypeSymbols.nameToType(((ClassConstant.ImmutableClassConstant) classConstant).getName(method.getConstantPool()));
                         catchType = toJVMCIUnresolvedType(type, unresolvedTypeConstructor, context, meta);
                     }
                 }
@@ -383,6 +383,6 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
         assert context.getLanguage().isInternalJVMCIEnabled();
         Meta meta = context.getMeta();
         Method method = (Method) meta.jvmci.HIDDEN_METHOD_MIRROR.getHiddenObject(self);
-        return method.getAttribute(Symbol.Name.RuntimeVisibleAnnotations) != null;
+        return method.getAttribute(Names.RuntimeVisibleAnnotations) != null;
     }
 }

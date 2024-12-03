@@ -22,12 +22,13 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public final class MethodParametersAttribute extends Attribute {
 
-    public static final Symbol<Name> NAME = Name.MethodParameters;
+    public static final Symbol<Name> NAME = ParserNames.MethodParameters;
 
     public static final MethodParametersAttribute EMPTY = new MethodParametersAttribute(NAME, Entry.EMPTY_ARRAY);
 

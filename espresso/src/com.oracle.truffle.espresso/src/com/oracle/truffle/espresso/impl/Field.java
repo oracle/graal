@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.function.Function;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -34,11 +36,12 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
@@ -48,8 +51,6 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
-
-import java.util.function.Function;
 
 /**
  * Represents a resolved Espresso field.
@@ -130,7 +131,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
             if (attr == null) {
                 genericSignature = ModifiedUTF8.fromSymbol(getType());
             } else {
-                genericSignature = pool.symbolAt(attr.getSignatureIndex());
+                genericSignature = pool.symbolAtUnsafe(attr.getSignatureIndex());
             }
         }
         return genericSignature;
@@ -981,12 +982,12 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
     public StaticObject makeMirror(Meta meta) {
         StaticObject instance = meta.java_lang_reflect_Field.allocateInstance(meta.getContext());
 
-        Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+        Attribute rawRuntimeVisibleAnnotations = getAttribute(Names.RuntimeVisibleAnnotations);
         StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
                         ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
                         : StaticObject.NULL;
 
-        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Name.RuntimeVisibleTypeAnnotations);
+        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Names.RuntimeVisibleTypeAnnotations);
         StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
                         ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                         : StaticObject.NULL;
@@ -1018,7 +1019,7 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
     }
 
     public int getConstantValueIndex() {
-        ConstantValueAttribute a = (ConstantValueAttribute) getAttribute(Symbol.Name.ConstantValue);
+        ConstantValueAttribute a = (ConstantValueAttribute) getAttribute(Names.ConstantValue);
         if (a == null) {
             return 0;
         }

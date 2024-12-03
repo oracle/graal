@@ -25,9 +25,9 @@ package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 
 /**
  * Represents a {@link java.lang.reflect.Method}, and provides access to various runtime metadata.

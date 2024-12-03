@@ -25,8 +25,8 @@ package com.oracle.truffle.espresso.classfile.tables;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.AbstractModuleEntry<M>> extends EntryTable<ME, AbstractModuleTable.ModuleData<M>> {
     public AbstractModuleTable(ReadWriteLock lock) {

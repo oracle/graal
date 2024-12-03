@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,16 @@
  */
 package com.oracle.truffle.espresso.classfile.descriptors;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 
 /**
- * Manages access to "name" symbols.
+ * Contains commonly used (type) symbols.
  *
- * Names do not have a well-defined format, except for not being empty.
- *
- * TODO(peterssen): In debug mode this class should warn if name symbol is valid type or signature.
+ * <p>
+ * Naming convention: Use the fully qualified type name, '_' as package separator and '$' as
+ * separator for inner classes.<br>
+ * - {@link ParserTypes#_long}<br>
+ * - {@link ParserTypes#java_lang_Object}<br>
  */
-public final class Names {
-    private final Symbols symbols;
-
-    public Names(Symbols symbols) {
-        this.symbols = symbols;
-    }
-
-    public Symbol<Name> lookup(ByteSequence bytes) {
-        return symbols.lookup(bytes);
-    }
-
-    public Symbol<Name> lookup(String name) {
-        return lookup(ByteSequence.create(name));
-    }
-
-    public Symbol<Name> getOrCreate(String name) {
-        return getOrCreate(ByteSequence.create(name));
-    }
-
-    public Symbol<Name> getOrCreate(ByteSequence name) {
-        return symbols.symbolify(name);
-    }
-
-    public static boolean isUnnamedPackage(Symbol<Name> pkg) {
-        return pkg.length() == 0;
-    }
+public final class Type extends Descriptor {
 }

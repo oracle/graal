@@ -25,8 +25,8 @@ package com.oracle.truffle.espresso.classfile.tables;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public abstract class AbstractPackageTable<M, PE extends AbstractPackageTable.AbstractPackageEntry<M, ME>, ME extends AbstractModuleTable.AbstractModuleEntry<M>> extends EntryTable<PE, ME> {
     public AbstractPackageTable(ReadWriteLock lock) {

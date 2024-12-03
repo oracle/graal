@@ -26,9 +26,11 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface InvokeDynamicConstant extends BootstrapMethodConstant {
@@ -51,10 +53,6 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
             super(bootstrapMethodAttrIndex, nameAndTypeIndex);
         }
 
-        public Symbol<Signature> getSignature(ConstantPool pool) {
-            return Signatures.check(getDescriptor(pool));
-        }
-
         @Override
         public void dump(ByteBuffer buf) {
             buf.putChar(bootstrapMethodAttrIndex);
@@ -63,7 +61,13 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
         @Override
         public void validate(ConstantPool pool) throws ValidationException {
-            getNameAndType(pool).validateMethod(pool, false);
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
+        }
+
+        public Symbol<Signature> getSignature(ConstantPool pool) {
+            Symbol<? extends Descriptor> descriptor = pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
+            assert Validation.validSignatureDescriptor(descriptor);
+            return SignatureSymbols.fromDescriptorUnsafe(descriptor);
         }
 
         @Override

@@ -26,11 +26,11 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
@@ -75,7 +75,7 @@ public final class Utf8Constant implements ImmutablePoolConstant {
         validateUTF8();
     }
 
-    public Symbol<? extends ModifiedUtf8> validateUTF8() throws ValidationException {
+    public Symbol<? extends ModifiedUTF8> validateUTF8() throws ValidationException {
         if ((validationCache & VALID_UTF8) == 0) {
             if (!Validation.validModifiedUTF8(unsafeSymbolValue())) {
                 throw ValidationException.raise("Ill-formed modified-UTF8 entry");

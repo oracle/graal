@@ -36,9 +36,10 @@ import static com.oracle.truffle.espresso.shared.verifier.VerifierError.fatal;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 
 public abstract class VerificationTypeInfo {
 
@@ -80,7 +81,7 @@ public abstract class VerificationTypeInfo {
      * ({@code null}, {@code illegal} or {@code uninitializedThis}), this method will throw a
      * {@link VerifierError}.
      */
-    public abstract Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs);
+    public abstract Symbol<Type> getType(ConstantPool pool, TypeSymbols types, BytecodeStream bs);
 
     public final boolean hasType() {
         return !isNull() && !isIllegal() && !isUninitializedThis();
@@ -146,16 +147,16 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
+    public Symbol<Type> getType(ConstantPool pool, TypeSymbols types, BytecodeStream bs) {
         switch (tag) {
             case ITEM_Integer:
-                return Type._int;
+                return ParserTypes._int;
             case ITEM_Float:
-                return Type._float;
+                return ParserTypes._float;
             case ITEM_Double:
-                return Type._double;
+                return ParserTypes._double;
             case ITEM_Long:
-                return Type._long;
+                return ParserTypes._long;
             case ITEM_Null: // fall through
             case ITEM_Bogus: // fall through
             default:
@@ -196,7 +197,7 @@ final class UninitializedThis extends VerificationTypeInfo {
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
+    public Symbol<Type> getType(ConstantPool pool, TypeSymbols types, BytecodeStream bs) {
         throw fatal("newThis.getType() called.");
     }
 
@@ -229,8 +230,8 @@ final class UninitializedVariable extends VerificationTypeInfo {
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
-        return types.fromName(pool.classAt(bs.readCPI(getNewOffset())).getName(pool));
+    public Symbol<Type> getType(ConstantPool pool, TypeSymbols types, BytecodeStream bs) {
+        return types.fromClassNameEntry(pool.classAt(bs.readCPI(getNewOffset())).getName(pool));
     }
 }
 
@@ -258,7 +259,7 @@ final class ReferenceVariable extends VerificationTypeInfo {
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
-        return types.fromName(pool.classAt(getConstantPoolOffset()).getName(pool));
+    public Symbol<Type> getType(ConstantPool pool, TypeSymbols types, BytecodeStream bs) {
+        return types.fromClassNameEntry(pool.classAt(getConstantPoolOffset()).getName(pool));
     }
 }

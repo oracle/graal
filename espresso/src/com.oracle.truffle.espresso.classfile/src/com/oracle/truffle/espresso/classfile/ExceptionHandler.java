@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.classfile;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 
 /**
  * Represents an exception handler within the bytecodes.
