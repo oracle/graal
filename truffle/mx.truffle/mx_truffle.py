@@ -401,6 +401,7 @@ def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterpris
         vm_args += ["--enable-native-access=ALL-UNNAMED"]
     else:
         vm_args += ["--enable-native-access=org.graalvm.truffle"]
+    enable_sun_misc_unsafe(vm_args)
 
     return [jdk.java] + jdk.processArgs(vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args)
 
