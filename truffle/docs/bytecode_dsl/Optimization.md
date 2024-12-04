@@ -13,7 +13,7 @@ Boxing elimination avoids these unnecessary boxing steps.
 The interpreter can speculatively rewrite bytecode instructions to specialized instructions that pass primitive values whenever possible.
 Boxing elimination can also improve compiled performance, because Graal is not always able to remove box-unbox sequences during compilation.
 
-To enable boxing elimination, specify a set of `boxingEliminationTypes` on the [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) annotation. For example, the following configuration
+To enable boxing elimination, specify a set of `boxingEliminationTypes` on the [`@GenerateBytecode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/GenerateBytecode.java) annotation. For example, the following configuration
 
 ```java
 @GenerateBytecode(
@@ -35,7 +35,7 @@ Quickened operations can be introduced to reduce the work required to evaluate a
 For example, a quickened operation that only accepts `int` inputs might avoid operand boxing and the additional type checks required by the general operation.
 Additionally, a custom operation that has only one active specialization could be quickened to an operation that only supports that single specialization, avoiding extra specialization state checks.
 
-At the moment, quickened instructions can only be specified manually using [`@ForceQuickening`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode./src/com/oracle/truffle/api/bytecode/ForceQuickening.java).
+At the moment, quickened instructions can only be specified manually using [`@ForceQuickening`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ForceQuickening.java).
 In the future, [tracing](#tracing) will be able to automatically infer useful quickenings.
 
 

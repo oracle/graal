@@ -383,8 +383,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(createTransitionToCached());
         this.add(createUpdateBytecode());
 
+        // Other root node overrides.
         this.add(createIsInstrumentable());
         this.addOptional(createPrepareForInstrumentation());
+        this.addOptional(createPrepareForCompilation());
 
         this.add(createEncodeTags());
         if (model.enableTagInstrumentation) {
@@ -1647,6 +1649,18 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.end();
 
         b.statement("getRootNodes().update(b.build())");
+        return ex;
+    }
+
+    private CodeExecutableElement createPrepareForCompilation() {
+        if (!model.enableUncachedInterpreter) {
+            return null;
+        }
+
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "prepareForCompilation", new String[]{"rootCompilation", "compilationTier", "lastTier"});
+        CodeTreeBuilder b = ex.createBuilder();
+        // Disable compilation for the uncached interpreter.
+        b.startReturn().string("bytecode.getTier() != ").staticReference(types.BytecodeTier, "UNCACHED").end();
         return ex;
     }
 
@@ -13104,8 +13118,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("$root.transitionToCached()");
                 b.startReturn().string("startState").end();
                 return methods;
-            } else if (tier.isUncached()) {
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             }
 
             b.startDeclaration(types.VirtualFrame, "frame").startCall("ACCESS.uncheckedCast").string("frame_").string("FRAME_TYPE").end().end();
@@ -16273,6 +16285,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             // RootNode overrides.
             this.add(createIsCloningAllowed());
             this.add(createIsCloneUninitializedSupported());
+            this.addOptional(createPrepareForCompilation());
             // Should appear last. Uses current method set to determine which methods need to be
             // implemented.
             this.addAll(createRootNodeProxyMethods());
@@ -16429,6 +16442,17 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startReturn();
             b.string("false");
             b.end();
+            return ex;
+        }
+
+        private CodeExecutableElement createPrepareForCompilation() {
+            if (!model.enableUncachedInterpreter) {
+                return null;
+            }
+
+            CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "prepareForCompilation", new String[]{"rootCompilation", "compilationTier", "lastTier"});
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().startCall("root.prepareForCompilation").string("rootCompilation").string("compilationTier").string("lastTier").end(2);
             return ex;
         }
 
