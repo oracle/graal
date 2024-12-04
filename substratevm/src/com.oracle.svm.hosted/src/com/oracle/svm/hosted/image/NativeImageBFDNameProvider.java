@@ -87,7 +87,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         if (isGraalImageLoader(loader)) {
             return "";
         }
-        String name = SubstrateUtil.classLoaderNameAndId(loader);
+        String name = SubstrateUtil.runtimeClassLoaderNameAndId(loader);
         // name will look like "org.foo.bar.FooBarClassLoader @1234"
         // trim it down to something more manageable
         // escaping quotes in the classlaoder name does not work in GDB

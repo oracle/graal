@@ -51,6 +51,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.HostedSubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
@@ -376,12 +377,14 @@ public class SubstrateUtil {
      * @return A unique identifier for the classloader or the empty string when the loader is one of
      *         the special set whose method names do not need qualification.
      */
-    public static String classLoaderNameAndId(ClassLoader loader) {
-        if (loader == null) {
+    public static String runtimeClassLoaderNameAndId(ClassLoader loader) {
+        ClassLoader runtimeClassLoader = SubstrateUtil.HOSTED ? HostedSubstrateUtil.getRuntimeClassLoader(loader) : loader;
+
+        if (runtimeClassLoader == null) {
             return "";
         }
         try {
-            return (String) classLoaderNameAndId.get(loader);
+            return (String) classLoaderNameAndId.get(runtimeClassLoader);
         } catch (IllegalAccessException e) {
             throw VMError.shouldNotReachHere("Cannot reflectively access ClassLoader.nameAndId");
         }
