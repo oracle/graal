@@ -48,6 +48,7 @@ from collections import defaultdict
 import mx
 import mx_benchmark
 import mx_sdk_vm
+import mx_truffle
 import mx_unittest
 import mx_util
 # noinspection PyUnresolvedReferences
@@ -152,6 +153,10 @@ class WasmUnittestConfig(mx_unittest.MxUnittestConfig):
         # Disable DefaultRuntime warning
         vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
         vmArgs += ['-Dpolyglot.engine.AllowExperimentalOptions=true']
+        # This is needed for Truffle since JEP 472: Prepare to Restrict the Use of JNI
+        mx_truffle.enable_truffle_native_access(vmArgs)
+        # GR-59703: This is needed for Truffle since JEP 498: Warn upon Use of Memory-Access Methods in sun.misc.Unsafe
+        mx_truffle.enable_sun_misc_unsafe(vmArgs)
         # Assert for enter/return parity of ProbeNode (if assertions are enabled only)
         if next((arg.startswith('-e') for arg in reversed(vmArgs) if arg in ['-ea', '-da', '-enableassertions', '-disableassertions']), False):
             vmArgs += ['-Dpolyglot.engine.AssertProbes=true']
@@ -634,6 +639,8 @@ def wasm(args, **kwargs):
     vmArgs, wasmArgs = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
     # This is needed for Truffle since JEP 472: Prepare to Restrict the Use of JNI
     vmArgs += ['--enable-native-access=org.graalvm.truffle']
+    # GR-59703: This is needed for Truffle since JEP 498: Warn upon Use of Memory-Access Methods in sun.misc.Unsafe
+    mx_truffle.enable_sun_misc_unsafe(vmArgs)
 
     path_args = mx.get_runtime_jvm_args([
         "TRUFFLE_API",

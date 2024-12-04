@@ -100,6 +100,8 @@ class SulongUnittestConfigBase(mx_unittest.MxUnittestConfig):
         else:
             native_access_target_module = 'ALL-UNNAMED'
         vmArgs += [f'--enable-native-access={native_access_target_module}']
+        # GR-59703: Migrate sun.misc.* usages.
+        mx_truffle.enable_sun_misc_unsafe(vmArgs)
         if mx.get_opts().use_llvm_standalone is not None:
             vmArgs += [f'-Dsulongtest.testAOTImage={mx_sulong.get_lli_path()}']
         else:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -714,6 +714,7 @@ final class Target_jdk_internal_loader_BootLoader {
 final class Target_jdk_internal_logger_LoggerFinderLoader {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset, isFinal = true)//
+    @TargetElement(onlyWith = JDK21OrEarlier.class)//
     static Permission READ_PERMISSION;
     // Checkstyle: resume
 }

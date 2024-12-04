@@ -558,6 +558,10 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
 
         /* Allow Truffle NFI Panama to use Linker#{downcallHandle,upcallStub} without warnings. */
         vmArgs.push_back("--enable-native-access=org.graalvm.truffle");
+// GR-59703: Migrate sun.misc.* usages.
+#if LAUNCHER_JDK_VERSION >= 23
+        vmArgs.push_back("--sun-misc-unsafe-memory-access=allow");
+#endif
     }
 
     jint nOptions = jvmMode ? vmArgs.size() : 1 + vmArgs.size();

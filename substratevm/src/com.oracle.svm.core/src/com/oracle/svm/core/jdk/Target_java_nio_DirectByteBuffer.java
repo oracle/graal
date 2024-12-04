@@ -34,7 +34,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(className = "java.nio.DirectByteBuffer")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+23/src/java.base/share/classes/java/nio/Direct-X-Buffer.java.template")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/java.base/share/classes/java/nio/Direct-X-Buffer.java.template")
 public final class Target_java_nio_DirectByteBuffer {
 
     /**

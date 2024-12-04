@@ -2306,6 +2306,9 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
             if isinstance(self.subject.component, mx_sdk.GraalVmTruffleComponent) or image_config.is_polyglot:
                 extra_jvm_args = ' '.join([extra_jvm_args, '--enable-native-access=org.graalvm.truffle'])
+                # GR-59703: Migrate sun.misc.* usages.
+                if mx.VersionSpec("23.0.0") <= mx.get_jdk(tag='default').version:
+                    extra_jvm_args = ' '.join([extra_jvm_args, '--sun-misc-unsafe-memory-access=allow'])
             if not _jlink_libraries():
                 if mx.is_windows():
                     extra_jvm_args = ' '.join([extra_jvm_args, r'--upgrade-module-path "%location%\..\..\jvmci\graal.jar"'])
