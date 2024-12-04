@@ -620,14 +620,36 @@ public class CountedLoopInfo {
     }
 
     public boolean ivCanNeverOverflow(InductionVariable iv) {
-        if (iv == getLimitCheckedIV()) {
-            if (!isLimitIncluded && iv.isConstantStride() && Loop.absStrideIsOne(iv)) {
-                return true;
+        if (iv != getLimitCheckedIV()) {
+            /*
+             * All non-limit checked IVs: This IV is not compared against limit and thus we cannot
+             * play the trick comparing against the end stamp. We have to compute (if possible) the
+             * extremum value and use that.
+             */
+            if (iv.isConstantInit() && isConstantMaxTripCount() && iv.isConstantStride()) {
+                try {
+                    final int bits = IntegerStamp.getBits(iv.valueNode().stamp(NodeView.DEFAULT));
+                    long tripCountMinus1 = LoopUtility.subtractExact(bits, LoopUtility.tripCountSignedExact(this), 1);
+                    long stripTimesTripCount = LoopUtility.multiplyExact(bits, iv.constantStride(), tripCountMinus1);
+                    @SuppressWarnings("unused")
+                    long extremum = LoopUtility.addExact(bits, stripTimesTripCount, iv.initNode().asJavaConstant().asLong());
+                    return true;
+                } catch (ArithmeticException e) {
+                    // overflow
+                    return false;
+                }
             }
-            if (loop.loopBegin().isProtectedNonOverflowingUnsigned()) {
-                return true;
-            }
-           // @formatter:off
+        }
+
+        // BELOW: limitCheckedIV case
+
+        if (!isLimitIncluded && iv.isConstantStride() && Loop.absStrideIsOne(iv)) {
+            return true;
+        }
+        if (loop.loopBegin().isProtectedNonOverflowingUnsigned()) {
+            return true;
+        }
+        // @formatter:off
            /*
             * Following comment reasons about the simplest possible loop form:
             *
@@ -675,37 +697,16 @@ public class CountedLoopInfo {
             * reasons.
             */
            // @formatter:on
-            IntegerStamp endStamp = (IntegerStamp) getTripCountLimit().stamp(NodeView.DEFAULT);
-            ValueNode strideNode = getLimitCheckedIV().strideNode();
-            IntegerStamp strideStamp = (IntegerStamp) strideNode.stamp(NodeView.DEFAULT);
-            IntegerHelper integerHelper = getCounterIntegerHelper();
-            if (getDirection() == InductionVariable.Direction.Up) {
-                long max = integerHelper.maxValue();
-                return integerHelper.compare(endStamp.upperBound(), max - (strideStamp.upperBound() - 1) - (isLimitIncluded ? 1 : 0)) <= 0;
-            } else if (getDirection() == InductionVariable.Direction.Down) {
-                long min = integerHelper.minValue();
-                return integerHelper.compare(min + (1 - strideStamp.lowerBound()) + (isLimitIncluded ? 1 : 0), endStamp.lowerBound()) <= 0;
-            }
-            return false;
-        } else {
-            /*
-             * All over IVs: This IV is not compared against limit and thus we cannot play the trick
-             * comparing against the end stamp. We have to compute (if possible) the extremum value
-             * and use that.
-             */
-            if (iv.isConstantInit() && isConstantMaxTripCount() && iv.isConstantStride()) {
-                try {
-                    final int bits = IntegerStamp.getBits(iv.valueNode().stamp(NodeView.DEFAULT));
-                    long tripCountMinus1 = LoopUtility.subtractExact(bits, LoopUtility.tripCountSignedExact(this), 1);
-                    long stripTimesTripCount = LoopUtility.multiplyExact(bits, iv.constantStride(), tripCountMinus1);
-                    @SuppressWarnings("unused")
-                    long extremum = LoopUtility.addExact(bits, stripTimesTripCount, iv.initNode().asJavaConstant().asLong());
-                    return true;
-                } catch (ArithmeticException e) {
-                    // overflow
-                    return false;
-                }
-            }
+        IntegerStamp endStamp = (IntegerStamp) getTripCountLimit().stamp(NodeView.DEFAULT);
+        ValueNode strideNode = getLimitCheckedIV().strideNode();
+        IntegerStamp strideStamp = (IntegerStamp) strideNode.stamp(NodeView.DEFAULT);
+        IntegerHelper integerHelper = getCounterIntegerHelper();
+        if (getDirection() == InductionVariable.Direction.Up) {
+            long max = integerHelper.maxValue();
+            return integerHelper.compare(endStamp.upperBound(), max - (strideStamp.upperBound() - 1) - (isLimitIncluded ? 1 : 0)) <= 0;
+        } else if (getDirection() == InductionVariable.Direction.Down) {
+            long min = integerHelper.minValue();
+            return integerHelper.compare(min + (1 - strideStamp.lowerBound()) + (isLimitIncluded ? 1 : 0), endStamp.lowerBound()) <= 0;
         }
         return false;
     }
