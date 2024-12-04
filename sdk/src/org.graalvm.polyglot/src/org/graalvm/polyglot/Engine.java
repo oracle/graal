@@ -1956,6 +1956,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public FileSystem newCompositeFileSystem(FileSystem fallbackFileSystem, FileSystem.Selector... delegates) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public FileSystem newDenyIOFileSystem() {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
         public ByteSequence asByteSequence(Object object) {
             throw noPolyglotImplementationFound();
         }

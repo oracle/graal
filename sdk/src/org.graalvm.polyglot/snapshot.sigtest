@@ -122,6 +122,15 @@ meth public abstract java.lang.annotation.ElementType[] value()
 CLSS public abstract interface java.lang.constant.Constable
 meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
 
+CLSS public abstract interface java.util.function.Predicate<%0 extends java.lang.Object>
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract boolean test({java.util.function.Predicate%0})
+meth public java.util.function.Predicate<{java.util.function.Predicate%0}> and(java.util.function.Predicate<? super {java.util.function.Predicate%0}>)
+meth public java.util.function.Predicate<{java.util.function.Predicate%0}> negate()
+meth public java.util.function.Predicate<{java.util.function.Predicate%0}> or(java.util.function.Predicate<? super {java.util.function.Predicate%0}>)
+meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> isEqual(java.lang.Object)
+meth public static <%0 extends java.lang.Object> java.util.function.Predicate<{%%0}> not(java.util.function.Predicate<? super {%%0}>)
+
 CLSS public final org.graalvm.polyglot.Context
 innr public final Builder
 intf java.lang.AutoCloseable
@@ -147,7 +156,7 @@ meth public void leave()
 meth public void resetLimits()
 meth public void safepoint()
 supr java.lang.Object
-hfds ALL_HOST_CLASSES,EMPTY,NO_HOST_CLASSES,UNSET_HOST_LOOKUP,currentAPI,dispatch,engine,receiver
+hfds ALL_HOST_CLASSES,EMPTY,NO_HOST_CLASSES,UNSET_HOST_LOOKUP,creatorContext,currentAPI,dispatch,engine,parent,receiver
 
 CLSS public final org.graalvm.polyglot.Context$Builder
  outer org.graalvm.polyglot.Context
@@ -213,8 +222,8 @@ meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
 meth public void close()
 meth public void close(boolean)
 supr java.lang.Object
-hfds EMPTY,ENGINES,currentAPI,dispatch,initializationException,receiver,shutdownHookInitialized
-hcls APIAccessImpl,ClassPathIsolation,EngineShutDownHook,ImplHolder,PolyglotInvalid
+hfds EMPTY,ENGINES,creatorEngine,currentAPI,dispatch,initializationException,receiver,shutdownHookInitialized
+hcls APIAccessImpl,CleanableReference,ContextReference,EngineReference,EngineShutDownHook,ImplHolder,PolyglotInvalid
 
 CLSS public final org.graalvm.polyglot.Engine$Builder
  outer org.graalvm.polyglot.Engine
@@ -336,16 +345,20 @@ supr java.lang.Enum<org.graalvm.polyglot.HostAccess$TargetMappingPrecedence>
 
 CLSS public final org.graalvm.polyglot.Instrument
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
+meth public boolean equals(java.lang.Object)
+meth public int hashCode()
 meth public java.lang.String getId()
 meth public java.lang.String getName()
 meth public java.lang.String getVersion()
 meth public java.lang.String getWebsite()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
-hfds dispatch,receiver
+hfds dispatch,engine,receiver
 
 CLSS public final org.graalvm.polyglot.Language
+meth public boolean equals(java.lang.Object)
 meth public boolean isInteractive()
+meth public int hashCode()
 meth public java.lang.String getDefaultMimeType()
 meth public java.lang.String getId()
 meth public java.lang.String getImplementationName()
@@ -355,7 +368,7 @@ meth public java.lang.String getWebsite()
 meth public java.util.Set<java.lang.String> getMimeTypes()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
-hfds dispatch,receiver
+hfds dispatch,engine,receiver
 
 CLSS public final org.graalvm.polyglot.PolyglotAccess
 fld public final static org.graalvm.polyglot.PolyglotAccess ALL
@@ -403,7 +416,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.RuntimeException
-hfds dispatch,impl
+hfds anchor,dispatch,impl
 
 CLSS public final org.graalvm.polyglot.PolyglotException$StackFrame
  outer org.graalvm.polyglot.PolyglotException
@@ -654,7 +667,9 @@ meth public org.graalvm.polyglot.io.ByteSequence subSequence(int,int)
 meth public static org.graalvm.polyglot.io.ByteSequence create(byte[])
 
 CLSS public abstract interface org.graalvm.polyglot.io.FileSystem
+innr public abstract static Selector
 meth public !varargs boolean isSameFile(java.nio.file.Path,java.nio.file.Path,java.nio.file.LinkOption[]) throws java.io.IOException
+meth public !varargs static org.graalvm.polyglot.io.FileSystem newCompositeFileSystem(org.graalvm.polyglot.io.FileSystem,org.graalvm.polyglot.io.FileSystem$Selector[])
 meth public !varargs void copy(java.nio.file.Path,java.nio.file.Path,java.nio.file.CopyOption[]) throws java.io.IOException
 meth public !varargs void createSymbolicLink(java.nio.file.Path,java.nio.file.Path,java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
 meth public !varargs void move(java.nio.file.Path,java.nio.file.Path,java.nio.file.CopyOption[]) throws java.io.IOException
@@ -679,10 +694,21 @@ meth public static org.graalvm.polyglot.io.FileSystem allowInternalResourceAcces
 meth public static org.graalvm.polyglot.io.FileSystem allowLanguageHomeAccess(org.graalvm.polyglot.io.FileSystem)
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static org.graalvm.polyglot.io.FileSystem newDefaultFileSystem()
+meth public static org.graalvm.polyglot.io.FileSystem newDenyIOFileSystem()
 meth public static org.graalvm.polyglot.io.FileSystem newFileSystem(java.nio.file.FileSystem)
 meth public static org.graalvm.polyglot.io.FileSystem newReadOnlyFileSystem(org.graalvm.polyglot.io.FileSystem)
 meth public void createLink(java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
 meth public void setCurrentWorkingDirectory(java.nio.file.Path)
+
+CLSS public abstract static org.graalvm.polyglot.io.FileSystem$Selector
+ outer org.graalvm.polyglot.io.FileSystem
+cons protected init(org.graalvm.polyglot.io.FileSystem)
+intf java.util.function.Predicate<java.nio.file.Path>
+meth public abstract boolean test(java.nio.file.Path)
+meth public final org.graalvm.polyglot.io.FileSystem getFileSystem()
+meth public static org.graalvm.polyglot.io.FileSystem$Selector of(org.graalvm.polyglot.io.FileSystem,java.util.function.Predicate<java.nio.file.Path>)
+supr java.lang.Object
+hfds fileSystem
 
 CLSS public final org.graalvm.polyglot.io.IOAccess
 fld public final static org.graalvm.polyglot.io.IOAccess ALL
@@ -772,7 +798,7 @@ intf java.lang.AutoCloseable
 meth public static org.graalvm.polyglot.management.ExecutionListener$Builder newBuilder()
 meth public void close()
 supr java.lang.Object
-hfds EMPTY,dispatch,receiver
+hfds EMPTY,creatorEngine,dispatch,receiver
 
 CLSS public final org.graalvm.polyglot.management.ExecutionListener$Builder
  outer org.graalvm.polyglot.management.ExecutionListener
