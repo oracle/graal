@@ -35,7 +35,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.redefinition.plugins.api.ClassLoadAction;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
@@ -118,7 +117,7 @@ public final class RedefinitionPluginHandler implements RedefineListener, Define
     }
 
     @Override
-    public boolean shouldRerunClassInitializer(ObjectKlass klass, boolean changed, DebuggerController controller) {
+    public boolean shouldRerunClassInitializer(ObjectKlass klass, boolean changed) {
         boolean rerun = false;
         // internal plugins
         for (InternalRedefinitionPlugin plugin : internalPlugins) {
@@ -129,13 +128,13 @@ public final class RedefinitionPluginHandler implements RedefineListener, Define
         }
         // external plugins
         if (externalPluginHandler != null) {
-            rerun |= externalPluginHandler.shouldRerunClassInitializer(klass, changed, controller);
+            rerun |= externalPluginHandler.shouldRerunClassInitializer(klass, changed);
         }
         return rerun;
     }
 
     @Override
-    public void postRedefinition(ObjectKlass[] changedKlasses, DebuggerController controller) {
+    public void postRedefinition(ObjectKlass[] changedKlasses) {
         // internal plugins
         for (InternalRedefinitionPlugin plugin : internalPlugins) {
             try {
@@ -147,7 +146,7 @@ public final class RedefinitionPluginHandler implements RedefineListener, Define
         }
         // external plugins
         if (externalPluginHandler != null) {
-            externalPluginHandler.postHotSwap(changedKlasses, controller);
+            externalPluginHandler.postHotSwap(changedKlasses);
         }
     }
 
