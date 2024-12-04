@@ -81,7 +81,7 @@ public final class RuntimeClassLoaderValueSupport {
     ClassLoaderValue<List<ModuleLayer>> moduleLayerCLV = new ClassLoaderValue<>();
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public void update(ClassLoader imageClassLoader, List<ModuleLayer> runtimeModuleLayers) {
+    public void update(List<ModuleLayer> runtimeModuleLayers) {
         for (ModuleLayer runtimeLayer : runtimeModuleLayers) {
             Set<ClassLoader> loaders = runtimeLayer.modules().stream()
                             .map(Module::getClassLoader)

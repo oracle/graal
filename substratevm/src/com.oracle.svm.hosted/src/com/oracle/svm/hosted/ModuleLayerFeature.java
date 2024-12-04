@@ -56,8 +56,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.jdk.RuntimeClassLoaderValueSupport;
-import jdk.internal.module.ServicesCatalog;
+import jdk.internal.loader.ClassLoaders;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -72,6 +71,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.RuntimeClassLoaderValueSupport;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
@@ -84,6 +84,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.ModuleReferenceImpl;
+import jdk.internal.module.ServicesCatalog;
 import jdk.internal.module.SystemModuleFinders;
 
 /**
@@ -226,9 +227,15 @@ public final class ModuleLayerFeature implements InternalFeature {
             runtimeImageNamedModules.add((Module) module.get());
         });
 
+        /*
+         * We need to include synthetic modules in the runtime module system. Some modules, such as
+         * jdk.proxy, are created for all class loaders, so we need to make sure to not include
+         * those made for the builder class loader.
+         */
         Set<Module> analysisReachableSyntheticModules = runtimeImageNamedModules
                         .stream()
                         .filter(ModuleLayerFeatureUtils::isModuleSynthetic)
+                        .filter(m -> m.getClassLoader() != accessImpl.imageClassLoader.getClassLoader())
                         .collect(Collectors.toSet());
 
         /*
@@ -256,7 +263,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         List<ModuleLayer> runtimeModuleLayers = synthesizeRuntimeModuleLayers(accessImpl, reachableModuleLayers, runtimeImageNamedModules, analysisReachableSyntheticModules, rootModules);
         ModuleLayer runtimeBootLayer = runtimeModuleLayers.getFirst();
         RuntimeModuleSupport.instance().setBootLayer(runtimeBootLayer);
-        RuntimeClassLoaderValueSupport.instance().update(accessImpl.imageClassLoader.getClassLoader(), runtimeModuleLayers);
+        RuntimeClassLoaderValueSupport.instance().update(runtimeModuleLayers);
 
         /*
          * Ensure that runtime modules have the same relations (i.e., reads, opens and exports) as
@@ -454,12 +461,6 @@ public final class ModuleLayerFeature implements InternalFeature {
             runtimeModuleLayer = moduleLayerFeatureUtils.createNewModuleLayerInstance(runtimeModuleLayerConfiguration);
             Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(accessImpl, runtimeModuleLayer, clf);
             for (Module syntheticModule : syntheticModules) {
-                /*
-                 * Ignore proxy modules where loader is imageClassLoader.
-                 */
-                if (syntheticModule.getClassLoader() == cl.getClassLoader()) {
-                    continue;
-                }
                 Module runtimeSyntheticModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(syntheticModule, accessImpl);
                 nameToModule.putIfAbsent(runtimeSyntheticModule.getName(), runtimeSyntheticModule);
                 moduleLayerFeatureUtils.patchModuleLayerField(accessImpl, runtimeSyntheticModule, runtimeModuleLayer);
@@ -807,11 +808,24 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
+        private ClassLoader getRuntimeLoaderFor(ClassLoader hostedLoader) {
+            /*
+             * Make sure to replace builder class loader with the application class loader. This is
+             * the case, for example, for library support modules.
+             */
+            if (hostedLoader == imageClassLoader.getClassLoader()) {
+                return ClassLoaders.appClassLoader();
+            } else {
+                return hostedLoader;
+            }
+        }
+
         public Module getRuntimeModuleForHostedModule(Module hostedModule, boolean optional) {
             return getRuntimeModuleForHostedModule(hostedModule.getClassLoader(), hostedModule.getName(), optional);
         }
 
-        public Module getRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, boolean optional) {
+        public Module getRuntimeModuleForHostedModule(ClassLoader hostedLoader, String hostedModuleName, boolean optional) {
+            ClassLoader loader = getRuntimeLoaderFor(hostedLoader);
             Map<String, Module> loaderRuntimeModules = runtimeModules.get(loader);
             if (loaderRuntimeModules == null) {
                 if (optional) {
@@ -847,8 +861,9 @@ public final class ModuleLayerFeature implements InternalFeature {
             }
         }
 
-        public Module getOrCreateRuntimeModuleForHostedModule(ClassLoader loader, String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor, AnalysisAccessBase access,
+        public Module getOrCreateRuntimeModuleForHostedModule(ClassLoader hostedLoader, String hostedModuleName, ModuleDescriptor runtimeModuleDescriptor, AnalysisAccessBase access,
                         boolean enableNativeAccess) {
+            ClassLoader loader = getRuntimeLoaderFor(hostedLoader);
             synchronized (runtimeModules) {
                 Module runtimeModule = getRuntimeModuleForHostedModule(loader, hostedModuleName, true);
                 if (runtimeModule != null) {
