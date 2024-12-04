@@ -41,6 +41,7 @@
 package com.oracle.truffle.sl;
 
 import java.io.PrintStream;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -266,7 +267,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public SLLanguage() {
         counter++;
-        this.rootShape = Shape.newBuilder().layout(SLObject.class).build();
+        this.rootShape = Shape.newBuilder().layout(SLObject.class, MethodHandles.lookup()).build();
     }
 
     @Override

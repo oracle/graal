@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.object.basic.test;
 
 import static com.oracle.truffle.object.basic.test.DOTestAsserts.getLocationType;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 
@@ -66,7 +67,7 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         return Arrays.asList(TestRun.values());
     }
 
-    final Shape rootShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class).allowImplicitCastIntToLong(true).build();
+    final Shape rootShape = Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).allowImplicitCastIntToLong(true).build();
     final Shape sharedShape = rootShape.makeSharedShape();
 
     private DynamicObject newInstance() {

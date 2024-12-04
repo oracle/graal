@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.annotation.Annotation;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -857,7 +858,14 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     private static void initializeDynamicObjectLayoutImpl(Class<?> javaClass) {
         // Initialize DynamicObject layout info for every instantiated DynamicObject subclass.
-        invokeStaticMethod("com.oracle.truffle.object.LayoutImpl", "initializeDynamicObjectLayout", Collections.singleton(Class.class), javaClass);
+        MethodHandles.Lookup trustedLookup = (MethodHandles.Lookup) ReflectionUtil.readStaticField(MethodHandles.Lookup.class, "IMPL_LOOKUP");
+        MethodHandles.Lookup privateLookup;
+        try {
+            privateLookup = MethodHandles.privateLookupIn(javaClass, trustedLookup);
+        } catch (IllegalAccessException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+        invokeStaticMethod("com.oracle.truffle.object.LayoutImpl", "initializeDynamicObjectLayout", List.of(Class.class, MethodHandles.Lookup.class), javaClass, privateLookup);
     }
 
     private static void registerDynamicObjectFields(BeforeAnalysisAccessImpl config) {
