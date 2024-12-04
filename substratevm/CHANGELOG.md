@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## GraalVM for JDK 23 (Internal Version 24.1.2)
+* (GR-58383) The length of the printed stack trace when using `-XX:MissingRegistrationReportingMode=Warn` can now be set with `-XX:MissingRegistrationWarnContextLines=` and its default length is now 8.
+
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
 * (GR-51106) Fields that are accessed via a `VarHandle` or `MethodHandle` are no longer marked as "unsafe accessed" when the `VarHandle`/`MethodHandle` can be fully intrinsified.
