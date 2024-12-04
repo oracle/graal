@@ -46,10 +46,10 @@ suite = {
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/",
   "developer" : {
-    "name" : "Truffle and Graal developers",
-    "email" : "graalvm-dev@oss.oracle.com",
-    "organization" : "Oracle Corporation",
-    "organizationUrl" : "http://www.graalvm.org/",
+    "name": "GraalVM Development",
+    "email": "graalvm-dev@oss.oracle.com",
+    "organization": "Oracle Corporation",
+    "organizationUrl": "http://www.graalvm.org/",
   },
   "scm" : {
     "url" : "https://github.com/oracle/graal",
