@@ -118,6 +118,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotSignature;
+import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -536,6 +537,7 @@ public class SymbolicSnippetEncoder {
         lookupSnippetType(NamedLocationIdentity.class);
         lookupSnippetType(SnippetTemplate.EagerSnippetInfo.class);
         lookupSnippetType(ForeignCallStub.class);
+        lookupSnippetType(HotSpotSpeculationLog.HotSpotSpeculation.class);
 
         registerAbstractForeignCallStubInfo();
 

@@ -44,6 +44,7 @@ import jdk.graal.compiler.nodes.java.MonitorIdNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
+import jdk.graal.compiler.nodes.spi.NodeWithState;
 import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualInstanceNode;
@@ -309,6 +310,12 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
             return;
         }
         effects.ensureAdded(node, position);
+        if (node instanceof NodeWithState withState) {
+            if (!node.isAlive()) {
+                current.graph().addWithoutUnique(node);
+            }
+            closure.processNodeWithState(withState, state, effects);
+        }
     }
 
     @Override
