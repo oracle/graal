@@ -28,11 +28,14 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 /**
  * Marks a position in the graph where a safepoint should be emitted.
@@ -42,12 +45,20 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
           cyclesRationale = "read",
           size = SIZE_1)
 // @formatter:on
-public final class SafepointNode extends DeoptimizingFixedWithNextNode implements Lowerable, LIRLowerable {
+public final class SafepointNode extends DeoptimizingFixedWithNextNode implements Lowerable, LIRLowerable, Simplifiable {
 
     public static final NodeClass<SafepointNode> TYPE = NodeClass.create(SafepointNode.class);
 
+    @OptionalInput(InputType.Association) protected AbstractBeginNode loop;
+
     public SafepointNode() {
         super(TYPE, StampFactory.forVoid());
+    }
+
+    public SafepointNode(LoopBeginNode loop) {
+        super(TYPE, StampFactory.forVoid());
+        this.loop = loop;
+
     }
 
     @Override
@@ -59,4 +70,25 @@ public final class SafepointNode extends DeoptimizingFixedWithNextNode implement
     public boolean canDeoptimize() {
         return true;
     }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (next() instanceof SafepointNode) {
+            this.graph().removeFixed(this);
+        }
+        if (loop != null && !(loop instanceof LoopBeginNode)) {
+            // if any optimization rendered this safepoint to be decoupled from a loop, drop it
+            this.graph().removeFixed(this);
+        }
+    }
+
+    public void setLoop(AbstractBeginNode loop) {
+        updateUsagesInterface(this.loop, loop);
+        this.loop = loop;
+    }
+
+    public AbstractBeginNode getLoop() {
+        return loop;
+    }
+
 }

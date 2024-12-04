@@ -427,6 +427,7 @@ import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.LoopBeginNode.SafepointState;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -3510,8 +3511,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             EndNode preLoopEnd = graph.add(new EndNode());
             LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
             if (disableLoopSafepoint()) {
-                loopBegin.disableSafepoint();
-                loopBegin.disableGuestSafepoint();
+                loopBegin.disableSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                loopBegin.disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
             }
             fixedWithNext.setNext(preLoopEnd);
             // Add the single non-loop predecessor of the loop header.

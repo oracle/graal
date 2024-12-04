@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.LoopBeginNode.SafepointState;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 
 public final class MonitorDeoptTest extends GraalCompilerTest {
@@ -180,7 +181,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
      */
     private static void removeLoopSafepoint(StructuredGraph graph) {
         LoopBeginNode loopBegin = findFirstLoop(graph);
-        loopBegin.disableSafepoint();
+        loopBegin.disableSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
     }
 
     @Test
