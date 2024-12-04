@@ -33,10 +33,8 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.charset.CharsetDecoder;
-import java.security.AccessControlContext;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.svm.core.annotate.TargetElement;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;

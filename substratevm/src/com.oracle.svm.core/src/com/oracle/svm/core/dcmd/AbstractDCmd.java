@@ -146,7 +146,7 @@ public abstract class AbstractDCmd implements DCmd {
         return null;
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticArgument.cpp#L140-L166")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/services/diagnosticArgument.cpp#L141-L171")
     private static Object parseValue(DCmdOption<?> option, String valueString) {
         Class<?> type = option.type();
         if (type == Boolean.class) {

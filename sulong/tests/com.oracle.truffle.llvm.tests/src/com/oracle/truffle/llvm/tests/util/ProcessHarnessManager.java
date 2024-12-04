@@ -269,6 +269,10 @@ public class ProcessHarnessManager {
         } else {
             commandArgs.add("--enable-native-access=ALL-UNNAMED");
         }
+        // GR-59703: Migrate sun.misc.* usages.
+        if (Runtime.version().feature() >= 23) {
+            commandArgs.add("--sun-misc-unsafe-memory-access=allow");
+        }
 
         copyProperty(commandArgs, "polyglot.engine.WarnInterpreterOnly");
         copyProperty(commandArgs, "truffle.nfi.library");
