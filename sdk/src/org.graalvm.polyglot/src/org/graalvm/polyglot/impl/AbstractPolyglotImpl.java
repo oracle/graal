@@ -1450,6 +1450,14 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newNIOFileSystem(fileSystem);
     }
 
+    public FileSystem newCompositeFileSystem(FileSystem fallbackFileSystem, FileSystem.Selector... delegates) {
+        return getNext().newCompositeFileSystem(fallbackFileSystem, delegates);
+    }
+
+    public FileSystem newDenyIOFileSystem() {
+        return getNext().newDenyIOFileSystem();
+    }
+
     public ByteSequence asByteSequence(Object object) {
         return getNext().asByteSequence(object);
     }
