@@ -447,6 +447,7 @@ public class GettingStarted {
      *   while i < n:
      *     i += 1
      *     total += i
+     *   return total
      * </pre>
      */
     @Test
@@ -507,7 +508,7 @@ public class GettingStarted {
     }
 
     /**
-     * For more advanced control flow, The Bytecode DSL also allows you to define and branch to
+     * For more advanced control flow, the Bytecode DSL also allows you to define and branch to
      * labels. Programs can branch forward to labels using the {@code Branch} operation. Let's use
      * labels to implement {@code sumToN} using a {@code break}:
      *
@@ -593,7 +594,7 @@ public class GettingStarted {
     }
 
     /*
-     * In addition to the condition and looping contructs, The Bytecode DSL has other control flow
+     * In addition to the condition and looping constructs, the Bytecode DSL has other control flow
      * mechanisms for exception handling ({@code TryCatch}, {@code TryFinally}, and {@code
      * TryCatchOtherwise}) and continuations ({@code Yield}). We will not cover those here.
      */
