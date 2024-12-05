@@ -1483,7 +1483,10 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
                 deps=[],
                 layout={
                     f'{resource_base_folder}/': f'dependency:{build_library.name}',
-                    f'{resource_base_folder}/resources': f'dependency:{build_library.name}/resources',
+                    f'{resource_base_folder}/resources': {"source_type": "dependency",
+                                                          "dependency": f'{build_library.name}',
+                                                          "path": 'resources',
+                                                          "optional": True},
                 },
                 path=None,
                 platformDependent=True,

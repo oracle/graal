@@ -943,7 +943,6 @@ public abstract class Accessor {
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 
         public abstract InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck);
-
     }
 
     public abstract static class InstrumentSupport extends Support {
