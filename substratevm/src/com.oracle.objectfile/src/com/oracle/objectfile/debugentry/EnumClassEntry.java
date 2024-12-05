@@ -28,9 +28,9 @@ package com.oracle.objectfile.debugentry;
 
 public class EnumClassEntry extends ClassEntry {
     public EnumClassEntry(String typeName, int size, long classOffset, long typeSignature,
-                          long compressedTypeSignature, long layoutTypeSignature, long compressedLayoutTypeSignature,
-                          ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
-        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, compressedLayoutTypeSignature, superClass, fileEntry, loader);
+                    long compressedTypeSignature, long layoutTypeSignature,
+                    ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, superClass, fileEntry, loader);
     }
 
     @Override

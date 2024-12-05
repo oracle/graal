@@ -26,11 +26,11 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debugentry.range.Range;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+
+import com.oracle.objectfile.debugentry.range.Range;
 
 /**
  * Track debug info associated with a Java class.
@@ -70,9 +70,9 @@ public class ClassEntry extends StructureTypeEntry {
     private final List<DirEntry> dirs;
 
     public ClassEntry(String typeName, int size, long classOffset, long typeSignature,
-                      long compressedTypeSignature, long layoutTypeSignature, long compressedLayoutTypeSignature,
-                      ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
-        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, compressedLayoutTypeSignature);
+                    long compressedTypeSignature, long layoutTypeSignature,
+                    ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature);
         this.superClass = superClass;
         this.fileEntry = fileEntry;
         this.loader = loader;
@@ -89,18 +89,18 @@ public class ClassEntry extends StructureTypeEntry {
         fileSet.add(fileEntry);
 
         // add all files of declared methods
-        fileSet.addAll(methods.parallelStream().map(MethodEntry::getFileEntry).toList());
+        fileSet.addAll(methods.stream().map(MethodEntry::getFileEntry).toList());
 
         // add all files required for compilations
-        // no need to add the primary range as this is the same as the corresponding method declaration file
+        // no need to add the primary range as this is the same as the corresponding method
+        // declaration file
         fileSet.addAll(compiledMethods.parallelStream()
-                .flatMap(CompiledMethodEntry::topDownRangeStream)
-                .map(Range::getFileEntry)
-                .toList()
-        );
+                        .flatMap(CompiledMethodEntry::topDownRangeStream)
+                        .map(Range::getFileEntry)
+                        .toList());
 
         // add all files of fields
-        fileSet.addAll(getFields().parallelStream().map(FieldEntry::getFileEntry).toList());
+        fileSet.addAll(getFields().stream().map(FieldEntry::getFileEntry).toList());
 
         // fill file list from set
         fileSet.forEach(this::addFile);

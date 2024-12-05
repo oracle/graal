@@ -34,9 +34,9 @@ public class InterfaceClassEntry extends ClassEntry {
     private final List<ClassEntry> implementors;
 
     public InterfaceClassEntry(String typeName, int size, long classOffset, long typeSignature,
-                               long compressedTypeSignature, long layoutTypeSignature, long compressedLayoutTypeSignature,
-                               ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
-        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, compressedLayoutTypeSignature, superClass, fileEntry, loader);
+                    long compressedTypeSignature, long layoutTypeSignature,
+                    ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, superClass, fileEntry, loader);
         this.implementors = new ArrayList<>();
     }
 
