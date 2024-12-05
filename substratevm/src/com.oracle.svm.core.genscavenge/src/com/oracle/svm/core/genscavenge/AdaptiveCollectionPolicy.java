@@ -190,17 +190,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
             return true;
         }
 
-        UnsignedWord youngUsed = HeapImpl.getHeapImpl().getYoungGeneration().getChunkBytes();
-        UnsignedWord oldUsed = HeapImpl.getHeapImpl().getOldGeneration().getChunkBytes();
-
-        /*
-         * If the remaining free space in the old generation is less than what is expected to be
-         * needed by the next collection, do a full collection now.
-         */
-        UnsignedWord averagePromoted = UnsignedUtils.fromDouble(avgPromoted.getPaddedAverage());
-        UnsignedWord promotionEstimate = UnsignedUtils.min(averagePromoted, youngUsed);
-        UnsignedWord oldFree = oldSize.subtract(oldUsed);
-        return promotionEstimate.aboveThan(oldFree);
+        return false;
     }
 
     private void updateAverages(boolean isSurvivorOverflow, UnsignedWord survivedChunkBytes, UnsignedWord promotedChunkBytes) {
