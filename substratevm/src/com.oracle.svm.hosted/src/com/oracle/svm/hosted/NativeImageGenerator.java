@@ -944,6 +944,8 @@ public class NativeImageGenerator {
                 BuildPhaseProvider.init();
 
                 featureHandler.registerFeatures(loader, debug);
+                BuildPhaseProvider.markFeatureRegistrationFinished();
+
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
                 setDefaultLibCIfMissing();
