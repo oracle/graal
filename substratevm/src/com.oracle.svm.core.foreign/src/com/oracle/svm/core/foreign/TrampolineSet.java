@@ -26,6 +26,7 @@ package com.oracle.svm.core.foreign;
 
 import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -37,6 +38,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -73,7 +75,21 @@ final class TrampolineSet {
     private final int trampolineCount = maxTrampolineCount();
     private final PointerBase[] methodHandles = new PointerBase[trampolineCount];
     private final CFunctionPointer[] stubs = new CFunctionPointer[trampolineCount];
+    private final BitSet patchedStubs;
     private final Pointer trampolines;
+
+    private static BitSet initializedPatchedStubs(int nbits) {
+        BitSet patchedStubs = null;
+        assert (patchedStubs = new BitSet(nbits)).isEmpty();
+        return patchedStubs;
+    }
+
+    private boolean getAndSetPatchedStub(int id) {
+        assert patchedStubs != null;
+        boolean res = patchedStubs.get(id);
+        patchedStubs.set(id);
+        return res;
+    }
 
     private PinnedObject pin(Object object) {
         PinnedObject pinned = PinnedObject.create(object);
@@ -86,6 +102,7 @@ final class TrampolineSet {
 
         assert trampolineCount <= maxTrampolineCount();
         trampolines = prepareTrampolines(pin(methodHandles), pin(stubs), template);
+        this.patchedStubs = initializedPatchedStubs(stubs.length);
     }
 
     Pointer base() {
@@ -103,8 +120,17 @@ final class TrampolineSet {
 
         methodHandles[id] = pinned.addressOfObject();
         stubs[id] = upcallStubPointer;
+        assert !patchedStubs.get(id);
 
         return trampolines.add(id * AbiUtils.singleton().trampolineSize());
+    }
+
+    void patchTrampolineForDirectUpcall(Pointer trampolinePointer, CFunctionPointer directUpcallStubPointer) {
+        VMError.guarantee(trampolinePointer.aboveOrEqual(trampolines), "invalid trampoline pointer");
+        int id = UnsignedUtils.safeToInt(trampolinePointer.subtract(trampolines).unsignedDivide(AbiUtils.singleton().trampolineSize()));
+        VMError.guarantee(id >= 0 && id < stubs.length, "invalid trampoline id");
+        assert !getAndSetPatchedStub(id) : "attempt to patch trampoline twice";
+        stubs[id] = directUpcallStubPointer;
     }
 
     private Pointer prepareTrampolines(PinnedObject mhsArray, PinnedObject stubsArray, AbiUtils.TrampolineTemplate template) {
@@ -142,6 +168,9 @@ final class TrampolineSet {
         }
         VirtualMemoryProvider.get().free(trampolines, allocationSize());
         assigned = FREED;
+        if (patchedStubs != null) {
+            patchedStubs.clear();
+        }
         return true;
     }
 }
