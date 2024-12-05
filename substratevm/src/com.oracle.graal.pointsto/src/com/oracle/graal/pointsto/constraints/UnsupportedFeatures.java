@@ -121,11 +121,13 @@ public class UnsupportedFeatures {
             printStream.close();
 
             String unsupportedFeaturesMessage;
+            String output = outputStream.toString();
+            String detailedMessage = output.isEmpty() ? "" : "\nDetailed message:\n" + output;
             if (singleEntry) {
-                unsupportedFeaturesMessage = entries.get(0).message + "\nDetailed message:\n" + outputStream.toString();
+                unsupportedFeaturesMessage = entries.get(0).message + detailedMessage;
                 throw new UnsupportedFeatureException(unsupportedFeaturesMessage, entries.get(0).originalException);
             } else {
-                unsupportedFeaturesMessage = "Unsupported features in " + entries.size() + " methods" + "\nDetailed message:\n" + outputStream.toString();
+                unsupportedFeaturesMessage = "Unsupported features in " + entries.size() + " methods" + detailedMessage;
                 throw new UnsupportedFeatureException(unsupportedFeaturesMessage);
             }
 
