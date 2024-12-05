@@ -77,25 +77,8 @@ import mx_sdk_vm
 import mx_util
 
 
-if sys.version_info[0] < 3:
-    _unicode = unicode # pylint: disable=undefined-variable
-    def _decode(x):
-        return x
-    def _encode(x):
-        return x
-else:
-    _unicode = str
-    def _decode(x):
-        return x.decode()
-    def _encode(x):
-        return x.encode()
-
-
 def unicode_utf8(string):
-    if sys.version_info[0] < 3:
-        if isinstance(string, str):
-            return unicode(string, 'utf-8') # pylint: disable=undefined-variable
-    elif isinstance(string, bytes):
+    if isinstance(string, bytes):
         return str(string)
     return string
 
@@ -479,7 +462,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                         root.write(bio)  # When porting to Python 3, we can use root.write(StringIO(), encoding="unicode")
                         plist_src = {
                             'source_type': 'string',
-                            'value': _decode(bio.getvalue()),
+                            'value': bio.getvalue().decode(),
                             'ignore_value_subst': True
                         }
                         _incl_list.append((base_dir + '/Contents/Info.plist', plist_src))
@@ -1030,11 +1013,11 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
                 mx.logv("No dist name for {}".format(components_sorted_set))
             m = hashlib.sha1()
             for component in components_sorted_set:
-                m.update(_encode(component))
+                m.update(component.encode())
             if _jlink_libraries():
-                m.update(_encode("jlinked"))
+                m.update("jlinked".encode())
             else:
-                m.update(_encode("not-jlinked"))
+                m.update("not-jlinked".encode())
             short_sha1_digest = m.hexdigest()[:10]  # to keep paths short
             base_dir = '{base_name}_{hash}_java{jdk_version}'.format(base_name=base_name, hash=short_sha1_digest, jdk_version=_src_jdk_version)
             name = '{base_dir}{stage_suffix}'.format(base_dir=base_dir, stage_suffix='_stage1' if stage1 else '')
@@ -4377,7 +4360,7 @@ def check_versions(jdk, expect_graalvm, check_jvmci):
         mx.log_error(out.data)
         mx.abort("'{}' is not a JVMCI-enabled JDK ('java -XX:+JVMCIPrintProperties' fails).\n{}.".format(jdk.home, check_env))
 
-    out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
+    out = subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT).decode().rstrip()
 
     jdk_version = jdk.version
     if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and (jdk_version <= mx.VersionSpec('1.8') or mx.VersionSpec('9') <= jdk_version < mx.VersionSpec('11')):
@@ -4399,7 +4382,7 @@ def graalvm_vm_name(graalvm_dist, jdk):
     :type jdk_home: str
     :rtype str:
     """
-    out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
+    out = subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT).decode().rstrip()
     match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit Server VM )', out.split('\n')[-1])
     vm_name = match.group('base_vm_name') if match else ''
     return vm_name + graalvm_vendor_version()
