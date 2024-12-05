@@ -164,12 +164,4 @@ public final class SocketConnection {
          */
         socketOutput.write(b, 0, len);
     }
-
-    public boolean isAvailable() {
-        try {
-            return socketInput.available() > 0;
-        } catch (IOException e) {
-            return false;
-        }
-    }
 }
