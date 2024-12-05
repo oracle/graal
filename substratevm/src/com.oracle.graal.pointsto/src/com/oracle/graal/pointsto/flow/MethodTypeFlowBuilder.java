@@ -294,7 +294,7 @@ public class MethodTypeFlowBuilder {
                     type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
                     for (var f : type.getInstanceFields(true)) {
                         var field = (AnalysisField) f;
-                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
                     }
                 }
 
@@ -829,7 +829,7 @@ public class MethodTypeFlowBuilder {
             long hi = stamp.upperBound();
             if (lo == hi) {
                 return TypeFlowBuilder.create(bb, method, getPredicate(), node, ConstantPrimitiveSourceTypeFlow.class, () -> {
-                    var flow = new ConstantPrimitiveSourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, lo);
+                    var flow = new ConstantPrimitiveSourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, TypeState.forPrimitiveConstant(bb, lo));
                     flowsGraph.addMiscEntryFlow(flow);
                     return flow;
                 });
@@ -1947,7 +1947,7 @@ public class MethodTypeFlowBuilder {
                 } else {
                     if (!type.isArray()) {
                         AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
-                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
                     }
                 }
             }
