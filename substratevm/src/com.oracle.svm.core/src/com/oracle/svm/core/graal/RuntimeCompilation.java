@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.graal;
 
-import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.api.replacements.Fold;
 
 public final class RuntimeCompilation {
     /**
@@ -38,6 +41,7 @@ public final class RuntimeCompilation {
      */
     @Fold
     public static boolean isEnabled() {
+        VMError.guarantee(BuildPhaseProvider.isFeatureRegistrationFinished(), "RuntimeCompilation.isEnabled() must not be called before the feature registration is finished.");
         boolean enabled = ImageSingletons.contains(RuntimeCompilationCanaryFeature.class);
         assert !enabled || DeoptimizationSupport.enabled();
         return enabled;

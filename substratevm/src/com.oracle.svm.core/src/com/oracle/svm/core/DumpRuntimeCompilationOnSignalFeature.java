@@ -39,12 +39,14 @@ import jdk.internal.misc.Signal;
 public class DumpRuntimeCompilationOnSignalFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS.class) && RuntimeCompilation.isEnabled();
+        return VMInspectionOptions.DumpRuntimeCompilationOnSignal.getValue() && !Platform.includedIn(WINDOWS.class);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpRuntimeCompilationStartupHook());
+        if (RuntimeCompilation.isEnabled()) {
+            RuntimeSupport.getRuntimeSupport().addStartupHook(new DumpRuntimeCompilationStartupHook());
+        }
     }
 }
 
