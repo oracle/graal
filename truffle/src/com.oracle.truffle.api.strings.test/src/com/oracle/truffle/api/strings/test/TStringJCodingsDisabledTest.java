@@ -41,7 +41,10 @@
 
 package com.oracle.truffle.api.strings.test;
 
+import static com.oracle.truffle.api.strings.test.TStringTestBase.forAllStrings;
+
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
@@ -60,6 +63,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.test.ops.TStringSwitchEncodingTest;
 
 @RunWith(Parameterized.class)
 public class TStringJCodingsDisabledTest {
@@ -118,7 +122,7 @@ public class TStringJCodingsDisabledTest {
 
     @BeforeClass
     public static void setUp() {
-        context = Context.newBuilder(TStringTestNoJCodingsDummyLanguage.ID).build();
+        context = Context.newBuilder(TStringTestNoJCodingsDummyLanguage.ID).allowAllAccess(true).build();
         context.enter();
         Assert.assertNotNull(TruffleString.Encoding.UTF_7.getEmpty());
         boolean jcodingsEnabled;
@@ -139,12 +143,20 @@ public class TStringJCodingsDisabledTest {
 
     @Parameter public TruffleString.FromByteArrayNode node;
     @Parameter(1) public MutableTruffleString.FromByteArrayNode nodeMutable;
+    @Parameter(2) public TruffleString.SwitchEncodingNode switchEncodingNode;
+    @Parameter(3) public MutableTruffleString.SwitchEncodingNode switchEncodingNodeMutable;
 
     @Parameters(name = "{0}, {1}")
     public static Iterable<Object[]> data() {
         return Arrays.asList(
-                        new Object[]{TruffleString.FromByteArrayNode.create(), MutableTruffleString.FromByteArrayNode.create()},
-                        new Object[]{TruffleString.FromByteArrayNode.getUncached(), MutableTruffleString.FromByteArrayNode.getUncached()});
+                        new Object[]{TruffleString.FromByteArrayNode.create(),
+                                        MutableTruffleString.FromByteArrayNode.create(),
+                                        TruffleString.SwitchEncodingNode.create(),
+                                        MutableTruffleString.SwitchEncodingNode.create()},
+                        new Object[]{TruffleString.FromByteArrayNode.getUncached(),
+                                        MutableTruffleString.FromByteArrayNode.getUncached(),
+                                        TruffleString.SwitchEncodingNode.getUncached(),
+                                        MutableTruffleString.SwitchEncodingNode.getUncached()});
     }
 
     @Test(expected = AssertionError.class)
@@ -165,5 +177,22 @@ public class TStringJCodingsDisabledTest {
     @Test(expected = AssertionError.class)
     public void testMutableTruffleStringDirect() {
         nodeMutable.execute(new byte[1], 0, 1, TruffleString.Encoding.Big5, false);
+    }
+
+    @Test
+    public void testSwitchEncodingSupported() throws Exception {
+        EnumSet<TruffleString.Encoding> encodings = EnumSet.of(
+                        TruffleString.Encoding.US_ASCII,
+                        TruffleString.Encoding.ISO_8859_1,
+                        TruffleString.Encoding.UTF_8,
+                        TruffleString.Encoding.UTF_16LE,
+                        TruffleString.Encoding.UTF_32LE,
+                        TruffleString.Encoding.UTF_16BE,
+                        TruffleString.Encoding.UTF_32BE);
+        forAllStrings(encodings.toArray(TruffleString.Encoding[]::new), true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
+            for (TruffleString.Encoding targetEncoding : encodings) {
+                TStringSwitchEncodingTest.checkSwitchEncoding(a, codeRange, isValid, encoding, codepoints, targetEncoding, switchEncodingNode, switchEncodingNodeMutable);
+            }
+        });
     }
 }
