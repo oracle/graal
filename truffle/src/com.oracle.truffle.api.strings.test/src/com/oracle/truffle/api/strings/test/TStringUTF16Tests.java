@@ -41,6 +41,7 @@
 
 package com.oracle.truffle.api.strings.test;
 
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
 import org.junit.Assert;
@@ -145,5 +146,29 @@ public class TStringUTF16Tests extends TStringTestBase {
     public void testToJavaString() {
         TruffleString a = TruffleString.fromCharArrayUTF16Uncached(new char[]{'a', 'b', 'c'});
         Assert.assertEquals("abc", a.toJavaStringUncached());
+    }
+
+    private static TruffleString.Encoding getForeignEndian() {
+        return ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? TruffleString.Encoding.UTF_16BE : TruffleString.Encoding.UTF_16LE;
+    }
+
+    private byte[] getByteSwappedArray(String s) {
+        byte[] array = new byte[s.length() << 1];
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                c = Character.reverseBytes(c);
+            }
+            array[i << 1] = (byte) (c >> 8);
+            array[(i << 1) + 1] = (byte) c;
+        }
+        return array;
+    }
+
+    @Test
+    public void testForeignEndian() {
+        TruffleString a = TruffleString.fromByteArrayUncached(getByteSwappedArray("a\udc00"), getForeignEndian());
+        Assert.assertEquals(2, a.codePointLengthUncached(getForeignEndian()));
+        Assert.assertEquals("a\udc00", a.toJavaStringUncached());
     }
 }

@@ -989,6 +989,80 @@ final class TStringOps {
         return dst;
     }
 
+    // arrayB is returned for testing purposes, do not remove
+    static Object byteSwapS1(Node location,
+                    Object arrayA, int offsetA,
+                    Object arrayB, int offsetB, int lengthCPY) {
+        try {
+            final boolean isNativeA = isNativePointer(arrayA);
+            final byte[] stubArrayA;
+            final long stubOffsetA;
+            if (isNativeA) {
+                stubArrayA = null;
+                stubOffsetA = offsetA + nativePointer(arrayA);
+            } else {
+                stubArrayA = (byte[]) arrayA;
+                stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            final boolean isNativeB = isNativePointer(arrayB);
+            final byte[] stubArrayB;
+            final long stubOffsetB;
+            if (isNativeB) {
+                stubArrayB = null;
+                stubOffsetB = offsetB + nativePointer(arrayB);
+            } else {
+                stubArrayB = (byte[]) arrayB;
+                stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArrayA, offsetA, lengthCPY, 1);
+            validateRegion(stubArrayB, offsetB, lengthCPY, 1);
+            runByteSwapS1(location,
+                            stubArrayA, stubOffsetA, isNativeA,
+                            stubArrayB, stubOffsetB, isNativeB, lengthCPY);
+            return stubArrayB;
+        } finally {
+            Reference.reachabilityFence(arrayA);
+            Reference.reachabilityFence(arrayB);
+        }
+    }
+
+    // arrayB is returned for testing purposes, do not remove
+    static Object byteSwapS2(Node location,
+                    Object arrayA, int offsetA,
+                    Object arrayB, int offsetB, int lengthCPY) {
+        try {
+            final boolean isNativeA = isNativePointer(arrayA);
+            final byte[] stubArrayA;
+            final long stubOffsetA;
+            if (isNativeA) {
+                stubArrayA = null;
+                stubOffsetA = offsetA + nativePointer(arrayA);
+            } else {
+                stubArrayA = (byte[]) arrayA;
+                stubOffsetA = offsetA + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            final boolean isNativeB = isNativePointer(arrayB);
+            final byte[] stubArrayB;
+            final long stubOffsetB;
+            if (isNativeB) {
+                stubArrayB = null;
+                stubOffsetB = offsetB + nativePointer(arrayB);
+            } else {
+                stubArrayB = (byte[]) arrayB;
+                stubOffsetB = offsetB + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArrayA, offsetA, lengthCPY, 2);
+            validateRegion(stubArrayB, offsetB, lengthCPY, 2);
+            runByteSwapS2(location,
+                            stubArrayA, stubOffsetA, isNativeA,
+                            stubArrayB, stubOffsetB, isNativeB, lengthCPY);
+            return stubArrayB;
+        } finally {
+            Reference.reachabilityFence(arrayA);
+            Reference.reachabilityFence(arrayB);
+        }
+    }
+
     static int calcStringAttributesLatin1(Node location, Object array, int offset, int length) {
         try {
             final boolean isNative = isNativePointer(array);
@@ -1098,6 +1172,25 @@ final class TStringOps {
         }
     }
 
+    static long calcStringAttributesUTF16FE(Node location, Object array, int offset, int length) {
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, 1);
+            return runCalcStringAttributesUTF16FE(location, stubArray, stubOffset, length, isNative);
+        } finally {
+            Reference.reachabilityFence(array);
+        }
+    }
+
     static int calcStringAttributesUTF32I(Node location, int[] array, int offset, int length) {
         validateRegion(array, offset, length);
         int stubOffset = Unsafe.ARRAY_INT_BASE_OFFSET + offset;
@@ -1118,6 +1211,25 @@ final class TStringOps {
             }
             validateRegion(stubArray, offset, length, 2);
             return runCalcStringAttributesUTF32(location, stubArray, stubOffset, length, isNative);
+        } finally {
+            Reference.reachabilityFence(array);
+        }
+    }
+
+    static int calcStringAttributesUTF32FE(Node location, Object array, int offset, int length) {
+        try {
+            final boolean isNative = isNativePointer(array);
+            final byte[] stubArray;
+            final long stubOffset;
+            if (isNative) {
+                stubArray = null;
+                stubOffset = offset + nativePointer(array);
+            } else {
+                stubArray = (byte[]) array;
+                stubOffset = offset + Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            }
+            validateRegion(stubArray, offset, length, 2);
+            return runCalcStringAttributesUTF32FE(location, stubArray, stubOffset, length, isNative);
         } finally {
             Reference.reachabilityFence(array);
         }
@@ -1520,6 +1632,30 @@ final class TStringOps {
     /**
      * Intrinsic candidate.
      */
+    private static void runByteSwapS1(Node location,
+                    byte[] stubArrayA, long stubOffsetA, @SuppressWarnings("unused") boolean isNativeA,
+                    byte[] stubArrayB, long stubOffsetB, @SuppressWarnings("unused") boolean isNativeB, int length) {
+        for (int i = 0; i < length; i++) {
+            writeValue(stubArrayB, stubOffsetB, 1, i, Character.reverseBytes((char) readValue(stubArrayA, stubOffsetA, 1, i)));
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    private static void runByteSwapS2(Node location,
+                    byte[] stubArrayA, long stubOffsetA, @SuppressWarnings("unused") boolean isNativeA,
+                    byte[] stubArrayB, long stubOffsetB, @SuppressWarnings("unused") boolean isNativeB, int length) {
+        for (int i = 0; i < length; i++) {
+            writeValue(stubArrayB, stubOffsetB, 2, i, Integer.reverseBytes(readValue(stubArrayA, stubOffsetA, 2, i)));
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
     private static int runCalcStringAttributesLatin1(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
         for (int i = 0; i < length; i++) {
             if (readValueS0(array, offset, i) > 0x7f) {
@@ -1612,12 +1748,24 @@ final class TStringOps {
         }
         for (; i < length; i++) {
             int value = readValueS2I(array, offset, i);
-            if (Integer.toUnsignedLong(value) > 0x10ffff || Encodings.isUTF16Surrogate(value)) {
+            if (!Encodings.isValidUnicodeCodepoint(value)) {
                 return TSCodeRange.getBrokenFixedWidth();
             }
             TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return TSCodeRange.getValidFixedWidth();
+    }
+
+    private static int runCalcStringAttributesUTF32FE(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
+        int i = 0;
+        for (; i < length; i++) {
+            int value = Integer.reverseBytes(readValueS2(array, offset, i));
+            if (!Encodings.isValidUnicodeCodepoint(value)) {
+                return TSCodeRange.getBrokenMultiByte();
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return TSCodeRange.getValidMultiByte();
     }
 
     /**
@@ -1744,6 +1892,28 @@ final class TStringOps {
             }
             return StringAttributes.create(nCodePoints, codeRange);
         }
+    }
+
+    /**
+     * Intrinsic candidate.
+     */
+    private static long runCalcStringAttributesUTF16FE(Node location, byte[] array, long offset, int length, @SuppressWarnings("unused") boolean isNative) {
+        int codeRange = TSCodeRange.getValidMultiByte();
+        int i = 0;
+        int nCodePoints = length;
+        for (; i < length; i++) {
+            char c = Character.reverseBytes((char) readValueS1(array, offset, i));
+            if (Encodings.isUTF16Surrogate(c)) {
+                if (Encodings.isUTF16LowSurrogate(c) || !(i + 1 < length && Encodings.isUTF16LowSurrogate(Character.reverseBytes((char) readValueS1(array, offset, i + 1))))) {
+                    codeRange = TSCodeRange.getBrokenMultiByte();
+                } else {
+                    i++;
+                    nCodePoints--;
+                }
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return StringAttributes.create(nCodePoints, codeRange);
     }
 
     /**
