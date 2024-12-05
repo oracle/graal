@@ -160,7 +160,7 @@
     # BENCHMARKS
 
     bench_hw.e3 + common.labsjdkLatestCE + bench_common + {
-      name: "bench-truffle-jmh",
+      name: "bench-truffle-jmh-linux-amd64",
       notify_groups:: ["truffle_bench"],
       run: [
         ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"],

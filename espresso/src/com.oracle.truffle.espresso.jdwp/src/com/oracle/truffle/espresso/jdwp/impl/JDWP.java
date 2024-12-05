@@ -109,7 +109,7 @@ public final class JDWP {
         static class ALL_CLASSES {
             public static final int ID = 3;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
                 KlassRef[] allLoadedClasses = context.getAllLoadedClasses();
@@ -121,6 +121,7 @@ public final class JDWP {
                     reply.writeString(klass.getTypeAsString());
                     reply.writeInt(klass.getStatus());
                 }
+                controller.fine(() -> "Loaded classes: " + allLoadedClasses.length);
 
                 return new CommandResult(reply);
             }
@@ -146,7 +147,6 @@ public final class JDWP {
 
             static CommandResult createReply(Packet packet, JDWPContext context) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-
                 Object[] threadGroups = context.getTopLevelThreadGroups();
                 reply.writeInt(threadGroups.length);
                 for (Object threadGroup : threadGroups) {

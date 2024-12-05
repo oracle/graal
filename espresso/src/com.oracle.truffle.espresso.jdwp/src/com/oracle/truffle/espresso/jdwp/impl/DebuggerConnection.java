@@ -201,7 +201,7 @@ public final class DebuggerConnection implements Commands {
             }
             // Now, begin processing packets when they start to flow from the debugger
             try {
-                while (!Thread.currentThread().isInterrupted()) {
+                while (!Thread.currentThread().isInterrupted() && !controller.isClosing()) {
                     try {
                         processPacket(Packet.fromByteArray(debuggerConnection.connection.readPacket()));
                     } catch (IOException e) {
@@ -242,7 +242,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.CLASSES_BY_SIGNATURE.createReply(packet, controller, context);
                                     break;
                                 case JDWP.VirtualMachine.ALL_CLASSES.ID:
-                                    result = JDWP.VirtualMachine.ALL_CLASSES.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.ALL_CLASSES.createReply(packet, context, controller);
                                     break;
                                 case JDWP.VirtualMachine.ALL_THREADS.ID:
                                     result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context, controller);

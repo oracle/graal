@@ -41,7 +41,6 @@
 package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
-import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.file.NoSuchFileException;
@@ -657,8 +656,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static void emitWarning(String message, Object... args) {
-        PrintStream out = System.err;
-        out.printf(message + "%n", args);
+        PolyglotEngineImpl.logFallback(String.format(message + "%n", args));
     }
 
     private static final class HostLanguageProvider extends TruffleLanguageProvider {
