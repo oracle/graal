@@ -47,7 +47,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
 
-import java.io.PrintStream;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -333,14 +332,12 @@ final class InternalResourceRoots {
 
     static void logInternalResourceEvent(String message, Object... args) {
         if (isTraceInternalResourceEvents()) {
-            PrintStream out = System.err;
-            out.printf("[engine][resource] " + message + "%n", args);
+            PolyglotEngineImpl.logFallback(String.format("[engine][resource] " + message + "%n", args));
         }
     }
 
     private static void emitWarning(String message, Object... args) {
-        PrintStream out = System.err;
-        out.printf(message + "%n", args);
+        PolyglotEngineImpl.logFallback(String.format(message + "%n", args));
     }
 
     record Root(Path path, Kind kind, List<InternalResourceCache> caches) {
