@@ -49,7 +49,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
     protected long layoutTypeSignature;
 
     public StructureTypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                              long compressedTypeSignature, long layoutTypeSignature, long compressedLayoutTypeSignature) {
+                    long compressedTypeSignature, long layoutTypeSignature) {
         super(typeName, size, classOffset, typeSignature, compressedTypeSignature);
         this.layoutTypeSignature = layoutTypeSignature;
 
@@ -99,5 +99,9 @@ public abstract class StructureTypeEntry extends TypeEntry {
         }
 
         return builder.toString();
+    }
+
+    public String getModifiersString(int modifiers) {
+        return memberModifiers(modifiers);
     }
 }

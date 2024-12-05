@@ -31,7 +31,7 @@ public class HeaderTypeEntry extends StructureTypeEntry {
     private final FieldEntry hubField;
 
     public HeaderTypeEntry(String typeName, int size, long typeSignature, FieldEntry hubField) {
-        super(typeName, size, -1, typeSignature, typeSignature, typeSignature, typeSignature);
+        super(typeName, size, -1, typeSignature, typeSignature, typeSignature);
         this.hubField = hubField;
     }
 

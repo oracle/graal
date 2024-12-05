@@ -24,6 +24,13 @@
  */
 package com.oracle.svm.core.debug;
 
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.util.stream.Stream;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
@@ -35,18 +42,13 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
+
 import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.util.stream.Stream;
-
 
 public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
@@ -54,9 +56,9 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     private final CompilationResult compilation;
     private final long codeAddress;
 
-
-    public SubstrateDebugInfoProvider(SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess, long codeAddress) {
-        super(runtimeConfiguration, metaAccess, ImageSingletons.lookup(SubstrateBFDNameProvider.class), SubstrateOptions.getRuntimeSourceDestDir());
+    public SubstrateDebugInfoProvider(DebugContext debug, SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess,
+                    long codeAddress) {
+        super(debug, runtimeConfiguration, metaAccess, ImageSingletons.lookup(SubstrateBFDNameProvider.class), SubstrateOptions.getRuntimeSourceDestDir());
         this.method = method;
         this.compilation = compilation;
         this.codeAddress = codeAddress;
@@ -129,10 +131,10 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
             return 0;
         }
     }
-    
+
     @Override
     protected TypeEntry createTypeEntry(SharedType type) {
-        String typeName = type.toJavaName(); //stringTable.uniqueDebugString(idType.toJavaName());
+        String typeName = type.toJavaName(); // stringTable.uniqueDebugString(idType.toJavaName());
         LoaderEntry loaderEntry = lookupLoaderEntry(type);
         int size = getTypeSize(type);
         long classOffset = -1;
@@ -146,11 +148,10 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         } else {
             // otherwise we have a structured type
             long layoutTypeSignature = getTypeSignature(LAYOUT_PREFIX + typeName + loaderName);
-            long compressedLayoutTypeSignature = useHeapBase ? getTypeSignature(INDIRECT_PREFIX + LAYOUT_PREFIX + typeName + loaderName) : layoutTypeSignature;
             if (type.isArray()) {
                 TypeEntry elementTypeEntry = lookupTypeEntry((SharedType) type.getComponentType());
                 return new ArrayTypeEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
-                        layoutTypeSignature, compressedLayoutTypeSignature, elementTypeEntry, loaderEntry);
+                                layoutTypeSignature, elementTypeEntry, loaderEntry);
             } else {
                 // otherwise this is a class entry
                 ClassEntry superClass = type.getSuperclass() == null ? null : (ClassEntry) lookupTypeEntry((SharedType) type.getSuperclass());
@@ -158,10 +159,10 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
                 if (isForeignWordType(type)) {
                     // we just need the correct type signatures here
                     return new ClassEntry(typeName, size, classOffset, typeSignature, typeSignature, layoutTypeSignature,
-                            layoutTypeSignature, superClass, fileEntry, loaderEntry);
+                                    superClass, fileEntry, loaderEntry);
                 } else {
                     return new ClassEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
-                            layoutTypeSignature, compressedLayoutTypeSignature, superClass, fileEntry, loaderEntry);
+                                    layoutTypeSignature, superClass, fileEntry, loaderEntry);
                 }
             }
         }

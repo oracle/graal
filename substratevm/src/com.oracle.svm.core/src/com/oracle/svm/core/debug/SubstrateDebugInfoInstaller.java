@@ -1,5 +1,21 @@
 package com.oracle.svm.core.debug;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
+
 import com.oracle.objectfile.BasicNobitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;
@@ -13,30 +29,15 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
+
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
-import org.graalvm.word.Pointer;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
 
 public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
 
     private final SubstrateDebugInfoProvider substrateDebugInfoProvider;
-    private final DebugContext debugContext;
     private final ObjectFile objectFile;
     private final ArrayList<ObjectFile.Element> sortedObjectFileElements;
     private final int debugInfoSize;
@@ -61,9 +62,9 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
         }
     }
 
-    private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, MetaAccessProvider metaAccess, RuntimeConfiguration runtimeConfiguration, Pointer code, int codeSize) {
-        this.debugContext = debugContext;
-        substrateDebugInfoProvider = new SubstrateDebugInfoProvider(method, compilation, runtimeConfiguration, metaAccess, code.rawValue());
+    private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, MetaAccessProvider metaAccess, RuntimeConfiguration runtimeConfiguration,
+                    Pointer code, int codeSize) {
+        substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debugContext, method, compilation, runtimeConfiguration, metaAccess, code.rawValue());
 
         int pageSize = NumUtil.safeToInt(ImageSingletons.lookup(VirtualMemoryProvider.class).getGranularity().rawValue());
         objectFile = ObjectFile.createRuntimeDebugInfo(pageSize);
@@ -73,15 +74,15 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
         debugInfoSize = objectFile.bake(sortedObjectFileElements);
 
         if (debugContext.isLogEnabled()) {
-            dumpObjectFile();
+            dumpObjectFile(debugContext);
         }
     }
 
-    private void dumpObjectFile() {
+    private void dumpObjectFile(DebugContext debugContext) {
         StringBuilder sb = new StringBuilder(substrateDebugInfoProvider.getCompilationName()).append(".debug");
         try (FileChannel dumpFile = FileChannel.open(Paths.get(sb.toString()),
-                StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
-                StandardOpenOption.CREATE)) {
+                        StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
+                        StandardOpenOption.CREATE)) {
             ByteBuffer buffer = dumpFile.map(FileChannel.MapMode.READ_WRITE, 0, debugInfoSize);
             objectFile.writeBuffer(sortedObjectFileElements, buffer);
         } catch (IOException e) {
@@ -197,12 +198,12 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
 
     private static String toString(Handle handle) {
         return "DebugInfoHandle(handle = 0x" + Long.toHexString(handle.getRawHandle().rawValue()) +
-                ", address = 0x" +
-                Long.toHexString(NonmovableArrays.addressOf(handle.getDebugInfoData(), 0).rawValue()) +
-                ", size = " +
-                NonmovableArrays.lengthOf(handle.getDebugInfoData()) +
-                ", handleState = " +
-                handle.getState() +
-                ")";
+                        ", address = 0x" +
+                        Long.toHexString(NonmovableArrays.addressOf(handle.getDebugInfoData(), 0).rawValue()) +
+                        ", size = " +
+                        NonmovableArrays.lengthOf(handle.getDebugInfoData()) +
+                        ", handleState = " +
+                        handle.getState() +
+                        ")";
     }
 }

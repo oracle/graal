@@ -38,10 +38,10 @@ public class ForeignTypeEntry extends ClassEntry {
     private final boolean isFloat;
 
     public ForeignTypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                            long layoutTypeSignature, ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader,
-                            String typedefName, ForeignTypeEntry parent, TypeEntry pointerTo, boolean isWord,
-                            boolean isStruct, boolean isPointer, boolean isInteger, boolean isSigned, boolean isFloat) {
-        super(typeName, size, classOffset, typeSignature, typeSignature, layoutTypeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+                    long layoutTypeSignature, ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader,
+                    String typedefName, ForeignTypeEntry parent, TypeEntry pointerTo, boolean isWord,
+                    boolean isStruct, boolean isPointer, boolean isInteger, boolean isSigned, boolean isFloat) {
+        super(typeName, size, classOffset, typeSignature, typeSignature, layoutTypeSignature, superClass, fileEntry, loader);
         this.typedefName = typedefName;
         this.parent = parent;
         this.pointerTo = pointerTo;
