@@ -1619,6 +1619,12 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 del benchmarks["log-regression"]
                 del benchmarks["naive-bayes"]
 
+        if self.version() in ["0.16.0"]:
+            del benchmarks["chi-square"]
+            del benchmarks["gauss-mix"]
+            del benchmarks["page-rank"]
+            del benchmarks["movie-lens"]
+
         return benchmarks
 
     def completeBenchmarkList(self, bmSuiteArgs):
