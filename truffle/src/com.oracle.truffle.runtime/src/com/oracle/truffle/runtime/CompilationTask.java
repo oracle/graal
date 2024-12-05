@@ -243,8 +243,9 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             // Any non-compilation action (e.g. compiler init) is higher priority.
             return true;
         }
-        if (this.isOSR && other.isLastTier()) {
-            return true;
+        if ((this.isOSR ^ other.isOSR) && this.isLastTier() && other.isLastTier()) {
+            // Any OSR task has higher priority than any non-OSR last tier task
+            return this.isOSR;
         }
         int tier = tier();
         if (engineData.traversingFirstTierPriority && tier != other.tier()) {
