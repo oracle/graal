@@ -758,7 +758,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int lengthPos = pos;
 
         /* Only write a TU preamble if we will write a new layout type. */
-        if (foreignTypeEntry.isWord() || foreignTypeEntry.isIntegral() || foreignTypeEntry.isFloat() || foreignTypeEntry.isStruct()) {
+        if (foreignTypeEntry.isWord() || foreignTypeEntry.isInteger() || foreignTypeEntry.isFloat() || foreignTypeEntry.isStruct()) {
             pos = writeTUPreamble(context, foreignTypeEntry.getLayoutTypeSignature(), loaderId, buffer, pos);
         }
 
@@ -787,13 +787,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 }
             }
             log(context, "  [0x%08x] foreign pointer type %s referent 0x%x (%s)", pos, foreignTypeEntry.getTypeName(), targetType.getTypeSignature(), targetType.getTypeName());
-            /*
-             * Setting the layout type to the type we point to reuses an available type unit, so we
-             * do not have to write are separate type unit.
-             *
-             * As we do not write anything, we can just return the initial position.
-             */
-            foreignTypeEntry.setLayoutTypeSignature(targetType.getTypeSignature());
+            // As we do not write anything, we can just return the initial position.
             return p;
         }
 

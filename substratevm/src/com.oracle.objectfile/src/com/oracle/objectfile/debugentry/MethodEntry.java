@@ -28,6 +28,8 @@ package com.oracle.objectfile.debugentry;
 
 import java.util.List;
 
+import jdk.vm.ci.meta.JavaKind;
+
 public class MethodEntry extends MemberEntry {
     private final LocalEntry thisParam;
     private final List<LocalEntry> paramInfos;
@@ -45,9 +47,9 @@ public class MethodEntry extends MemberEntry {
 
     @SuppressWarnings("this-escape")
     public MethodEntry(FileEntry fileEntry, int line, String methodName, StructureTypeEntry ownerType,
-                       TypeEntry valueType, int modifiers, List<LocalEntry> paramInfos, LocalEntry thisParam,
-                       String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor, int vtableOffset,
-                       int firstLocalSlot, List<LocalEntry> locals) {
+                    TypeEntry valueType, int modifiers, List<LocalEntry> paramInfos, LocalEntry thisParam,
+                    String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor, int vtableOffset,
+                    int firstLocalSlot, List<LocalEntry> locals) {
         super(fileEntry, line, methodName, ownerType, valueType, modifiers);
         this.paramInfos = paramInfos;
         this.thisParam = thisParam;
@@ -100,7 +102,7 @@ public class MethodEntry extends MemberEntry {
         return thisParam;
     }
 
-    public LocalEntry getLocalEntry(String name, int slot, TypeEntry type) {
+    public LocalEntry lookupLocalEntry(String name, int slot, TypeEntry type, JavaKind kind, int line) {
         if (slot < 0) {
             return null;
         }
@@ -122,6 +124,14 @@ public class MethodEntry extends MemberEntry {
                     return local;
                 }
             }
+
+            LocalEntry local = new LocalEntry(name, type, kind, slot, line);
+            synchronized (locals) {
+                if (!locals.contains(local)) {
+                    locals.add(local);
+                }
+            }
+            return local;
         }
 
         return null;

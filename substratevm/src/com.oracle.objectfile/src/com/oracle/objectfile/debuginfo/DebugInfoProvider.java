@@ -41,6 +41,7 @@ public interface DebugInfoProvider {
     void installDebugInfo();
 
     boolean useHeapBase();
+
     boolean isRuntimeCompilation();
 
     /**
@@ -73,10 +74,10 @@ public interface DebugInfoProvider {
     StringTable getStringTable();
 
     List<TypeEntry> typeEntries();
+
     List<CompiledMethodEntry> compiledMethodEntries();
 
     String cachePath();
-
 
     enum FrameSizeChangeType {
         EXTEND,

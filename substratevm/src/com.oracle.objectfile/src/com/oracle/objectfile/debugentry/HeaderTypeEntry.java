@@ -29,7 +29,7 @@ package com.oracle.objectfile.debugentry;
 public class HeaderTypeEntry extends StructureTypeEntry {
 
     public HeaderTypeEntry(String typeName, int size, long typeSignature) {
-        super(typeName, size, -1, typeSignature, typeSignature, typeSignature, typeSignature);
+        super(typeName, size, -1, typeSignature, typeSignature, typeSignature);
     }
 
     @Override

@@ -31,9 +31,9 @@ public class ArrayTypeEntry extends StructureTypeEntry {
     private final LoaderEntry loader;
 
     public ArrayTypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                          long compressedTypeSignature, long layoutTypeSignature, long compressedLayoutTypeSignature,
-                          TypeEntry elementType, LoaderEntry loader) {
-        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, compressedLayoutTypeSignature);
+                    long compressedTypeSignature, long layoutTypeSignature,
+                    TypeEntry elementType, LoaderEntry loader) {
+        super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature);
         this.elementType = elementType;
         this.loader = loader;
     }

@@ -32,8 +32,6 @@ import java.util.List;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 
-import jdk.graal.compiler.debug.DebugContext;
-
 /**
  * An abstract class which indexes the information presented by the DebugInfoProvider in an
  * organization suitable for use by subclasses targeting a specific binary format.
@@ -91,9 +89,7 @@ public abstract class DebugInfoBase {
 
     private final List<ClassEntry> instanceClassesWithCompilation = new ArrayList<>();
 
-
     private final List<PrimitiveTypeEntry> primitiveTypes = new ArrayList<>();
-
 
     private final List<ArrayTypeEntry> arrayTypes = new ArrayList<>();
     /**
@@ -168,18 +164,18 @@ public abstract class DebugInfoBase {
      * A prefix used to label indirect types used to ensure gdb performs oop reference --> raw
      * address translation
      */
-    public static final String INDIRECT_PREFIX = "_z_.";
+    public static final String COMPRESSED_PREFIX = "_z_.";
     /*
      * A prefix used for type signature generation to generate unique type signatures for type
      * layout type units
      */
     public static final String LAYOUT_PREFIX = "_layout_.";
+
     /*
      * The name of the type for header field hub which needs special case processing to remove tag
      * bits
      */
     public static final String HUB_TYPE_NAME = "java.lang.Class";
-
 
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
@@ -295,7 +291,6 @@ public abstract class DebugInfoBase {
         assert objectClass != null;
         return objectClass;
     }
-
 
     /* Accessors to query the debug info model. */
     public ByteOrder getByteOrder() {
