@@ -928,14 +928,17 @@ public interface Frame {
      * Copies values from this frame to the given frame. The frames are required to have the same
      * {@link Frame#getFrameDescriptor() frame descriptors}.
      *
-     * @param srcOffset the slot of the first local variable
-     * @param dst the destination frame
-     * @param dstOffset the first slot to copy locals into
+     * @param sourceOffset the slot of the first local variable
+     * @param destination the destination frame
+     * @param destinationOffset the first slot to copy locals into
      * @param length the number of slots to copy
+     * @throws IllegalArgumentException if a frame using a different {@link FrameDescriptor} is
+     *             passed.
+     * @throws IndexOutOfBoundsException if an invalid offset or length was passed.
      * @since 24.2
      */
     @SuppressWarnings("unused")
-    default void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
+    default void copyTo(int sourceOffset, Frame destination, int destinationOffset, int length) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
