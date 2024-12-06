@@ -90,8 +90,7 @@ public class TruffleInvocationPlugins {
         plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/bytecode/BytecodeDSLUncheckedAccess;"));
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.bytecode.BytecodeDSLUncheckedAccess", replacements);
 
-        r.register(new InlineOnlyInvocationPlugin("uncheckedCast", Receiver.class, Object.class,
-                        Class.class) {
+        r.register(new InvocationPlugin("uncheckedCast", Receiver.class, Object.class, Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode object, ValueNode clazz) {
@@ -110,6 +109,16 @@ public class TruffleInvocationPlugins {
                     b.push(JavaKind.Object, object);
                     return true;
                 }
+            }
+
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return true;
             }
         });
     }
