@@ -331,11 +331,11 @@ In case the field-value-access metadata is missing, the following methods will t
 
 ### Unsafe Allocation of a Type
 
-For unsafe allocation of a type via `sun.misc.Unsafe#allocateInstance(Class<?>)`, or from native code via `AllocObject(jClass)`, we must provide the following metadata:
+For unsafe allocation of a type via `sun.misc.Unsafe#allocateInstance(Class<?>)`, or from native code via `AllocObject(jClass)`, the type must be registered for reflection.
+The following metadata is sufficient:
 ```json
 {
-  "type": "FullyQualifiedUnsafeAllocatedType",
-  "unsafeAllocated": true
+  "type": "FullyQualifiedUnsafeAllocatedType"
 }
 ```
 Otherwise, these methods will throw a `MissingReflectionRegistrationError`.
@@ -360,8 +360,7 @@ The overall definition of a type in JSON can have the following values:
   "allDeclaredMethods": true,
   "allPublicMethods": true,
   "allDeclaredFields": true,
-  "allPublicFields": true,
-  "unsafeAllocated": true
+  "allPublicFields": true
 }
 ```
 
@@ -430,13 +429,12 @@ As a convenience, one can allow method invocation for groups of methods by addin
 `allDeclaredConstructors` and `allDeclaredMethods` allow calls invocations of methods declared on a given type.
 `allPublicConstructors` and `allPublicMethods` allow invocations of all public methods defined on a type and all of its supertypes.
 
-To allocate objects of a type with `AllocObject`, the metadata must be stored in the `reflection` section:
+To allocate objects of a type with `AllocObject`, the type must be registered in the `reflection` section:
 ```json
 {
   "reflection": [
     {
-      "type": "jni.accessed.Type",
-      "unsafeAllocated": true
+      "type": "jni.unsafe.allocated.Type"
     }
   ]
 }
@@ -670,21 +668,9 @@ In rare cases an application might explicitly make calls to:
 ```java
     ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall);
 ```
-In which the passed `constructorToCall` differs from what would automatically be used if regular serialization of `cl`.
-
-To also support such serialization use cases, it is possible to register serialization for a class with a
-custom `constructorToCall`.
-For example, to allow serialization of `org.apache.spark.SparkContext$$anonfun$hadoopFile$1`, use the declared constructor of `java.lang.Object` as a custom `targetConstructor`, use:
-```json
-{
-  "serialization": [
-    {
-      "type": "<fully-qualified-class-name>",
-      "customTargetConstructorClass": "<custom-target-constructor-class>"
-    }
-  ]
-}
-```
+The specified `constructorToCall` differs from the one that would be automatically used during regular serialization of `cl`.
+When a class is registered for run-time serialization, all potential custom constructors are automatically registered.
+As a result, this use case does not require any additional metadata.
 
 ## Sample Reachability Metadata
 
@@ -711,8 +697,7 @@ See below is a sample reachability metadata configuration that you can use in _r
       "allDeclaredFields": true,
       "allPublicFields": true,
       "allDeclaredMethods": true,
-      "allPublicMethods": true,
-      "unsafeAllocated": true
+      "allPublicMethods": true
     }
   ],
   "jni": [
@@ -751,8 +736,7 @@ See below is a sample reachability metadata configuration that you can use in _r
   ],
   "serialization": [
     {
-      "type": "serialized.Type",
-      "customTargetConstructorClass": "optional.serialized.super.Type"
+      "type": "serialized.Type"
     }
   ]
 }
