@@ -227,7 +227,7 @@ final class InternalResourceCache {
         Objects.requireNonNull(resourceEnvProvider, "ResourceEnvProvider must be non-null.");
         assert Thread.holdsLock(this) : "Unpacking must be called under lock";
         assert owningRoot.kind() == InternalResourceRoots.Root.Kind.VERSIONED;
-        assert !ImageInfo.inImageRuntimeCode() : "Must not be called in the image execution time.";
+        assert !ImageInfo.inImageRuntimeCode() || aggregatedFileListHash != null : "InternalResource#unpackFiles must not be called in the image execution time.";
         InternalResource resource = resourceFactory.get();
         InternalResource.Env env = resourceEnvProvider.apply(resource);
         String versionHash = aggregatedFileListHash == null || env.inNativeImageBuild() ? resource.versionHash(env)

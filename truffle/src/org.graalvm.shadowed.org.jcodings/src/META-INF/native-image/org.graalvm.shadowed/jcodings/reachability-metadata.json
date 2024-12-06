@@ -1,0 +1,17 @@
+{
+  "resources": [
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.truffle.NeedsAllEncodings"
+      },
+      "module": "org.graalvm.shadowed.jcodings",
+      "glob": "org/graalvm/shadowed/org/jcodings/tables/*.bin"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.truffle.NeedsAllEncodings"
+      },
+      "glob": "org/graalvm/shadowed/org/jcodings/tables/*.bin"
+    }
+  ]
+}
