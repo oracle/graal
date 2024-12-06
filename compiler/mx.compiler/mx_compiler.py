@@ -834,6 +834,10 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
         vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
         vmArgs.append('-esa')
 
+        if '-JUnitMaxTestTime' not in mainClassArgs:
+            # The max time (in seconds) for any compiler unit test
+            mainClassArgs.extend(['-JUnitMaxTestTime', '300'])
+
         # Always run unit tests without UseJVMCICompiler unless explicitly requested
         if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
             vmArgs.append('-XX:-UseJVMCICompiler')
