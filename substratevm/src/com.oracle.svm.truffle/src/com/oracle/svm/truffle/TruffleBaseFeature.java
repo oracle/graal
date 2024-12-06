@@ -62,7 +62,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.log.Log;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
@@ -72,8 +71,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -99,6 +97,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Pod;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.target.ReflectionSubstitutionSupport;
@@ -554,10 +553,6 @@ public final class TruffleBaseFeature implements InternalFeature {
             access.registerObjectReachableCallback(TruffleFile.class, (a1, file, reason) -> checkTruffleFile(classInitializationSupport, file));
         }
 
-        if (needsAllEncodings) {
-            RuntimeResourceSupport.singleton().addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$", "Truffle needsAllEncodings flag is set");
-        }
-
         if (includeLanguageResources) {
             Path resourcesForNativeImageTempDir;
             try {
@@ -570,7 +565,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                                 new BiConsumer<Module, Pair<String, byte[]>>() {
                                     @Override
                                     public void accept(Module module, Pair<String, byte[]> resource) {
-                                        RuntimeResourceSupport.singleton().injectResource(module, resource.getLeft(), resource.getRight(), "Truffle Language Internal Resources");
+                                        RuntimeResourceAccess.addResource(module, resource.getLeft(), resource.getRight());
                                     }
                                 });
             } catch (Exception e) {
@@ -608,6 +603,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (needsAllEncodings) {
+            access.registerAsUsed(NeedsAllEncodings.class);
+        }
         if (graalGraphObjectReplacer == null) {
             BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
             SubstrateWordTypes wordTypes = new SubstrateWordTypes(config.getMetaAccess(), ConfigurationValues.getWordKind());
