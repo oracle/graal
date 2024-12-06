@@ -1238,8 +1238,8 @@ class SvmSupport(object):
         ])
 
         # Prefix native-image builds that print straight to stdout or stderr with [<output_filename>:<pid>]
-        out = out or mx.PrefixCapture(sys.stdout.write, basename(output_file))
-        err = err or mx.PrefixCapture(sys.stderr.write, basename(output_file))
+        out = out or mx.PrefixCapture(lambda l: mx.log(l, end=''), basename(output_file))
+        err = err or mx.PrefixCapture(lambda l: mx.log(l, end='', file=sys.stderr), basename(output_file))
 
         mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
 
