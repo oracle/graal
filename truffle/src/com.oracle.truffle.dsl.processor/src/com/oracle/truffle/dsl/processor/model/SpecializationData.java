@@ -304,7 +304,7 @@ public final class SpecializationData extends TemplateMethod {
     }
 
     public boolean hasFrameParameter() {
-        for (Parameter p : getSignatureParameters()) {
+        for (Parameter p : getParameters()) {
             if (ElementUtils.typeEquals(p.getType(), types.VirtualFrame) || ElementUtils.typeEquals(p.getType(), types.Frame)) {
                 return true;
             }
