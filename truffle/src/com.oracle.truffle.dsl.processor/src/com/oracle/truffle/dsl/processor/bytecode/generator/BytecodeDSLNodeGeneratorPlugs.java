@@ -232,7 +232,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
             rootNode.emitOnSpecialize(builder, "$bytecode", "$bci", BytecodeRootNodeElement.readInstruction("$bc", "$bci"), specialization.getNode().getNodeId() + "$" + specialization.getId());
         }
 
-        if (instruction.getQuickeningRoot().hasQuickenings()) {
+        if (instruction.getQuickeningRoot().hasSpecializedQuickenings()) {
             if (quickenMethod == null) {
                 quickenMethod = createQuickenMethod(nodeFactory, frameState);
             }
@@ -284,11 +284,11 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         CodeTreeBuilder b = method.createBuilder();
         b.declaration(context.getType(short.class), "newInstruction");
         Set<Integer> boxingEliminated = new TreeSet<>();
-        for (InstructionModel quickening : instruction.quickenedInstructions) {
-            if (quickening.isReturnTypeQuickening()) {
-                // not a valid target instruction -> selected only by parent
-                continue;
-            }
+        List<InstructionModel> relevantQuickenings = instruction.quickenedInstructions.stream() //
+                        .filter(q -> !q.isReturnTypeQuickening() /* selected only by parent */ && q.filteredSpecializations != null) //
+                        .toList();
+
+        for (InstructionModel quickening : relevantQuickenings) {
             for (int index = 0; index < quickening.signature.dynamicOperandCount; index++) {
                 if (model.isBoxingEliminated(quickening.signature.getSpecializedType(index))) {
                     boxingEliminated.add(index);
@@ -333,11 +333,7 @@ public class BytecodeDSLNodeGeneratorPlugs implements NodeGeneratorPlugs {
         }
 
         boolean elseIf = false;
-        for (InstructionModel quickening : instruction.quickenedInstructions) {
-            if (quickening.isReturnTypeQuickening()) {
-                // not a valid target instruction -> selected only by parent
-                continue;
-            }
+        for (InstructionModel quickening : relevantQuickenings) {
             elseIf = b.startIf(elseIf);
             CodeTree activeCheck = factory.createOnlyActive(frameState, quickening.filteredSpecializations, instruction.nodeData.getReachableSpecializations());
             b.tree(activeCheck);

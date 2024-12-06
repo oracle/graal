@@ -655,7 +655,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                                 break;
                             }
                         }
-                        if (isBoxingEliminatedOverload && operation.instruction.nodeData.needsRewrites(context)) {
+                        if (isBoxingEliminatedOverload && operation.instruction.nodeData.getReachableSpecializations().size() > 1) {
                             for (List<TypeMirror> signature : expandedSignatures) {
                                 List<TypeMirror> parameterTypes = signature.subList(1, signature.size());
                                 boxingEliminationQuickenings.add(new ResolvedQuickenDecision(operation, List.of(specialization), parameterTypes));
@@ -775,6 +775,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             if (!overloadedTypes.isEmpty()) {
                                 InstructionModel specialization = model.quickenInstruction(instruction, instruction.signature, "Generic");
                                 specialization.returnTypeQuickening = false;
+                                specialization.generic = true;
                             }
 
                         }
@@ -809,6 +810,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                             InstructionModel specialization = model.quickenInstruction(instruction,
                                             new Signature(context.getType(void.class), List.of(context.getType(Object.class))),
                                             "Generic");
+                            specialization.generic = true;
                             specialization.returnTypeQuickening = false;
 
                             InstructionModel returnTypeQuickening = model.quickenInstruction(instruction,
@@ -837,6 +839,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         InstructionModel genericQuickening = model.quickenInstruction(instruction,
                                         instruction.signature,
                                         "generic");
+                        genericQuickening.generic = true;
                         genericQuickening.returnTypeQuickening = false;
                         genericQuickening.specializedType = null;
                         break;
@@ -854,6 +857,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                         genericQuickening = model.quickenInstruction(instruction,
                                         instruction.signature, "generic");
+                        genericQuickening.generic = true;
                         genericQuickening.returnTypeQuickening = false;
                         genericQuickening.specializedType = null;
                         break;
@@ -882,6 +886,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
 
                         genericQuickening = model.quickenInstruction(instruction,
                                         instruction.signature, "generic");
+                        genericQuickening.generic = true;
                         genericQuickening.returnTypeQuickening = false;
                         genericQuickening.specializedType = null;
                         break;
@@ -909,6 +914,7 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         genericQuickening = model.quickenInstruction(instruction,
                                         instruction.signature,
                                         "generic");
+                        genericQuickening.generic = true;
                         genericQuickening.returnTypeQuickening = false;
                         genericQuickening.specializedType = null;
 
@@ -936,9 +942,9 @@ public class BytecodeDSLParser extends AbstractParser<BytecodeDSLModels> {
                         genericQuickening = model.quickenInstruction(instruction,
                                         instruction.signature,
                                         "generic");
+                        genericQuickening.generic = true;
                         genericQuickening.returnTypeQuickening = false;
                         genericQuickening.specializedType = null;
-
                         break;
                 }
 
