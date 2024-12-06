@@ -32,6 +32,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.util.LogUtils;
+
 final class SerializationMetadataParser<C> extends SerializationConfigurationParser<C> {
 
     SerializationMetadataParser(ConfigurationConditionResolver<C> conditionResolver, RuntimeSerializationSupport<C> serializationSupport, boolean strictConfiguration) {
@@ -45,6 +47,8 @@ final class SerializationMetadataParser<C> extends SerializationConfigurationPar
             parseSerializationTypes(asList(serializationJson, "The serialization property must be an array of serialization descriptor object"), false);
         }
     }
+
+    private boolean customConstructorWarningTriggered = false;
 
     @Override
     protected void parseSerializationDescriptorObject(EconomicMap<String, Object> data, boolean lambdaCapturingType) {
@@ -61,7 +65,11 @@ final class SerializationMetadataParser<C> extends SerializationConfigurationPar
             return;
         }
 
-        Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
-        registerType(targetSerializationClass.get(), condition.get(), optionalCustomCtorValue);
+        if (!customConstructorWarningTriggered && data.containsKey(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY)) {
+            customConstructorWarningTriggered = true;
+            LogUtils.warning("\"" + CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY +
+                            "\" is deprecated in reachability-metadata.json. All serializable classes can be instantiated through any superclass constructor without the use of the flag.");
+        }
+        registerType(targetSerializationClass.get(), condition.get());
     }
 }

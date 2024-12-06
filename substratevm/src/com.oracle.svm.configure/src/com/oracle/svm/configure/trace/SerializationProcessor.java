@@ -57,7 +57,7 @@ public class SerializationProcessor extends AbstractProcessor {
         SerializationConfiguration serializationConfiguration = configurationSet.getSerializationConfiguration();
 
         if ("ObjectStreamClass.<init>".equals(function) || "ObjectInputStream.readClassDescriptor".equals(function)) {
-            expectSize(args, 2);
+            expectSize(args, 1);
 
             if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null), false)) {
                 return;
@@ -68,7 +68,7 @@ public class SerializationProcessor extends AbstractProcessor {
             if (className.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
                 serializationConfiguration.registerLambdaCapturingClass(condition, className);
             } else {
-                serializationConfiguration.registerWithTargetConstructorClass(condition, className, (String) args.get(1));
+                serializationConfiguration.register(condition, className);
             }
         } else if ("SerializedLambda.readResolve".equals(function)) {
             expectSize(args, 1);
