@@ -24,9 +24,8 @@
  */
 package jdk.graal.compiler.truffle.test;
 
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.ReturnNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
+import static org.junit.Assert.assertNull;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -34,10 +33,15 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.runtime.OptimizedCallTarget;
+
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 public class FrameDescriptorTest extends PartialEvaluationTest {
 
@@ -128,5 +132,91 @@ public class FrameDescriptorTest extends PartialEvaluationTest {
         Object obj = new Object();
         FrameDescriptor fd = builder.info("foo").info(obj).build();
         assertEmptyFrameDescriptor(fd, obj);
+    }
+
+    @Test
+    public void testIllegalDefaultFails() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder().defaultValueIllegal();
+        int index0 = builder.addSlots(1);
+
+        FrameDescriptor fd = builder.build();
+        FrameSlotTypeException e;
+
+        RootNode root1 = new RootNode(null, fd) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return frame.getObject(index0);
+            }
+        };
+
+        // fails in interpreted
+        e = Assert.assertThrows(FrameSlotTypeException.class, () -> {
+            root1.getCallTarget().call();
+        });
+        Assert.assertEquals("Frame slot kind Object expected, but got Illegal at frame slot index 0.", e.getMessage());
+
+        compile(root1);
+
+        // fails in compiled
+        e = Assert.assertThrows(FrameSlotTypeException.class, () -> {
+            root1.getCallTarget().call();
+        });
+        Assert.assertEquals("Frame slot kind Object expected, but got Illegal at frame slot index 0.", e.getMessage());
+    }
+
+    @Test
+    public void testIllegalDefaultNull() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder().defaultValueIllegal();
+        int index0 = builder.addSlots(1);
+        FrameDescriptor fd = builder.build();
+
+        RootNode root1 = new RootNode(null, fd) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setObject(index0, null);
+                return frame.getObject(index0);
+            }
+        };
+
+        assertNull(root1.getCallTarget().call());
+        compile(root1);
+        assertNull(root1.getCallTarget().call());
+    }
+
+    @Test
+    public void testIllegalDefaultCleared() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder().defaultValueIllegal();
+        int index0 = builder.addSlots(1);
+        FrameDescriptor fd = builder.build();
+        FrameSlotTypeException e;
+
+        RootNode root1 = new RootNode(null, fd) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                frame.setObject(index0, null);
+                frame.clear(index0);
+                return frame.getObject(index0);
+            }
+        };
+
+        // fails in interpreted
+        e = Assert.assertThrows(FrameSlotTypeException.class, () -> {
+            root1.getCallTarget().call();
+        });
+        Assert.assertEquals("Frame slot kind Object expected, but got Illegal at frame slot index 0.", e.getMessage());
+
+        compile(root1);
+
+        // fails in compiled
+        e = Assert.assertThrows(FrameSlotTypeException.class, () -> {
+            root1.getCallTarget().call();
+        });
+        Assert.assertEquals("Frame slot kind Object expected, but got Illegal at frame slot index 0.", e.getMessage());
+    }
+
+    private static void compile(RootNode root) {
+        OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        target.compile(true);
+        target.waitForCompilation();
     }
 }
