@@ -317,7 +317,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstan
 
     @TruffleBoundary
     private static String convertHidden(Symbol<Type> type, int idx) {
-        return type.subSequence(0, idx) + "." + type.subSequence(idx + 1, type.length() - idx - 1);
+        return type.subSequence(0, idx) + "." + type.subSequence(idx + 1);
     }
 
     @TruffleBoundary

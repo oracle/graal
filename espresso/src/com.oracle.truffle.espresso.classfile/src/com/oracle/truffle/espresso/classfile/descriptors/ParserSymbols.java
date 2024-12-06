@@ -28,8 +28,8 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
  * Predefined symbols used by the parser and shared with Espresso. Contains static definitions for
  * commonly used types, names and signatures.
  * <p>
- * This class is not meant for general symbol management - use {@link Symbols}, {@link TypeSymbols},
- * {@link NameSymbols} etc. for that purpose.
+ * This class is not meant for general symbol management - use {@link SignatureSymbols},
+ * {@link TypeSymbols}, {@link NameSymbols} etc. for that purpose.
  * <p>
  * The symbols are initialized in a specific order via the inner classes:
  * <ul>
@@ -42,7 +42,7 @@ import com.oracle.truffle.espresso.classfile.JavaKind;
  */
 public final class ParserSymbols {
 
-    public static final StaticSymbols SYMBOLS = new StaticSymbols();
+    public static final StaticSymbols SYMBOLS = new StaticSymbols(1 << 8);
 
     static {
         ParserNames.ensureInitialized();

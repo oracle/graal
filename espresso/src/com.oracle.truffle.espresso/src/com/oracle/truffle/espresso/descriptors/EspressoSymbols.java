@@ -31,7 +31,9 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 
 public class EspressoSymbols {
 
-    public static final StaticSymbols SYMBOLS = new StaticSymbols(ParserSymbols.SYMBOLS);
+    // Pre-allocate enough slots to avoid resizing the underlying map.
+    // But not too much, since these maps will be persisted in the image heap (Native Image).
+    public static final StaticSymbols SYMBOLS = new StaticSymbols(ParserSymbols.SYMBOLS, 1 << 12);
 
     static {
         Names.ensureInitialized();
