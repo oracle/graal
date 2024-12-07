@@ -1,17 +1,11 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import jdk.graal.compiler.core.common.type.ArithmeticOpTable;
-
 /**
  * Represents an integer interval domain
- * <p>
- * This class is used to represent integer intervals in static analysis.
- * It provides methods to manipulate and query intervals, including operations like join, widen, and meet.
- * <p>
- * Sample usage: division by zero analysis
  */
 public final class IntInterval
         extends AbstractDomain<IntInterval> {
+
     private static final int MIN = Integer.MIN_VALUE;
     private static final int MAX = Integer.MAX_VALUE;
     private int lowerBound;
@@ -136,7 +130,7 @@ public final class IntInterval
     public boolean containsValue(int value) {
         return lowerBound >= value && value <= upperBound;
     }
-    
+
     /**
      * Arithmetic operations
      */
@@ -299,7 +293,7 @@ public final class IntInterval
      * @param interval The original interval.
      * @return A new `IntInterval` that is the inverse.
      */
-    public static IntInterval getInversed(IntInterval interval) {
+    public static IntInterval getInverse(IntInterval interval) {
         IntInterval result = new IntInterval(interval);
         result.inverse();
         return result;
