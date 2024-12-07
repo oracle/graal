@@ -4,13 +4,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.ProgressReporter;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-import com.oracle.svm.hosted.analysis.ai.checker.DivisionByZeroChecker;
-import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
-import com.oracle.svm.hosted.analysis.ai.transfer.IntIntervalTransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 
 public class AbstractInterpretationDriver {
 
@@ -37,10 +33,29 @@ public class AbstractInterpretationDriver {
     }
 
     private void doRun() {
-        debug.log("Printing the graph");
-        var rootGraph = getGraph(root);
-        for (Node node : rootGraph.getNodes()) {
-            debug.log("\t" + node);
+        var cfgGraph = getGraph(root);
+        debug.log("Printing the control flow graph");
+        for (var block : cfgGraph.getBlocks()) {
+            debug.log("Block: " + block);
+            for (var node : block.getNodes()) {
+                debug.log("\tNode: " + node);
+                debug.log("\t\tPredecessors: " + node.cfgPredecessors());
+                debug.log("\t\tSuccessors: " + node.cfgSuccessors());
+                debug.log("\t\tInputs: " + node.inputs());
+                debug.log("\t\t" + node.getNodeSourcePosition());
+            }
+
+            int count = block.getSuccessorCount();
+            debug.log("\tSuccessors: ");
+            for (int i = 0; i < count; i++) {
+                debug.log("\t\t" + block.getSuccessorAt(i));
+            }
+
+            count = block.getPredecessorCount();
+            debug.log("\tPredecessors: ");
+            for (int i = 0; i < count; i++) {
+                debug.log("\t\t" + block.getPredecessorAt(i));
+            }
         }
 
         debug.log("Printing the invokes");
@@ -51,12 +66,10 @@ public class AbstractInterpretationDriver {
             }
         }
 
-        var analyzer = new Analyzer<IntInterval>(debug);
-        analyzer.registerChecker(new DivisionByZeroChecker());
-        analyzer.run(rootGraph, new IntInterval(), new IntIntervalTransferFunction());
     }
 
-    private StructuredGraph getGraph(AnalysisMethod method) {
-        return method.decodeAnalyzedGraph(debug, null);
+    private ControlFlowGraph getGraph(AnalysisMethod method) {
+        var structuredGraph = method.decodeAnalyzedGraph(debug, null);
+        return new ControlFlowGraphBuilder(structuredGraph).build();
     }
 }
