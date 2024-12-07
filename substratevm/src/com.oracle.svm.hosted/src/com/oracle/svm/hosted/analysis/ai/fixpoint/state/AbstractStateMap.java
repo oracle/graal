@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.fixpoint;
+package com.oracle.svm.hosted.analysis.ai.fixpoint.state;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import jdk.graal.compiler.graph.Node;
@@ -14,7 +14,7 @@ import java.util.Map;
  *
  * @param <Domain> type of the derived abstract domain
  */
-public class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
+public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
 
     private final Domain initialDomain;
     private final Map<Node, AbstractState<Domain>> stateMap;
@@ -40,16 +40,14 @@ public class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
         return getState(node).getPostCondition();
     }
 
-    public Domain setPostCondition(Node node, Domain postCondition) {
+    public void setPostCondition(Node node, Domain postCondition) {
         AbstractState<Domain> state = getState(node);
         state.setPostCondition(postCondition);
-        return postCondition;
     }
 
-    public Domain setPrecondition(Node node, Domain preCondition) {
+    public void setPrecondition(Node node, Domain preCondition) {
         AbstractState<Domain> state = getState(node);
         state.setPreCondition(preCondition);
-        return preCondition;
     }
 
     public int getVisitCount(Node node) {
@@ -60,12 +58,15 @@ public class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
         return getState(node).isVisited();
     }
 
+    public void resetCount(Node node) {
+        getState(node).resetCount();
+    }
+
     public void resetStates() {
-        var initialDomainCopy = initialDomain.copyOf();
         for (AbstractState<Domain> state : stateMap.values()) {
             state.resetCount();
-            state.setPostCondition(initialDomainCopy);
-            state.setPreCondition(initialDomainCopy);
+            state.setPostCondition(initialDomain);
+            state.setPreCondition(initialDomain);
         }
     }
 
@@ -75,10 +76,6 @@ public class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
             sb.append(node).append(" -> ").append(getPreCondition(node)).append("\n");
         }
         return sb.toString();
-    }
-
-    public void clearPostCondition(Node node) {
-        getState(node).setPostCondition(initialDomain.copyOf());
     }
 
     public void clear() {

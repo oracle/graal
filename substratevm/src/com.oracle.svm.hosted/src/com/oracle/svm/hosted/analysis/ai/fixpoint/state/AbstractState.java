@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.fixpoint;
+package com.oracle.svm.hosted.analysis.ai.fixpoint.state;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
@@ -7,7 +7,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
  *
  * @param <Domain> type of the derived AbstractDomain
  */
-public class AbstractState<Domain extends AbstractDomain<Domain>> {
+public final class AbstractState<Domain extends AbstractDomain<Domain>> {
 
     private int visitedCount = 0;
     private Domain preCondition;
@@ -18,12 +18,16 @@ public class AbstractState<Domain extends AbstractDomain<Domain>> {
         this.postCondition = initialDomain.copyOf();
     }
 
+    public int getVisitedCount() {
+        return visitedCount;
+    }
+
     public Domain getPreCondition() {
         return preCondition;
     }
 
     public void setPreCondition(Domain preCondition) {
-        this.preCondition = preCondition;
+        this.preCondition = preCondition.copyOf();
     }
 
     public Domain getPostCondition() {
@@ -31,11 +35,7 @@ public class AbstractState<Domain extends AbstractDomain<Domain>> {
     }
 
     public void setPostCondition(Domain postCondition) {
-        this.postCondition = postCondition;
-    }
-
-    public int getVisitedCount() {
-        return visitedCount;
+        this.postCondition = postCondition.copyOf();
     }
 
     public void incrementVisitedCount() {
