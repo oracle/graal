@@ -41,6 +41,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.security.CodeSource;
 import java.util.HashMap;
 import java.util.List;
@@ -83,24 +84,7 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
                         "newInstance"
         ));
         reflectMethodNames.put(Method.class.getTypeName(), Set.of("invoke"));
-        reflectMethodNames.put(MethodHandles.class.getTypeName(), Set.of(
-                        "arrayLength",
-                        "arrayElementGetter",
-                        "arrayElementSetter",
-                        "arrayElementVarHandle",
-                        "byteArrayViewVarHandle",
-                        "byteBufferViewVarHandle",
-                        "publicLookup",
-                        "privateLookupIn",
-                        "arrayConstructor"
-        ));
         reflectMethodNames.put(MethodHandles.Lookup.class.getTypeName(), Set.of(
-                        "in",
-                        "findClass",
-                        "accessClass",
-                        "defineClass",
-                        "defineHiddenClass",
-                        "defineHiddenClassWithClassData",
                         "findVirtual",
                         "findStatic",
                         "findConstructor",
@@ -120,31 +104,10 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
         ));
         reflectMethodNames.put(ClassLoader.class.getTypeName(), Set.of(
                         "loadClass",
-                        "defineClass",
                         "findBootstrapClassOrNull",
-                        "findClass",
-                        "findSystemClass",
                         "findLoadedClass"
         ));
-        reflectMethodNames.put(MethodType.class.getTypeName(), Set.of(
-                        "methodType",
-                        "genericMethodType",
-                        "makeImpl",
-                        "changeParameterType",
-                        "insertParameterTypes",
-                        "appendParameterTypes",
-                        "replaceParameterTypes",
-                        "dropParameterTypes",
-                        "changeReturnType",
-                        "erase",
-                        "generic",
-                        "wrap",
-                        "unwrap",
-                        "parameterType",
-                        "returnType",
-                        "lastParameterType"
-        ));
-        reflectMethodNames.put(LambdaMetafactory.class.getTypeName(), Set.of("metafactory", "altMetafactory"));
+        reflectMethodNames.put(URLClassLoader.class.getTypeName(), Set.of("loadClass"));
         reflectMethodNames.put(Array.class.getTypeName(), Set.of("newInstance"));
         reflectMethodNames.put(Constructor.class.getTypeName(), Set.of("newInstance"));
         reflectMethodNames.put(Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"));
@@ -162,8 +125,10 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
                 NodeSourcePosition nspToShow = callTarget.getNodeSourcePosition();
                 if (nspToShow != null) {
                     int bci = nspToShow.getBCI();
-                    if (!AnalyzeReflectionUsageSupport.instance().containsFoldEntry(bci, nspToShow.getRootMethod())) {
-                        AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getRootMethod().asStackTraceElement(bci).toString());
+                    if (!AnalyzeReflectionUsageSupport.instance().containsFoldEntry(bci, nspToShow.getMethod())) {
+                        if (nspToShow.getMethod().isPublic() || nspToShow.getMethod().isProtected()) {
+                            AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getMethod().asStackTraceElement(bci).toString());
+                        }
                     }
                 }
             }
