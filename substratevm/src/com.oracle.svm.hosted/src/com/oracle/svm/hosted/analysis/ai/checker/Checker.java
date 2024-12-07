@@ -1,10 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
-import com.oracle.svm.hosted.analysis.ai.fixpoint.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
 
 /*
- * Interface for a checker that can be used to check the desired program property.
+ * API for a checker that can be used to check program properties.
  */
 public interface Checker {
 
