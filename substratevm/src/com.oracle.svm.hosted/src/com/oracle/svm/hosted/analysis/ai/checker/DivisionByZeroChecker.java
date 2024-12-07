@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
 import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.Environment;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.FloatDivNode;
@@ -15,8 +15,8 @@ public class DivisionByZeroChecker implements Checker {
     }
 
     @Override
-    public CheckerResult check(Node node, Environment<?> environment) {
-        var domain = environment.getPostCondition(node);
+    public CheckerResult check(Node node, AbstractStateMap<?> abstractStateMap) {
+        var domain = abstractStateMap.getPostCondition(node);
 
         if (!(domain instanceof IntInterval)) {
             return new CheckerResult(CheckStatus.UNKNOWN, "Unsupported domain");
@@ -24,7 +24,7 @@ public class DivisionByZeroChecker implements Checker {
 
         if (node instanceof FloatDivNode || node instanceof RemNode) {
             var divisorNode = ((BinaryArithmeticNode<?>) node).getY();
-            IntInterval divisorInterval = (IntInterval) environment.getPostCondition(divisorNode);
+            IntInterval divisorInterval = (IntInterval) abstractStateMap.getPostCondition(divisorNode);
 
             if (divisorInterval.containsValue(0)) {
                 return new CheckerResult(CheckStatus.ERROR, "Division by zero on line: " + node.getNodeSourcePosition().toString());
