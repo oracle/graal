@@ -25,10 +25,11 @@
 package jdk.graal.compiler.libgraal;
 
 import java.io.PrintStream;
-import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.hotspot.libgraal.RunTime;
+import jdk.graal.compiler.word.Word;
 import jdk.graal.nativeimage.LibGraalRuntime;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
@@ -43,12 +44,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDKLatest;
-import com.oracle.svm.core.log.FunctionPointerLogHandler;
-import com.oracle.svm.graal.hotspot.LibGraalJNIMethodScope;
-
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.libgraal.LibGraalFeature;
 
 class LibGraalJVMCISubstitutions {
 
@@ -162,7 +157,7 @@ public class LibGraalSubstitutions {
             final JNIMethodScope scope;
 
             LibGraalCompilationRequestScope() {
-                JNI.JNIEnv env = LibGraalEntryPoints.getJNIEnv();
+                JNI.JNIEnv env = Word.unsigned(RunTime.getJNIEnv());
                 /*
                  * This scope is required to allow Graal compilations of host methods to call
                  * methods in the TruffleCompilerRuntime. This is, for example, required to find out
@@ -194,7 +189,7 @@ public class LibGraalSubstitutions {
 
         @Substitute
         public static void invokeShutdownCallback(String cbClassName, String cbMethodName) {
-            JNI.JNIEnv env = LibGraalEntryPoints.getJNIEnv();
+            JNI.JNIEnv env = Word.unsigned(RunTime.getJNIEnv());
             JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
                             JNIUtil.getBinaryName(cbClassName), true);
             JNI.JMethodID cbMethod = JNIUtil.findMethod(env, cbClass, true, cbMethodName, "()V");
@@ -222,7 +217,7 @@ public class LibGraalSubstitutions {
         @Substitute()
         void beforeRun() {
             Thread thread = cast(this, Thread.class);
-            if (!LibGraalEntryPoints.attachCurrentThread(thread.isDaemon(), null)) {
+            if (!RunTime.attachCurrentThread(thread.isDaemon(), null)) {
                 throw new InternalError("Couldn't attach to HotSpot runtime");
             }
         }
@@ -230,7 +225,7 @@ public class LibGraalSubstitutions {
         @Substitute
         @SuppressWarnings("static-method")
         void afterRun() {
-            LibGraalEntryPoints.detachCurrentThread(false);
+            RunTime.detachCurrentThread(false);
         }
     }
 }

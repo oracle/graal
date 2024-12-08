@@ -44,7 +44,6 @@ import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.libgraal.BuildTime;
 import jdk.graal.compiler.hotspot.libgraal.RunTime;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
@@ -52,7 +51,6 @@ import jdk.graal.compiler.word.Word;
 import jdk.graal.nativeimage.LibGraalRuntime;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
@@ -81,103 +79,12 @@ import org.graalvm.word.PointerBase;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Encapsulates {@link CEntryPoint} implementations as well as method handles for invoking LibGraal
- * and JVMCI functionality via {@link MethodHandle}s. The method handles (initialized by
- * {@link BuildTime#getRuntimeHandles()}) are only invoked in static methods which allows Native
- * Image to fold them to direct calls to the method handle targets.
+ * Encapsulates {@link CEntryPoint} implementations.
  */
 final class LibGraalEntryPoints {
 
-    private final MethodHandle getJNIEnv;
-    private final MethodHandle getSavedProperty;
-    private final MethodHandle ttyPrintf;
-    private final MethodHandle compileMethod;
-    private final MethodHandle hashConstantOopFields;
-    private final MethodHandle attachCurrentThread;
-    private final MethodHandle detachCurrentThread;
-
-    /**
-     * Returns the {@link LibGraalEntryPoints} instance registered in the {@link ImageSingletons}.
-     */
-    private static LibGraalEntryPoints singleton() {
-        return ImageSingletons.lookup(LibGraalEntryPoints.class);
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    LibGraalEntryPoints(Map<String, MethodHandle> handles) {
-        this.getJNIEnv = handles.get("getJNIEnv");
-        this.getSavedProperty = handles.get("getSavedProperty");
-        this.ttyPrintf = handles.get("ttyPrintf");
-        this.compileMethod = handles.get("compileMethod");
-        this.hashConstantOopFields = handles.get("hashConstantOopFields");
-        this.attachCurrentThread = handles.get("attachCurrentThread");
-        this.detachCurrentThread = handles.get("detachCurrentThread");
-    }
-
-    /**
-     * Calls {@code jdk.graal.compiler.hotspot.libgraal.RunTime#getJNIEnv()}.
-     */
-    static JNI.JNIEnv getJNIEnv() {
-        try {
-            long raw = (long) singleton().getJNIEnv.invoke();
-            return Word.unsigned(raw);
-        } catch (RuntimeException | Error e) {
-            throw e;
-        } catch (Throwable e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
-    }
-
-    /**
-     * Calls {@code jdk.graal.compiler.serviceprovider.GraalServices#getSavedProperty(String)}.
-     */
-    static String getSavedProperty(String name) {
-        try {
-            return (String) singleton().getSavedProperty.invoke(name);
-        } catch (RuntimeException | Error e) {
-            throw e;
-        } catch (Throwable e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
-    }
-
-    /**
-     * Calls {@link RunTime#attachCurrentThread}.
-     */
-    static boolean attachCurrentThread(boolean daemon, long[] isolate) {
-        try {
-            return (boolean) singleton().attachCurrentThread.invoke(daemon, isolate);
-        } catch (RuntimeException | Error e) {
-            throw e;
-        } catch (Throwable e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
-    }
-
-    /**
-     * Calls {@link RunTime#detachCurrentThread}.
-     */
-    static boolean detachCurrentThread(boolean release) {
-        try {
-            return (boolean) singleton().detachCurrentThread.invoke(release);
-        } catch (RuntimeException | Error e) {
-            throw e;
-        } catch (Throwable e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
-    }
-
-    /**
-     * Calls {@code jdk.graal.compiler.debug.TTY#printf(String, Object...)}.
-     */
-    static void ttyPrintf(String format, Object... args) {
-        try {
-            singleton().ttyPrintf.invoke(format, args);
-        } catch (RuntimeException | Error e) {
-            throw e;
-        } catch (Throwable e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
+    LibGraalEntryPoints() {
     }
 
     /**
@@ -251,7 +158,7 @@ final class LibGraalEntryPoints {
                 timeAndMemConsumer = null;
             }
 
-            return (long) singleton().compileMethod.invoke(methodHandle, useProfilingInfo,
+            return RunTime.compileMethod(methodHandle, useProfilingInfo,
                             installAsDefault, printMetrics, eagerResolving,
                             optionsAddress, optionsSize, optionsHash,
                             profileLoadPath, timeAndMemConsumer);
@@ -284,7 +191,7 @@ final class LibGraalEntryPoints {
                     boolean verbose) {
         try (JNIMethodScope scope = new JNIMethodScope("hashConstantOopFields", jniEnv)) {
             Runnable doReferenceHandling = LibGraalEntryPoints::doReferenceHandling;
-            return (long) singleton().hashConstantOopFields.invoke(typeHandle, useScope, iterations, oopsPerIteration, verbose, doReferenceHandling);
+            return RunTime.hashConstantOopFields(typeHandle, useScope, iterations, oopsPerIteration, verbose, doReferenceHandling);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(jniEnv, t);
             return 0;

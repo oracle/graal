@@ -219,7 +219,7 @@ public class RunTime {
     /**
      * Gets the JNIEnv value for the current HotSpot thread.
      */
-    static long getJNIEnv() {
+    public static long getJNIEnv() {
         HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
         long offset = getJniEnvironmentOffset();
         long javaThreadAddr = jvmciRuntime.getCurrentJavaThread();

@@ -464,7 +464,6 @@ public final class LibGraalFeature implements Feature {
                             nativeImageLocationQualifier,
                             configResult.encodedConfig());
 
-            initGraalRuntimeHandles(mhl.findStatic(buildTimeClass, "getRuntimeHandles", methodType(Map.class)));
             initializeTruffle();
         } catch (Throwable e) {
             throw GraalError.shouldNotReachHere(e);
@@ -490,11 +489,6 @@ public final class LibGraalFeature implements Feature {
         for (var c : libGraalFeatureComponents) {
             c.duringAnalysis(access);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void initGraalRuntimeHandles(MethodHandle getRuntimeHandles) throws Throwable {
-        ImageSingletons.add(LibGraalEntryPoints.class, new LibGraalEntryPoints((Map<String, MethodHandle>) getRuntimeHandles.invoke()));
     }
 
     @SuppressWarnings("unchecked")

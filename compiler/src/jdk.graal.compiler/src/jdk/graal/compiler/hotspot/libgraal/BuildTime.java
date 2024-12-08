@@ -202,36 +202,4 @@ public class BuildTime {
             throw GraalError.shouldNotReachHere(e);
         }
     }
-
-    private static final Lookup MHL = MethodHandles.lookup();
-
-    /**
-     * Gets method handles to call Graal and JVMCI methods.
-     *
-     * @return a named set of handles
-     */
-    public static Map<String, MethodHandle> getRuntimeHandles() {
-        try {
-            return Map.of("compileMethod", MHL.findStatic(RunTime.class, "compileMethod",
-                            methodType(long.class, long.class,
-                                            boolean.class, boolean.class, boolean.class, boolean.class,
-                                            long.class, int.class, int.class,
-                                            String.class, BiConsumer.class)),
-                            "hashConstantOopFields", MHL.findStatic(RunTime.class, "hashConstantOopFields",
-                                            methodType(long.class, long.class, boolean.class, int.class, int.class,
-                                                            boolean.class, Runnable.class)),
-                            "getJNIEnv", MHL.findStatic(RunTime.class, "getJNIEnv",
-                                            methodType(long.class)),
-                            "attachCurrentThread", MHL.findStatic(RunTime.class, "attachCurrentThread",
-                                            methodType(boolean.class, boolean.class, long[].class)),
-                            "detachCurrentThread", MHL.findStatic(RunTime.class, "detachCurrentThread",
-                                            methodType(boolean.class, boolean.class)),
-                            "getSavedProperty", MHL.findStatic(GraalServices.class, "getSavedProperty",
-                                            methodType(String.class, String.class)),
-                            "ttyPrintf", MHL.findStatic(TTY.class, "printf",
-                                            methodType(void.class, String.class, Object[].class)));
-        } catch (Throwable e) {
-            throw GraalError.shouldNotReachHere(e);
-        }
-    }
 }
