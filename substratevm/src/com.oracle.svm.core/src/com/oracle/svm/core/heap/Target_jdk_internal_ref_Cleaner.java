@@ -26,7 +26,6 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
-import java.lang.reflect.Array;
 
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
@@ -42,7 +41,6 @@ import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.misc.InnocuousThread;
 
 @TargetClass(className = "jdk.internal.ref.Cleaner")
@@ -218,4 +216,3 @@ final class ResetToMinusOneTransformer implements FieldValueTransformer {
         return -1;
     }
 }
-
