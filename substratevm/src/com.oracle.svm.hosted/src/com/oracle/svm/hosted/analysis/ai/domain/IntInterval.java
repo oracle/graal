@@ -100,13 +100,11 @@ public final class IntInterval
     }
 
     public void meetWith(IntInterval other) {
-        System.out.println(this + " ⊓ " + other);
         lowerBound = Math.max(lowerBound, other.lowerBound);
         upperBound = Math.min(upperBound, other.upperBound);
         if (isBot()) {
             setToBot();
         }
-        System.out.println("result: " + this);
     }
 
     @Override
