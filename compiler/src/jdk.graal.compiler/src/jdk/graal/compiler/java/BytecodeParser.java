@@ -3455,7 +3455,12 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                  * loop begin node created before.
                  */
                 LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block);
-                LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
+                LoopEndNode loopEnd;
+                try (DebugCloseable context2 = openNodeContext()) {
+                    // This is the end up of the current control flow so use a position at source
+                    // location instead of the destination.
+                    loopEnd = graph.add(new LoopEndNode(loopBegin));
+                }
                 Target target = checkUnstructuredLocking(checkLoopExit(new Target(loopEnd, state.copy()), block), block, getEntryState(block));
                 FixedNode result = target.entry;
                 /*
