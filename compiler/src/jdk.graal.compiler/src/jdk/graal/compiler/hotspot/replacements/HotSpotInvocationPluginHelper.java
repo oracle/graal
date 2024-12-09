@@ -59,6 +59,7 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -115,7 +116,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      * An abstraction for fields of {@link GraalHotSpotVMConfig}.
      */
     enum HotSpotVMConfigField {
-        KLASS_MODIFIER_FLAGS_OFFSET(config -> config.klassModifierFlagsOffset, KLASS_MODIFIER_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
+        KLASS_MODIFIER_FLAGS_OFFSET(config -> config.klassModifierFlagsOffset, KLASS_MODIFIER_FLAGS_LOCATION, StampFactory.forKind(JavaVersionUtil.JAVA_SPEC == 21 ? JavaKind.Int : JavaKind.Char)),
         KLASS_SUPER_KLASS_OFFSET(config -> config.klassSuperKlassOffset, KLASS_SUPER_KLASS_LOCATION, KlassPointerStamp.klass()),
         CLASS_ARRAY_KLASS_OFFSET(config -> config.arrayKlassOffset, CLASS_ARRAY_KLASS_LOCATION, KlassPointerStamp.klassNonNull()),
         JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION),
@@ -125,7 +126,7 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         JAVA_THREAD_CARRIER_THREAD_OBJECT(config -> config.threadCarrierThreadObjectOffset, JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION, null),
         JAVA_THREAD_SCOPED_VALUE_CACHE_OFFSET(config -> config.threadScopedValueCacheOffset, JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION, null),
         KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
-        KLASS_MISC_FLAGS_OFFSET(config -> config.klassMiscFlagsOffset, KLASS_MISC_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
+        KLASS_MISC_FLAGS_OFFSET(config -> config.klassMiscFlagsOffset, KLASS_MISC_FLAGS_LOCATION, StampFactory.forKind(JavaVersionUtil.JAVA_SPEC == 21 ? JavaKind.Int : JavaKind.Char)),
         HOTSPOT_OOP_HANDLE_VALUE(config -> 0, HOTSPOT_OOP_HANDLE_LOCATION, StampFactory.forKind(JavaKind.Object));
 
         private final Function<GraalHotSpotVMConfig, Integer> getter;
