@@ -27,6 +27,7 @@ package com.oracle.svm.core.heap;
 import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.NeverInline;
@@ -200,7 +201,7 @@ final class HolderObjectFieldTransformer implements FieldValueTransformer {
 }
 
 final class Target_jdk_internal_ref_CleanerImpl_CleanableList_Singleton {
-    static final Object list = ReflectionUtil.newInstance(ReflectionUtil.lookupClass("jdk.internal.ref.CleanerImpl$CleanableList"));
+    static final Object list = JavaVersionUtil.JAVA_SPEC > 21 ? ReflectionUtil.newInstance(ReflectionUtil.lookupClass("jdk.internal.ref.CleanerImpl$CleanableList")) : null;
 }
 
 final class GetCleanableListSingletonTransformer implements FieldValueTransformer {
