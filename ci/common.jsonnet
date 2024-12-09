@@ -203,6 +203,12 @@ local common_json = import "../common.json";
       },
     },
 
+    gradle:: {
+      downloads+: {
+        GRADLE_JAVA_HOME: jdks_data["oraclejdk21"],
+      }
+    },
+
     local code_tools = {
       downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
         TOOLS_JAVA_HOME: jdks_data['oraclejdk21'],
@@ -251,7 +257,7 @@ local common_json = import "../common.json";
       } else {},
     },
 
-    graalpy:: {
+    graalpy:: self.gradle + {
       packages+: if (self.os == "linux") then {
         libffi: '>=3.2.1',
         bzip2: '>=1.0.6',
