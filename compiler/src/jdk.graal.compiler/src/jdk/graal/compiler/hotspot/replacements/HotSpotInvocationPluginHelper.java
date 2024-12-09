@@ -52,6 +52,7 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.IsNullNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -59,6 +60,7 @@ import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.replacements.InvocationPluginHelper;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -115,7 +117,10 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
      * An abstraction for fields of {@link GraalHotSpotVMConfig}.
      */
     enum HotSpotVMConfigField {
-        KLASS_MODIFIER_FLAGS_OFFSET(config -> config.klassModifierFlagsOffset, KLASS_MODIFIER_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
+        KLASS_MODIFIER_FLAGS_OFFSET(
+                        config -> config.klassModifierFlagsOffset,
+                        KLASS_MODIFIER_FLAGS_LOCATION,
+                        JavaVersionUtil.JAVA_SPEC == 21 ? StampFactory.forKind(JavaKind.Int) : StampFactory.forInteger(JavaKind.Char.getBitCount())),
         KLASS_SUPER_KLASS_OFFSET(config -> config.klassSuperKlassOffset, KLASS_SUPER_KLASS_LOCATION, KlassPointerStamp.klass()),
         CLASS_ARRAY_KLASS_OFFSET(config -> config.arrayKlassOffset, CLASS_ARRAY_KLASS_LOCATION, KlassPointerStamp.klassNonNull()),
         JAVA_THREAD_OSTHREAD_OFFSET(config -> config.osThreadOffset, JAVA_THREAD_OSTHREAD_LOCATION),
@@ -124,8 +129,14 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
         /** JavaThread::_threadObj. */
         JAVA_THREAD_CARRIER_THREAD_OBJECT(config -> config.threadCarrierThreadObjectOffset, JAVA_THREAD_CARRIER_THREAD_OBJECT_LOCATION, null),
         JAVA_THREAD_SCOPED_VALUE_CACHE_OFFSET(config -> config.threadScopedValueCacheOffset, JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION, null),
-        KLASS_ACCESS_FLAGS_OFFSET(config -> config.klassAccessFlagsOffset, KLASS_ACCESS_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
-        KLASS_MISC_FLAGS_OFFSET(config -> config.klassMiscFlagsOffset, KLASS_MISC_FLAGS_LOCATION, StampFactory.forKind(JavaKind.Int)),
+        KLASS_ACCESS_FLAGS_OFFSET(
+                        config -> config.klassAccessFlagsOffset,
+                        KLASS_ACCESS_FLAGS_LOCATION,
+                        JavaVersionUtil.JAVA_SPEC == 21 ? StampFactory.forKind(JavaKind.Int) : StampFactory.forInteger(JavaKind.Char.getBitCount())),
+        KLASS_MISC_FLAGS_OFFSET(
+                        config -> config.klassMiscFlagsOffset,
+                        KLASS_MISC_FLAGS_LOCATION,
+                        JavaVersionUtil.JAVA_SPEC == 21 ? StampFactory.forKind(JavaKind.Int) : StampFactory.forInteger(JavaKind.Byte.getBitCount())),
         HOTSPOT_OOP_HANDLE_VALUE(config -> 0, HOTSPOT_OOP_HANDLE_LOCATION, StampFactory.forKind(JavaKind.Object));
 
         private final Function<GraalHotSpotVMConfig, Integer> getter;
@@ -162,24 +173,24 @@ public class HotSpotInvocationPluginHelper extends InvocationPluginHelper {
     }
 
     /**
-     * Read {@code Klass::_modifier_flags}.
+     * Read {@code Klass::_modifier_flags} as int.
      */
     public ValueNode readKlassModifierFlags(ValueNode klass) {
-        return readLocation(klass, HotSpotVMConfigField.KLASS_MODIFIER_FLAGS_OFFSET);
+        return ZeroExtendNode.create(readLocation(klass, HotSpotVMConfigField.KLASS_MODIFIER_FLAGS_OFFSET), JavaKind.Int.getBitCount(), NodeView.DEFAULT);
     }
 
     /**
-     * Read {@code Klass::_access_flags}.
+     * Read {@code Klass::_access_flags} as int.
      */
     public ValueNode readKlassAccessFlags(ValueNode klass) {
-        return readLocation(klass, HotSpotVMConfigField.KLASS_ACCESS_FLAGS_OFFSET);
+        return ZeroExtendNode.create(readLocation(klass, HotSpotVMConfigField.KLASS_ACCESS_FLAGS_OFFSET), JavaKind.Int.getBitCount(), NodeView.DEFAULT);
     }
 
     /**
-     * Read {@code Klass::_misc_flags}.
+     * Read {@code Klass::_misc_flags} as int.
      */
     public ValueNode readKlassMiscFlags(ValueNode klass) {
-        return readLocation(klass, HotSpotVMConfigField.KLASS_MISC_FLAGS_OFFSET);
+        return ZeroExtendNode.create(readLocation(klass, HotSpotVMConfigField.KLASS_MISC_FLAGS_OFFSET), JavaKind.Int.getBitCount(), NodeView.DEFAULT);
     }
 
     /**
