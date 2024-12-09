@@ -26,18 +26,12 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import java.util.Map;
-
-import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
-import jdk.graal.compiler.debug.DebugContext;
-
-import com.oracle.objectfile.LayoutDecision;
-import com.oracle.objectfile.LayoutDecisionMap;
-import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
+
+import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * Section generator for debug_aranges section.
@@ -90,11 +84,10 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          * Where N is the number of compiled methods.
          */
         assert !contentByteArrayCreated();
-        Cursor byteCount = new Cursor();
-        instanceClassStream().filter(ClassEntry::hasCompiledMethods).forEachOrdered(classEntry -> {
-            byteCount.add(entrySize(classEntry.compiledMethods().size()));
-        });
-        byte[] buffer = new byte[byteCount.get()];
+        int byteCount = instanceClassWithCompilationStream()
+                        .mapToInt(classEntry -> entrySize(classEntry.compiledMethods().size()))
+                        .sum();
+        byte[] buffer = new byte[byteCount];
         super.setContent(buffer);
     }
 
@@ -112,33 +105,16 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        ObjectFile.Element textElement = getElement().getOwner().elementForName(".text");
-        LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
-        if (decisionMap != null) {
-            Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
-            if (valueObj instanceof Number) {
-                /*
-                 * This may not be the final vaddr for the text segment but it will be close enough
-                 * to make debug easier i.e. to within a 4k page or two.
-                 */
-                debugTextBase = ((Number) valueObj).longValue();
-            }
-        }
-        return super.getOrDecideContent(alreadyDecided, contentHint);
-    }
-
-    @Override
     public void writeContent(DebugContext context) {
         assert contentByteArrayCreated();
         byte[] buffer = getContent();
         int size = buffer.length;
         Cursor cursor = new Cursor();
 
-        enableLog(context, cursor.get());
+        enableLog(context);
 
         log(context, "  [0x%08x] DEBUG_ARANGES", cursor.get());
-        instanceClassStream().filter(ClassEntry::hasCompiledMethods).forEachOrdered(classEntry -> {
+        instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
             int lengthPos = cursor.get();
             log(context, "  [0x%08x] class %s CU 0x%x", lengthPos, classEntry.getTypeName(), getCUIndex(classEntry));
             cursor.set(writeHeader(getCUIndex(classEntry), buffer, cursor.get()));
@@ -177,7 +153,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
     int writeARange(DebugContext context, CompiledMethodEntry compiledMethod, byte[] buffer, int p) {
         int pos = p;
         Range primary = compiledMethod.primary();
-        log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
+        log(context, "  [0x%08x] %016x %016x %s", pos, primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
         pos = writeCodeOffset(primary.getLo(), buffer, pos);
         pos = writeLong(primary.getHi() - primary.getLo(), buffer, pos);
         return pos;

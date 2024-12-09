@@ -26,22 +26,24 @@
 
 package com.oracle.objectfile.debugentry.range;
 
-import com.oracle.objectfile.debugentry.FileEntry;
-import com.oracle.objectfile.debugentry.LocalEntry;
-import com.oracle.objectfile.debugentry.LocalValueEntry;
-import com.oracle.objectfile.debugentry.MethodEntry;
-import com.oracle.objectfile.debugentry.TypeEntry;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+
+import com.oracle.objectfile.debugentry.ConstantValueEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.StackValueEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
  * Details of a specific address range in a compiled method either a primary range identifying a
@@ -165,14 +167,14 @@ public abstract class Range {
         this.caller.insertCallee(newRange, 1);
 
         for (LocalValueEntry localInfo : this.localValueInfos) {
-            if (localInfo.localKind() == DebugInfoProvider.LocalValueKind.STACK) {
+            if (localInfo instanceof StackValueEntry stackValue) {
                 // need to redefine the value for this param using a stack slot value
                 // that allows for the stack being extended by framesize. however we
                 // also need to remove any adjustment that was made to allow for the
                 // difference between the caller SP and the pre-extend callee SP
                 // because of a stacked return address.
                 int adjustment = frameSize - preExtendFrameSize;
-                newRange.localValueInfos.add(new LocalValueEntry(localInfo.regIndex(), localInfo.stackSlot() + adjustment, localInfo.heapOffset(), localInfo.constant(), localInfo.localKind(), localInfo.local()));
+                newRange.localValueInfos.add(new StackValueEntry(stackValue.getStackSlot() + adjustment, stackValue.getLocal()));
             } else {
                 newRange.localValueInfos.add(localInfo);
             }
@@ -311,17 +313,8 @@ public abstract class Range {
         HashMap<LocalEntry, List<Range>> varRangeMap = new HashMap<>();
         for (Range callee : getCallees()) {
             for (LocalValueEntry localValue : callee.localValueInfos) {
-                LocalEntry local = localValue.local();
-                if (local != null) {
-                    switch (localValue.localKind()) {
-                        case REGISTER:
-                        case STACK:
-                        case CONSTANT:
-                            varRangeMap.computeIfAbsent(local, l -> new ArrayList<>()).add(callee);
-                            break;
-                        case UNDEFINED:
-                            break;
-                    }
+                if (localValue != null && localValue.getLocal() != null) {
+                    varRangeMap.computeIfAbsent(localValue.getLocal(), l -> new ArrayList<>()).add(callee);
                 }
             }
         }
@@ -331,17 +324,14 @@ public abstract class Range {
     public boolean hasLocalValues(LocalEntry local) {
         for (Range callee : getCallees()) {
             for (LocalValueEntry localValue : callee.localValueInfos) {
-                if (local == localValue.local()) {
-                    switch (localValue.localKind()) {
-                        case REGISTER:
-                        case STACK:
-                            return true;
-                        case CONSTANT:
-                            JavaConstant constant = localValue.constant();
-                            // can only handle primitive or null constants just now
-                            return constant instanceof PrimitiveConstant || constant.getJavaKind() == JavaKind.Object;
-                        case UNDEFINED:
-                            break;
+                if (localValue != null && localValue.getLocal() == local) {
+                    if (localValue instanceof ConstantValueEntry constantValueEntry) {
+                        JavaConstant constant = constantValueEntry.getConstant();
+                        // can only handle primitive or null constants just now
+                        return constant instanceof PrimitiveConstant || constant.getJavaKind() == JavaKind.Object;
+                    } else {
+                        // register or stack value
+                        return true;
                     }
                 }
             }
@@ -357,25 +347,13 @@ public abstract class Range {
         return Collections.unmodifiableList(localValueInfos);
     }
 
-    public int getLocalValueCount() {
-        return localValueInfos.size();
-    }
-
-    public LocalValueEntry getLocalValue(int i) {
-        return localValueInfos.get(i);
-    }
-
-    public LocalEntry getLocal(int i) {
-        return getLocalValue(i).local();
-    }
-
     public void setLocalValueInfo(List<LocalValueEntry> localValueInfos) {
         this.localValueInfos.addAll(localValueInfos);
     }
 
     public LocalValueEntry lookupValue(LocalEntry local) {
         for (LocalValueEntry localValue : localValueInfos) {
-            if (localValue.local() == local) {
+            if (localValue.getLocal() == local) {
                 return localValue;
             }
         }
@@ -396,13 +374,8 @@ public abstract class Range {
         if (this.line != that.line) {
             return false;
         }
-        if (this.localValueInfos.size() != that.localValueInfos.size()) {
+        if (!this.localValueInfos.equals(that.localValueInfos)) {
             return false;
-        }
-        for (int i = 0; i < this.localValueInfos.size(); i++) {
-            if (!this.getLocalValue(i).equals(that.getLocalValue(i))) {
-                return false;
-            }
         }
         // merging just requires updating lo and hi range as everything else is equal
         this.hiOffset = that.hiOffset;

@@ -28,6 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.debugentry.StringEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+
 import jdk.graal.compiler.debug.DebugContext;
 
 /**
@@ -61,7 +62,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
         int size = buffer.length;
         int pos = 0;
 
-        enableLog(context, pos);
+        enableLog(context);
 
         verboseLog(context, " [0x%08x] DEBUG_STR", pos);
         for (StringEntry stringEntry : dwarfSections.getStringTable()) {
