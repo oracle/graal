@@ -28,7 +28,6 @@ package com.oracle.objectfile.elf.dwarf;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,8 +37,11 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.ConstantValueEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.LocalValueEntry;
+import com.oracle.objectfile.debugentry.RegisterValueEntry;
+import com.oracle.objectfile.debugentry.StackValueEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
@@ -70,15 +72,9 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
      */
     private int dwarfStackRegister;
 
-    private static final LayoutDecision.Kind[] targetLayoutKinds = {
-                    LayoutDecision.Kind.CONTENT,
-                    LayoutDecision.Kind.SIZE,
-                    /* Add this so we can use the text section base address for debug. */
-                    LayoutDecision.Kind.VADDR};
-
     public DwarfLocSectionImpl(DwarfDebugInfo dwarfSections) {
         // debug_loc section depends on text section
-        super(dwarfSections, DwarfSectionName.DW_LOCLISTS_SECTION, DwarfSectionName.TEXT_SECTION, targetLayoutKinds);
+        super(dwarfSections, DwarfSectionName.DW_LOCLISTS_SECTION, DwarfSectionName.TEXT_SECTION);
         initDwarfRegMap();
     }
 
@@ -115,7 +111,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         int size = buffer.length;
         int pos = 0;
 
-        enableLog(context, pos);
+        enableLog(context);
         log(context, "  [0x%08x] DEBUG_LOC", pos);
         log(context, "  [0x%08x] size = 0x%08x", pos, size);
 
@@ -198,29 +194,17 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             locationListEntries.addAll(getRangeLocationListEntries(primary, base));
             // location list entries for inlined calls
             if (!primary.isLeaf()) {
-                Iterator<Range> iterator = compiledEntry.topDownRangeStream().iterator();
-                while (iterator.hasNext()) {
-                    Range subrange = iterator.next();
-                    if (subrange.isLeaf()) {
-                        continue;
-                    }
-                    locationListEntries.addAll(getRangeLocationListEntries(subrange, base));
-                }
+                compiledEntry.callRangeStream().forEach(subrange -> locationListEntries.addAll(getRangeLocationListEntries(subrange, base)));
             }
         });
         return locationListEntries;
     }
 
     private static List<LocationListEntry> getRangeLocationListEntries(Range range, long base) {
-        List<LocationListEntry> locationListEntries = new ArrayList<>();
-
-        for (Map.Entry<LocalEntry, List<Range>> entry : range.getVarRangeMap().entrySet()) {
-            if (!entry.getValue().isEmpty()) {
-                locationListEntries.add(new LocationListEntry(range, base, entry.getKey(), entry.getValue()));
-            }
-        }
-
-        return locationListEntries;
+        return range.getVarRangeMap().entrySet().stream()
+                        .filter(entry -> !entry.getValue().isEmpty())
+                        .map(entry -> new LocationListEntry(range, base, entry.getKey(), entry.getValue()))
+                        .toList();
     }
 
     private int writeVarLocations(DebugContext context, LocalEntry local, long base, List<Range> rangeList, byte[] buffer, int p) {
@@ -237,25 +221,25 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         for (LocalValueExtent extent : extents) {
             LocalValueEntry value = extent.value;
             assert (value != null);
-            log(context, "  [0x%08x]     local  %s:%s [0x%x, 0x%x] = %s", pos, value.local().name(), value.local().type().getTypeName(), extent.getLo(), extent.getHi(), formatValue(value));
+            log(context, "  [0x%08x]     local  %s:%s [0x%x, 0x%x] = %s", pos, local.name(), local.type().getTypeName(), extent.getLo(), extent.getHi(), value);
             pos = writeLocationListEntry(DwarfLocationListEntry.DW_LLE_offset_pair, buffer, pos);
             pos = writeULEB(extent.getLo() - base, buffer, pos);
             pos = writeULEB(extent.getHi() - base, buffer, pos);
-            switch (value.localKind()) {
-                case REGISTER:
-                    pos = writeRegisterLocation(context, value.regIndex(), buffer, pos);
+            switch (value) {
+                case RegisterValueEntry registerValueEntry:
+                    pos = writeRegisterLocation(context, registerValueEntry.getRegIndex(), buffer, pos);
                     break;
-                case STACK:
-                    pos = writeStackLocation(context, value.stackSlot(), buffer, pos);
+                case StackValueEntry stackValueEntry:
+                    pos = writeStackLocation(context, stackValueEntry.getStackSlot(), buffer, pos);
                     break;
-                case CONSTANT:
-                    JavaConstant constant = value.constant();
+                case ConstantValueEntry constantValueEntry:
+                    JavaConstant constant = constantValueEntry.getConstant();
                     if (constant instanceof PrimitiveConstant) {
-                        pos = writePrimitiveConstantLocation(context, value.constant(), buffer, pos);
+                        pos = writePrimitiveConstantLocation(context, constant, buffer, pos);
                     } else if (constant.isNull()) {
-                        pos = writeNullConstantLocation(context, value.constant(), buffer, pos);
+                        pos = writeNullConstantLocation(context, constant, buffer, pos);
                     } else {
-                        pos = writeObjectConstantLocation(context, value.constant(), value.heapOffset(), buffer, pos);
+                        pos = writeObjectConstantLocation(context, constant, constantValueEntry.getHeapOffset(), buffer, pos);
                     }
                     break;
                 default:
@@ -629,10 +613,6 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         DwarfRegEncodingAMD64(int dwarfEncoding, int graalEncoding) {
             this.dwarfEncoding = dwarfEncoding;
             this.graalEncoding = graalEncoding;
-        }
-
-        public static int graalOrder(DwarfRegEncodingAMD64 e1, DwarfRegEncodingAMD64 e2) {
-            return Integer.compare(e1.graalEncoding, e2.graalEncoding);
         }
 
         @Override

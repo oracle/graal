@@ -26,26 +26,26 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debugentry.range.PrimaryRange;
-import com.oracle.objectfile.debugentry.range.Range;
-
 import java.util.List;
 import java.util.stream.Stream;
+
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.Range;
 
 /**
  * Tracks debug info associated with a top level compiled method.
  *
- * @param primary        The primary range detailed by this object.
- * @param classEntry     Details of the class owning this range.
+ * @param primary The primary range detailed by this object.
+ * @param classEntry Details of the class owning this range.
  * @param frameSizeInfos Details of compiled method frame size changes.
- * @param frameSize      Size of compiled method frame.
+ * @param frameSize Size of compiled method frame.
  */
 public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntry> frameSizeInfos, int frameSize,
-                                  ClassEntry classEntry) {
+                ClassEntry classEntry) {
 
     /**
-     * Returns a stream that traverses all the callees of the method associated with this entry.
-     * The stream performs a depth-first pre-order traversal of the call tree.
+     * Returns a stream that traverses all the callees of the method associated with this entry. The
+     * stream performs a depth-first pre-order traversal of the call tree.
      *
      * @return the iterator
      */
@@ -63,5 +63,16 @@ public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntr
      */
     public Stream<Range> leafRangeStream() {
         return topDownRangeStream().filter(Range::isLeaf);
+    }
+
+    /**
+     * Returns a stream that traverses the callees of the method associated with this entry and
+     * returns only the call ranges. The stream performs a depth-first pre-order traversal of the
+     * call tree returning only ranges with callees.
+     *
+     * @return the iterator
+     */
+    public Stream<Range> callRangeStream() {
+        return topDownRangeStream().filter(range -> !range.isLeaf());
     }
 }

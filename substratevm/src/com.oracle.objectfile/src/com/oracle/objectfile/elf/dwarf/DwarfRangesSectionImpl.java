@@ -26,11 +26,6 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import java.util.Map;
-
-import com.oracle.objectfile.LayoutDecision;
-import com.oracle.objectfile.LayoutDecisionMap;
-import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfRangeListEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
@@ -56,23 +51,6 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        ObjectFile.Element textElement = getElement().getOwner().elementForName(".text");
-        LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
-        if (decisionMap != null) {
-            Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
-            if (valueObj instanceof Number) {
-                /*
-                 * This may not be the final vaddr for the text segment but it will be close enough
-                 * to make debug easier i.e. to within a 4k page or two.
-                 */
-                debugTextBase = ((Number) valueObj).longValue();
-            }
-        }
-        return super.getOrDecideContent(alreadyDecided, contentHint);
-    }
-
-    @Override
     public void writeContent(DebugContext context) {
         assert contentByteArrayCreated();
 
@@ -80,7 +58,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
         int size = buffer.length;
         int pos = 0;
 
-        enableLog(context, pos);
+        enableLog(context);
         log(context, "  [0x%08x] DEBUG_RANGES", pos);
         log(context, "  [0x%08x] size = 0x%08x", pos, size);
 
@@ -119,7 +97,7 @@ public class DwarfRangesSectionImpl extends DwarfSectionImpl {
     private int writeRangeLists(DebugContext context, byte[] buffer, int p) {
         Cursor entryCursor = new Cursor(p);
 
-        instanceClassStream().filter(ClassEntry::hasCompiledMethods).forEachOrdered(classEntry -> {
+        instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
             int pos = entryCursor.get();
             setCodeRangesIndex(classEntry, pos);
             /* Write range list for a class */

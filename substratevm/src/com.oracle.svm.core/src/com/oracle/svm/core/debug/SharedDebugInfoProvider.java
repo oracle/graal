@@ -15,6 +15,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.ConstantValueEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
@@ -24,6 +25,8 @@ import com.oracle.objectfile.debugentry.LoaderEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
 import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.RegisterValueEntry;
+import com.oracle.objectfile.debugentry.StackValueEntry;
 import com.oracle.objectfile.debugentry.StringTable;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
@@ -833,7 +836,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             LocalEntry thisParam = methodEntry.getThisParam();
             debug.log(DebugContext.DETAILED_LEVEL, "local[0] %s type %s slot %d", thisParam.name(), thisParam.type().getTypeName(), thisParam.slot());
             debug.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, thisParam.kind());
-            localValueInfos.add(createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE, thisParam));
+            LocalValueEntry localValueEntry = createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE, thisParam);
+            if (localValueEntry != null) {
+                localValueInfos.add(localValueEntry);
+            }
         }
         // Iterate over all params and create synthetic param info for each
         int paramIdx = 0;
@@ -841,7 +847,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             JavaValue value = locProducer.paramLocation(paramIdx);
             debug.log(DebugContext.DETAILED_LEVEL, "local[%d] %s type %s slot %d", paramIdx + 1, param.name(), param.type().getTypeName(), param.slot());
             debug.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, param.kind());
-            localValueInfos.add(createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE, param));
+            LocalValueEntry localValueEntry = createLocalValueEntry(value, PRE_EXTEND_FRAME_SIZE, param);
+            if (localValueEntry != null) {
+                localValueInfos.add(localValueEntry);
+            }
             paramIdx++;
         }
         return localValueInfos;
@@ -1093,7 +1102,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                      * upfront from the local variable table, the LocalEntry already exists.
                      */
                     LocalEntry localEntry = method.lookupLocalEntry(name, slot, typeEntry, kind, line);
-                    localInfos.add(createLocalValueEntry(value, frameSize, localEntry));
+                    LocalValueEntry localValueEntry = createLocalValueEntry(value, frameSize, localEntry);
+                    if (localValueEntry != null) {
+                        localInfos.add(localValueEntry);
+                    }
                 } else {
                     debug.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", kind);
                 }
@@ -1110,39 +1122,29 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     private LocalValueEntry createLocalValueEntry(JavaValue value, int frameSize, LocalEntry local) {
-        LocalValueKind localKind;
-        int regIndex = -1;
-        int stackSlot = -1;
-        long heapOffset = -1;
-        JavaConstant constant = null;
-
         switch (value) {
             case RegisterValue registerValue -> {
-                localKind = LocalValueKind.REGISTER;
-                regIndex = registerValue.getRegister().number;
+                return new RegisterValueEntry(registerValue.getRegister().number, local);
             }
             case StackSlot stackValue -> {
-                localKind = LocalValueKind.STACK;
-                stackSlot = frameSize == 0 ? stackValue.getRawOffset() : stackValue.getOffset(frameSize);
+                int stackSlot = frameSize == 0 ? stackValue.getRawOffset() : stackValue.getOffset(frameSize);
+                return new StackValueEntry(stackSlot, local);
             }
             case JavaConstant constantValue -> {
                 if (constantValue instanceof PrimitiveConstant || constantValue.isNull()) {
-                    localKind = LocalValueKind.CONSTANT;
-                    constant = constantValue;
+                    return new ConstantValueEntry(-1, constantValue, local);
                 } else {
-                    heapOffset = objectOffset(constantValue);
+                    long heapOffset = objectOffset(constantValue);
                     if (heapOffset >= 0) {
-                        localKind = LocalValueKind.CONSTANT;
-                        constant = constantValue;
-                    } else {
-                        localKind = LocalValueKind.UNDEFINED;
+                        return new ConstantValueEntry(heapOffset, constantValue, local);
                     }
                 }
+                return null;
             }
-            case null, default -> localKind = LocalValueKind.UNDEFINED;
+            default -> {
+                return null;
+            }
         }
-
-        return new LocalValueEntry(regIndex, stackSlot, heapOffset, constant, localKind, local);
     }
 
     public abstract long objectOffset(JavaConstant constant);

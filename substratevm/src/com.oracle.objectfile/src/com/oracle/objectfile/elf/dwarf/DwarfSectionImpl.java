@@ -43,7 +43,6 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.LocalEntry;
-import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
@@ -99,9 +98,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected final DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
-    protected long debugTextBase = 0;
     protected long debugAddress = 0;
-    protected int debugBase = 0;
 
     private final ArrayList<Byte> contentBytes = new ArrayList<>();
 
@@ -189,7 +186,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return "dwarf" + getSectionName();
     }
 
-    protected void enableLog(DebugContext context, int pos) {
+    protected void enableLog(DebugContext context) {
         /*
          * Debug output is disabled during the first pass where we size the buffer. this is called
          * to enable it during the second pass where the buffer gets written, but only if the scope
@@ -197,10 +194,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          */
         assert contentByteArrayCreated();
 
-        if (context.areScopesEnabled()) {
+        if (context.areScopesEnabled() && context.isLogEnabled()) {
             debug = true;
-            debugBase = pos;
-            debugAddress = debugTextBase;
         }
     }
 
@@ -667,15 +662,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         /* Write a relocatable address relative to the heap section start. */
         pos = writeExprOpcode(DwarfExpressionOpcode.DW_OP_addr, buffer, pos);
         return writeHeapOffset(offset, buffer, pos);
-    }
-
-    protected static String formatValue(LocalValueEntry value) {
-        return switch (value.localKind()) {
-            case REGISTER -> "REG:" + value.regIndex();
-            case STACK -> "STACK:" + value.stackSlot();
-            case CONSTANT -> "CONST:" + value.constant() + "[" + Long.toHexString(value.heapOffset()) + "]";
-            default -> "-";
-        };
     }
 
     /**

@@ -26,20 +26,16 @@
 
 package com.oracle.objectfile.debugentry;
 
-public abstract class ForeignTypeEntry extends ClassEntry {
+public class ForeignPointerTypeEntry extends ForeignTypeEntry {
+    private final TypeEntry pointerTo;
 
-    public ForeignTypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                    long layoutTypeSignature, ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
-        super(typeName, size, classOffset, typeSignature, typeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+    public ForeignPointerTypeEntry(String typeName, int size, long classOffset, long typeSignature,
+                    long layoutTypeSignature, ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader, TypeEntry pointerTo) {
+        super(typeName, size, classOffset, typeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+        this.pointerTo = pointerTo;
     }
 
-    @Override
-    public boolean isForeign() {
-        return true;
-    }
-
-    @Override
-    public boolean isInstance() {
-        return false;
+    public TypeEntry getPointerTo() {
+        return pointerTo;
     }
 }
