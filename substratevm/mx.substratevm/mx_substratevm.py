@@ -2455,3 +2455,57 @@ def svm_libcontainer_namespace(args):
     libcontainer_project = mx.project("com.oracle.svm.native.libcontainer")
     for src_dir in  libcontainer_project.source_dirs():
         mx.command_function("svm_namespace")(args + ["--directory", src_dir , "--namespace", "svm_container"])
+
+@mx.command(suite, 'capnp-compile', usage_msg="Compile Cap'n Proto schema files to source code.")
+def capnp_compile(args):
+    capnpcjava_home = os.environ.get('CAPNPROTOJAVA_HOME')
+    if capnpcjava_home is None or not exists(capnpcjava_home + '/capnpc-java'):
+        mx.abort('Clone and build capnproto/capnproto-java from GitHub and point CAPNPROTOJAVA_HOME to its path.')
+    srcdir = 'src/com.oracle.svm.hosted/resources/'
+    outdir = 'src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/heap/'
+    command = ['capnp', 'compile',
+               '--import-path=' + capnpcjava_home + '/compiler/src/main/schema/',
+               '--output=' + capnpcjava_home + '/capnpc-java:' + outdir,
+               '--src-prefix=' + srcdir,
+               srcdir + 'SharedLayerSnapshotCapnProtoSchema.capnp']
+    mx.run(command)
+    # Remove huge unused schema chunks from generated code
+    outpath = outdir + 'SharedLayerSnapshotCapnProtoSchemaHolder.java' # name specified in schema
+    with open(outpath, 'r') as f:
+        lines = f.readlines()
+    with open(outpath, 'w') as f:
+        f.write(
+"""/*
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+//@formatter:off
+//Checkstyle: stop
+""")
+        for line in lines:
+            if line.startswith("public final class "):
+                f.write('@SuppressWarnings("all")\n')
+            if 'public static final class Schemas {' in line:
+                break
+            f.write(line)
+        f.write('}\n')

@@ -24,7 +24,8 @@
  */
 package com.oracle.graal.pointsto.heap;
 
-import org.graalvm.collections.EconomicMap;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
 
 public class ImageLayerLoaderHelper {
     protected ImageLayerLoader imageLayerLoader;
@@ -34,12 +35,12 @@ public class ImageLayerLoaderHelper {
     }
 
     @SuppressWarnings("unused")
-    protected boolean loadType(EconomicMap<String, Object> typeData, int tid) {
+    protected boolean loadType(PersistedAnalysisType.Reader typeData, int tid) {
         return false;
     }
 
     @SuppressWarnings("unused")
-    protected boolean loadMethod(EconomicMap<String, Object> methodData, int mid) {
+    protected boolean loadMethod(PersistedAnalysisMethod.Reader methodData, int mid) {
         return false;
     }
 }

@@ -202,6 +202,15 @@ suite = {
             "path": "mx.substratevm/jar-with-space-in-resource-dir.jar",
             "digest": "sha512:270bffd158c92b04b16db147f4ef336dcb4d830bf3503cc25be1227b351597a3254544b3c4a5183dcc53f2f3ab10b282722dbf7f1b5e9d9a2741878a7057eb40",
         },
+
+        "CAPNPROTO_RUNTIME": {
+            "digest" : "sha512:94a7776511c344da60a1acdc346c133522a43c239d067d0d5d86c21291e0252a19bd4fa74e4b1d3a93e75dadd41af6557a5d118a1584e39d34c092485ce065b2",
+            "maven" : {
+                "groupId" : "org.capnproto",
+                "artifactId" : "runtime",
+                "version" : "0.1.16",
+            },
+        },
     },
 
     "projects": {
@@ -537,6 +546,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.common",
+                "CAPNPROTO_RUNTIME"
             ],
             "requires" : [
                 "jdk.internal.vm.ci"
@@ -1656,6 +1666,9 @@ suite = {
                     "java.management": [
                         "sun.management",
                     ],
+                    "org.graalvm.nativeimage.pointsto": [
+                        "org.capnproto"
+                    ]
                 },
             },
             "noMavenJavadoc": True,
@@ -2089,6 +2102,7 @@ suite = {
                 "NATIVE_IMAGE_BASE",
             ],
             "exclude": [
+                # "CAPNPROTO_RUNTIME",
             ],
             "moduleInfo" : {
               "name" : "org.graalvm.nativeimage.pointsto",

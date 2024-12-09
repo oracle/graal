@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.VMConstant;
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
 
-    private static final AtomicInteger currentId = new AtomicInteger(0);
+    private static final AtomicInteger currentId = new AtomicInteger(1);
 
     public static final VarHandle isReachableHandle = ReflectionUtil.unreflectField(ConstantData.class, "isReachable", MethodHandles.lookup());
 

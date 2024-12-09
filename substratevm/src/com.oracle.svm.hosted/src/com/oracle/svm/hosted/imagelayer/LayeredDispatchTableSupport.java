@@ -743,7 +743,7 @@ final class LayeredDispatchTableSupportFeature implements InternalFeature {
             var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
             var singleton = LayeredDispatchTableSupport.singleton();
             for (var entry : singleton.priorVirtualCallTargets.entrySet()) {
-                AnalysisType type = loader.getAnalysisType(entry.getKey());
+                AnalysisType type = loader.getAnalysisTypeForBaseLayerId(entry.getKey());
                 var methods = type.getOrCalculateOpenTypeWorldDispatchTableMethods();
                 var virtualCallTargets = entry.getValue();
                 methods.forEach(aMethod -> {

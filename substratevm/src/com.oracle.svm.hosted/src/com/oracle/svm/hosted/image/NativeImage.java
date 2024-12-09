@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateOptions.MremapImageHeap;
+import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateUtil.mangleName;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
@@ -443,7 +443,7 @@ public abstract class NativeImage extends AbstractImage {
             long imageHeapSize = getImageHeapSize();
 
             if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                HostedImageLayerBuildingSupport.singleton().getWriter().persistImageHeapSize(imageHeapSize);
+                HostedImageLayerBuildingSupport.singleton().getWriter().setImageHeapSize(imageHeapSize);
             }
 
             // Text section (code)
