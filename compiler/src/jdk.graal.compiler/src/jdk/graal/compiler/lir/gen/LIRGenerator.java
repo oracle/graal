@@ -501,6 +501,8 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
         }
     }
 
+    private static final double JUMP_TABLE_THRESHOLD = 3;
+
     public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value) {
         SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
 
@@ -513,12 +515,12 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
 
         /*
          * This heuristic tries to find a compromise between the effort for the best switch strategy
-         * and the density of a tableswitch. If the effort for the strategy is at least 4, then a
-         * tableswitch is preferred if better than a certain value that starts at 0.5 and lowers
-         * gradually with additional effort.
+         * and the density of a tableswitch. If the effort for the strategy is at least
+         * JUMP_TABLE_THRESHOLD, then a tableswitch is preferred if the density is larger than a
+         * certain value that gradually decreases as the aforementioned effort rises.
          */
         double minDensity = 1 / Math.sqrt(strategy.getAverageEffort());
-        if (strategy.getAverageEffort() < 4d || (tableSwitchDensity < minDensity && hashTableSwitchDensity < minDensity)) {
+        if (strategy.getAverageEffort() < JUMP_TABLE_THRESHOLD || (tableSwitchDensity < minDensity && hashTableSwitchDensity < minDensity)) {
             emitStrategySwitch(strategy, value, keyTargets, defaultTarget);
         } else {
             if (hashTableSwitchDensity > tableSwitchDensity) {
