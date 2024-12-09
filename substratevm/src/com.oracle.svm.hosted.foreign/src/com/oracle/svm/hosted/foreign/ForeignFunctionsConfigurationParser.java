@@ -49,7 +49,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+23/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";

@@ -29,8 +29,9 @@ import java.lang.reflect.GenericDeclaration;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 
-@TargetClass(sun.reflect.generics.reflectiveObjects.TypeVariableImpl.class)
+@TargetClass(value = sun.reflect.generics.reflectiveObjects.TypeVariableImpl.class, onlyWith = JDK21OrEarlier.class)
 final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
 
     @Alias GenericDeclaration genericDeclaration;

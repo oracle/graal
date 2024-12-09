@@ -45,7 +45,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HO
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_CONT_ENTRY;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_ID_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_MONITOR_OWNER_ID_LOCATION;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static jdk.graal.compiler.nodes.ConstantNode.forBoolean;
 import static jdk.graal.compiler.nodes.ProfileData.BranchProbabilityData.injected;
@@ -730,11 +730,11 @@ public class HotSpotGraphBuilderPlugins {
                                     barrierSet.writeBarrierType(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION), MemoryOrderMode.PLAIN));
 
                     if (JavaVersionUtil.JAVA_SPEC > 21) {
-                        GraalError.guarantee(config.javaThreadLockIDOffset != -1, "JavaThread::_lock_id should have been exported");
+                        GraalError.guarantee(config.javaThreadMonitorOwnerIDOffset != -1, "JavaThread::_lock_id should have been exported");
                         // Change the lock_id of the JavaThread
-                        ValueNode tid = helper.loadField(thread, helper.getField(b.getMetaAccess().lookupJavaType(Thread.class), "tid"));
-                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadLockIDOffset)));
-                        b.add(new JavaWriteNode(JavaKind.Long, address, JAVA_THREAD_LOCK_ID_LOCATION, tid, BarrierType.NONE, false));
+                        ValueNode monitorOwnerID = helper.loadField(thread, helper.getField(b.getMetaAccess().lookupJavaType(Thread.class), "tid"));
+                        OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadMonitorOwnerIDOffset)));
+                        b.add(new JavaWriteNode(JavaKind.Long, address, JAVA_THREAD_MONITOR_OWNER_ID_LOCATION, monitorOwnerID, BarrierType.NONE, false));
                     }
                     if (HotSpotReplacementsUtil.supportsVirtualThreadUpdateJFR(config)) {
                         b.add(new VirtualThreadUpdateJFRNode(thread));
