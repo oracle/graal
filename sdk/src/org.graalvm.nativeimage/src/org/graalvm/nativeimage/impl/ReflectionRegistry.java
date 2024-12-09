@@ -45,6 +45,7 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 public interface ReflectionRegistry {
+    // TODO thread this true behind MRE flag
     default void register(ConfigurationCondition condition, Class<?>... classes) {
         Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
     }

@@ -48,8 +48,8 @@ public class ReflectionRegistryAdapter extends RegistryAdapter {
     }
 
     @Override
-    public void registerType(ConfigurationCondition condition, Class<?> type) {
-        super.registerType(condition, type);
+    public void registerType(ConfigurationCondition condition, Class<?> type, boolean registerMetadata) {
+        super.registerType(condition, type, registerMetadata);
         if (Proxy.isProxyClass(type)) {
             proxyRegistry.accept(condition, Arrays.stream(type.getInterfaces()).map(Class::getTypeName).toList());
         }

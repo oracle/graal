@@ -91,7 +91,7 @@ final class LegacyReflectionConfigurationParser<C, T> extends ReflectionConfigur
 
         C queryCondition = isType ? conditionResolver.alwaysTrue() : condition;
         T clazz = result.get();
-        delegate.registerType(conditionResult.get(), clazz);
+        delegate.registerType(conditionResult.get(), clazz, false);
 
         registerIfNotDefault(data, false, clazz, "allDeclaredConstructors", () -> delegate.registerDeclaredConstructors(condition, false, clazz));
         registerIfNotDefault(data, false, clazz, "allPublicConstructors", () -> delegate.registerPublicConstructors(condition, false, clazz));

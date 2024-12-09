@@ -64,9 +64,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -501,6 +503,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             } catch (NoSuchMethodException e) {
                 negativeMethodLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet())
                                 .add(new AnalysisMethod.Signature(methodName, metaAccess.lookupJavaTypes(parameterTypes)));
+            } catch (LinkageError le) {
+                registerLinkageError(declaringClass, le, methodLookupExceptions);
             }
         });
     }
@@ -514,6 +518,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             } catch (NoSuchMethodException e) {
                 negativeConstructorLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet())
                                 .add(metaAccess.lookupJavaTypes(parameterTypes));
+            } catch (LinkageError le) {
+                registerLinkageError(declaringClass, le, constructorLookupExceptions);
             }
         });
     }
@@ -525,7 +531,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllFieldsQuery(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAllFields(ConfigurationCondition condition, Class<?> clazz) {
         registerAllFieldsQuery(condition, false, clazz);
     }
 
@@ -544,7 +550,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAllDeclaredFields(ConfigurationCondition condition, Class<?> clazz) {
         registerAllDeclaredFieldsQuery(condition, false, clazz);
     }
 
@@ -575,16 +581,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         var classFields = registeredFields.computeIfAbsent(declaringClass, t -> new ConcurrentHashMap<>());
         boolean exists = classFields.containsKey(analysisField);
+        // TODO open a ticket to disallow
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
         var cndValue = classFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
-        if (!queriedOnly) {
-            /* queryOnly methods are conditioned by the type itself */
-            cndValue.getConditions().addCondition(cnd);
-        }
-
         if (!exists) {
-            registerTypesForField(analysisField, reflectField, true);
+            registerTypesForField(analysisField, reflectField, queriedOnly);
 
+            // TODO bulk it up
             /*
              * The image needs to know about subtypes shadowing fields registered for reflection to
              * ensure the correctness of run-time reflection queries.
@@ -611,10 +614,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
 
         /*
-         * We need to run this even if the method has already been registered, in case it was only
+         * We need to run this even if the field has already been registered, in case it was only
          * registered as queried.
          */
         if (!queriedOnly) {
+            /* queryOnly methods are conditioned on the type itself */
+            cndValue.getConditions().addCondition(cnd);
             registerTypesForField(analysisField, reflectField, false);
         }
     }
@@ -631,6 +636,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                  * not necessary.
                  */
                 negativeFieldLookups.computeIfAbsent(metaAccess.lookupJavaType(declaringClass), (key) -> ConcurrentHashMap.newKeySet()).add(fieldName);
+            } catch (LinkageError le) {
+                registerLinkageError(declaringClass, le, fieldLookupExceptions);
             }
         });
     }

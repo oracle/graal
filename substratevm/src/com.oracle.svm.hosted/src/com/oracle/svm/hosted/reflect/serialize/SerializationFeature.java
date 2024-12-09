@@ -50,6 +50,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.MissingRegistrationSupport;
+import com.oracle.svm.core.MissingRegistrationUtils;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -520,7 +524,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * serialization class consistency, so need to register all constructors, methods and
              * fields.
              */
-            registerSerializationUIDElements(serializationTargetClass, true); // if MRE
+            boolean legacyFullyRegister = !MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(serializationTargetClass);
+            registerSerializationUIDElements(serializationTargetClass, legacyFullyRegister);
 
             /*
              * Required by jdk.internal.reflect.ReflectionFactory.newConstructorForSerialization
@@ -543,11 +548,17 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
             Class<?> iter = serializationTargetClass;
             while (iter != null) {
-                Arrays.stream(iter.getDeclaredFields()).map(Field::getType).forEach(type -> {
-                    RuntimeReflection.registerAllDeclaredMethods(type);
-                    RuntimeReflection.registerAllDeclaredFields(type);
-                    RuntimeReflection.registerAllDeclaredConstructors(type);
-                });
+                // TODO linkage error
+                Arrays.stream(ReflectionUtil.linkageSafeQuery(iter, new Field[0], Class::getDeclaredFields))
+                                .map(Field::getType).forEach(type -> {
+                                    if (legacyFullyRegister) {
+                                        RuntimeReflection.registerAllDeclaredMethods(type);
+                                        RuntimeReflection.registerAllDeclaredFields(type);
+                                        RuntimeReflection.registerAllDeclaredConstructors(type);
+                                    } else {
+                                        RuntimeReflection.register(type);
+                                    }
+                                });
                 iter = iter.getSuperclass();
             }
         }
@@ -566,11 +577,12 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         RuntimeReflection.registerAllDeclaredFields(serializationTargetClass);
         if (fullyRegister) {
             /* This is here a legacy that we can't remove as it is a breaking change */
-            RuntimeReflection.register(serializationTargetClass.getDeclaredConstructors());
-            RuntimeReflection.register(serializationTargetClass.getDeclaredMethods());
-            RuntimeReflection.register(serializationTargetClass.getDeclaredFields());
+            RuntimeReflection.register(ReflectionUtil.linkageSafeQuery(serializationTargetClass, new Constructor[0], Class::getDeclaredConstructors));
+            RuntimeReflection.register(ReflectionUtil.linkageSafeQuery(serializationTargetClass, new Method[0], Class::getDeclaredMethods));
+            RuntimeReflection.register(ReflectionUtil.linkageSafeQuery(serializationTargetClass, new Field[0], Class::getDeclaredFields));
+
+            RuntimeReflection.registerFieldLookup(serializationTargetClass, "serialPersistentFields");
         }
-        RuntimeReflection.registerFieldLookup(serializationTargetClass, "serialPersistentFields");
     }
 
     public void afterAnalysis() {

@@ -84,7 +84,7 @@ class ReflectionMetadataParser<C, T> extends ReflectionConfigurationParser<C, T>
 
         C queryCondition = conditionResolver.alwaysTrue();
         T clazz = result.get();
-        delegate.registerType(conditionResult.get(), clazz);
+        delegate.registerType(conditionResult.get(), clazz, true);
 
         delegate.registerDeclaredClasses(queryCondition, clazz);
         delegate.registerRecordComponents(queryCondition, clazz);

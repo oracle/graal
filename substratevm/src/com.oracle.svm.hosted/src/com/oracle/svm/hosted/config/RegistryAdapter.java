@@ -66,8 +66,8 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
     }
 
     @Override
-    public void registerType(ConfigurationCondition condition, Class<?> type) {
-        registry.register(condition, type);
+    public void registerType(ConfigurationCondition condition, Class<?> type, boolean registerMetadata) {
+        registry.register(condition, registerMetadata, type);
     }
 
     @Override

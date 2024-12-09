@@ -32,7 +32,7 @@ public interface ReflectionConfigurationParserDelegate<C, T> {
 
     TypeResult<T> resolveType(C condition, ConfigurationTypeDescriptor typeDescriptor, boolean allowPrimitives);
 
-    void registerType(C condition, T type);
+    void registerType(C condition, T type, boolean registerMetadata);
 
     void registerPublicClasses(C condition, T type);
 

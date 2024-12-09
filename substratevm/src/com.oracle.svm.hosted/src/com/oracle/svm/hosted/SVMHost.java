@@ -33,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.RecordComponent;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -649,7 +650,7 @@ public class SVMHost extends HostVM {
             throw new UnsupportedFeatureException(message);
         }
         if (originalClass.isRecord()) {
-            for (var recordComponent : originalClass.getRecordComponents()) {
+            for (var recordComponent : ReflectionUtil.linkageSafeQuery(originalClass, new RecordComponent[0], Class::getRecordComponents)) {
                 if (WordBase.class.isAssignableFrom(recordComponent.getType())) {
                     throw UserError.abort("Records cannot use Word types. " +
                                     "The equals/hashCode/toString implementation of records uses method handles, and Word types are not supported as parameters of method handle invocations. " +

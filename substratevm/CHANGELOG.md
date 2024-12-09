@@ -19,6 +19,7 @@ At runtime, premain runtime options are set along with main class' arguments in 
 * (GR-58914) `ActiveProcessorCount` must be set at isolate or VM creation time.
 * (GR-59326) Ensure builder ForkJoin commonPool parallelism always respects NativeImageOptions.NumberOfThreads.
 * (GR-60081) Native Image now targets `armv8.1-a` by default on AArch64. Use `-march=compatibility` for best compatibility or `-march=native` for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
+* (GR-54953) Add options `-H:IncludeAllMetadataForClassPathEntry`, `-H:+IncludeAllForClassPath`, and `-H:IncludeAllMetadataForModule` for bulk inclusion of reachability metadata.
 
 ## GraalVM for JDK 23 (Internal Version 24.1.0)
 * (GR-51520) The old class initialization strategy, which was deprecated in GraalVM for JDK 22, is removed. The option `StrictImageHeap` no longer has any effect.
