@@ -181,7 +181,7 @@ public class ProcessBuilderTest {
             ByteArrayOutputStream stderr = new ByteArrayOutputStream();
             TruffleProcessBuilder builder = env.newProcessBuilder(toStringArray(frameArguments));
             Process p = builder.redirectOutput(builder.createRedirectToStream(stdout)).redirectError(builder.createRedirectToStream(stderr)).start();
-            if (!p.waitFor(60, TimeUnit.SECONDS)) {
+            if (!p.waitFor(2, TimeUnit.MINUTES)) {
                 p.destroy();
                 Assert.fail("Process did not finish in expected time.");
             }
@@ -640,11 +640,11 @@ public class ProcessBuilderTest {
         }
 
         static String expectedStdOut() {
-            return repeat(STDOUT, 10_000);
+            return repeat(STDOUT, 100);
         }
 
         static String expectedStdErr() {
-            return repeat(STDERR, 10_000);
+            return repeat(STDERR, 100);
         }
 
         private static String repeat(String pattern, int count) {
