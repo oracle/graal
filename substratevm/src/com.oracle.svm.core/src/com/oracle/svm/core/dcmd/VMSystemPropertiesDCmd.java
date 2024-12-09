@@ -34,7 +34,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.vm.VMSupport;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L94-L110")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L84-L95")
 public class VMSystemPropertiesDCmd extends AbstractDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMSystemPropertiesDCmd() {

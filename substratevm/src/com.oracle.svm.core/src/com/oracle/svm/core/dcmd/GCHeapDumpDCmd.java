@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.heap.dump.HeapDumping;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L317-L343")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L262-L283")
 public class GCHeapDumpDCmd extends AbstractDCmd {
     private static final DCmdOption<String> FILENAME = new DCmdOption<>(String.class, "filename", "File path of where to put the heap dump", true, null);
     private static final DCmdOption<Boolean> DUMP_ALL = new DCmdOption<>(Boolean.class, "-all", "Dump all objects, including unreachable objects", false, false);
