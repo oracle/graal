@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,7 +58,8 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
                     MethodType methodType,
                     boolean needsReturnBuffer,
                     int capturedStateMask,
-                    boolean needsTransition) {
+                    boolean needsTransition,
+                    boolean usingAddressPairs) {
         /*
          * A VMStorage may be null only when the Linker.Option.critical(allowHeapAccess=true) option
          * is passed. (see
