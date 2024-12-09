@@ -40,6 +40,11 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeInt;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeChar;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeByte;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import java.io.InputStream;
@@ -85,6 +90,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.BuildPhaseProvider.AfterHostedUniverse;
 import com.oracle.svm.core.BuildPhaseProvider.CompileQueueFinished;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -101,8 +107,11 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
+import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
+import com.oracle.svm.core.graal.nodes.SubstrateNewDynamicHubNode;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.jdk.Resources;
@@ -123,6 +132,7 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.nodes.java.FinalFieldBarrierNode;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.access.JavaLangReflectAccess;
@@ -141,6 +151,10 @@ import sun.reflect.generics.repository.ClassRepository;
 /**
  * Instantiations of this class have a special layout. See {@code DynamicHubLayout} for a
  * description of how the object is arranged.
+ * <p />
+ * A {@code DynamicHub} ends up initialized in the read-only part of the image heap, and therefore
+ * fields are considered immutable. In scenarios where a {@code DynamicHub} can be allocated at
+ * run-time it is important to keep this property.
  */
 @Substitute
 @TargetClass(java.lang.Class.class)
@@ -384,6 +398,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * classes/interfaces already initialized during image generation, i.e., this field is never
      * null at run time.
      */
+    @Stable //
     private ClassInitializationInfo classInitializationInfo;
 
     @UnknownObjectField(availability = AfterHostedUniverse.class)//
@@ -430,17 +445,16 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @InjectAccessors(CachedConstructorAccessors.class) //
     private Constructor<?> cachedConstructor;
 
-    @UnknownObjectField(canBeNull = true, availability = AfterCompilation.class) private DynamicHubMetadata hubMetadata;
+    @UnknownObjectField(canBeNull = true, availability = AfterCompilation.class) //
+    private DynamicHubMetadata hubMetadata;
 
-    @UnknownObjectField(canBeNull = true, availability = AfterCompilation.class) private ReflectionMetadata reflectionMetadata;
+    @UnknownObjectField(canBeNull = true, availability = AfterCompilation.class) //
+    private ReflectionMetadata reflectionMetadata;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
-                    ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass, String signature, boolean isProxyClass,
-                    int layerId) {
-        VMError.guarantee(layerId == (byte) layerId, "Layer id %d not in expected range", layerId);
-
+    public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType,
+                    DynamicHub componentHub, String sourceFileName, int modifiers, short flags, ClassLoader classLoader,
+                    Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, int layerId) {
         this.hostedJavaClass = hostedJavaClass;
         this.module = hostedJavaClass.getModule();
         this.name = name;
@@ -454,10 +468,145 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.simpleBinaryName = simpleBinaryName;
         this.declaringClass = declaringClass;
         this.signature = signature;
-        this.layerId = (byte) layerId;
 
-        this.flags = NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
-                        makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
+        assert layerId < DynamicImageLayerInfo.CREMA_LAYER_ID;
+        this.layerId = NumUtil.safeToByte(layerId);
+
+        this.flags = flags;
+
+        this.companion = new DynamicHubCompanion(hostedJavaClass, classLoader);
+    }
+
+    /**
+     * This helper is used for allocating and initializing a new {@code DynamicHub} at runtime.
+     * <p>
+     * Fields in {@code DynamicHub} are immutable, and writes in this method have location identity
+     * {@code ANY_LOCATION}: With this setup the compiler is allowed to float reads above such
+     * writes, therefore there must not be any reads in this helper. Also, further code must not be
+     * reachable that reads from the just created {@code DynamicHub} in this method.
+     * <p>
+     * Regular stores should also not be used for non-final fields of {@code DynamicHub}, otherwise
+     * the analysis won't conclude immutability for such fields.
+     * <p>
+     * Note that the GC can handle partially initialized {@code DynamicHub}s therefore this helper
+     * does not need to be {@link Uninterruptible}. However, other components might not, e.g. a
+     * {@code DynamicHub} must be fully initialized when it is used in an object header.
+     */
+    @NeverInline("Fields of DynamicHub are immutable. Immutable reads could float above ANY_LOCATION writes.")
+    public static DynamicHub allocate(String name, DynamicHub superHub, DynamicHub componentHub, String sourceFileName,
+                    int modifiers, short flags, ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName,
+                    Object declaringClass, String signature) {
+        VMError.guarantee(RuntimeClassLoading.isSupported());
+
+        ReferenceType referenceType = ReferenceType.computeReferenceType(DynamicHub.toClass(superHub));
+        // GR-59683: HubType.OBJECT_ARRAY?
+        int hubTybe = referenceType == ReferenceType.None ? HubType.INSTANCE : HubType.REFERENCE_INSTANCE;
+
+        DynamicHubCompanion companion = new DynamicHubCompanion(classLoader);
+        /* Always allow unsafe allocation for classes that were loaded at run-time. */
+        companion.setUnsafeAllocate();
+
+        // GR-59687: Correct size and content for vtable
+        int vTableEntries = 0x100;
+        ClassInitializationInfo classInitializationInfo = new ClassInitializationInfo(false);
+
+        // GR-60069: Determine size for instance and offsets for monitor and identityHashCode
+        int layoutEncoding = 0x40;
+        char monitorOffset = 0;
+        char identityHashOffset = 0;
+
+        // GR-59687: Determine typecheck related infos
+        int typeID = 0;
+        int typeIDDepth = 0;
+        int numClassTypes = 2;
+        int numInterfacesTypes = 0;
+        int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (numInterfacesTypes * 2)];
+
+        byte additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, true));
+
+        // GR-59683: Proper values needed.
+        DynamicHub arrayHub = null;
+        Object interfacesEncoding = null;
+        Object enumConstantsReference = null;
+
+        // GR-60080: Proper referenceMap needed.
+        int referenceMapIndex = DynamicHub.fromClass(Object.class).referenceMapIndex;
+
+        // GR-59683: Maybe can be used to inject a backreference to InterpreterResolvedObjectType
+        SharedType metaType = null;
+
+        // GR-59683
+        Module module = null;
+
+        // GR-57813
+        int classRedefinedCount = 0;
+        DynamicHubMetadata hubMetadata = null;
+        ReflectionMetadata reflectionMetadata = null;
+
+        /*
+         * We cannot do the allocation via {@code new DynamicHub(...)} because we need to inject the
+         * length for its vtable.
+         */
+        DynamicHub hub = SubstrateNewDynamicHubNode.allocate(DynamicHub.class, vTableEntries);
+
+        DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();
+        /* Write fields in defining order. */
+        writeObject(hub, dynamicHubOffsets.getNameOffset(), name);
+        writeInt(hub, dynamicHubOffsets.getHubTypeOffset(), hubTybe);
+        writeByte(hub, dynamicHubOffsets.getReferenceTypeOffset(), referenceType.getValue());
+
+        writeInt(hub, dynamicHubOffsets.getLayoutEncodingOffset(), layoutEncoding);
+        writeInt(hub, dynamicHubOffsets.getTypeIDOffset(), typeID);
+        // skip typeCheckStart, typeCheckRange, typeCheckSlot and
+        // closedTypeWorldTypeCheckSlots (closed-world only)
+        writeInt(hub, dynamicHubOffsets.getTypeIDDepthOffset(), typeIDDepth);
+        writeInt(hub, dynamicHubOffsets.getNumClassTypesOffset(), numClassTypes);
+
+        writeInt(hub, dynamicHubOffsets.getNumInterfaceTypesOffset(), numInterfacesTypes);
+        writeObject(hub, dynamicHubOffsets.getOpenTypeWorldTypeCheckSlotsOffset(), openTypeWorldTypeCheckSlots);
+
+        writeChar(hub, dynamicHubOffsets.getMonitorOffsetOffset(), monitorOffset);
+        writeChar(hub, dynamicHubOffsets.getIdentityHashOffsetOffset(), identityHashOffset);
+
+        writeShort(hub, dynamicHubOffsets.getFlagsOffset(), flags);
+        writeByte(hub, dynamicHubOffsets.getAdditionalFlagsOffset(), additionalFlags);
+        writeInt(hub, dynamicHubOffsets.getModifiersOffset(), modifiers);
+
+        writeObject(hub, dynamicHubOffsets.getSuperHubOffset(), superHub);
+        writeObject(hub, dynamicHubOffsets.getComponentTypeOffset(), componentHub);
+        writeObject(hub, dynamicHubOffsets.getArrayHubOffset(), arrayHub);
+
+        writeObject(hub, dynamicHubOffsets.getDeclaringClassOffset(), declaringClass);
+        writeObject(hub, dynamicHubOffsets.getInterfacesEncodingOffset(), interfacesEncoding);
+        writeObject(hub, dynamicHubOffsets.getEnumConstantsReferenceOffset(), enumConstantsReference);
+
+        writeInt(hub, dynamicHubOffsets.getReferenceMapIndexOffset(), referenceMapIndex);
+        writeByte(hub, dynamicHubOffsets.getLayerIdOffset(), NumUtil.safeToByte(DynamicImageLayerInfo.CREMA_LAYER_ID));
+        writeObject(hub, dynamicHubOffsets.getMetaTypeOffset(), metaType);
+
+        writeObject(hub, dynamicHubOffsets.getSourceFileNameOffset(), sourceFileName);
+        writeObject(hub, dynamicHubOffsets.getClassInitializationInfoOffset(), classInitializationInfo);
+        // skip vtable (special treatment)
+        writeObject(hub, dynamicHubOffsets.getModuleOffset(), module);
+
+        writeObject(hub, dynamicHubOffsets.getNestHostOffset(), nestHost);
+        writeObject(hub, dynamicHubOffsets.getSimpleBinaryNameOffset(), simpleBinaryName);
+        writeObject(hub, dynamicHubOffsets.getCompanionOffset(), companion);
+
+        writeObject(hub, dynamicHubOffsets.getSignatureOffset(), signature);
+        writeInt(hub, dynamicHubOffsets.getClassRedefinedCountOffset(), classRedefinedCount);
+        writeObject(hub, dynamicHubOffsets.getHubMetadataOffset(), hubMetadata);
+        writeObject(hub, dynamicHubOffsets.getReflectionMetadataOffset(), reflectionMetadata);
+
+        FinalFieldBarrierNode.finalFieldBarrier(hub);
+
+        return hub;
+    }
+
+    public static short makeFlags(boolean isPrimitive, boolean isInterface, boolean isHidden, boolean isRecord, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, boolean isProxyClass) {
+        return NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, isPrimitive) |
+                        makeFlag(IS_INTERFACE_FLAG_BIT, isInterface) |
                         makeFlag(IS_HIDDEN_FLAG_BIT, isHidden) |
                         makeFlag(IS_RECORD_FLAG_BIT, isRecord) |
                         makeFlag(ASSERTION_STATUS_FLAG_BIT, assertionStatus) |
@@ -468,11 +617,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                         makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden) |
                         makeFlag(IS_LINKED_BIT, isLinked) |
                         makeFlag(IS_PROXY_CLASS_BIT, isProxyClass));
-
-        this.companion = new DynamicHubCompanion(hostedJavaClass, classLoader);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     private static int makeFlag(int flagBit, boolean value) {
         int flagMask = 1 << flagBit;
         return value ? flagMask : 0;
@@ -492,6 +638,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setClassInitializationInfo(ClassInitializationInfo classInitializationInfo) {
+        assert classInitializationInfo != null;
         this.classInitializationInfo = classInitializationInfo;
     }
 

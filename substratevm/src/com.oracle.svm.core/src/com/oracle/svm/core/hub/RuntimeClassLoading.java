@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.hub;
 
+import static jdk.graal.compiler.options.OptionStability.EXPERIMENTAL;
+
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -31,11 +35,22 @@ import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 
-public class RuntimeClassLoadingSupport {
+public class RuntimeClassLoading {
     public static final class Options {
-        @Option(help = "Enable support for runtime class loading.") //
-        public static final HostedOptionKey<Boolean> SupportRuntimeClassLoading = new HostedOptionKey<>(false, Options::validate);
+        @Option(help = "Enable support for runtime class loading.", stability = EXPERIMENTAL) //
+        public static final HostedOptionKey<Boolean> SupportRuntimeClassLoading = new HostedOptionKey<>(false, Options::validate) {
+
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+                super.onValueUpdate(values, oldValue, newValue);
+                if (newValue) {
+                    /* requires open type world */
+                    SubstrateOptions.ClosedTypeWorld.update(values, false);
+                }
+            }
+        };
 
         private static void validate(HostedOptionKey<Boolean> optionKey) {
             if (optionKey.hasBeenSet() && optionKey.getValue() && SubstrateOptions.ClosedTypeWorld.getValue()) {
@@ -45,10 +60,8 @@ public class RuntimeClassLoadingSupport {
         }
     }
 
-    public static final String ENABLE_CLASS_LOADING_OPTION = SubstrateOptionsParser.commandArgument(Options.SupportRuntimeClassLoading, "+");
-
     @Fold
-    public static boolean supportsRuntimeClassLoading() {
+    public static boolean isSupported() {
         return Options.SupportRuntimeClassLoading.getValue();
     }
 }

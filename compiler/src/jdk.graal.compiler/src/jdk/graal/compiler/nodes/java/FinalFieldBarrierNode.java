@@ -76,4 +76,7 @@ public class FinalFieldBarrierNode extends FixedWithNextNode implements Virtuali
          */
         graph().replaceFixedWithFixed(this, graph().add(new MembarNode(MembarNode.FenceKind.CONSTRUCTOR_FREEZE)));
     }
+
+    @NodeIntrinsic
+    public static native void finalFieldBarrier(Object object);
 }

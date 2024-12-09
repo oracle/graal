@@ -45,9 +45,11 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import com.oracle.svm.core.hub.RuntimeClassLoadingSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.Digest;
 import jdk.internal.loader.ClassLoaderValue;
@@ -275,7 +277,7 @@ public final class Target_java_lang_ClassLoader {
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
         // only bother extracting the bytes if it has a chance to work
-        if (PredefinedClassesSupport.hasBytecodeClasses() || RuntimeClassLoadingSupport.supportsRuntimeClassLoading()) {
+        if (PredefinedClassesSupport.hasBytecodeClasses() || RuntimeClassLoading.isSupported()) {
             byte[] array;
             int off;
             int len = b.remaining();
@@ -327,7 +329,12 @@ final class ClassLoaderHelper {
         if (PredefinedClassesSupport.hasBytecodeClasses()) {
             return PredefinedClassesSupport.loadClass(loader, name, b, off, len, protectionDomain);
         }
-        throw VMError.unimplemented("Crema");
+        throw VMError.unimplemented(errorMessage());
+    }
+
+    @Fold
+    static String errorMessage() {
+        return SubstrateOptionsParser.commandArgument(RuntimeClassLoading.Options.SupportRuntimeClassLoading, "+") + " is not yet supported.";
     }
 }
 
