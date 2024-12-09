@@ -68,6 +68,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingGrowth
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxCalleeSize;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxPropagationDepth;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.SplittingTraceEvents;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.StoppedCompilationRetryDelay;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceCompilation;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceCompilationDetails;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceDeoptimizeFrame;
@@ -85,6 +86,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -148,6 +150,7 @@ public final class EngineData {
     @CompilationFinal public boolean traceDeoptimizeFrame;
     @CompilationFinal public boolean compileAOTOnCreate;
     @CompilationFinal public boolean firstTierOnly;
+    @CompilationFinal public long stoppedCompilationRetryDelay;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
@@ -305,6 +308,7 @@ public final class EngineData {
         this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
         this.propagateCallAndLoopCount = options.get(PropagateLoopCountToLexicalSingleCaller);
         this.propagateCallAndLoopCountMaxDepth = options.get(PropagateLoopCountToLexicalSingleCallerMaxDepth);
+        this.stoppedCompilationRetryDelay = options.get(StoppedCompilationRetryDelay);
 
         // compilation queue options
         priorityQueue = options.get(PriorityQueue);
@@ -490,6 +494,16 @@ public final class EngineData {
 
     public TruffleLogger getLogger(String loggerId) {
         return polyglotEngine != null ? loggerFactory.apply(loggerId) : null;
+    }
+
+    private final AtomicBoolean logShutdownCompilations = new AtomicBoolean(true);
+
+    /**
+     * Only log compilation shutdowns (see {@code OptimizedCallTarget.isCompilationStopped()}) once
+     * per engine.
+     */
+    public AtomicBoolean logShutdownCompilations() {
+        return logShutdownCompilations;
     }
 
     @SuppressWarnings("static-method")
