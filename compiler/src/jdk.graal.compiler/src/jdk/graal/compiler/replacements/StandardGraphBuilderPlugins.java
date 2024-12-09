@@ -226,6 +226,7 @@ import jdk.graal.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode
 import jdk.graal.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.serviceprovider.SpeculationReasonGroup;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.CodeUtil;
@@ -2614,6 +2615,11 @@ public class StandardGraphBuilderPlugins {
                     b.add(new MessageDigestNode.SHA3Node(bufStart, stateStart, blockSize));
                     return true;
                 }
+            }
+
+            @Override
+            public boolean isGraalOnly() {
+                return JavaVersionUtil.JAVA_SPEC == 21 && arch instanceof AMD64;
             }
         });
     }
