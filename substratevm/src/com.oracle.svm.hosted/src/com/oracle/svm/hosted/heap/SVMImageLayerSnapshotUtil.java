@@ -151,14 +151,14 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     }
 
     @Override
-    public String getTypeIdentifier(AnalysisType type) {
+    public String getTypeDescriptor(AnalysisType type) {
         if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
             return getGeneratedSerializationName(type);
         }
         if (isProxyType(type)) {
             return type.toJavaName(true);
         }
-        return super.getTypeIdentifier(type);
+        return super.getTypeDescriptor(type);
     }
 
     private static String generatedSerializationClassName(SerializationSupport.SerializationLookupKey serializationLookupKey) {
@@ -166,7 +166,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     }
 
     @Override
-    public String getMethodIdentifier(AnalysisMethod method) {
+    public String getMethodDescriptor(AnalysisMethod method) {
         AnalysisType declaringClass = method.getDeclaringClass();
         String moduleName = declaringClass.getJavaClass().getModule().getName();
         if (declaringClass.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
@@ -192,7 +192,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         if (isLambdaType(declaringClass) || isInjectedInvokerType(declaringClass) || isMethodHandleType(declaringClass) || isProxyType(declaringClass)) {
             return getQualifiedName(method);
         }
-        return super.getMethodIdentifier(method);
+        return super.getMethodDescriptor(method);
     }
 
     /*
@@ -279,7 +279,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             int id = stream.readPackedUnsignedInt();
-            AnalysisType type = svmImageLayerLoader.getAnalysisType(id);
+            AnalysisType type = svmImageLayerLoader.getAnalysisTypeForBaseLayerId(id);
             return svmImageLayerLoader.getHostedUniverse().lookup(type);
         }
     }
@@ -300,7 +300,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
             int id = stream.readPackedUnsignedInt();
-            AnalysisMethod method = svmImageLayerLoader.getAnalysisMethod(id);
+            AnalysisMethod method = svmImageLayerLoader.getAnalysisMethodForBaseLayerId(id);
             return svmImageLayerLoader.getHostedUniverse().lookup(method);
         }
     }

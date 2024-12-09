@@ -294,7 +294,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
 
             // A constant has not been stored in the heap yet. Create and cache a constant candidate
             FutureConstantCandidateInfo info = (FutureConstantCandidateInfo) constantCandidates.computeIfAbsent(keyName, (k) -> {
-                AnalysisType type = loader.getAnalysisType(future.loaderId());
+                AnalysisType type = loader.getAnalysisTypeForBaseLayerId(future.loaderId());
                 return new FutureConstantCandidateInfo(ImageHeapRelocatableConstant.create(type, k));
             });
             return info.constant();
