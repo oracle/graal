@@ -1156,13 +1156,13 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 int vTableBaseOffset = getArrayBaseOffset(layoutEncoding);
                 assert vTableBaseOffset == KnownOffsets.singleton().getVTableBaseOffset();
 
-                int vTableEntrySize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
-                assert vTableEntrySize == NumUtil.unsignedLog2(KnownOffsets.singleton().getVTableEntrySize());
+                int log2VTableEntrySize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
+                assert log2VTableEntrySize == NumUtil.unsignedLog2(KnownOffsets.singleton().getVTableEntrySize());
 
                 Arguments args = new Arguments(allocateDynamicHub, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("vTableEntries", vTableEntries);
                 args.add("vTableBaseOffset", vTableBaseOffset);
-                args.add("vTableEntrySize", vTableEntrySize);
+                args.add("log2VTableEntrySize", log2VTableEntrySize);
                 args.add("profilingData", getProfilingData(node, type));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
