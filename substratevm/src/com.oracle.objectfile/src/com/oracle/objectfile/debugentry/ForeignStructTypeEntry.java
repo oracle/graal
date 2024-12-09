@@ -26,20 +26,23 @@
 
 package com.oracle.objectfile.debugentry;
 
-public abstract class ForeignTypeEntry extends ClassEntry {
+public class ForeignStructTypeEntry extends ForeignTypeEntry {
+    private final String typedefName;
+    private final ForeignStructTypeEntry parent;
 
-    public ForeignTypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                    long layoutTypeSignature, ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
-        super(typeName, size, classOffset, typeSignature, typeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+    public ForeignStructTypeEntry(String typeName, int size, long classOffset, long typeSignature,
+                    long layoutTypeSignature, ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader,
+                    String typedefName, ForeignStructTypeEntry parent) {
+        super(typeName, size, classOffset, typeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+        this.typedefName = typedefName;
+        this.parent = parent;
     }
 
-    @Override
-    public boolean isForeign() {
-        return true;
+    public String getTypedefName() {
+        return typedefName;
     }
 
-    @Override
-    public boolean isInstance() {
-        return false;
+    public ForeignStructTypeEntry getParent() {
+        return parent;
     }
 }

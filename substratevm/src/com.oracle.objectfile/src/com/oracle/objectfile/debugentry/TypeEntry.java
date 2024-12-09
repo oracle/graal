@@ -55,7 +55,7 @@ public abstract class TypeEntry {
     private final int size;
 
     protected TypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                        long typeSignatureForCompressed) {
+                    long typeSignatureForCompressed) {
         this.typeName = typeName;
         this.size = size;
         this.classOffset = classOffset;
@@ -138,9 +138,13 @@ public abstract class TypeEntry {
             case PrimitiveTypeEntry p -> "Primitive";
             case HeaderTypeEntry h -> "Header";
             case ArrayTypeEntry a -> "Array";
-            case InterfaceClassEntry i  -> "Interface";
+            case InterfaceClassEntry i -> "Interface";
             case EnumClassEntry e -> "Enum";
-            case ForeignTypeEntry f -> "Foreign";
+            case ForeignWordTypeEntry fw -> "ForeignWord";
+            case ForeignStructTypeEntry fs -> "ForeignStruct";
+            case ForeignPointerTypeEntry fp -> "ForeignPointer";
+            case ForeignIntegerTypeEntry fi -> "ForeignInteger";
+            case ForeignFloatTypeEntry ff -> "ForeignFloat";
             case ClassEntry c -> "Instance";
             default -> "";
         };

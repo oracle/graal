@@ -26,20 +26,16 @@
 
 package com.oracle.objectfile.debugentry;
 
-public abstract class ForeignTypeEntry extends ClassEntry {
+public class ForeignWordTypeEntry extends ForeignTypeEntry {
+    private final boolean isSigned;
 
-    public ForeignTypeEntry(String typeName, int size, long classOffset, long typeSignature,
-                    long layoutTypeSignature, ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
-        super(typeName, size, classOffset, typeSignature, typeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+    public ForeignWordTypeEntry(String typeName, int size, long classOffset, long typeSignature,
+                    long layoutTypeSignature, ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader, boolean isSigned) {
+        super(typeName, size, classOffset, typeSignature, layoutTypeSignature, superClass, fileEntry, loader);
+        this.isSigned = isSigned;
     }
 
-    @Override
-    public boolean isForeign() {
-        return true;
-    }
-
-    @Override
-    public boolean isInstance() {
-        return false;
+    public boolean isSigned() {
+        return isSigned;
     }
 }

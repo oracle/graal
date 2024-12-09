@@ -26,14 +26,15 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
+import java.util.List;
+
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FrameSizeChangeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfFrameValue;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import jdk.graal.compiler.debug.DebugContext;
 
-import java.util.List;
+import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * Section generic generator for debug_frame section.
@@ -74,7 +75,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         int size = buffer.length;
         int pos = 0;
 
-        enableLog(context, pos);
+        enableLog(context);
 
         /*
          * There are entries for the prologue region where the stack is being built, the method body

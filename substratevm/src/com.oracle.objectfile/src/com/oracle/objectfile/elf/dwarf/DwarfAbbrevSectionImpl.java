@@ -905,7 +905,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         int size = buffer.length;
         int pos = 0;
 
-        enableLog(context, pos);
+        enableLog(context);
 
         pos = writeAbbrevs(context, buffer, pos);
 
@@ -926,7 +926,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeLocalDeclarationAbbrevs(context, buffer, pos);
         pos = writeParameterLocationAbbrevs(context, buffer, pos);
         pos = writeLocalLocationAbbrevs(context, buffer, pos);
-
 
         // Write Abbrevs that are only used for AOT debuginfo generation
         if (!dwarfSections.isRuntimeCompilation()) {
@@ -958,9 +957,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
             /*
              * if we address rebasing is required then we need to use compressed layout types
-             * supplied with a suitable data_location attribute and compressed pointer types to ensure
-             * that gdb converts offsets embedded in static or instance fields to raw pointers.
-             * Transformed addresses are typed using pointers to the underlying layout.
+             * supplied with a suitable data_location attribute and compressed pointer types to
+             * ensure that gdb converts offsets embedded in static or instance fields to raw
+             * pointers. Transformed addresses are typed using pointers to the underlying layout.
              *
              * if address rebasing is not required then a data_location attribute on the layout type
              * will ensure that address tag bits are removed.
