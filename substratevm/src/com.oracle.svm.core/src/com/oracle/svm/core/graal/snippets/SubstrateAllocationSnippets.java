@@ -36,6 +36,8 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.Arrays;
 import java.util.Map;
 
+import com.oracle.svm.core.graal.meta.KnownOffsets;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
@@ -50,11 +52,13 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
+import com.oracle.svm.core.graal.nodes.SubstrateNewDynamicHubNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -225,6 +229,22 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         }
         profileAllocation(profilingData, allocationSize);
         return piArrayCastToSnippetReplaceeStamp(verifyOop(result), arrayLength);
+    }
+
+    @Snippet
+    public Object allocateDynamicHub(int vTableEntries,
+                    @ConstantParameter int vTableBaseOffset,
+                    @ConstantParameter int log2VTableEntrySize,
+                    @ConstantParameter AllocationProfilingData profilingData) {
+        profilingData.snippetCounters.stub.inc();
+
+        // always slow path, because DynamicHubs are allocated into dedicated chunks
+        Object result = callNewDynamicHub(gcAllocationSupport().getNewDynamicHub(), vTableEntries);
+
+        UnsignedWord allocationSize = arrayAllocationSize(vTableEntries, vTableBaseOffset, log2VTableEntrySize);
+        profileAllocation(profilingData, allocationSize);
+
+        return piArrayCastToSnippetReplaceeStamp(verifyOop(result), vTableEntries);
     }
 
     @Snippet
@@ -522,6 +542,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     private static native Object callSlowNewStoredContinuation(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length);
 
     @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native Object callNewDynamicHub(@ConstantNodeParameter ForeignCallDescriptor descriptor, int vTableEntries);
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
     private static native Object callNewMultiArray(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int rank, Word dimensions);
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
@@ -591,6 +614,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         private final SnippetInfo allocateStoredContinuation;
         private final SnippetInfo allocatePod;
+        private final SnippetInfo allocateDynamicHub;
 
         @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets receiver) {
@@ -659,6 +683,17 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                                 podLocations);
             }
             allocatePod = allocatePodSnippet;
+
+            SnippetInfo allocateDynamicHubSnippet = null;
+            if (RuntimeClassLoading.isSupported()) {
+                allocateDynamicHubSnippet = snippet(providers,
+                                SubstrateAllocationSnippets.class,
+                                "allocateDynamicHub",
+                                null,
+                                receiver,
+                                ALLOCATION_LOCATIONS);
+            }
+            allocateDynamicHub = allocateDynamicHubSnippet;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -686,6 +721,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
             if (Pod.RuntimeSupport.isPresent()) {
                 lowerings.put(NewPodInstanceNode.class, new NewPodInstanceLowering());
+            }
+            if (RuntimeClassLoading.isSupported()) {
+                lowerings.put(SubstrateNewDynamicHubNode.class, new NewDynamicHubLowering());
             }
         }
 
@@ -1093,6 +1131,39 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 args.add("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroingOfEden());
                 args.add("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.add("profilingData", getProfilingData(node, node.getKnownInstanceType()));
+
+                template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
+        }
+
+        private class NewDynamicHubLowering implements NodeLoweringProvider<SubstrateNewDynamicHubNode> {
+            @Override
+            public void lower(SubstrateNewDynamicHubNode node, LoweringTool tool) {
+                StructuredGraph graph = node.graph();
+                if (graph.getGuardsStage().areFrameStatesAtSideEffects()) {
+                    return;
+                }
+
+                assert node.getVTableEntries() != null;
+                assert node.fillContents() : "fillContents must be true for DynamicHub allocations";
+
+                ValueNode vTableEntries = node.getVTableEntries();
+                SharedType type = (SharedType) tool.getMetaAccess().lookupJavaType(Class.class);
+                DynamicHub hubOfDynamicHub = type.getHub();
+
+                int layoutEncoding = hubOfDynamicHub.getLayoutEncoding();
+
+                int vTableBaseOffset = getArrayBaseOffset(layoutEncoding);
+                assert vTableBaseOffset == KnownOffsets.singleton().getVTableBaseOffset();
+
+                int log2VTableEntrySize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
+                assert log2VTableEntrySize == NumUtil.unsignedLog2(KnownOffsets.singleton().getVTableEntrySize());
+
+                Arguments args = new Arguments(allocateDynamicHub, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("vTableEntries", vTableEntries);
+                args.add("vTableBaseOffset", vTableBaseOffset);
+                args.add("log2VTableEntrySize", log2VTableEntrySize);
+                args.add("profilingData", getProfilingData(node, type));
 
                 template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }

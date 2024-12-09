@@ -102,6 +102,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
 
     private RuntimeConfiguration runtimeConfig;
     private final KnownOffsets knownOffsets;
+    private final DynamicHubOffsets dynamicHubOffsets;
     private final AbstractObjectStamp hubStamp;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -117,6 +118,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         }
         hubStamp = hubRefStamp;
         knownOffsets = KnownOffsets.singleton();
+        dynamicHubOffsets = DynamicHubOffsets.singleton();
     }
 
     @Override
@@ -220,7 +222,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
 
     @Override
     protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor) {
-        ConstantNode componentHubOffset = ConstantNode.forIntegerKind(target.wordJavaKind, knownOffsets.getComponentHubOffset(), graph);
+        ConstantNode componentHubOffset = ConstantNode.forIntegerKind(target.wordJavaKind, dynamicHubOffsets.getComponentTypeOffset(), graph);
         AddressNode componentHubAddress = graph.unique(new OffsetAddressNode(arrayHub, componentHubOffset));
         FloatingReadNode componentHubRef = graph.unique(new FloatingReadNode(componentHubAddress, NamedLocationIdentity.FINAL_LOCATION, null, hubStamp, null, BarrierType.NONE));
         return maybeUncompress(componentHubRef);

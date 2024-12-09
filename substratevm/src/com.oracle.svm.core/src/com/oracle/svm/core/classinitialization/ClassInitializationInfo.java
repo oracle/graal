@@ -27,6 +27,7 @@ package com.oracle.svm.core.classinitialization;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -230,6 +231,19 @@ public final class ClassInitializationInfo {
         this.slowPathRequired = true;
         this.initLock = new ReentrantLock();
         this.hasInitializer = classInitializer != null;
+    }
+
+    public ClassInitializationInfo(boolean typeReachedTracked) {
+        assert RuntimeClassLoading.isSupported();
+
+        this.classInitializer = null;
+        this.hasInitializer = true;
+
+        // GR-59739: Needs a new state "Loaded".
+        this.initState = InitState.Linked;
+        this.typeReached = typeReachedTracked ? TypeReached.NOT_REACHED : TypeReached.UNTRACKED;
+        this.slowPathRequired = true;
+        this.initLock = new ReentrantLock();
     }
 
     public boolean hasInitializer() {

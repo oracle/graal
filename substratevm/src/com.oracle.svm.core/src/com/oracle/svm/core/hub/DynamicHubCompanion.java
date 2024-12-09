@@ -66,6 +66,11 @@ public final class DynamicHubCompanion {
         this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
     }
 
+    DynamicHubCompanion(ClassLoader classLoader) {
+        assert RuntimeClassLoading.isSupported();
+        this.classLoader = classLoader;
+    }
+
     String getPackageName(DynamicHub hub) {
         if (packageName == null) {
             packageName = hub.computePackageName();
