@@ -87,7 +87,7 @@ public class SubstrateType implements SharedType {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setTypeCheckData(DynamicHub uniqueConcreteImplementation) {
+    public void setSingleImplementor(DynamicHub uniqueConcreteImplementation) {
         this.uniqueConcreteImplementation = uniqueConcreteImplementation;
     }
 
