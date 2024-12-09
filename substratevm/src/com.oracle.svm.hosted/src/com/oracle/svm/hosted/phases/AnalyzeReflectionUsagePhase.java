@@ -31,10 +31,18 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
+import sun.invoke.util.ValueConversions;
+import sun.invoke.util.VerifyAccess;
+import sun.reflect.annotation.AnnotationParser;
+import sun.security.x509.X500Name;
 
+import java.io.ObjectInputStream;
+import java.lang.invoke.ConstantBootstraps;
 import java.lang.invoke.LambdaMetafactory;
+import java.lang.invoke.MethodHandleProxies;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -47,6 +55,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.random.RandomGeneratorFactory;
 
 /**
  * This phase detects usages of reflective calls in reached parts of the project, given the JAR
@@ -85,6 +94,7 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
         ));
         reflectMethodNames.put(Method.class.getTypeName(), Set.of("invoke"));
         reflectMethodNames.put(MethodHandles.Lookup.class.getTypeName(), Set.of(
+                        "findClass",
                         "findVirtual",
                         "findStatic",
                         "findConstructor",
@@ -105,15 +115,37 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
         reflectMethodNames.put(ClassLoader.class.getTypeName(), Set.of(
                         "loadClass",
                         "findBootstrapClassOrNull",
-                        "findLoadedClass"
+                        "findLoadedClass",
+                        "findSystemClass"
         ));
         reflectMethodNames.put(URLClassLoader.class.getTypeName(), Set.of("loadClass"));
         reflectMethodNames.put(Array.class.getTypeName(), Set.of("newInstance"));
         reflectMethodNames.put(Constructor.class.getTypeName(), Set.of("newInstance"));
         reflectMethodNames.put(Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"));
         reflectMethodNames.put("java.lang.reflect.ReflectAccess", Set.of("newInstance"));
-        reflectMethodNames.put("jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"));
         reflectMethodNames.put("sun.misc.Unsafe", Set.of("allocateInstance"));
+
+        // Transitive reflections
+        reflectMethodNames.put("java.lang.constant.ReferenceClassDescImpl", Set.of("resolveConstantDesc"));
+        reflectMethodNames.put(ObjectInputStream.class.getTypeName(), Set.of("resolveClass", "resolveProxyClass")); //
+        reflectMethodNames.put("javax.crypto.extObjectInputStream", Set.of("resolveClass"));
+        reflectMethodNames.put(VerifyAccess.class.getTypeName(), Set.of("isTypeVisible"));
+        reflectMethodNames.put("sun.reflect.generics.factory.CoreReflectionFactory", Set.of("makeNamedType"));
+        reflectMethodNames.put("sun.reflect.misc.ReflectUtil", Set.of("forName"));
+        reflectMethodNames.put("sun.security.tools.KeyStoreUtil", Set.of("loadProvidedByClass"));
+        reflectMethodNames.put("sun.util.locale.provider.LocaleProviderAdapter", Set.of("forType"));
+        reflectMethodNames.put("sun.reflect.misc.ConstructorUtil", Set.of("getConstructor", "getConstructors"));
+        reflectMethodNames.put("java.lang.invoke.ClassSpecializer", Set.of("reflectConstructor"));
+        reflectMethodNames.put("sun.reflect.misc.FieldUtil", Set.of("getField", "getFields"));
+        reflectMethodNames.put("sun.reflect.misc.MethodUtil", Set.of("getMethod", "getMethods", "loadClass"));
+        reflectMethodNames.put("sun.security.util.KeyStoreDelegator", Set.of("engineLoad", "engineProbe"));
+        reflectMethodNames.put(ValueConversions.class.getTypeName(), Set.of("boxExact"));
+        reflectMethodNames.put(ConstantBootstraps.class.getTypeName(), Set.of("getStaticFinal", "staticFieldVarHandle", "fieldVarHandle"));
+        reflectMethodNames.put(VarHandle.VarHandleDesc.class.getTypeName(), Set.of("resolveConstantDesc"));
+        reflectMethodNames.put(RandomGeneratorFactory.class.getTypeName(), Set.of("create"));
+        reflectMethodNames.put(X500Name.class.getTypeName(), Set.of("asX500Principal"));
+        reflectMethodNames.put(MethodHandleProxies.class.getTypeName(), Set.of("asInterfaceInstance")); //
+        reflectMethodNames.put(AnnotationParser.class.getTypeName(), Set.of("annotationForMap"));
     }
 
     @Override
@@ -126,9 +158,7 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
                 if (nspToShow != null) {
                     int bci = nspToShow.getBCI();
                     if (!AnalyzeReflectionUsageSupport.instance().containsFoldEntry(bci, nspToShow.getMethod())) {
-                        if (nspToShow.getMethod().isPublic() || nspToShow.getMethod().isProtected()) {
-                            AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getMethod().asStackTraceElement(bci).toString());
-                        }
+                        AnalyzeReflectionUsageSupport.instance().addReflectiveCall(reflectiveMethodName, nspToShow.getMethod().asStackTraceElement(bci).toString());
                     }
                 }
             }
@@ -144,8 +174,6 @@ public class AnalyzeReflectionUsagePhase extends BasePhase<CoreProviders> {
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
         if (reflectMethodNames.containsKey(declaringClass)) {
             if (reflectMethodNames.get(declaringClass).contains(methodName)) {
-                System.out.println(callerClass);
-                System.out.println(declaringClass);
                 return declaringClass + "#" + methodName;
             }
         }
