@@ -68,6 +68,6 @@ public class BooleanInstanceOfCheckTypeFlow extends BooleanCheckTypeFlow {
             canBeTrue = TypeState.forIntersection(bb, update, checkedType.getAssignableTypes(includeNull));
             canBeFalse = TypeState.forSubtraction(bb, update, checkedType.getAssignableTypes(includeNull));
         }
-        return convertToBoolean(canBeTrue, canBeFalse);
+        return convertToBoolean(bb, canBeTrue, canBeFalse);
     }
 }

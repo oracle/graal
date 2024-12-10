@@ -52,6 +52,6 @@ public class BooleanNullCheckTypeFlow extends BooleanCheckTypeFlow {
     public TypeState filter(PointsToAnalysis bb, TypeState newState) {
         var hasNull = newState.canBeNull();
         var hasTypes = newState.typesCount() > 0;
-        return convertToBoolean(hasNull, hasTypes);
+        return convertToBoolean(bb, hasNull, hasTypes);
     }
 }

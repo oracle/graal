@@ -150,20 +150,20 @@ public abstract class TypeState {
         return NullTypeState.SINGLETON;
     }
 
-    public static TypeState defaultValueForKind(JavaKind javaKind) {
+    public static TypeState defaultValueForKind(PointsToAnalysis bb, JavaKind javaKind) {
         if (javaKind.isPrimitive()) {
-            return TypeState.forPrimitiveConstant(0);
+            return TypeState.forPrimitiveConstant(bb, 0);
         } else {
             return TypeState.forNull();
         }
     }
 
-    public static TypeState forPrimitiveConstant(long value) {
-        return PrimitiveConstantTypeState.forValue(value);
+    public static TypeState forPrimitiveConstant(PointsToAnalysis bb, long value) {
+        return PrimitiveConstantTypeState.forValue(bb, value);
     }
 
-    public static TypeState forBoolean(boolean value) {
-        return value ? TypeState.forPrimitiveConstant(1) : TypeState.forPrimitiveConstant(0);
+    public static TypeState forBoolean(PointsToAnalysis bb, boolean value) {
+        return value ? TypeState.forPrimitiveConstant(bb, 1) : TypeState.forPrimitiveConstant(bb, 0);
     }
 
     public static TypeState anyPrimitiveState() {

@@ -86,6 +86,6 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
         }
         assert leftState.isPrimitive() : left;
         assert rightState.isPrimitive() : right;
-        return convertToBoolean(TypeState.filter(leftState, comparison, rightState), TypeState.filter(leftState, comparison.negate(), rightState));
+        return convertToBoolean(bb, TypeState.filter(leftState, comparison, rightState), TypeState.filter(leftState, comparison.negate(), rightState));
     }
 }

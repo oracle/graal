@@ -46,19 +46,19 @@ public abstract class BooleanCheckTypeFlow extends TypeFlow<BytecodePosition> {
         super(original, methodFlows);
     }
 
-    protected static TypeState convertToBoolean(boolean canBeTrue, boolean canBeFalse) {
+    protected static TypeState convertToBoolean(PointsToAnalysis bb, boolean canBeTrue, boolean canBeFalse) {
         if (canBeTrue && canBeFalse) {
             return TypeState.anyPrimitiveState();
         } else if (canBeTrue) {
-            return TypeState.forBoolean(true);
+            return TypeState.forBoolean(bb, true);
         } else if (canBeFalse) {
-            return TypeState.forBoolean(false);
+            return TypeState.forBoolean(bb, false);
         }
         return TypeState.forEmpty();
     }
 
-    protected static TypeState convertToBoolean(TypeState trueState, TypeState falseState) {
-        return convertToBoolean(trueState.isNotEmpty(), falseState.isNotEmpty());
+    protected static TypeState convertToBoolean(PointsToAnalysis bb, TypeState trueState, TypeState falseState) {
+        return convertToBoolean(bb, trueState.isNotEmpty(), falseState.isNotEmpty());
     }
 
     @Override
