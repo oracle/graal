@@ -227,19 +227,19 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             pos = writeULEB(extent.getHi() - base, buffer, pos);
             switch (value) {
                 case RegisterValueEntry registerValueEntry:
-                    pos = writeRegisterLocation(context, registerValueEntry.getRegIndex(), buffer, pos);
+                    pos = writeRegisterLocation(context, registerValueEntry.regIndex(), buffer, pos);
                     break;
                 case StackValueEntry stackValueEntry:
-                    pos = writeStackLocation(context, stackValueEntry.getStackSlot(), buffer, pos);
+                    pos = writeStackLocation(context, stackValueEntry.stackSlot(), buffer, pos);
                     break;
                 case ConstantValueEntry constantValueEntry:
-                    JavaConstant constant = constantValueEntry.getConstant();
+                    JavaConstant constant = constantValueEntry.constant();
                     if (constant instanceof PrimitiveConstant) {
                         pos = writePrimitiveConstantLocation(context, constant, buffer, pos);
                     } else if (constant.isNull()) {
                         pos = writeNullConstantLocation(context, constant, buffer, pos);
                     } else {
-                        pos = writeObjectConstantLocation(context, constant, constantValueEntry.getHeapOffset(), buffer, pos);
+                        pos = writeObjectConstantLocation(context, constant, constantValueEntry.heapOffset(), buffer, pos);
                     }
                     break;
                 default:

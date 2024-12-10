@@ -28,12 +28,10 @@ package com.oracle.objectfile.debugentry;
 
 import java.util.List;
 
-import jdk.vm.ci.meta.JavaKind;
-
 public class MethodEntry extends MemberEntry {
     private final LocalEntry thisParam;
     private final List<LocalEntry> paramInfos;
-    private final int firstLocalSlot;
+    private final int lastParamSlot;
     // local vars are accumulated as they are referenced sorted by slot, then name, then
     // type name. we don't currently deal handle references to locals with no slot.
     private final List<LocalEntry> locals;
@@ -49,7 +47,7 @@ public class MethodEntry extends MemberEntry {
     public MethodEntry(FileEntry fileEntry, int line, String methodName, StructureTypeEntry ownerType,
                     TypeEntry valueType, int modifiers, List<LocalEntry> paramInfos, LocalEntry thisParam,
                     String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor, int vtableOffset,
-                    int firstLocalSlot, List<LocalEntry> locals) {
+                    int lastParamSlot, List<LocalEntry> locals) {
         super(fileEntry, line, methodName, ownerType, valueType, modifiers);
         this.paramInfos = paramInfos;
         this.thisParam = thisParam;
@@ -58,7 +56,7 @@ public class MethodEntry extends MemberEntry {
         this.isOverride = isOverride;
         this.isConstructor = isConstructor;
         this.vtableOffset = vtableOffset;
-        this.firstLocalSlot = firstLocalSlot;
+        this.lastParamSlot = lastParamSlot;
         this.locals = locals;
 
         this.isInRange = false;
@@ -102,12 +100,12 @@ public class MethodEntry extends MemberEntry {
         return thisParam;
     }
 
-    public LocalEntry lookupLocalEntry(String name, int slot, TypeEntry type, JavaKind kind, int line) {
+    public LocalEntry lookupLocalEntry(String name, int slot, TypeEntry type, int line) {
         if (slot < 0) {
             return null;
         }
 
-        if (slot < firstLocalSlot) {
+        if (slot <= lastParamSlot) {
             if (thisParam != null) {
                 if (thisParam.slot() == slot && thisParam.name().equals(name) && thisParam.type() == type) {
                     return thisParam;
@@ -125,7 +123,7 @@ public class MethodEntry extends MemberEntry {
                 }
             }
 
-            LocalEntry local = new LocalEntry(name, type, kind, slot, line);
+            LocalEntry local = new LocalEntry(name, type, slot, line);
             synchronized (locals) {
                 if (!locals.contains(local)) {
                     locals.add(local);
@@ -134,11 +132,27 @@ public class MethodEntry extends MemberEntry {
             return local;
         }
 
+        /*
+         * The slot is within the range of the params, but none of the params exactly match. This
+         * might be some local value that is stored in a slot where we expect a param. We just
+         * ignore such values for now.
+         *
+         * This also applies to params that are inferred from frame values, as the types do not
+         * match most of the time.
+         */
         return null;
     }
 
     public List<LocalEntry> getLocals() {
         return List.copyOf(locals);
+    }
+
+    public int getLastParamSlot() {
+        return lastParamSlot;
+    }
+
+    public boolean isStatic() {
+        return thisParam == null;
     }
 
     public boolean isDeopt() {
