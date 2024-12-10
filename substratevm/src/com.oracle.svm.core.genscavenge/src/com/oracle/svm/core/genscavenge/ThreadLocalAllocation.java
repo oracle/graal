@@ -266,6 +266,11 @@ public final class ThreadLocalAllocation {
         return slowPathNewArrayLikeObject(objectHeader, arrayLength, referenceMap);
     }
 
+    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    private static Object newDynamicHub(int vTableSlots) {
+        return HeapImpl.allocateDynamicHub(vTableSlots);
+    }
+
     private static Object slowPathNewArrayLikeObject(Word objectHeader, int length, byte[] podReferenceMap) {
         /*
          * Avoid stack overflow errors while producing memory chunks, because that could leave the
