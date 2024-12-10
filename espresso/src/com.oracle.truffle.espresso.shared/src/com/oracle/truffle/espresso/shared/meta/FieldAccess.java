@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.shared.resolver.meta;
+package com.oracle.truffle.espresso.shared.meta;
 
 /**
  * Represents a {@link java.lang.reflect.Field}, and provides access to various runtime metadata.

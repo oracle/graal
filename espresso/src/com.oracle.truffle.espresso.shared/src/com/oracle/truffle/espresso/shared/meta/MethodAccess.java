@@ -21,36 +21,40 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.shared.resolver.meta;
+package com.oracle.truffle.espresso.shared.meta;
+
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 
 /**
- * Represents a {@link java.lang.reflect.Member}, and provides access to various runtime
- * capabilities such as {@link #accessChecks(TypeAccess, TypeAccess) access control} and
- * {@link #loadingConstraints(TypeAccess) enforcing loading constraints}.
+ * Represents a {@link java.lang.reflect.Method}, and provides access to various runtime metadata.
  *
  * @param <C> The class providing access to the VM-side java {@link Class}.
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public interface MemberAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends ModifiersProvider, Named {
+public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F> {
     /**
-     * @return The class in which the declaration if this member is present.
+     * @return The symbolic signature of this method.
      */
-    C getDeclaringClass();
+    Symbol<Signature> getSymbolicSignature();
 
     /**
-     * Performs access checks for this member.
-     *
-     * @param accessingClass The class from which resolution is being performed.
-     * @param holderClass The class referenced in the symbolic representation of the method, as seen
-     *            in the constant pool. May be different from {@link #getDeclaringClass()}.
+     * @return {@code true} if this method represents an instance initialization method (its
+     *         {@link #getSymbolicName() name} is {@code "<init>"}), {@code false} otherwise.
      */
-    void accessChecks(C accessingClass, C holderClass);
+    boolean isConstructor();
 
     /**
-     * Performs loading constraints checks for this member.
-     *
-     * @param accessingClass The class from which resolution is being performed.
+     * @return {@code true} if this method represents a class initialization method (its
+     *         {@link #getSymbolicName() name} is {@code "<clinit>"}, and it is {@link #isStatic()
+     *         static}), {@code false} otherwise.
      */
-    void loadingConstraints(C accessingClass);
+    boolean isClassInitializer();
+
+    /**
+     * Whether loading constraints checks should be skipped for this method. An example of method
+     * which should skip loading constraints are the polymorphic signature methods.
+     */
+    boolean shouldSkipLoadingConstraints();
 }

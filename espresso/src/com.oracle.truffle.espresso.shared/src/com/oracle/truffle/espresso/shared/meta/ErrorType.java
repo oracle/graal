@@ -21,17 +21,16 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.shared.resolver.meta;
+package com.oracle.truffle.espresso.shared.meta;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
 
 /**
- * A {@link Named} object must provide a {@link #getSymbolicName() symbolic name}.
+ * The errors that can happen during {@link LinkResolver resolution}.
  */
-public interface Named {
-    /**
-     * @return The symbolic name of this object.
-     */
-    Symbol<Name> getSymbolicName();
+public enum ErrorType {
+    IllegalAccessError,
+    NoSuchFieldError,
+    NoSuchMethodError,
+    IncompatibleClassChangeError;
 }

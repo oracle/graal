@@ -25,9 +25,9 @@ package com.oracle.truffle.espresso.shared.resolver;
 
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.shared.resolver.meta.FieldAccess;
-import com.oracle.truffle.espresso.shared.resolver.meta.MethodAccess;
-import com.oracle.truffle.espresso.shared.resolver.meta.TypeAccess;
+import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
  * Represents a resolved call-site.

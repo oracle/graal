@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.shared.resolver.meta;
+package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;

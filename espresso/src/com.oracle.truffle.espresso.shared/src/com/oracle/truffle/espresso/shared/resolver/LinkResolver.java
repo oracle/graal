@@ -27,11 +27,11 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.shared.resolver.meta.ErrorType;
-import com.oracle.truffle.espresso.shared.resolver.meta.FieldAccess;
-import com.oracle.truffle.espresso.shared.resolver.meta.MethodAccess;
-import com.oracle.truffle.espresso.shared.resolver.meta.RuntimeAccess;
-import com.oracle.truffle.espresso.shared.resolver.meta.TypeAccess;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
+import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
+import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
  * Provides resolution capabilities according to the Java Virtual Machine Specification on behalf of

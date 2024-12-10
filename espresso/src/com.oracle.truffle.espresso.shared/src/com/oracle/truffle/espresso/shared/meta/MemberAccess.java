@@ -21,39 +21,36 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.shared.resolver.meta;
-
-import com.oracle.truffle.espresso.classfile.JavaVersion;
+package com.oracle.truffle.espresso.shared.meta;
 
 /**
- * Provides access to some VM-specific capabilities, such as throwing exceptions, or obtaining the
- * implementor's supported {@link JavaVersion}.
+ * Represents a {@link java.lang.reflect.Member}, and provides access to various runtime
+ * capabilities such as {@link #accessChecks(TypeAccess, TypeAccess) access control} and
+ * {@link #loadingConstraints(TypeAccess) enforcing loading constraints}.
  *
  * @param <C> The class providing access to the VM-side java {@link Class}.
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
+public interface MemberAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends ModifiersProvider, Named {
     /**
-     * This runtime's supported {@link JavaVersion}.
+     * @return The class in which the declaration if this member is present.
      */
-    JavaVersion getJavaVersion();
+    C getDeclaringClass();
 
     /**
-     * Signals to the runtime that a Java error should be thrown. The type of the error to be thrown
-     * is given by the passed {@link ErrorType}.
-     * <p>
-     * The caller provides an error message that can be constructed using
-     * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
+     * Performs access checks for this member.
+     *
+     * @param accessingClass The class from which resolution is being performed.
+     * @param holderClass The class referenced in the symbolic representation of the method, as seen
+     *            in the constant pool. May be different from {@link #getDeclaringClass()}.
      */
-    RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
+    void accessChecks(C accessingClass, C holderClass);
 
     /**
-     * Signals that an unexpected state has been reached and that the current operation must be
-     * aborted.
-     * <p>
-     * The caller provides an error message that can be constructed using
-     * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
+     * Performs loading constraints checks for this member.
+     *
+     * @param accessingClass The class from which resolution is being performed.
      */
-    RuntimeException fatal(String messageFormat, Object... args);
+    void loadingConstraints(C accessingClass);
 }

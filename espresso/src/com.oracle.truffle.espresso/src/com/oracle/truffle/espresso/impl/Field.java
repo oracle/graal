@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.resolver.meta.FieldAccess;
+import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 
 /**
  * Represents a resolved Espresso field.

@@ -21,40 +21,39 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.shared.resolver.meta;
+package com.oracle.truffle.espresso.shared.meta;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 
 /**
- * Represents a {@link java.lang.reflect.Method}, and provides access to various runtime metadata.
+ * Provides access to some VM-specific capabilities, such as throwing exceptions, or obtaining the
+ * implementor's supported {@link JavaVersion}.
  *
  * @param <C> The class providing access to the VM-side java {@link Class}.
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends MemberAccess<C, M, F> {
+public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
     /**
-     * @return The symbolic signature of this method.
+     * This runtime's supported {@link JavaVersion}.
      */
-    Symbol<Signature> getSymbolicSignature();
+    JavaVersion getJavaVersion();
 
     /**
-     * @return {@code true} if this method represents an instance initialization method (its
-     *         {@link #getSymbolicName() name} is {@code "<init>"}), {@code false} otherwise.
+     * Signals to the runtime that a Java error should be thrown. The type of the error to be thrown
+     * is given by the passed {@link ErrorType}.
+     * <p>
+     * The caller provides an error message that can be constructed using
+     * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
      */
-    boolean isConstructor();
+    RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
 
     /**
-     * @return {@code true} if this method represents a class initialization method (its
-     *         {@link #getSymbolicName() name} is {@code "<clinit>"}, and it is {@link #isStatic()
-     *         static}), {@code false} otherwise.
+     * Signals that an unexpected state has been reached and that the current operation must be
+     * aborted.
+     * <p>
+     * The caller provides an error message that can be constructed using
+     * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
      */
-    boolean isClassInitializer();
-
-    /**
-     * Whether loading constraints checks should be skipped for this method. An example of method
-     * which should skip loading constraints are the polymorphic signature methods.
-     */
-    boolean shouldSkipLoadingConstraints();
+    RuntimeException fatal(String messageFormat, Object... args);
 }
