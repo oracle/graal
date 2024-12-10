@@ -63,6 +63,8 @@ public abstract class OldGeneration extends Generation {
 
     abstract boolean isInSpace(Pointer ptr);
 
+    abstract void appendChunk(AlignedHeapChunk.AlignedHeader hdr);
+
     abstract boolean verifyRememberedSets();
 
     abstract boolean verifySpaces();
