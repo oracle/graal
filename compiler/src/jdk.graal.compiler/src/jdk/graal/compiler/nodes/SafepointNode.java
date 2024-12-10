@@ -31,6 +31,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -49,7 +50,13 @@ public final class SafepointNode extends DeoptimizingFixedWithNextNode implement
 
     public static final NodeClass<SafepointNode> TYPE = NodeClass.create(SafepointNode.class);
 
-    @OptionalInput(InputType.Association) protected AbstractBeginNode loop;
+    /**
+     * Optional edge that is set when safepoints are added to a graph. If this safepoint is
+     * semantically associated with a loop structure links to the loop begin or loop exit it is
+     * mapped to. Over the course of optimizations can "degrade" and point to control flow dominated
+     * by the original loop (exit).
+     */
+    @OptionalInput(InputType.Guard) protected GuardingNode loopLink;
 
     public SafepointNode() {
         super(TYPE, StampFactory.forVoid());
@@ -57,7 +64,7 @@ public final class SafepointNode extends DeoptimizingFixedWithNextNode implement
 
     public SafepointNode(LoopBeginNode loop) {
         super(TYPE, StampFactory.forVoid());
-        this.loop = loop;
+        this.loopLink = loop;
 
     }
 
@@ -76,19 +83,14 @@ public final class SafepointNode extends DeoptimizingFixedWithNextNode implement
         if (next() instanceof SafepointNode) {
             this.graph().removeFixed(this);
         }
-        if (loop != null && !(loop instanceof LoopBeginNode)) {
-            // if any optimization rendered this safepoint to be decoupled from a loop, drop it
-            this.graph().removeFixed(this);
-        }
     }
 
-    public void setLoop(AbstractBeginNode loop) {
-        updateUsagesInterface(this.loop, loop);
-        this.loop = loop;
+    public void setLoopLink(GuardingNode loopLink) {
+        updateUsagesInterface(this.loopLink, loopLink);
+        this.loopLink = loopLink;
     }
 
-    public AbstractBeginNode getLoop() {
-        return loop;
+    public GuardingNode getLoopLink() {
+        return loopLink;
     }
-
 }
