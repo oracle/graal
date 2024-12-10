@@ -33,6 +33,7 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VER
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.higher;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.lower;
+import static com.oracle.truffle.espresso.impl.EspressoClassLoadingException.wrapClassNotFoundGuestException;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -2635,18 +2636,11 @@ public final class Meta extends ContextAccessImpl
         CompilerAsserts.neverPartOfCompilation();
         assert !TypeSymbols.isArray(type);
         assert !TypeSymbols.isPrimitive(type);
-        try {
-            ObjectKlass k = loadKlassOrNull(type, classLoader);
-            if (k == null) {
-                throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
-            }
-            return k;
-        } catch (EspressoException e) {
-            if (e.getGuestException().getKlass() == java_lang_ClassNotFoundException) {
-                throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + " (CNFE), discovered java version: " + getJavaVersion());
-            }
-            throw e;
+        ObjectKlass k = loadKlassOrNull(type, classLoader);
+        if (k == null) {
+            throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
         }
+        return k;
     }
 
     private ObjectKlass loadPlatformKlassOrNull(Symbol<Type> type) {
@@ -2687,7 +2681,14 @@ public final class Meta extends ContextAccessImpl
     @TruffleBoundary
     public Klass loadKlassOrFail(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
-        Klass k = loadKlassOrNull(type, classLoader, protectionDomain);
+        Klass k;
+        try {
+            k = getRegistries().loadKlass(type, classLoader, protectionDomain);
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(this);
+        } catch (EspressoException e) {
+            throw wrapClassNotFoundGuestException(this, e, type);
+        }
         if (k == null) {
             throw throwExceptionWithMessage(java_lang_NoClassDefFoundError, TypeSymbols.typeToName(type).toString());
         }
@@ -2697,7 +2698,7 @@ public final class Meta extends ContextAccessImpl
     /**
      * Same as {@link #loadKlassOrFail(Symbol, StaticObject, StaticObject)}, except this method
      * returns null instead of throwing if class is not found. Note that this method can still throw
-     * due to other errors (class file malformed, etc...)
+     * LinkageErrors due to other errors (class file malformed, etc...)
      *
      * @see #loadKlassOrFail(Symbol, StaticObject, StaticObject)
      */
@@ -2707,6 +2708,11 @@ public final class Meta extends ContextAccessImpl
             return getRegistries().loadKlass(type, classLoader, protectionDomain);
         } catch (EspressoClassLoadingException e) {
             throw e.asGuestException(this);
+        } catch (EspressoException e) {
+            if (this.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
+                return null;
+            }
+            throw e;
         }
     }
 
@@ -2786,24 +2792,22 @@ public final class Meta extends ContextAccessImpl
 
     /**
      * Same as {@link #resolveSymbolOrNull(Symbol, StaticObject, StaticObject)}, except this throws
-     * an exception of the given klass if the representation for the type can not be found.
+     * a guest NoClassDefFoundError if the representation for the type can not be found.
      *
      * @see #resolveSymbolOrNull(Symbol, StaticObject, StaticObject)
      */
-    public Klass resolveSymbolOrFail(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, ObjectKlass exception, StaticObject protectionDomain) {
-        Klass k = resolveSymbolOrNull(type, classLoader, protectionDomain);
-        if (k == null) {
-            throw throwException(exception);
-        }
-        return k;
-    }
-
-    /**
-     * Same as {@link #resolveSymbolOrFail(Symbol, StaticObject, ObjectKlass, StaticObject)}, but
-     * throws {@link NoClassDefFoundError} by default..
-     */
     public Klass resolveSymbolOrFail(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
-        return resolveSymbolOrFail(type, classLoader, java_lang_NoClassDefFoundError, protectionDomain);
+        assert classLoader != null : "use StaticObject.NULL for BCL";
+        // Resolution only resolves references. Bypass loading for primitives.
+        Klass k = resolvePrimitive(type);
+        if (k != null) {
+            return k;
+        }
+        if (TypeSymbols.isArray(type)) {
+            Klass elemental = resolveSymbolOrFail(getTypes().getElementalType(type), classLoader, protectionDomain);
+            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
+        }
+        return loadKlassOrFail(type, classLoader, protectionDomain);
     }
 
     /**
@@ -2812,7 +2816,7 @@ public final class Meta extends ContextAccessImpl
      */
     public Klass resolveSymbolAndAccessCheck(Symbol<Type> type, ObjectKlass accessingKlass) {
         assert accessingKlass != null;
-        Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError, accessingKlass.protectionDomain());
+        Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
         if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
             throw throwException(java_lang_IllegalAccessError);
         }

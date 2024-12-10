@@ -625,12 +625,11 @@ public abstract class ClassRegistry {
     }
 
     private ObjectKlass loadKlassRecursively(EspressoContext context, Symbol<Type> type, boolean notInterface, Symbol<Type> root) throws EspressoClassLoadingException {
-        ClassLoadingEnv env = context.getClassLoadingEnv();
         Klass klass;
         try {
             klass = loadKlass(context, type, StaticObject.NULL);
         } catch (EspressoException e) {
-            throw EspressoClassLoadingException.wrapClassNotFoundGuestException(env, e, root);
+            throw EspressoClassLoadingException.wrapClassNotFoundGuestException(context.getMeta(), e, root);
         }
         assert klass != null;
         if (notInterface == klass.isInterface()) {

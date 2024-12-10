@@ -67,8 +67,7 @@ public abstract class EspressoClassLoadingException extends Exception {
         throw new EspressoClassLoadingException.IllegalAccessError(msg);
     }
 
-    public static EspressoException wrapClassNotFoundGuestException(ClassLoadingEnv env, EspressoException e, Symbol<Type> root) {
-        Meta meta = env.getMeta();
+    public static EspressoException wrapClassNotFoundGuestException(Meta meta, EspressoException e, Symbol<Type> root) {
         if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
             // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
             StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
