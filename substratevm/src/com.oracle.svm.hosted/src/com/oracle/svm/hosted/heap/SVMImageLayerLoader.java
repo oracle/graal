@@ -24,26 +24,7 @@
  */
 package com.oracle.svm.hosted.heap;
 
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ANNOTATIONS_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ANNOTATION_VALUES_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CLASS_ID_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_LITERAL_CODE_POINTER;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FIELD_CHECK_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_KEYS;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IMAGE_SINGLETON_OBJECTS;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_CLASS_INITIALIZER_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_HAS_INITIALIZER_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_BUILD_TIME_INITIALIZED_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_INITIALIZED_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_IN_ERROR_STATE_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_LINKED_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INFO_IS_TRACKED_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_FAILED_NO_TRACKING_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_INITIALIZED_NO_TRACKING_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.IS_NO_INITIALIZER_NO_TRACKING_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.METHOD_POINTER_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PERSISTED;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TYPES_TAG;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -53,7 +34,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
+import org.capnproto.StructList;
+import org.capnproto.Text;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.nativeimage.impl.CEntryPointLiteralCodePointer;
@@ -62,6 +48,16 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonKey;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonObject;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -73,7 +69,6 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
-import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
@@ -115,41 +110,31 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     public ClassInitializationInfo getClassInitializationInfo(AnalysisType type) {
-        int tid = type.getId();
-        EconomicMap<String, Object> typesMap = get(jsonMap, TYPES_TAG);
-        EconomicMap<String, Object> typeMap = get(typesMap, typeIdToIdentifier.get(tid));
+        PersistedAnalysisType.Reader typeMap = findType(type.getId());
 
-        boolean isNoInitializerNoTracking = get(typeMap, IS_NO_INITIALIZER_NO_TRACKING_TAG);
-        boolean isInitializedNoTracking = get(typeMap, IS_INITIALIZED_NO_TRACKING_TAG);
-        boolean isFailedNoTracking = get(typeMap, IS_FAILED_NO_TRACKING_TAG);
-
-        if (isNoInitializerNoTracking) {
+        var initInfo = typeMap.getClassInitializationInfo();
+        if (initInfo.getIsNoInitializerNoTracking()) {
             return ClassInitializationInfo.forNoInitializerInfo(false);
-        } else if (isInitializedNoTracking) {
+        } else if (initInfo.getIsInitializedNoTracking()) {
             return ClassInitializationInfo.forInitializedInfo(false);
-        } else if (isFailedNoTracking) {
+        } else if (initInfo.getIsFailedNoTracking()) {
             return ClassInitializationInfo.forFailedInfo(false);
         } else {
-            boolean isInitialized = get(typeMap, INFO_IS_INITIALIZED_TAG);
-            boolean isInErrorState = get(typeMap, INFO_IS_IN_ERROR_STATE_TAG);
-            boolean isLinked = get(typeMap, INFO_IS_LINKED_TAG);
-            boolean hasInitializer = get(typeMap, INFO_HAS_INITIALIZER_TAG);
-            boolean isBuildTimeInitialized = get(typeMap, INFO_IS_BUILD_TIME_INITIALIZED_TAG);
-            boolean isTracked = get(typeMap, INFO_IS_TRACKED_TAG);
+            boolean isTracked = initInfo.getIsTracked();
 
             ClassInitializationInfo.InitState initState;
-            if (isInitialized) {
+            if (initInfo.getIsInitialized()) {
                 initState = ClassInitializationInfo.InitState.FullyInitialized;
-            } else if (isInErrorState) {
+            } else if (initInfo.getIsInErrorState()) {
                 initState = ClassInitializationInfo.InitState.InitializationError;
             } else {
-                assert isLinked : "Invalid state";
-                Integer classInitializerId = get(typeMap, INFO_CLASS_INITIALIZER_TAG);
-                MethodPointer classInitializer = classInitializerId == null ? null : new MethodPointer(getAnalysisMethod(classInitializerId));
+                assert initInfo.getIsLinked() : "Invalid state";
+                int classInitializerId = initInfo.getInitializerMethodId();
+                MethodPointer classInitializer = (classInitializerId == 0) ? null : new MethodPointer(getAnalysisMethodForBaseLayerId(classInitializerId));
                 return new ClassInitializationInfo(classInitializer, isTracked);
             }
 
-            return new ClassInitializationInfo(initState, hasInitializer, isBuildTimeInitialized, isTracked);
+            return new ClassInitializationInfo(initState, initInfo.getHasInitializer(), initInfo.getIsBuildTimeInitialized(), isTracked);
         }
     }
 
@@ -167,32 +152,25 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected Annotation[] getAnnotations(EconomicMap<String, Object> elementData) {
-        List<String> annotationNames = get(elementData, ANNOTATIONS_TAG);
-        List<EconomicMap<String, Object>> annotationValuesList = get(elementData, ANNOTATION_VALUES_TAG);
-        Annotation[] annotations = new Annotation[annotationNames.size()];
-
-        for (int i = 0; i < annotationNames.size(); ++i) {
-            Class<? extends Annotation> annotationType = cast(lookupBaseLayerTypeInHostVM(annotationNames.get(i)));
-            EconomicMap<String, Object> annotationValues = annotationValuesList.get(i);
+    protected Annotation[] getAnnotations(StructList.Reader<SharedLayerSnapshotCapnProtoSchemaHolder.Annotation.Reader> reader) {
+        return IntStream.range(0, reader.size()).mapToObj(reader::get).map(a -> {
+            String typeName = a.getTypeName().toString();
+            Class<? extends Annotation> annotationType = lookupBaseLayerTypeInHostVM(typeName).asSubclass(Annotation.class);
             Map<String, Object> annotationValuesMap = new HashMap<>();
-            var cursor = annotationValues.getEntries();
-            while (cursor.advance()) {
-                Object value = cursor.getValue();
-                if (value instanceof EconomicMap<?, ?>) {
-                    EconomicMap<String, Object> enumData = cast(value);
-                    value = getEnumValue(enumData);
-                }
-                annotationValuesMap.put(cursor.getKey(), value);
-            }
-            annotations[i] = AnnotationParser.annotationForMap(annotationType, annotationValuesMap);
-        }
-
-        return annotations;
+            a.getValues().forEach(v -> {
+                Object value = switch (v.which()) {
+                    case ENUM -> getEnumValue(v.getEnum().getClassName(), v.getEnum().getName());
+                    case OTHER -> v.getOther().toString();
+                    default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value kind: " + v.which());
+                };
+                annotationValuesMap.put(v.getName().toString(), value);
+            });
+            return AnnotationParser.annotationForMap(annotationType, annotationValuesMap);
+        }).toArray(Annotation[]::new);
     }
 
     @Override
-    protected void initializeBaseLayerMethod(AnalysisMethod analysisMethod, EconomicMap<String, Object> methodData) {
+    protected void initializeBaseLayerMethod(AnalysisMethod analysisMethod, PersistedAnalysisMethod.Reader methodData) {
         if (!HostedDynamicLayerInfo.singleton().compiledInPriorLayer(analysisMethod) && hasAnalysisParsedGraph(analysisMethod)) {
             /*
              * GR-55294: When the analysis elements from the base layer will be able to be
@@ -216,10 +194,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     @Override
     public void initializeBaseLayerField(AnalysisField analysisField) {
-        EconomicMap<String, Object> fieldData = getFieldData(analysisField);
+        PersistedAnalysisField.Reader fieldData = getFieldData(analysisField);
 
-        Integer fieldCheckIndex = get(fieldData, FIELD_CHECK_TAG);
-        if (fieldCheckIndex != null) {
+        int fieldCheckIndex = fieldData.getFieldCheckIndex();
+        if (fieldCheckIndex != -1) {
             StaticFinalFieldFoldingFeature.singleton().putBaseLayerFieldCheckIndex(analysisField.getId(), fieldCheckIndex);
         }
 
@@ -227,54 +205,56 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     @Override
-    protected void prepareConstantRelinking(EconomicMap<String, Object> constantData, int identityHashCode, int id) {
-        Integer tid = get(constantData, CLASS_ID_TAG);
-        if (tid != null) {
-            typeToConstant.put(tid, id);
+    protected void prepareConstantRelinking(PersistedConstant.Reader constantData, int identityHashCode, int id) {
+        if (constantData.isObject() && constantData.getObject().getRelinking().isClassConstant()) {
+            int typeId = constantData.getObject().getRelinking().getClassConstant().getTypeId();
+            typeToConstant.put(typeId, id);
         } else {
             super.prepareConstantRelinking(constantData, identityHashCode, id);
         }
     }
 
     @Override
-    protected boolean delegateProcessing(String constantType, Object constantValue, List<Object> constantData, Object[] values, int i) {
-        if (constantType.equals(METHOD_POINTER_TAG)) {
+    protected boolean delegateProcessing(ConstantReference.Reader constantRef, Object[] values, int i) {
+        if (constantRef.isMethodPointer()) {
             AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
                 AnalysisType methodPointerType = metaAccess.lookupJavaType(MethodPointer.class);
-                int mid = (int) constantValue;
-                AnalysisMethod method = getAnalysisMethod(mid);
+                int mid = constantRef.getMethodPointer().getMethodId();
+                AnalysisMethod method = getAnalysisMethodForBaseLayerId(mid);
                 RelocatableConstant constant = new RelocatableConstant(new MethodPointer(method), methodPointerType);
                 values[i] = constant;
                 return constant;
             });
             values[i] = task;
             return true;
-        } else if (constantType.equals(C_ENTRY_POINT_LITERAL_CODE_POINTER)) {
+        } else if (constantRef.isCEntryPointLiteralCodePointer()) {
             AnalysisType cEntryPointerLiteralPointerType = metaAccess.lookupJavaType(CEntryPointLiteralCodePointer.class);
-            String methodName = (String) constantValue;
-            Class<?> definingClass = lookupBaseLayerTypeInHostVM((String) constantData.get(2));
-            List<String> parameters = cast(constantData.get(3));
-            Class<?>[] parameterTypes = parameters.stream().map(this::lookupBaseLayerTypeInHostVM).toList().toArray(new Class<?>[0]);
+            CEntryPointLiteralReference.Reader ref = constantRef.getCEntryPointLiteralCodePointer();
+            String methodName = ref.getMethodName().toString();
+            Class<?> definingClass = lookupBaseLayerTypeInHostVM(ref.getDefiningClass().toString());
+            Class<?>[] parameterTypes = IntStream.range(0, ref.getParameterNames().size())
+                            .mapToObj(j -> ref.getParameterNames().get(j).toString())
+                            .map(this::lookupBaseLayerTypeInHostVM).toArray(Class[]::new);
             values[i] = new RelocatableConstant(new CEntryPointLiteralCodePointer(definingClass, methodName, parameterTypes), cEntryPointerLiteralPointerType);
             return true;
         }
-        return super.delegateProcessing(constantType, constantValue, constantData, values, i);
+        return super.delegateProcessing(constantRef, values, i);
     }
 
     @Override
-    protected JavaConstant lookupHostedObject(EconomicMap<String, Object> baseLayerConstant, Class<?> clazz) {
+    protected JavaConstant lookupHostedObject(PersistedConstant.Reader baseLayerConstant, Class<?> clazz) {
         if (clazz.equals(Class.class)) {
-            Integer tid = get(baseLayerConstant, CLASS_ID_TAG);
             /* DynamicHub corresponding to $$TypeSwitch classes are not relinked */
-            if (tid != null) {
-                return getDynamicHub(tid);
+            if (baseLayerConstant.isObject() && baseLayerConstant.getObject().getRelinking().isClassConstant()) {
+                int typeId = baseLayerConstant.getObject().getRelinking().getClassConstant().getTypeId();
+                return getDynamicHub(typeId);
             }
         }
         return super.lookupHostedObject(baseLayerConstant, clazz);
     }
 
     private JavaConstant getDynamicHub(int tid) {
-        AnalysisType type = getAnalysisType(tid);
+        AnalysisType type = getAnalysisTypeForBaseLayerId(tid);
         DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
         return hostedValuesProvider.forObject(hub);
     }
@@ -357,13 +337,24 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private Map<Object, Set<Class<?>>> loadImageSingletons0(Object forbiddenObject) {
-        List<Object> singletonObjects = cast(jsonMap.get(IMAGE_SINGLETON_OBJECTS));
         Map<Integer, Object> idToObjectMap = new HashMap<>();
-        for (Object entry : singletonObjects) {
-            List<Object> list = cast(entry);
-            Integer id = cast(list.get(0));
-            String className = cast(list.get(1));
-            EconomicMap<String, Object> keyStore = cast(list.get(2));
+        for (ImageSingletonObject.Reader obj : snapshot.getSingletonObjects()) {
+            String className = obj.getClassName().toString();
+
+            EconomicMap<String, Object> keyStore = EconomicMap.create();
+            for (KeyStoreEntry.Reader entry : obj.getStore()) {
+                KeyStoreEntry.Value.Reader v = entry.getValue();
+                Object value = switch (v.which()) {
+                    case I -> v.getI();
+                    case J -> v.getJ();
+                    case STR -> v.getStr().toString();
+                    case IL -> Stream.of(v.getIl()).flatMapToInt(r -> IntStream.range(0, r.size()).map(r::get)).toArray();
+                    case ZL -> getBooleans(v.getZl());
+                    case STRL -> StreamSupport.stream(v.getStrl().spliterator(), false).map(Text.Reader::toString).toArray(String[]::new);
+                    case _NOT_IN_SCHEMA -> throw new IllegalStateException("Unexpected value: " + v.which());
+                };
+                keyStore.put(entry.getKey().toString(), value);
+            }
 
             // create singleton object instance
             Object result;
@@ -375,25 +366,23 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 throw VMError.shouldNotReachHere("Failed to recreate image singleton", t);
             }
 
-            idToObjectMap.put(id, result);
+            idToObjectMap.put(obj.getId(), result);
         }
 
         Map<Object, Set<Class<?>>> singletonInitializationMap = new HashMap<>();
-        List<Object> singletonKeys = cast(jsonMap.get(IMAGE_SINGLETON_KEYS));
-        for (Object entry : singletonKeys) {
-            List<Object> list = cast(entry);
-            String key = cast(list.get(0));
-            LayeredImageSingleton.PersistFlags persistInfo = LayeredImageSingleton.PersistFlags.values()[(int) list.get(1)];
-            int id = cast(list.get(2));
+        for (ImageSingletonKey.Reader entry : snapshot.getSingletonKeys()) {
+            String className = entry.getKeyClassName().toString();
+            PersistFlags persistInfo = PersistFlags.values()[entry.getPersistFlag()];
+            int id = entry.getObjectId();
             if (persistInfo == PersistFlags.CREATE) {
                 assert id != -1 : "Create image singletons should be linked to an object";
                 Object singletonObject = idToObjectMap.get(id);
-                Class<?> clazz = lookupClass(false, key);
+                Class<?> clazz = lookupClass(false, className);
                 singletonInitializationMap.computeIfAbsent(singletonObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(singletonObject).add(clazz);
             } else if (persistInfo == PersistFlags.FORBIDDEN) {
                 assert id == -1 : "Unrestored image singleton should not be linked to an object";
-                Class<?> clazz = lookupClass(false, key);
+                Class<?> clazz = lookupClass(false, className);
                 singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);
             } else {
@@ -416,59 +405,36 @@ class ImageSingletonLoaderImpl implements ImageSingletonLoader {
         this.imageClassLoader = imageClassLoader;
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T> T cast(Object object) {
-        return (T) object;
-    }
-
     @Override
     public List<Boolean> readBoolList(String keyName) {
-        List<Object> value = cast(keyStore.get(keyName));
-        String type = cast(value.get(0));
-        assert type.equals("B(") : type;
-        List<Integer> internalValue = cast(value.get(1));
-        return internalValue.stream().map(e -> e == 1).toList();
+        boolean[] l = (boolean[]) keyStore.get(keyName);
+        return IntStream.range(0, l.length).mapToObj(i -> l[i]).toList();
     }
 
     @Override
     public int readInt(String keyName) {
-        List<Object> value = cast(keyStore.get(keyName));
-        String type = cast(value.get(0));
-        assert type.equals("I") : type;
-        return cast(value.get(1));
+        return (int) keyStore.get(keyName);
     }
 
     @Override
     public List<Integer> readIntList(String keyName) {
-        List<Object> value = cast(keyStore.get(keyName));
-        String type = cast(value.get(0));
-        assert type.equals("I(") : type;
-        return cast(value.get(1));
+        int[] l = (int[]) keyStore.get(keyName);
+        return IntStream.of(l).boxed().toList();
     }
 
     @Override
     public long readLong(String keyName) {
-        List<Object> value = cast(keyStore.get(keyName));
-        String type = cast(value.get(0));
-        assert type.equals("L") : type;
-        Number number = cast(value.get(1));
-        return number.longValue();
+        return (long) keyStore.get(keyName);
     }
 
     @Override
     public String readString(String keyName) {
-        List<Object> value = cast(keyStore.get(keyName));
-        String type = cast(value.get(0));
-        assert type.equals("S") : type;
-        return cast(value.get(1));
+        return (String) keyStore.get(keyName);
     }
 
     @Override
     public List<String> readStringList(String keyName) {
-        List<Object> value = cast(keyStore.get(keyName));
-        String type = cast(value.get(0));
-        assert type.equals("S(") : type;
-        return cast(value.get(1));
+        return List.of((String[]) keyStore.get(keyName));
     }
 
     @Override

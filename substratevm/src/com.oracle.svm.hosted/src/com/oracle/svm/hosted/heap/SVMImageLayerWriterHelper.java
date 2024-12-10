@@ -24,37 +24,23 @@
  */
 package com.oracle.svm.hosted.heap;
 
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CAPTURING_CLASS_TAG;
 import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.CONSTRUCTOR_NAME;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.C_ENTRY_POINT_CALL_STUB_METHOD_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.FACTORY_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.GENERATED_SERIALIZATION_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.INSTANTIATED_TYPE_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.JNI_JAVA_CALL_VARIANT_WRAPPER_METHOD_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.LAMBDA_TYPE_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.NOT_AS_PUBLISHED_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.ORIGINAL_METHOD_ID_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.PROXY_TYPE_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_DECLARING_CLASS_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.RAW_TARGET_CONSTRUCTOR_CLASS_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.REFLECTION_EXPAND_SIGNATURE_METHOD_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.TARGET_CONSTRUCTOR_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.THROW_ALLOCATED_OBJECT_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_MEMBER_ARGUMENTS_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_MEMBER_CLASS_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_MEMBER_NAME_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_METHOD_TAG;
-import static com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil.WRAPPED_TYPE_TAG;
 import static com.oracle.svm.hosted.heap.SVMImageLayerSnapshotUtil.GENERATED_SERIALIZATION;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
-import java.util.Arrays;
+import java.lang.reflect.Parameter;
 
-import org.graalvm.collections.EconomicMap;
+import org.capnproto.Text;
+import org.capnproto.TextList;
+import org.capnproto.Void;
 
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.heap.ImageLayerWriterHelper;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod.WrappedMethod;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
@@ -73,52 +59,65 @@ public class SVMImageLayerWriterHelper extends ImageLayerWriterHelper {
     }
 
     @Override
-    protected void persistType(AnalysisType type, EconomicMap<String, Object> typeMap) {
+    protected void persistType(AnalysisType type, PersistedAnalysisType.Builder builder) {
         if (type.toJavaName(true).contains(GENERATED_SERIALIZATION)) {
-            typeMap.put(WRAPPED_TYPE_TAG, GENERATED_SERIALIZATION_TAG);
+            WrappedType.SerializationGenerated.Builder b = builder.getWrappedType().initSerializationGenerated();
             var key = SerializationSupport.singleton().getKeyFromConstructorAccessorClass(type.getJavaClass());
-            typeMap.put(RAW_DECLARING_CLASS_TAG, key.getDeclaringClass().getName());
-            typeMap.put(RAW_TARGET_CONSTRUCTOR_CLASS_TAG, key.getTargetConstructorClass().getName());
+            b.setRawDeclaringClass(key.getDeclaringClass().getName());
+            b.setRawTargetConstructor(key.getTargetConstructorClass().getName());
         } else if (LambdaUtils.isLambdaType(type)) {
-            typeMap.put(WRAPPED_TYPE_TAG, LAMBDA_TYPE_TAG);
-            typeMap.put(CAPTURING_CLASS_TAG, LambdaUtils.capturingClass(type.toJavaName()));
+            WrappedType.Lambda.Builder b = builder.getWrappedType().initLambda();
+            b.setCapturingClass(LambdaUtils.capturingClass(type.toJavaName()));
         } else if (ProxyRenamingSubstitutionProcessor.isProxyType(type)) {
-            typeMap.put(WRAPPED_TYPE_TAG, PROXY_TYPE_TAG);
+            builder.getWrappedType().setProxyType(Void.VOID);
         }
-        super.persistType(type, typeMap);
+        super.persistType(type, builder);
     }
 
     @Override
-    protected void persistMethod(AnalysisMethod method, EconomicMap<String, Object> methodMap) {
+    protected void persistMethod(AnalysisMethod method, PersistedAnalysisMethod.Builder builder) {
         if (method.wrapped instanceof FactoryMethod factoryMethod) {
-            methodMap.put(WRAPPED_METHOD_TAG, FACTORY_TAG);
+            WrappedMethod.FactoryMethod.Builder b = builder.getWrappedMethod().initFactoryMethod();
             AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
-            imageLayerWriter.persistAnalysisParsedGraph(targetConstructor);
-            imageLayerWriter.persistMethod(targetConstructor);
-            methodMap.put(TARGET_CONSTRUCTOR_TAG, targetConstructor.getId());
-            methodMap.put(THROW_ALLOCATED_OBJECT_TAG, factoryMethod.throwAllocatedObject());
+            b.setTargetConstructorId(targetConstructor.getId());
+            b.setThrowAllocatedObject(factoryMethod.throwAllocatedObject());
             AnalysisType instantiatedType = method.getUniverse().lookup(factoryMethod.getInstantiatedType());
-            methodMap.put(INSTANTIATED_TYPE_TAG, instantiatedType.getId());
+            b.setInstantiatedTypeId(instantiatedType.getId());
         } else if (method.wrapped instanceof CEntryPointCallStubMethod cEntryPointCallStubMethod) {
-            methodMap.put(WRAPPED_METHOD_TAG, C_ENTRY_POINT_CALL_STUB_METHOD_TAG);
+            WrappedMethod.CEntryPointCallStub.Builder b = builder.getWrappedMethod().initCEntryPointCallStub();
             AnalysisMethod originalMethod = CEntryPointCallStubSupport.singleton().getMethodForStub(cEntryPointCallStubMethod);
-            methodMap.put(ORIGINAL_METHOD_ID_TAG, originalMethod.getId());
-            methodMap.put(NOT_AS_PUBLISHED_TAG, cEntryPointCallStubMethod.isNotPublished());
+            b.setOriginalMethodId(originalMethod.getId());
+            b.setNotPublished(cEntryPointCallStubMethod.isNotPublished());
         } else if (method.wrapped instanceof ReflectionExpandSignatureMethod reflectionExpandSignatureMethod) {
-            methodMap.put(WRAPPED_METHOD_TAG, REFLECTION_EXPAND_SIGNATURE_METHOD_TAG);
+            WrappedMethod.WrappedMember.Builder b = builder.getWrappedMethod().initWrappedMember();
+            b.setReflectionExpandSignature(Void.VOID);
             Executable member = reflectionExpandSignatureMethod.getMember();
-            persistWrappedMember(methodMap, member);
+            persistWrappedMember(b, member);
         } else if (method.wrapped instanceof JNIJavaCallVariantWrapperMethod jniJavaCallVariantWrapperMethod) {
+            WrappedMethod.WrappedMember.Builder b = builder.getWrappedMethod().initWrappedMember();
+            b.setJavaCallVariantWrapper(Void.VOID);
             Executable executable = jniJavaCallVariantWrapperMethod.getMember();
-            methodMap.put(WRAPPED_METHOD_TAG, JNI_JAVA_CALL_VARIANT_WRAPPER_METHOD_TAG);
-            persistWrappedMember(methodMap, executable);
+            persistWrappedMember(b, executable);
         }
-        super.persistMethod(method, methodMap);
+        super.persistMethod(method, builder);
     }
 
-    private static void persistWrappedMember(EconomicMap<String, Object> methodMap, Executable member) {
-        methodMap.put(WRAPPED_MEMBER_CLASS_TAG, member.getDeclaringClass().getName());
-        methodMap.put(WRAPPED_MEMBER_NAME_TAG, member instanceof Constructor<?> ? CONSTRUCTOR_NAME : member.getName());
-        methodMap.put(WRAPPED_MEMBER_ARGUMENTS_TAG, Arrays.stream(member.getParameters()).map(p -> p.getType().getName()).toList());
+    @Override
+    protected void afterMethodAdded(AnalysisMethod method) {
+        if (method.wrapped instanceof FactoryMethod factoryMethod) {
+            AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
+            imageLayerWriter.ensureMethodPersisted(targetConstructor);
+        }
+        super.afterMethodAdded(method);
+    }
+
+    private static void persistWrappedMember(WrappedMethod.WrappedMember.Builder b, Executable member) {
+        b.setName(member instanceof Constructor<?> ? CONSTRUCTOR_NAME : member.getName());
+        b.setDeclaringClassName(member.getDeclaringClass().getName());
+        Parameter[] params = member.getParameters();
+        TextList.Builder atb = b.initArgumentTypeNames(params.length);
+        for (int i = 0; i < params.length; i++) {
+            atb.set(i, new Text.Reader(params[i].getName()));
+        }
     }
 }

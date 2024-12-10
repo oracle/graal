@@ -84,8 +84,8 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         super(layerNumber);
         this.methodIdToOffsetMap = methodIdToOffsetMap;
         this.methodIdToNameInfoMap = methodIdToNameInfoMap;
-        this.libNames = libNames;
-        cGlobalData = codeSectionStartSymbol == null ? null : CGlobalDataFactory.forSymbol(codeSectionStartSymbol);
+        this.libNames = new ArrayList<>(libNames);
+        this.cGlobalData = codeSectionStartSymbol == null ? null : CGlobalDataFactory.forSymbol(codeSectionStartSymbol);
     }
 
     @Override
