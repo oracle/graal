@@ -27,7 +27,6 @@
 package com.oracle.objectfile.debugentry.range;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,7 +95,7 @@ public abstract class Range {
      * Values for the associated method's local and parameter variables that are available or,
      * alternatively, marked as invalid in this range.
      */
-    private final List<LocalValueEntry> localValueInfos = new ArrayList<>();
+    private final Map<LocalEntry, LocalValueEntry> localValueInfos = new HashMap<>();
 
     /**
      * Create a primary range representing the root of the subrange tree for a top level compiled
@@ -166,19 +165,20 @@ public abstract class Range {
         this.caller.removeCallee(newRange);
         this.caller.insertCallee(newRange, 1);
 
-        for (LocalValueEntry localInfo : this.localValueInfos) {
-            if (localInfo instanceof StackValueEntry stackValue) {
+        for (var localInfo : this.localValueInfos.entrySet()) {
+            if (localInfo.getValue() instanceof StackValueEntry stackValue) {
                 // need to redefine the value for this param using a stack slot value
                 // that allows for the stack being extended by framesize. however we
                 // also need to remove any adjustment that was made to allow for the
                 // difference between the caller SP and the pre-extend callee SP
                 // because of a stacked return address.
                 int adjustment = frameSize - preExtendFrameSize;
-                newRange.localValueInfos.add(new StackValueEntry(stackValue.getStackSlot() + adjustment, stackValue.getLocal()));
+                newRange.localValueInfos.put(localInfo.getKey(), new StackValueEntry(stackValue.stackSlot() + adjustment));
             } else {
-                newRange.localValueInfos.add(localInfo);
+                newRange.localValueInfos.put(localInfo.getKey(), localInfo.getValue());
             }
         }
+
         return newRange;
     }
 
@@ -312,10 +312,8 @@ public abstract class Range {
     public Map<LocalEntry, List<Range>> getVarRangeMap() {
         HashMap<LocalEntry, List<Range>> varRangeMap = new HashMap<>();
         for (Range callee : getCallees()) {
-            for (LocalValueEntry localValue : callee.localValueInfos) {
-                if (localValue != null && localValue.getLocal() != null) {
-                    varRangeMap.computeIfAbsent(localValue.getLocal(), l -> new ArrayList<>()).add(callee);
-                }
+            for (LocalEntry local : callee.localValueInfos.keySet()) {
+                varRangeMap.computeIfAbsent(local, l -> new ArrayList<>()).add(callee);
             }
         }
         return varRangeMap;
@@ -323,16 +321,15 @@ public abstract class Range {
 
     public boolean hasLocalValues(LocalEntry local) {
         for (Range callee : getCallees()) {
-            for (LocalValueEntry localValue : callee.localValueInfos) {
-                if (localValue != null && localValue.getLocal() == local) {
-                    if (localValue instanceof ConstantValueEntry constantValueEntry) {
-                        JavaConstant constant = constantValueEntry.getConstant();
-                        // can only handle primitive or null constants just now
-                        return constant instanceof PrimitiveConstant || constant.getJavaKind() == JavaKind.Object;
-                    } else {
-                        // register or stack value
-                        return true;
-                    }
+            LocalValueEntry localValue = callee.lookupValue(local);
+            if (localValue != null) {
+                if (localValue instanceof ConstantValueEntry constantValueEntry) {
+                    JavaConstant constant = constantValueEntry.constant();
+                    // can only handle primitive or null constants just now
+                    return constant instanceof PrimitiveConstant || constant.getJavaKind() == JavaKind.Object;
+                } else {
+                    // register or stack value
+                    return true;
                 }
             }
         }
@@ -343,21 +340,12 @@ public abstract class Range {
         return caller;
     }
 
-    public List<LocalValueEntry> getLocalValues() {
-        return Collections.unmodifiableList(localValueInfos);
-    }
-
-    public void setLocalValueInfo(List<LocalValueEntry> localValueInfos) {
-        this.localValueInfos.addAll(localValueInfos);
+    public void setLocalValueInfo(Map<LocalEntry, LocalValueEntry> localValueInfos) {
+        this.localValueInfos.putAll(localValueInfos);
     }
 
     public LocalValueEntry lookupValue(LocalEntry local) {
-        for (LocalValueEntry localValue : localValueInfos) {
-            if (localValue.getLocal() == local) {
-                return localValue;
-            }
-        }
-        return null;
+        return localValueInfos.getOrDefault(local, null);
     }
 
     public boolean tryMerge(Range that) {

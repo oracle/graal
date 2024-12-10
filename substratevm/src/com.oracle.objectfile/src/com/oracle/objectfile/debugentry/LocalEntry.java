@@ -1,8 +1,6 @@
 package com.oracle.objectfile.debugentry;
 
-import jdk.vm.ci.meta.JavaKind;
-
-public record LocalEntry(String name, TypeEntry type, JavaKind kind, int slot, int line) {
+public record LocalEntry(String name, TypeEntry type, int slot, int line) {
 
     @Override
     public String toString() {
