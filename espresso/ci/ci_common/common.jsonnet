@@ -277,7 +277,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   local _builds = [
     // Gates
-    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
+    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.predicates(false, false, false) + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,imports', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
   ],
 
   builds: utils.add_defined_in(_builds, std.thisFile),
