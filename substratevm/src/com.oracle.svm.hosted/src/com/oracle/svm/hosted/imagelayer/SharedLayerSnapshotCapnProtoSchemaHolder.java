@@ -2059,13 +2059,6 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final org.capnproto.Text.Builder initName(int size) {
         return _initPointerField(org.capnproto.Text.factory, 2, size);
       }
-      public final int getFieldCheckIndex() {
-        return _getIntField(7);
-      }
-      public final void setFieldCheckIndex(int value) {
-        _setIntField(7, value);
-      }
-
     }
 
     public static final class Reader extends org.capnproto.StructReader {
@@ -2144,10 +2137,6 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public org.capnproto.Text.Reader getName() {
         return _getPointerField(org.capnproto.Text.factory, 2, null, 0, 0);
-      }
-
-      public final int getFieldCheckIndex() {
-        return _getIntField(7);
       }
 
     }
@@ -4330,7 +4319,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class SharedLayerSnapshot {
-    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)5,(short)7);
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)5,(short)8);
     public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4497,6 +4486,15 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(8, value);
       }
 
+      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.Builder getStaticFinalFieldFoldingSingleton() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.factory, 7, null, 0);
+      }
+      public final void setStaticFinalFieldFoldingSingleton(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.Reader value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.factory,7, value);
+      }
+      public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.Builder initStaticFinalFieldFoldingSingleton() {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.factory,7, 0);
+      }
     }
 
     public static final class Reader extends org.capnproto.StructReader {
@@ -4583,6 +4581,148 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
       public final int getNextLayerNumber() {
         return _getIntField(8);
+      }
+
+      public boolean hasStaticFinalFieldFoldingSingleton() {
+        return !_pointerFieldIsNull(7);
+      }
+      public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.Reader getStaticFinalFieldFoldingSingleton() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.factory,7,null, 0);
+      }
+
+    }
+
+  }
+
+
+  public static class StaticFinalFieldFoldingSingleton {
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)0,(short)5);
+    public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
+      public Factory() {
+      }
+      public final Reader constructReader(org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+        return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+      }
+      public final Builder constructBuilder(org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+        return new Builder(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final org.capnproto.StructSize structSize() {
+        return StaticFinalFieldFoldingSingleton.STRUCT_SIZE;
+      }
+      public final Reader asReader(Builder builder) {
+        return builder.asReader();
+      }
+    }
+    public static final Factory factory = new Factory();
+    public static final org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+      new org.capnproto.StructList.Factory<Builder, Reader>(factory);
+    public static final class Builder extends org.capnproto.StructBuilder {
+      Builder(org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+        super(segment, data, pointers, dataSize, pointerCount);
+      }
+      public final Reader asReader() {
+        return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+      }
+      public final boolean hasFields() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Int.Builder getFields() {
+        return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
+      }
+      public final void setFields(org.capnproto.PrimitiveList.Int.Reader value) {
+        _setPointerField(org.capnproto.PrimitiveList.Int.factory, 0, value);
+      }
+      public final org.capnproto.PrimitiveList.Int.Builder initFields(int size) {
+        return _initPointerField(org.capnproto.PrimitiveList.Int.factory, 0, size);
+      }
+      public final boolean hasFieldCheckIndexes() {
+        return !_pointerFieldIsNull(1);
+      }
+      public final org.capnproto.PrimitiveList.Int.Builder getFieldCheckIndexes() {
+        return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 1, null, 0);
+      }
+      public final void setFieldCheckIndexes(org.capnproto.PrimitiveList.Int.Reader value) {
+        _setPointerField(org.capnproto.PrimitiveList.Int.factory, 1, value);
+      }
+      public final org.capnproto.PrimitiveList.Int.Builder initFieldCheckIndexes(int size) {
+        return _initPointerField(org.capnproto.PrimitiveList.Int.factory, 1, size);
+      }
+      public final boolean hasFieldInitializationStatusList() {
+        return !_pointerFieldIsNull(2);
+      }
+      public final org.capnproto.PrimitiveList.Boolean.Builder getFieldInitializationStatusList() {
+        return _getPointerField(org.capnproto.PrimitiveList.Boolean.factory, 2, null, 0);
+      }
+      public final void setFieldInitializationStatusList(org.capnproto.PrimitiveList.Boolean.Reader value) {
+        _setPointerField(org.capnproto.PrimitiveList.Boolean.factory, 2, value);
+      }
+      public final org.capnproto.PrimitiveList.Boolean.Builder initFieldInitializationStatusList(int size) {
+        return _initPointerField(org.capnproto.PrimitiveList.Boolean.factory, 2, size);
+      }
+      public final boolean hasBytecodeParsedFoldedFieldValues() {
+        return !_pointerFieldIsNull(3);
+      }
+      public final org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Builder> getBytecodeParsedFoldedFieldValues() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 3, null, 0);
+      }
+      public final void setBytecodeParsedFoldedFieldValues(org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 3, value);
+      }
+      public final org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Builder> initBytecodeParsedFoldedFieldValues(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 3, size);
+      }
+      public final boolean hasAfterParsingHooksDoneFoldedFieldValues() {
+        return !_pointerFieldIsNull(4);
+      }
+      public final org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Builder> getAfterParsingHooksDoneFoldedFieldValues() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 4, null, 0);
+      }
+      public final void setAfterParsingHooksDoneFoldedFieldValues(org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader> value) {
+        _setPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 4, value);
+      }
+      public final org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Builder> initAfterParsingHooksDoneFoldedFieldValues(int size) {
+        return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 4, size);
+      }
+    }
+
+    public static final class Reader extends org.capnproto.StructReader {
+      Reader(org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+        super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+      }
+
+      public final boolean hasFields() {
+        return !_pointerFieldIsNull(0);
+      }
+      public final org.capnproto.PrimitiveList.Int.Reader getFields() {
+        return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 0, null, 0);
+      }
+
+      public final boolean hasFieldCheckIndexes() {
+        return !_pointerFieldIsNull(1);
+      }
+      public final org.capnproto.PrimitiveList.Int.Reader getFieldCheckIndexes() {
+        return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 1, null, 0);
+      }
+
+      public final boolean hasFieldInitializationStatusList() {
+        return !_pointerFieldIsNull(2);
+      }
+      public final org.capnproto.PrimitiveList.Boolean.Reader getFieldInitializationStatusList() {
+        return _getPointerField(org.capnproto.PrimitiveList.Boolean.factory, 2, null, 0);
+      }
+
+      public final boolean hasBytecodeParsedFoldedFieldValues() {
+        return !_pointerFieldIsNull(3);
+      }
+      public final org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader> getBytecodeParsedFoldedFieldValues() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 3, null, 0);
+      }
+
+      public final boolean hasAfterParsingHooksDoneFoldedFieldValues() {
+        return !_pointerFieldIsNull(4);
+      }
+      public final org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.Reader> getAfterParsingHooksDoneFoldedFieldValues() {
+        return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference.listFactory, 4, null, 0);
       }
 
     }

@@ -97,7 +97,6 @@ import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingFeature;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
@@ -1046,12 +1045,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     @Override
     public void initializeBaseLayerField(AnalysisField analysisField) {
         PersistedAnalysisField.Reader fieldData = getFieldData(analysisField);
-
-        int fieldCheckIndex = fieldData.getFieldCheckIndex();
-        if (fieldCheckIndex != -1) {
-            StaticFinalFieldFoldingFeature.singleton().putBaseLayerFieldCheckIndex(analysisField.getId(), fieldCheckIndex);
-        }
-
         assert fieldData != null : "The field should be in the base layer";
         int location = fieldData.getLocation();
         if (location != 0) {
@@ -1598,5 +1591,32 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
             return new ClassInitializationInfo(initState, initInfo.getHasInitializer(), initInfo.getIsBuildTimeInitialized(), isTracked);
         }
+    }
+
+    public static class JavaConstantSupplier {
+        private final ConstantReference.Reader constantReference;
+
+        JavaConstantSupplier(ConstantReference.Reader constantReference) {
+            this.constantReference = constantReference;
+        }
+
+        public JavaConstant get(SVMImageLayerLoader imageLayerLoader) {
+            return switch (constantReference.which()) {
+                case OBJECT_CONSTANT -> {
+                    int id = constantReference.getObjectConstant().getConstantId();
+                    yield id == 0 ? null : imageLayerLoader.getOrCreateConstant(id);
+                }
+                case NULL_POINTER -> JavaConstant.NULL_POINTER;
+                case PRIMITIVE_VALUE -> {
+                    PrimitiveValue.Reader pv = constantReference.getPrimitiveValue();
+                    yield JavaConstant.forPrimitive((char) pv.getTypeChar(), pv.getRawValue());
+                }
+                default -> throw GraalError.shouldNotReachHere("Unexpected constant reference: " + constantReference.which());
+            };
+        }
+    }
+
+    public static JavaConstantSupplier getConstant(ConstantReference.Reader constantReference) {
+        return new JavaConstantSupplier(constantReference);
     }
 }

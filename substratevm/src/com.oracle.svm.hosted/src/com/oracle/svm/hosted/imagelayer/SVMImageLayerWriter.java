@@ -117,7 +117,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.FactoryMethod;
-import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingFeature;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
@@ -136,7 +135,6 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.StringConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray;
-import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot;
 import com.oracle.svm.hosted.jni.JNIJavaCallVariantWrapperMethod;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
@@ -620,8 +618,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         if (location > 0) {
             builder.setLocation(location);
         }
-        Integer fieldCheckIndex = StaticFinalFieldFoldingFeature.singleton().getFieldCheckIndex(field);
-        builder.setFieldCheckIndex((fieldCheckIndex != null) ? fieldCheckIndex : -1);
 
         Field originalField = OriginalFieldProvider.getJavaField(field);
         if (originalField != null && !originalField.getDeclaringClass().equals(field.getDeclaringClass().getJavaClass())) {
@@ -828,20 +824,31 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             ConstantReference.Builder b = refsBuilder.get(i);
             if (delegateProcessing(b, object)) {
                 /* The object was already persisted */
-            } else if (object instanceof ImageHeapConstant imageHeapConstant) {
-                assert constantsMap.containsKey(imageHeapConstant);
-                b.initObjectConstant().setConstantId(ImageHeapConstant.getConstantID(imageHeapConstant));
-            } else if (object == JavaConstant.NULL_POINTER) {
-                b.setNullPointer(Void.VOID);
-            } else if (object instanceof PrimitiveConstant pc) {
-                PrimitiveValue.Builder pb = b.initPrimitiveValue();
-                pb.setTypeChar(NumUtil.safeToUByte(pc.getJavaKind().getTypeChar()));
-                pb.setRawValue(pc.getRawValue());
-            } else {
-                AnalysisError.guarantee(object instanceof AnalysisFuture<?>, "Unexpected constant %s", object);
-                b.setNotMaterialized(Void.VOID);
+                continue;
             }
+            if (object instanceof JavaConstant javaConstant && maybeWriteConstant(javaConstant, b)) {
+                continue;
+            }
+            AnalysisError.guarantee(object instanceof AnalysisFuture<?>, "Unexpected constant %s", object);
+            b.setNotMaterialized(Void.VOID);
         }
+    }
+
+    private boolean maybeWriteConstant(JavaConstant constant, ConstantReference.Builder builder) {
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            assert constantsMap.containsKey(imageHeapConstant);
+            var ocb = builder.initObjectConstant();
+            ocb.setConstantId(ImageHeapConstant.getConstantID(imageHeapConstant));
+        } else if (constant instanceof PrimitiveConstant primitiveConstant) {
+            var pb = builder.initPrimitiveValue();
+            pb.setTypeChar(NumUtil.safeToUByte(primitiveConstant.getJavaKind().getTypeChar()));
+            pb.setRawValue(primitiveConstant.getRawValue());
+        } else if (constant == JavaConstant.NULL_POINTER) {
+            builder.setNullPointer(Void.VOID);
+        } else {
+            return false;
+        }
+        return true;
     }
 
     private static boolean delegateProcessing(ConstantReference.Builder builder, Object constant) {
@@ -1045,11 +1052,20 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
     }
 
+    public void writeConstant(JavaConstant constant, ConstantReference.Builder builder) {
+        if (constant == null) {
+            return;
+        }
+        if (!maybeWriteConstant(constant, builder)) {
+            throw VMError.shouldNotReachHere("Unexpected constant: " + constant);
+        }
+    }
+
     public static class ImageSingletonWriterImpl implements ImageSingletonWriter {
         private final EconomicMap<String, Object> keyValueStore = EconomicMap.create();
-        private final SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Builder snapshotBuilder;
+        private final SharedLayerSnapshot.Builder snapshotBuilder;
 
-        ImageSingletonWriterImpl(SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Builder snapshotBuilder) {
+        ImageSingletonWriterImpl(SharedLayerSnapshot.Builder snapshotBuilder) {
             this.snapshotBuilder = snapshotBuilder;
         }
 
@@ -1104,7 +1120,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             assert previous == null : Assertions.errorMessage(keyName, previous);
         }
 
-        public SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Builder getSnapshotBuilder() {
+        public SharedLayerSnapshot.Builder getSnapshotBuilder() {
             return snapshotBuilder;
         }
     }
