@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;

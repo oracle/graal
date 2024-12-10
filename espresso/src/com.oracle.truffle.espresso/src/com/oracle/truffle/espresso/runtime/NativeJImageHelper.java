@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 
 public class NativeJImageHelper implements JImageHelper {
 

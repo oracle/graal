@@ -23,10 +23,10 @@
 
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
 import com.oracle.truffle.espresso.shared.resolver.CallSiteType;
 import com.oracle.truffle.espresso.shared.resolver.FieldAccessType;
 import com.oracle.truffle.espresso.shared.resolver.LinkResolver;

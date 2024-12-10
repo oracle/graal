@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.analysis.graph;
 
 import java.util.BitSet;
 
-import com.oracle.truffle.espresso.shared.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 
 public final class EspressoExecutionGraph implements Graph<EspressoBlock> {
 

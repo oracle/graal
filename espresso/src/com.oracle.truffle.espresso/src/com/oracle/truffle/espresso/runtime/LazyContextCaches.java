@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsCache;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessCache;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactories;
-import com.oracle.truffle.espresso.shared.bytecode.VolatileArrayAccess;
+import com.oracle.truffle.espresso.classfile.bytecode.VolatileArrayAccess;
 
 public class LazyContextCaches extends ContextAccessImpl {
     // region Command processing

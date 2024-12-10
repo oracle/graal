@@ -34,6 +34,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.Field;
@@ -46,7 +47,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.SharedInterop;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
 
 /**
  * Implementation of the Espresso object model.

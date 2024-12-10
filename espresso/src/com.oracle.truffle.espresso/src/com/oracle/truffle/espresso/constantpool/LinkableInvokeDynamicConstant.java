@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.shared.constantpool.InvokeDynamicConstant;
-import com.oracle.truffle.espresso.shared.constantpool.Resolvable;
 
 interface LinkableInvokeDynamicConstant extends InvokeDynamicConstant, Resolvable.ResolvedConstant {
     CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci);

@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 

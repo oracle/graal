@@ -40,10 +40,10 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.JavaKind;
-import com.oracle.truffle.espresso.shared.descriptors.Signatures;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 
 /**
  * Performs the actual job of an invocation:

@@ -22,14 +22,14 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import static com.oracle.truffle.espresso.shared.classfile.Constants.JVM_ArrayType_Boolean;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.JVM_ArrayType_Byte;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.JVM_ArrayType_Char;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.JVM_ArrayType_Double;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.JVM_ArrayType_Float;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.JVM_ArrayType_Int;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.JVM_ArrayType_Long;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.JVM_ArrayType_Short;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Boolean;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Byte;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Char;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Double;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Float;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Int;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Long;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Short;
 
 import java.util.Arrays;
 
@@ -54,7 +54,7 @@ import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.VM;
 

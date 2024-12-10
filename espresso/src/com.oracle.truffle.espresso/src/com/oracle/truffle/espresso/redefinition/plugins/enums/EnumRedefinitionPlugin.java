@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
 public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
 

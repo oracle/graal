@@ -36,12 +36,12 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
-import com.oracle.truffle.espresso.shared.perf.TimerCollection;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 
 /**

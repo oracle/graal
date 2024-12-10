@@ -27,8 +27,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
-import com.oracle.truffle.espresso.shared.JavaKind;
-import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class ResolvedIntDynamicConstant implements ResolvedDynamicConstant {

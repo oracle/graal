@@ -26,14 +26,14 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.shared.classfile.ClassfileStream;
-import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
-import com.oracle.truffle.espresso.shared.classfile.ParserException;
-import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
 
 public class ConstantPoolPatcher {
     public static void getDirectInnerAnonymousClassNames(Symbol<Name> fileSystemName, byte[] bytes, Set<Symbol<Name>> innerNames, EspressoContext context)

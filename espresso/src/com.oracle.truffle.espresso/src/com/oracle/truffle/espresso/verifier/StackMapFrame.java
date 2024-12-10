@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.verifier;
 
-import static com.oracle.truffle.espresso.shared.classfile.Constants.CHOP_BOUND;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.SAME_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
 
 import java.io.PrintStream;
 

@@ -39,7 +39,7 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.inline.GuardedConditionalI
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 
 public abstract class InlinedFieldAccessNode extends InlinedMethodNode.BodyNode implements InlinedMethodPredicate {

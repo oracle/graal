@@ -46,13 +46,13 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
+import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.perf.DebugCloseable;
-import com.oracle.truffle.espresso.shared.perf.DebugTimer;
-import com.oracle.truffle.espresso.shared.perf.TimerCollection;
 
 public final class LivenessAnalysis {
 

@@ -23,24 +23,24 @@
 
 package com.oracle.truffle.espresso.verifier;
 
-import static com.oracle.truffle.espresso.shared.classfile.Constants.APPEND_FRAME_BOUND;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.CHOP_BOUND;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.FULL_FRAME;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_InitObject;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_NewObject;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.ITEM_Object;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.SAME_FRAME_BOUND;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.SAME_FRAME_EXTENDED;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
+import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
+import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
+import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormat;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormatNoFallback;
 
+import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.shared.classfile.ClassfileStream;
-import com.oracle.truffle.espresso.shared.JavaKind;
-import com.oracle.truffle.espresso.shared.classfile.ParserException;
-import com.oracle.truffle.espresso.shared.attributes.StackMapTableAttribute;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 
 public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState> {
 

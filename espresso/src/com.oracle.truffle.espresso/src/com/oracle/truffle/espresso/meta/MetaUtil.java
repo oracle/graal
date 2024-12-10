@@ -26,7 +26,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 
 /**
  * Miscellaneous collection of utility methods used by {@code jdk.vm.ci.meta} and its clients.

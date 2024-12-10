@@ -37,8 +37,6 @@ import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.shared.perf.DebugCloseable;
-import com.oracle.truffle.espresso.shared.perf.DebugTimer;
 
 public final class StructsAccess {
     private static final DebugTimer STRUCTS_TIMER = DebugTimer.create("native struct creation");

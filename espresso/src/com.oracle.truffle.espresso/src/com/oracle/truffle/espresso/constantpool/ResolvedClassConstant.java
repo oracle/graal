@@ -24,12 +24,12 @@ package com.oracle.truffle.espresso.constantpool;
 
 import java.util.Objects;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
-import com.oracle.truffle.espresso.shared.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.shared.constantpool.Resolvable;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
 
 public final class ResolvedClassConstant implements ClassConstant, Resolvable.ResolvedConstant {
     private final Klass resolved;

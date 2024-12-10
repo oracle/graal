@@ -24,14 +24,14 @@ package com.oracle.truffle.espresso.constantpool;
 
 import java.util.Objects;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.InterfaceMethodRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
-import com.oracle.truffle.espresso.shared.constantpool.InterfaceMethodRefConstant;
-import com.oracle.truffle.espresso.shared.constantpool.Resolvable;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
 
 public final class ResolvedInterfaceMethodRefConstant implements InterfaceMethodRefConstant, Resolvable.ResolvedConstant {
     private final Method resolved;

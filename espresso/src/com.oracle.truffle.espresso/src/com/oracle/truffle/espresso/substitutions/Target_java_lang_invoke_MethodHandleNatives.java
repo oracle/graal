@@ -22,20 +22,20 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_LIMIT;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_NONE;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_getField;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_getStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_newInvokeSpecial;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.None;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.ACC_STATIC;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_LIMIT;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_NONE;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_getField;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_getStatic;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeInterface;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeSpecial;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeStatic;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeVirtual;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_newInvokeSpecial;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_putField;
-import static com.oracle.truffle.espresso.shared.classfile.Constants.REF_putStatic;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.ALL_KINDS;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS_BEFORE_16;
@@ -61,6 +61,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -74,13 +81,6 @@ import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.shared.descriptors.Types;
 import com.oracle.truffle.espresso.shared.resolver.CallSiteType;
 import com.oracle.truffle.espresso.shared.resolver.FieldAccessType;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
@@ -761,14 +761,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
         public static CallSiteType callSiteFromRefKind(int refKind) {
             switch (refKind) {
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeVirtual:
+                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual:
                     return CallSiteType.Virtual;
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeStatic:
+                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic:
                     return CallSiteType.Static;
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeSpecial: // fallthrough
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_newInvokeSpecial:
+                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial: // fallthrough
+                case com.oracle.truffle.espresso.classfile.Constants.REF_newInvokeSpecial:
                     return CallSiteType.Special;
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_invokeInterface:
+                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface:
                     return CallSiteType.Interface;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -794,13 +794,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
         public static FieldAccessType fieldAccessFromRefKind(int refKind) {
             switch (refKind) {
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_getField:
+                case com.oracle.truffle.espresso.classfile.Constants.REF_getField:
                     return FieldAccessType.GetInstance;
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_getStatic:
+                case com.oracle.truffle.espresso.classfile.Constants.REF_getStatic:
                     return FieldAccessType.GetStatic;
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_putField:
+                case com.oracle.truffle.espresso.classfile.Constants.REF_putField:
                     return FieldAccessType.PutInstance;
-                case com.oracle.truffle.espresso.shared.classfile.Constants.REF_putStatic:
+                case com.oracle.truffle.espresso.classfile.Constants.REF_putStatic:
                     return FieldAccessType.PutStatic;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();

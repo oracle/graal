@@ -23,17 +23,17 @@
 package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.JavaKind;
-import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
-import com.oracle.truffle.espresso.shared.constantpool.DynamicConstant;
-import com.oracle.truffle.espresso.shared.constantpool.NameAndTypeConstant;
-import com.oracle.truffle.espresso.shared.constantpool.Resolvable;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 
 public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.ResolvedConstant {
     void putResolved(VirtualFrame frame, int top, BytecodeNode node);

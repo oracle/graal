@@ -26,7 +26,7 @@ package com.oracle.truffle.espresso.analysis;
 import com.oracle.truffle.espresso.analysis.BlockIterator.BlockProcessResult;
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
-import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 
 public abstract class BlockIteratorClosure {
     /**

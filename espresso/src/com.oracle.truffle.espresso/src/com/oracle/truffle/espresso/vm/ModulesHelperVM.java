@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.meta.Meta;

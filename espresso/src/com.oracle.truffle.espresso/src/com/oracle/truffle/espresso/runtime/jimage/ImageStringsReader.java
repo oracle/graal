@@ -27,9 +27,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.shared.descriptors.ModifiedUtf8;
-import com.oracle.truffle.espresso.shared.descriptors.Validation;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
+import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 
 public class ImageStringsReader {
     public static final int HASH_MULTIPLIER = 0x01000193;

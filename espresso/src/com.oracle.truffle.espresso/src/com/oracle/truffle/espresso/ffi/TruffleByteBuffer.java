@@ -40,7 +40,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
-import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 
 @ExportLibrary(InteropLibrary.class)
 public final class TruffleByteBuffer implements TruffleObject {

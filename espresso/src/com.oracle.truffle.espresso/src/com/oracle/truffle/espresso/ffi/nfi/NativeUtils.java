@@ -38,8 +38,6 @@ import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.shared.JavaKind;
-import com.oracle.truffle.espresso.shared.descriptors.ModifiedUtf8;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;

@@ -30,18 +30,18 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.classfile.ParsingContext;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.JavaVersion;
-import com.oracle.truffle.espresso.shared.classfile.ParsingContext;
-import com.oracle.truffle.espresso.shared.constantpool.Utf8Constant;
-import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.shared.descriptors.Types;
-import com.oracle.truffle.espresso.shared.perf.TimerCollection;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 
 public class ClassLoadingEnv implements LanguageAccess {
     private final AtomicLong klassIdProvider = new AtomicLong();

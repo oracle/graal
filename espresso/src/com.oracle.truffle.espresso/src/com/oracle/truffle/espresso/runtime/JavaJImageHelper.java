@@ -29,8 +29,8 @@ import java.nio.charset.StandardCharsets;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.jimage.ImageLocation;
-import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
 public class JavaJImageHelper implements JImageHelper {
     private static final ByteSequence PACKAGES_PREFIX = ByteSequence.wrap("/packages/".getBytes(StandardCharsets.UTF_8));

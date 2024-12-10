@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.preinit;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextDescription;
@@ -32,8 +34,6 @@ import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.classfile.ParserKlass;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
 
 /**
  * {@link EspressoLanguageCache} provides {@link ParserKlass} and {@link LinkedKlass} instances that

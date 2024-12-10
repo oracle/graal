@@ -27,10 +27,10 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.shared.attributes.LineNumberTableAttribute;
-import com.oracle.truffle.espresso.shared.bytecode.BytecodeStream;
 
 /**
  * lightweight map from BCI to array index. The contract is easy, upon lookup, returns the index of

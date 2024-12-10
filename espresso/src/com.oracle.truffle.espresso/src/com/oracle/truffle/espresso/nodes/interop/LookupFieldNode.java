@@ -30,8 +30,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 @GenerateUncached
 public abstract class LookupFieldNode extends EspressoNode {

@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextDescription;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
 
 public final class CachedLinkedKlassProvider extends AbstractCachedKlassProvider implements LinkedKlassProvider {
     private final LinkedKlassProvider fallbackProvider;

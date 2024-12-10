@@ -30,7 +30,7 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.shared.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.meta.EspressoError;
 

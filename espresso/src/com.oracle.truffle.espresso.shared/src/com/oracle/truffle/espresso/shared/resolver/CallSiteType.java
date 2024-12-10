@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.shared.resolver;
 
-import com.oracle.truffle.espresso.shared.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 
 /**
  * Describes the type of call-site resolution that should happen for a given call-site. For

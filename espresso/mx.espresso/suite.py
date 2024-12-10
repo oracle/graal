@@ -116,12 +116,25 @@ suite = {
             "license": "UPL",
         },
 
-        # Shared .class file parser, link resolver
-        "com.oracle.truffle.espresso.shared": {
+        # Shared .class file parser
+        "com.oracle.truffle.espresso.classfile": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
                 "truffle:TRUFFLE_API",
+            ],
+            "requires": [
+            ],
+            "javaCompliance" : "17+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        # Shared link resolver
+        "com.oracle.truffle.espresso.shared": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso.classfile",
             ],
             "requires": [
             ],
@@ -137,6 +150,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "com.oracle.truffle.espresso.jdwp",
                 "com.oracle.truffle.espresso.shadowed.asm",
+                "com.oracle.truffle.espresso.shared",
             ],
             "requires": [
                 "java.logging",
@@ -204,7 +218,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.truffle.espresso.shared",
+                "com.oracle.truffle.espresso.classfile",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],

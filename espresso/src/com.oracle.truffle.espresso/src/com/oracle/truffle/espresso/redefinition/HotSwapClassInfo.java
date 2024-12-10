@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.redefinition;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 

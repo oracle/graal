@@ -45,7 +45,6 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeFactory;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.perf.DebugCounter;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions

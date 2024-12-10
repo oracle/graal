@@ -22,20 +22,20 @@
  */
 package com.oracle.truffle.espresso.preinit;
 
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.ParsingContext;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.shared.classfile.ClassfileStream;
-import com.oracle.truffle.espresso.shared.classfile.ParserException;
-import com.oracle.truffle.espresso.shared.classfile.ParserKlass;
-import com.oracle.truffle.espresso.shared.classfile.ParsingContext;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.shared.descriptors.ValidationException;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
 
 public interface ParserKlassProvider {

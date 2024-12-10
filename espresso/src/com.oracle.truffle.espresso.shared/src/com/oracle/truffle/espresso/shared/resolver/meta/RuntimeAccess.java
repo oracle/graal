@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.shared.resolver.meta;
 
-import com.oracle.truffle.espresso.shared.JavaVersion;
+import com.oracle.truffle.espresso.classfile.JavaVersion;
 
 /**
  * Provides access to some VM-specific capabilities, such as throwing exceptions, or obtaining the

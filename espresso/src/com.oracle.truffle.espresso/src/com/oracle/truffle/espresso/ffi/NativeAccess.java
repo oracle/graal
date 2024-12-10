@@ -37,7 +37,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
-import com.oracle.truffle.espresso.shared.JavaKind;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 
 /**
  * Encapsulates minimal functionality required to interface with the native world in the JVM.

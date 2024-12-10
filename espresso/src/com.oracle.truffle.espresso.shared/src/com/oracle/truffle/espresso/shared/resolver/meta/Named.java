@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.shared.resolver.meta;
 
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 /**
  * A {@link Named} object must provide a {@link #getSymbolicName() symbolic name}.

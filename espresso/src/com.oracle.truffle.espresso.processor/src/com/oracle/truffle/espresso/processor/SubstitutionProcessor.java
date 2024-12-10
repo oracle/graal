@@ -84,7 +84,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
     private static final String VERSION_FILTER_METHOD = "isValidFor";
     private static final String INLINE_IN_BYTECODE_METHOD = "inlineInBytecode";
-    private static final String JAVA_VERSION = "com.oracle.truffle.espresso.shared.JavaVersion";
+    private static final String JAVA_VERSION = "com.oracle.truffle.espresso.classfile.JavaVersion";
 
     private static final String INSTANCE = "INSTANCE";
 

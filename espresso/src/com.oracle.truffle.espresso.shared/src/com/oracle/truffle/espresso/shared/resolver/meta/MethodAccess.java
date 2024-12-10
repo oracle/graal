@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.shared.resolver.meta;
 
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 
 /**
  * Represents a {@link java.lang.reflect.Method}, and provides access to various runtime metadata.

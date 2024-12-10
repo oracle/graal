@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
-import com.oracle.truffle.espresso.shared.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
 
 public final class ChangePacket {
 

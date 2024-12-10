@@ -41,8 +41,8 @@ import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
-import com.oracle.truffle.espresso.shared.attributes.LineNumberTableRef;
-import com.oracle.truffle.espresso.shared.attributes.LocalRef;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableRef;
+import com.oracle.truffle.espresso.classfile.attributes.LocalRef;
 
 public final class JDWP {
 

@@ -24,15 +24,15 @@ package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.shared.classfile.ConstantPool;
-import com.oracle.truffle.espresso.shared.constantpool.FieldRefConstant;
-import com.oracle.truffle.espresso.shared.constantpool.Resolvable;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
 
 public final class MissingFieldRefConstant implements FieldRefConstant, Resolvable.ResolvedConstant {
     private final EspressoException failure;

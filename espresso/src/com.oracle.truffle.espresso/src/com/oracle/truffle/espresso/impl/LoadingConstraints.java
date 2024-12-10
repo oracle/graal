@@ -27,14 +27,14 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
+import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol;
-import com.oracle.truffle.espresso.shared.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.shared.perf.DebugCloseable;
-import com.oracle.truffle.espresso.shared.perf.DebugTimer;
 
 /**
  * This class takes care of the loading constraints in Espresso, as described in {5.3.4. Loading

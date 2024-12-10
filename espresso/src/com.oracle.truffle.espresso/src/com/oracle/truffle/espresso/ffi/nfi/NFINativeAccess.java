@@ -61,7 +61,6 @@ import com.oracle.truffle.espresso.ffi.SignatureCallNode;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.shared.perf.DebugCounter;
 import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
