@@ -506,20 +506,28 @@ public abstract class StrengthenGraphs {
                     tool.addToWorkList(replacement);
                 }
 
-            } else if (n instanceof ClassIsAssignableFromNode) {
-                ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) n;
-                AnalysisType nonReachableType = asConstantNonReachableType(node.getThisClass(), tool);
-                if (nonReachableType != null) {
-                    node.replaceAndDelete(LogicConstantNode.contradiction(graph));
+            } else if (n instanceof ClassIsAssignableFromNode node) {
+                if (isClosedTypeWorld) {
+                    /*
+                     * If the constant receiver of a Class#isAssignableFrom is an unreachable type
+                     * we can constant-fold the ClassIsAssignableFromNode to false. See also
+                     * MethodTypeFlowBuilder#ignoreConstant where we avoid marking the corresponding
+                     * type as reachable just because it is used by the ClassIsAssignableFromNode.
+                     * We only apply this optimization if it's a closed type world, for open world
+                     * we cannot fold the type check since the type may be used later.
+                     */
+                    AnalysisType nonReachableType = asConstantNonReachableType(node.getThisClass(), tool);
+                    if (nonReachableType != null) {
+                        node.replaceAndDelete(LogicConstantNode.contradiction(graph));
+                    }
                 }
-
-            } else if (n instanceof BytecodeExceptionNode) {
+            } else if (n instanceof BytecodeExceptionNode node) {
                 /*
                  * We do not want a type to be reachable only to be used for the error message of a
                  * ClassCastException. Therefore, in that case we replace the java.lang.Class with a
-                 * java.lang.String that is then used directly in the error message.
+                 * java.lang.String that is then used directly in the error message. We can apply
+                 * this optimization optimistically for both closed and open type world.
                  */
-                BytecodeExceptionNode node = (BytecodeExceptionNode) n;
                 if (node.getExceptionKind() == BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST) {
                     AnalysisType nonReachableType = asConstantNonReachableType(node.getArguments().get(1), tool);
                     if (nonReachableType != null) {
@@ -1085,7 +1093,8 @@ public abstract class StrengthenGraphs {
                 return null;
             }
 
-            if (!originalType.isReachable()) {
+            /* In open world the type may become reachable later. */
+            if (isClosedTypeWorld && !originalType.isReachable()) {
                 /* We must be in dead code. */
                 if (stamp.nonNull()) {
                     /* We must be in dead code. */

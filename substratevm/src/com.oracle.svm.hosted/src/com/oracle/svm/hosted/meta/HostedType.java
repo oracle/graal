@@ -133,6 +133,9 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
      * this type is never instantiated and does not have any instantiated subtype, i.e., if no value
      * of this type can ever exist. Equal to this type if this type is instantiated, i.e, this type
      * cannot be strengthened.
+     * 
+     * For open world the strengthen stamp type is equal to this type itself if the type is not a
+     * leaf type, i.e., it cannot be extended.
      */
     protected HostedType strengthenStampType;
 
@@ -274,10 +277,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     public HostedMethod[] getAllDeclaredMethods() {
         assert allDeclaredMethods != null : "not initialized yet";
         return allDeclaredMethods;
-    }
-
-    public HostedType getUniqueConcreteImplementation() {
-        return uniqueConcreteImplementation;
     }
 
     public void loadTypeID(int newTypeID) {
