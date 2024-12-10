@@ -24,8 +24,8 @@
  */
 package com.oracle.graal.pointsto.heap;
 
-import org.graalvm.collections.EconomicMap;
-
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
@@ -37,12 +37,16 @@ public class ImageLayerWriterHelper {
     }
 
     @SuppressWarnings("unused")
-    protected void persistType(AnalysisType type, EconomicMap<String, Object> typeMap) {
+    protected void persistType(AnalysisType type, PersistedAnalysisType.Builder builder) {
         /* No additional information to persist */
     }
 
     @SuppressWarnings("unused")
-    protected void persistMethod(AnalysisMethod method, EconomicMap<String, Object> methodMap) {
+    protected void persistMethod(AnalysisMethod method, PersistedAnalysisMethod.Builder builder) {
         /* No additional information to persist */
+    }
+
+    @SuppressWarnings("unused")
+    protected void afterMethodAdded(AnalysisMethod method) {
     }
 }
