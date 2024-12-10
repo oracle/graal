@@ -1417,6 +1417,8 @@ final class FileSystems {
         private final boolean internal;
         private final boolean noAccess;
         private final boolean host;
+        private final Path thisDirectory;
+        private final Path parentDirectory;
         private Path currentWorkingDirectory;
 
         CompositeFileSystem(AbstractPolyglotImpl polyglot, FileSystem fallBackFileSystem, Selector... delegates) {
@@ -1435,6 +1437,8 @@ final class FileSystems {
             internal = isInternal;
             noAccess = isNoAccess;
             host = isHost;
+            thisDirectory = fallBackFileSystem.parsePath(".");
+            parentDirectory = fallBackFileSystem.parsePath("..");
         }
 
         private static void verifyFileSystemsCompatibility(FileSystem main, FileSystem... others) {
@@ -1708,10 +1712,9 @@ final class FileSystems {
          * paths. It's faster to check if the normalization is needed and normalize only
          * non-normalized paths.
          */
-        private static boolean isNormalized(Path path) {
+        private boolean isNormalized(Path path) {
             for (Path name : path) {
-                String strName = name.toString();
-                if (".".equals(strName) || "..".equals(strName)) {
+                if (thisDirectory.equals(name) || parentDirectory.equals(name)) {
                     return false;
                 }
             }
