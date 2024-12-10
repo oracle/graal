@@ -26,23 +26,104 @@ package com.oracle.svm.core.hub;
 
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.security.ProtectionDomain;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.vm.annotation.Stable;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.repository.ClassRepository;
 
 /**
- * The mutable parts of a {@link DynamicHub} instance.
+ * Storage for non-critical or mutable data of {@link DynamicHub}.
+ *
+ * Some of these fields are immutable and moving them to a separate read-only companion class might
+ * improve sharing between isolates and processes, but could increase image size.
  */
 public final class DynamicHubCompanion {
     /** Marker value for {@link #classLoader}. */
     private static final Object NO_CLASS_LOADER = new Object();
+
+    /** Field used for module information access at run-time. */
+    final Module module;
+
+    /**
+     * The hub for the superclass, or null if an interface or primitive type.
+     *
+     * @see Class#getSuperclass()
+     */
+    final DynamicHub superHub;
+
+    /** Source file name if known; null otherwise. */
+    final String sourceFileName;
+
+    /** The {@link Modifier modifiers} of this class. */
+    final int modifiers;
+
+    /** The class that serves as the host for the nest. All nestmates have the same host. */
+    final Class<?> nestHost;
+
+    /** The simple binary name of this class, as returned by {@code Class.getSimpleBinaryName0}. */
+    final String simpleBinaryName;
+
+    /**
+     * The class that declares this class, as returned by {@code Class.getDeclaringClass0} or an
+     * exception that happened at image-build time.
+     */
+    final Object declaringClass;
+
+    final String signature;
+
+    /** Similar to {@code DynamicHub.flags}, but set later during the image build. */
+    @UnknownPrimitiveField(availability = BuildPhaseProvider.AfterHostedUniverse.class) //
+    @Stable byte additionalFlags;
+
+    /**
+     * The hub for an array of this type, or null if the array type has been determined as
+     * uninstantiated by the static analysis.
+     */
+    @Stable DynamicHub arrayHub;
+
+    /**
+     * The interfaces that this class implements. Either null (no interfaces), a {@link DynamicHub}
+     * (one interface), or a {@link DynamicHub}[] array (more than one interface).
+     */
+    @Stable Object interfacesEncoding;
+
+    /**
+     * Reference to a list of enum values for subclasses of {@link Enum}; null otherwise.
+     */
+    @Stable Object enumConstantsReference;
+
+    /**
+     * Back link to the SubstrateType used by the substrate meta access. Only used for the subset of
+     * types for which a SubstrateType exists.
+     */
+    @UnknownObjectField(fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType", canBeNull = true) //
+    @Stable SharedType metaType;
+
+    /**
+     * Metadata for running class initializers at run time. Refers to a singleton marker object for
+     * classes/interfaces already initialized during image generation, i.e., this field is never
+     * null at run time.
+     */
+    @Stable ClassInitializationInfo classInitializationInfo;
+
+    @UnknownObjectField(canBeNull = true, availability = BuildPhaseProvider.AfterCompilation.class) //
+    @Stable DynamicHub.ReflectionMetadata reflectionMetadata;
+
+    @UnknownObjectField(canBeNull = true, availability = BuildPhaseProvider.AfterCompilation.class) //
+    @Stable DynamicHub.DynamicHubMetadata hubMetadata;
 
     private String packageName;
     /**
@@ -62,13 +143,31 @@ public final class DynamicHubCompanion {
     private boolean canUnsafeAllocate;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
+    DynamicHubCompanion(Class<?> hostedJavaClass, Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
+
+        this(module, superHub, sourceFileName, modifiers, nestHost, simpleBinaryName, declaringClass, signature);
         this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
     }
 
-    DynamicHubCompanion(ClassLoader classLoader) {
+    DynamicHubCompanion(ClassLoader classLoader, Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+                    Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
+        this(module, superHub, sourceFileName, modifiers, nestHost, simpleBinaryName, declaringClass, signature);
+
         assert RuntimeClassLoading.isSupported();
         this.classLoader = classLoader;
+    }
+
+    private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
+                    Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
+        this.module = module;
+        this.superHub = superHub;
+        this.sourceFileName = sourceFileName;
+        this.modifiers = modifiers;
+        this.nestHost = nestHost;
+        this.simpleBinaryName = simpleBinaryName;
+        this.declaringClass = declaringClass;
+        this.signature = signature;
     }
 
     String getPackageName(DynamicHub hub) {

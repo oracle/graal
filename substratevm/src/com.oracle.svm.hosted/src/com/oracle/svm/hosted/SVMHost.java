@@ -87,6 +87,7 @@ import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.heap.UnknownClass;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.Hybrid;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -887,8 +888,6 @@ public class SVMHost extends HostVM {
          * These fields need to be folded as they are used in snippets, and they must be accessed
          * without producing reads with side effects.
          */
-        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "arrayHub"));
-        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "additionalFlags"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "layoutEncoding"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes"));
@@ -897,6 +896,9 @@ public class SVMHost extends HostVM {
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "typeID"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "monitorOffset"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "hubType"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "companion"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHubCompanion.class, "arrayHub"));
+        excludedFields.add(ReflectionUtil.lookupField(DynamicHubCompanion.class, "additionalFlags"));
 
         /* Needs to be immutable for correct lowering of SubstrateIdentityHashCodeNode. */
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "identityHashOffset"));
