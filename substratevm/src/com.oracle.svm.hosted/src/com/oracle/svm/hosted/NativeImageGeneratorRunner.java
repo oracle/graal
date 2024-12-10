@@ -715,11 +715,10 @@ public class NativeImageGeneratorRunner {
         } else {
             reportUserError(e.getMessage());
         }
-        Throwable current = e.getCause();
-        while (current != null) {
+        Throwable cause = e.getCause();
+        if (cause != null) {
             System.out.print("Caused by: ");
-            current.printStackTrace(System.out);
-            current = current.getCause();
+            cause.printStackTrace(System.out);
         }
         if (parsedHostedOptions != null && NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             System.out.print("Internal exception: ");
