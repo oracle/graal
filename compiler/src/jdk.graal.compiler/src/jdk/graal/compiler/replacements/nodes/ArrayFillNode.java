@@ -59,14 +59,24 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
                 implements StateSplit, MemoryAccess {
 
     public static final NodeClass<ArrayFillNode> TYPE = NodeClass.create(ArrayFillNode.class);
+    private static final ForeignCallDescriptor BOOLEAN_ARRAY_FILL_STUB = createForeignCallDescriptor(JavaKind.Boolean);
     private static final ForeignCallDescriptor BYTE_ARRAY_FILL_STUB = createForeignCallDescriptor(JavaKind.Byte);
+    private static final ForeignCallDescriptor CHAR_ARRAY_FILL_STUB = createForeignCallDescriptor(JavaKind.Char);
     private static final ForeignCallDescriptor SHORT_ARRAY_FILL_STUB = createForeignCallDescriptor(JavaKind.Short);
     private static final ForeignCallDescriptor INT_ARRAY_FILL_STUB = createForeignCallDescriptor(JavaKind.Int);
+    private static final ForeignCallDescriptor LONG_ARRAY_FILL_STUB = createForeignCallDescriptor(JavaKind.Long);
+    private static final ForeignCallDescriptor FLOAT_ARRAY_FILL_STUB = createForeignCallDescriptor(JavaKind.Float);
+    private static final ForeignCallDescriptor DOUBLE_ARRAY_FILL_STUB = createForeignCallDescriptor(JavaKind.Double);
 
     public static final ForeignCallDescriptor[] STUBS = {
+                    BOOLEAN_ARRAY_FILL_STUB,
                     BYTE_ARRAY_FILL_STUB,
+                    CHAR_ARRAY_FILL_STUB,
                     SHORT_ARRAY_FILL_STUB,
                     INT_ARRAY_FILL_STUB,
+                    LONG_ARRAY_FILL_STUB,
+                    FLOAT_ARRAY_FILL_STUB,
+                    DOUBLE_ARRAY_FILL_STUB,
     };
 
     protected JavaKind elementKind;
@@ -96,9 +106,14 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
     }
 
     @NodeIntrinsic
+    @GenerateStub(name = "booleanArrayFill", parameters = {"Boolean"})
     @GenerateStub(name = "byteArrayFill", parameters = {"Byte"})
+    @GenerateStub(name = "charArrayFill", parameters = {"Char"})
     @GenerateStub(name = "shortArrayFill", parameters = {"Short"})
     @GenerateStub(name = "intArrayFill", parameters = {"Int"})
+    @GenerateStub(name = "longArrayFill", parameters = {"Long"})
+    @GenerateStub(name = "floatArrayFill", parameters = {"Float"})
+    @GenerateStub(name = "doubleArrayFill", parameters = {"Double"})
     public static native void fill(Pointer array, long offset, int length, int value,
                     @ConstantNodeParameter JavaKind kind);
 
@@ -110,12 +125,22 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
     @Override
     public ForeignCallDescriptor getForeignCallDescriptor() {
         switch (this.elementKind) {
+            case Boolean:
+                return BOOLEAN_ARRAY_FILL_STUB;
             case Byte:
                 return BYTE_ARRAY_FILL_STUB;
+            case Char:
+                return CHAR_ARRAY_FILL_STUB;
             case Short:
                 return SHORT_ARRAY_FILL_STUB;
             case Int:
                 return INT_ARRAY_FILL_STUB;
+            case Long:
+                return LONG_ARRAY_FILL_STUB;
+            case Float:
+                return FLOAT_ARRAY_FILL_STUB;
+            case Double:
+                return DOUBLE_ARRAY_FILL_STUB;
             default:
                 return null;
         }
@@ -147,9 +172,13 @@ public class ArrayFillNode extends MemoryKillStubIntrinsicNode
         return new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(this.elementKind)};
     }
 
+    public static boolean isSupported(Architecture arch) {
+        return (arch instanceof AArch64);
+    }
+
     @Override
     public boolean canBeEmitted(Architecture arch) {
-        return (arch instanceof AArch64);
+        return isSupported(arch);
     }
 
     @Override

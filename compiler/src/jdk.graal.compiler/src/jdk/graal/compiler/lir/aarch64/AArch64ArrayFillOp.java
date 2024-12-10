@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.Value;
 public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
     public static final LIRInstructionClass<AArch64ArrayFillOp> TYPE = LIRInstructionClass.create(AArch64ArrayFillOp.class);
 
-    private JavaKind element_type;
+    private JavaKind elementType;
     @Alive({REG}) protected Value array;
     @Alive({REG}) protected Value arrayBaseOffset;
     @Alive({REG}) protected Value length;
@@ -72,7 +72,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
         GraalError.guarantee(length.getPlatformKind() == AArch64Kind.DWORD, "integer value expected in 'length'");
         GraalError.guarantee(value.getPlatformKind() == AArch64Kind.DWORD, "integer value expected in 'value'.");
 
-        this.element_type = kind;
+        this.elementType = kind;
         this.array = array;
         this.arrayBaseOffset = arrayBaseOffset;
         this.length = length;
@@ -91,129 +91,158 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
     @SuppressWarnings("fallthrough")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         int shift = -1;
-        int operation_width_B = 8;
-        int operation_width_H = 16;
-        int operation_width_W = 32;
-        int operation_width_DW = 64;
+        int operationWidthB = 8;
+        int operationWidthH = 16;
+        int operationWidthW = 32;
+        int operationWidthDW = 64;
 
-        Register target_array = r7;
-        Register value_to_fill_with = r8;
-        Register number_of_elements = r9;
-        Register number_of_eight_byte_words = r10;
+        Register targetArray = r7;
+        Register valueToFillWith = r8;
+        Register numberOfElements = r9;
+        Register numberOfEightByteWords = r10;
 
-        Label L_fill_elements = new Label();
-        Label L_skip_align1 = new Label();
-        Label L_skip_align2 = new Label();
-        Label L_skip_align4 = new Label();
-        Label L_fill_2 = new Label();
-        Label L_fill_4 = new Label();
-        Label L_done = new Label();
+        Label fillElementsLabel = new Label();
+        Label skipAlign1Label = new Label();
+        Label skipAlign2Label = new Label();
+        Label skipAlign4Label = new Label();
+        Label fill2Label = new Label();
+        Label fill4Label = new Label();
+        Label doneLabel = new Label();
 
-        masm.add(operation_width_DW, target_array, asRegister(this.array), asRegister(this.arrayBaseOffset));
-        masm.mov(operation_width_DW, value_to_fill_with, asRegister(value));
-        masm.mov(operation_width_DW, number_of_elements, asRegister(length));
+        masm.add(operationWidthDW, targetArray, asRegister(this.array), asRegister(this.arrayBaseOffset));
+        masm.mov(operationWidthDW, valueToFillWith, asRegister(value));
+        masm.mov(operationWidthDW, numberOfElements, asRegister(length));
 
-        // Will jump to L_fill_elements if there are less than 8 bytes to fill in target array.
-        // Before jumping, adjust value_to_fill_with to contain the 'pattern' to fill target
+        // Will jump to fillElementsLabel if there are less than 8 bytes to fill in target array.
+        // Before jumping, adjust valueToFillWith to contain the 'pattern' to fill target
         // array with.
-        switch (this.element_type) {
+        switch (this.elementType) {
+            case JavaKind.Boolean:
             case JavaKind.Byte:
                 shift = 0;
-                masm.compare(operation_width_W, number_of_elements, 8 >> shift);
-                masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 8, 8);
-                masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 16, 16);
-                masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
+                masm.compare(operationWidthW, numberOfElements, 8);
+                masm.bfi(operationWidthW, valueToFillWith, valueToFillWith, 8, 8);
+                masm.bfi(operationWidthW, valueToFillWith, valueToFillWith, 16, 16);
+
+                // jump to fillElementsLabel if numberOfElements < 8 elements
+                masm.branchConditionally(ConditionFlag.LO, fillElementsLabel);
                 break;
             case JavaKind.Short:
+                // Fallthrough
+            case JavaKind.Char:
                 shift = 1;
-                masm.compare(operation_width_W, number_of_elements, 8 >> shift);
-                masm.bfi(operation_width_W, value_to_fill_with, value_to_fill_with, 16, 16);
-                masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
+                masm.compare(operationWidthW, numberOfElements, 4);
+                masm.bfi(operationWidthW, valueToFillWith, valueToFillWith, 16, 16);
+                // jump to fillElementsLabel if numberOfElements < 4 elements
+                masm.branchConditionally(ConditionFlag.LO, fillElementsLabel);
                 break;
             case JavaKind.Int:
+            case JavaKind.Float:
                 shift = 2;
-                masm.compare(operation_width_W, number_of_elements, 8 >> shift);
-                masm.branchConditionally(ConditionFlag.LO, L_fill_elements);
+                masm.compare(operationWidthW, numberOfElements, 2);
+                // jump to fillElementsLabel if numberOfElements < 2 elements
+                masm.branchConditionally(ConditionFlag.LO, fillElementsLabel);
+                break;
+            case JavaKind.Long:
+            case JavaKind.Double:
+                shift = 3;
+                masm.compare(operationWidthW, numberOfElements, 1);
+                // jump to doneLabel if numberOfElements < 1 elements
+                masm.branchConditionally(ConditionFlag.LO, doneLabel);
                 break;
             default:
                 GraalError.shouldNotReachHere("Should not reach here.");
         }
 
         // Align source address at 8 bytes address boundary.
-        switch (this.element_type) {
+        switch (this.elementType) {
+            case JavaKind.Boolean:
             case JavaKind.Byte:
-                masm.tbz(target_array, 0, L_skip_align1);
-                masm.str(operation_width_B, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_B, IMMEDIATE_POST_INDEXED, target_array, 1));
-                masm.sub(operation_width_W, number_of_elements, number_of_elements, 1);
-                masm.bind(L_skip_align1);
+                masm.tbz(targetArray, 0, skipAlign1Label);
+                masm.str(operationWidthB, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthB, IMMEDIATE_POST_INDEXED, targetArray, 1));
+                masm.sub(operationWidthW, numberOfElements, numberOfElements, 1);
+                masm.bind(skipAlign1Label);
                 // Fallthrough
             case JavaKind.Short:
-                masm.tbz(target_array, 1, L_skip_align2);
-                masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
-                masm.sub(operation_width_W, number_of_elements, number_of_elements, 2 >> shift);
-                masm.bind(L_skip_align2);
+                // Fallthrough
+            case JavaKind.Char:
+                masm.tbz(targetArray, 1, skipAlign2Label);
+                masm.str(operationWidthH, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthH, IMMEDIATE_POST_INDEXED, targetArray, 2));
+                masm.sub(operationWidthW, numberOfElements, numberOfElements, 2 >> shift);
+                masm.bind(skipAlign2Label);
                 // Fallthrough
             case JavaKind.Int:
-                masm.tbz(target_array, 2, L_skip_align4);
-                masm.str(operation_width_W, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_W, IMMEDIATE_POST_INDEXED, target_array, 4));
-                masm.sub(operation_width_W, number_of_elements, number_of_elements, 4 >> shift);
-                masm.bind(L_skip_align4);
+            case JavaKind.Float:
+                masm.tbz(targetArray, 2, skipAlign4Label);
+                masm.str(operationWidthW, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthW, IMMEDIATE_POST_INDEXED, targetArray, 4));
+                masm.sub(operationWidthW, numberOfElements, numberOfElements, 4 >> shift);
+                masm.bind(skipAlign4Label);
+                break;
+            case JavaKind.Long:
+            case JavaKind.Double:
                 break;
             default:
                 GraalError.shouldNotReachHere("Should not reach here.");
         }
 
-        // Divide number_of_elements by 2^(3-shift), i.e., divide number_of_elements by the
+        // Divide numberOfElements by 2^(3-shift), i.e., divide numberOfElements by the
         // number of elements that fit into an 8 byte word.
-        masm.lsr(operation_width_W, number_of_eight_byte_words, number_of_elements, 3 - shift);
+        masm.lsr(operationWidthW, numberOfEightByteWords, numberOfElements, 3 - shift);
 
-        // expand from 32 bits to 64 bits
-        masm.bfi(operation_width_DW, value_to_fill_with, value_to_fill_with, 32, 32);
+        // If valueToFillWith isn't already 64 bits we'll make it so
+        if (this.elementType != JavaKind.Long && this.elementType != JavaKind.Double) {
+            masm.bfi(operationWidthDW, valueToFillWith, valueToFillWith, 32, 32);
+        }
 
-        // number_of_elements = number_of_elements -
-        // number_of_eight_byte_words*(elements_by_eight_byte_word)
-        masm.sub(operation_width_W, number_of_elements, number_of_elements, number_of_eight_byte_words, ShiftType.LSL, 3 - shift);
+        // numberOfElements = numberOfElements - numberOfEightByteWords * elementsByEightByteWord
+        masm.sub(operationWidthW, numberOfElements, numberOfElements, numberOfEightByteWords, ShiftType.LSL, 3 - shift);
 
-        // fill number_of_eight_byte_words bytes of the target array
-        fillWords(masm, target_array, number_of_eight_byte_words, value_to_fill_with);
+        // fill numberOfEightByteWords bytes of the target array
+        fillWords(masm, targetArray, numberOfEightByteWords, valueToFillWith);
 
-        // Remaining number_of_elements is less than 8 bytes. Fill it by a single store.
+        // Remaining numberOfElements is less than 8 bytes. Fill it by a single store.
         // Note that the total length is no less than 8 bytes.
-        if (this.element_type == JavaKind.Byte || this.element_type == JavaKind.Short) {
-            masm.cbz(operation_width_W, number_of_elements, L_done);
-            masm.add(operation_width_DW, target_array, target_array, number_of_elements, ShiftType.LSL, shift);
-            masm.str(operation_width_DW, value_to_fill_with, masm.makeAddress(operation_width_DW, target_array, -8));
-            masm.jmp(L_done);
+        if (this.elementType == JavaKind.Byte || this.elementType == JavaKind.Boolean || this.elementType == JavaKind.Short || this.elementType == JavaKind.Char) {
+            masm.cbz(operationWidthW, numberOfElements, doneLabel);
+            masm.add(operationWidthDW, targetArray, targetArray, numberOfElements, ShiftType.LSL, shift);
+            masm.str(operationWidthDW, valueToFillWith, masm.makeAddress(operationWidthDW, targetArray, -8));
+            masm.jmp(doneLabel);
         }
 
         // Handle copies less than 8 bytes.
-        masm.bind(L_fill_elements);
-        switch (this.element_type) {
+        masm.bind(fillElementsLabel);
+        switch (this.elementType) {
+            case JavaKind.Boolean:
             case JavaKind.Byte:
-                masm.tbz(number_of_elements, 0, L_fill_2);
-                masm.str(operation_width_B, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_B, IMMEDIATE_POST_INDEXED, target_array, 1));
-                masm.bind(L_fill_2);
-                masm.tbz(number_of_elements, 1, L_fill_4);
-                masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
-                masm.bind(L_fill_4);
-                masm.tbz(number_of_elements, 2, L_done);
-                masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
+                masm.tbz(numberOfElements, 0, fill2Label);
+                masm.str(operationWidthB, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthB, IMMEDIATE_POST_INDEXED, targetArray, 1));
+                masm.bind(fill2Label);
+                masm.tbz(numberOfElements, 1, fill4Label);
+                masm.str(operationWidthH, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthH, IMMEDIATE_POST_INDEXED, targetArray, 2));
+                masm.bind(fill4Label);
+                masm.tbz(numberOfElements, 2, doneLabel);
+                masm.str(operationWidthW, valueToFillWith, AArch64Address.createBaseRegisterOnlyAddress(operationWidthW, targetArray));
                 break;
             case JavaKind.Short:
-                masm.tbz(number_of_elements, 0, L_fill_4);
-                masm.str(operation_width_H, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_H, IMMEDIATE_POST_INDEXED, target_array, 2));
-                masm.bind(L_fill_4);
-                masm.tbz(number_of_elements, 1, L_done);
-                masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
+            case JavaKind.Char:
+                masm.tbz(numberOfElements, 0, fill4Label);
+                masm.str(operationWidthH, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthH, IMMEDIATE_POST_INDEXED, targetArray, 2));
+                masm.bind(fill4Label);
+                masm.tbz(numberOfElements, 1, doneLabel);
+                masm.str(operationWidthW, valueToFillWith, AArch64Address.createBaseRegisterOnlyAddress(operationWidthW, targetArray));
                 break;
             case JavaKind.Int:
-                masm.cbz(operation_width_W, number_of_elements, L_done);
-                masm.str(operation_width_W, value_to_fill_with, AArch64Address.createBaseRegisterOnlyAddress(operation_width_W, target_array));
+            case JavaKind.Float:
+                masm.cbz(operationWidthW, numberOfElements, doneLabel);
+                masm.str(operationWidthW, valueToFillWith, AArch64Address.createBaseRegisterOnlyAddress(operationWidthW, targetArray));
+                break;
+            case JavaKind.Long:
+            case JavaKind.Double:
                 break;
             default:
                 GraalError.shouldNotReachHere("Should not reach here.");
         }
-        masm.bind(L_done);
+        masm.bind(doneLabel);
     }
 
     /**
@@ -255,45 +284,50 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
      * Base will point to the end of the buffer after filling.
      *
      * @param masm
-     * @param target_array Address of a buffer to be filled, 8 bytes aligned.
-     * @param count_words Count in 8-byte unit.
-     * @param value_to_fill_with Value to be filled with.
+     * @param targetArray Address of a buffer to be filled, 8 bytes aligned.
+     * @param numberOfEightByteWords Count in 8-byte unit.
+     * @param valueToFillWith Value to be filled with.
      */
     @SuppressWarnings("static-method")
-    private void fillWords(AArch64MacroAssembler masm, Register target_array, Register count_words, Register value_to_fill_with) {
-        int operation_width_DW = 64;
+    private void fillWords(AArch64MacroAssembler masm, Register targetArray, Register numberOfEightByteWords, Register valueToFillWith) {
+        int operationWidthDW = 64;
         int unroll = 8;
 
-        Label fini = new Label();
-        Label skip = new Label();
-        Label entry = new Label();
-        Label loop = new Label();
+        Label finishedLabel = new Label();
+        Label skipLabel = new Label();
+        Label entryLabel = new Label();
+        Label loopHeadLabel = new Label();
 
-        masm.cbz(operation_width_DW, count_words, fini);
-        masm.tbz(target_array, 3, skip);
-        masm.str(operation_width_DW, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_DW, IMMEDIATE_POST_INDEXED, target_array, 8));
-        masm.sub(operation_width_DW, count_words, count_words, 1);
-        masm.bind(skip);
+        // If nothing to do just jump to finishedLabel
+        masm.cbz(operationWidthDW, numberOfEightByteWords, finishedLabel);
 
-        masm.and(operation_width_DW, r5, count_words, (unroll - 1) * 2);
-        masm.sub(operation_width_DW, count_words, count_words, r5);
-        masm.add(operation_width_DW, target_array, target_array, r5, ShiftType.LSL, 3);
-        masm.adr(r6, entry);
-        masm.sub(operation_width_DW, r6, r6, r5, ShiftType.LSL, 1);
+        // Because we didn't jump in the previous instruction then we certainly
+        // have at least 8 bytes to fill in the target array.
+
+        masm.tbz(targetArray, 3, skipLabel);
+        masm.str(operationWidthDW, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthDW, IMMEDIATE_POST_INDEXED, targetArray, 8));
+        masm.sub(operationWidthDW, numberOfEightByteWords, numberOfEightByteWords, 1);
+        masm.bind(skipLabel);
+
+        masm.and(operationWidthDW, r5, numberOfEightByteWords, (unroll - 1) * 2);
+        masm.sub(operationWidthDW, numberOfEightByteWords, numberOfEightByteWords, r5);
+        masm.add(operationWidthDW, targetArray, targetArray, r5, ShiftType.LSL, 3);
+        masm.adr(r6, entryLabel);
+        masm.sub(operationWidthDW, r6, r6, r5, ShiftType.LSL, 1);
         masm.jmp(r6);
 
         masm.align(PREFERRED_LOOP_ALIGNMENT);
-        masm.bind(loop);
-        masm.add(operation_width_DW, target_array, target_array, unroll * 16);
+        masm.bind(loopHeadLabel);
+        masm.add(operationWidthDW, targetArray, targetArray, unroll * 16);
         for (int i = -unroll; i < 0; i++) {
-            masm.stp(operation_width_DW, value_to_fill_with, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_DW, IMMEDIATE_PAIR_SIGNED_SCALED, target_array, i * 16));
+            masm.stp(operationWidthDW, valueToFillWith, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthDW, IMMEDIATE_PAIR_SIGNED_SCALED, targetArray, i * 16));
         }
-        masm.bind(entry);
-        masm.subs(operation_width_DW, count_words, count_words, unroll * 2);
-        masm.branchConditionally(ConditionFlag.GE, loop);
+        masm.bind(entryLabel);
+        masm.subs(operationWidthDW, numberOfEightByteWords, numberOfEightByteWords, unroll * 2);
+        masm.branchConditionally(ConditionFlag.GE, loopHeadLabel);
 
-        masm.tbz(count_words, 0, fini);
-        masm.str(operation_width_DW, value_to_fill_with, AArch64Address.createImmediateAddress(operation_width_DW, IMMEDIATE_POST_INDEXED, target_array, 8));
-        masm.bind(fini);
+        masm.tbz(numberOfEightByteWords, 0, finishedLabel);
+        masm.str(operationWidthDW, valueToFillWith, AArch64Address.createImmediateAddress(operationWidthDW, IMMEDIATE_POST_INDEXED, targetArray, 8));
+        masm.bind(finishedLabel);
     }
 }

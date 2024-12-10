@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -626,7 +626,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitArrayFill(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
-        GraalError.guarantee(kind.isPrimitive(), "Only Byte and Int are supported for now.");
         append(new AArch64ArrayFillOp(kind, emitConvertNullToZero(array), asAllocatable(arrayBaseOffset), asAllocatable(length), asAllocatable(value)));
     }
 

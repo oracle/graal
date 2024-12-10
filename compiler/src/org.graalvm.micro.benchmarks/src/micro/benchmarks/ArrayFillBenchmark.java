@@ -42,39 +42,78 @@ public class ArrayFillBenchmark extends BenchmarkBase {
     @Param({"16", "128", "1024", "4096"}) private int size;
 
     // Just a random index that we'll use to feed to bh.consume
-    public int index_check;
+    public int indexCheck;
 
     // Target arrays
+    public boolean[] booleans;
     public byte[] bytes;
+    public char[] chars;
     public short[] shorts;
     public int[] ints;
+    public long[] longs;
+    public float[] floats;
+    public double[] doubles;
 
     @Setup
     public void setup() {
         Random rnd = new Random();
 
-        index_check = rnd.nextInt(size);
-
+        indexCheck = rnd.nextInt(size);
+        booleans = new boolean[size];
         bytes = new byte[size];
+        chars = new char[size];
         shorts = new short[size];
         ints = new int[size];
+        longs = new long[size];
+        floats = new float[size];
+        doubles = new double[size];
     }
 
     @Benchmark
-    public void fill_bytes(Blackhole bh) {
-        Arrays.fill(bytes, (byte) 123);
-        bh.consume(bytes[index_check]);
+    public void fillBooleans(Blackhole bh) {
+        Arrays.fill(booleans, Boolean.TRUE);
+        bh.consume(booleans[indexCheck]);
     }
 
     @Benchmark
-    public void fill_shorts(Blackhole bh) {
-        Arrays.fill(shorts, (short) 123123);
-        bh.consume(shorts[index_check]);
+    public void fillBytes(Blackhole bh) {
+        Arrays.fill(bytes, Byte.MAX_VALUE);
+        bh.consume(bytes[indexCheck]);
     }
 
     @Benchmark
-    public void fill_ints(Blackhole bh) {
-        Arrays.fill(ints, 123123123);
-        bh.consume(ints[index_check]);
+    public void fillChars(Blackhole bh) {
+        Arrays.fill(chars, Character.MAX_VALUE);
+        bh.consume(chars[indexCheck]);
+    }
+
+    @Benchmark
+    public void fillShorts(Blackhole bh) {
+        Arrays.fill(shorts, Short.MAX_VALUE);
+        bh.consume(shorts[indexCheck]);
+    }
+
+    @Benchmark
+    public void fillInts(Blackhole bh) {
+        Arrays.fill(ints, Integer.MAX_VALUE);
+        bh.consume(ints[indexCheck]);
+    }
+
+    @Benchmark
+    public void fillLongs(Blackhole bh) {
+        Arrays.fill(longs, Long.MAX_VALUE);
+        bh.consume(longs[indexCheck]);
+    }
+
+    @Benchmark
+    public void fillFloats(Blackhole bh) {
+        Arrays.fill(floats, Float.MAX_VALUE);
+        bh.consume(floats[indexCheck]);
+    }
+
+    @Benchmark
+    public void fillDoubles(Blackhole bh) {
+        Arrays.fill(doubles, Double.MAX_VALUE);
+        bh.consume(doubles[indexCheck]);
     }
 }

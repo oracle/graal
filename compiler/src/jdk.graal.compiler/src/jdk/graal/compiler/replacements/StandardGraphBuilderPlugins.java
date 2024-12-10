@@ -277,7 +277,7 @@ public class StandardGraphBuilderPlugins {
         registerThreadPlugins(plugins, replacements);
 
         if (supportsStubBasedPlugins) {
-            registerArraysPlugins(plugins, replacements);
+            registerArraysPlugins(plugins, replacements, lowerer.getTarget().arch);
             registerAESPlugins(plugins, replacements, lowerer.getTarget().arch);
             registerGHASHPlugin(plugins, replacements, lowerer.getTarget().arch);
             registerBigIntegerPlugins(plugins, replacements);
@@ -423,16 +423,17 @@ public class StandardGraphBuilderPlugins {
 
         @SuppressWarnings("try")
         @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode value) {
-            if (!b.canMergeIntrinsicReturns()) {
-                return false;
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode value) {
+            ConstantNode arrayBaseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(this.kind), b.getGraph());
+            ValueNode nonNullArray = b.nullCheckedValue(array, DeoptimizationAction.None);
+            ValueNode arrayLength = b.add(new ArrayLengthNode(nonNullArray));
+            ValueNode castedValue = value;
+            if (this.kind == JavaKind.Float) {
+                castedValue = ReinterpretNode.create(JavaKind.Int, value, NodeView.DEFAULT);
+            } else if (this.kind == JavaKind.Double) {
+                castedValue = ReinterpretNode.create(JavaKind.Long, value, NodeView.DEFAULT);
             }
-            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                ConstantNode arrayBaseOffset = ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(this.kind), b.getGraph());
-                ValueNode nonNullArray = b.nullCheckedValue(arg1, DeoptimizationAction.None);
-                ValueNode arrayLength = b.add(new ArrayLengthNode(nonNullArray));
-                b.add(new ArrayFillNode(nonNullArray, arrayBaseOffset, arrayLength, value, this.kind));
-            }
+            b.add(new ArrayFillNode(nonNullArray, arrayBaseOffset, arrayLength, castedValue, this.kind));
             return true;
         }
     }
@@ -522,7 +523,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static void registerArraysPlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static void registerArraysPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, Arrays.class, replacements);
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Boolean, boolean[].class, boolean[].class));
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Byte, byte[].class, byte[].class));
@@ -531,9 +532,14 @@ public class StandardGraphBuilderPlugins {
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Int, int[].class, int[].class));
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Long, long[].class, long[].class));
 
-        r.register(new ArrayFillInvocationPlugin(JavaKind.Byte, byte[].class, byte.class));
-        r.register(new ArrayFillInvocationPlugin(JavaKind.Short, short[].class, short.class));
-        r.register(new ArrayFillInvocationPlugin(JavaKind.Int, int[].class, int.class));
+        r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Boolean, boolean[].class, boolean.class));
+        r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Byte, byte[].class, byte.class));
+        r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Char, char[].class, char.class));
+        r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Short, short[].class, short.class));
+        r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Int, int[].class, int.class));
+        r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Float, float[].class, float.class));
+        r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Long, long[].class, long.class));
+        r.registerConditional(ArrayFillNode.isSupported(arch), new ArrayFillInvocationPlugin(JavaKind.Double, double[].class, double.class));
     }
 
     private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements) {
