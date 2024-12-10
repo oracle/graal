@@ -131,10 +131,9 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
             try {
                 return MethodHandles.lookup().findConstructor(Class.forName("jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope"), MethodType.methodType(void.class, boolean.class));
             } catch (ReflectiveOperationException e) {
-// GR-58987: Uncomment when OpenJDK pull request is merged
-// if (Runtime.version().feature() >= 24) {
-// throw new InternalError(e);
-// }
+                if (Runtime.version().feature() >= 24) {
+                    throw new InternalError(e);
+                }
             }
             return null;
         }

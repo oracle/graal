@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.libgraal;
+package jdk.graal.compiler.hotspot.libgraal.truffle;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
 import org.graalvm.jniutils.JNI.JClass;

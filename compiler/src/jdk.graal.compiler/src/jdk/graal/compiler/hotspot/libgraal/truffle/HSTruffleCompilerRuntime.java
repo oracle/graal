@@ -30,9 +30,10 @@ import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerRuntime;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.libgraal.LibGraalUtil;
+import jdk.graal.compiler.libgraal.NativeImageHostEntryPoints;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -45,51 +46,36 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.word.WordFactory;
 
-import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
-
 final class HSTruffleCompilerRuntime extends HSIndirectHandle implements TruffleCompilerRuntime {
-
-    private static final Handles HANDLES = new Handles();
 
     static final String COMPILER_VERSION = HotSpotTruffleCompilationSupport.readCompilerVersion();
 
-    private static final Class<?> TRANSLATED_EXCEPTION;
-    static {
-        Class<?> clz;
-        try {
-            clz = Class.forName("jdk.internal.vm.TranslatedException");
-        } catch (ClassNotFoundException cnf) {
-            clz = null;
-        }
-        TRANSLATED_EXCEPTION = clz;
-    }
+    // TranslatedException is package-private
+    private static final Class<?> TRANSLATED_EXCEPTION = LibGraalUtil.lookupClass("jdk.internal.vm.TranslatedException");
 
     private final ResolvedJavaType classLoaderDelegate;
 
-    HSTruffleCompilerRuntime(Object hsHandle, long runtimeClass) {
+    public HSTruffleCompilerRuntime(Object hsHandle, long runtimeClass) {
         super(hsHandle);
         this.classLoaderDelegate = HotSpotJVMCIRuntime.runtime().asResolvedJavaType(runtimeClass);
         if (this.classLoaderDelegate == null) {
             throw GraalError.shouldNotReachHere("The object class needs to be available for a Truffle runtime object.");
         }
-        NativeImageHostCalls.initializeHost(runtimeClass);
+        NativeImageHostEntryPoints.initializeHost(runtimeClass);
     }
 
     @Override
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
         long methodHandle = HotSpotJVMCIRuntime.runtime().translate(method);
-        byte[] array;
-        try {
-            array = (byte[]) HANDLES.getPartialEvaluationMethodInfo.invoke(hsHandle, methodHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        byte[] array = TruffleFromLibGraalStartPoints.getPartialEvaluationMethodInfo(hsHandle, methodHandle);
         LoopExplosionKind loopExplosionKind = LoopExplosionKind.values()[array[0]];
         InlineKind peInlineKind = InlineKind.values()[array[1]];
         InlineKind inlineKind = InlineKind.values()[array[2]];
@@ -109,40 +95,31 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
             return null;
         }
         long jniLocalRef = HotSpotJVMCIRuntime.runtime().getJObjectValue((HotSpotObjectConstant) constant);
-        Object compilableHsHandle = NativeImageHostCalls.createLocalHandleForLocalReference(jniLocalRef);
-        return compilableHsHandle == null ? null : new HSTruffleCompilable(compilableHsHandle);
+        JNIMethodScope scope = JNIMethodScope.scopeOrNull();
+        if (scope == null) {
+            return null;
+        }
+        return new HSTruffleCompilable(new HSObject(scope, WordFactory.pointer(jniLocalRef)));
     }
 
     @Override
     public void onCodeInstallation(TruffleCompilable compilable, InstalledCode installedCode) {
         long installedCodeHandle = HotSpotJVMCIRuntime.runtime().translate(installedCode);
-        try {
-            HANDLES.onCodeInstallation.invoke(hsHandle, ((HSTruffleCompilable) compilable).hsHandle, installedCodeHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        TruffleFromLibGraalStartPoints.onCodeInstallation(hsHandle, ((HSTruffleCompilable) compilable).hsHandle, installedCodeHandle);
     }
 
     @Override
     public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumption) {
         long optimizedAssumptionHandle = HotSpotJVMCIRuntime.runtime().translate(optimizedAssumption);
         Object hsDependencyHandle;
-        try {
-            hsDependencyHandle = HANDLES.registerOptimizedAssumptionDependency.invoke(hsHandle, optimizedAssumptionHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        hsDependencyHandle = TruffleFromLibGraalStartPoints.registerOptimizedAssumptionDependency(hsHandle, optimizedAssumptionHandle);
         return hsDependencyHandle == null ? null : new HSConsumer(hsDependencyHandle);
     }
 
     @Override
     public boolean isValueType(ResolvedJavaType type) {
         long typeHandle = HotSpotJVMCIRuntime.runtime().translate(type);
-        try {
-            return (boolean) HANDLES.isValueType.invoke(hsHandle, typeHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.isValueType(hsHandle, typeHandle);
     }
 
     @Override
@@ -166,12 +143,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
                             Arrays.toString(declaredFields)));
         }
         long typeHandle = HotSpotJVMCIRuntime.runtime().translate(enclosingType);
-        int rawValue;
-        try {
-            rawValue = (int) HANDLES.getConstantFieldInfo.invoke(hsHandle, typeHandle, isStatic, fieldIndex);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        int rawValue = TruffleFromLibGraalStartPoints.getConstantFieldInfo(hsHandle, typeHandle, isStatic, fieldIndex);
         return switch (rawValue) {
             case Integer.MIN_VALUE -> null;
             case -1 -> ConstantFieldInfo.CHILD;
@@ -224,31 +196,12 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
 
     @Override
     public void log(String loggerId, TruffleCompilable compilable, String message) {
-        try {
-            HANDLES.log.invoke(hsHandle, loggerId, ((HSTruffleCompilable) compilable).hsHandle, message);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        TruffleFromLibGraalStartPoints.log(hsHandle, loggerId, ((HSTruffleCompilable) compilable).hsHandle, message);
     }
 
     @Override
     public boolean isSuppressedFailure(TruffleCompilable compilable, Supplier<String> serializedException) {
-        try {
-            Object supplierHsHandle = HANDLES.createStringSupplier.invoke(serializedException);
-            return (boolean) HANDLES.isSuppressedFailure.invoke(hsHandle, ((HSTruffleCompilable) compilable).hsHandle, supplierHsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    private static final class Handles {
-        final MethodHandle getPartialEvaluationMethodInfo = getHostMethodHandleOrFail(Id.GetPartialEvaluationMethodInfo);
-        final MethodHandle onCodeInstallation = getHostMethodHandleOrFail(Id.OnCodeInstallation);
-        final MethodHandle registerOptimizedAssumptionDependency = getHostMethodHandleOrFail(Id.RegisterOptimizedAssumptionDependency);
-        final MethodHandle isValueType = getHostMethodHandleOrFail(Id.IsValueType);
-        final MethodHandle getConstantFieldInfo = getHostMethodHandleOrFail(Id.GetConstantFieldInfo);
-        final MethodHandle log = getHostMethodHandleOrFail(Id.Log);
-        final MethodHandle createStringSupplier = getHostMethodHandleOrFail(Id.CreateStringSupplier);
-        final MethodHandle isSuppressedFailure = getHostMethodHandleOrFail(Id.IsSuppressedFailure);
+        Object supplierHsHandle = TruffleFromLibGraalStartPoints.createStringSupplier(serializedException);
+        return TruffleFromLibGraalStartPoints.isSuppressedFailure(hsHandle, ((HSTruffleCompilable) compilable).hsHandle, supplierHsHandle);
     }
 }

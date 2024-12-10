@@ -109,7 +109,7 @@ class LibGraalJVMCISubstitutions {
             } else if (classLoader == ClassLoader.getSystemClassLoader()) {
                 accessingClassLoader = 2;
             } else if (classLoader == getClass().getClassLoader()) {
-                accessingClassLoader = 2;
+                throw new IllegalArgumentException("is this case really needed? Unsupported class loader for lookup: " + name + " " + classLoader);
             } else {
                 throw new IllegalArgumentException("Unsupported class loader for lookup: " + classLoader);
             }
@@ -238,6 +238,9 @@ public class LibGraalSubstitutions {
 class LibGraalClassLoaderSupplier implements Supplier<ClassLoader> {
     @Override
     public ClassLoader get() {
+        if (!ImageSingletons.contains(LibGraalFeature.class)) {
+            return null;
+        }
         ClassLoader loader = ImageSingletons.lookup(LibGraalFeature.class).loader;
         if (loader == null) {
             LibGraalRuntime.fatalError("loader is null");

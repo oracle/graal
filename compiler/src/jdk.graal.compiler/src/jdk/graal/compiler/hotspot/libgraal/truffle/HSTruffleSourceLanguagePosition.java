@@ -25,16 +25,10 @@
 package jdk.graal.compiler.hotspot.libgraal.truffle;
 
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
-import java.lang.invoke.MethodHandle;
 import java.net.URI;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
-
 final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements TruffleSourceLanguagePosition {
-
-    private static final Handles HANDLES = new Handles();
 
     HSTruffleSourceLanguagePosition(Object hsHandle) {
         super(hsHandle);
@@ -42,86 +36,42 @@ final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements 
 
     @Override
     public String getDescription() {
-        try {
-            return (String) HANDLES.getDescription.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getDescription(hsHandle);
     }
 
     @Override
     public int getOffsetEnd() {
-        try {
-            return (int) HANDLES.getOffsetEnd.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getOffsetEnd(hsHandle);
     }
 
     @Override
     public int getOffsetStart() {
-        try {
-            return (int) HANDLES.getOffsetStart.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getOffsetStart(hsHandle);
     }
 
     @Override
     public int getLineNumber() {
-        try {
-            return (int) HANDLES.getLineNumber.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getLineNumber(hsHandle);
     }
 
     @Override
     public URI getURI() {
-        String uri;
-        try {
-            uri = (String) HANDLES.getURI.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        String uri = TruffleFromLibGraalStartPoints.getURI(hsHandle);
         return uri == null ? null : URI.create(uri);
     }
 
     @Override
     public String getLanguage() {
-        try {
-            return (String) HANDLES.getLanguage.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getLanguage(hsHandle);
     }
 
     @Override
     public int getNodeId() {
-        try {
-            return (int) HANDLES.getNodeId.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getNodeId(hsHandle);
     }
 
     @Override
     public String getNodeClassName() {
-        try {
-            return (String) HANDLES.getNodeClassName.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    private static final class Handles {
-        final MethodHandle getOffsetStart = getHostMethodHandleOrFail(Id.GetOffsetStart);
-        final MethodHandle getOffsetEnd = getHostMethodHandleOrFail(Id.GetOffsetEnd);
-        final MethodHandle getLineNumber = getHostMethodHandleOrFail(Id.GetLineNumber);
-        final MethodHandle getLanguage = getHostMethodHandleOrFail(Id.GetLanguage);
-        final MethodHandle getDescription = getHostMethodHandleOrFail(Id.GetDescription);
-        final MethodHandle getURI = getHostMethodHandleOrFail(Id.GetURI);
-        final MethodHandle getNodeClassName = getHostMethodHandleOrFail(Id.GetNodeClassName);
-        final MethodHandle getNodeId = getHostMethodHandleOrFail(Id.GetNodeId);
+        return TruffleFromLibGraalStartPoints.getNodeClassName(hsHandle);
     }
 }

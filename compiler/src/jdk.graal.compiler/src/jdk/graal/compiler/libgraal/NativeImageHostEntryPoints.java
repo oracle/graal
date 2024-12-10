@@ -40,7 +40,7 @@ public final class NativeImageHostEntryPoints {
     }
 
     public static void initializeHost(long runtimeClass) {
-        TruffleFromLibGraalStartPoints.initializeJNI(Word.pointer(runtimeClass));
+        // TruffleFromLibGraalStartPoints.initializeJNI(Word.pointer(runtimeClass));
     }
 
     public static Object createLocalHandleForLocalReference(long jniLocalRef) {

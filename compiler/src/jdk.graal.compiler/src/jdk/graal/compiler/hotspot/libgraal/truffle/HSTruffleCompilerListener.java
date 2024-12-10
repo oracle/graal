@@ -27,16 +27,10 @@ package jdk.graal.compiler.hotspot.libgraal.truffle;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 
-import java.lang.invoke.MethodHandle;
 import java.util.function.Supplier;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
-
 final class HSTruffleCompilerListener extends HSIndirectHandle implements TruffleCompilerListener {
-
-    private static final Handles HANDLES = new Handles();
 
     HSTruffleCompilerListener(Object hsHandle) {
         super(hsHandle);
@@ -46,60 +40,32 @@ final class HSTruffleCompilerListener extends HSIndirectHandle implements Truffl
     public void onSuccess(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
         Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
-        try {
-            HANDLES.onSuccess.invoke(hsHandle, hsCompilable, hsTask, graphInfo, compilationResultInfo, tier);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        TruffleFromLibGraalStartPoints.onSuccess(hsHandle, hsCompilable, hsTask, graphInfo, compilationResultInfo, tier);
     }
 
     @Override
     public void onTruffleTierFinished(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph) {
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
         Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
-        try {
-            HANDLES.onTruffleTierFinished.invoke(hsHandle, hsCompilable, hsTask, graph);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        TruffleFromLibGraalStartPoints.onTruffleTierFinished(hsHandle, hsCompilable, hsTask, graph);
     }
 
     @Override
     public void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph) {
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
-        try {
-            HANDLES.onGraalTierFinished.invoke(hsHandle, hsCompilable, graph);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        TruffleFromLibGraalStartPoints.onGraalTierFinished(hsHandle, hsCompilable, graph);
     }
 
     @Override
     public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
-        try {
-            HANDLES.onFailure.invoke(hsHandle, hsCompilable, reason, bailout, permanentBailout, tier, lazyStackTrace);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        TruffleFromLibGraalStartPoints.onFailure(hsHandle, hsCompilable, reason, bailout, permanentBailout, tier, lazyStackTrace);
     }
 
     @Override
     public void onCompilationRetry(TruffleCompilable compilable, TruffleCompilationTask task) {
         Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
         Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
-        try {
-            HANDLES.onCompilationRetry.invoke(hsHandle, hsCompilable, hsTask);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    private static final class Handles {
-        final MethodHandle onSuccess = getHostMethodHandleOrFail(Id.OnSuccess);
-        final MethodHandle onTruffleTierFinished = getHostMethodHandleOrFail(Id.OnTruffleTierFinished);
-        final MethodHandle onGraalTierFinished = getHostMethodHandleOrFail(Id.OnGraalTierFinished);
-        final MethodHandle onFailure = getHostMethodHandleOrFail(Id.OnFailure);
-        final MethodHandle onCompilationRetry = getHostMethodHandleOrFail(Id.OnCompilationRetry);
+        TruffleFromLibGraalStartPoints.onCompilationRetry(hsHandle, hsCompilable, hsTask);
     }
 }

@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.libgraal.truffle;
 
+import jdk.graal.compiler.libgraal.NativeImageHostEntryPoints;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
@@ -59,7 +60,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
             // fast path if Truffle was not initialized
             return null;
         }
-        Object runtimeLocalHandle = NativeImageHostCalls.createLocalHandleForWeakGlobalReference(globalReference);
+        Object runtimeLocalHandle = NativeImageHostEntryPoints.createLocalHandleForWeakGlobalReference(globalReference);
         if (runtimeLocalHandle == null) {
             // The Truffle runtime was collected by the GC
             return null;
@@ -67,7 +68,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
         TruffleHostEnvironment environment = this.previousRuntime;
         if (environment != null) {
             Object cached = hsRuntime(environment).hsHandle;
-            if (NativeImageHostCalls.isSameObject(cached, runtimeLocalHandle)) {
+            if (NativeImageHostEntryPoints.isSameObject(cached, runtimeLocalHandle)) {
                 // fast path for registered and cached Truffle runtime handle
                 return environment;
             }
@@ -77,7 +78,9 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
         try (TruffleRuntimeScope scope = LibGraalTruffleHostEnvironment.openTruffleRuntimeScopeImpl()) {
-            HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(NativeImageHostCalls.createGlobalHandle(runtimeLocalHandle, true), NativeImageHostCalls.getObjectClass(runtimeLocalHandle));
+            HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(
+                            NativeImageHostEntryPoints.createGlobalHandle(runtimeLocalHandle, true),
+                            NativeImageHostEntryPoints.getObjectClass(runtimeLocalHandle));
             this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
             return environment;
         }
@@ -87,7 +90,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
         return (HSTruffleCompilerRuntime) environment.runtime();
     }
 
-    static boolean registerRuntime(long truffleRuntimeWeakRef) {
+    public static boolean registerRuntime(long truffleRuntimeWeakRef) {
         // TODO GR-44222 support multiple runtimes.
         return WEAK_TRUFFLE_RUNTIME_INSTANCE.compareAndSet(0, truffleRuntimeWeakRef);
     }

@@ -24,15 +24,10 @@
  */
 package jdk.graal.compiler.hotspot.libgraal.truffle;
 
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.services.JVMCIServiceLocator;
-
-import java.lang.invoke.MethodHandle;
-
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 @ServiceProvider(JVMCIServiceLocator.class)
 public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
@@ -48,13 +43,11 @@ public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
         return null;
     }
 
-    static void registerShutdownHook() {
+    public static void registerShutdownHook() {
         registeredHook = new ShutdownHook();
     }
 
     static class ShutdownHook implements HotSpotVMEventListener {
-
-        private static final Handles HANDLES = new Handles();
 
         ShutdownHook() {
         }
@@ -62,16 +55,12 @@ public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
         @Override
         public void notifyShutdown() {
             try {
-                HANDLES.onIsolateShutdown.invoke(IsolateUtil.getIsolateID());
+                TruffleFromLibGraalStartPoints.onIsolateShutdown(IsolateUtil.getIsolateID());
             } catch (RuntimeException | Error e) {
                 throw e;
             } catch (Throwable t) {
                 throw new RuntimeException(t);
             }
         }
-    }
-
-    private static final class Handles {
-        final MethodHandle onIsolateShutdown = getHostMethodHandleOrFail(Id.OnIsolateShutdown);
     }
 }

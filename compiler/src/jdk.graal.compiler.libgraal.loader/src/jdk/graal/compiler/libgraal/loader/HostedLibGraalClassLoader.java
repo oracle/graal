@@ -89,8 +89,8 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
      */
     private static final Set<String> LIBGRAAL_MODULES = Set.of(
                     "jdk.internal.vm.ci",
-                    "org.graalvm.collections",
-                    "org.graalvm.word",
+// "org.graalvm.collections",
+// "org.graalvm.word",
                     "jdk.graal.compiler",
                     "org.graalvm.truffle.compiler",
                     "com.oracle.graal.graal_enterprise");

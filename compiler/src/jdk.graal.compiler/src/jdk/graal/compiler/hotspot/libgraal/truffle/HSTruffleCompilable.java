@@ -25,22 +25,16 @@
 package jdk.graal.compiler.hotspot.libgraal.truffle;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
-import java.lang.invoke.MethodHandle;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
-
 final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompilable {
-
-    private static final Handles HANDLES = new Handles();
 
     /**
      * Handle to {@code speculationLog} field of the {@code OptimizedCallTarget}.
@@ -57,12 +51,8 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     public SpeculationLog getCompilationSpeculationLog() {
         Long res = cachedFailedSpeculationsAddress;
         if (res == null) {
-            try {
-                res = (long) HANDLES.getFailedSpeculationsAddress.invoke(hsHandle);
-                cachedFailedSpeculationsAddress = res;
-            } catch (Throwable t) {
-                throw handleException(t);
-            }
+            res = TruffleFromLibGraalStartPoints.getFailedSpeculationsAddress(hsHandle);
+            cachedFailedSpeculationsAddress = res;
         }
         return HotSpotGraalServices.newHotSpotSpeculationLog(cachedFailedSpeculationsAddress);
     }
@@ -70,59 +60,35 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     @Override
     @SuppressWarnings("unchecked")
     public Map<String, String> getCompilerOptions() {
-        try {
-            return (Map<String, String>) HANDLES.getCompilerOptions.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getCompilerOptions(hsHandle);
     }
 
     @Override
     public long engineId() {
-        try {
-            return (long) HANDLES.engineId.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.engineId(hsHandle);
     }
 
     @Override
     public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
-        try {
-            return (boolean) HANDLES.prepareForCompilation.invoke(hsHandle, rootCompilation, compilationTier, lastTier);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.prepareForCompilation(hsHandle, rootCompilation, compilationTier, lastTier);
     }
 
     @Override
     public boolean isTrivial() {
-        try {
-            return (boolean) HANDLES.isTrivial.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.isTrivial(hsHandle);
     }
 
     @Override
     public JavaConstant asJavaConstant() {
         long constantHandle;
-        try {
-            constantHandle = (long) HANDLES.asJavaConstant.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        constantHandle = TruffleFromLibGraalStartPoints.asJavaConstant(hsHandle);
         return HotSpotJVMCIRuntime.runtime().unhand(JavaConstant.class, constantHandle);
     }
 
     @Override
     public void onCompilationFailed(Supplier<String> serializedException, boolean suppressed, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
-        try {
-            Object serializedExceptionHsHandle = HANDLES.createStringSupplier.invoke(serializedException);
-            HANDLES.onCompilationFailed.invoke(hsHandle, serializedExceptionHsHandle, suppressed, bailout, permanentBailout, graphTooBig);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        Object serializedExceptionHsHandle = TruffleFromLibGraalStartPoints.createStringSupplier(serializedException);
+        TruffleFromLibGraalStartPoints.onCompilationFailed(hsHandle, serializedExceptionHsHandle, suppressed, bailout, permanentBailout, graphTooBig);
     }
 
     @Override
@@ -134,12 +100,8 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     public String getName() {
         String res = cachedName;
         if (res == null) {
-            try {
-                res = (String) HANDLES.getCompilableName.invoke(hsHandle);
-                cachedName = res;
-            } catch (Throwable t) {
-                throw handleException(t);
-            }
+            res = TruffleFromLibGraalStartPoints.getCompilableName(hsHandle);
+            cachedName = res;
         }
         return res;
     }
@@ -148,86 +110,39 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     public String toString() {
         String res = cachedString;
         if (res == null) {
-            try {
-                res = (String) HANDLES.compilableToString.invoke(hsHandle);
-                cachedString = res;
-            } catch (Throwable t) {
-                throw handleException(t);
-            }
+            res = TruffleFromLibGraalStartPoints.compilableToString(hsHandle);
+            cachedString = res;
         }
         return res;
     }
 
     @Override
     public int getNonTrivialNodeCount() {
-        try {
-            return (int) HANDLES.getNonTrivialNodeCount.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getNonTrivialNodeCount(hsHandle);
     }
 
     @Override
     public int countDirectCallNodes() {
-        try {
-            return (int) HANDLES.countDirectCallNodes.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.countDirectCallNodes(hsHandle);
     }
 
     @Override
     public int getCallCount() {
-        try {
-            return (int) HANDLES.getCompilableCallCount.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.getCompilableCallCount(hsHandle);
     }
 
     @Override
     public boolean cancelCompilation(CharSequence reason) {
-        try {
-            return (boolean) HANDLES.cancelCompilation.invoke(hsHandle, reason);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.cancelCompilation(hsHandle, reason);
     }
 
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
-        try {
-            return (boolean) HANDLES.isSameOrSplit.invoke(hsHandle, ast == null ? null : ((HSTruffleCompilable) ast).hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return TruffleFromLibGraalStartPoints.isSameOrSplit(hsHandle, ast == null ? null : ((HSTruffleCompilable) ast).hsHandle);
     }
 
     @Override
     public int getKnownCallSiteCount() {
-        try {
-            return (int) HANDLES.getKnownCallSiteCount.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    private static final class Handles {
-        final MethodHandle getFailedSpeculationsAddress = getHostMethodHandleOrFail(Id.GetFailedSpeculationsAddress);
-        final MethodHandle getCompilerOptions = getHostMethodHandleOrFail(Id.GetCompilerOptions);
-        final MethodHandle engineId = getHostMethodHandleOrFail(Id.EngineId);
-        final MethodHandle prepareForCompilation = getHostMethodHandleOrFail(Id.PrepareForCompilation);
-        final MethodHandle isTrivial = getHostMethodHandleOrFail(Id.IsTrivial);
-        final MethodHandle asJavaConstant = getHostMethodHandleOrFail(Id.AsJavaConstant);
-        final MethodHandle getCompilableName = getHostMethodHandleOrFail(Id.GetCompilableName);
-        final MethodHandle createStringSupplier = getHostMethodHandleOrFail(Id.CreateStringSupplier);
-        final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(Id.OnCompilationFailed);
-        final MethodHandle getNonTrivialNodeCount = getHostMethodHandleOrFail(Id.GetNonTrivialNodeCount);
-        final MethodHandle countDirectCallNodes = getHostMethodHandleOrFail(Id.CountDirectCallNodes);
-        final MethodHandle getCompilableCallCount = getHostMethodHandleOrFail(Id.GetCompilableCallCount);
-        final MethodHandle compilableToString = getHostMethodHandleOrFail(Id.CompilableToString);
-        final MethodHandle cancelCompilation = getHostMethodHandleOrFail(Id.CancelCompilation);
-        final MethodHandle isSameOrSplit = getHostMethodHandleOrFail(Id.IsSameOrSplit);
-        final MethodHandle getKnownCallSiteCount = getHostMethodHandleOrFail(Id.GetKnownCallSiteCount);
+        return TruffleFromLibGraalStartPoints.getKnownCallSiteCount(hsHandle);
     }
 }

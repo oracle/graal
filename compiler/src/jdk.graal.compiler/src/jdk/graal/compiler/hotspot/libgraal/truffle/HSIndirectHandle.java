@@ -56,18 +56,4 @@ class HSIndirectHandle {
     HSIndirectHandle(Object hsHandle) {
         this.hsHandle = Objects.requireNonNull(hsHandle, "HsHandle must be non-null");
     }
-
-    /**
-     * Handles exceptions by rethrowing them as either {@link RuntimeException} or {@link Error}, or
-     * wrapping them in a {@link RuntimeException} if they are of another type.
-     */
-    static RuntimeException handleException(Throwable t) {
-        if (t instanceof RuntimeException rt) {
-            throw rt;
-        } else if (t instanceof Error e) {
-            throw e;
-        } else {
-            throw new RuntimeException(t);
-        }
-    }
 }

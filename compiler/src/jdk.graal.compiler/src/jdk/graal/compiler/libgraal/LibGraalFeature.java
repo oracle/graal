@@ -30,7 +30,6 @@ import static jdk.graal.compiler.serviceprovider.GraalServices.getSavedProperty;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -87,7 +86,13 @@ public final class LibGraalFeature implements Feature {
     public static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return ImageSingletons.contains(LibGraalFeature.class);
+            Class<LibGraalFeature> clazz = LibGraalFeature.class;
+            if (ImageSingletons.contains(clazz)) {
+                GraalError.guarantee("LibGraalClassLoader".equals(IsEnabled.class.getClassLoader().getName()),
+                                "Only ever return true when LibGraalFeature got loaded by HostedLibGraalClassLoader");
+                return true;
+            }
+            return false;
         }
     }
 
@@ -494,9 +499,6 @@ public final class LibGraalFeature implements Feature {
     @SuppressWarnings("unchecked")
     private void initializeTruffle() throws Throwable {
         Class<?> truffleBuildTimeClass = loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime");
-        MethodHandle getLookup = mhl.findStatic(truffleBuildTimeClass, "initializeLookup", methodType(Map.Entry.class, Lookup.class, Class.class, Class.class));
-        Map.Entry<Lookup, Class<?>> truffleLibGraal = (Map.Entry<Lookup, Class<?>>) getLookup.invoke(mhl, TruffleFromLibGraalStartPoints.class, NativeImageHostEntryPoints.class);
-        ImageSingletons.add(LibGraalTruffleToLibGraalEntryPoints.class, new LibGraalTruffleToLibGraalEntryPoints(truffleLibGraal.getKey(), truffleLibGraal.getValue()));
         MethodHandle truffleConfigureGraalForLibGraal = mhl.findStatic(truffleBuildTimeClass, "configureGraalForLibGraal", methodType(void.class));
         truffleConfigureGraalForLibGraal.invoke();
     }
