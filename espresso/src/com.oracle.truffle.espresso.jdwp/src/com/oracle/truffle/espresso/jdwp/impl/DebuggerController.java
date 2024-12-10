@@ -700,6 +700,9 @@ public final class DebuggerController implements ContextsListener {
 
     @Override
     public void onLanguageContextInitialized(TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
+        if (!"java".equals(language.getId())) {
+            return;
+        }
         truffleContext = con;
 
         // With the Espresso context initialized, we can now complete the JDWP setup and establish
