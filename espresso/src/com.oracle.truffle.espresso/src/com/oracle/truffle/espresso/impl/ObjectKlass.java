@@ -133,6 +133,9 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private volatile int initState = LOADED;
 
+    @CompilationFinal //
+    private EspressoException linkError;
+
     @CompilationFinal volatile KlassVersion klassVersion;
 
     // instance and hidden fields declared in this class and in its super classes
@@ -157,7 +160,7 @@ public final class ObjectKlass extends Klass {
     public static final int LOADED = 0;
     public static final int LINKING = 1;
     public static final int VERIFYING = 2;
-    public static final int FAILED_VERIFICATION = 3;
+    public static final int FAILED_LINK = 3;
     public static final int VERIFIED = 4;
     public static final int PREPARED = 5;
     public static final int LINKED = 6;
@@ -597,7 +600,7 @@ public final class ObjectKlass extends Klass {
     @Override
     public void ensureLinked() {
         if (!isLinked()) {
-            checkErroneousVerification();
+            checkErroneousLink();
             if (CompilerDirectives.isCompilationConstant(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
@@ -611,20 +614,30 @@ public final class ObjectKlass extends Klass {
         try {
             if (!isLinkingOrLinked()) {
                 initState = LINKING;
-                if (getSuperKlass() != null) {
-                    getSuperKlass().ensureLinked();
-                }
-                for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.ensureLinked();
+                try {
+                    if (getSuperKlass() != null) {
+                        getSuperKlass().ensureLinked();
+                    }
+                    for (ObjectKlass interf : getSuperInterfaces()) {
+                        interf.ensureLinked();
+                    }
+                } catch (EspressoException e) {
+                    setErroneousLink(e);
+                    throw e;
                 }
                 verify();
-                prepare();
+                try {
+                    prepare();
+                } catch (EspressoException e) {
+                    setErroneousLink(e);
+                    throw e;
+                }
                 initState = LINKED;
             }
         } finally {
             getInitLock().unlock();
         }
-        checkErroneousVerification();
+        checkErroneousLink();
     }
 
     void initializeImpl() {
@@ -636,7 +649,7 @@ public final class ObjectKlass extends Klass {
 
     @HostCompilerDirectives.InliningCutoff
     private void doInitialize() {
-        checkErroneousVerification();
+        checkErroneousLink();
         checkErroneousInitialization();
         if (CompilerDirectives.isCompilationConstant(this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -660,9 +673,6 @@ public final class ObjectKlass extends Klass {
 
     // region Verification
 
-    @CompilationFinal //
-    private EspressoException verificationError;
-
     private boolean isVerifyingOrVerified() {
         return initState >= VERIFYING;
     }
@@ -671,20 +681,20 @@ public final class ObjectKlass extends Klass {
         return initState >= VERIFIED;
     }
 
-    private void checkErroneousVerification() {
-        if (initState == FAILED_VERIFICATION) {
-            throw verificationError;
+    private void checkErroneousLink() {
+        if (initState == FAILED_LINK) {
+            throw linkError;
         }
     }
 
-    private void setErroneousVerification(EspressoException e) {
-        initState = FAILED_VERIFICATION;
-        verificationError = e;
+    private void setErroneousLink(EspressoException e) {
+        initState = FAILED_LINK;
+        linkError = e;
     }
 
     private void verify() {
         if (!isVerified()) {
-            checkErroneousVerification();
+            checkErroneousLink();
             getInitLock().lock();
             try {
                 if (!isVerifyingOrVerified()) {
@@ -693,7 +703,7 @@ public final class ObjectKlass extends Klass {
                     try {
                         verifyImpl();
                     } catch (EspressoException e) {
-                        setErroneousVerification(e);
+                        setErroneousLink(e);
                         throw e;
                     }
                     initState = VERIFIED;
@@ -701,7 +711,7 @@ public final class ObjectKlass extends Klass {
             } finally {
                 getInitLock().unlock();
             }
-            checkErroneousVerification();
+            checkErroneousLink();
         }
     }
 
