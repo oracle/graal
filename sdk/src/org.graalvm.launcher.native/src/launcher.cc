@@ -209,6 +209,23 @@ static std::string exe_path() {
     #elif defined (_WIN32)
         char *realPath = (char *)malloc(_MAX_PATH);
         GetModuleFileNameA(NULL, realPath, _MAX_PATH);
+        /* try to do a realpath equivalent */
+        HANDLE handle = CreateFile(realPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (handle != INVALID_HANDLE_VALUE) {
+            const size_t size = _MAX_PATH + 4;
+            char *resolvedPath = (char *)malloc(size);
+            DWORD ret = GetFinalPathNameByHandleA(handle, resolvedPath, size, 0);
+            /*
+             * The path returned from GetFinalPathNameByHandleA should always
+             * use "\\?\" path syntax. We strip the prefix.
+             * See: https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+             */
+            if (ret < size && resolvedPath[0] == '\\' && resolvedPath[1] == '\\' && resolvedPath[2] == '?' && resolvedPath[3] == '\\') {
+                strcpy_s(realPath, _MAX_PATH, resolvedPath + 4);
+            }
+            free(resolvedPath);
+            CloseHandle(handle);
+        }
     #endif
     std::string p(realPath);
     free(realPath);
