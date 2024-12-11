@@ -614,8 +614,8 @@ public final class ObjectKlass extends Klass {
                 for (ObjectKlass interf : getSuperInterfaces()) {
                     interf.ensureLinked();
                 }
-                prepare();
                 verify();
+                prepare();
                 initState = LINKED;
             }
         } finally {
