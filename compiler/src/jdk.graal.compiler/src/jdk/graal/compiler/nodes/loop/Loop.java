@@ -251,18 +251,43 @@ public class Loop {
         }
     }
 
+    /**
+     * Reassociates loop invariants by pushing loop variant operands further down the operand tree.
+     *
+     * <pre>
+     *    inv2  var        inv1  inv2
+     *       \  /             \  /
+     * inv1   +     =>   var   +
+     *    \  /             \  /
+     *     +                +
+     * </pre>
+     *
+     * Also ensures that loop phis are pushed down the furthest (i.e., used as late as possible) to
+     * avoid long dependency chains on register level when calculating backedge values:
+     *
+     * <pre>
+     *     inv  phi        inv   var
+     *       \  /             \  /
+     *  var   +     =>   phi   +
+     *    \  /             \  /
+     *     +                +
+     * </pre>
+     */
     public boolean reassociateInvariants() {
         int count = 0;
         StructuredGraph graph = loopBegin().graph();
         InvariantPredicate invariant = new InvariantPredicate();
         NodeBitMap newLoopNodes = graph.createNodeBitMap();
+        var phis = loopBegin().phis();
         for (BinaryArithmeticNode<?> binary : whole().nodes().filter(BinaryArithmeticNode.class)) {
             if (!binary.mayReassociate()) {
                 continue;
             }
-            ValueNode result = BinaryArithmeticNode.reassociateMatchedValues(binary, invariant, binary.getX(), binary.getY(), NodeView.DEFAULT);
+            // pushing down loop variants will associate loop invariants at the "top"
+            ValueNode result = BinaryArithmeticNode.reassociateUnmatchedValues(binary, n -> !invariant.apply(n), NodeView.DEFAULT);
             if (result == binary) {
-                result = BinaryArithmeticNode.reassociateUnmatchedValues(binary, invariant, NodeView.DEFAULT);
+                // use loop phis as late as possible to shorten the register dependency chains
+                result = BinaryArithmeticNode.reassociateUnmatchedValues(binary, n -> n instanceof PhiNode phi && phis.contains(phi), NodeView.DEFAULT);
             }
             if (result != binary) {
                 if (!result.isAlive()) {
