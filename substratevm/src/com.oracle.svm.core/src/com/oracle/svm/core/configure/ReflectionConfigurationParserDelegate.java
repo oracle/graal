@@ -68,8 +68,6 @@ public interface ReflectionConfigurationParserDelegate<C, T> {
 
     boolean registerAllConstructors(C condition, boolean queriedOnly, T type);
 
-    void registerUnsafeAllocated(C condition, T clazz);
-
     String getTypeName(T type);
 
     String getSimpleName(T type);

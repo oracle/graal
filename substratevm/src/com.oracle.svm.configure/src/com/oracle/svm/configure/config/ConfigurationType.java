@@ -100,7 +100,6 @@ public class ConfigurationType implements JsonPrintable {
     private boolean allPublicClasses;
     private ConfigurationMemberAccessibility allDeclaredFieldsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allPublicFieldsAccess = ConfigurationMemberAccessibility.NONE;
-    private boolean unsafeAllocated;
     private ConfigurationMemberAccessibility allDeclaredMethodsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allPublicMethodsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allDeclaredConstructorsAccess = ConfigurationMemberAccessibility.NONE;
@@ -281,7 +280,6 @@ public class ConfigurationType implements JsonPrintable {
         allPublicClasses = flagPredicate.test(allPublicClasses, other.allPublicClasses);
         allDeclaredFieldsAccess = accessCombiner.apply(allDeclaredFieldsAccess, other.allDeclaredFieldsAccess);
         allPublicFieldsAccess = accessCombiner.apply(allPublicFieldsAccess, other.allPublicFieldsAccess);
-        unsafeAllocated = flagPredicate.test(unsafeAllocated, other.unsafeAllocated);
         allDeclaredMethodsAccess = accessCombiner.apply(allDeclaredMethodsAccess, other.allDeclaredMethodsAccess);
         allPublicMethodsAccess = accessCombiner.apply(allPublicMethodsAccess, other.allPublicMethodsAccess);
         allDeclaredConstructorsAccess = accessCombiner.apply(allDeclaredConstructorsAccess, other.allDeclaredConstructorsAccess);
@@ -411,10 +409,6 @@ public class ConfigurationType implements JsonPrintable {
         allPublicClasses = true;
     }
 
-    public void setUnsafeAllocated() {
-        this.unsafeAllocated = true;
-    }
-
     public synchronized void setAllDeclaredFields(ConfigurationMemberAccessibility accessibility) {
         if (!allDeclaredFieldsAccess.includes(accessibility)) {
             allDeclaredFieldsAccess = accessibility;
@@ -470,7 +464,6 @@ public class ConfigurationType implements JsonPrintable {
         printJsonBooleanIfSet(writer, allPublicMethodsAccess == ConfigurationMemberAccessibility.ACCESSED, "allPublicMethods");
         printJsonBooleanIfSet(writer, allDeclaredConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allDeclaredConstructors");
         printJsonBooleanIfSet(writer, allPublicConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allPublicConstructors");
-        printJsonBooleanIfSet(writer, unsafeAllocated, "unsafeAllocated");
 
         if (fields != null) {
             writer.appendSeparator().quote("fields").appendFieldSeparator();
