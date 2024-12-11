@@ -1,7 +1,9 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.FixpointCache;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoNode;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
@@ -36,10 +38,23 @@ public final class ConcurrentWpoFixpointIterator<
     private final Map<HIRBlock, WorkNode> nodeToWork = new ConcurrentHashMap<>();
 
     public ConcurrentWpoFixpointIterator(ControlFlowGraph cfgGraph,
+                                         com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy policy,
                                          TransferFunction<Domain> transferFunction,
                                          Domain initialDomain,
                                          DebugContext debug) {
-        super(cfgGraph, IteratorPolicy.DEFAULT, transferFunction, initialDomain, debug);
+        super(cfgGraph, policy, transferFunction, initialDomain, debug);
+        this.weakPartialOrdering = new WeakPartialOrdering(cfgGraph);
+        this.entry = cfgGraph.getStartBlock();
+    }
+
+    public ConcurrentWpoFixpointIterator(ControlFlowGraph cfgGraph,
+                                         IteratorPolicy policy,
+                                         TransferFunction<Domain> transferFunction,
+                                         Domain initialDomain,
+                                         AbstractStateMap<Domain> abstractStateMap,
+                                         FixpointCache<Domain> fixpointCache,
+                                         DebugContext debug) {
+        super(cfgGraph, policy, transferFunction, initialDomain, abstractStateMap, fixpointCache, debug);
         this.weakPartialOrdering = new WeakPartialOrdering(cfgGraph);
         this.entry = cfgGraph.getStartBlock();
     }
@@ -99,6 +114,9 @@ public final class ConcurrentWpoFixpointIterator<
     @Override
     public void clear() {
         nodeToWork.clear();
+        if (abstractStateMap != null) {
+            abstractStateMap.clear();
+        }
     }
 
     private class WorkNode {
@@ -139,7 +157,7 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         List<WorkNode> updatePlain() {
-            transferFunction.analyzeBlock(node, abstractStateMap);
+            transferFunction.analyzeBlock(node, abstractStateMap, fixpointCache);
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             return successors;
         }
@@ -153,7 +171,7 @@ public final class ConcurrentWpoFixpointIterator<
                 }
             }
 
-            transferFunction.analyzeBlock(node, abstractStateMap);
+            transferFunction.analyzeBlock(node, abstractStateMap, fixpointCache);
             return successors;
         }
 

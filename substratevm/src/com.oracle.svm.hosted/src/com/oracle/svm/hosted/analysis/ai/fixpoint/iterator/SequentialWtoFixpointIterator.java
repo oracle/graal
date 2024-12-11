@@ -1,12 +1,15 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.FixpointCache;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoComponent;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoCycle;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.code.CompilationGraph;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -24,7 +27,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<Domain>> extends FixpointIteratorBase<Domain> {
 
     public SequentialWtoFixpointIterator(ControlFlowGraph cfgGraph,
-                                         IteratorPolicy policy,
+                                         com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy policy,
                                          TransferFunction<Domain> transferFunction,
                                          Domain initialDomain,
                                          DebugContext debug) {
@@ -32,10 +35,13 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
     }
 
     public SequentialWtoFixpointIterator(ControlFlowGraph cfgGraph,
+                                         IteratorPolicy policy,
                                          TransferFunction<Domain> transferFunction,
                                          Domain initialDomain,
+                                         AbstractStateMap<Domain> abstractStateMap,
+                                         FixpointCache<Domain> fixpointCache,
                                          DebugContext debug) {
-        super(cfgGraph, IteratorPolicy.DEFAULT, transferFunction, initialDomain, debug);
+        super(cfgGraph, policy, transferFunction, initialDomain, abstractStateMap, fixpointCache, debug);
     }
 
     @Override
@@ -63,7 +69,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
             abstractStateMap.setPrecondition(node, initialDomain);
         }
 
-        transferFunction.analyzeBlock(vertex.block(), abstractStateMap);
+        transferFunction.analyzeBlock(vertex.block(), abstractStateMap, fixpointCache);
     }
 
     private void analyzeCycle(WtoCycle cycle) {
@@ -71,18 +77,18 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
         boolean iterate = true;
 
         while (iterate) {
-            // Analyze the nodes inside outermost block
-            transferFunction.analyzeBlock(cycle.block(), abstractStateMap);
+            /* Analyze the nodes inside outermost block */
+            transferFunction.analyzeBlock(cycle.block(), abstractStateMap, fixpointCache);
 
-            // Analyze all other nested WtoComponents
+            /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {
                 analyzeComponent(component);
             }
 
             /*
-                At this point we analyzed the body of the cycle,
-                we look at the head of the cycle by collecting invariants from predecessors
-                and checking if the pre-condition at the head of the cycle changed.
+             * At this point we analyzed the body of the cycle,
+             * we look at the head of the cycle by collecting invariants from predecessors
+             * and checking if the pre-condition at the head of the cycle changed.
              */
             transferFunction.collectInvariantsFromPredecessors(head, abstractStateMap);
             if (abstractStateMap.getPreCondition(head).leq(abstractStateMap.getPostCondition(head))) {
