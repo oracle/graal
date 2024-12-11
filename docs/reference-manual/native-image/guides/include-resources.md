@@ -95,10 +95,12 @@ To see which resources were included in your native executable, pass the option 
 It generates an HTML file that can be examined with a regular web browser.
 The information about all included resources will be under the **Resources** tab.
 
-In this demo the path to the resource file is straightforward, but it may be more complex in real-world use cases.
-Resources are specified via globs.
-For more advanced use-cases, you can register resources using the API methods (see [class RuntimeResourceAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeResourceAccess.html)). 
-Learn more about specifying a resource path using a glob and some syntax rules to be observed in [Accessing Resources in Native Image](../ReachabilityMetadata.md#resources).
+In this demo the path to the resource file is straightforward, but it may be more complex in a real-world use case.
+A resource or resource bundle may come from a module.
+Learn more how to specify it in [Resources in Java Modules](../ReachabilityMetadata.md#resources-in-java-modules).
+
+For more advanced use-cases, you can register resources using the API methods (see [class RuntimeResourceAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeResourceAccess.html)).
+Learn more about specifying a resource path using a glob and some syntax rules to be observed from [Accessing Resources in Native Image](../ReachabilityMetadata.md#resources).
 
 ### Related Documentation
 
