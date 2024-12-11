@@ -19,9 +19,9 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
     private final Domain initialDomain;
     private final Map<Node, AbstractState<Domain>> stateMap;
 
-    public AbstractStateMap(Domain initialDomain, int nodeCount) {
+    public AbstractStateMap(Domain initialDomain) {
         this.initialDomain = initialDomain;
-        this.stateMap = new HashMap<>(nodeCount);
+        this.stateMap = new HashMap<>();
     }
 
     public Domain getInitialDomain() {
