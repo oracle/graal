@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromClassPath;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
+import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPackage;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
@@ -74,7 +75,6 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -82,6 +82,7 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
@@ -129,13 +130,15 @@ public final class NativeImageClassLoaderSupport {
     public final AnnotationExtractor annotationExtractor;
 
     private Set<String> javaModuleNamesToInclude;
+    private Set<String> javaPackagesToInclude;
     private Set<Path> javaPathsToInclude;
     private boolean includeAllFromClassPath;
 
     private Optional<LibGraalClassLoaderBase> libGraalLoader;
     private List<ClassLoader> classLoaders;
 
-    private final Set<Class<?>> classesToIncludeUnconditionally = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Class<?>> classesToIncludeUnconditionally = ConcurrentHashMap.newKeySet();
+    private final Set<String> includedJavaPackages = ConcurrentHashMap.newKeySet();
 
     private final Method implAddReadsAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddReadsAllUnnamed");
     private final Method implAddEnableNativeAccess = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccess");
@@ -244,7 +247,7 @@ public final class NativeImageClassLoaderSupport {
     }
 
     public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-        guarantee(javaModuleNamesToInclude == null, "This method should be executed only once.");
+        guarantee(javaModuleNamesToInclude == null && javaPackagesToInclude == null, "This method should be executed only once.");
         javaModuleNamesToInclude = Collections.unmodifiableSet(new HashSet<>(IncludeAllFromModule.getValue(parsedHostedOptions).values()));
         /* Verify all modules are present */
         final Set<String> allModules = Stream.concat(modulepathModuleFinder.findAll().stream(), upgradeAndSystemModuleFinder.findAll().stream())
@@ -253,6 +256,8 @@ public final class NativeImageClassLoaderSupport {
         javaModuleNamesToInclude.stream()
                         .filter(m -> !allModules.contains(m))
                         .findAny().ifPresent(m -> missingFromSetOfEntriesError(m, allModules, "module-path", IncludeAllFromModule));
+
+        javaPackagesToInclude = Set.copyOf(IncludeAllFromPackage.getValue(parsedHostedOptions).values());
 
         javaPathsToInclude = IncludeAllFromPath.getValue(parsedHostedOptions).values().stream()
                         .map(NativeImageClassLoaderSupport::stringToPath)
@@ -722,32 +727,44 @@ public final class NativeImageClassLoaderSupport {
                     System.out.println("Total processed entries: " + entriesProcessed.longValue() + ", current entry: " + currentlyProcessedEntry);
                 }, 5, 1, TimeUnit.MINUTES);
 
-                List<String> requiresInit = new ArrayList<>(Arrays.asList(
-                                "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise",
+                var requiresInit = new HashSet<>(List.of("jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise",
                                 "org.graalvm.nativeimage", "org.graalvm.truffle", "org.graalvm.truffle.runtime",
                                 "org.graalvm.truffle.compiler", "com.oracle.truffle.enterprise", "org.graalvm.jniutils",
                                 "org.graalvm.nativebridge"));
 
-                Set<String> additionalSystemModules = upgradeAndSystemModuleFinder.findAll().stream().map(v -> v.descriptor().name()).collect(Collectors.toSet());
+                Set<String> additionalSystemModules = upgradeAndSystemModuleFinder.findAll().stream()
+                                .map(v -> v.descriptor().name())
+                                .collect(Collectors.toSet());
                 additionalSystemModules.retainAll(getJavaModuleNamesToInclude());
                 requiresInit.addAll(additionalSystemModules);
 
+                Set<String> explicitlyAddedModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
+
                 for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
-                    if (requiresInit.contains(moduleReference.descriptor().name())) {
-                        initModule(moduleReference);
+                    String moduleName = moduleReference.descriptor().name();
+                    boolean moduleRequiresInit = requiresInit.contains(moduleName);
+                    if (moduleRequiresInit || explicitlyAddedModules.contains(moduleName)) {
+                        initModule(moduleReference, moduleRequiresInit);
                     }
                 }
                 for (ModuleReference moduleReference : modulepathModuleFinder.findAll()) {
-                    initModule(moduleReference);
+                    initModule(moduleReference, true);
                 }
 
                 classpath().parallelStream().forEach(this::loadClassesFromPath);
             } finally {
                 scheduledExecutor.shutdown();
             }
+
+            /* Verify all package inclusion requests were successful */
+            for (String packageName : javaPackagesToInclude) {
+                if (!includedJavaPackages.contains(packageName)) {
+                    missingFromSetOfEntriesError(packageName, includedJavaPackages, "package", IncludeAllFromPackage);
+                }
+            }
         }
 
-        private void initModule(ModuleReference moduleReference) {
+        private void initModule(ModuleReference moduleReference, boolean moduleRequiresInit) {
             String moduleReferenceLocation = moduleReference.location().map(URI::toString).orElse("UnknownModuleReferenceLocation");
             currentlyProcessedEntry = moduleReferenceLocation;
             Optional<Module> optionalModule = findModule(moduleReference.descriptor().name());
@@ -766,7 +783,7 @@ public final class NativeImageClassLoaderSupport {
                     String className = extractClassName(moduleResource, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = moduleReferenceLocation + fileSystemSeparatorChar + moduleResource;
-                        executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally));
+                        executor.execute(() -> handleClassFileName(container, module, className, includeUnconditionally, moduleRequiresInit));
                     }
                     entriesProcessed.increment();
                 });
@@ -832,7 +849,7 @@ public final class NativeImageClassLoaderSupport {
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = file.toUri().toString();
-                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally));
+                        executor.execute(() -> handleClassFileName(container, null, className, includeUnconditionally, true));
                     }
                     entriesProcessed.increment();
                     return FileVisitResult.CONTINUE;
@@ -916,24 +933,26 @@ public final class NativeImageClassLoaderSupport {
             return strippedClassFileName.equals("module-info") ? null : strippedClassFileName.replace(fileSystemSeparatorChar, '.');
         }
 
-        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally) {
-            synchronized (classes) {
-                EconomicSet<String> classNames = classes.get(container);
-                if (classNames == null) {
-                    classNames = EconomicSet.create();
-                    classes.put(container, classNames);
+        private void handleClassFileName(URI container, Module module, String className, boolean includeUnconditionally, boolean classRequiresInit) {
+            if (classRequiresInit) {
+                synchronized (classes) {
+                    EconomicSet<String> classNames = classes.get(container);
+                    if (classNames == null) {
+                        classNames = EconomicSet.create();
+                        classes.put(container, classNames);
+                    }
+                    classNames.add(className);
                 }
-                classNames.add(className);
-            }
-            int packageSep = className.lastIndexOf('.');
-            String packageName = packageSep > 0 ? className.substring(0, packageSep) : "";
-            synchronized (packages) {
-                EconomicSet<String> packageNames = packages.get(container);
-                if (packageNames == null) {
-                    packageNames = EconomicSet.create();
-                    packages.put(container, packageNames);
+                int packageSep = className.lastIndexOf('.');
+                String packageName = packageSep > 0 ? className.substring(0, packageSep) : "";
+                synchronized (packages) {
+                    EconomicSet<String> packageNames = packages.get(container);
+                    if (packageNames == null) {
+                        packageNames = EconomicSet.create();
+                        packages.put(container, packageNames);
+                    }
+                    packageNames.add(packageName);
                 }
-                packageNames.add(packageName);
             }
 
             Class<?> clazz = null;
@@ -945,10 +964,14 @@ public final class NativeImageClassLoaderSupport {
                 ImageClassLoader.handleClassLoadingError(t);
             }
             if (clazz != null) {
-                if (includeUnconditionally) {
+                String packageName = clazz.getPackageName();
+                includedJavaPackages.add(packageName);
+                if (includeUnconditionally || javaPackagesToInclude.contains(packageName)) {
                     classesToIncludeUnconditionally.add(clazz);
                 }
-                imageClassLoader.handleClass(clazz);
+                if (classRequiresInit) {
+                    imageClassLoader.handleClass(clazz);
+                }
             }
             imageClassLoader.watchdog.recordActivity();
         }

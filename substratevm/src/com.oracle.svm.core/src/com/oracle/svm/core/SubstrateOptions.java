@@ -130,11 +130,14 @@ public class SubstrateOptions {
         }
     });
 
-    // @APIOption(name = "layer-create")//
+    public static final String LAYER_OPTION_PREFIX = "-H:Layer"; // "--layer"
+    public static final String LAYER_CREATE_OPTION = LAYER_OPTION_PREFIX + "Create"; // "-create"
+    // @APIOption(name = LAYER_CREATE_OPTION) // use when non-experimental
     @Option(help = "Experimental: Build a Native Image layer.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerCreate = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
-    // @APIOption(name = "layer-use")//
+    // public static final String LAYER_USE_OPTION = LAYER_OPTION_PREFIX + "-use";
+    // @APIOption(name = LAYER_USE_OPTION) // use when non-experimental
     @Option(help = "Experimental: Build an image based on a Native Image layer.")//
     @BundleMember(role = Role.Input) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
@@ -1286,11 +1289,15 @@ public class SubstrateOptions {
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
+    @Option(help = "Include all classes, methods and fields from the given packages", type = OptionType.Debug) //
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPackage = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
     @Option(help = "Include all classes, methods, fields, and resources from the class path", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeAllFromClassPath = new HostedOptionKey<>(false);
 
     public static boolean includeAll() {
-        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet() || IncludeAllFromClassPath.hasBeenSet();
+        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet() || IncludeAllFromPackage.hasBeenSet() || IncludeAllFromClassPath.hasBeenSet();
     }
 
     @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//

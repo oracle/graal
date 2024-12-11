@@ -217,7 +217,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          * Parse explicitly added modules via --add-modules. This is done early as this information
          * is required when filtering the analysis reachable module set.
          */
-        Set<String> extraModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
+        Set<String> extraModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
         extraModules.addAll(Resources.getIncludedResourcesModules());
         extraModules.stream().filter(Predicate.not(ModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
@@ -282,7 +282,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         ModuleFinder upgradeModulePath = NativeImageClassLoaderSupport.finderFor("jdk.module.upgrade.path");
         ModuleFinder appModulePath = moduleLayerFeatureUtils.getAppModuleFinder();
         String mainModule = ModuleLayerFeatureUtils.getMainModuleName();
-        Set<String> limitModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
+        Set<String> limitModules = ModuleSupport.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES);
 
         Object systemModules = null;
         ModuleFinder systemModuleFinder;
@@ -658,7 +658,8 @@ public final class ModuleLayerFeature implements InternalFeature {
         ModuleLayerFeatureUtils(ImageClassLoader cl) {
             runtimeModules = new HashMap<>();
             imageClassLoader = cl;
-            nativeAccessEnabled = NativeImageClassLoaderOptions.EnableNativeAccess.getValue().values().stream().flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ",")))
+            nativeAccessEnabled = NativeImageClassLoaderOptions.EnableNativeAccess.getValue().values().stream()
+                            .flatMap(m -> Arrays.stream(SubstrateUtil.split(m, ",")))
                             .collect(Collectors.toSet());
 
             Method classGetDeclaredMethods0Method = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
@@ -768,15 +769,6 @@ public final class ModuleLayerFeature implements InternalFeature {
             } else {
                 return module.toString();
             }
-        }
-
-        static Set<String> parseModuleSetModifierProperty(String prop) {
-            Set<String> specifiedModules = new HashSet<>();
-            String args = System.getProperty(prop, "");
-            if (!args.isEmpty()) {
-                specifiedModules.addAll(Arrays.asList(SubstrateUtil.split(args, ",")));
-            }
-            return specifiedModules;
         }
 
         static int distanceFromBootModuleLayer(ModuleLayer layer) {
