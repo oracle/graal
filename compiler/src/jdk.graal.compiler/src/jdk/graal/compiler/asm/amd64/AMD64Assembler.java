@@ -4544,6 +4544,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    /**
+     * Emit a UD2 instruction, this signals the processor to stop decoding instructions further in
+     * the fallthrough path (Intel Optimization Reference Manual Volume 1, section 3.4.1.5, Branch
+     * Type Selection, Assembly/Compiler coding rule 13).
+     * <p>
+     * This also helps when we want to emit data in the code section as it prevents mismatched
+     * instructions when decoding from different paths. E.g. consider this piece of hex code:
+     * <p>
+     * {@code 01 48 01 c8}
+     * <p>
+     * With {@code 01} being the data and {@code 48 01 c8} being {@code add rax, rcx}. However, if
+     * the decoder starts with {@code 01} it will see the next instruction being {@code 01 48 01}
+     * which is {@code add [rax + 1], ecx}. This mismatch invalidates the uop cache as the CPU
+     * cannot know which instruction sequence is the correct one.
+     */
+    public void ud2() {
+        emitByte(0x0F);
+        emitByte(0x0B);
+    }
+
     public final void vzeroupper() {
         emitVEX(VEXPrefixConfig.L128, VEXPrefixConfig.P_, VEXPrefixConfig.M_0F, VEXPrefixConfig.W0, 0, 0);
         emitByte(0x77);
