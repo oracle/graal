@@ -156,12 +156,15 @@ public final class ObjectKlass extends Klass {
 
     public static final int LOADED = 0;
     public static final int LINKING = 1;
-    public static final int PREPARED = 2;
-    public static final int LINKED = 3;
-    public static final int INITIALIZING = 4;
+    public static final int VERIFYING = 2;
+    public static final int FAILED_VERIFICATION = 3;
+    public static final int VERIFIED = 4;
+    public static final int PREPARED = 5;
+    public static final int LINKED = 6;
+    public static final int INITIALIZING = 7;
     // Can be erroneous only if initialization triggered !
-    public static final int ERRONEOUS = 5;
-    public static final int INITIALIZED = 6;
+    public static final int ERRONEOUS = 8;
+    public static final int INITIALIZED = 9;
 
     private final StaticObject definingClassLoader;
 
@@ -658,36 +661,24 @@ public final class ObjectKlass extends Klass {
     // region Verification
 
     @CompilationFinal //
-    private volatile int verificationStatus = UNVERIFIED;
-
-    @CompilationFinal //
-    private EspressoException verificationError = null;
-
-    private static final int FAILED_VERIFICATION = -1;
-    private static final int UNVERIFIED = 0;
-    private static final int VERIFYING = 1;
-    private static final int VERIFIED = 2;
-
-    private void setVerificationStatus(int status) {
-        verificationStatus = status;
-    }
+    private EspressoException verificationError;
 
     private boolean isVerifyingOrVerified() {
-        return verificationStatus >= VERIFYING;
+        return initState >= VERIFYING;
     }
 
     boolean isVerified() {
-        return verificationStatus >= VERIFIED;
+        return initState >= VERIFIED;
     }
 
     private void checkErroneousVerification() {
-        if (verificationStatus == FAILED_VERIFICATION) {
+        if (initState == FAILED_VERIFICATION) {
             throw verificationError;
         }
     }
 
     private void setErroneousVerification(EspressoException e) {
-        verificationStatus = FAILED_VERIFICATION;
+        initState = FAILED_VERIFICATION;
         verificationError = e;
     }
 
@@ -698,14 +689,14 @@ public final class ObjectKlass extends Klass {
             try {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setVerificationStatus(VERIFYING);
+                    initState = VERIFYING;
                     try {
                         verifyImpl();
                     } catch (EspressoException e) {
                         setErroneousVerification(e);
                         throw e;
                     }
-                    setVerificationStatus(VERIFIED);
+                    initState = VERIFIED;
                 }
             } finally {
                 getInitLock().unlock();
