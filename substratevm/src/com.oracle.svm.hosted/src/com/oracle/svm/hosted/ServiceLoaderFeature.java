@@ -40,9 +40,10 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.SecurityProvidersSupport;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.graal.compiler.options.Option;
@@ -93,7 +94,6 @@ public class ServiceLoaderFeature implements InternalFeature {
                      * initialized at image build time.
                      */
                     "java.util.random.RandomGenerator",
-                    "java.security.Provider",                     // see SecurityServicesFeature
                     "sun.util.locale.provider.LocaleDataMetaInfo", // see LocaleSubstitutions
                     /* Graal hotspot-specific services */
                     "jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory",
@@ -164,78 +164,96 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     void handleServiceClassIsReachable(DuringAnalysisAccess access, Class<?> serviceProvider, Collection<String> providers) {
         LinkedHashSet<String> registeredProviders = new LinkedHashSet<>();
+        SecurityProvidersSupport support = SecurityProvidersSupport.singleton();
         for (String provider : providers) {
             if (serviceProvidersToSkip.contains(provider)) {
                 continue;
             }
-            /* Make provider reflectively instantiable */
-            Class<?> providerClass = access.findClassByName(provider);
+            if (serviceProvider.equals(java.security.Provider.class)) {
+                /* Only register the security providers that are requested. */
+                if (support.isUserRequestedSecurityProvider(provider)) {
+                    registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
+                } else {
+                    support.markSecurityProviderAsNotLoaded(provider);
+                }
+                continue;
+            }
+            registerProviderForRuntimeReflectionAccess(access, provider, registeredProviders);
+        }
+        registerProviderForRuntimeResourceAccess(access.getApplicationClassLoader().getUnnamedModule(), serviceProvider.getName(), registeredProviders);
+    }
 
-            if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
-                continue;
-            }
-            FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
-            if (!accessImpl.getHostVM().platformSupported(providerClass)) {
-                continue;
-            }
-            if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
-                /* Disallow services with implementation classes that are marked as @Deleted */
-                continue;
-            }
+    public static void registerProviderForRuntimeReflectionAccess(DuringAnalysisAccess access, String provider, Set<String> registeredProviders) {
+        /* Make provider reflectively instantiable */
+        Class<?> providerClass = access.findClassByName(provider);
 
-            /*
-             * Find either a public static provider() method or a nullary constructor (or both).
-             * Skip providers that do not comply with requirements.
-             *
-             * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
-             */
-            Constructor<?> nullaryConstructor = null;
-            Method nullaryProviderMethod = null;
-            try {
-                /* Only look for a provider() method if provider class is in an explicit module. */
-                if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
-                    for (Method method : providerClass.getDeclaredMethods()) {
-                        if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
-                                        method.getParameterCount() == 0 && method.getName().equals("provider")) {
-                            if (nullaryProviderMethod == null) {
-                                nullaryProviderMethod = method;
-                            } else {
-                                /* There must be at most one public static provider() method. */
-                                nullaryProviderMethod = null;
-                                break;
-                            }
+        if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
+            return;
+        }
+        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        if (!accessImpl.getHostVM().platformSupported(providerClass)) {
+            return;
+        }
+        if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
+            /* Disallow services with implementation classes that are marked as @Deleted */
+            return;
+        }
+
+        /*
+         * Find either a public static provider() method or a nullary constructor (or both). Skip
+         * providers that do not comply with requirements.
+         *
+         * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
+         */
+        Constructor<?> nullaryConstructor = null;
+        Method nullaryProviderMethod = null;
+        try {
+            /* Only look for a provider() method if provider class is in an explicit module. */
+            if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
+                for (Method method : providerClass.getDeclaredMethods()) {
+                    if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
+                                    method.getParameterCount() == 0 && method.getName().equals("provider")) {
+                        if (nullaryProviderMethod == null) {
+                            nullaryProviderMethod = method;
+                        } else {
+                            /* There must be at most one public static provider() method. */
+                            nullaryProviderMethod = null;
+                            break;
                         }
                     }
                 }
+            }
 
-                Constructor<?> constructor = providerClass.getDeclaredConstructor();
-                if (Modifier.isPublic(constructor.getModifiers())) {
-                    nullaryConstructor = constructor;
-                }
-            } catch (NoSuchMethodException | SecurityException | LinkageError e) {
-                // ignore
+            Constructor<?> constructor = providerClass.getDeclaredConstructor();
+            if (Modifier.isPublic(constructor.getModifiers())) {
+                nullaryConstructor = constructor;
             }
-            if (nullaryConstructor != null || nullaryProviderMethod != null) {
-                RuntimeReflection.register(providerClass);
-                if (nullaryConstructor != null) {
-                    RuntimeReflection.register(nullaryConstructor);
-                }
-                if (nullaryProviderMethod != null) {
-                    RuntimeReflection.register(nullaryProviderMethod);
-                } else {
-                    /*
-                     * If there's no declared public provider() method, register it as negative
-                     * lookup to avoid throwing a MissingReflectionRegistrationError at run time.
-                     */
-                    RuntimeReflection.registerMethodLookup(providerClass, "provider");
-                }
-                registeredProviders.add(provider);
-            }
+        } catch (NoSuchMethodException | SecurityException | LinkageError e) {
+            // ignore
         }
+        if (nullaryConstructor != null || nullaryProviderMethod != null) {
+            RuntimeReflection.register(providerClass);
+            if (nullaryConstructor != null) {
+                RuntimeReflection.register(nullaryConstructor);
+            }
+            if (nullaryProviderMethod != null) {
+                RuntimeReflection.register(nullaryProviderMethod);
+            } else {
+                /*
+                 * If there's no declared public provider() method, register it as negative lookup
+                 * to avoid throwing a MissingReflectionRegistrationError at run time.
+                 */
+                RuntimeReflection.registerMethodLookup(providerClass, "provider");
+            }
+            registeredProviders.add(provider);
+        }
+    }
+
+    public static void registerProviderForRuntimeResourceAccess(Module module, String serviceProviderName, Set<String> registeredProviders) {
         if (!registeredProviders.isEmpty()) {
-            String serviceResourceLocation = "META-INF/services/" + serviceProvider.getName();
-            byte[] serviceFileData = registeredProviders.stream().collect(Collectors.joining("\n")).getBytes(StandardCharsets.UTF_8);
-            RuntimeResourceAccess.addResource(access.getApplicationClassLoader().getUnnamedModule(), serviceResourceLocation, serviceFileData);
+            String serviceResourceLocation = "META-INF/services/" + serviceProviderName;
+            byte[] serviceFileData = String.join("\n", registeredProviders).getBytes(StandardCharsets.UTF_8);
+            RuntimeResourceAccess.addResource(module, serviceResourceLocation, serviceFileData);
         }
     }
 }
