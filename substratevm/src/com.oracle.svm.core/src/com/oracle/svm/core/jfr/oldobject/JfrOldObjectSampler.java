@@ -28,7 +28,9 @@ package com.oracle.svm.core.jfr.oldobject;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.Uninterruptible;
@@ -39,6 +41,10 @@ import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.OldObjectSampleEvent;
+import com.oracle.svm.core.sampler.SamplerBuffer;
+import com.oracle.svm.core.sampler.SamplerBufferAccess;
+import com.oracle.svm.core.sampler.SamplerJfrStackTraceSerializer;
+import com.oracle.svm.core.sampler.SamplerSampleWriter;
 import com.oracle.svm.core.thread.JavaThreads;
 
 /**
@@ -145,20 +151,21 @@ final class JfrOldObjectSampler {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void release(JfrOldObject sample) {
         usedList.remove(sample);
-        freeList.append(sample);
         sample.reset();
+        freeList.append(sample);
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/sampling/samplePriorityQueue.cpp#L44-L53")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private void store(Object obj, UnsignedWord span, UnsignedWord allocatedSize, int arrayLength) {
         Thread thread = JavaThreads.getCurrentThreadOrNull();
-        long threadId = thread == null ? 0L : JavaThreads.getThreadId(thread);
-        long stackTraceId = thread == null ? 0L : SubstrateJVM.get().getStackTraceId(JfrEvent.OldObjectSample, 0);
         UnsignedWord heapUsedAfterLastGC = Heap.getHeap().getUsedMemoryAfterLastGC();
 
         JfrOldObject sample = (JfrOldObject) freeList.pop();
-        sample.initialize(obj, span, allocatedSize, threadId, stackTraceId, heapUsedAfterLastGC, arrayLength);
+        sample.initialize(obj, span, allocatedSize, thread, heapUsedAfterLastGC, arrayLength);
+        // Allocate a raw stacktrace buffer and write to it.
+        boolean stackTraceValid = SubstrateJVM.get().recordStackTraceDataToBuffer(JfrEvent.OldObjectSample, 0, sample.getRawStackTraceData());
+        sample.setStackTraceValid(stackTraceValid);
         queue.add(sample);
         usedList.append(sample);
         totalInQueue = totalInQueue.add(span);
@@ -184,8 +191,16 @@ final class JfrOldObjectSampler {
                 long objectId = SubstrateJVM.getOldObjectRepository().serializeOldObject(obj);
                 UnsignedWord objectSize = cur.getObjectSize();
                 long allocationTicks = cur.getAllocationTicks();
-                long threadId = cur.getThreadId();
-                long stackTraceId = cur.getStackTraceId();
+                Thread thread = cur.getThread();
+                long threadId = 0L;
+                if (thread != null) {
+                    threadId = JavaThreads.getThreadId(thread);
+                    SubstrateJVM.getThreadRepo().registerThread(thread);
+                }
+                long stackTraceId = 0L;
+                if (cur.getStackTraceValid()) {
+                    stackTraceId = deduplicateAndSerializeStackTrace(cur.getRawStackTraceData());
+                }
                 UnsignedWord heapUsedAfterLastGC = cur.getHeapUsedAfterLastGC();
                 int arrayLength = cur.getArrayLength();
 
@@ -197,6 +212,39 @@ final class JfrOldObjectSampler {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static long deduplicateAndSerializeStackTrace(SamplerBuffer buffer) {
+        if (buffer.isNull()) {
+            // Buffer may have failed allocation.
+            return 0L;
+        }
+
+        // decode the buffer
+        Pointer bufferEnd = buffer.getPos();
+        Pointer current = SamplerBufferAccess.getDataStart(buffer);
+        Pointer entryStart = current;
+        assert entryStart.unsignedRemainder(Long.BYTES).equal(0);
+
+        /* Sample hash. */
+        int sampleHash = current.readInt(0);
+        current = current.add(Integer.BYTES);
+
+        /* Is truncated. */
+        boolean isTruncated = current.readInt(0) == 1;
+        current = current.add(Integer.BYTES);
+
+        /* Sample size, excluding the header and the end marker. */
+        int sampleSize = current.readInt(0);
+        current = current.add(Integer.BYTES);
+
+        /* skip over padding, ticks, event thread, and thread state. */
+        current = current.add(Integer.BYTES).add(Long.BYTES * 3);
+
+        assert current.subtract(entryStart).equal(SamplerSampleWriter.getHeaderSize());
+
+        return SamplerJfrStackTraceSerializer.deduplicateAndSerializeStackTrace(current, bufferEnd, sampleSize, sampleHash, isTruncated);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     JfrOldObject getOldestObject() {
         return (JfrOldObject) usedList.getHead();
     }
@@ -204,5 +252,15 @@ final class JfrOldObjectSampler {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private JfrOldObject getObjectWithSmallestSpan() {
         return (JfrOldObject) queue.peek();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void reset() {
+        while (!queue.isEmpty()) {
+            evict();
+        }
+        assert usedList.isEmpty();
+        totalAllocated = WordFactory.unsigned(0);
+        totalInQueue = WordFactory.unsigned(0);
     }
 }

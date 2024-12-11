@@ -64,10 +64,15 @@ public final class JfrOldObjectProfiler {
     }
 
     public void reset() {
+        if (this.sampler != null) {
+            this.sampler.reset();
+        }
         this.sampler = new JfrOldObjectSampler(queueSize);
     }
 
     public void teardown() {
+        // Reset to free buffers.
+        this.sampler.reset();
         this.sampler = null;
     }
 

@@ -43,6 +43,7 @@ import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.throttling.JfrEventThrottling;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.sampler.SamplerStatistics;
@@ -279,6 +280,18 @@ public class SubstrateJVM {
         } else {
             return 0L;
         }
+    }
+
+    /*
+     * Buffers are not shared with the sampler or other JFR event types. This data will not yet be
+     * tied to a specific epoch until event emission.
+     */
+    @Uninterruptible(reason = Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean recordStackTraceDataToBuffer(JfrEvent eventType, int skipCount, SamplerBuffer rawStackTraceData) {
+        if (isRecording() && isStackTraceEnabled(eventType.getId())) {
+            return stackTraceRepo.recordStackTraceDataToBuffer(skipCount, rawStackTraceData);
+        }
+        return false;
     }
 
     /**

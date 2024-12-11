@@ -227,7 +227,7 @@ public class TestOldObjectProfiler extends AbstractJfrTest {
                 assertTrue(remainingObjects.remove(obj));
                 assertTrue(cur.getObjectSize().aboveThan(0));
                 assertTrue(cur.getAllocationTicks() > 0);
-                assertEquals(Thread.currentThread().threadId(), cur.getThreadId());
+                assertEquals(Thread.currentThread(), cur.getThread());
                 assertEquals(Integer.MIN_VALUE, cur.getArrayLength());
             }
             cur = (JfrOldObject) cur.getNext();
