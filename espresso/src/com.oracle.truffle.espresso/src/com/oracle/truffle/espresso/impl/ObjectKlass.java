@@ -158,9 +158,9 @@ public final class ObjectKlass extends Klass {
     public static final int LINKING = 1;
     public static final int PREPARED = 2;
     public static final int LINKED = 3;
+    public static final int INITIALIZING = 4;
     // Can be erroneous only if initialization triggered !
-    public static final int ERRONEOUS = 4;
-    public static final int INITIALIZING = 5;
+    public static final int ERRONEOUS = 5;
     public static final int INITIALIZED = 6;
 
     private final StaticObject definingClassLoader;
@@ -378,7 +378,7 @@ public final class ObjectKlass extends Klass {
          * case, if the state is INITIALIZING we cannot really check the lock because an object
          * might have been leaked to another thread by the clinit.
          */
-        return initState >= ERRONEOUS;
+        return initState >= INITIALIZING;
     }
 
     boolean isInitializedImpl() {
