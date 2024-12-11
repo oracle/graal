@@ -3,14 +3,12 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.value.MapValue;
 
-
-/*
-    This abstract domain maps elements (variables, memory locations, etc.) to a common
-    abstract domain.
-    One example could be mapping variables to intervals, signs, etc.
-
-    We do not represent TOP values in this domain, to minimize the size of the used memory,
-    if a Key value is not present inside the map, we return TOP
+/**
+ * This abstract domain maps elements (variables, memory locations, etc.) to a common
+ * abstract domain.
+ * One example could be mapping variables to intervals, signs, etc.
+ * We do not represent TOP values in this domain, to minimize the size of the used memory,
+ * if a Key is not present inside the map, we return TOP
  */
 public final class MapDomain<
         Key,

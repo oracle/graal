@@ -1,14 +1,15 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.FixpointCache;
+import com.oracle.svm.hosted.analysis.ai.interpreter.call.CallInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.InvokeNode;
-import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
-import jdk.graal.compiler.nodes.calc.ShiftNode;
-import jdk.graal.compiler.nodes.calc.UnaryArithmeticNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
@@ -21,11 +22,18 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
 
     private final NodeInterpreter<Domain> nodeInterpreter;
-    private final CallInterpreter callInterpreter;
+    private final CallInterpreter<Domain> callInterpreter;
+    private final Domain initialDomain;
+    private final IteratorPolicy policy;
+    private final DebugContext debug;
 
-    public TransferFunction(NodeInterpreter<Domain> nodeInterpreter, CallInterpreter callInterpreter) {
+
+    public TransferFunction(NodeInterpreter<Domain> nodeInterpreter, CallInterpreter<Domain> callInterpreter, Domain initialDomain, IteratorPolicy policy, DebugContext debug) {
         this.nodeInterpreter = nodeInterpreter;
         this.callInterpreter = callInterpreter;
+        this.initialDomain = initialDomain;
+        this.policy = policy;
+        this.debug = debug;
     }
 
     /**
@@ -35,17 +43,13 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
      * @param node             to analyze
      * @param abstractStateMap current state of the analysis
      */
-    public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap) {
+    public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap, FixpointCache<Domain> fixpointCache) {
+        debug.log("Analyzing node: " + node);
         collectInvariantsFromPredecessors(node, abstractStateMap);
-        switch (node) {
-            case ConstantNode constantNode -> nodeInterpreter.exec(constantNode, abstractStateMap);
-            case UnaryArithmeticNode<?> unaryArithmeticNode -> nodeInterpreter.exec(unaryArithmeticNode, abstractStateMap);
-            case BinaryArithmeticNode<?> binaryArithmeticNode ->
-                    nodeInterpreter.exec(binaryArithmeticNode, abstractStateMap);
-            case ShiftNode<?> shiftNode -> nodeInterpreter.exec(shiftNode, abstractStateMap);
-            case InvokeNode invokeNode -> callInterpreter.exec(invokeNode);
-            default -> {
-            }
+        if (node instanceof InvokeNode invokeNode) {
+            callInterpreter.execInvoke(invokeNode, abstractStateMap, fixpointCache, this, initialDomain, policy, debug);
+        } else {
+            nodeInterpreter.execNode(node, abstractStateMap);
         }
     }
 
@@ -84,9 +88,9 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
         }
     }
 
-    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap) {
+    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap, FixpointCache<Domain> fixpointCache) {
         for (Node node : block.getNodes()) {
-            analyzeNode(node, abstractStateMap);
+            analyzeNode(node, abstractStateMap, fixpointCache);
         }
     }
 }

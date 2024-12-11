@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.svm.hosted.analysis.ai.checker.Checker;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
@@ -15,7 +15,6 @@ import java.util.List;
  * @param <Domain> the type of derived {@link AbstractDomain}
  */
 public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
-
     protected DebugContext debug;
     protected final List<Checker> checkers = new ArrayList<>();
 
