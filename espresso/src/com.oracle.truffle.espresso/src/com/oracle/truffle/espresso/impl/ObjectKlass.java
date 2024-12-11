@@ -418,6 +418,12 @@ public final class ObjectKlass extends Klass {
             initState = INITIALIZING;
             getContext().getLogger().log(Level.FINEST, "Initializing: {0}", this.getNameAsString());
 
+            for (Field f : getInitialStaticFields()) {
+                if (!f.isRemoved()) {
+                    initField(f);
+                }
+            }
+
             var tls = getContext().getLanguage().getThreadLocalState();
             tls.blockContinuationSuspension();
             try {
@@ -477,11 +483,6 @@ public final class ObjectKlass extends Klass {
         try {
             if (!isPrepared()) {
                 checkLoadingConstraints();
-                for (Field f : getInitialStaticFields()) {
-                    if (!f.isRemoved()) {
-                        initField(f);
-                    }
-                }
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
