@@ -29,8 +29,8 @@
 dumping state of Ruby memory when executing Welcome#welcome
 Hello World!
 # check one frame was captured
->[0] java --sun-misc-unsafe-memory-access=allow --enable-native-access=org.graalvm.truffle -cp $CP HeapQuery ${TMP_DIR}/ruby.hprof -e 'heap.forEachClass((c) => c.name.startsWith("frame:") && print(c.name))'
+>[0] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -cp $CP HeapQuery ${TMP_DIR}/ruby.hprof -e 'heap.forEachClass((c) => c.name.startsWith("frame:") && print(c.name))'
 frame:Welcome#welcome
 # check the h and w variable in the frame
->[0] java --sun-misc-unsafe-memory-access=allow --enable-native-access=org.graalvm.truffle -cp $CP HeapQuery ${TMP_DIR}/ruby.hprof -e 'heap.forEachObject((frame) => print(frame.self["@h"].toString() + " " + frame.w.toString() + "!"), "frame:Welcome#welcome")'
+>[0] java ${SUN_MISC_UNSAFE_OPTION} --enable-native-access=org.graalvm.truffle -cp $CP HeapQuery ${TMP_DIR}/ruby.hprof -e 'heap.forEachObject((frame) => print(frame.self["@h"].toString() + " " + frame.w.toString() + "!"), "frame:Welcome#welcome")'
 Hello World!
