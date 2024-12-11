@@ -1055,6 +1055,7 @@ public class NativeImage {
     void handleManifestFileAttributes(Path jarFilePath, Attributes mainAttributes) {
         handleMainClassAttribute(jarFilePath, mainAttributes);
         handleModuleAttributes(mainAttributes);
+        handleEnableNativeAccessAttribute(mainAttributes);
     }
 
     void handleMainClassAttribute(Path jarFilePath, Attributes mainAttributes) {
@@ -1075,6 +1076,16 @@ public class NativeImage {
         String addExportsValues = mainAttributes.getValue("Add-Exports");
         if (addExportsValues != null) {
             handleModuleExports(addExportsValues, NativeImageClassLoaderOptions.AddExports);
+        }
+    }
+
+    void handleEnableNativeAccessAttribute(Attributes mainAttributes) {
+        String nativeAccessAttrName = mainAttributes.getValue("Enable-Native-Access");
+        if (nativeAccessAttrName != null) {
+            if (!ALL_UNNAMED.equals(nativeAccessAttrName)) {
+                throw NativeImage.showError("illegal value \"" + nativeAccessAttrName + "\" for " + nativeAccessAttrName + " manifest attribute. Only " + ALL_UNNAMED + " is allowed");
+            }
+            addImageBuilderJavaArgs("--enable-native-access=" + ALL_UNNAMED);
         }
     }
 
