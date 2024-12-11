@@ -240,7 +240,10 @@ public abstract class StrengthenGraphs {
         }
 
         if (method.analyzedInPriorLayer()) {
-            useSharedLayerGraph(method);
+            /*
+             * The method was already strengthened in a prior layer, so there is no need to
+             * strengthen it in this layer.
+             */
             return;
         }
 
@@ -272,8 +275,6 @@ public abstract class StrengthenGraphs {
     }
 
     protected abstract void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
-
-    protected abstract void useSharedLayerGraph(AnalysisMethod method);
 
     protected abstract void persistStrengthenGraph(AnalysisMethod method);
 

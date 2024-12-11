@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import java.util.function.Supplier;
 
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -44,8 +43,8 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
-
 import com.oracle.svm.hosted.phases.AnalyzeJavaHomeAccessPhase;
+
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
@@ -79,20 +78,8 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     }
 
     @Override
-    protected void useSharedLayerGraph(AnalysisMethod method) {
-        ImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
-        /*
-         * GR-55294: When the analysis elements from the base layer will be able to be materialized
-         * after the analysis, fewer graphs will have to be loaded here as well.
-         */
-        if (imageLayerLoader.hasStrengthenedGraph(method)) {
-            imageLayerLoader.setStrengthenedGraph(method);
-        }
-    }
-
-    @Override
     protected void persistStrengthenGraph(AnalysisMethod method) {
-        if (HostedImageLayerBuildingSupport.buildingSharedLayer() && method.isReachable()) {
+        if (HostedImageLayerBuildingSupport.buildingSharedLayer() && method.isTrackedAcrossLayers()) {
             HostedImageLayerBuildingSupport.singleton().getWriter().persistMethodStrengthenedGraph(method);
         }
     }

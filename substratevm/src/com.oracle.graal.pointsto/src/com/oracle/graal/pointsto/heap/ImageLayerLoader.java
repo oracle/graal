@@ -578,10 +578,7 @@ public class ImageLayerLoader {
     }
 
     public void initializeBaseLayerMethod(AnalysisMethod analysisMethod) {
-        initializeBaseLayerMethod(analysisMethod, getMethodData(analysisMethod));
-    }
-
-    protected void initializeBaseLayerMethod(AnalysisMethod analysisMethod, PersistedAnalysisMethod.Reader md) {
+        PersistedAnalysisMethod.Reader md = getMethodData(analysisMethod);
         registerFlag(md.getIsVirtualRootMethod(), true, () -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
         registerFlag(md.getIsDirectRootMethod(), true, () -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
         registerFlag(md.getIsInvoked(), true, () -> analysisMethod.registerAsInvoked(PERSISTED));
@@ -600,14 +597,26 @@ public class ImageLayerLoader {
 
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         PersistedAnalysisMethod.Reader methodData = getMethodData(analysisMethod);
-        byte[] encodedAnalyzedGraph = readEncodedGraph(methodData.getAnalysisGraphLocation().toString());
         boolean intrinsic = methodData.getAnalysisGraphIsIntrinsic();
-        EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
+        EncodedGraph analyzedGraph = getEncodedGraph(analysisMethod, methodData.getAnalysisGraphLocation());
         if (hasStrengthenedGraph(analysisMethod)) {
             throw AnalysisError.shouldNotReachHere("Strengthened graphs are not supported until late loading is implemented.");
         }
-        afterGraphDecodeHook(analyzedGraph);
         return new AnalysisParsedGraph(analyzedGraph, intrinsic);
+    }
+
+    public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
+        return getMethodData(analysisMethod).hasStrengthenedGraphLocation();
+    }
+
+    public EncodedGraph getStrengthenedGraph(AnalysisMethod analysisMethod) {
+        PersistedAnalysisMethod.Reader methodData = getMethodData(analysisMethod);
+        return getEncodedGraph(analysisMethod, methodData.getStrengthenedGraphLocation());
+    }
+
+    protected EncodedGraph getEncodedGraph(AnalysisMethod analysisMethod, Text.Reader location) {
+        byte[] encodedAnalyzedGraph = readEncodedGraph(location.toString());
+        return (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
     }
 
     private byte[] readEncodedGraph(String location) {
@@ -630,23 +639,6 @@ public class ImageLayerLoader {
             throw AnalysisError.shouldNotReachHere("Failed reading a graph from location: " + location, e);
         }
         return bb.array();
-    }
-
-    public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
-        return getMethodData(analysisMethod).hasStrengthenedGraphLocation();
-    }
-
-    public void setStrengthenedGraph(AnalysisMethod analysisMethod) {
-        PersistedAnalysisMethod.Reader methodData = getMethodData(analysisMethod);
-        byte[] encodedAnalyzedGraph = readEncodedGraph(methodData.getStrengthenedGraphLocation().toString());
-        EncodedGraph analyzedGraph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphDecoder(this, analysisMethod, universe.getSnippetReflection()), encodedAnalyzedGraph);
-        afterGraphDecodeHook(analyzedGraph);
-        analysisMethod.setAnalyzedGraph(analyzedGraph);
-    }
-
-    @SuppressWarnings("unused")
-    protected void afterGraphDecodeHook(EncodedGraph encodedGraph) {
-
     }
 
     protected static int getId(String line) {
