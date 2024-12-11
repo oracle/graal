@@ -55,11 +55,9 @@ public interface RuntimeSerializationSupport<C> {
 
     void registerIncludingAssociatedClasses(C condition, Class<?> clazz);
 
-    void register(C condition, Class<?>... classes);
+    void register(C condition, Class<?> clazz);
 
-    void registerWithTargetConstructorClass(C condition, Class<?> clazz, Class<?> customTargetConstructorClazz);
-
-    void registerWithTargetConstructorClass(C condition, String className, String customTargetConstructorClassName);
+    void register(C condition, String clazz);
 
     void registerLambdaCapturingClass(C condition, String lambdaCapturingClassName);
 
