@@ -241,7 +241,7 @@ public class MonitorSnippets implements Snippets {
         incCounter();
 
         if (diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
-            int flags = shouldUseKlassMiscFlags() ? hub.readInt(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION)
+            int flags = shouldUseKlassMiscFlags() ? hub.readByte(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION)
                             : hub.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
             if (probability(SLOW_PATH_PROBABILITY, (flags & jvmAccIsValueBasedClass(INJECTED_VMCONFIG)) != 0)) {
                 monitorenterStubC(MONITORENTER, object, lock);
