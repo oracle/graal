@@ -48,25 +48,21 @@ public class MultiTypeState extends TypeState {
     protected boolean merged;
 
     /** Creates a new type state using the provided types bit set and objects. */
-    @SuppressWarnings("this-escape")
-    public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount) {
+    public MultiTypeState(boolean canBeNull, BitSet typesBitSet, int typesCount) {
         assert !TypeStateUtils.needsTrim(typesBitSet) : typesBitSet;
         this.typesBitSet = typesBitSet;
         this.typesCount = typesCount;
         this.canBeNull = canBeNull;
         this.merged = false;
         assert this.typesCount > 1 : "Multi type state with single type.";
-        PointsToStats.registerTypeState(bb, this);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
-    @SuppressWarnings("this-escape")
-    protected MultiTypeState(PointsToAnalysis bb, boolean canBeNull, MultiTypeState other) {
+    protected MultiTypeState(boolean canBeNull, MultiTypeState other) {
         this.typesBitSet = other.typesBitSet;
         this.typesCount = other.typesCount;
         this.canBeNull = canBeNull;
         this.merged = other.merged;
-        PointsToStats.registerTypeState(bb, this);
     }
 
     /** Get the number of objects. */
@@ -141,7 +137,7 @@ public class MultiTypeState extends TypeState {
             return this;
         } else {
             /* Just flip the canBeNull flag and copy the rest of the values from this. */
-            return new MultiTypeState(bb, resultCanBeNull, this);
+            return PointsToStats.registerTypeState(bb, new MultiTypeState(resultCanBeNull, this));
         }
     }
 

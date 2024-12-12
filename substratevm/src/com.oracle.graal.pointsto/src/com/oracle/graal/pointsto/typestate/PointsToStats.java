@@ -75,6 +75,7 @@ import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.graph.NodeSourcePosition;
@@ -91,6 +92,8 @@ public class PointsToStats {
     public static void init(PointsToAnalysis bb) {
         registerTypeState(bb, EmptyTypeState.SINGLETON);
         registerTypeState(bb, NullTypeState.SINGLETON);
+        registerTypeState(bb, AnyPrimitiveTypeState.SINGLETON);
+        PrimitiveConstantTypeState.registerCachedTypeStates(bb);
         reportStatistics = bb.reportAnalysisStatistics();
     }
 
@@ -162,7 +165,7 @@ public class PointsToStats {
                     sourceStr = value.toString() + " @ " + value.graph().method().format("%H.%n(%p)");
                 }
             } else {
-                sourceStr = source.toString();
+                sourceStr = source != null ? source.toString() : "null";
             }
             doWrite(out, String.format("%-35s\t%-10s%n",
                             ClassUtil.getUnqualifiedName(provider.getFlowClass()), sourceStr));
@@ -314,23 +317,30 @@ public class PointsToStats {
     private static final AtomicInteger nextStateId = new AtomicInteger();
     private static ConcurrentHashMap<TypeState, AtomicInteger> typeStateStats = new ConcurrentHashMap<>();
 
-    public static void registerTypeState(PointsToAnalysis bb, TypeState state) {
+    public static <T extends TypeState> T registerTypeState(PointsToAnalysis bb, T state) {
 
         if (!bb.reportAnalysisStatistics()) {
-            return;
+            return state;
         }
 
         Integer id = stateToId.computeIfAbsent(state, (s) -> nextStateId.incrementAndGet());
         TypeState actualState = idToState.computeIfAbsent(id, (i) -> state);
 
         typeStateStats.computeIfAbsent(actualState, (s) -> new AtomicInteger()).incrementAndGet();
+        return state;
     }
 
     private static int objectsCount(TypeState state) {
+        if (state.isPrimitive()) {
+            return 0;
+        }
         return state.objectsCount();
     }
 
     private static int typesCount(TypeState state) {
+        if (state.isPrimitive()) {
+            return 0;
+        }
         return state.typesCount();
     }
 
@@ -541,7 +551,7 @@ public class PointsToStats {
     }
 
     private static String formatType(AnalysisType type, boolean qualified) {
-        return type.toJavaName(qualified);
+        return type != null ? type.toJavaName(qualified) : "null";
     }
 
     @SuppressWarnings("unused")
@@ -566,6 +576,13 @@ public class PointsToStats {
         }
         if (s.isNull()) {
             return "<Null>";
+        }
+        if (s.isPrimitive()) {
+            return switch (s) {
+                case AnyPrimitiveTypeState ignored -> "<AnyInt>";
+                case PrimitiveConstantTypeState constant -> "<Int:" + constant.getValue() + ">";
+                default -> throw AnalysisError.shouldNotReachHere("Unknown primitive type state: " + s.getClass());
+            };
         }
 
         String sKind = s.isAllocation() ? "Alloc" : s.asConstant() != null ? "Const" : s instanceof SingleTypeState ? "Single" : s instanceof MultiTypeState ? "Multi" : "";
