@@ -145,6 +145,19 @@ public class NativeImage {
 
     static final Map<String, String[]> graalCompilerFlags = getCompilerFlags();
 
+    private static Map<String, String> getSystemPackages() {
+        Map<String, String> res = new HashMap<>();
+        for (ModuleReference moduleRef : ModuleFinder.ofSystem().findAll()) {
+            ModuleDescriptor moduleDescriptor = moduleRef.descriptor();
+            for (String packageName : moduleDescriptor.packages()) {
+                res.put(packageName, moduleDescriptor.name());
+            }
+        }
+        return Map.copyOf(res);
+    }
+
+    final Map<String, String> systemPackagesToModules = getSystemPackages();
+
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
@@ -963,7 +976,7 @@ public class NativeImage {
 
         /*
          * The presence of CDS and custom system class loaders disables the use of archived
-         * non-system class and and triggers a warning.
+         * non-system class and triggers a warning.
          */
         addImageBuilderJavaArgs("-Xshare:off");
 
