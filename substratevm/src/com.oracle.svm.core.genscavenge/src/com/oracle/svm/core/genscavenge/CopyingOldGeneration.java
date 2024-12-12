@@ -144,6 +144,11 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
+    void appendChunk(AlignedHeapChunk.AlignedHeader hdr) {
+        getToSpace().appendAlignedHeapChunk(hdr);
+    }
+
+    @Override
     void swapSpaces() {
         assert getFromSpace().isEmpty() : "fromSpace should be empty.";
         getFromSpace().absorb(getToSpace());

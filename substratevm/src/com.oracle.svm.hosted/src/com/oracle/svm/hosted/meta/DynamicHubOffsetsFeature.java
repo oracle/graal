@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.snippets;
+package com.oracle.svm.hosted.meta;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
-import jdk.graal.compiler.word.Word;
-import org.graalvm.word.UnsignedWord;
+import org.graalvm.nativeimage.ImageSingletons;
 
-/**
- * Used to abstract the GC-specific part of the allocation functionality, e.g., how does the TLAB
- * look like in detail.
- */
-public interface GCAllocationSupport {
-    ForeignCallDescriptor getNewInstanceStub();
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.meta.DynamicHubOffsets;
+import com.oracle.svm.core.layeredimagesingleton.FeatureSingleton;
+import com.oracle.svm.hosted.FeatureImpl;
 
-    ForeignCallDescriptor getNewArrayStub();
+@AutomaticallyRegisteredFeature
+public final class DynamicHubOffsetsFeature implements InternalFeature, FeatureSingleton {
 
-    ForeignCallDescriptor getNewStoredContinuationStub();
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(DynamicHubOffsets.class, new DynamicHubOffsets());
+    }
 
-    ForeignCallDescriptor getNewPodInstanceStub();
-
-    ForeignCallDescriptor getNewDynamicHub();
-
-    boolean useTLAB();
-
-    boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray);
-
-    Word getTLABInfo();
-
-    int tlabTopOffset();
-
-    int tlabEndOffset();
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess a) {
+        DynamicHubOffsets.singleton().initializeOffsets(((FeatureImpl.BeforeCompilationAccessImpl) a).getMetaAccess());
+    }
 }

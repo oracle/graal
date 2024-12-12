@@ -140,6 +140,11 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
+    void appendChunk(AlignedHeapChunk.AlignedHeader hdr) {
+        space.appendAlignedHeapChunk(hdr);
+    }
+
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
         RememberedSet.get().walkDirtyObjects(space, visitor, true);
