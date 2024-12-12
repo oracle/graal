@@ -264,7 +264,15 @@ public class ConfigurationType implements JsonPrintable {
         maybeRemoveMethods(allDeclaredMethodsAccess.combine(other.allDeclaredMethodsAccess), allPublicMethodsAccess.combine(other.allPublicMethodsAccess),
                         allDeclaredConstructorsAccess.combine(other.allDeclaredConstructorsAccess), allPublicConstructorsAccess.combine(other.allPublicConstructorsAccess));
         if (methods != null && other.methods != null) {
-            methods.entrySet().removeAll(other.methods.entrySet());
+            for (Map.Entry<ConfigurationMethod, ConfigurationMemberInfo> entry : other.methods.entrySet()) {
+                ConfigurationMemberInfo otherMethodInfo = entry.getValue();
+                methods.computeIfPresent(entry.getKey(), (method, methodInfo) -> {
+                    if (otherMethodInfo.includes(methodInfo)) {
+                        return null; // remove
+                    }
+                    return methodInfo;
+                });
+            }
             if (methods.isEmpty()) {
                 methods = null;
             }
