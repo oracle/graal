@@ -24,8 +24,8 @@
 package com.oracle.truffle.espresso.resolver;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**

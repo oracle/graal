@@ -22,13 +22,13 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import java.nio.ByteBuffer;
+
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-
-import java.nio.ByteBuffer;
 
 /**
  * Interface denoting a field or method entry in a constant pool.

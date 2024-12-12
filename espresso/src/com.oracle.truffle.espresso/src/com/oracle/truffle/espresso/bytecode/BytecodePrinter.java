@@ -22,8 +22,9 @@
  */
 package com.oracle.truffle.espresso.bytecode;
 
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.EspressoError;
+import java.io.PrintStream;
+import java.util.Arrays;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
@@ -32,9 +33,8 @@ import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
-
-import java.io.PrintStream;
-import java.util.Arrays;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public class BytecodePrinter {
 

@@ -22,16 +22,16 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
+
 import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
-
-import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 
 public final class ParserField {
     public static final ParserField[] EMPTY_ARRAY = new ParserField[0];

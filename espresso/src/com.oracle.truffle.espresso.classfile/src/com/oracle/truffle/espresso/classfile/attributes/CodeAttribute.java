@@ -23,19 +23,19 @@
 
 package com.oracle.truffle.espresso.classfile.attributes;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.ExceptionHandler;
-
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR_W;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.MONITORENTER;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.MONITOREXIT;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RET;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public final class CodeAttribute extends Attribute {
 

@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 
 // Represents ClassInfo instances that are cached in the global
 // cache for all classes having been involved in a redefinition

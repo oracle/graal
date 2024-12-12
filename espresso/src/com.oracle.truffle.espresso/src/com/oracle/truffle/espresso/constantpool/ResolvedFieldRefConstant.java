@@ -22,16 +22,16 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import java.util.Objects;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-
-import java.util.Objects;
 
 public final class ResolvedFieldRefConstant implements FieldRefConstant, Resolvable.ResolvedConstant {
     private final Field resolved;

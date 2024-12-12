@@ -71,10 +71,10 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SASTORE;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SIPUSH;
 
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;

@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 
 public interface MethodRefConstant extends MemberRefConstant {
 
