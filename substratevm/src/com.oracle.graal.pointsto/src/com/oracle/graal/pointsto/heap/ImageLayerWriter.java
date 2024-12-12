@@ -97,6 +97,7 @@ import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.ObjectCopier;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
@@ -151,6 +152,7 @@ public class ImageLayerWriter {
     public void ensureConstantPersisted(ImageHeapConstant constant) {
         assert !sealed;
         constantsToPersist.add(constant);
+        afterConstantAdded(constant);
     }
 
     protected record ConstantParent(int constantId, int index) {
@@ -431,6 +433,16 @@ public class ImageLayerWriter {
     protected void afterMethodAdded(AnalysisMethod method) {
         ensureTypePersisted(method.getSignature().getReturnType());
         imageLayerWriterHelper.afterMethodAdded(method);
+    }
+
+    private void afterConstantAdded(ImageHeapConstant constant) {
+        ensureTypePersisted(constant.getType());
+        /* If this is a Class constant persist the corresponding type. */
+        ConstantReflectionProvider constantReflection = aUniverse.getBigbang().getConstantReflectionProvider();
+        AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
+        if (typeFromClassConstant != null) {
+            ensureTypePersisted(typeFromClassConstant);
+        }
     }
 
     private void scanConstantReferencedObjects(ImageHeapConstant constant, Collection<ImageHeapConstant> discoveredConstants) {
