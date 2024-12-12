@@ -168,8 +168,8 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     private static final int JAVA_SPECIFICATION_VERSION = Runtime.version().feature();
     public static final Version MIN_COMPILER_VERSION = Version.create(23, 1, 2);
     public static final int MIN_JDK_VERSION = 21;
-    public static final int MAX_JDK_VERSION = 25;
-    public static final Version NEXT_VERSION_UPDATE = Version.create(25, 1);
+    public static final int MAX_JDK_VERSION = 29;
+    public static final Version NEXT_VERSION_UPDATE = Version.create(29, 1);
 
     /**
      * Used only to reset state for native image compilation.
