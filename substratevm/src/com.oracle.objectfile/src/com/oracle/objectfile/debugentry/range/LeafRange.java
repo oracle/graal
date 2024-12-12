@@ -33,7 +33,6 @@ public class LeafRange extends Range {
         super(primary, methodEntry, lo, hi, line, caller, depth);
     }
 
-
     @Override
     public boolean isLeaf() {
         return true;

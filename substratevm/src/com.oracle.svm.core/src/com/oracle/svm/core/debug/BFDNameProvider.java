@@ -35,6 +35,7 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
+import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -43,11 +44,24 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 
+/**
+ * A unique name provider employed when debug info generation is enabled on Linux. Names are
+ * generated in the C++ mangled format that is understood by the Linux binutils BFD library. An ELF
+ * symbol defined using a BFD mangled name is linked to a corresponding DWARF method or field info
+ * declaration (DIE) by inserting it as the value of the <code>linkage_name</code> attribute. In
+ * order for this linkage to be correctly recognised by the debugger and Linux tools the
+ * <code>name</code> attributes of the associated class, method, field, parameter types and return
+ * type must be the same as the corresponding names encoded in the mangled name.
+ * <p>
+ * Note that when the class component of a mangled name needs to be qualified with a class loader id
+ * the corresponding DWARF class record must embed the class in a namespace whose name matches the
+ * classloader id otherwise the mangled name will not be recognised and demangled successfully.
+ */
+public class BFDNameProvider implements UniqueShortNameProvider {
 
-public class SubstrateBFDNameProvider implements UniqueShortNameProvider {
-
-    public SubstrateBFDNameProvider(List<ClassLoader> ignore) {
+    public BFDNameProvider(List<ClassLoader> ignore) {
         this.ignoredLoaders = ignore;
+        this.wordBaseType = null;
     }
 
     @Override
@@ -70,7 +84,7 @@ public class SubstrateBFDNameProvider implements UniqueShortNameProvider {
         if (isGraalImageLoader(loader)) {
             return "";
         }
-        String name = SubstrateUtil.classLoaderNameAndId(loader);
+        String name = SubstrateUtil.runtimeClassLoaderNameAndId(loader);
         // name will look like "org.foo.bar.FooBarClassLoader @1234"
         // trim it down to something more manageable
         // escaping quotes in the classlaoder name does not work in GDB
@@ -96,10 +110,15 @@ public class SubstrateBFDNameProvider implements UniqueShortNameProvider {
         if (type.isArray()) {
             return getClassLoader(type.getElementalType());
         }
-        return type.getClass().getClassLoader();
+        if (type instanceof SharedType sharedType && sharedType.getHub().isLoaded()) {
+            return sharedType.getHub().getClassLoader();
+        }
+        return null;
     }
 
     private final List<ClassLoader> ignoredLoaders;
+
+    private ResolvedJavaType wordBaseType;
 
     private static final String BUILTIN_CLASSLOADER_NAME = "jdk.internal.loader.BuiltinClassLoader";
 
@@ -389,6 +408,17 @@ public class SubstrateBFDNameProvider implements UniqueShortNameProvider {
         return new BFDMangler(this).mangle(m);
     }
 
+    /**
+     * Make the provider aware of the word base type. This is needed because the same provider is
+     * used for AOT debug info generation and runtime debug info generation. For AOT debug info we
+     * need the HostedType and for Runtime debug info we need the SubstrateType.
+     *
+     * @param wordBaseType the current wordBaseType.
+     */
+    public void setWordBaseType(ResolvedJavaType wordBaseType) {
+        this.wordBaseType = wordBaseType;
+    }
+
     private static class BFDMangler {
 
         /*
@@ -432,7 +462,7 @@ public class SubstrateBFDNameProvider implements UniqueShortNameProvider {
          * arise. A name can always be correctly encoded without repeats. In the above example that
          * would be _ZN5Hello9compareToEJiPS_.
          */
-        final SubstrateBFDNameProvider nameProvider;
+        final BFDNameProvider nameProvider;
         final StringBuilder sb;
 
         // A list of lookup names identifying substituted elements. A prospective name for an
@@ -492,7 +522,7 @@ public class SubstrateBFDNameProvider implements UniqueShortNameProvider {
             }
         }
 
-        BFDMangler(SubstrateBFDNameProvider provider) {
+        BFDMangler(BFDNameProvider provider) {
             nameProvider = provider;
             sb = new StringBuilder("_Z");
             bindings = EconomicMap.create();
@@ -876,7 +906,6 @@ public class SubstrateBFDNameProvider implements UniqueShortNameProvider {
      * @return true if the type needs to be encoded using pointer prefix P otherwise false.
      */
     private boolean needsPointerPrefix(ResolvedJavaType type) {
-        return true;
+        return wordBaseType == null || !wordBaseType.isAssignableFrom(type);
     }
-
 }
