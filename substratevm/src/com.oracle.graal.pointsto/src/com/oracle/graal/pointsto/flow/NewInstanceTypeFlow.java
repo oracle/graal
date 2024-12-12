@@ -77,7 +77,7 @@ public class NewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
         if (insertDefaultFieldValues) {
             for (var f : declaredType.getInstanceFields(true)) {
                 var field = (AnalysisField) f;
-                field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
             }
         }
     }
