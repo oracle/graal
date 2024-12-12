@@ -69,7 +69,6 @@ import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.debug.SharedDebugInfoProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -122,7 +121,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
                     RuntimeConfiguration runtimeConfiguration) {
-        super(debug, runtimeConfiguration, metaAccess, UniqueShortNameProvider.singleton(), SubstrateOptions.getDebugInfoSourceCacheRoot());
+        super(debug, runtimeConfiguration, metaAccess, SubstrateOptions.getDebugInfoSourceCacheRoot());
         this.heap = heap;
         this.codeCache = codeCache;
         this.nativeLibs = nativeLibs;
@@ -186,6 +185,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void handleDataInfo(Object data) {
         // log ObjectInfo data
         if (debug.isLogEnabled(DebugContext.INFO_LEVEL) && data instanceof NativeImageHeap.ObjectInfo objectInfo) {
@@ -768,6 +768,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @Override
+    @SuppressWarnings("try")
     public FileEntry lookupFileEntry(ResolvedJavaType type) {
         Class<?> clazz = OriginalClassProvider.getJavaClass(type);
         SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
@@ -810,7 +811,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
             case HostedPrimitiveType hostedPrimitiveType -> {
                 /* Use the number of bytes needed to store the value. */
                 JavaKind javaKind = hostedPrimitiveType.getStorageKind();
-                return (javaKind == JavaKind.Void ? 0 : javaKind.getByteCount());
+                return javaKind == JavaKind.Void ? 0 : javaKind.getByteCount();
             }
             default -> {
                 return 0;

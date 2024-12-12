@@ -29,7 +29,6 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
@@ -58,7 +57,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
     public SubstrateDebugInfoProvider(DebugContext debug, SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess,
                     long codeAddress) {
-        super(debug, runtimeConfiguration, metaAccess, ImageSingletons.lookup(SubstrateBFDNameProvider.class), SubstrateOptions.getRuntimeSourceDestDir());
+        super(debug, runtimeConfiguration, metaAccess, SubstrateOptions.getRuntimeSourceDestDir());
         this.method = method;
         this.compilation = compilation;
         this.codeAddress = codeAddress;

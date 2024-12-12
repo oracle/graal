@@ -48,7 +48,6 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -135,8 +134,8 @@ import jdk.vm.ci.meta.Value;
 public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     protected final RuntimeConfiguration runtimeConfiguration;
+
     protected final MetaAccessProvider metaAccess;
-    protected final UniqueShortNameProvider nameProvider;
 
     protected final DebugContext debug;
 
@@ -176,26 +175,40 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
      */
     public static final String LAYOUT_PREFIX = "_layout_.";
 
-    public static final String CLASS_CONSTANT_SUFFIX = ".class";
-
     static final Path EMPTY_PATH = Paths.get("");
 
-    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess, UniqueShortNameProvider nameProvider, Path cachePath) {
+    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess, Path cachePath) {
         this.runtimeConfiguration = runtimeConfiguration;
         this.metaAccess = metaAccess;
-        this.nameProvider = nameProvider;
+
+        /*
+         * Use a disabled DebugContext if log is disabled here. We need to make sure the log stays
+         * disabled, as we use parallel streams if it is disabled
+         */
         this.debug = debug.isLogEnabled() ? debug : DebugContext.disabled(null);
+
+        // Create the cachePath string entry which serves as base directory for source files
         this.cachePathEntry = stringTable.uniqueDebugString(cachePath.toString());
+
+        // Fetch special types that have special use cases.
+        // hubType: type of the 'hub' field in the object header.
+        // wordBaseType: for checking for foreign types.
+        // voidType: fallback type to point to for foreign pointer types
         this.hubType = (SharedType) metaAccess.lookupJavaType(Class.class);
         this.wordBaseType = (SharedType) metaAccess.lookupJavaType(WordBase.class);
         this.voidType = (SharedType) metaAccess.lookupJavaType(Void.class);
-        this.pointerSize = ConfigurationValues.getTarget().wordSize;
-        ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
-        this.reservedBitsMask = objectHeader.getReservedBitsMask();
+
+        if (UniqueShortNameProvider.singleton() instanceof BFDNameProvider bfdNameProvider) {
+            bfdNameProvider.setWordBaseType(this.wordBaseType);
+        }
+
+        // Get some information on heap layout and object/object header layout
         this.useHeapBase = ReferenceAccess.singleton().haveCompressedReferences() && ReferenceAccess.singleton().getCompressEncoding().hasBase();
         this.compressionShift = ReferenceAccess.singleton().getCompressionShift();
+        this.pointerSize = ConfigurationValues.getTarget().wordSize;
         this.referenceSize = getObjectLayout().getReferenceSize();
         this.objectAlignment = getObjectLayout().getAlignment();
+        this.reservedBitsMask = Heap.getHeap().getObjectHeader().getReservedBitsMask();
     }
 
     protected abstract Stream<SharedType> typeInfo();
@@ -240,11 +253,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     @Override
-    public int compiledCodeMax() {
-        return 0;
-    }
-
-    @Override
     public String cachePath() {
         return cachePathEntry;
     }
@@ -267,6 +275,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     /* Functions for installing debug info into the index maps. */
     @Override
+    @SuppressWarnings("try")
     public void installDebugInfo() {
         // we can only meaningfully provide logging if debug info is produced sequentially
         Stream<SharedType> typeStream = debug.isLogEnabled() ? typeInfo() : typeInfo().parallel();
@@ -304,9 +313,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     private void handleCodeInfo(SharedMethod method, CompilationResult compilation) {
-        // First make sure the underlying MethodEntry exists
+        // First make sure the underlying MethodEntry exists.
         MethodEntry methodEntry = lookupMethodEntry(method);
-        // Then process the compilation for frame states from infopoints/sourcemappings
+        // Then process the compilation for frame states from infopoints/sourcemappings.
+        // For performance reasons we mostly only use infopoints for processing compilations
         lookupCompiledMethodEntry(methodEntry, method, compilation);
     }
 
@@ -325,8 +335,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return SubstrateOptions.DebugCodeInfoUseSourceMappings.getValue();
     }
 
+    @SuppressWarnings("try")
     protected CompiledMethodEntry installCompilationInfo(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
         try (DebugContext.Scope s = debug.scope("DebugInfoCompilation")) {
+            // Mark the method entry for the compilation.
             methodEntry.setInRange();
 
             int primaryLine = methodEntry.getLine();
@@ -334,17 +346,23 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             List<FrameSizeChangeEntry> frameSizeChanges = getFrameSizeChanges(compilation);
             ClassEntry ownerType = methodEntry.getOwnerType();
 
+            // Create a primary range that spans over the compilation.
+            // The primary range entry holds the code offset information for all its sub ranges.
             PrimaryRange primaryRange = Range.createPrimary(methodEntry, 0, compilation.getTargetCodeSize(), primaryLine, getCodeOffset(method));
             debug.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.getTypeName(), methodEntry.getMethodName(), primaryRange.getFileEntry().getPathName(),
                             primaryRange.getFileName(), primaryLine, primaryRange.getLo(), primaryRange.getHi());
 
             CompiledMethodEntry compiledMethodEntry = new CompiledMethodEntry(primaryRange, frameSizeChanges, frameSize, ownerType);
             if (compiledMethodIndex.putIfAbsent(compilation.getCompilationId(), compiledMethodEntry) == null) {
-                // can we still provide locals if we have no file name?
+                // If the compiled method entry was added, we still need to check the frame states
+                // for subranges.
+
+                // Can we still provide locals if we have no file name?
                 if (methodEntry.getFileName().isEmpty()) {
                     return compiledMethodEntry;
                 }
 
+                // Restrict the frame state traversal based on options.
                 boolean omitInline = omitInline();
                 int maxDepth = debugCodeInfoMaxDepth();
                 boolean useSourceMappings = debugCodeInfoUseSourceMappings();
@@ -352,6 +370,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                     /* TopLevelVisitor will not go deeper than level 2 */
                     maxDepth = 2;
                 }
+
+                // The root node is represented by the primary range.
+                // A call nodes in the frame tree will be stored as call ranges and leaf nodes as
+                // leaf ranges
                 final CompilationResultFrameTree.CallNode root = new CompilationResultFrameTree.Builder(debug, compilation.getTargetCodeSize(), maxDepth, useSourceMappings,
                                 true)
                                 .build(compilation);
@@ -359,6 +381,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                     return compiledMethodEntry;
                 }
                 final List<Range> subRanges = new ArrayList<>();
+                // The top level visitor will only traverse the direct children of the primary
+                // range. All sub call ranges will be treated as leaf ranges.
                 final CompilationResultFrameTree.Visitor visitor = omitInline ? new TopLevelVisitor(subRanges, frameSize, primaryRange) : new MultiLevelVisitor(subRanges, frameSize, primaryRange);
                 // arguments passed by visitor to apply are
                 // NativeImageDebugLocationInfo caller location info
@@ -366,7 +390,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 // NativeImageDebugLocationInfo leaf into which current leaf may be merged
                 root.visitChildren(visitor, primaryRange, null, null);
                 // try to add a location record for offset zero
-                updateInitialLocation(primaryRange, subRanges, compilation, method);
+                updateInitialLocation(primaryRange, subRanges, compilation, method, methodEntry);
 
                 ownerType.addCompiledMethod(compiledMethodEntry);
             }
@@ -402,6 +426,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     protected abstract long getCodeOffset(SharedMethod method);
 
+    @SuppressWarnings("try")
     protected MethodEntry installMethodEntry(SharedMethod method) {
         try (DebugContext.Scope s = debug.scope("DebugInfoMethod")) {
             FileEntry fileEntry = lookupFileEntry(method);
@@ -409,7 +434,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
             int line = lineNumberTable == null ? 0 : lineNumberTable.getLineNumber(0);
 
-            String methodName = getMethodName(method); // stringTable.uniqueDebugString(getMethodName(method));
+            String methodName = getMethodName(method);
             StructureTypeEntry ownerType = (StructureTypeEntry) lookupTypeEntry((SharedType) method.getDeclaringClass());
             assert ownerType instanceof ClassEntry;
             TypeEntry valueType = lookupTypeEntry((SharedType) method.getSignature().getReturnType(null));
@@ -425,7 +450,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             // look for locals in the methods local variable table
             List<LocalEntry> locals = getLocalEntries(method, lastParamSlot);
 
-            String symbolName = getSymbolName(method); // stringTable.uniqueDebugString(getSymbolName(method));
+            String symbolName = getSymbolName(method);
             int vTableOffset = getVTableOffset(method);
 
             boolean isDeopt = isDeopt(method, methodName);
@@ -440,18 +465,14 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
+    @SuppressWarnings("try")
     private TypeEntry installTypeEntry(SharedType type) {
         try (DebugContext.Scope s = debug.scope("DebugInfoType")) {
             debug.log(DebugContext.INFO_LEVEL, "Register type %s ", type.getName());
 
             TypeEntry typeEntry = createTypeEntry(type);
             if (typeIndex.putIfAbsent(type, typeEntry) == null) {
-                /* Add class constant name to string table. */
-                if (typeEntry.getClassOffset() != -1) {
-                    // stringTable.uniqueDebugString(typeEntry.getTypeName() +
-                    // CLASS_CONSTANT_SUFFIX);
-                }
-                // typeEntry was added to the type index, now we need to process the type
+                // TypeEntry was added to the type index, now we need to process the type.
                 debug.log(DebugContext.INFO_LEVEL, "Process type %s ", type.getName());
                 processTypeEntry(type, typeEntry);
             }
@@ -470,7 +491,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
         int hubOffset = ol.getHubOffset();
 
-        String typeName = "_objhdr"; // stringTable.uniqueDebugString("_objhdr");
+        String typeName = "_objhdr";
         long typeSignature = getTypeSignature(typeName);
 
         headerTypeEntry = new HeaderTypeEntry(typeName, ol.getFirstFieldOffset(), typeSignature);
@@ -484,7 +505,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     protected FieldEntry createSyntheticFieldEntry(String name, StructureTypeEntry ownerType, SharedType type, int offset, int size) {
-        // stringTable.uniqueDebugString(name);
         TypeEntry typeEntry = lookupTypeEntry(type);
         debug.log("typename %s adding synthetic (public) field %s type %s size %d at offset 0x%x%n",
                         ownerType.getTypeName(), name, typeEntry.getTypeName(), size, offset);
@@ -492,7 +512,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     protected FieldEntry createFieldEntry(FileEntry fileEntry, String name, StructureTypeEntry ownerType, SharedType type, int offset, int size, boolean isEmbedded, int modifier) {
-        // stringTable.uniqueDebugString(name);
         TypeEntry typeEntry = lookupTypeEntry(type);
         debug.log("typename %s adding %s field %s type %s%s size %d at offset 0x%x%n",
                         ownerType.getTypeName(), ownerType.getModifiersString(modifier), name, typeEntry.getTypeName(), (isEmbedded ? "(embedded)" : ""), size, offset);
@@ -530,7 +549,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             // check if this is a local (slot is after last param slot)
             if (local != null && local.getSlot() > lastParamSlot) {
                 // we have a local with a known name, type and slot
-                String name = local.getName(); // stringTable.uniqueDebugString(l.getName());
+                String name = local.getName();
                 SharedType type = (SharedType) local.getType().resolve(ownerType);
                 int slot = local.getSlot();
                 int bciStart = local.getStartBCI();
@@ -563,7 +582,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         SharedType ownerType = (SharedType) method.getDeclaringClass();
         if (!method.isStatic()) {
             JavaKind kind = ownerType.getJavaKind();
-            JavaKind storageKind = ownerType.getStorageKind();
             assert kind == JavaKind.Object : "must be an object";
             paramInfos.add(new LocalEntry("this", lookupTypeEntry(ownerType), slot, line));
             slot += kind.getSlotCount();
@@ -574,7 +592,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             JavaKind kind = paramType.getJavaKind();
             JavaKind storageKind = paramType.getStorageKind();
             String name = local != null ? local.getName() : "__" + storageKind.getJavaName() + i;
-            // stringTable.uniqueDebugString(local != null ? local.getName() : "__" + i);
             paramInfos.add(new LocalEntry(name, lookupTypeEntry(paramType), slot, line));
             slot += kind.getSlotCount();
         }
@@ -586,7 +603,9 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     public String getSymbolName(SharedMethod method) {
-        return nameProvider.uniqueShortName(null, method.getDeclaringClass(), method.getName(), method.getSignature(), method.isConstructor());
+        return UniqueShortNameProvider.singleton().uniqueShortName(null, method.getDeclaringClass(), method.getName(), method.getSignature(), method.isConstructor());
+        // return nameProvider.uniqueShortName(null, method.getDeclaringClass(), method.getName(),
+        // method.getSignature(), method.isConstructor());
     }
 
     public boolean isDeopt(SharedMethod method, String methodName) {
@@ -661,7 +680,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         if (type.isArray()) {
             type = (SharedType) type.getElementalType();
         }
-        return type.getHub().isLoaded() ? lookupLoaderEntry(nameProvider.uniqueShortLoaderName(type.getHub().getClassLoader())) : null;
+        return type.getHub().isLoaded() ? lookupLoaderEntry(UniqueShortNameProvider.singleton().uniqueShortLoaderName(type.getHub().getClassLoader())) : null;
     }
 
     public LoaderEntry lookupLoaderEntry(String loaderName) {
@@ -690,7 +709,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             return null;
         }
 
-        String fileName = fullFilePath.getFileName().toString(); // stringTable.uniqueDebugString(fullFilePath.getFileName().toString());
+        String fileName = fullFilePath.getFileName().toString();
         Path dirPath = fullFilePath.getParent();
 
         DirEntry dirEntry = lookupDirEntry(dirPath);
@@ -706,7 +725,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             dirPath = EMPTY_PATH;
         }
 
-        // stringTable.uniqueDebugString(dirPath.toString());
         return dirIndex.computeIfAbsent(dirPath, DirEntry::new);
     }
 
@@ -763,7 +781,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return -1;
     }
 
-    private void updateInitialLocation(PrimaryRange primary, List<Range> locationInfos, CompilationResult compilation, SharedMethod method) {
+    private void updateInitialLocation(PrimaryRange primary, List<Range> locationInfos, CompilationResult compilation, SharedMethod method, MethodEntry methodEntry) {
         int prologueEnd = findMarkOffset(SubstrateBackend.SubstrateMarkId.PROLOGUE_END, compilation);
         if (prologueEnd < 0) {
             // this is not a normal compiled method so give up
@@ -805,8 +823,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         }
         // create a synthetic location record including details of passed arguments
         ParamLocationProducer locProducer = new ParamLocationProducer(method);
-        debug.log(DebugContext.DETAILED_LEVEL, "Add synthetic Location Info : %s (0, %d)", method.getName(), firstLocationOffset - 1);
-        MethodEntry methodEntry = lookupMethodEntry(method);
+        debug.log(DebugContext.DETAILED_LEVEL, "Add synthetic Location Info : %s (0, %d)", methodEntry.getMethodName(), firstLocationOffset - 1);
         Range locationInfo = Range.createSubrange(primary, methodEntry, 0, firstLocationOffset, methodEntry.getLine(), primary, true, true);
 
         locationInfo.setLocalValueInfo(initSyntheticInfoList(locProducer, methodEntry));
@@ -816,7 +833,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         // splitting at the extent point with the stack offsets adjusted in the new info
         if (locProducer.usesStack() && firstLocationOffset > stackDecrement) {
             Range splitLocationInfo = locationInfo.split(stackDecrement, compilation.getTotalFrameSize(), PRE_EXTEND_FRAME_SIZE);
-            debug.log(DebugContext.DETAILED_LEVEL, "Split synthetic Location Info : %s (0, %d) (%d, %d)", method.getName(),
+            debug.log(DebugContext.DETAILED_LEVEL, "Split synthetic Location Info : %s (0, %d) (%d, %d)", methodEntry.getMethodName(),
                             locationInfo.getLoOffset() - 1, locationInfo.getLoOffset(), locationInfo.getHiOffset() - 1);
             locationInfos.addFirst(splitLocationInfo);
         }
@@ -946,7 +963,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public void apply(CompilationResultFrameTree.FrameNode node, Object... args) {
-            // Visits all nodes at this level and handles call nodes depth first (by default do
+            // Visits all nodes at this level and handle call nodes depth first (by default do
             // nothing, just add the call nodes range info).
             if (node instanceof CompilationResultFrameTree.CallNode && skipPos(node.frame)) {
                 node.visitChildren(this, args);

@@ -136,7 +136,7 @@ public abstract class Range {
             callee = new CallRange(primary, methodEntry, lo, hi, line, caller, caller.getDepth() + 1);
         }
 
-        caller.addCallee(callee, isInitialRange);
+        caller.addCallee(callee);
         return callee;
     }
 
@@ -160,10 +160,6 @@ public abstract class Range {
         assert loOffset == 0 && loOffset < stackDecrement && stackDecrement < hiOffset : "invalid split request";
         Range newRange = Range.createSubrange(this.primary, this.methodEntry, stackDecrement, this.hiOffset, this.line, this.caller, this.isLeaf());
         this.hiOffset = stackDecrement;
-
-        // TODO fix this properly
-        this.caller.removeCallee(newRange);
-        this.caller.insertCallee(newRange, 1);
 
         for (var localInfo : this.localValueInfos.entrySet()) {
             if (localInfo.getValue() instanceof StackValueEntry stackValue) {

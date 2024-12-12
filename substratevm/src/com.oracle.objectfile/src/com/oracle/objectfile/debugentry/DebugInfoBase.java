@@ -186,11 +186,6 @@ public abstract class DebugInfoBase {
         this.pointerSize = 0;
         this.objectAlignment = 0;
         this.numAlignmentBits = 0;
-        this.compiledCodeMax = 0;
-    }
-
-    public int compiledCodeMax() {
-        return compiledCodeMax;
     }
 
     /**
@@ -245,9 +240,6 @@ public abstract class DebugInfoBase {
 
         /* Reference alignment must be 8 bytes. */
         assert objectAlignment == 8;
-
-        /* retrieve limit for Java code address range */
-        compiledCodeMax = debugInfoProvider.compiledCodeMax();
 
         stringTable = debugInfoProvider.getStringTable();
 
