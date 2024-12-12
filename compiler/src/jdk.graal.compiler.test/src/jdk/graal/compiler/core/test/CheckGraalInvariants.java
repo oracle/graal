@@ -118,6 +118,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -329,6 +330,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyUsageWithEquals(LIRKind.class));
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.class));
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.Op.class));
+        verifiers.add(new VerifyUsageWithEquals(SpeculationLog.Speculation.class, SpeculationLog.NO_SPECULATION));
 
         verifiers.add(new VerifySharedConstantEmptyArray());
         verifiers.add(new VerifyDebugUsage());
