@@ -30,6 +30,8 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.meta.SharedMethod;
 
 public abstract class DynamicImageLayerInfo {
+    public static final int CREMA_LAYER_ID = Byte.MAX_VALUE;
+
     public final int layerNumber;
     public final int nextLayerNumber;
     public final int numLayers;
