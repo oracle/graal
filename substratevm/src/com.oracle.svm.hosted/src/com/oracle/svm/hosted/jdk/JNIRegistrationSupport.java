@@ -303,7 +303,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
              * with the expected name. So we just create an empty one ...
              */
             linkerCommand = ImageSingletons.lookup(CCompilerInvoker.class)
-                            .createCompilerCommand(List.of("-shared", "-x", "c"), shimLibrary, Path.of("/dev/null"));
+                            .createCompilerCommand(List.of("-shared", "-x", "c", "-nostdlib"), shimLibrary, Path.of("/dev/null"));
             /* ... and add an explicit dependency on the native image if it is a shared library. */
             if (!accessImpl.getImageKind().isExecutable) {
                 linkerCommand.addAll(List.of("-Wl,-no-as-needed", "-L" + image.getParent(), "-l:" + image.getFileName(),
