@@ -27,7 +27,11 @@ package com.oracle.svm.hosted;
 
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.lang.reflect.Field;
 
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+import jdk.internal.access.SharedSecrets;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -51,12 +55,27 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
     private final InputStream hostedIn;
     private final PrintStream hostedOut;
     private final PrintStream hostedErr;
+    private final InputStream hostedInitialIn;
+    private final PrintStream hostedInitialErr;
 
     public SystemInOutErrFeature() {
         hostedIn = System.in;
         NativeImageSystemIOWrappers wrappers = NativeImageSystemIOWrappers.singleton();
         hostedOut = wrappers.outWrapper;
         hostedErr = wrappers.errWrapper;
+        hostedInitialIn = SharedSecrets.getJavaLangAccess().initialSystemIn();
+        /*
+         * GR-55515: Migrate to JavaLangAccess#initialSystemErr(). The method
+         * JavaLangAccess#initialSystemErr() and the System#initialErr field were both introduced in
+         * JDK 23. Once JDK 21 compatibility is no longer required, consider switching to
+         * SharedSecrets.getJavaLangAccess().initialSystemErr().
+         */
+        Field initialErrField = ReflectionUtil.lookupField(true, System.class, "initialErr");
+        try {
+            hostedInitialErr = initialErrField != null ? (PrintStream) initialErrField.get(null) : null;
+        } catch (IllegalAccessException illegalAccess) {
+            throw VMError.shouldNotReachHere(illegalAccess);
+        }
     }
 
     private SystemInOutErrSupport runtime;
@@ -64,6 +83,8 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
     private static final String SYSTEM_IN_KEY_NAME = "System#in";
     private static final String SYSTEM_ERR_KEY_NAME = "System#err";
     private static final String SYSTEM_OUT_KEY_NAME = "System#out";
+    private static final String SYSTEM_INITIAL_IN_KEY_NAME = "System#initialIn";
+    private static final String SYSTEM_INITIAL_ERR_KEY_NAME = "System#initialErr";
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -82,6 +103,8 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
                 registry.registerHeapConstant(SYSTEM_IN_KEY_NAME, runtime.in());
                 registry.registerHeapConstant(SYSTEM_OUT_KEY_NAME, runtime.out());
                 registry.registerHeapConstant(SYSTEM_ERR_KEY_NAME, runtime.err());
+                registry.registerHeapConstant(SYSTEM_INITIAL_IN_KEY_NAME, runtime.initialIn());
+                registry.registerHeapConstant(SYSTEM_INITIAL_ERR_KEY_NAME, runtime.initialErr());
             }
             access.registerObjectReplacer(this::replaceStreamsWithRuntimeObject);
         } else {
@@ -102,6 +125,10 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
             return runtime.out();
         } else if (object == hostedErr) {
             return runtime.err();
+        } else if (object == hostedInitialErr) {
+            return runtime.initialErr();
+        } else if (object == hostedInitialIn) {
+            return runtime.initialIn();
         } else {
             return object;
         }
@@ -114,6 +141,10 @@ public class SystemInOutErrFeature implements InternalFeature, FeatureSingleton 
             return registry.getConstant(SYSTEM_OUT_KEY_NAME);
         } else if (object == hostedErr) {
             return registry.getConstant(SYSTEM_ERR_KEY_NAME);
+        } else if (object == hostedInitialErr) {
+            return registry.getConstant(SYSTEM_INITIAL_ERR_KEY_NAME);
+        } else if (object == hostedInitialIn) {
+            return registry.getConstant(SYSTEM_INITIAL_IN_KEY_NAME);
         } else {
             return null;
         }
