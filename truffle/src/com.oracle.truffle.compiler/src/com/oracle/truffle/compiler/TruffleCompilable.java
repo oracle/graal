@@ -85,6 +85,17 @@ public interface TruffleCompilable {
     void onCompilationFailed(Supplier<String> serializedException, boolean suppressed, boolean bailout, boolean permanentBailout, boolean graphTooBig);
 
     /**
+     * Called after a successful compilation of a call target.
+     *
+     * @param compilationTier which tier this compilation is compiled with
+     * @param lastTier {@code true} if there is no next compilation tier (no next tier exists, or it
+     *            is disabled)
+     */
+    @SuppressWarnings("unused")
+    default void onCompilationSuccess(int compilationTier, boolean lastTier) {
+    }
+
+    /**
      * Invoked when installed code associated with this AST was invalidated due to assumption
      * invalidation. This method is not invoked across isolation boundaries, so can throw an error
      * in such a case. Note that this method may be invoked multiple times, if multiple installed
@@ -147,7 +158,8 @@ public interface TruffleCompilable {
      *
      * @param rootCompilation whether this compilation is compiled as root method
      * @param compilationTier which tier this compilation is compiled with
-     * @param lastTier
+     * @param lastTier {@code true} if there is no next compilation tier (no next tier exists, or it
+     *            is disabled).
      */
     default boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
         prepareForCompilation();

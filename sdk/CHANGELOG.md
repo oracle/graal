@@ -7,6 +7,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * GR-51664 Improved `PolyglotException#toString` and `PolyglotException#printStackTrace`.
   * The short description returned by `PolyglotException#toString` now starts with the qualified name of the metaobject of the guest exception, if the exception represents a guest exception that has a metaobject. Otherwise, it starts with the qualified name of the `PolyglotException` class.
   * `PolyglotException#printStackTrace` now always starts with the string returned by `PolyglotException#toString()` like for regular Java Throwable objects.
+* GR-54673 Added the option `engine.MaximumCompilations` to protect against too many repeated compilations of the same call target. The default value is `100`.
 
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.

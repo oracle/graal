@@ -52,11 +52,16 @@ import java.io.Writer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.After;
 import org.junit.Assert;
@@ -72,12 +77,7 @@ import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * Framework for testing the Truffle {@linkplain Debugger Debugging API}.
@@ -142,7 +142,8 @@ public abstract class AbstractDebugTest {
         if (tester != null) {
             sessionStack.push(tester);
         }
-        tester = new DebuggerTester(Context.newBuilder().allowCreateThread(true).allowPolyglotAccess(PolyglotAccess.ALL).allowIO(IOAccess.ALL));
+        Context.Builder builder = Context.newBuilder().allowCreateThread(true).allowPolyglotAccess(PolyglotAccess.ALL).allowIO(IOAccess.ALL);
+        tester = new DebuggerTester(TruffleTestAssumptions.isOptimizingRuntime() ? builder.option("engine.MaximumCompilations", "-1") : builder);
     }
 
     protected final void popContext() {
