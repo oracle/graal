@@ -256,11 +256,14 @@ public class SVMHost extends HostVM {
 
     /**
      * If we are skipping the analysis of a prior layer method, we must ensure analysis was
-     * performed in the prior layer and the analysis results have been serialized. Currently this
+     * performed in the prior layer and the analysis results have been serialized. Currently, this
      * approximates to either:
      * <ol>
-     * <li>We have an analyzed graph available. See {@link ImageLayerLoader#hasAnalysisParsedGraph}
-     * for which analysis graphs are persisted.</li>
+     * <li>We have a strengthened graph available. See {@link ImageLayerLoader#hasStrengthenedGraph}
+     * for which strengthened graphs are persisted. Having an analysis parsed graph (see
+     * {@link ImageLayerLoader#hasAnalysisParsedGraph}) is not enough because methods with only an
+     * analysis parsed graph are inlined before analysis, but not analyzed. Additionally, having a
+     * strengthened graph implies also having an analysis parsed graph.</li>
      * <li>A compile target exists this layer can call.</li>
      * </ol>
      *
@@ -269,7 +272,7 @@ public class SVMHost extends HostVM {
     @Override
     public boolean analyzedInPriorLayer(AnalysisMethod method) {
         ImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
-        return imageLayerLoader.hasAnalysisParsedGraph(method) || HostedDynamicLayerInfo.singleton().compiledInPriorLayer(method);
+        return imageLayerLoader.hasStrengthenedGraph(method) || HostedDynamicLayerInfo.singleton().compiledInPriorLayer(method);
     }
 
     protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
