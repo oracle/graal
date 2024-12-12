@@ -26,19 +26,21 @@
 
 package com.oracle.objectfile.debugentry.range;
 
-import com.oracle.objectfile.debugentry.MethodEntry;
-
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Stream;
+
+import com.oracle.objectfile.debugentry.MethodEntry;
 
 public class CallRange extends Range {
 
     /**
-     * The direct callees whose ranges are wholly contained in this range. Empty if this is a
-     * leaf range.
+     * The direct callees whose ranges are wholly contained in this range. Empty if this is a leaf
+     * range.
      */
-    private final List<Range> callees = new ArrayList<>();
+    private final Set<Range> callees = new TreeSet<>(Comparator.comparing(Range::getLoOffset));
 
     protected CallRange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, int depth) {
         super(primary, methodEntry, lo, hi, line, caller, depth);
@@ -46,7 +48,7 @@ public class CallRange extends Range {
 
     @Override
     public List<Range> getCallees() {
-        return callees;
+        return List.copyOf(callees);
     }
 
     @Override
@@ -54,26 +56,10 @@ public class CallRange extends Range {
         return Stream.concat(super.rangeStream(), callees.stream().flatMap(Range::rangeStream));
     }
 
-    protected void addCallee(Range callee, boolean isInitialRange) {
-        //System.out.println("Caller lo: " + this.getLo() + ", Callee lo: " + callee.getLo());
-        //System.out.println("Caller hi: " + this.getHi() + ", Callee hi: " + callee.getHi());
-        //System.out.println("Caller method: " + this.getMethodName() + ", Callee method: " + callee.getMethodName());
-        assert this.getLoOffset() <= callee.getLoOffset();
-        assert this.getHiOffset() >= callee.getHiOffset();
+    protected void addCallee(Range callee) {
+        assert this.contains(callee);
         assert callee.getCaller() == this;
-        if (isInitialRange) {
-            callees.addFirst(callee);
-        } else {
-            callees.add(callee);
-        }
-    }
-
-    protected void insertCallee(Range callee, int pos) {
-        assert pos < callees.size();
-        assert this.getLoOffset() <= callee.getLoOffset();
-        assert this.getHiOffset() >= callee.getHiOffset();
-        assert callee.getCaller() == this;
-        callees.add(pos, callee);
+        callees.add(callee);
     }
 
     @Override

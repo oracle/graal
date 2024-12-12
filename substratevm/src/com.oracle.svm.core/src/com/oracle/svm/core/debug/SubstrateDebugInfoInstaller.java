@@ -97,10 +97,10 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
         int RELEASED = 2;
 
         @RawField
-        GDBJITInterfaceSystemJava.JITCodeEntry getRawHandle();
+        GDBJITInterface.JITCodeEntry getRawHandle();
 
         @RawField
-        void setRawHandle(GDBJITInterfaceSystemJava.JITCodeEntry value);
+        void setRawHandle(GDBJITInterface.JITCodeEntry value);
 
         @RawField
         NonmovableArray<Byte> getDebugInfoData();
@@ -119,7 +119,7 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
 
         static Handle createHandle(NonmovableArray<Byte> debugInfoData) {
             Handle handle = UnmanagedMemory.malloc(SizeOf.get(Handle.class));
-            GDBJITInterfaceSystemJava.JITCodeEntry entry = UnmanagedMemory.calloc(SizeOf.get(GDBJITInterfaceSystemJava.JITCodeEntry.class));
+            GDBJITInterface.JITCodeEntry entry = UnmanagedMemory.calloc(SizeOf.get(GDBJITInterface.JITCodeEntry.class));
             handle.setAccessor(ImageSingletons.lookup(Accessor.class));
             handle.setRawHandle(entry);
             handle.setDebugInfoData(debugInfoData);
@@ -136,7 +136,7 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
             NonmovableArray<Byte> debugInfoData = handle.getDebugInfoData();
             CCharPointer address = NonmovableArrays.addressOf(debugInfoData, 0);
             int size = NonmovableArrays.lengthOf(debugInfoData);
-            GDBJITInterfaceSystemJava.registerJITCode(address, size, handle.getRawHandle());
+            GDBJITInterface.registerJITCode(address, size, handle.getRawHandle());
 
             handle.setState(Handle.ACTIVATED);
         }
@@ -147,8 +147,8 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
             VMOperation.guaranteeInProgress("SubstrateDebugInfoInstaller.Accessor.release must run in a VMOperation");
             VMError.guarantee(handle.getState() == Handle.ACTIVATED);
 
-            GDBJITInterfaceSystemJava.JITCodeEntry entry = handle.getRawHandle();
-            GDBJITInterfaceSystemJava.unregisterJITCode(entry);
+            GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
+            GDBJITInterface.unregisterJITCode(entry);
 
             handle.setState(Handle.RELEASED);
             NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
@@ -172,8 +172,8 @@ public class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
         public void releaseOnTearDown(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
             if (handle.getState() == Handle.ACTIVATED) {
-                GDBJITInterfaceSystemJava.JITCodeEntry entry = handle.getRawHandle();
-                GDBJITInterfaceSystemJava.unregisterJITCode(entry);
+                GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
+                GDBJITInterface.unregisterJITCode(entry);
                 handle.setState(Handle.RELEASED);
             }
             NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());

@@ -69,8 +69,6 @@ public interface DebugInfoProvider {
      */
     int objectAlignment();
 
-    int compiledCodeMax();
-
     StringTable getStringTable();
 
     List<TypeEntry> typeEntries();
@@ -82,12 +80,5 @@ public interface DebugInfoProvider {
     enum FrameSizeChangeType {
         EXTEND,
         CONTRACT;
-    }
-
-    enum LocalValueKind {
-        UNDEFINED,
-        REGISTER,
-        STACK,
-        CONSTANT;
     }
 }

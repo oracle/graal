@@ -34,8 +34,6 @@ import java.util.function.Supplier;
 import com.oracle.svm.core.ReservedRegisters;
 import jdk.graal.compiler.word.Word;
 import com.oracle.svm.core.code.CodeInfoDecoder;
-import com.oracle.svm.core.debug.GDBJITInterfaceSystemJava;
-import com.oracle.svm.core.debug.SubstrateBFDNameProvider;
 import jdk.vm.ci.code.Architecture;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -54,6 +52,8 @@ import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.debug.BFDNameProvider;
+import com.oracle.svm.core.debug.GDBJITInterface;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -73,7 +73,6 @@ import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
 class NativeImageDebugInfoFeature implements InternalFeature {
-    private NativeImageBFDNameProvider bfdNameProvider;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -88,24 +87,29 @@ class NativeImageDebugInfoFeature implements InternalFeature {
          */
         if (!UniqueShortNameProviderDefaultImpl.UseDefault.useDefaultProvider()) {
             if (!ImageSingletons.contains(UniqueShortNameProvider.class)) {
-                // configure a BFD mangler to provide unique short names for method and field
-                // symbols
+                /*
+                 * Configure a BFD mangler to provide unique short names for methods, fields and
+                 * classloaders.
+                 */
                 FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
-                // the Graal system loader will not duplicate JDK builtin loader classes
+
+                /*
+                 * Ensure the mangle ignores prefix generation for Graal loaders.
+                 *
+                 * The Graal system loader will not duplicate JDK builtin loader classes.
+                 *
+                 * The Graal app loader and image loader and their parent loader will not duplicate
+                 * classes. The app and image loader should both have the same parent.
+                 */
                 ClassLoader systemLoader = ClassLoader.getSystemClassLoader();
-                // the Graal app loader and image loader and their parent loader will not duplicate
-                // classes
                 ClassLoader appLoader = accessImpl.getApplicationClassLoader();
                 ClassLoader imageLoader = accessImpl.getImageClassLoader().getClassLoader();
                 ClassLoader imageLoaderParent = imageLoader.getParent();
-                // the app and image loader should both have the same parent
                 assert imageLoaderParent == appLoader.getParent();
-                // ensure the mangle ignores prefix generation for Graal loaders
                 List<ClassLoader> ignored = List.of(systemLoader, imageLoaderParent, appLoader, imageLoader);
-                bfdNameProvider = new NativeImageBFDNameProvider(ignored);
-                SubstrateBFDNameProvider substrateBFDNameProvider = new SubstrateBFDNameProvider(ignored);
+
+                BFDNameProvider bfdNameProvider = new BFDNameProvider(ignored);
                 ImageSingletons.add(UniqueShortNameProvider.class, bfdNameProvider);
-                ImageSingletons.add(SubstrateBFDNameProvider.class, substrateBFDNameProvider);
             }
         }
     }
@@ -113,18 +117,13 @@ class NativeImageDebugInfoFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         /*
-         * Make the name provider aware of the native libs
-         */
-        if (bfdNameProvider != null) {
-            var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-            bfdNameProvider.setNativeLibs(accessImpl.getNativeLibraries());
-        }
-
-        /*
-         * Ensure ClassLoader.nameAndId is available at runtime for type lookup from gdb
+         * Ensure ClassLoader.nameAndId is available at runtime for type lookup from GDB.
          */
         access.registerAsAccessed(ReflectionUtil.lookupField(ClassLoader.class, "nameAndId"));
 
+        /*
+         * Provide some global symbol for the gdb-debughelpers script.
+         */
         CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
         CGlobalData<PointerBase> compressionShift = CGlobalDataFactory.createWord(Word.signed(compressEncoding.getShift()), "__svm_compression_shift");
         CGlobalData<PointerBase> useHeapBase = CGlobalDataFactory.createWord(Word.unsigned(compressEncoding.hasBase() ? 1 : 0), "__svm_use_heap_base");
@@ -139,13 +138,34 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(frameSizeStatusMask);
         CGlobalDataFeature.singleton().registerWithGlobalHiddenSymbol(heapBaseRegnum);
 
+        /*
+         * Create a global symbol for the jit debug descriptor with proper initial values for the
+         * GDB JIT compilation interface.
+         */
         if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
             Architecture arch = ConfigurationValues.getTarget().arch;
-            ByteBuffer buffer = ByteBuffer.allocate(SizeOf.get(GDBJITInterfaceSystemJava.JITDescriptor.class)).order(arch.getByteOrder());
-            buffer.putInt(1);  // version 1
-            buffer.putInt(0);  // action flag 0
-            buffer.putLong(0);  // relevant entry nullptr
-            buffer.putLong(0);  // first entry nullptr
+            ByteBuffer buffer = ByteBuffer.allocate(SizeOf.get(GDBJITInterface.JITDescriptor.class)).order(arch.getByteOrder());
+
+            /*
+             * Set version to 1. Must be 1 otherwise GDB does not register breakpoints for the GDB
+             * JIT Compilation interface.
+             */
+            buffer.putInt(1);
+
+            /* Set action flag to JIT_NOACTION (0). */
+            buffer.putInt(GDBJITInterface.JITActions.JIT_NOACTION.ordinal());
+
+            /*
+             * Set relevant entry to nullptr. This is the pointer to the debug info entry that is
+             * affected by the GDB JIT interface action.
+             */
+            buffer.putLong(0);
+
+            /*
+             * Set first entry to nullptr. This is the pointer to the last debug info entry notified
+             * to the GDB JIT interface We will prepend new entries here.
+             */
+            buffer.putLong(0);
 
             CGlobalDataFeature.singleton().registerWithGlobalSymbol(CGlobalDataFactory.createBytes(buffer::array, "__jit_debug_descriptor"));
         }
@@ -186,6 +206,10 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                     };
                 };
 
+                /*
+                 * Create a section that triggers GDB to read debugging assistance information from
+                 * gdb-debughelpers.py in the current working directory.
+                 */
                 Supplier<BasicProgbitsSectionImpl> makeGDBSectionImpl = () -> {
                     var content = AssemblyBuffer.createOutputAssembler(objectFile.getByteOrder());
                     // 1 -> python file
@@ -205,7 +229,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.arguments", makeSectionImpl.apply(DiagnosticUtils.getBuilderArguments(imageClassLoader)));
                 objectFile.newUserDefinedSection(".debug.svm.imagebuild.java.properties", makeSectionImpl.apply(DiagnosticUtils.getBuilderProperties()));
 
-                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib/svm/debug/gdb-debughelpers.py");
+                Path svmDebugHelper = Path.of(System.getProperty("java.home"), "lib", "svm", "debug", "gdb-debughelpers.py");
                 if (Files.exists(svmDebugHelper)) {
                     objectFile.newUserDefinedSection(".debug_gdb_scripts", makeGDBSectionImpl.get());
                 }
