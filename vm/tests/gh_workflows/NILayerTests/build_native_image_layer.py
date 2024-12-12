@@ -109,7 +109,16 @@ def build_layers(native_image_path, coordinates, delimiter):
             os.chdir(library_path)
             dependency_path = subprocess.check_output(['mvn', '-q', 'exec:exec', '-Dexec.executable=echo', '-Dexec.args=%classpath']).decode('utf-8').rstrip()
             os.chdir(image_path)
-            command = [native_image_path, '-J-ea', '-J-esa', '-H:+UnlockExperimentalVMOptions', '-cp' ,f'{jar_path}:{dependency_path}', f'-H:LayerCreate=layer.nil,package={jar_path}', '-H:+ReportExceptionStackTraces', '--no-fallback' , '-o', f'{artifact_id}-{version}']
+            command = [
+                    native_image_path,
+                    '-J-ea', '-J-esa',
+                    '--no-fallback',
+                    '-cp' ,f'{jar_path}:{dependency_path}',
+                    '-o', f'{artifact_id}-{version}'
+                    '-H:+UnlockExperimentalVMOptions',
+                    f'-H:LayerCreate=layer.nil,path={jar_path}',
+                    '-H:+ReportExceptionStackTraces',
+            ]
             print(f'Command: {' '.join(command)}')
             subprocess.run(command, check=True)
             os.chdir('..')

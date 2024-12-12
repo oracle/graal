@@ -24,18 +24,8 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
-import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
-import static com.oracle.svm.core.SubstrateOptions.LayerCreate;
-import static com.oracle.svm.core.SubstrateOptions.LayerUse;
-import static com.oracle.svm.core.SubstrateOptions.imageLayerCreateEnabledHandler;
-import static com.oracle.svm.core.SubstrateOptions.imageLayerEnabledHandler;
-import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.MODULE_OPTION;
-import static com.oracle.svm.hosted.imagelayer.LayerArchiveSupport.PACKAGE_OPTION;
-
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -58,6 +48,7 @@ import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
 import com.oracle.svm.hosted.heap.SVMImageLayerWriter;
+import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
 import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -108,50 +99,54 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      */
     public static void processLayerOptions(EconomicMap<OptionKey<?>, Object> values) {
         OptionValues hostedOptions = new OptionValues(values);
-        if (LayerCreate.hasBeenSet(hostedOptions)) {
+        if (SubstrateOptions.LayerCreate.hasBeenSet(hostedOptions)) {
             /* The last value wins, GR-55565 will warn about the overwritten values. */
-            String layerCreateValue = LayerCreate.getValue(hostedOptions).lastValue().orElseThrow();
+            String layerCreateValue = SubstrateOptions.LayerCreate.getValue(hostedOptions).lastValue().orElseThrow();
             if (layerCreateValue.isEmpty()) {
                 /* Nothing to do, an empty --layer-create= disables the layer creation. */
             } else {
                 LayerOption layerOption = LayerOption.parse(layerCreateValue);
-                String buildLayer = SubstrateOptionsParser.commandArgument(LayerCreate, "");
-                Arrays.stream(layerOption.extendedOptions()).forEach(option -> {
+                String buildLayer = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, "");
+                for (ExtendedOption option : layerOption.extendedOptions()) {
                     switch (option.key()) {
-                        case MODULE_OPTION -> {
+                        case LayerArchiveSupport.MODULE_OPTION -> {
                             UserError.guarantee(option.value() != null, "Option %s of %s requires a module name argument, e.g., %s=module-name.", option.key(), buildLayer, option.key());
-                            IncludeAllFromModule.update(values, option.value());
+                            SubstrateOptions.IncludeAllFromModule.update(values, option.value());
                         }
-                        case PACKAGE_OPTION -> {
+                        case LayerArchiveSupport.PACKAGE_OPTION -> {
                             UserError.guarantee(option.value() != null, "Option %s of %s requires a package name argument, e.g., %s=package-name.", option.key(), buildLayer, option.key());
-                            IncludeAllFromPath.update(values, option.value());
+                            SubstrateOptions.IncludeAllFromPackage.update(values, option.value());
+                        }
+                        case LayerArchiveSupport.PATH_OPTION -> {
+                            UserError.guarantee(option.value() != null, "Option %s of %s requires a class-path entry, e.g., %s=path/to/cp-entry.", option.key(), buildLayer, option.key());
+                            SubstrateOptions.IncludeAllFromPath.update(values, option.value());
                         }
                         default ->
                             throw UserError.abort("Unknown option %s of %s. Use --help-extra for usage instructions.", option.key(), buildLayer);
                     }
-                });
+                }
 
                 SubstrateOptions.UseBaseLayerInclusionPolicy.update(values, true);
                 SubstrateOptions.ClosedTypeWorld.update(values, false);
-                if (imageLayerEnabledHandler != null) {
-                    imageLayerEnabledHandler.onOptionEnabled(values);
+                if (SubstrateOptions.imageLayerEnabledHandler != null) {
+                    SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
                 }
-                if (imageLayerCreateEnabledHandler != null) {
-                    imageLayerCreateEnabledHandler.onOptionEnabled(values);
+                if (SubstrateOptions.imageLayerCreateEnabledHandler != null) {
+                    SubstrateOptions.imageLayerCreateEnabledHandler.onOptionEnabled(values);
                 }
                 SubstrateOptions.UseContainerSupport.update(values, false);
             }
         }
-        if (LayerUse.hasBeenSet(hostedOptions)) {
+        if (SubstrateOptions.LayerUse.hasBeenSet(hostedOptions)) {
             /* The last value wins, GR-55565 will warn about the overwritten values. */
-            Path layerUseValue = LayerUse.getValue(hostedOptions).lastValue().orElseThrow();
+            Path layerUseValue = SubstrateOptions.LayerUse.getValue(hostedOptions).lastValue().orElseThrow();
             if (layerUseValue.toString().isEmpty()) {
                 /* Nothing to do, an empty --layer-use= disables the layer application. */
             } else {
                 SubstrateOptions.ClosedTypeWorldHubLayout.update(values, false);
                 SubstrateOptions.ParseRuntimeOptions.update(values, false);
-                if (imageLayerEnabledHandler != null) {
-                    imageLayerEnabledHandler.onOptionEnabled(values);
+                if (SubstrateOptions.imageLayerEnabledHandler != null) {
+                    SubstrateOptions.imageLayerEnabledHandler.onOptionEnabled(values);
                 }
             }
         }
@@ -166,8 +161,8 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
     }
 
     public static HostedImageLayerBuildingSupport initialize(HostedOptionValues values, ImageClassLoader imageClassLoader) {
-        boolean buildingSharedLayer = isLayerOptionEnabled(LayerCreate, values);
-        boolean buildingExtensionLayer = isLayerOptionEnabled(LayerUse, values);
+        boolean buildingSharedLayer = isLayerOptionEnabled(SubstrateOptions.LayerCreate, values);
+        boolean buildingExtensionLayer = isLayerOptionEnabled(SubstrateOptions.LayerUse, values);
 
         boolean buildingImageLayer = buildingSharedLayer || buildingExtensionLayer;
         boolean buildingInitialLayer = buildingImageLayer && !buildingExtensionLayer;
@@ -181,14 +176,14 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         SVMImageLayerWriter writer = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
         if (buildingSharedLayer) {
-            LayerOption layerOption = LayerOption.parse(LayerCreate.getValue(values).lastValue().orElseThrow());
+            LayerOption layerOption = LayerOption.parse(SubstrateOptions.LayerCreate.getValue(values).lastValue().orElseThrow());
             writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, layerOption.fileName());
             writer = new SVMImageLayerWriter(SubstrateOptions.UseSharedLayerGraphs.getValue(values));
         }
         SVMImageLayerLoader loader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
         if (buildingExtensionLayer) {
-            Path layerFileName = LayerUse.getValue(values).lastValue().orElseThrow();
+            Path layerFileName = SubstrateOptions.LayerUse.getValue(values).lastValue().orElseThrow();
             loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerFileName, archiveSupport);
             ImageLayerLoader.FilePaths paths = new ImageLayerLoader.FilePaths(loadLayerArchiveSupport.getSnapshotPath(), loadLayerArchiveSupport.getSnapshotGraphsPath());
             loader = new SVMImageLayerLoader(List.of(paths), imageClassLoader);
