@@ -59,6 +59,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -395,7 +396,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
-    private static final ThreadLocal<HashMap<ResolvedJavaMethod, InstalledCode>> cache = ThreadLocal.withInitial(HashMap::new);
+    private static final ThreadLocal<HashMap<ResolvedJavaMethod, Pair<OptionValues, InstalledCode>>> cache = ThreadLocal.withInitial(HashMap::new);
 
     /**
      * Reset the entire {@linkplain #cache} of {@linkplain InstalledCode}. Additionally, invalidate
@@ -404,8 +405,8 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     @BeforeClass
     public static void resetCodeCache() {
-        for (InstalledCode code : cache.get().values()) {
-            code.invalidate();
+        for (Pair<OptionValues, InstalledCode> code : cache.get().values()) {
+            code.getRight().invalidate();
         }
         cache.get().clear();
     }
@@ -1133,11 +1134,14 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         boolean useCache = !forceCompile && getArgumentToBind() == null;
         if (useCache && graph == null) {
-            HashMap<ResolvedJavaMethod, InstalledCode> tlCache = cache.get();
-            InstalledCode cached = tlCache.get(installedCodeOwner);
+            HashMap<ResolvedJavaMethod, Pair<OptionValues, InstalledCode>> tlCache = cache.get();
+            Pair<OptionValues, InstalledCode> cached = tlCache.get(installedCodeOwner);
             if (cached != null) {
-                if (cached.isValid()) {
-                    return cached;
+                // Reuse the cached code is the it's still valid and the same options were used for
+                // the compilation.
+                if (cached.getRight().isValid() && options.getMap().equals(cached.getLeft().getMap())) {
+                    GraalError.unimplemented("map value compare");
+                    return cached.getRight();
                 } else {
                     tlCache.remove(installedCodeOwner);
                 }
@@ -1184,7 +1188,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             if (useCache) {
-                cache.get().put(installedCodeOwner, installedCode);
+                cache.get().put(installedCodeOwner, Pair.create(options, installedCode));
             }
             return installedCode;
         }
