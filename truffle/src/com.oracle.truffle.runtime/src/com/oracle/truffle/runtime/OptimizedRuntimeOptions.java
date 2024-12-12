@@ -196,6 +196,11 @@ public final class OptimizedRuntimeOptions {
                     usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> LastTierCompilationThreshold = new OptionKey<>(10000);
 
+    @Option(help = "Maximum number of successful compilations for a single call target before a permanent bailout. Exceeding the limit will result in a compilation failure with the appropriate reason and " + //
+                    "there will be no further attempts to compile the call target. (negative integer means no limit, default: 100)", //
+                    usageSyntax = "(-inf, inf)", category = OptionCategory.EXPERT) //
+    public static final OptionKey<Integer> MaximumCompilations = new OptionKey<>(100);
+
     @Option(help = "Minimum number of calls before a call target is compiled (default: 3).", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(3);
 
