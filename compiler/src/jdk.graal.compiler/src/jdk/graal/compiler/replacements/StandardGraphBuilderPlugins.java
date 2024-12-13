@@ -291,7 +291,7 @@ public class StandardGraphBuilderPlugins {
     }
 
     public static final Field STRING_VALUE_FIELD;
-    private static final Field STRING_CODER_FIELD;
+    public static final Field STRING_CODER_FIELD;
 
     static {
         Field coder = null;
@@ -450,6 +450,10 @@ public class StandardGraphBuilderPlugins {
             this.kind = kind;
         }
 
+        public JavaKind getKind() {
+            return kind;
+        }
+
         @SuppressWarnings("try")
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
@@ -474,9 +478,9 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    static class StringEqualsInvocationPlugin extends InvocationPlugin {
+    public static class StringEqualsInvocationPlugin extends InvocationPlugin {
 
-        StringEqualsInvocationPlugin() {
+        public StringEqualsInvocationPlugin() {
             super("equals", Receiver.class, Object.class);
         }
 
