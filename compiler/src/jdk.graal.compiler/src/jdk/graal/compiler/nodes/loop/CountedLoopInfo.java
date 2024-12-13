@@ -639,6 +639,7 @@ public class CountedLoopInfo {
                     return false;
                 }
             }
+            return false;
         }
 
         // BELOW: limitCheckedIV case
