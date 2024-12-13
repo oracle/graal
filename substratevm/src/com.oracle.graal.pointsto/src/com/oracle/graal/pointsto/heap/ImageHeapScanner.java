@@ -563,6 +563,10 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
+    protected JavaConstant markReachable(JavaConstant constant, String reason) {
+        return markReachable(constant, new OtherReason(reason));
+    }
+
     protected JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
         return markReachable(constant, reason, null);
     }
