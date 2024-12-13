@@ -1139,7 +1139,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             HashMap<ResolvedJavaMethod, Pair<OptionValues, InstalledCode>> tlCache = cache.get();
             Pair<OptionValues, InstalledCode> cached = tlCache.get(installedCodeOwner);
             if (cached != null) {
-                // Reuse the cached code is the it's still valid and the same options were used for
+                // Reuse the cached code if it is still valid and the same options was used for
                 // the compilation. We use a deep equals for the option values to catch cases where
                 // users create new option values but with the same values.
                 if (cached.getRight().isValid() && (options.getMap().equals(cached.getLeft().getMap()) || optionsMapDeepEquals(options.getMap(), cached.getLeft().getMap()))) {
