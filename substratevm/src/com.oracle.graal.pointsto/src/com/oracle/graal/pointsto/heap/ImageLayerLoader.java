@@ -68,6 +68,8 @@ import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.P
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.StringConstant;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -944,7 +946,7 @@ public class ImageLayerLoader {
         /* The hash code can only be injected in the SVM context. */
     }
 
-    private static Object getArray(PersistedConstant.PrimitiveData.Reader reader) {
+    protected static Object getArray(PrimitiveArray.Reader reader) {
         return switch (reader.which()) {
             case Z -> getBooleans(reader.getZ());
             case B -> toArray(reader.getB(), r -> IntStream.range(0, r.size()).collect(() -> new byte[r.size()], (a, i) -> a[i] = r.get(i), combineUnsupported()));
@@ -1011,7 +1013,7 @@ public class ImageLayerLoader {
                         throw AnalysisError.shouldNotReachHere("This constant was not materialized in the base image.");
                     });
                 case PRIMITIVE_VALUE -> {
-                    ConstantReference.PrimitiveValue.Reader pv = constantData.getPrimitiveValue();
+                    PrimitiveValue.Reader pv = constantData.getPrimitiveValue();
                     yield JavaConstant.forPrimitive((char) pv.getTypeChar(), pv.getRawValue());
                 }
                 default -> throw GraalError.shouldNotReachHere("Unexpected constant reference: " + constantData.which());

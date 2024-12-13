@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonKey;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonObject;
@@ -63,6 +64,7 @@ import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.P
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -94,8 +96,10 @@ import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
@@ -117,11 +121,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     @Override
-    protected void persistAnnotationValues(AnnotatedElement annotatedElement, Class<? extends Annotation> annotationClass,
-                    IntFunction<StructList.Builder<SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue.Builder>> builder) {
-        EconomicMap<String, Object> members = EconomicMap.create();
-        AnnotationType annotationType = AnnotationType.getInstance(annotationClass);
+    protected void persistAnnotationValues(AnnotatedElement annotatedElement, Class<? extends Annotation> annotationClass, IntFunction<StructList.Builder<AnnotationValue.Builder>> builder) {
         Annotation annotation = AnnotationAccess.getAnnotation(annotatedElement, annotationClass);
+        persistAnnotationValues(annotation, annotationClass, builder);
+    }
+
+    private void persistAnnotationValues(Annotation annotation, Class<? extends Annotation> annotationClass, IntFunction<StructList.Builder<AnnotationValue.Builder>> builder) {
+        AnnotationType annotationType = AnnotationType.getInstance(annotationClass);
+        EconomicMap<String, Object> members = EconomicMap.create();
         annotationType.members().forEach((memberName, memberAccessor) -> {
             try {
                 String moduleName = memberAccessor.getDeclaringClass().getModule().getName();
@@ -142,15 +149,52 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 var b = list.get(i);
                 b.setName(cursor.getKey());
                 Object v = cursor.getValue();
-                if (v.getClass().isEnum()) {
-                    var ba = b.initEnum();
-                    ba.setClassName(v.getClass().getName());
-                    ba.setName(v.toString());
-                } else {
-                    b.setOther(v.toString());
-                }
+                persistAnnotationValue(v, b);
             }
         }
+    }
+
+    private void persistAnnotationValue(Object v, AnnotationValue.Builder b) {
+        if (v.getClass().isEnum()) {
+            var ba = b.initEnum();
+            ba.setClassName(v.getClass().getName());
+            ba.setName(v.toString());
+        } else if (v.getClass().isArray()) {
+            if (v instanceof Object[] array) {
+                var ba = b.initMembers();
+                ba.setClassName(v.getClass().getComponentType().getName());
+                var bav = ba.initMemberValues(array.length);
+                for (int i = 0; i < array.length; ++i) {
+                    persistAnnotationValue(array[i], bav.get(i));
+                }
+            } else {
+                Class<?> componentType = v.getClass().getComponentType();
+                assert componentType.isPrimitive() : v + " should be a primitive array";
+                persistConstantPrimitiveArray(b.initPrimitiveArray(), JavaKind.fromJavaClass(componentType), v);
+            }
+        } else {
+            switch (v) {
+                case Boolean z -> setAnnotationPrimitiveValue(b, JavaKind.Boolean, z ? 1L : 0L);
+                case Byte z -> setAnnotationPrimitiveValue(b, JavaKind.Byte, z);
+                case Short s -> setAnnotationPrimitiveValue(b, JavaKind.Short, s);
+                case Character c -> setAnnotationPrimitiveValue(b, JavaKind.Char, c);
+                case Integer i -> setAnnotationPrimitiveValue(b, JavaKind.Int, i);
+                case Float f -> setAnnotationPrimitiveValue(b, JavaKind.Float, Float.floatToRawIntBits(f));
+                case Long j -> setAnnotationPrimitiveValue(b, JavaKind.Long, j);
+                case Double d -> setAnnotationPrimitiveValue(b, JavaKind.Double, Double.doubleToRawLongBits(d));
+                case Class<?> clazz -> b.setClassName(clazz.getName());
+                case Annotation innerAnnotation ->
+                    persistAnnotationValues(innerAnnotation, innerAnnotation.annotationType(), b.initAnnotation()::initValues);
+                case String s -> b.setString(s);
+                default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value: " + v);
+            }
+        }
+    }
+
+    private static void setAnnotationPrimitiveValue(AnnotationValue.Builder b, JavaKind kind, long rawValue) {
+        var pv = b.initPrimitive();
+        pv.setTypeChar(NumUtil.safeToUByte(kind.getTypeChar()));
+        pv.setRawValue(rawValue);
     }
 
     @Override

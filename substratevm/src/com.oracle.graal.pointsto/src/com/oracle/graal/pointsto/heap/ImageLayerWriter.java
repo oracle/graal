@@ -81,6 +81,8 @@ import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.P
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.StringConstant;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray;
+import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveValue;
 import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -713,7 +715,7 @@ public class ImageLayerWriter {
         }
     }
 
-    private static void persistConstantPrimitiveArray(PersistedConstant.PrimitiveData.Builder builder, JavaKind componentKind, Object array) {
+    protected static void persistConstantPrimitiveArray(PrimitiveArray.Builder builder, JavaKind componentKind, Object array) {
         assert componentKind.toJavaClass().equals(array.getClass().getComponentType());
         switch (array) {
             case boolean[] a -> persistArray(a, builder::initZ, (b, i) -> b.set(i, a[i]));
@@ -751,7 +753,7 @@ public class ImageLayerWriter {
                 } else if (object == JavaConstant.NULL_POINTER) {
                     b.setNullPointer(Void.VOID);
                 } else if (object instanceof PrimitiveConstant pc) {
-                    ConstantReference.PrimitiveValue.Builder pb = b.initPrimitiveValue();
+                    PrimitiveValue.Builder pb = b.initPrimitiveValue();
                     pb.setTypeChar(NumUtil.safeToUByte(pc.getJavaKind().getTypeChar()));
                     pb.setRawValue(pc.getRawValue());
                 } else {
