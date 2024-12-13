@@ -88,14 +88,16 @@ import sun.reflect.annotation.AnnotationParser;
 public class SVMImageLayerLoader extends ImageLayerLoader {
 
     private final Field dynamicHubArrayHubField;
+    private final boolean useSharedLayerGraphs;
 
     private HostedUniverse hostedUniverse;
     private final ImageClassLoader imageClassLoader;
 
-    public SVMImageLayerLoader(List<FilePaths> loadPaths, ImageClassLoader imageClassLoader) {
+    public SVMImageLayerLoader(List<FilePaths> loadPaths, ImageClassLoader imageClassLoader, boolean useSharedLayerGraphs) {
         super(loadPaths);
         dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
         this.imageClassLoader = imageClassLoader;
+        this.useSharedLayerGraphs = useSharedLayerGraphs;
     }
 
     public void setHostedUniverse(HostedUniverse hostedUniverse) {
@@ -104,6 +106,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     public HostedUniverse getHostedUniverse() {
         return hostedUniverse;
+    }
+
+    @Override
+    public boolean hasAnalysisParsedGraph(AnalysisMethod analysisMethod) {
+        if (!useSharedLayerGraphs) {
+            return false;
+        }
+        return super.hasAnalysisParsedGraph(analysisMethod);
     }
 
     public ClassInitializationInfo getClassInitializationInfo(AnalysisType type) {

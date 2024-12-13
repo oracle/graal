@@ -175,10 +175,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         WriteLayerArchiveSupport writeLayerArchiveSupport = null;
         SVMImageLayerWriter writer = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
+        Boolean useSharedLayerGraphs = SubstrateOptions.UseSharedLayerGraphs.getValue(values);
         if (buildingSharedLayer) {
             LayerOption layerOption = LayerOption.parse(SubstrateOptions.LayerCreate.getValue(values).lastValue().orElseThrow());
             writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, layerOption.fileName());
-            writer = new SVMImageLayerWriter(SubstrateOptions.UseSharedLayerGraphs.getValue(values));
+            writer = new SVMImageLayerWriter(useSharedLayerGraphs);
         }
         SVMImageLayerLoader loader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
@@ -186,7 +187,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
             Path layerFileName = SubstrateOptions.LayerUse.getValue(values).lastValue().orElseThrow();
             loadLayerArchiveSupport = new LoadLayerArchiveSupport(layerFileName, archiveSupport);
             ImageLayerLoader.FilePaths paths = new ImageLayerLoader.FilePaths(loadLayerArchiveSupport.getSnapshotPath(), loadLayerArchiveSupport.getSnapshotGraphsPath());
-            loader = new SVMImageLayerLoader(List.of(paths), imageClassLoader);
+            loader = new SVMImageLayerLoader(List.of(paths), imageClassLoader, useSharedLayerGraphs);
         }
 
         return new HostedImageLayerBuildingSupport(loader, writer, buildingImageLayer, buildingInitialLayer, buildingFinalLayer, writeLayerArchiveSupport, loadLayerArchiveSupport);
