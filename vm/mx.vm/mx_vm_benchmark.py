@@ -524,7 +524,6 @@ class NativeImageVM(GraalVm):
         self.pgo_instrumentation = False
         self.pgo_exclude_conditional = False
         self.pgo_sampler_only = False
-        self.pgo_context_sensitive = True
         self.is_gate = False
         self.is_quickbuild = False
         self.use_string_inlining = False
@@ -585,9 +584,6 @@ class NativeImageVM(GraalVm):
         if self.is_llvm is True:
             config += ["llvm"]
         is_pgo_set = False
-        if self.pgo_context_sensitive is False:
-            config += ["pgo-ctx-insens"]
-            is_pgo_set = True
         if self.pgo_sampler_only is True:
             config += ["pgo-sampler"]
             is_pgo_set = True
@@ -643,7 +639,7 @@ class NativeImageVM(GraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
-               r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-|pgo-sampler-)?(?P<inliner>inline-)?' \
+               r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
 
@@ -698,10 +694,6 @@ class NativeImageVM(GraalVm):
             if pgo_mode == "pgo":
                 mx.logv(f"'pgo' is enabled for {config_name}")
                 self.pgo_instrumentation = True
-            elif pgo_mode == "pgo-ctx-insens":
-                mx.logv(f"'pgo-ctx-insens' is enabled for {config_name}")
-                self.pgo_instrumentation = True
-                self.pgo_context_sensitive = False
             elif pgo_mode == "pgo-sampler":
                 self.pgo_instrumentation = True
                 self.pgo_sampler_only = True
@@ -1256,7 +1248,6 @@ class NativeImageVM(GraalVm):
     def run_stage_image(self):
         executable_name_args = ['-o', self.config.final_image_name]
         pgo_args = [f"--pgo={self.config.profile_path}"]
-        pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
             jdk_version = mx_sdk_vm.get_jdk_version_for_profiles()
