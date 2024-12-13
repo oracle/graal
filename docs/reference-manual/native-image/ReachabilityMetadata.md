@@ -123,7 +123,7 @@ Computing metadata in code can be achieved in two ways:
 ## Specifying Metadata with JSON
 
 All metadata specified in the _reachability-metadata.json_ file that is located in any of the classpath entries at _META-INF/native-image/\<group.Id>\/\<artifactId>\/_.
-The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.0.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.0.0.json).
+The JSON schema for the reachability metadata is defined in [reachability-metadata-schema-v1.1.0.json](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/reachability-metadata-schema-v1.1.0.json).
 
 A sample _reachability-metadata.json_ file can be found [in the sample section](#sample-reachability-metadata).
 The _reachability-metadata.json_ configuration contains a single object with one field for each type of metadata. Each field in the top-level object contains an array of *metadata entries*:
@@ -132,7 +132,6 @@ The _reachability-metadata.json_ configuration contains a single object with one
   "reflection":[],
   "resources":[],
   "bundles":[],
-  "serialization":[],
   "jni":[]
 }
 ```
@@ -640,14 +639,15 @@ To create a custom constructor for serialization use:
 Proxy classes can only be registered for serialization via the JSON files. 
 
 ### Serialization Metadata in JSON
-Serialization metadata is specified in the `serialization` section of _reachability-metadata.json_.
+Serialization metadata is specified in the `reflection` section of _reachability-metadata.json_.
  
 To specify a regular `serialized.Type` use 
 ```json
 {
-  "serialization": [
+  "reflection": [
     {
-      "type": "serialized.Type"
+      "type": "serialized.Type",
+      "serializable": true
     }
   ]
 }
@@ -656,10 +656,11 @@ To specify a regular `serialized.Type` use
 To specify a proxy class for serialization, use the following entry:
 ```json 
 {
-  "serialization": [
+  "reflection": [
     {
       "type": {
-        "proxy": ["FullyQualifiedInterface1", "...", "FullyQualifiedInterfaceN"]
+        "proxy": ["FullyQualifiedInterface1", "...", "FullyQualifiedInterfaceN"],
+        "serializable": true
       }
     }
   ]
@@ -700,7 +701,8 @@ See below is a sample reachability metadata configuration that you can use in _r
       "allPublicFields": true,
       "allDeclaredMethods": true,
       "allPublicMethods": true,
-      "unsafeAllocated": true
+      "unsafeAllocated": true,
+      "serializable": true
     }
   ],
   "jni": [
@@ -735,11 +737,6 @@ See below is a sample reachability metadata configuration that you can use in _r
     {
       "name": "fully.qualified.bundle.name",
       "locales": ["en", "de", "other_optional_locales"]
-    }
-  ],
-  "serialization": [
-    {
-      "type": "serialized.Type"
     }
   ]
 }
