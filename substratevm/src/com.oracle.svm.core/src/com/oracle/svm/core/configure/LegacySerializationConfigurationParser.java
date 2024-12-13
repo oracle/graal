@@ -33,6 +33,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
+import com.oracle.svm.util.LogUtils;
+
 import jdk.graal.compiler.util.json.JsonParserException;
 
 final class LegacySerializationConfigurationParser<C> extends SerializationConfigurationParser<C> {
@@ -79,6 +81,8 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
         }
     }
 
+    private boolean customConstructorWarningTriggered = false;
+
     @Override
     protected void parseSerializationDescriptorObject(EconomicMap<String, Object> data, boolean lambdaCapturingType) {
         if (lambdaCapturingType) {
@@ -87,7 +91,7 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
             checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
         }
 
-        ConfigurationTypeDescriptor targetSerializationClass = new NamedConfigurationTypeDescriptor(asString(data.get(NAME_KEY)));
+        NamedConfigurationTypeDescriptor targetSerializationClass = new NamedConfigurationTypeDescriptor(asString(data.get(NAME_KEY)));
         UnresolvedConfigurationCondition unresolvedCondition = parseCondition(data, false);
         var condition = conditionResolver.resolveCondition(unresolvedCondition);
         if (!condition.isPresent()) {
@@ -95,18 +99,15 @@ final class LegacySerializationConfigurationParser<C> extends SerializationConfi
         }
 
         if (lambdaCapturingType) {
-            String className = ((NamedConfigurationTypeDescriptor) targetSerializationClass).name();
+            String className = targetSerializationClass.name();
             serializationSupport.registerLambdaCapturingClass(condition.get(), className);
         } else {
-            Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
-            String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            if (targetSerializationClass instanceof NamedConfigurationTypeDescriptor namedClass) {
-                serializationSupport.registerWithTargetConstructorClass(condition.get(), namedClass.name(), customTargetConstructorClass);
-            } else if (targetSerializationClass instanceof ProxyConfigurationTypeDescriptor proxyClass) {
-                serializationSupport.registerProxyClass(condition.get(), proxyClass.interfaceNames());
-            } else {
-                throw new JsonParserException("Unknown configuration type descriptor: %s".formatted(targetSerializationClass.toString()));
+            if (!customConstructorWarningTriggered && data.containsKey(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY)) {
+                customConstructorWarningTriggered = true;
+                LogUtils.warning("\"" + CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY +
+                                "\" is deprecated in serialization-config.json. All serializable classes can be instantiated through any superclass constructor without the use of the flag.");
             }
+            serializationSupport.register(condition.get(), targetSerializationClass.name());
         }
     }
 }

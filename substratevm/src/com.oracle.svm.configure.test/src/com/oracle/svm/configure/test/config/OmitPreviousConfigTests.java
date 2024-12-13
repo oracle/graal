@@ -210,8 +210,8 @@ public class OmitPreviousConfigTests {
     private static void doTestSerializationConfig(ConfigurationSet config) {
         SerializationConfiguration serializationConfig = config.getSerializationConfiguration();
         UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
-        Assert.assertFalse(serializationConfig.contains(condition, "seenType", null));
-        Assert.assertTrue(serializationConfig.contains(condition, "unseenType", null));
+        Assert.assertFalse(serializationConfig.contains(condition, "seenType"));
+        Assert.assertTrue(serializationConfig.contains(condition, "unseenType"));
     }
 
     private static ConfigurationType getConfigTypeOrFail(TypeConfiguration typeConfig, String typeName) {

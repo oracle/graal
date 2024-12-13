@@ -670,21 +670,9 @@ In rare cases an application might explicitly make calls to:
 ```java
     ReflectionFactory.newConstructorForSerialization(Class<?> cl, Constructor<?> constructorToCall);
 ```
-In which the passed `constructorToCall` differs from what would automatically be used if regular serialization of `cl`.
-
-To also support such serialization use cases, it is possible to register serialization for a class with a
-custom `constructorToCall`.
-For example, to allow serialization of `org.apache.spark.SparkContext$$anonfun$hadoopFile$1`, use the declared constructor of `java.lang.Object` as a custom `targetConstructor`, use:
-```json
-{
-  "serialization": [
-    {
-      "type": "<fully-qualified-class-name>",
-      "customTargetConstructorClass": "<custom-target-constructor-class>"
-    }
-  ]
-}
-```
+The specified `constructorToCall` differs from the one that would be automatically used during regular serialization of `cl`.
+When a class is registered for run-time serialization, all potential custom constructors are automatically registered.
+As a result, this use case does not require any additional metadata.
 
 ## Sample Reachability Metadata
 
@@ -751,8 +739,7 @@ See below is a sample reachability metadata configuration that you can use in _r
   ],
   "serialization": [
     {
-      "type": "serialized.Type",
-      "customTargetConstructorClass": "optional.serialized.super.Type"
+      "type": "serialized.Type"
     }
   ]
 }
