@@ -225,22 +225,15 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport<Con
     }
 
     @Override
-    public void register(ConfigurationCondition condition, Class<?>... classes) {
-        for (Class<?> clazz : classes) {
-            registerWithTargetConstructorClass(condition, clazz, null);
-        }
-    }
-
-    @Override
-    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName) {
-        registerWithTargetConstructorClass(condition, typeResolver.resolveType(className), null);
-    }
-
-    @Override
-    public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz) {
+    public void register(ConfigurationCondition condition, Class<?> clazz) {
         if (clazz != null) {
             deniedClasses.put(clazz, true);
         }
+    }
+
+    @Override
+    public void register(ConfigurationCondition condition, String className) {
+        this.register(condition, typeResolver.resolveType(className));
     }
 
     @Override
@@ -362,13 +355,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     @Override
-    public void register(ConfigurationCondition condition, Class<?>... classes) {
-        for (Class<?> clazz : classes) {
-            registerWithTargetConstructorClass(condition, clazz, null);
-        }
-    }
-
-    @Override
     public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
         abortIfSealed();
 
@@ -394,12 +380,12 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     public void registerProxyClass(ConfigurationCondition condition, List<String> implementedInterfaces) {
         registerConditionalConfiguration(condition, (cnd) -> {
             Class<?> proxyClass = proxyRegistry.createProxyClassForSerialization(implementedInterfaces);
-            registerWithTargetConstructorClass(cnd, proxyClass, Object.class);
+            register(cnd, proxyClass);
         });
     }
 
     @Override
-    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String targetClassName, String customTargetConstructorClassName) {
+    public void register(ConfigurationCondition condition, String targetClassName) {
         abortIfSealed();
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
         /* With invalid streams we have to register the class for lookup */
@@ -407,20 +393,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         if (serializationTargetClass == null) {
             return;
         }
-
-        if (customTargetConstructorClassName != null) {
-            Class<?> customTargetConstructorClass = typeResolver.resolveType(customTargetConstructorClassName);
-            if (customTargetConstructorClass == null) {
-                return;
-            }
-            registerWithTargetConstructorClass(condition, serializationTargetClass, customTargetConstructorClass);
-        } else {
-            registerWithTargetConstructorClass(condition, serializationTargetClass, null);
-        }
+        register(condition, serializationTargetClass);
     }
 
     @Override
-    public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
+    public void register(ConfigurationCondition condition, Class<?> serializationTargetClass) {
         abortIfSealed();
         registerConditionalConfiguration(condition, (cnd) -> {
             /*
@@ -439,18 +416,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             RuntimeReflection.register(java.io.ObjectOutputStream.class);
 
             if (denyRegistry.isAllowed(serializationTargetClass)) {
-                if (customTargetConstructorClass != null) {
-                    if (!customTargetConstructorClass.isAssignableFrom(serializationTargetClass)) {
-                        LogUtils.warning("The given customTargetConstructorClass %s is not a superclass of the serialization target %s.", customTargetConstructorClass.getName(),
-                                        serializationTargetClass);
-                        return;
-                    }
-                    if (ReflectionUtil.lookupConstructor(true, customTargetConstructorClass) == null) {
-                        LogUtils.warning("The given customTargetConstructorClass %s does not declare a parameterless constructor.", customTargetConstructorClass.getName());
-                        return;
-                    }
-                }
-                addOrQueueConstructorAccessor(cnd, serializationTargetClass, customTargetConstructorClass);
+                addOrQueueConstructorAccessors(cnd, serializationTargetClass);
 
                 Class<?> superclass = serializationTargetClass.getSuperclass();
                 if (superclass != null) {
@@ -466,20 +432,28 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         });
     }
 
-    private void addOrQueueConstructorAccessor(ConfigurationCondition cnd, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
+    private void addOrQueueConstructorAccessors(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
         if (pendingConstructorRegistrations != null) {
             // cannot yet create constructor accessor -> add to pending
-            pendingConstructorRegistrations.add(() -> registerConstructorAccessor(cnd, serializationTargetClass, customTargetConstructorClass));
+            pendingConstructorRegistrations.add(() -> registerConstructorAccessors(cnd, serializationTargetClass));
         } else {
             // can already run the registration
-            registerConstructorAccessor(cnd, serializationTargetClass, customTargetConstructorClass);
+            registerConstructorAccessors(cnd, serializationTargetClass);
         }
     }
 
-    private void registerConstructorAccessor(ConfigurationCondition cnd, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
-        Optional.ofNullable(addConstructorAccessor(cnd, serializationTargetClass, customTargetConstructorClass))
+    private void registerConstructorAccessors(ConfigurationCondition cnd, Class<?> serializationTargetClass) {
+        serializationSupport.registerSerializationTargetClass(cnd, serializationTargetClass);
+        registerConstructorAccessor(cnd, serializationTargetClass, null);
+        for (Class<?> superclass = serializationTargetClass; superclass != null; superclass = superclass.getSuperclass()) {
+            registerConstructorAccessor(cnd, serializationTargetClass, superclass);
+        }
+    }
+
+    private void registerConstructorAccessor(ConfigurationCondition cnd, Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
+        Optional.ofNullable(addConstructorAccessor(serializationTargetClass, targetConstructorClass))
                         .map(ReflectionUtil::lookupConstructor)
-                        .ifPresent(methods -> ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, methods));
+                        .ifPresent(methods -> ImageSingletons.lookup(RuntimeReflectionSupport.class).register(cnd, false, methods));
     }
 
     void beforeAnalysis(Feature.BeforeAnalysisAccess beforeAnalysisAccess) {
@@ -683,9 +657,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         return ReflectionUtil.invokeMethod(getExternalizableConstructorMethod, null, serializationTargetClass);
     }
 
-    private Class<?> addConstructorAccessor(ConfigurationCondition cnd, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
-        serializationSupport.registerSerializationTargetClass(cnd, serializationTargetClass);
-
+    private Class<?> addConstructorAccessor(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         // Don't generate SerializationConstructorAccessor class for Externalizable case
         if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
             try {
@@ -706,13 +678,17 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             VMError.guarantee(stubConstructor != null, "stubConstructor is null, calling this too early");
             targetConstructor = stubConstructor;
         } else {
-            if (customTargetConstructorClass == serializationTargetClass) {
-                /* No custom constructor needed. Simply use existing no-arg constructor. */
-                return customTargetConstructorClass;
-            }
             Constructor<?> customConstructorToCall = null;
             if (customTargetConstructorClass != null) {
-                customConstructorToCall = ReflectionUtil.lookupConstructor(customTargetConstructorClass);
+                customConstructorToCall = ReflectionUtil.lookupConstructor(true, customTargetConstructorClass);
+                if (customConstructorToCall == null) {
+                    /* No suitable constructor, no need to register */
+                    return null;
+                }
+                if (customTargetConstructorClass == serializationTargetClass) {
+                    /* No custom constructor needed. Simply use existing no-arg constructor. */
+                    return customTargetConstructorClass;
+                }
             }
             targetConstructor = newConstructorForSerialization(serializationTargetClass, customConstructorToCall);
 

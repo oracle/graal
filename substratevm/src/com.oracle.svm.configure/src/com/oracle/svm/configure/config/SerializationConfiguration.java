@@ -99,12 +99,12 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     @Override
     public void mergeConditional(UnresolvedConfigurationCondition condition, SerializationConfiguration other) {
         for (SerializationConfigurationType type : other.serializations) {
-            serializations.add(new SerializationConfigurationType(condition, type.getQualifiedJavaName(), type.getQualifiedCustomTargetConstructorJavaName()));
+            serializations.add(new SerializationConfigurationType(condition, type.getQualifiedJavaName()));
         }
     }
 
-    public boolean contains(UnresolvedConfigurationCondition condition, String serializationTargetClass, String customTargetConstructorClass) {
-        return serializations.contains(createConfigurationType(condition, serializationTargetClass, customTargetConstructorClass)) ||
+    public boolean contains(UnresolvedConfigurationCondition condition, String serializationTargetClass) {
+        return serializations.contains(createConfigurationType(condition, serializationTargetClass)) ||
                         lambdaSerializationCapturingTypes.contains(createLambdaCapturingClassConfigurationType(condition, serializationTargetClass));
     }
 
@@ -150,20 +150,13 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
     }
 
     @Override
-    public void register(UnresolvedConfigurationCondition condition, Class<?>... classes) {
-        for (Class<?> clazz : classes) {
-            registerWithTargetConstructorClass(condition, clazz, null);
-        }
+    public void register(UnresolvedConfigurationCondition condition, Class<?> clazz) {
+        register(condition, clazz.getName());
     }
 
     @Override
-    public void registerWithTargetConstructorClass(UnresolvedConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        registerWithTargetConstructorClass(condition, clazz.getName(), customTargetConstructorClazz == null ? null : customTargetConstructorClazz.getName());
-    }
-
-    @Override
-    public void registerWithTargetConstructorClass(UnresolvedConfigurationCondition condition, String className, String customTargetConstructorClassName) {
-        serializations.add(createConfigurationType(condition, className, customTargetConstructorClassName));
+    public void register(UnresolvedConfigurationCondition condition, String className) {
+        serializations.add(createConfigurationType(condition, className));
     }
 
     @Override
@@ -181,10 +174,9 @@ public final class SerializationConfiguration extends ConfigurationBase<Serializ
         return serializations.isEmpty() && lambdaSerializationCapturingTypes.isEmpty() && interfaceListsSerializableProxies.isEmpty();
     }
 
-    private static SerializationConfigurationType createConfigurationType(UnresolvedConfigurationCondition condition, String className, String customTargetConstructorClassName) {
+    private static SerializationConfigurationType createConfigurationType(UnresolvedConfigurationCondition condition, String className) {
         String convertedClassName = SignatureUtil.toInternalClassName(className);
-        String convertedCustomTargetConstructorClassName = customTargetConstructorClassName == null ? null : SignatureUtil.toInternalClassName(customTargetConstructorClassName);
-        return new SerializationConfigurationType(condition, convertedClassName, convertedCustomTargetConstructorClassName);
+        return new SerializationConfigurationType(condition, convertedClassName);
     }
 
     private static SerializationConfigurationLambdaCapturingType createLambdaCapturingClassConfigurationType(UnresolvedConfigurationCondition condition, String className) {

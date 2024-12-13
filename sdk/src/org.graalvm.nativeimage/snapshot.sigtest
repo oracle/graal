@@ -1144,6 +1144,7 @@ meth public !varargs static void registerProxyClass(java.lang.Class<?>[])
 meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
 meth public static void registerLambdaCapturingClass(java.lang.Class<?>)
 meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="24.2")
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeSystemProperties
