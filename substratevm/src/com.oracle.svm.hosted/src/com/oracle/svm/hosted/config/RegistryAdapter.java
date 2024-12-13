@@ -28,7 +28,6 @@ import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrat
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -221,17 +220,6 @@ public class RegistryAdapter implements ReflectionConfigurationParserDelegate<Co
         Executable[] methods = type.getDeclaredConstructors();
         registerExecutable(condition, queriedOnly, methods);
         return methods.length > 0;
-    }
-
-    @Override
-    public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> clazz) {
-        if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
-            registry.register(condition, true, clazz);
-            /*
-             * Ignore otherwise as the implementation of allocateInstance will anyhow throw an
-             * exception.
-             */
-        }
     }
 
     @Override
