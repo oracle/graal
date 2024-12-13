@@ -31,6 +31,7 @@ import java.util.Objects;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.VMStorage;
 
@@ -53,12 +54,14 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
     }
 
     @Substitute
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/NativeEntryPoint.java#L58-L82")
     public static Target_jdk_internal_foreign_abi_NativeEntryPoint make(ABIDescriptor abi,
                     VMStorage[] argMoves, VMStorage[] returnMoves,
                     MethodType methodType,
                     boolean needsReturnBuffer,
                     int capturedStateMask,
-                    boolean needsTransition) {
+                    boolean needsTransition,
+                    boolean usingAddressPairs) {
         /*
          * A VMStorage may be null only when the Linker.Option.critical(allowHeapAccess=true) option
          * is passed. (see
@@ -69,10 +72,11 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
          * construction in the NativeEntryPointInfo.make function.
          */
         boolean allowHeapAccess = Arrays.stream(argMoves).anyMatch(Objects::isNull);
-        return NativeEntryPointInfo.makeEntryPoint(abi, argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition, allowHeapAccess);
+        return NativeEntryPointInfo.makeEntryPoint(abi, argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition, usingAddressPairs, allowHeapAccess);
     }
 
     @Substitute
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/NativeEntryPoint.java#L120-L122")
     public MethodType type() {
         return methodType;
     }

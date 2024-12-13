@@ -649,7 +649,7 @@ class ABIs {
 
             // From NativeEntrypoint.make
             return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition(),
-                            optionSet.allowsHeapAccess());
+                            callingSequence.usingAddressPairs(), optionSet.allowsHeapAccess());
         }
 
         @Override

@@ -55,10 +55,11 @@ public final class NativeEntryPointInfo {
     private final boolean needsReturnBuffer;
     private final boolean capturesState;
     private final boolean needsTransition;
+    private final boolean usingAddressPairs;
     private final boolean allowHeapAccess;
 
     private NativeEntryPointInfo(MethodType methodType, VMStorage[] cc, VMStorage[] returnBuffering, boolean needsReturnBuffer, boolean capturesState, boolean needsTransition,
-                    boolean allowHeapAccess) {
+                    boolean usingAddressPairs, boolean allowHeapAccess) {
         assert methodType.parameterCount() == cc.length;
         assert needsReturnBuffer == (returnBuffering.length > 1);
         // when no transition, allowHeapAccess is unused, so it must be set to false
@@ -69,6 +70,7 @@ public final class NativeEntryPointInfo {
         this.needsReturnBuffer = needsReturnBuffer;
         this.capturesState = capturesState;
         this.needsTransition = needsTransition;
+        this.usingAddressPairs = usingAddressPairs;
         this.allowHeapAccess = allowHeapAccess;
     }
 
@@ -78,6 +80,7 @@ public final class NativeEntryPointInfo {
                     boolean needsReturnBuffer,
                     int capturedStateMask,
                     boolean needsTransition,
+                    boolean usingAddressPairs,
                     boolean allowHeapAccess) {
         if ((returnMoves.length > 1) != needsReturnBuffer) {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
@@ -99,7 +102,7 @@ public final class NativeEntryPointInfo {
              */
             allowHeapAccess = false;
         }
-        return new NativeEntryPointInfo(methodType, argMoves, returnMoves, needsReturnBuffer, capturedStateMask != 0, needsTransition, allowHeapAccess);
+        return new NativeEntryPointInfo(methodType, argMoves, returnMoves, needsReturnBuffer, capturedStateMask != 0, needsTransition, usingAddressPairs, allowHeapAccess);
     }
 
     public static Target_jdk_internal_foreign_abi_NativeEntryPoint makeEntryPoint(
@@ -109,8 +112,9 @@ public final class NativeEntryPointInfo {
                     boolean needsReturnBuffer,
                     int capturedStateMask,
                     boolean needsTransition,
+                    boolean usingAddressPairs,
                     boolean allowHeapAccess) {
-        var info = make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition, allowHeapAccess);
+        var info = make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition, usingAddressPairs, allowHeapAccess);
         long addr = ForeignFunctionsRuntime.singleton().getDowncallStubPointer(info).rawValue();
         return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.methodType(), addr, capturedStateMask);
     }
@@ -153,13 +157,13 @@ public final class NativeEntryPointInfo {
             return false;
         }
         NativeEntryPointInfo that = (NativeEntryPointInfo) o;
-        return capturesState == that.capturesState && needsTransition == that.needsTransition && needsReturnBuffer == that.needsReturnBuffer && allowHeapAccess == that.allowHeapAccess &&
+        return capturesState == that.capturesState && needsTransition == that.needsTransition && usingAddressPairs == that.usingAddressPairs && needsReturnBuffer == that.needsReturnBuffer && allowHeapAccess == that.allowHeapAccess &&
                         Objects.equals(methodType, that.methodType) &&
                         Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(methodType, needsReturnBuffer, capturesState, needsTransition, allowHeapAccess, Arrays.hashCode(parameterAssignments), Arrays.hashCode(returnBuffering));
+        return Objects.hash(methodType, needsReturnBuffer, capturesState, needsTransition, usingAddressPairs, allowHeapAccess, Arrays.hashCode(parameterAssignments), Arrays.hashCode(returnBuffering));
     }
 }
