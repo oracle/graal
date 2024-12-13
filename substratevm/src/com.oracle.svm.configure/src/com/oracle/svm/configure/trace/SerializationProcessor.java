@@ -34,6 +34,8 @@ import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.SerializationConfiguration;
+import com.oracle.svm.configure.config.TypeConfiguration;
+import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 
 import jdk.graal.compiler.java.LambdaUtils;
 
@@ -55,6 +57,7 @@ public class SerializationProcessor extends AbstractProcessor {
         String function = (String) entry.get("function");
         List<?> args = (List<?>) entry.get("args");
         SerializationConfiguration serializationConfiguration = configurationSet.getSerializationConfiguration();
+        TypeConfiguration reflectionConfiguration = configurationSet.getReflectionConfiguration();
 
         if ("ObjectStreamClass.<init>".equals(function) || "ObjectInputStream.readClassDescriptor".equals(function)) {
             expectSize(args, 1);
@@ -68,7 +71,7 @@ public class SerializationProcessor extends AbstractProcessor {
             if (className.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
                 serializationConfiguration.registerLambdaCapturingClass(condition, className);
             } else {
-                serializationConfiguration.register(condition, className);
+                reflectionConfiguration.getOrCreateType(condition, new NamedConfigurationTypeDescriptor(className)).setSerializable();
             }
         } else if ("SerializedLambda.readResolve".equals(function)) {
             expectSize(args, 1);

@@ -174,6 +174,12 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
+    public void registerAsSerializable(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+        VMError.guarantee(condition.isAlwaysTrue() || condition.equals(type.getCondition()), "condition is already a part of the type");
+        type.setSerializable();
+    }
+
+    @Override
     public String getTypeName(ConfigurationType type) {
         return type.getTypeDescriptor().toString();
     }
