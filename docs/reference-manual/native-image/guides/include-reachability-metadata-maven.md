@@ -126,10 +126,12 @@ For other installation options, visit the [Downloads section](https://www.graalv
         <version>1.0.0-SNAPSHOT</version>
 
         <properties>
-            <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
             <h2.version>2.2.220</h2.version>
-            <imageName>h2example</imageName>
+            <maven.compiler.source>21</maven.compiler.source>
+            <maven.compiler.target>21</maven.compiler.target>
+            <native.maven.plugin.version>0.10.3</native.maven.plugin.version>
             <mainClass>org.graalvm.example.H2Example</mainClass>
+            <imageName>h2example</imageName>
         </properties>
 
         <dependencies>
@@ -184,10 +186,6 @@ For other installation options, visit the [Downloads section](https://www.graalv
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.11.0</version>
-                    <configuration>
-                        <source>${java.version}</source>
-                        <target>22</target>
-                    </configuration>
                 </plugin>
 
                 <plugin>
@@ -327,15 +325,15 @@ In the `native` Maven profile section, add the `exec-maven-plugin` plugin:
     </plugin>
     ```
 
-3. Run your application with the agent enabled, on the JVM:
+3. Run your application with the agent on the JVM:
     ```shell
-    mvn -Pnative -Dagent=true -DskipTests -DskipNativeBuild=true package exec:exec@java-agent
+    mvn -Pnative -DskipTests -DskipNativeBuild=true package exec:exec@java-agent
     ```
     The agent captures and records calls to the H2 Database and all the dynamic features encountered during a test run into the _reachability-metadata.json_ file in the _target/native/agent-output/main/_ directory.
 
 4. Build a native executable using configuration collected by the agent:
     ```shell
-    mvn -Pnative -Dagent=true -DskipTests package exec:exec@native
+    mvn -Pnative -DskipTests package exec:exec@native
     ```
     It generates a native executable for the platform in the _target/_ directory, called _h2example_.
 
@@ -346,7 +344,8 @@ In the `native` Maven profile section, add the `exec-maven-plugin` plugin:
 
 ### Summary
 
-This guide demonstrated how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata) and with the Tracing Agent. The goal was to show the difference, and prove how using the reachability metadata can simplify the work.
+This guide demonstrated how to build a native executable using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata) and with the Tracing Agent.
+The goal was to show the difference, and prove how using the reachability metadata can simplify the work.
 Using the GraalVM Reachability Metadata Repository enhances the usability of Native Image for Java applications depending on 3rd party libraries.
 
 ### Related Documentation
