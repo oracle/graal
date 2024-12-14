@@ -1082,35 +1082,30 @@ public final class VM extends NativeEnv {
         if (innerClasses == null) {
             return null;
         }
-
         RuntimeConstantPool pool = klass.getConstantPool();
-
-        boolean found = false;
-        Klass outerKlass = null;
-
-        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
-            if (entry.innerClassIndex != 0) {
-                Symbol<Name> innerDescriptor = pool.classAt(entry.innerClassIndex).getName(pool);
-
-                // Check decriptors/names before resolving.
-                if (innerDescriptor.equals(klass.getName())) {
-                    Klass innerKlass = pool.resolvedKlassAt(klass, entry.innerClassIndex);
-                    found = (innerKlass == klass);
-                    if (found && entry.outerClassIndex != 0) {
-                        outerKlass = pool.resolvedKlassAt(klass, entry.outerClassIndex);
-                    }
-                }
-            }
-            if (found) {
-                break;
-            }
-        }
 
         // TODO(peterssen): Follow HotSpot implementation described below.
         // Throws an exception if outer klass has not declared k as an inner klass
         // We need evidence that each klass knows about the other, or else
         // the system could allow a spoof of an inner class to gain access rights.
-        return outerKlass;
+
+        for (InnerClassesAttribute.Entry entry : innerClasses.entries()) {
+            if (entry.innerClassIndex != 0) {
+                Symbol<Name> innerDescriptor = pool.classAt(entry.innerClassIndex).getName(pool);
+                // Check decriptors/names before resolving.
+                if (innerDescriptor.equals(klass.getName())) {
+                    Klass innerKlass = pool.resolvedKlassAt(klass, entry.innerClassIndex);
+                    if (innerKlass == klass) {
+                        if (entry.outerClassIndex != 0) {
+                            return pool.resolvedKlassAt(klass, entry.outerClassIndex);
+                        } else {
+                            return null;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     @VmImpl(isJni = true)
