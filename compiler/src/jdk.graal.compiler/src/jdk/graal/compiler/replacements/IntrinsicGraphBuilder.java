@@ -76,6 +76,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Implementation of {@link GraphBuilderContext} used to produce a graph for a method based on an
  * {@link InvocationPlugin} for the method.
@@ -323,6 +326,11 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     @Override
     public int getDepth() {
         return 0;
+    }
+
+    @Override
+    public List<StackTraceElement> getCallStack() {
+        return new ArrayList<>();
     }
 
     @Override
