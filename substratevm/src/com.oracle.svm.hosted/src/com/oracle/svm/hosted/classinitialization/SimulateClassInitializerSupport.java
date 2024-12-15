@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -527,6 +528,8 @@ public class SimulateClassInitializerSupport {
                     return;
                 }
             }
+        } else if (node instanceof ReachabilityRegistrationNode) {
+            return;
         }
 
         clusterMember.notInitializedReasons.add(node);
