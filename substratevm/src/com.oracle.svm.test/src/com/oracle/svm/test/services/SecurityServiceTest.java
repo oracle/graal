@@ -64,6 +64,21 @@ public class SecurityServiceTest {
     }
 
     /**
+     * This test ensures that the list of security providers is populated at run time, and not at
+     * build time.
+     */
+    @Test
+    public void testSecurityProviderRuntimeRegistration() {
+        Provider notRegistered = Security.getProvider("no-op-provider");
+        Assert.assertNull("Provider is registered.", notRegistered);
+
+        Security.addProvider(new NoOpProvider());
+
+        Provider registered = Security.getProvider("no-op-provider");
+        Assert.assertNotNull("Provider is not registered.", registered);
+    }
+
+    /**
      * Tests that native-image generation doesn't run into an issue (like NPE) if the application
      * uses a java.security.Provider.Service which isn't part of the services shipped in the JDK.
      *
