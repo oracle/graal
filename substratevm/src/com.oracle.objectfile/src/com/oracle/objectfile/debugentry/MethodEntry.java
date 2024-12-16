@@ -27,14 +27,15 @@
 package com.oracle.objectfile.debugentry;
 
 import java.util.List;
+import java.util.SortedSet;
 
 public class MethodEntry extends MemberEntry {
     private final LocalEntry thisParam;
-    private final List<LocalEntry> paramInfos;
+    private final SortedSet<LocalEntry> paramInfos;
     private final int lastParamSlot;
     // local vars are accumulated as they are referenced sorted by slot, then name, then
     // type name. we don't currently deal handle references to locals with no slot.
-    private final List<LocalEntry> locals;
+    private final SortedSet<LocalEntry> locals;
     private final boolean isDeopt;
     private boolean isInRange;
     private boolean isInlined;
@@ -45,9 +46,9 @@ public class MethodEntry extends MemberEntry {
 
     @SuppressWarnings("this-escape")
     public MethodEntry(FileEntry fileEntry, int line, String methodName, StructureTypeEntry ownerType,
-                    TypeEntry valueType, int modifiers, List<LocalEntry> paramInfos, LocalEntry thisParam,
+                    TypeEntry valueType, int modifiers, SortedSet<LocalEntry> paramInfos, LocalEntry thisParam,
                     String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor, int vtableOffset,
-                    int lastParamSlot, List<LocalEntry> locals) {
+                    int lastParamSlot, SortedSet<LocalEntry> locals) {
         super(fileEntry, line, methodName, ownerType, valueType, modifiers);
         this.paramInfos = paramInfos;
         this.thisParam = thisParam;
@@ -74,22 +75,8 @@ public class MethodEntry extends MemberEntry {
         return (ClassEntry) ownerType;
     }
 
-    public int getParamCount() {
-        return paramInfos.size();
-    }
-
-    public TypeEntry getParamType(int idx) {
-        assert idx < paramInfos.size();
-        return paramInfos.get(idx).type();
-    }
-
     public List<TypeEntry> getParamTypes() {
         return paramInfos.stream().map(LocalEntry::type).toList();
-    }
-
-    public LocalEntry getParam(int i) {
-        assert i >= 0 && i < paramInfos.size() : "bad param index";
-        return paramInfos.get(i);
     }
 
     public List<LocalEntry> getParams() {
@@ -125,9 +112,7 @@ public class MethodEntry extends MemberEntry {
 
             LocalEntry local = new LocalEntry(name, type, slot, line);
             synchronized (locals) {
-                if (!locals.contains(local)) {
-                    locals.add(local);
-                }
+                locals.add(local);
             }
             return local;
         }

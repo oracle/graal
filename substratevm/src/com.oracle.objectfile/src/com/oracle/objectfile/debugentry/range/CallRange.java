@@ -28,10 +28,13 @@ package com.oracle.objectfile.debugentry.range;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Stream;
 
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 
 public class CallRange extends Range {
@@ -42,8 +45,8 @@ public class CallRange extends Range {
      */
     private final Set<Range> callees = new TreeSet<>(Comparator.comparing(Range::getLoOffset));
 
-    protected CallRange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, int depth) {
-        super(primary, methodEntry, lo, hi, line, caller, depth);
+    protected CallRange(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localInfoList, int lo, int hi, int line, CallRange caller, int depth) {
+        super(primary, methodEntry, localInfoList, lo, hi, line, caller, depth);
     }
 
     @Override

@@ -26,11 +26,15 @@
 
 package com.oracle.objectfile.debugentry.range;
 
+import java.util.Map;
+
+import com.oracle.objectfile.debugentry.LocalEntry;
+import com.oracle.objectfile.debugentry.LocalValueEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 
 public class LeafRange extends Range {
-    protected LeafRange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, int depth) {
-        super(primary, methodEntry, lo, hi, line, caller, depth);
+    protected LeafRange(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localInfoList, int lo, int hi, int line, CallRange caller, int depth) {
+        super(primary, methodEntry, localInfoList, lo, hi, line, caller, depth);
     }
 
     @Override

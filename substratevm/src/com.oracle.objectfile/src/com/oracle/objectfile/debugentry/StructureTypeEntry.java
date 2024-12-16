@@ -27,9 +27,9 @@
 package com.oracle.objectfile.debugentry;
 
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * An intermediate type that provides behaviour for managing fields. This unifies code for handling
@@ -39,7 +39,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
     /**
      * Details of fields located in this instance.
      */
-    private final List<FieldEntry> fields;
+    private final ConcurrentSkipListSet<FieldEntry> fields;
 
     /**
      * The type signature of this types' layout. The layout of a type contains debug info of fields
@@ -53,7 +53,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
         super(typeName, size, classOffset, typeSignature, compressedTypeSignature);
         this.layoutTypeSignature = layoutTypeSignature;
 
-        this.fields = new ArrayList<>();
+        this.fields = new ConcurrentSkipListSet<>(Comparator.comparingInt(FieldEntry::getOffset));
     }
 
     public long getLayoutTypeSignature() {
@@ -65,7 +65,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
     }
 
     public List<FieldEntry> getFields() {
-        return Collections.unmodifiableList(fields);
+        return List.copyOf(fields);
     }
 
     String memberModifiers(int modifiers) {

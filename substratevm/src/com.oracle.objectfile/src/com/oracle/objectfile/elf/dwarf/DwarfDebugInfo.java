@@ -36,10 +36,8 @@ import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
-import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * A class that models the debug info in an organization that facilitates generation of the required
