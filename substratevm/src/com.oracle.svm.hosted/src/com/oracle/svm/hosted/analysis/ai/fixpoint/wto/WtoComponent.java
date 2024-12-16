@@ -1,3 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.wto;
 
-public interface WtoComponent {}
+public interface WtoComponent {
+    String toString();
+}
