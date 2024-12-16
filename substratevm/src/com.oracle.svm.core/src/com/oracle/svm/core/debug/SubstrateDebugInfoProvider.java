@@ -133,7 +133,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
     @Override
     protected TypeEntry createTypeEntry(SharedType type) {
-        String typeName = type.toJavaName(); // stringTable.uniqueDebugString(idType.toJavaName());
+        String typeName = type.toJavaName();
         LoaderEntry loaderEntry = lookupLoaderEntry(type);
         int size = getTypeSize(type);
         long classOffset = -1;

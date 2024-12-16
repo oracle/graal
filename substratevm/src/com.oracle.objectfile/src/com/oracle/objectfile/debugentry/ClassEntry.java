@@ -26,9 +26,9 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.oracle.objectfile.debugentry.range.Range;
 
@@ -51,23 +51,23 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of methods located in this instance.
      */
-    private final List<MethodEntry> methods;
+    private final ConcurrentSkipListSet<MethodEntry> methods;
     /**
      * A list recording details of all normal compiled methods included in this class sorted by
      * ascending address range. Note that the associated address ranges are disjoint and contiguous.
      */
-    private final List<CompiledMethodEntry> compiledMethods;
+    private final ConcurrentSkipListSet<CompiledMethodEntry> compiledMethods;
 
     /**
      * A list of all files referenced from info associated with this class, including info detailing
      * inline method ranges.
      */
-    private final List<FileEntry> files;
+    private final ConcurrentSkipListSet<FileEntry> files;
     /**
      * A list of all directories referenced from info associated with this class, including info
      * detailing inline method ranges.
      */
-    private final List<DirEntry> dirs;
+    private final ConcurrentSkipListSet<DirEntry> dirs;
 
     public ClassEntry(String typeName, int size, long classOffset, long typeSignature,
                     long compressedTypeSignature, long layoutTypeSignature,
@@ -76,57 +76,36 @@ public class ClassEntry extends StructureTypeEntry {
         this.superClass = superClass;
         this.fileEntry = fileEntry;
         this.loader = loader;
-        this.methods = new ArrayList<>();
-        this.compiledMethods = new ArrayList<>();
-        this.files = new ArrayList<>();
-        this.dirs = new ArrayList<>();
+        this.methods = new ConcurrentSkipListSet<>(Comparator.comparingInt(MethodEntry::getModifiers).thenComparingInt(MethodEntry::getLine).thenComparing(MethodEntry::getSymbolName));
+        this.compiledMethods = new ConcurrentSkipListSet<>(Comparator.comparing(CompiledMethodEntry::primary));
+        this.files = new ConcurrentSkipListSet<>(Comparator.comparing(FileEntry::fileName).thenComparing(file -> file.dirEntry().path()));
+        this.dirs = new ConcurrentSkipListSet<>(Comparator.comparing(DirEntry::path));
+
+        addFile(fileEntry);
     }
 
-    public void collectFilesAndDirs() {
-        HashSet<FileEntry> fileSet = new HashSet<>();
+    private void addFile(FileEntry fileEntry) {
+        files.add(fileEntry);
+        dirs.add(fileEntry.dirEntry());
+    }
 
-        // add containing file
-        fileSet.add(fileEntry);
-
-        // add all files of declared methods
-        fileSet.addAll(methods.stream().map(MethodEntry::getFileEntry).toList());
-
-        // add all files required for compilations
-        // no need to add the primary range as this is the same as the corresponding method
-        // declaration file
-        fileSet.addAll(compiledMethods.parallelStream()
-                        .flatMap(CompiledMethodEntry::topDownRangeStream)
-                        .map(Range::getFileEntry)
-                        .toList());
-
-        // add all files of fields
-        fileSet.addAll(getFields().stream().map(FieldEntry::getFileEntry).toList());
-
-        // fill file list from set
-        fileSet.forEach(this::addFile);
+    @Override
+    public void addField(FieldEntry field) {
+        addFile(field.getFileEntry());
+        super.addField(field);
     }
 
     public void addMethod(MethodEntry methodEntry) {
-        if (!methods.contains(methodEntry)) {
-            methods.add(methodEntry);
-        }
+        addFile(methodEntry.getFileEntry());
+        methods.add(methodEntry);
     }
 
     public void addCompiledMethod(CompiledMethodEntry compiledMethodEntry) {
+        addFile(compiledMethodEntry.primary().getFileEntry());
+        for (Range range : compiledMethodEntry.topDownRangeStream().toList()) {
+            addFile(range.getFileEntry());
+        }
         compiledMethods.add(compiledMethodEntry);
-    }
-
-    public void addFile(FileEntry fileEntry) {
-        if (fileEntry != null && !fileEntry.fileName().isEmpty() && !files.contains(fileEntry)) {
-            files.add(fileEntry);
-            addDir(fileEntry.dirEntry());
-        }
-    }
-
-    public void addDir(DirEntry dirEntry) {
-        if (dirEntry != null && !dirEntry.getPathString().isEmpty() && !dirs.contains(dirEntry)) {
-            dirs.add(dirEntry);
-        }
     }
 
     @Override
@@ -171,7 +150,7 @@ public class ClassEntry extends StructureTypeEntry {
         if (file == null || files.isEmpty() || !files.contains(file)) {
             return 0;
         }
-        return files.indexOf(file) + 1;
+        return (int) (files.stream().takeWhile(f -> f != file).count() + 1);
     }
 
     public DirEntry getDirEntry(FileEntry file) {
@@ -187,10 +166,10 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public int getDirIdx(DirEntry dir) {
-        if (dir == null || dir.getPathString().isEmpty() || dirs.isEmpty()) {
+        if (dir == null || dir.getPathString().isEmpty() || dirs.isEmpty() || !dirs.contains(dir)) {
             return 0;
         }
-        return dirs.indexOf(dir) + 1;
+        return (int) (dirs.stream().takeWhile(d -> d != dir).count() + 1);
     }
 
     public String getLoaderId() {
@@ -226,7 +205,7 @@ public class ClassEntry extends StructureTypeEntry {
      */
     public long lowpc() {
         assert hasCompiledMethods();
-        return compiledMethods.stream().map(CompiledMethodEntry::primary).mapToLong(Range::getLo).min().orElse(0);
+        return compiledMethods.first().primary().getLo();
     }
 
     /**
@@ -238,7 +217,7 @@ public class ClassEntry extends StructureTypeEntry {
      */
     public long hipc() {
         assert hasCompiledMethods();
-        return compiledMethods.stream().map(CompiledMethodEntry::primary).mapToLong(Range::getHi).max().orElse(0);
+        return compiledMethods.last().primary().getHi();
     }
 
     /**

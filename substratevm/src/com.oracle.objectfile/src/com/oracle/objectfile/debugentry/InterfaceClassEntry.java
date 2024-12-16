@@ -26,18 +26,18 @@
 
 package com.oracle.objectfile.debugentry;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 public class InterfaceClassEntry extends ClassEntry {
-    private final List<ClassEntry> implementors;
+    private final ConcurrentSkipListSet<ClassEntry> implementors;
 
     public InterfaceClassEntry(String typeName, int size, long classOffset, long typeSignature,
                     long compressedTypeSignature, long layoutTypeSignature,
                     ClassEntry superClass, FileEntry fileEntry, LoaderEntry loader) {
         super(typeName, size, classOffset, typeSignature, compressedTypeSignature, layoutTypeSignature, superClass, fileEntry, loader);
-        this.implementors = new ArrayList<>();
+        this.implementors = new ConcurrentSkipListSet<>(Comparator.comparingLong(ClassEntry::getTypeSignature));
     }
 
     @Override
@@ -55,7 +55,7 @@ public class InterfaceClassEntry extends ClassEntry {
     }
 
     public List<ClassEntry> getImplementors() {
-        return Collections.unmodifiableList(implementors);
+        return List.copyOf(implementors);
     }
 
     @Override

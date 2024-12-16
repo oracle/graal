@@ -61,7 +61,6 @@ public class BFDNameProvider implements UniqueShortNameProvider {
 
     public BFDNameProvider(List<ClassLoader> ignore) {
         this.ignoredLoaders = ignore;
-        this.wordBaseType = null;
     }
 
     @Override
@@ -117,8 +116,6 @@ public class BFDNameProvider implements UniqueShortNameProvider {
     }
 
     private final List<ClassLoader> ignoredLoaders;
-
-    private ResolvedJavaType wordBaseType;
 
     private static final String BUILTIN_CLASSLOADER_NAME = "jdk.internal.loader.BuiltinClassLoader";
 
@@ -406,17 +403,6 @@ public class BFDNameProvider implements UniqueShortNameProvider {
      */
     public String bfdMangle(Member m) {
         return new BFDMangler(this).mangle(m);
-    }
-
-    /**
-     * Make the provider aware of the word base type. This is needed because the same provider is
-     * used for AOT debug info generation and runtime debug info generation. For AOT debug info we
-     * need the HostedType and for Runtime debug info we need the SubstrateType.
-     *
-     * @param wordBaseType the current wordBaseType.
-     */
-    public void setWordBaseType(ResolvedJavaType wordBaseType) {
-        this.wordBaseType = wordBaseType;
     }
 
     private static class BFDMangler {
@@ -906,6 +892,10 @@ public class BFDNameProvider implements UniqueShortNameProvider {
      * @return true if the type needs to be encoded using pointer prefix P otherwise false.
      */
     private boolean needsPointerPrefix(ResolvedJavaType type) {
-        return wordBaseType == null || !wordBaseType.isAssignableFrom(type);
+        if (type instanceof SharedType sharedType) {
+            /* Word types have the kind Object, but a primitive storageKind. */
+            return sharedType.getJavaKind() == JavaKind.Object && sharedType.getStorageKind() == sharedType.getJavaKind();
+        }
+        return false;
     }
 }

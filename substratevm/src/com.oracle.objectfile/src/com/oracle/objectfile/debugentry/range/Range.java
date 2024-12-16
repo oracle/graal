@@ -27,6 +27,7 @@
 package com.oracle.objectfile.debugentry.range;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,7 +78,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
  * parameter values for separate sub-extents of an inline called method whose full extent is
  * represented by the parent call range at level N.
  */
-public abstract class Range {
+public abstract class Range implements Comparable<Range> {
     private final MethodEntry methodEntry;
     private final int loOffset;
     private int hiOffset;
@@ -95,7 +96,7 @@ public abstract class Range {
      * Values for the associated method's local and parameter variables that are available or,
      * alternatively, marked as invalid in this range.
      */
-    private final Map<LocalEntry, LocalValueEntry> localValueInfos = new HashMap<>();
+    private final Map<LocalEntry, LocalValueEntry> localValueInfos;
 
     /**
      * Create a primary range representing the root of the subrange tree for a top level compiled
@@ -124,27 +125,23 @@ public abstract class Range {
      * @param isLeaf true if this is a leaf range with no subranges
      * @return a new subrange to be linked into the range tree below the primary range.
      */
-    public static Range createSubrange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, boolean isLeaf, boolean isInitialRange) {
+    public static Range createSubrange(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localValueInfos, int lo, int hi, int line, CallRange caller, boolean isLeaf) {
         assert caller != null;
         if (caller != primary) {
             methodEntry.setInlined();
         }
         Range callee;
         if (isLeaf) {
-            callee = new LeafRange(primary, methodEntry, lo, hi, line, caller, caller.getDepth() + 1);
+            callee = new LeafRange(primary, methodEntry, localValueInfos, lo, hi, line, caller, caller.getDepth() + 1);
         } else {
-            callee = new CallRange(primary, methodEntry, lo, hi, line, caller, caller.getDepth() + 1);
+            callee = new CallRange(primary, methodEntry, localValueInfos, lo, hi, line, caller, caller.getDepth() + 1);
         }
 
         caller.addCallee(callee);
         return callee;
     }
 
-    public static Range createSubrange(PrimaryRange primary, MethodEntry methodEntry, int lo, int hi, int line, CallRange caller, boolean isLeaf) {
-        return createSubrange(primary, methodEntry, lo, hi, line, caller, isLeaf, false);
-    }
-
-    protected Range(PrimaryRange primary, MethodEntry methodEntry, int loOffset, int hiOffset, int line, CallRange caller, int depth) {
+    protected Range(PrimaryRange primary, MethodEntry methodEntry, Map<LocalEntry, LocalValueEntry> localValueInfos, int loOffset, int hiOffset, int line, CallRange caller, int depth) {
         assert methodEntry != null;
         this.primary = primary;
         this.methodEntry = methodEntry;
@@ -153,13 +150,14 @@ public abstract class Range {
         this.line = line;
         this.caller = caller;
         this.depth = depth;
+        this.localValueInfos = localValueInfos;
     }
 
     public Range split(int stackDecrement, int frameSize, int preExtendFrameSize) {
         // this should be for an initial range extending beyond the stack decrement
         assert loOffset == 0 && loOffset < stackDecrement && stackDecrement < hiOffset : "invalid split request";
-        Range newRange = Range.createSubrange(this.primary, this.methodEntry, stackDecrement, this.hiOffset, this.line, this.caller, this.isLeaf());
-        this.hiOffset = stackDecrement;
+
+        Map<LocalEntry, LocalValueEntry> localValueInfos = new HashMap<>();
 
         for (var localInfo : this.localValueInfos.entrySet()) {
             if (localInfo.getValue() instanceof StackValueEntry stackValue) {
@@ -169,11 +167,14 @@ public abstract class Range {
                 // difference between the caller SP and the pre-extend callee SP
                 // because of a stacked return address.
                 int adjustment = frameSize - preExtendFrameSize;
-                newRange.localValueInfos.put(localInfo.getKey(), new StackValueEntry(stackValue.stackSlot() + adjustment));
+                localValueInfos.put(localInfo.getKey(), new StackValueEntry(stackValue.stackSlot() + adjustment));
             } else {
-                newRange.localValueInfos.put(localInfo.getKey(), localInfo.getValue());
+                localValueInfos.put(localInfo.getKey(), localInfo.getValue());
             }
         }
+
+        Range newRange = Range.createSubrange(this.primary, this.methodEntry, localValueInfos, stackDecrement, this.hiOffset, this.line, this.caller, this.isLeaf());
+        this.hiOffset = stackDecrement;
 
         return newRange;
     }
@@ -274,6 +275,14 @@ public abstract class Range {
         return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", getLo(), getHi(), getFullMethodNameWithParams(), methodEntry.getFullFileName(), line);
     }
 
+    @Override
+    public int compareTo(Range other) {
+        return Comparator.comparingLong(Range::getLo)
+                        .thenComparingLong(Range::getHi)
+                        .thenComparingInt(Range::getLine)
+                        .compare(this, other);
+    }
+
     public String getFileName() {
         return methodEntry.getFileName();
     }
@@ -334,10 +343,6 @@ public abstract class Range {
 
     public Range getCaller() {
         return caller;
-    }
-
-    public void setLocalValueInfo(Map<LocalEntry, LocalValueEntry> localValueInfos) {
-        this.localValueInfos.putAll(localValueInfos);
     }
 
     public LocalValueEntry lookupValue(LocalEntry local) {
