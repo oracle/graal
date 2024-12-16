@@ -25,28 +25,6 @@
  */
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.debugentry.ArrayTypeEntry;
-import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.FieldEntry;
-import com.oracle.objectfile.debugentry.HeaderTypeEntry;
-import com.oracle.objectfile.debugentry.MemberEntry;
-import com.oracle.objectfile.debugentry.MethodEntry;
-import com.oracle.objectfile.debugentry.StructureTypeEntry;
-import com.oracle.objectfile.debugentry.TypeEntry;
-
-import jdk.graal.compiler.debug.GraalError;
-
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.ADDRESS_BITS;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.CV_CALL_NEAR_C;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.FUNC_IS_CONSTRUCTOR;
@@ -82,8 +60,30 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_REAL64;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_UINT4;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_VOID;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_WCHAR;
-import static com.oracle.objectfile.pecoff.cv.CVTypeRecord.CVClassRecord.ATTR_FORWARD_REF;
 import static com.oracle.objectfile.pecoff.cv.CVTypeRecord.CV_TYPE_RECORD_MAX_SIZE;
+import static com.oracle.objectfile.pecoff.cv.CVTypeRecord.CVClassRecord.ATTR_FORWARD_REF;
+
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import com.oracle.objectfile.debugentry.ArrayTypeEntry;
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.FieldEntry;
+import com.oracle.objectfile.debugentry.HeaderTypeEntry;
+import com.oracle.objectfile.debugentry.MemberEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.StructureTypeEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
+
+import jdk.graal.compiler.debug.GraalError;
 
 class CVTypeSectionBuilder {
 
@@ -412,8 +412,8 @@ class CVTypeSectionBuilder {
         mFunctionRecord.setFuncAttr(attr);
         mFunctionRecord.setReturnType(types.getIndexForPointerOrPrimitive(methodEntry.getValueType()));
         CVTypeRecord.CVTypeArglistRecord argListType = new CVTypeRecord.CVTypeArglistRecord();
-        for (int i = 0; i < methodEntry.getParamCount(); i++) {
-            argListType.add(types.getIndexForPointerOrPrimitive(methodEntry.getParamType(i)));
+        for (TypeEntry paramType : methodEntry.getParamTypes()) {
+            argListType.add(types.getIndexForPointerOrPrimitive(paramType));
         }
         argListType = addTypeRecord(argListType);
         mFunctionRecord.setArgList(argListType);

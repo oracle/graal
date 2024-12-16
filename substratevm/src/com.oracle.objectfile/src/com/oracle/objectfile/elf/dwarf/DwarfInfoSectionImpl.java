@@ -414,15 +414,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeTypeUnits(DebugContext context, StructureTypeEntry typeEntry, byte[] buffer, int p) {
         int pos = p;
 
-        if (typeEntry.isForeign()) {
-            ForeignTypeEntry foreignTypeEntry = (ForeignTypeEntry) typeEntry;
+        if (typeEntry instanceof ForeignTypeEntry foreignTypeEntry) {
             pos = writeForeignLayoutTypeUnit(context, foreignTypeEntry, buffer, pos);
             pos = writeForeignTypeUnit(context, foreignTypeEntry, buffer, pos);
         } else {
-            if (typeEntry.isArray()) {
-                pos = writeArrayLayoutTypeUnit(context, (ArrayTypeEntry) typeEntry, buffer, pos);
-            } else if (typeEntry.isInterface()) {
-                pos = writeInterfaceLayoutTypeUnit(context, (InterfaceClassEntry) typeEntry, buffer, pos);
+            if (typeEntry instanceof ArrayTypeEntry arrayTypeEntry) {
+                pos = writeArrayLayoutTypeUnit(context, arrayTypeEntry, buffer, pos);
+            } else if (typeEntry instanceof InterfaceClassEntry interfaceClassEntry) {
+                pos = writeInterfaceLayoutTypeUnit(context, interfaceClassEntry, buffer, pos);
             } else {
                 assert typeEntry instanceof ClassEntry;
                 pos = writeClassLayoutTypeUnit(context, (ClassEntry) typeEntry, buffer, pos);
@@ -464,10 +463,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
 
         String loaderId = "";
-        if (typeEntry.isArray()) {
-            loaderId = ((ArrayTypeEntry) typeEntry).getLoaderId();
-        } else if (typeEntry.isClass()) {
-            loaderId = ((ClassEntry) typeEntry).getLoaderId();
+        if (typeEntry instanceof ArrayTypeEntry arrayTypeEntry) {
+            loaderId = arrayTypeEntry.getLoaderId();
+        } else if (typeEntry instanceof ClassEntry classEntry) {
+            loaderId = classEntry.getLoaderId();
         }
         int lengthPos = pos;
         long typeSignature = typeEntry.getTypeSignature();
@@ -517,10 +516,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         /* if the class has a loader then embed the children in a namespace */
         String loaderId = "";
-        if (typeEntry.isArray()) {
-            loaderId = ((ArrayTypeEntry) typeEntry).getLoaderId();
-        } else if (typeEntry.isClass()) {
-            loaderId = ((ClassEntry) typeEntry).getLoaderId();
+        if (typeEntry instanceof ArrayTypeEntry arrayTypeEntry) {
+            loaderId = arrayTypeEntry.getLoaderId();
+        } else if (typeEntry instanceof ClassEntry classEntry) {
+            loaderId = classEntry.getLoaderId();
         }
         if (!loaderId.isEmpty()) {
             pos = writeNameSpace(context, loaderId, buffer, pos);
@@ -1080,8 +1079,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             LocalEntry paramInfo = method.getThisParam();
             pos = writeSkeletonMethodParameterDeclaration(context, paramInfo, true, buffer, pos);
         }
-        for (int i = 0; i < method.getParamCount(); i++) {
-            LocalEntry paramInfo = method.getParam(i);
+        for (LocalEntry paramInfo : method.getParams()) {
             pos = writeSkeletonMethodParameterDeclaration(context, paramInfo, false, buffer, pos);
         }
         return pos;
@@ -1200,17 +1198,13 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodParameterDeclarations(DebugContext context, ClassEntry classEntry, MethodEntry method, int fileIdx, int level, byte[] buffer, int p) {
         int pos = p;
-        int refAddr;
         if (!Modifier.isStatic(method.getModifiers())) {
-            refAddr = pos;
             LocalEntry paramInfo = method.getThisParam();
-            setMethodLocalIndex(classEntry, method, paramInfo, refAddr);
+            setMethodLocalIndex(classEntry, method, paramInfo, pos);
             pos = writeMethodParameterDeclaration(context, paramInfo, fileIdx, true, level, buffer, pos);
         }
-        for (int i = 0; i < method.getParamCount(); i++) {
-            refAddr = pos;
-            LocalEntry paramInfo = method.getParam(i);
-            setMethodLocalIndex(classEntry, method, paramInfo, refAddr);
+        for (LocalEntry paramInfo : method.getParams()) {
+            setMethodLocalIndex(classEntry, method, paramInfo, pos);
             pos = writeMethodParameterDeclaration(context, paramInfo, fileIdx, false, level, buffer, pos);
         }
         return pos;
@@ -1795,8 +1789,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, thisParamInfo);
             pos = writeMethodLocalLocation(context, range, thisParamInfo, refAddr, depth, true, buffer, pos);
         }
-        for (int i = 0; i < methodEntry.getParamCount(); i++) {
-            LocalEntry paramInfo = methodEntry.getParam(i);
+        for (LocalEntry paramInfo : methodEntry.getParams()) {
             int refAddr = getMethodLocalIndex(classEntry, methodEntry, paramInfo);
             pos = writeMethodLocalLocation(context, range, paramInfo, refAddr, depth, true, buffer, pos);
         }

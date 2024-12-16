@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debuginfo;
 
-import java.util.List;
+import java.util.SortedSet;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.StringTable;
@@ -71,9 +71,9 @@ public interface DebugInfoProvider {
 
     StringTable getStringTable();
 
-    List<TypeEntry> typeEntries();
+    SortedSet<TypeEntry> typeEntries();
 
-    List<CompiledMethodEntry> compiledMethodEntries();
+    SortedSet<CompiledMethodEntry> compiledMethodEntries();
 
     String cachePath();
 

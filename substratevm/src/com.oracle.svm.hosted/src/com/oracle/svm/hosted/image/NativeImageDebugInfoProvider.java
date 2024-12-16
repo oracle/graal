@@ -388,7 +388,6 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
             debug.log("typename %s adding %s method %s %s(%s)%n",
                             classEntry.getTypeName(), methodEntry.getModifiersString(), methodEntry.getValueType().getTypeName(), methodEntry.getMethodName(),
                             formatParams(methodEntry.getThisParam(), methodEntry.getParams()));
-            classEntry.addMethod(methodEntry);
         }
     }
 

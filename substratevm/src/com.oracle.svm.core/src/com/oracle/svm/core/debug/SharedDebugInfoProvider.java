@@ -5,10 +5,13 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -198,10 +201,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         this.wordBaseType = (SharedType) metaAccess.lookupJavaType(WordBase.class);
         this.voidType = (SharedType) metaAccess.lookupJavaType(Void.class);
 
-        if (UniqueShortNameProvider.singleton() instanceof BFDNameProvider bfdNameProvider) {
-            bfdNameProvider.setWordBaseType(this.wordBaseType);
-        }
-
         // Get some information on heap layout and object/object header layout
         this.useHeapBase = ReferenceAccess.singleton().haveCompressedReferences() && ReferenceAccess.singleton().getCompressEncoding().hasBase();
         this.compressionShift = ReferenceAccess.singleton().getCompressionShift();
@@ -263,14 +262,24 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     @Override
-    public List<TypeEntry> typeEntries() {
+    public SortedSet<TypeEntry> typeEntries() {
+        SortedSet<TypeEntry> typeEntries = new TreeSet<>(Comparator.comparingLong(TypeEntry::getTypeSignature));
+
+        typeEntries.add(headerTypeEntry);
+        typeEntries.addAll(typeIndex.values());
+
         // we will always create the headerTypeEntry, as it will be used as superclass for object
-        return Stream.concat(Stream.of(headerTypeEntry), typeIndex.values().stream()).toList();
+        return typeEntries;
     }
 
     @Override
-    public List<CompiledMethodEntry> compiledMethodEntries() {
-        return compiledMethodIndex.values().stream().toList();
+    public SortedSet<CompiledMethodEntry> compiledMethodEntries() {
+        SortedSet<CompiledMethodEntry> compiledMethodEntries = new TreeSet<>(
+                        Comparator.comparing(CompiledMethodEntry::primary).thenComparingLong(compiledMethodEntry -> compiledMethodEntry.classEntry().getTypeSignature()));
+
+        compiledMethodEntries.addAll(compiledMethodIndex.values());
+
+        return compiledMethodEntries;
     }
 
     /* Functions for installing debug info into the index maps. */
@@ -283,17 +292,18 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         Stream<Object> dataStream = debug.isLogEnabled() ? dataInfo() : dataInfo().parallel();
 
         try (DebugContext.Scope s = debug.scope("DebugInfoProvider")) {
-            // create and index an empty dir with index 0 for null paths.
+            // Create and index an empty dir with index 0 for null paths.
             lookupDirEntry(EMPTY_PATH);
 
-            // handle types, compilations and data
-            // code info needs to be handled first as it contains source file infos of compilations
-            // which are collected in the class entry
+            /*
+             * Handle types, compilations and data. Code info needs to be handled first as it
+             * contains source file infos of compilations which are collected in the class entry.
+             */
             codeStream.forEach(pair -> handleCodeInfo(pair.getLeft(), pair.getRight()));
             typeStream.forEach(this::handleTypeInfo);
             dataStream.forEach(this::handleDataInfo);
 
-            // create the header type
+            // Create the header type.
             handleTypeInfo(null);
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -305,11 +315,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     private void handleTypeInfo(SharedType type) {
         TypeEntry typeEntry = lookupTypeEntry(type);
-
-        // collect all files and directories referenced by each classEntry
-        if (typeEntry instanceof ClassEntry classEntry) {
-            classEntry.collectFilesAndDirs();
-        }
     }
 
     private void handleCodeInfo(SharedMethod method, CompilationResult compilation) {
@@ -335,67 +340,85 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return SubstrateOptions.DebugCodeInfoUseSourceMappings.getValue();
     }
 
+    protected CompiledMethodEntry createCompilationInfo(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
+        int primaryLine = methodEntry.getLine();
+        int frameSize = compilation.getTotalFrameSize();
+        List<FrameSizeChangeEntry> frameSizeChanges = getFrameSizeChanges(compilation);
+        ClassEntry ownerType = methodEntry.getOwnerType();
+
+        // Create a primary range that spans over the compilation.
+        // The primary range entry holds the code offset information for all its sub ranges.
+        PrimaryRange primaryRange = Range.createPrimary(methodEntry, 0, compilation.getTargetCodeSize(), primaryLine, getCodeOffset(method));
+        debug.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.getTypeName(), methodEntry.getMethodName(), primaryRange.getFileEntry().getPathName(),
+                        primaryRange.getFileName(), primaryLine, primaryRange.getLo(), primaryRange.getHi());
+
+        return new CompiledMethodEntry(primaryRange, frameSizeChanges, frameSize, ownerType);
+    }
+
+    protected void processCompilationInfo(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation, CompiledMethodEntry compiledMethodEntry) {
+        // Mark the method entry for the compilation.
+        methodEntry.setInRange();
+
+        // If the compiled method entry was added, we still need to check the frame states
+        // for subranges.
+
+        // Can we still provide locals if we have no file name?
+        if (methodEntry.getFileName().isEmpty()) {
+            return;
+        }
+
+        // Restrict the frame state traversal based on options.
+        boolean omitInline = omitInline();
+        int maxDepth = debugCodeInfoMaxDepth();
+        boolean useSourceMappings = debugCodeInfoUseSourceMappings();
+        if (omitInline) {
+            /* TopLevelVisitor will not go deeper than level 2 */
+            maxDepth = 2;
+        }
+
+        // The root node is represented by the primary range.
+        // A call nodes in the frame tree will be stored as call ranges and leaf nodes as
+        // leaf ranges
+        final CompilationResultFrameTree.CallNode root = new CompilationResultFrameTree.Builder(debug, compilation.getTargetCodeSize(), maxDepth, useSourceMappings,
+                        true)
+                        .build(compilation);
+        if (root == null) {
+            return;
+        }
+        PrimaryRange primaryRange = compiledMethodEntry.primary();
+        int frameSize = compiledMethodEntry.frameSize();
+        final List<Range> subRanges = new ArrayList<>();
+        // The top level visitor will only traverse the direct children of the primary
+        // range. All sub call ranges will be treated as leaf ranges.
+        final CompilationResultFrameTree.Visitor visitor = omitInline ? new TopLevelVisitor(subRanges, frameSize, primaryRange) : new MultiLevelVisitor(subRanges, frameSize, primaryRange);
+        // arguments passed by visitor to apply are
+        // NativeImageDebugLocationInfo caller location info
+        // CallNode nodeToEmbed parent call node to convert to entry code leaf
+        // NativeImageDebugLocationInfo leaf into which current leaf may be merged
+        root.visitChildren(visitor, primaryRange, null, null);
+        // try to add a location record for offset zero
+        updateInitialLocation(primaryRange, subRanges, compilation, method, methodEntry);
+
+        methodEntry.getOwnerType().addCompiledMethod(compiledMethodEntry);
+    }
+
     @SuppressWarnings("try")
     protected CompiledMethodEntry installCompilationInfo(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
         try (DebugContext.Scope s = debug.scope("DebugInfoCompilation")) {
-            // Mark the method entry for the compilation.
-            methodEntry.setInRange();
+            debug.log(DebugContext.INFO_LEVEL, "Register compilation %s ", compilation.getName());
 
-            int primaryLine = methodEntry.getLine();
-            int frameSize = compilation.getTotalFrameSize();
-            List<FrameSizeChangeEntry> frameSizeChanges = getFrameSizeChanges(compilation);
-            ClassEntry ownerType = methodEntry.getOwnerType();
-
-            // Create a primary range that spans over the compilation.
-            // The primary range entry holds the code offset information for all its sub ranges.
-            PrimaryRange primaryRange = Range.createPrimary(methodEntry, 0, compilation.getTargetCodeSize(), primaryLine, getCodeOffset(method));
-            debug.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.getTypeName(), methodEntry.getMethodName(), primaryRange.getFileEntry().getPathName(),
-                            primaryRange.getFileName(), primaryLine, primaryRange.getLo(), primaryRange.getHi());
-
-            CompiledMethodEntry compiledMethodEntry = new CompiledMethodEntry(primaryRange, frameSizeChanges, frameSize, ownerType);
+            CompiledMethodEntry compiledMethodEntry = createCompilationInfo(methodEntry, method, compilation);
             if (compiledMethodIndex.putIfAbsent(compilation.getCompilationId(), compiledMethodEntry) == null) {
-                // If the compiled method entry was added, we still need to check the frame states
-                // for subranges.
-
-                // Can we still provide locals if we have no file name?
-                if (methodEntry.getFileName().isEmpty()) {
-                    return compiledMethodEntry;
-                }
-
-                // Restrict the frame state traversal based on options.
-                boolean omitInline = omitInline();
-                int maxDepth = debugCodeInfoMaxDepth();
-                boolean useSourceMappings = debugCodeInfoUseSourceMappings();
-                if (omitInline) {
-                    /* TopLevelVisitor will not go deeper than level 2 */
-                    maxDepth = 2;
-                }
-
-                // The root node is represented by the primary range.
-                // A call nodes in the frame tree will be stored as call ranges and leaf nodes as
-                // leaf ranges
-                final CompilationResultFrameTree.CallNode root = new CompilationResultFrameTree.Builder(debug, compilation.getTargetCodeSize(), maxDepth, useSourceMappings,
-                                true)
-                                .build(compilation);
-                if (root == null) {
-                    return compiledMethodEntry;
-                }
-                final List<Range> subRanges = new ArrayList<>();
-                // The top level visitor will only traverse the direct children of the primary
-                // range. All sub call ranges will be treated as leaf ranges.
-                final CompilationResultFrameTree.Visitor visitor = omitInline ? new TopLevelVisitor(subRanges, frameSize, primaryRange) : new MultiLevelVisitor(subRanges, frameSize, primaryRange);
-                // arguments passed by visitor to apply are
-                // NativeImageDebugLocationInfo caller location info
-                // CallNode nodeToEmbed parent call node to convert to entry code leaf
-                // NativeImageDebugLocationInfo leaf into which current leaf may be merged
-                root.visitChildren(visitor, primaryRange, null, null);
-                // try to add a location record for offset zero
-                updateInitialLocation(primaryRange, subRanges, compilation, method, methodEntry);
-
-                ownerType.addCompiledMethod(compiledMethodEntry);
+                // CompiledMethodEntry was added to the index, now we need to process the
+                // compilation.
+                debug.log(DebugContext.INFO_LEVEL, "Process compilation %s ", compilation.getName());
+                processCompilationInfo(methodEntry, method, compilation, compiledMethodEntry);
+                return compiledMethodEntry;
+            } else {
+                // The compilation entry was created in the meantime, so we return the one unique
+                // type.
+                return compiledMethodIndex.get(compilation.getCompilationId());
             }
-
-            return compiledMethodEntry;
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -443,12 +466,12 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             // check the local variable table for parameters
             // if the params are not in the table, we create synthetic ones from the method
             // signature
-            List<LocalEntry> paramInfos = getParamEntries(method, line);
+            SortedSet<LocalEntry> paramInfos = getParamEntries(method, line);
             int lastParamSlot = paramInfos.isEmpty() ? -1 : paramInfos.getLast().slot();
             LocalEntry thisParam = Modifier.isStatic(modifiers) ? null : paramInfos.removeFirst();
 
             // look for locals in the methods local variable table
-            List<LocalEntry> locals = getLocalEntries(method, lastParamSlot);
+            SortedSet<LocalEntry> locals = getLocalEntries(method, lastParamSlot);
 
             String symbolName = getSymbolName(method);
             int vTableOffset = getVTableOffset(method);
@@ -475,8 +498,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 // TypeEntry was added to the type index, now we need to process the type.
                 debug.log(DebugContext.INFO_LEVEL, "Process type %s ", type.getName());
                 processTypeEntry(type, typeEntry);
+                return typeEntry;
+            } else {
+                // The type entry was created in the meantime, so we return the one unique type.
+                return typeIndex.get(type);
             }
-            return typeEntry;
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -533,8 +559,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return name;
     }
 
-    public List<LocalEntry> getLocalEntries(SharedMethod method, int lastParamSlot) {
-        ArrayList<LocalEntry> localEntries = new ArrayList<>();
+    public SortedSet<LocalEntry> getLocalEntries(SharedMethod method, int lastParamSlot) {
+        SortedSet<LocalEntry> localEntries = new TreeSet<>(Comparator.comparingInt(LocalEntry::slot).thenComparing(LocalEntry::name).thenComparingInt(LocalEntry::line));
 
         LineNumberTable lnt = method.getLineNumberTable();
         LocalVariableTable lvt = method.getLocalVariableTable();
@@ -573,10 +599,10 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return localEntries;
     }
 
-    public List<LocalEntry> getParamEntries(SharedMethod method, int line) {
+    public SortedSet<LocalEntry> getParamEntries(SharedMethod method, int line) {
         Signature signature = method.getSignature();
         int parameterCount = signature.getParameterCount(false);
-        List<LocalEntry> paramInfos = new ArrayList<>(parameterCount);
+        SortedSet<LocalEntry> paramInfos = new TreeSet<>(Comparator.comparingInt(LocalEntry::slot));
         LocalVariableTable table = method.getLocalVariableTable();
         int slot = 0;
         SharedType ownerType = (SharedType) method.getDeclaringClass();
@@ -604,8 +630,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     public String getSymbolName(SharedMethod method) {
         return UniqueShortNameProvider.singleton().uniqueShortName(null, method.getDeclaringClass(), method.getName(), method.getSignature(), method.isConstructor());
-        // return nameProvider.uniqueShortName(null, method.getDeclaringClass(), method.getName(),
-        // method.getSignature(), method.isConstructor());
     }
 
     public boolean isDeopt(SharedMethod method, String methodName) {
@@ -824,9 +848,9 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         // create a synthetic location record including details of passed arguments
         ParamLocationProducer locProducer = new ParamLocationProducer(method);
         debug.log(DebugContext.DETAILED_LEVEL, "Add synthetic Location Info : %s (0, %d)", methodEntry.getMethodName(), firstLocationOffset - 1);
-        Range locationInfo = Range.createSubrange(primary, methodEntry, 0, firstLocationOffset, methodEntry.getLine(), primary, true, true);
 
-        locationInfo.setLocalValueInfo(initSyntheticInfoList(locProducer, methodEntry));
+        Map<LocalEntry, LocalValueEntry> localInfoList = initSyntheticInfoList(locProducer, methodEntry);
+        Range locationInfo = Range.createSubrange(primary, methodEntry, localInfoList, 0, firstLocationOffset, methodEntry.getLine(), primary, true);
 
         // if the prologue extends beyond the stack extend and uses the stack then the info
         // needs
@@ -1027,12 +1051,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             LineNumberTable lineNumberTable = method.getLineNumberTable();
             int line = lineNumberTable == null ? -1 : lineNumberTable.getLineNumber(pos.getBCI());
 
-            Range locationInfo = Range.createSubrange(primary, methodEntry, node.getStartPos(), node.getEndPos() + 1, line, callerInfo, isLeaf);
+            Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize);
+            Range locationInfo = Range.createSubrange(primary, methodEntry, localValueInfos, node.getStartPos(), node.getEndPos() + 1, line, callerInfo, isLeaf);
 
             debug.log(DebugContext.DETAILED_LEVEL, "Create %s Location Info : %s depth %d (%d, %d)", isLeaf ? "leaf" : "call", method.getName(), locationInfo.getDepth(), locationInfo.getLoOffset(),
                             locationInfo.getHiOffset() - 1);
-
-            locationInfo.setLocalValueInfo(initLocalInfoList(pos, methodEntry, frameSize));
 
             return locationInfo;
         }
@@ -1257,12 +1280,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         LineNumberTable lineNumberTable = method.getLineNumberTable();
         int line = lineNumberTable == null ? -1 : lineNumberTable.getLineNumber(pos.getBCI());
 
-        Range locationInfo = Range.createSubrange(primary, methodEntry, startPos, endPos, line, callerLocation, true);
+        Map<LocalEntry, LocalValueEntry> localValueInfos = initLocalInfoList(pos, methodEntry, frameSize);
+        Range locationInfo = Range.createSubrange(primary, methodEntry, localValueInfos, startPos, endPos, line, callerLocation, true);
 
         debug.log(DebugContext.DETAILED_LEVEL, "Embed leaf Location Info : %s depth %d (%d, %d)", locationInfo.getMethodName(), locationInfo.getDepth(), locationInfo.getLoOffset(),
                         locationInfo.getHiOffset() - 1);
-
-        locationInfo.setLocalValueInfo(initLocalInfoList(pos, methodEntry, frameSize));
 
         return locationInfo;
     }
