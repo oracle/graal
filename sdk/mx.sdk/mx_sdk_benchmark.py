@@ -1687,7 +1687,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         if any(benchmark in sparkBenchmarks for benchmark in benchmarks):
             # Spark benchmarks require a higher stack size than default in some configurations.
             # [JDK-8303076] [GR-44499] [GR-50671]
-            vmArgs.append("-Xss1090K")
+            vmArgs.append("-Xss1500K")
 
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
         return (vmArgs + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
