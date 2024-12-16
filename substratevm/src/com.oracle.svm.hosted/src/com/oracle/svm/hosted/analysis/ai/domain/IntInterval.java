@@ -1,15 +1,15 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
 /**
- * Represents an integer interval domain
+ * Represents an interval domain of integer values
  */
 public final class IntInterval
         extends AbstractDomain<IntInterval> {
 
-    private static final int MIN = Integer.MIN_VALUE;
-    private static final int MAX = Integer.MAX_VALUE;
-    private int lowerBound;
-    private int upperBound;
+    public static final long MIN = Long.MIN_VALUE;
+    public static final long MAX = Long.MAX_VALUE;
+    private long lowerBound;
+    private long upperBound;
 
     /**
      * Default ctor creates BOT value (lower bound > upper bound)
@@ -19,12 +19,12 @@ public final class IntInterval
         this.upperBound = 0;
     }
 
-    public IntInterval(int constant) {
+    public IntInterval(long constant) {
         this.lowerBound = constant;
         this.upperBound = constant;
     }
 
-    public IntInterval(Integer lowerBound, Integer upperBound) {
+    public IntInterval(long lowerBound, long upperBound) {
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
     }
@@ -34,11 +34,11 @@ public final class IntInterval
         this.upperBound = other.upperBound;
     }
 
-    public Integer getLowerBound() {
+    public long getLowerBound() {
         return lowerBound;
     }
 
-    public Integer getUpperBound() {
+    public long getUpperBound() {
         return upperBound;
     }
 
@@ -125,7 +125,7 @@ public final class IntInterval
         return new IntInterval(lowerBound, upperBound);
     }
 
-    public boolean containsValue(int value) {
+    public boolean containsValue(long value) {
         return lowerBound >= value && value <= upperBound;
     }
 
@@ -143,10 +143,8 @@ public final class IntInterval
             return;
         }
 
-        Long lowerBound = (long) getLowerBound() + other.getLowerBound();
-        Long upperBound = (long) getUpperBound() + other.getUpperBound();
-        this.lowerBound = getClampedValue(lowerBound);
-        this.upperBound = getClampedValue(upperBound);
+        lowerBound = getLowerBound() + other.getLowerBound();
+        upperBound = getUpperBound() + other.getUpperBound();
     }
 
     public IntInterval add(IntInterval other) {
@@ -166,10 +164,10 @@ public final class IntInterval
             return;
         }
 
-        Long lowerBound = (long) getLowerBound() - other.getLowerBound();
-        Long upperBound = (long) getUpperBound() - other.getUpperBound();
-        this.lowerBound = getClampedValue(lowerBound);
-        this.upperBound = getClampedValue(upperBound);
+        long lowerBound = getLowerBound() - other.getLowerBound();
+        long upperBound = getUpperBound() - other.getUpperBound();
+        this.lowerBound = (lowerBound);
+        this.upperBound = (upperBound);
     }
 
     public IntInterval sub(IntInterval other) {
@@ -189,10 +187,10 @@ public final class IntInterval
             return;
         }
 
-        int a = getClampedValue(((long) getLowerBound() * other.getLowerBound()));
-        int b = getClampedValue(((long) getLowerBound() * other.getUpperBound()));
-        int c = getClampedValue(((long) getUpperBound() * other.getLowerBound()));
-        int d = getClampedValue(((long) getUpperBound() * other.getUpperBound()));
+        long a = getLowerBound() * other.getLowerBound();
+        long b = getLowerBound() * other.getUpperBound();
+        long c = getUpperBound() * other.getLowerBound();
+        long d = getUpperBound() * other.getUpperBound();
         this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
         this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
     }
@@ -204,23 +202,28 @@ public final class IntInterval
     }
 
     public void divWith(IntInterval other) {
+        if (isDivisionByZeroInterval(other)) return;
+
+        long a = getLowerBound() / other.getLowerBound();
+        long b = getLowerBound() / other.getUpperBound();
+        long c = getUpperBound() / other.getLowerBound();
+        long d = getUpperBound() / other.getUpperBound();
+        this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
+        this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
+    }
+
+    private boolean isDivisionByZeroInterval(IntInterval other) {
         if (other.isBot() || other.getLowerBound() == 0 || other.getUpperBound() == 0) {
             setToBot();
-            return;
+            return true;
         }
 
         if (isBot()) {
             this.lowerBound = other.lowerBound;
             this.upperBound = other.upperBound;
-            return;
+            return true;
         }
-
-        int a = getClampedValue(((long) getLowerBound() / other.getLowerBound()));
-        int b = getClampedValue(((long) getLowerBound() / other.getUpperBound()));
-        int c = getClampedValue(((long) getUpperBound() / other.getLowerBound()));
-        int d = getClampedValue(((long) getUpperBound() / other.getUpperBound()));
-        this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
-        this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
+        return false;
     }
 
     public IntInterval div(IntInterval other) {
@@ -230,21 +233,12 @@ public final class IntInterval
     }
 
     public void remWith(IntInterval other) {
-        if (other.isBot() || other.getLowerBound() == 0 || other.getUpperBound() == 0) {
-            setToBot();
-            return;
-        }
+        if (isDivisionByZeroInterval(other)) return;
 
-        if (isBot()) {
-            this.lowerBound = other.lowerBound;
-            this.upperBound = other.upperBound;
-            return;
-        }
-
-        int a = getClampedValue(((long) getLowerBound() % other.getLowerBound()));
-        int b = getClampedValue(((long) getLowerBound() % other.getUpperBound()));
-        int c = getClampedValue(((long) getUpperBound() % other.getLowerBound()));
-        int d = getClampedValue(((long) getUpperBound() % other.getUpperBound()));
+        long a = getLowerBound() % other.getLowerBound();
+        long b = getLowerBound() % other.getUpperBound();
+        long c = getUpperBound() % other.getLowerBound();
+        long d = getUpperBound() % other.getUpperBound();
         this.lowerBound = Math.min(Math.min(a, b), Math.min(c, d));
         this.upperBound = Math.max(Math.max(a, b), Math.max(c, d));
     }
@@ -256,17 +250,13 @@ public final class IntInterval
     }
 
     /**
-     * Utility operations
-     */
-
-    /**
      * Inverses the interval, modifying it in the process
      * for [-inf, 3] returns [4, inf]
      * for [5, inf] returns [-inf, 4]
      * for [-inf, inf] returns [1, 0] (any bot is ok)
      * <p>
      * <p>
-     * Note: only works for intervals that are unbounded from at least one side
+     * Note: only works for interval that are unbounded from at least one side
      */
     public void inverse() {
         if (isTop()) {
@@ -286,24 +276,16 @@ public final class IntInterval
     }
 
     /**
-     * Static utility method to return the inverse of an interval (creates a copy).
+     * Static utility method to for creating an inverse interval
      *
      * @param interval The original interval.
      * @return A new `IntInterval` that is the inverse.
      */
-    public static IntInterval getInverse(IntInterval interval) {
+    public static IntInterval getInverseInterval(IntInterval interval) {
         IntInterval result = new IntInterval(interval);
         result.inverse();
         return result;
     }
 
-    private int getClampedValue(Long value) {
-        if (value < Integer.MIN_VALUE) {
-            return Integer.MIN_VALUE;
-        }
-        if (value > Integer.MAX_VALUE) {
-            return Integer.MAX_VALUE;
-        }
-        return Math.toIntExact(value);
-    }
+
 }
