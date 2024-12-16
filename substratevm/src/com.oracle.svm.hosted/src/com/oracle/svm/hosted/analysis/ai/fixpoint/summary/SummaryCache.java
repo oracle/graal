@@ -15,8 +15,11 @@ import java.util.Map;
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
 
-/* TODO: temporary string, but later should be access path to the method */
-public final class FixpointCache<Domain extends AbstractDomain<Domain>> {
+/* TODO: temporary string, but later should be access path to the method
+* TODO: cache hit/miss
+*
+*  */
+public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
 
     private final Map<String, List<FunctionSummary<Domain>>> cache = new HashMap<>();
 

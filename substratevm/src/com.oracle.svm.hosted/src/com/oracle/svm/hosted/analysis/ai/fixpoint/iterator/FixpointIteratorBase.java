@@ -1,9 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.FixpointCache;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -22,7 +23,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
     protected final TransferFunction<Domain> transferFunction;
     protected final Domain initialDomain;
     protected final AbstractStateMap<Domain> abstractStateMap;
-    protected final FixpointCache<Domain> fixpointCache;
+    protected final SummaryCache<Domain> summaryCache;
     protected final DebugContext debug;
 
     protected FixpointIteratorBase(ControlFlowGraph cfgGraph,
@@ -35,7 +36,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         this.transferFunction = transferFunction;
         this.initialDomain = initialDomain;
         this.abstractStateMap = new AbstractStateMap<>(initialDomain);
-        this.fixpointCache = new FixpointCache<>();
+        this.summaryCache = new SummaryCache<>();
         this.debug = debug;
     }
 
@@ -44,14 +45,14 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
                                    TransferFunction<Domain> transferFunction,
                                    Domain initialDomain,
                                    AbstractStateMap<Domain> abstractStateMap,
-                                   FixpointCache<Domain> fixpointCache,
+                                   SummaryCache<Domain> summaryCache,
                                    DebugContext debug) {
         this.cfgGraph = cfgGraph;
         this.policy = policy;
         this.transferFunction = transferFunction;
         this.initialDomain = initialDomain;
         this.abstractStateMap = abstractStateMap;
-        this.fixpointCache = fixpointCache;
+        this.summaryCache = summaryCache;
         this.debug = debug;
     }
 
@@ -79,8 +80,8 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
     }
 
     @Override
-    public FixpointCache<Domain> getFixpointCache() {
-        return fixpointCache;
+    public SummaryCache<Domain> getFixpointCache() {
+        return summaryCache;
     }
 
     @Override
@@ -101,7 +102,6 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
      */
     protected void extrapolate(Node node) {
         var state = abstractStateMap.getState(node);
-        state.incrementVisitedCount();
         int visitedAmount = abstractStateMap.getState(node).getVisitedCount();
         if (visitedAmount < policy.maxJoinIterations()) {
             abstractStateMap.getPostCondition(node).joinWith(abstractStateMap.getPreCondition(node));
@@ -110,7 +110,7 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
         }
 
         if (state.getVisitedCount() > policy.maxWidenIterations() + policy.maxJoinIterations()) {
-            throw new RuntimeException("Exceeded maxWidenIterations!" +
+            throw AnalysisError.shouldNotReachHere("Exceeded maxWidenIterations!" +
                     " Consider increasing the limit, or refactor your widening operator");
         }
     }

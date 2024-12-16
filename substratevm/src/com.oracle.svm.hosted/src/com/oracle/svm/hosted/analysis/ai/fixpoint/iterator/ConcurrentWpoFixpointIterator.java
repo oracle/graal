@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.FixpointCache;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoNode;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
@@ -52,9 +52,9 @@ public final class ConcurrentWpoFixpointIterator<
                                          TransferFunction<Domain> transferFunction,
                                          Domain initialDomain,
                                          AbstractStateMap<Domain> abstractStateMap,
-                                         FixpointCache<Domain> fixpointCache,
+                                         SummaryCache<Domain> summaryCache,
                                          DebugContext debug) {
-        super(cfgGraph, policy, transferFunction, initialDomain, abstractStateMap, fixpointCache, debug);
+        super(cfgGraph, policy, transferFunction, initialDomain, abstractStateMap, summaryCache, debug);
         this.weakPartialOrdering = new WeakPartialOrdering(cfgGraph);
         this.entry = cfgGraph.getStartBlock();
     }
@@ -157,7 +157,7 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         List<WorkNode> updatePlain() {
-            transferFunction.analyzeBlock(node, abstractStateMap, fixpointCache);
+            transferFunction.analyzeBlock(node, abstractStateMap, summaryCache);
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             return successors;
         }
@@ -171,7 +171,7 @@ public final class ConcurrentWpoFixpointIterator<
                 }
             }
 
-            transferFunction.analyzeBlock(node, abstractStateMap, fixpointCache);
+            transferFunction.analyzeBlock(node, abstractStateMap, summaryCache);
             return successors;
         }
 
@@ -188,7 +188,7 @@ public final class ConcurrentWpoFixpointIterator<
 
         boolean updateHeadBackEdge() {
             Domain oldPre = abstractStateMap.getPreCondition(node.getBeginNode()).copyOf();
-            transferFunction.collectInvariantsFromPredecessors(node.getBeginNode(), abstractStateMap);
+            transferFunction.collectInvariantsFromCfgPredecessors(node.getBeginNode(), abstractStateMap);
             extrapolate(node.getBeginNode());
 
             if (oldPre.leq(abstractStateMap.getPreCondition(node.getBeginNode()))) {

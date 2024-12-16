@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.interpreter.call;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.FixpointCache;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.InvokeNode;
@@ -22,7 +22,7 @@ public interface CallInterpreter<Domain extends AbstractDomain<Domain>> {
      *
      * @param invokeNode             the invoke node to execute
      * @param abstractStateMap       the abstract state map
-     * @param fixpointCache          the fixpoint cache
+     * @param summaryCache          the fixpoint cache
      * @param domainTransferFunction the domain transfer function
      * @param initialDomain          the initial domain
      * @param policy                 the iterator policy
@@ -30,7 +30,7 @@ public interface CallInterpreter<Domain extends AbstractDomain<Domain>> {
      */
     void execInvoke(InvokeNode invokeNode,
                     AbstractStateMap<Domain> abstractStateMap,
-                    FixpointCache<Domain> fixpointCache,
+                    SummaryCache<Domain> summaryCache,
                     TransferFunction<Domain> domainTransferFunction,
                     Domain initialDomain,
                     IteratorPolicy policy,

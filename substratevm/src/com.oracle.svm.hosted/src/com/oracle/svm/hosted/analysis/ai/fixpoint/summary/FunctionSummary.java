@@ -39,7 +39,7 @@ public interface FunctionSummary<Domain extends AbstractDomain<Domain>> {
     /**
      * Checks if this summary covers the other summary.
      * Covers means that the precondition of this summary is more general than the precondition of the other summary.
-     * We will be using this function to check if we can reuse the summary from {@link FixpointCache},
+     * We will be using this function to check if we can reuse the summary from {@link SummaryCache},
      * meaning that one summary does not have a calculated post-condition yet, therefore implementations
      * should not take abstract post-conditions into account.
      * Implementations can choose to implement strict equivalence for better precision of the analysis
@@ -53,7 +53,7 @@ public interface FunctionSummary<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Creates a {@link FunctionSummary} containing only the precondition of the summary.
-     * This is used to check if {@link FixpointCache} contains a summary for a given call site and given abstract context.
+     * This is used to check if {@link SummaryCache} contains a summary for a given call site and given abstract context.
      * NOTE: We will need to update the summary with the abstract post condition after we interpret the function's body.
      *
      * @param invokeNode    the call site we are creating the summary for

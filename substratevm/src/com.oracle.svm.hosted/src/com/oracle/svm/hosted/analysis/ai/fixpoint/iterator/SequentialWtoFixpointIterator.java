@@ -3,13 +3,12 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.FixpointCache;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoComponent;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoCycle;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import com.oracle.svm.hosted.code.CompilationGraph;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -39,15 +38,19 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
                                          TransferFunction<Domain> transferFunction,
                                          Domain initialDomain,
                                          AbstractStateMap<Domain> abstractStateMap,
-                                         FixpointCache<Domain> fixpointCache,
+                                         SummaryCache<Domain> summaryCache,
                                          DebugContext debug) {
-        super(cfgGraph, policy, transferFunction, initialDomain, abstractStateMap, fixpointCache, debug);
+        super(cfgGraph, policy, transferFunction, initialDomain, abstractStateMap, summaryCache, debug);
     }
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
         clear();
         WeakTopologicalOrdering weakTopologicalOrdering = new WeakTopologicalOrdering(cfgGraph);
+        for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
+            debug.log(component.toString());
+        }
+
         for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
             analyzeComponent(component);
         }
@@ -69,7 +72,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
             abstractStateMap.setPrecondition(node, initialDomain);
         }
 
-        transferFunction.analyzeBlock(vertex.block(), abstractStateMap, fixpointCache);
+        transferFunction.analyzeBlock(vertex.block(), abstractStateMap, summaryCache);
     }
 
     private void analyzeCycle(WtoCycle cycle) {
@@ -78,7 +81,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
 
         while (iterate) {
             /* Analyze the nodes inside outermost block */
-            transferFunction.analyzeBlock(cycle.block(), abstractStateMap, fixpointCache);
+            transferFunction.analyzeBlock(cycle.block(), abstractStateMap, summaryCache);
 
             /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {
@@ -90,7 +93,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
              * we look at the head of the cycle by collecting invariants from predecessors
              * and checking if the pre-condition at the head of the cycle changed.
              */
-            transferFunction.collectInvariantsFromPredecessors(head, abstractStateMap);
+            transferFunction.collectInvariantsFromCfgPredecessors(head, abstractStateMap);
             if (abstractStateMap.getPreCondition(head).leq(abstractStateMap.getPostCondition(head))) {
                 iterate = false;
             } else {
