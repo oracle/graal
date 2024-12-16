@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,10 @@
  */
 package org.graalvm.word;
 
-import org.graalvm.word.impl.WordBoxFactory;
 import org.graalvm.word.impl.WordFactoryOpcode;
 import org.graalvm.word.impl.WordFactoryOperation;
+
+import java.lang.reflect.Proxy;
 
 /**
  * Provides factory method to create machine-word-sized values.
@@ -64,7 +65,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.ZERO)
     public static <T extends WordBase> T zero() {
-        return WordBoxFactory.box(0L);
+        return box(0L);
     }
 
     /**
@@ -77,7 +78,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.ZERO)
     public static <T extends PointerBase> T nullPointer() {
-        return WordBoxFactory.box(0L);
+        return box(0L);
     }
 
     /**
@@ -91,7 +92,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends UnsignedWord> T unsigned(long val) {
-        return WordBoxFactory.box(val);
+        return box(val);
     }
 
     /**
@@ -105,7 +106,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends PointerBase> T pointer(long val) {
-        return WordBoxFactory.box(val);
+        return box(val);
     }
 
     /**
@@ -119,7 +120,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends UnsignedWord> T unsigned(int val) {
-        return WordBoxFactory.box(val & 0xffffffffL);
+        return box(val & 0xffffffffL);
     }
 
     /**
@@ -133,7 +134,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_SIGNED)
     public static <T extends SignedWord> T signed(long val) {
-        return WordBoxFactory.box(val);
+        return box(val);
     }
 
     /**
@@ -147,6 +148,66 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_SIGNED)
     public static <T extends SignedWord> T signed(int val) {
-        return WordBoxFactory.box(val);
+        return box(val);
+    }
+
+    /**
+     * Unifies the {@link SignedWord}, {@link UnsignedWord} and {@link Pointer} interfaces so that
+     * methods with the same signature but different return types (e.g.
+     * {@link UnsignedWord#shiftLeft(UnsignedWord)} and {@link SignedWord#shiftLeft(UnsignedWord)})
+     * are overridden by a common method that merges the return types. This a requirement for
+     * creating a proxy type in {@link WordFactory#box(long)}.
+     */
+    interface Word extends SignedWord, UnsignedWord, Pointer {
+
+        Word add(int p1);
+
+        Word shiftLeft(int p1);
+
+        Word shiftLeft(UnsignedWord p1);
+
+        Word multiply(int p1);
+
+        Word or(int p1);
+
+        Word and(int p1);
+
+        Word not();
+
+        Word subtract(int p1);
+
+        Word xor(int p1);
+    }
+
+    /**
+     * Creates a box for {@code val} that supports the most basic operations defined by {@link Word}
+     * needed for passing around word values and printing them.
+     *
+     * Clients of the Word API that need more functional boxes must implement them themselves.
+     */
+    @SuppressWarnings("unchecked")
+    private static <T extends WordBase> T box(long val) {
+        Class<?>[] interfaces = {Word.class};
+        return (T) Proxy.newProxyInstance(WordFactory.class.getClassLoader(), interfaces, (proxy, method, args) -> {
+            switch (method.getName()) {
+                case "toString": {
+                    return "WordImpl<" + val + ">";
+                }
+                case "equals": {
+                    if (args[0] instanceof WordBase) {
+                        WordBase thatWord = (WordBase) args[0];
+                        return val == thatWord.rawValue();
+                    }
+                    return false;
+                }
+                case "hashCode": {
+                    return Long.hashCode(val);
+                }
+                case "rawValue": {
+                    return val;
+                }
+            }
+            throw new UnsupportedOperationException("operation " + method.getName() + " not supported");
+        });
     }
 }

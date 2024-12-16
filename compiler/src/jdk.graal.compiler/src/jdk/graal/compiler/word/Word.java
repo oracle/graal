@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,8 +35,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
-import org.graalvm.word.impl.WordBoxFactory;
 
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.calc.UnsignedMath;
@@ -62,14 +60,6 @@ import jdk.internal.misc.Unsafe;
 public abstract class Word implements SignedWord, UnsignedWord, Pointer {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-
-    static {
-        BoxFactoryImpl.initialize();
-    }
-
-    public static void ensureInitialized() {
-        /* Calling this method ensures that the static initializer has been executed. */
-    }
 
     /**
      * Links a method to a canonical operation represented by an {@link Opcode} val.
@@ -117,19 +107,6 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
         TO_TYPED_OBJECT,
         TO_OBJECT_NON_NULL,
         TO_RAW_VALUE,
-    }
-
-    static class BoxFactoryImpl extends WordBoxFactory {
-        static void initialize() {
-            assert boxFactory == null : "BoxFactory must be initialized only once.";
-            boxFactory = new BoxFactoryImpl();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public <T extends WordBase> T boxImpl(long val) {
-            return (T) HostedWord.boxLong(val);
-        }
     }
 
     /*
