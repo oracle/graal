@@ -50,30 +50,30 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
         state.setPreCondition(preCondition);
     }
 
-    public int getVisitCount(Node node) {
-        return getState(node).getVisitedCount();
+    public void incrementVisitCount(Node node) {
+        getState(node).incrementVisitedCount();
     }
 
-    public boolean isVisited(Node node) {
-        return getState(node).isVisited();
+    public int getVisitCount(Node node) {
+        return getState(node).getVisitedCount();
     }
 
     public void resetCount(Node node) {
         getState(node).resetCount();
     }
 
-    public void resetStates() {
-        for (AbstractState<Domain> state : stateMap.values()) {
-            state.resetCount();
-            state.setPostCondition(initialDomain);
-            state.setPreCondition(initialDomain);
-        }
+    public boolean isVisited(Node node) {
+        System.out.println("Checking if node is visited: " + node);
+        var a = stateMap.containsKey(node);
+        System.out.println(a);
+        return a;
     }
 
     public String toString() {
-        StringBuilder sb = new StringBuilder("Post conditions after executing the analysis: \n");
+        StringBuilder sb = new StringBuilder("Pre and Post conditions after executing the analysis: \n");
         for (Node node : stateMap.keySet()) {
-            sb.append(node).append(" -> ").append(getPreCondition(node)).append("\n");
+            sb.append(node).append(" -> Pre: ").append(getPreCondition(node))
+                    .append(", Post: ").append(getPostCondition(node)).append("\n");
         }
         return sb.toString();
     }
