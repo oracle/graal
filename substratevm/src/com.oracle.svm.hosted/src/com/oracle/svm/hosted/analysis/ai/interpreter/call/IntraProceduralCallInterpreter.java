@@ -5,11 +5,11 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.ConcurrentWpoFixpoint
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.SequentialWtoFixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.FixpointCache;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.InvokeNode;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 
 /**
  * Represents a context insensitive call interpreter.
@@ -23,29 +23,25 @@ public final class IntraProceduralCallInterpreter<Domain extends AbstractDomain<
     @Override
     public void execInvoke(InvokeNode invokeNode,
                            AbstractStateMap<Domain> abstractStateMap,
-                           FixpointCache<Domain> fixpointCache,
+                           SummaryCache<Domain> summaryCache,
                            TransferFunction<Domain> transferFunction,
                            Domain initialDomain,
                            IteratorPolicy policy,
                            DebugContext debug) {
 
-        CallTargetNode callTargetNode = invokeNode.callTarget();
-
         /* If the method is native java method, execute it */
-        if (callTargetNode.targetMethod().isDefault()) {
-            /* TODO get structured Graph of the method */
+        if (invokeNode.callTarget().targetMethod().isDefault()) {
+            var callTargetCfg = new ControlFlowGraphBuilder(invokeNode.callTarget().graph()).build();
             switch (policy.strategy()) {
                 case CONCURRENT:
-                    var concurrentIterator = new ConcurrentWpoFixpointIterator<>(null, policy, transferFunction, initialDomain, debug);
+                    var concurrentIterator = new ConcurrentWpoFixpointIterator<>(callTargetCfg, policy, transferFunction, initialDomain, debug);
                     concurrentIterator.iterateUntilFixpoint();
-                    break;
                 case SEQUENTIAL:
-                    var sequentialIterator = new SequentialWtoFixpointIterator<>(null, policy, transferFunction, initialDomain, debug);
-                    transferFunction.analyzeNode(invokeNode, abstractStateMap, fixpointCache);
-                    break;
+                    var sequentialIterator = new SequentialWtoFixpointIterator<>(callTargetCfg, policy, transferFunction, initialDomain, debug);
+                    sequentialIterator.iterateUntilFixpoint();
             }
         }
-
+        abstractStateMap.setPostCondition(invokeNode, initialDomain);
         /* Otherwise, do nothing */
     }
 }
