@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
@@ -96,7 +96,7 @@ class ImageCodeInfoStorageFeature implements InternalFeature, UnsavedSingleton, 
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        long size = SizeOf.unsigned(CodeInfoImpl.class).rawValue();
+        long size = SizeOf.get(CodeInfoImpl.class);
         int arrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
         int actualOffset = ImageCodeInfoStorage.calculateOffset();
         int addend = actualOffset - arrayBaseOffset;

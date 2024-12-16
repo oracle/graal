@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;

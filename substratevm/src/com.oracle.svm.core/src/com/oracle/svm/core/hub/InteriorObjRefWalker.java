@@ -27,7 +27,7 @@ package com.oracle.svm.core.hub;
 import java.util.function.IntConsumer;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;

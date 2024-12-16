@@ -37,7 +37,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 @AutomaticallyRegisteredFeature
 public class CIsolateDataFeature implements InternalFeature {

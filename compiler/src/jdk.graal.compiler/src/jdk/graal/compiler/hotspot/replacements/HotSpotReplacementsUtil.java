@@ -32,7 +32,7 @@ import static jdk.graal.compiler.nodes.CompressionNode.CompressionOp.Compress;
 import java.lang.ref.Reference;
 
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;

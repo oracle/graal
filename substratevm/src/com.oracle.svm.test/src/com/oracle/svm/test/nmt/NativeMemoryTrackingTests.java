@@ -30,7 +30,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 import org.junit.Test;
 
 import com.oracle.svm.core.memory.NativeMemory;

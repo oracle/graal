@@ -28,7 +28,7 @@ import java.util.Arrays;
 
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;

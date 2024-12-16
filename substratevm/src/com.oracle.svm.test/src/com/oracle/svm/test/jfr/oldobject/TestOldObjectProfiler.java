@@ -34,7 +34,7 @@ import java.util.Collections;
 import java.util.List;
 
 import jdk.jfr.Recording;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;

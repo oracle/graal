@@ -47,7 +47,7 @@ import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 import static com.oracle.svm.core.util.UnsignedUtils.roundUp;
-import static org.graalvm.word.WordFactory.signed;
+import static jdk.graal.compiler.word.WordFactory.signed;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -60,7 +60,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;

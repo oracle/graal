@@ -28,7 +28,7 @@ import java.util.SplittableRandom;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;

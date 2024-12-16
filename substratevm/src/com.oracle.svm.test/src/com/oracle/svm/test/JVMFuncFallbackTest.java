@@ -29,7 +29,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 import org.junit.Test;
 
 // Checkstyle: stop

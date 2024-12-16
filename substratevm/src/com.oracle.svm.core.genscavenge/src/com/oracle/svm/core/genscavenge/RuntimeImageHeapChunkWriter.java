@@ -29,7 +29,7 @@ import java.util.List;
 
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;

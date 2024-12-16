@@ -29,7 +29,7 @@ import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 /**
  * Entry points for native-image specific methods called by guest Graal using method handles.

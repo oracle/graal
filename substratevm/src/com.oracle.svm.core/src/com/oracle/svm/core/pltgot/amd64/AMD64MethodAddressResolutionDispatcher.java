@@ -26,7 +26,7 @@ package com.oracle.svm.core.pltgot.amd64;
 
 import static com.oracle.svm.core.pltgot.ExitMethodAddressResolutionNode.exitMethodAddressResolution;
 
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;

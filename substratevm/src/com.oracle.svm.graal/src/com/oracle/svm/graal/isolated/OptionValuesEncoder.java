@@ -34,7 +34,7 @@ import org.graalvm.collections.UnmodifiableMapCursor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.util.TypedDataInputStream;
 import jdk.graal.compiler.util.TypedDataOutputStream;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 final class OptionValuesEncoder {
 

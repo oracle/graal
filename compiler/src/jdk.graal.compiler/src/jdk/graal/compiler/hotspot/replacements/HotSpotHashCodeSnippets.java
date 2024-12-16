@@ -40,7 +40,7 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.us
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;

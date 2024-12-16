@@ -43,7 +43,6 @@ import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
-import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
@@ -69,7 +68,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
     }
 
     static {
-        Word.ensureInitialized();
+        /* Calling this method ensures that the static initializer has been executed. */
     }
 
     /**

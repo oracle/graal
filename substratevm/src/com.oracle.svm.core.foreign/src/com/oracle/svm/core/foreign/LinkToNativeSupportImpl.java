@@ -25,7 +25,7 @@
 package com.oracle.svm.core.foreign;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;

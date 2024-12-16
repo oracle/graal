@@ -27,7 +27,7 @@ package com.oracle.svm.core.windows;
 import static com.oracle.svm.core.windows.headers.SysinfoAPI.GetSystemTimeAsFileTime;
 
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.BasedOnJDKFile;

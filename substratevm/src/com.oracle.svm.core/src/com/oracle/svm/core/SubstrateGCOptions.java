@@ -28,7 +28,7 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.I
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.option.HostedOptionKey;

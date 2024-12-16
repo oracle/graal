@@ -25,7 +25,7 @@
 package com.oracle.svm.truffle.nfi;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;

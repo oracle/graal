@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -161,7 +161,7 @@ public final class HeapParameters {
     }
 
     static {
-        Word.ensureInitialized();
+        /* Calling this method ensures that the static initializer has been executed. */
     }
 
     /** Freshly committed but still uninitialized Java heap memory. */

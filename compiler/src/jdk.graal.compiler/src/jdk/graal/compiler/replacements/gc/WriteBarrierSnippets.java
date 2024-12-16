@@ -35,7 +35,7 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 public abstract class WriteBarrierSnippets {
     public static final LocationIdentity GC_CARD_LOCATION = NamedLocationIdentity.mutable("GC-Card");

@@ -33,7 +33,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;

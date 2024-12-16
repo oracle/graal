@@ -30,7 +30,7 @@ import java.util.function.Function;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;

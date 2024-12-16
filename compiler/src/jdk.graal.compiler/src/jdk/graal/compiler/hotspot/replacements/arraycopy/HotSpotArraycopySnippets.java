@@ -39,7 +39,7 @@ import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import jdk.vm.ci.meta.JavaKind;
 

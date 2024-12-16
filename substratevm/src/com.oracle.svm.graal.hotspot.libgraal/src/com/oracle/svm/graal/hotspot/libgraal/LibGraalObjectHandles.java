@@ -25,7 +25,7 @@
 package com.oracle.svm.graal.hotspot.libgraal;
 
 import org.graalvm.nativeimage.ObjectHandles;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 /**
  * Manages handles to libgraal objects whose lifetime is controlled by

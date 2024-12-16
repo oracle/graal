@@ -31,7 +31,7 @@ import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;

@@ -51,17 +51,8 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.word.Word;
 
 public final class ImageClassLoader {
-
-    static {
-        /*
-         * ImageClassLoader is one of the first classes used during image generation, so early
-         * enough to ensure that we can use the Word type.
-         */
-        Word.ensureInitialized();
-    }
 
     public final Platform platform;
     public final NativeImageClassLoaderSupport classLoaderSupport;

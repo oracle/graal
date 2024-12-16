@@ -33,7 +33,7 @@ import static jdk.graal.compiler.hotspot.stubs.StubUtil.newDescriptor;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.printf;
 import static org.graalvm.word.LocationIdentity.any;
 
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;

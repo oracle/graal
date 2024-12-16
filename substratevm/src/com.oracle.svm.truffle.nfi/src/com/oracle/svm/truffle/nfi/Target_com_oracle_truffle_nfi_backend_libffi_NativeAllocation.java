@@ -33,7 +33,7 @@ import java.lang.ref.ReferenceQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 @TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.NativeAllocation", onlyWith = TruffleNFIFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_nfi_backend_libffi_NativeAllocation {

@@ -26,7 +26,7 @@ package com.oracle.svm.core.collections;
 
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;

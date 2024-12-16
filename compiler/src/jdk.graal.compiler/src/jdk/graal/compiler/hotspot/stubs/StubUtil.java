@@ -45,7 +45,7 @@ import jdk.graal.compiler.hotspot.nodes.VMErrorNode;
 import jdk.graal.compiler.hotspot.replacements.Log;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 //JaCoCo Exclude
 

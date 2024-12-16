@@ -54,7 +54,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -80,8 +80,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.word.Word;
-
 @InternalVMMethod
 public class JavaMainWrapper {
     /*
@@ -90,10 +88,6 @@ public class JavaMainWrapper {
      */
     public static final CGlobalData<CEntryPointCreateIsolateParameters> MAIN_ISOLATE_PARAMETERS = CGlobalDataFactory.createBytes(() -> SizeOf.get(CEntryPointCreateIsolateParameters.class));
 
-    static {
-        /* WordFactory.boxFactory is initialized by the static initializer of Word. */
-        Word.ensureInitialized();
-    }
     private static UnsignedWord argvLength = WordFactory.zero();
 
     public static class JavaMainSupport {

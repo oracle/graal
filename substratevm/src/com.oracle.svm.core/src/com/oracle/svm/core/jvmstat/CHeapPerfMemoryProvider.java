@@ -27,7 +27,7 @@ package com.oracle.svm.core.jvmstat;
 import java.nio.ByteBuffer;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.memory.NativeMemory;

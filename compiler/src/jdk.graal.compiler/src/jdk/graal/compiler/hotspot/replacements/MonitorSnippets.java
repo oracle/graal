@@ -94,9 +94,9 @@ import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
 import static org.graalvm.word.LocationIdentity.any;
-import static org.graalvm.word.WordFactory.nullPointer;
-import static org.graalvm.word.WordFactory.unsigned;
-import static org.graalvm.word.WordFactory.zero;
+import static jdk.graal.compiler.word.WordFactory.nullPointer;
+import static jdk.graal.compiler.word.WordFactory.unsigned;
+import static jdk.graal.compiler.word.WordFactory.zero;
 
 import java.util.List;
 import java.util.Objects;
@@ -104,7 +104,7 @@ import java.util.Objects;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;

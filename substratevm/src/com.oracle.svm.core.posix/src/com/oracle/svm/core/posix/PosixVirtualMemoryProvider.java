@@ -37,7 +37,7 @@ import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mmap;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mprotect;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.munmap;
-import static org.graalvm.word.WordFactory.nullPointer;
+import static jdk.graal.compiler.word.WordFactory.nullPointer;
 
 import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -47,7 +47,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;

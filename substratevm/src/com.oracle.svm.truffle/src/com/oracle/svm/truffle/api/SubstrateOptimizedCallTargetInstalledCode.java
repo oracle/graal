@@ -26,7 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import java.lang.ref.WeakReference;
 
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;

@@ -42,7 +42,7 @@ import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordCastNode;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 import org.junit.Assert;
 import org.junit.Test;
 

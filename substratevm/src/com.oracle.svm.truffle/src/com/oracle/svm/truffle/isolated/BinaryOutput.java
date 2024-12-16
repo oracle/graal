@@ -32,7 +32,7 @@ import java.util.Objects;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 /**
  * Copy from native-bridge to avoid depenency from now. Keep in sync with native-bridge.

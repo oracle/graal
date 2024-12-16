@@ -33,7 +33,7 @@ import static jdk.graal.compiler.replacements.nodes.ExplodeLoopNode.explodeLoop;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import jdk.graal.compiler.nodes.PrefetchAllocateNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;

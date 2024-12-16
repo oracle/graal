@@ -95,7 +95,7 @@ import org.graalvm.nativebridge.BinaryInput;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;

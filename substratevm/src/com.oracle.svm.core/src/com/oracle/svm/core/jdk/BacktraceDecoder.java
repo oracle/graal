@@ -25,7 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;

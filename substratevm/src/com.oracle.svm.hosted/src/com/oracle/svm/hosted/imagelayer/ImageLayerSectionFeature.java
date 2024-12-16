@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static org.graalvm.word.WordFactory.signed;
+import static jdk.graal.compiler.word.WordFactory.signed;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -38,7 +38,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;

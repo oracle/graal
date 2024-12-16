@@ -28,9 +28,10 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static org.graalvm.word.WordFactory.nullPointer;
-import static org.graalvm.word.WordFactory.unsigned;
+import static jdk.graal.compiler.word.WordFactory.unsigned;
+import static jdk.graal.compiler.word.WordFactory.nullPointer;
 
+import jdk.graal.compiler.word.WordFactory;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,7 +43,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateArgumentAccess;
 import com.oracle.svm.core.IsolateArgumentParser;

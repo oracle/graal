@@ -29,7 +29,7 @@ import java.util.List;
 
 import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.ImageHeap;

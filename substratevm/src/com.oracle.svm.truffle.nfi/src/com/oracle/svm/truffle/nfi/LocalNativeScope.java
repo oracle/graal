@@ -28,7 +28,7 @@ import java.util.ArrayList;
 
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
