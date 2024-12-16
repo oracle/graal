@@ -7,13 +7,14 @@ import com.oracle.svm.hosted.analysis.ai.value.MapValue;
  * This abstract domain maps elements (variables, memory locations, etc.) to a common
  * abstract domain.
  * One example could be mapping variables to intervals, signs, etc.
- * We do not represent TOP values in this domain, to minimize the size of the used memory,
+ * We do not represent AbstractValueKind.TOP values in this domain, to minimize the size of the used memory,
  * if a Key is not present inside the map, we return TOP
  */
 public final class MapDomain<
         Key,
         Domain extends AbstractDomain<Domain>>
         extends LatticeDomain<MapValue<Key, Domain>, MapDomain<Key, Domain>> {
+
     private final Domain initialDomain;
 
     public MapDomain(Domain initialDomain) {

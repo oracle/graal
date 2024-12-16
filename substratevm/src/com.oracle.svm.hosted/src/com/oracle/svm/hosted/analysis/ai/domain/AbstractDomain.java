@@ -6,7 +6,6 @@ package com.oracle.svm.hosted.analysis.ai.domain;
  * Patrick Cousot & Radhia Cousot. Abstract interpretation: a unified lattice
  * model for static analysis of programs by construction or approximation of
  * fixpoints.
- * <p>
  * NOTE: We do not use narrowing operation in our abstract interpretation.
  * All derived generic domains need to extend this class
  * Sample usage:
