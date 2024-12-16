@@ -41,7 +41,7 @@ import jdk.internal.foreign.MemorySessionImpl;
  * It seems like this could be easily supported once thread-local handshakes are supported.
  */
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+15/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess-bin.java.template")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+15/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess.java.template")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/java.base/share/classes/jdk/internal/misc/X-ScopedMemoryAccess.java.template")
 @TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess", onlyWith = ForeignFunctionsEnabled.class)
 public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute
