@@ -436,13 +436,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int index = popInt(frame, stackPointer);
                     final int size = rawPeekU8(bytecode, offset);
                     final int counterOffset = offset + 1;
-                    if (index < 0 || index >= size) {
-                        // If unsigned index is larger or equal to the table size use the
-                        // default (last) index.
-                        index = size - 1;
-                    }
 
                     if (CompilerDirectives.inInterpreter()) {
+                        if (index < 0 || index >= size) {
+                            // If unsigned index is larger or equal to the table size use the
+                            // default (last) index.
+                            index = size - 1;
+                        }
+
                         final int indexOffset = offset + 3 + index * 6;
                         updateBranchTableProfile(bytecode, counterOffset, indexOffset + 4);
                         final int offsetDelta = rawPeekI32(bytecode, indexOffset);
@@ -454,28 +455,28 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         // time constants, since the loop is unrolled.
                         for (int i = 0; i < size; i++) {
                             final int indexOffset = offset + 3 + i * 6;
-                            if (profileBranchTable(bytecode, counterOffset, indexOffset + 4, i == index)) {
+                            if (profileBranchTable(bytecode, counterOffset, indexOffset + 4, i == index || i == size - 1)) {
                                 final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                                 offset = indexOffset + offsetDelta;
                                 continue loop;
                             }
                         }
+                        throw CompilerDirectives.shouldNotReachHere("br_table");
                     }
-                    enterErrorBranch();
-                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Should not reach here");
                 }
                 case Bytecode.BR_TABLE_I32: {
                     stackPointer--;
                     int index = popInt(frame, stackPointer);
                     final int size = rawPeekI32(bytecode, offset);
                     final int counterOffset = offset + 4;
-                    if (index < 0 || index >= size) {
-                        // If unsigned index is larger or equal to the table size use the
-                        // default (last) index.
-                        index = size - 1;
-                    }
 
                     if (CompilerDirectives.inInterpreter()) {
+                        if (index < 0 || index >= size) {
+                            // If unsigned index is larger or equal to the table size use the
+                            // default (last) index.
+                            index = size - 1;
+                        }
+
                         final int indexOffset = offset + 6 + index * 6;
                         updateBranchTableProfile(bytecode, counterOffset, indexOffset + 4);
                         final int offsetDelta = rawPeekI32(bytecode, indexOffset);
@@ -487,15 +488,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         // time constants, since the loop is unrolled.
                         for (int i = 0; i < size; i++) {
                             final int indexOffset = offset + 6 + i * 6;
-                            if (profileBranchTable(bytecode, counterOffset, indexOffset + 4, i == index)) {
+                            if (profileBranchTable(bytecode, counterOffset, indexOffset + 4, i == index || i == size - 1)) {
                                 final int offsetDelta = rawPeekI32(bytecode, indexOffset);
                                 offset = indexOffset + offsetDelta;
                                 continue loop;
                             }
                         }
+                        throw CompilerDirectives.shouldNotReachHere("br_table");
                     }
-                    enterErrorBranch();
-                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Should not reach here");
                 }
                 case Bytecode.CALL_U8:
                 case Bytecode.CALL_I32: {
