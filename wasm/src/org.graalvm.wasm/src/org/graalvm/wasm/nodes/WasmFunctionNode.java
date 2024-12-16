@@ -4681,11 +4681,26 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     private static void updateBranchTableProfile(byte[] data, final int counterOffset, final int profileOffset) {
-        assert CompilerDirectives.inInterpreter();
+        CompilerAsserts.neverPartOfCompilation();
         int counter = rawPeekU16(data, counterOffset);
+        int profile = rawPeekU16(data, profileOffset);
+        /*
+         * Even if the total hit counter has already reached the limit, we need to increment the
+         * branch profile counter from 0 to 1 iff it's still 0 to mark the branch as having been
+         * taken at least once, to prevent recurrent deoptimizations due to profileBranchTable
+         * assuming that a value of 0 means the branch has never been reached.
+         *
+         * Similarly, we need to make sure we never increase any branch counter to the max value,
+         * otherwise we can get into a situation where both the branch and the total counter values
+         * are at the max value that we cannot recover from since we never decrease counter values;
+         * profileBranchTable would then deoptimize every time that branch is not taken (see below).
+         */
+        assert profile != MAX_TABLE_PROFILE_VALUE;
         if (counter < MAX_TABLE_PROFILE_VALUE) {
             BinaryStreamParser.writeU16(data, counterOffset, counter + 1);
-            BinaryStreamParser.writeU16(data, profileOffset, rawPeekU16(data, profileOffset) + 1);
+        }
+        if ((counter < MAX_TABLE_PROFILE_VALUE || profile == 0) && (profile < MAX_TABLE_PROFILE_VALUE - 1)) {
+            BinaryStreamParser.writeU16(data, profileOffset, profile + 1);
         }
     }
 
