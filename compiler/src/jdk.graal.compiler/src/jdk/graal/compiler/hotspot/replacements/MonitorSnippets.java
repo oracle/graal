@@ -34,9 +34,9 @@ import static jdk.graal.compiler.hotspot.nodes.EndLockScopeNode.endLockScope;
 import static jdk.graal.compiler.hotspot.nodes.VMErrorNode.vmError;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.BASICLOCK_METADATA_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_ID_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_STACK_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_LOCK_STACK_TOP_LOCATION;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_MONITOR_OWNER_ID_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_OM_CACHE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_UNLOCKED_INFLATED_MONITOR_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
@@ -51,9 +51,9 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.OB
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.heldMonitorCountOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.isCAssertEnabled;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockIDOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackEndOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadLockStackTopOffset;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadMonitorOwnerIDOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadOomCacheOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.javaThreadUnlockedInflatedMonitorOffset;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccIsValueBasedClass;
@@ -323,7 +323,7 @@ public class MonitorSnippets implements Snippets {
 
         int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
         Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
-        Word newOwner = isJDK21() ? thread : thread.readWord(javaThreadLockIDOffset(INJECTED_VMCONFIG), JAVA_THREAD_LOCK_ID_LOCATION);
+        Word newOwner = isJDK21() ? thread : thread.readWord(javaThreadMonitorOwnerIDOffset(INJECTED_VMCONFIG), JAVA_THREAD_MONITOR_OWNER_ID_LOCATION);
 
         // The following owner null check is essential. In the case where the null check fails, it
         // avoids the subsequent bound-to-fail CAS operation, which would have caused the
@@ -846,7 +846,7 @@ public class MonitorSnippets implements Snippets {
                                 JAVA_THREAD_LOCK_STACK_TOP_LOCATION,
                                 JAVA_THREAD_OM_CACHE_LOCATION,
                                 JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION,
-                                JAVA_THREAD_LOCK_ID_LOCATION};
+                                JAVA_THREAD_MONITOR_OWNER_ID_LOCATION};
                 exitLocations = new LocationIdentity[]{
                                 JAVA_THREAD_LOCK_STACK_LOCATION,
                                 JAVA_THREAD_LOCK_STACK_TOP_LOCATION,
@@ -862,7 +862,7 @@ public class MonitorSnippets implements Snippets {
             } else {
                 enterLocations = new LocationIdentity[]{
                                 JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION,
-                                JAVA_THREAD_LOCK_ID_LOCATION};
+                                JAVA_THREAD_MONITOR_OWNER_ID_LOCATION};
                 exitLocations = new LocationIdentity[]{
                                 BASICLOCK_METADATA_LOCATION,
                                 OBJECT_MONITOR_OWNER_LOCATION,
