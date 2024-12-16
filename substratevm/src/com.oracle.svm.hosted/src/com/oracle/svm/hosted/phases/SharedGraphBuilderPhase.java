@@ -284,6 +284,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         @Override
         protected void maybeEagerlyResolve(int cpi, int bytecode) {
+            lastUnresolvedElementException = null;
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
@@ -294,11 +295,18 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                      * ConstantPool.lookupType() which should return an UnresolvedJavaType which we
                      * know how to deal with.
                      */
+                    lastUnresolvedElementException = e;
                 } else {
                     throw e;
                 }
             }
         }
+
+        /**
+         * The type resolution error, if any, encountered in the last call to
+         * {@link #maybeEagerlyResolve}.
+         */
+        UnresolvedElementException lastUnresolvedElementException;
 
         @Override
         protected JavaType maybeEagerlyResolve(JavaType type, ResolvedJavaType accessingClass) {
@@ -594,7 +602,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         private void reportUnresolvedElement(String elementKind, String elementAsString) {
-            reportUnresolvedElement(elementKind, elementAsString, null);
+            reportUnresolvedElement(elementKind, elementAsString, lastUnresolvedElementException);
         }
 
         private void reportUnresolvedElement(String elementKind, String elementAsString, Throwable cause) {
