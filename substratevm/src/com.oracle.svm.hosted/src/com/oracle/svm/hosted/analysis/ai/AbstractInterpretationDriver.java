@@ -1,11 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.hosted.ProgressReporter;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
@@ -34,29 +33,31 @@ public class AbstractInterpretationDriver {
 
     private void doRun() {
         var cfgGraph = getGraph(root);
-        debug.log("Printing ControlFlowGraph nodes");
-        for (Node node : cfgGraph.graph.getNodes()) {
-            debug.log("\tNode: " + node);
-            debug.log("\t\tPredecessors: " + node.cfgPredecessors());
-            debug.log("\t\tSuccessors: " + node.cfgSuccessors());
-            debug.log("\t\tInputs: " + node.inputs());
-            debug.log("\t\t" + node.getNodeSourcePosition());
-        }
+        printGraph(cfgGraph);
+    }
 
-        debug.log("Printing the invokes");
-        for (InvokeInfo invoke : root.getInvokes()) {
-            var method = invoke.getTargetMethod();
-            var g2 = method.decodeAnalyzedGraph(debug, null);
-            for (Node node : g2.getNodes()) {
-                debug.log("\t" + node);
+    private void printGraph(ControlFlowGraph cfg) {
+        debug.log("Printing ControlFlowGraph");
+        for (var block : cfg.getBlocks()) {
+            debug.log("\t" + block);
+            for (var node : block.getNodes()) {
+                debug.log("\t\t" + node);
+                /* Warning, this won't work with call graph cycles, fix this using summaries */
+                if (node instanceof Invoke invokeNode) {
+                    debug.log("\t\t\t" + invokeNode);
+                    debug.log("\t\t\t" + invokeNode.callTarget().targetName());
+                    var callTargetCfg = new ControlFlowGraphBuilder(invokeNode.callTarget().graph()).build();
+                    printGraph(callTargetCfg);
+                } else {
+                    for (var succ : node.cfgSuccessors()) {
+                        debug.log("\t\t\t" + succ);
+                    }
+                    for (var input : node.inputs()) {
+                        debug.log("\t\t\t" + input);
+                    }
+                }
             }
-            debug.log("Has invoke: " + invoke);
-            for (AnalysisMethod callee : invoke.getOriginalCallees()) {
-                debug.log("\tCallee: " + callee);
-            }
         }
-
-
     }
 
     private ControlFlowGraph getGraph(AnalysisMethod method) {
