@@ -413,6 +413,19 @@ suite = {
       "workingSets" : "API,SDK",
     },
 
+    "org.graalvm.word.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.word"
+      ],
+      "javaCompliance" : "21+",
+      "workingSets" : "SDK",
+      "checkstyle" : "org.graalvm.word",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
     "org.graalvm.nativeimage" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -947,6 +960,7 @@ suite = {
     "SDK_TEST" : {
       "subDir" : "src",
       "dependencies" : [
+        "org.graalvm.word.test",
         "org.graalvm.collections.test",
         "org.graalvm.nativeimage.test",
         "org.graalvm.launcher.test",
@@ -957,6 +971,7 @@ suite = {
         "sdk:POLYGLOT",
         "sdk:NATIVEIMAGE",
         "sdk:COLLECTIONS",
+        "sdk:WORD",
         "sdk:LAUNCHER_COMMON"
       ],
       "maven" : False,

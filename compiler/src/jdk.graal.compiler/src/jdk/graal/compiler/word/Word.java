@@ -118,6 +118,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
         return (T) HostedWord.boxLong(val);
     }
 
+    private static Word cast(WordBase val) {
+        if (val instanceof Word word) {
+            return word;
+        }
+        return HostedWord.boxLong(val.rawValue());
+    }
+
     protected abstract long unbox();
 
     private static Word intParam(int val) {
@@ -172,13 +179,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = AddNode.class)
     public Word add(SignedWord val) {
-        return add((Word) val);
+        return add(cast(val));
     }
 
     @Override
     @Operation(node = AddNode.class)
     public Word add(UnsignedWord val) {
-        return add((Word) val);
+        return add(cast(val));
     }
 
     @Override
@@ -195,13 +202,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = SubNode.class)
     public Word subtract(SignedWord val) {
-        return subtract((Word) val);
+        return subtract(cast(val));
     }
 
     @Override
     @Operation(node = SubNode.class)
     public Word subtract(UnsignedWord val) {
-        return subtract((Word) val);
+        return subtract(cast(val));
     }
 
     @Override
@@ -218,13 +225,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = MulNode.class)
     public Word multiply(SignedWord val) {
-        return multiply((Word) val);
+        return multiply(cast(val));
     }
 
     @Override
     @Operation(node = MulNode.class)
     public Word multiply(UnsignedWord val) {
-        return multiply((Word) val);
+        return multiply(cast(val));
     }
 
     @Override
@@ -241,7 +248,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = SignedDivNode.class)
     public Word signedDivide(SignedWord val) {
-        return signedDivide((Word) val);
+        return signedDivide(cast(val));
     }
 
     @Override
@@ -258,13 +265,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedDivNode.class)
     public Word unsignedDivide(UnsignedWord val) {
-        return unsignedDivide((Word) val);
+        return unsignedDivide(cast(val));
     }
 
     @Override
     @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedDivNode.class)
     public Word unsignedDivide(int val) {
-        return signedDivide(intParam(val));
+        return unsignedDivide(intParam(val));
     }
 
     @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedDivNode.class)
@@ -275,7 +282,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = SignedRemNode.class)
     public Word signedRemainder(SignedWord val) {
-        return signedRemainder((Word) val);
+        return signedRemainder(cast(val));
     }
 
     @Override
@@ -292,7 +299,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.INTEGER_DIVISION_NODE_CLASS, node = UnsignedRemNode.class)
     public Word unsignedRemainder(UnsignedWord val) {
-        return unsignedRemainder((Word) val);
+        return unsignedRemainder(cast(val));
     }
 
     @Override
@@ -309,7 +316,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = LeftShiftNode.class, rightOperandIsInt = true)
     public Word shiftLeft(UnsignedWord val) {
-        return shiftLeft((Word) val);
+        return shiftLeft(cast(val));
     }
 
     @Override
@@ -326,7 +333,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = RightShiftNode.class, rightOperandIsInt = true)
     public Word signedShiftRight(UnsignedWord val) {
-        return signedShiftRight((Word) val);
+        return signedShiftRight(cast(val));
     }
 
     @Override
@@ -343,7 +350,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = UnsignedRightShiftNode.class, rightOperandIsInt = true)
     public Word unsignedShiftRight(UnsignedWord val) {
-        return unsignedShiftRight((Word) val);
+        return unsignedShiftRight(cast(val));
     }
 
     @Override
@@ -360,13 +367,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = AndNode.class)
     public Word and(SignedWord val) {
-        return and((Word) val);
+        return and(cast(val));
     }
 
     @Override
     @Operation(node = AndNode.class)
     public Word and(UnsignedWord val) {
-        return and((Word) val);
+        return and(cast(val));
     }
 
     @Override
@@ -383,13 +390,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = OrNode.class)
     public Word or(SignedWord val) {
-        return or((Word) val);
+        return or(cast(val));
     }
 
     @Override
     @Operation(node = OrNode.class)
     public Word or(UnsignedWord val) {
-        return or((Word) val);
+        return or(cast(val));
     }
 
     @Override
@@ -406,13 +413,13 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(node = XorNode.class)
     public Word xor(SignedWord val) {
-        return xor((Word) val);
+        return xor(cast(val));
     }
 
     @Override
     @Operation(node = XorNode.class)
     public Word xor(UnsignedWord val) {
-        return xor((Word) val);
+        return xor(cast(val));
     }
 
     @Override
@@ -447,19 +454,19 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
     public boolean equal(ComparableWord val) {
-        return equal((Word) val);
+        return equal(cast(val));
     }
 
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
     public boolean equal(SignedWord val) {
-        return equal((Word) val);
+        return rawValue() == val.rawValue();
     }
 
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
     public boolean equal(UnsignedWord val) {
-        return equal((Word) val);
+        return equal(cast(val));
     }
 
     @Override
@@ -470,25 +477,25 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
 
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.EQ)
     public boolean equal(Word val) {
-        return unbox() == val.unbox();
+        return rawValue() == val.unbox();
     }
 
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
     public boolean notEqual(ComparableWord val) {
-        return notEqual((Word) val);
+        return notEqual(cast(val));
     }
 
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
     public boolean notEqual(SignedWord val) {
-        return notEqual((Word) val);
+        return notEqual(cast(val));
     }
 
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.NE)
     public boolean notEqual(UnsignedWord val) {
-        return notEqual((Word) val);
+        return notEqual(cast(val));
     }
 
     @Override
@@ -505,7 +512,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.LT)
     public boolean lessThan(SignedWord val) {
-        return lessThan((Word) val);
+        return lessThan(cast(val));
     }
 
     @Override
@@ -522,7 +529,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.LE)
     public boolean lessOrEqual(SignedWord val) {
-        return lessOrEqual((Word) val);
+        return lessOrEqual(cast(val));
     }
 
     @Override
@@ -539,7 +546,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.GT)
     public boolean greaterThan(SignedWord val) {
-        return greaterThan((Word) val);
+        return greaterThan(cast(val));
     }
 
     @Override
@@ -556,7 +563,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.GE)
     public boolean greaterOrEqual(SignedWord val) {
-        return greaterOrEqual((Word) val);
+        return greaterOrEqual(cast(val));
     }
 
     @Override
@@ -573,7 +580,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.BT)
     public boolean belowThan(UnsignedWord val) {
-        return belowThan((Word) val);
+        return belowThan(cast(val));
     }
 
     @Override
@@ -590,7 +597,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.BE)
     public boolean belowOrEqual(UnsignedWord val) {
-        return belowOrEqual((Word) val);
+        return belowOrEqual(cast(val));
     }
 
     @Override
@@ -607,7 +614,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.AT)
     public boolean aboveThan(UnsignedWord val) {
-        return aboveThan((Word) val);
+        return aboveThan(cast(val));
     }
 
     @Override
@@ -624,7 +631,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.COMPARISON, condition = Condition.AE)
     public boolean aboveOrEqual(UnsignedWord val) {
-        return aboveOrEqual((Word) val);
+        return aboveOrEqual(cast(val));
     }
 
     @Override
@@ -793,7 +800,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.WRITE_POINTER)
     public void writeWord(WordBase offset, WordBase val, LocationIdentity locationIdentity) {
-        UNSAFE.putAddress(add((Word) offset).unbox(), ((Word) val).unbox());
+        UNSAFE.putAddress(add((Word) offset).unbox(), (cast(val)).unbox());
     }
 
     @Override
@@ -1071,7 +1078,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     @Override
     @Operation(opcode = Opcode.WRITE_POINTER)
     public void writeWord(WordBase offset, WordBase val) {
-        UNSAFE.putAddress(add((Word) offset).unbox(), ((Word) val).unbox());
+        UNSAFE.putAddress(add((Word) offset).unbox(), (cast(val)).unbox());
     }
 
     @Override
@@ -1185,8 +1192,8 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
     }
 
     /**
-     * This is deprecated because of the easy to mistype name collision between {@link #equals} and
-     * the other equals routines like {@link #equal(Word)}. In general you should never be
+     * This is deprecated because of the easy to mistype name collision between {@code equals} and
+     * the other equals routines like {@link #equal(Word)}. In general, you should never be
      * statically calling this method for Word types.
      */
     @SuppressWarnings("deprecation")
@@ -1226,7 +1233,7 @@ final class HostedWord extends Word {
         this.rawValue = rawValue;
     }
 
-    protected static Word boxLong(long val) {
+    static Word boxLong(long val) {
         if (val >= SMALL_FROM && val <= SMALL_TO) {
             return smallCache[(int) val - SMALL_FROM];
         }

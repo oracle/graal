@@ -40,6 +40,8 @@
  */
 package org.graalvm.word;
 
+import static java.lang.Long.compareUnsigned;
+
 import org.graalvm.word.impl.WordFactoryOpcode;
 import org.graalvm.word.impl.WordFactoryOperation;
 
@@ -99,6 +101,10 @@ public final class WordFactory {
      * Unsafe conversion from a Java long value to a {@link PointerBase pointer}. The parameter is
      * treated as an unsigned 64-bit value (in contrast to the semantics of a Java long).
      *
+     * In an execution environment where this method returns a boxed value (e.g. not in Native
+     * Image), the returned value will throw {@link UnsupportedOperationException} if any of the
+     * {@link Pointer} memory access operations are invoked on it.
+     *
      * @param val a 64 bit unsigned value
      * @return the value cast to PointerBase
      *
@@ -152,46 +158,16 @@ public final class WordFactory {
     }
 
     /**
-     * Unifies the {@link SignedWord}, {@link UnsignedWord} and {@link Pointer} interfaces so that
-     * methods with the same signature but different return types (e.g.
-     * {@link UnsignedWord#shiftLeft(UnsignedWord)} and {@link SignedWord#shiftLeft(UnsignedWord)})
-     * are overridden by a common method that merges the return types. This a requirement for
-     * creating a proxy type in {@link WordFactory#box(long)}.
-     */
-    interface Word extends SignedWord, UnsignedWord, Pointer {
-
-        Word add(int p1);
-
-        Word shiftLeft(int p1);
-
-        Word shiftLeft(UnsignedWord p1);
-
-        Word multiply(int p1);
-
-        Word or(int p1);
-
-        Word and(int p1);
-
-        Word not();
-
-        Word subtract(int p1);
-
-        Word xor(int p1);
-    }
-
-    /**
-     * Creates a box for {@code val} that supports the most basic operations defined by {@link Word}
-     * needed for passing around word values and printing them.
-     *
-     * Clients of the Word API that need more functional boxes must implement them themselves.
+     * Creates a box for {@code val} that all word operations except memory access operations (see
+     * {@link #pointer(long)}).
      */
     @SuppressWarnings("unchecked")
-    private static <T extends WordBase> T box(long val) {
+    static <T extends WordBase> T box(long val) {
         Class<?>[] interfaces = {Word.class};
         return (T) Proxy.newProxyInstance(WordFactory.class.getClassLoader(), interfaces, (proxy, method, args) -> {
             switch (method.getName()) {
                 case "toString": {
-                    return "WordImpl<" + val + ">";
+                    return Word.class.getName() + "<" + val + ">";
                 }
                 case "equals": {
                     if (args[0] instanceof WordBase) {
@@ -200,14 +176,48 @@ public final class WordFactory {
                     }
                     return false;
                 }
-                case "hashCode": {
-                    return Long.hashCode(val);
-                }
-                case "rawValue": {
-                    return val;
-                }
+                // @formatter:off
+                case "aboveOrEqual":       return compareUnsigned(val, unbox(args[0])) >= 0;
+                case "aboveThan":          return compareUnsigned(val, unbox(args[0])) > 0;
+                case "add":                return box(val + unbox(args[0]));
+                case "and":                return box(val & unbox(args[0]));
+                case "belowOrEqual":       return compareUnsigned(val, unbox(args[0])) <= 0;
+                case "belowThan":          return compareUnsigned(val, unbox(args[0])) < 0;
+                case "equal":              return val == unbox(args[0]);
+                case "greaterOrEqual":     return val >= unbox(args[0]);
+                case "greaterThan":        return val > unbox(args[0]);
+                case "hashCode":           return Long.hashCode(val);
+                case "isNonNull":          return val != 0;
+                case "isNull":             return val == 0;
+                case "lessOrEqual":        return val <= unbox(args[0]);
+                case "lessThan":           return val < unbox(args[0]);
+                case "multiply":           return box(val * unbox(args[0]));
+                case "not":                return box(~val);
+                case "notEqual":           return val != unbox(args[0]);
+                case "or":                 return box(val | unbox(args[0]));
+                case "rawValue":           return val;
+                case "shiftLeft":          return box(val << unbox(args[0]));
+                case "signedDivide":       return box(val / unbox(args[0]));
+                case "signedRemainder":    return box(val % unbox(args[0]));
+                case "signedShiftRight":   return box(val >> unbox(args[0]));
+                case "subtract":           return box(val - unbox(args[0]));
+                case "unsignedDivide":     return box(Long.divideUnsigned(val, unbox(args[0])));
+                case "unsignedRemainder":  return box(Long.remainderUnsigned(val, unbox(args[0])));
+                case "unsignedShiftRight": return box(val >>> unbox(args[0]));
+                case "xor":                return box(val ^ unbox(args[0]));
+                // @formatter:on
             }
-            throw new UnsupportedOperationException("operation " + method.getName() + " not supported");
+            throw new UnsupportedOperationException("operation `" + method.getName() + "` not supported");
         });
+    }
+
+    static long unbox(Object arg) {
+        if (arg instanceof WordBase) {
+            return ((WordBase) arg).rawValue();
+        }
+        if (arg instanceof Number) {
+            return ((Number) arg).longValue();
+        }
+        throw new IllegalArgumentException();
     }
 }
