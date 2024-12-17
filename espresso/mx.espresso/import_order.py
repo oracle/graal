@@ -64,10 +64,9 @@ def verify_order(path, prefix_order):
 
     for prefix in prefix_order:
         if prefix:
-            # If prefix is "abc", add "import static abc"
-            static_prefixes.append(STATIC_PREFIX + prefix + '.')
             # If prefix is "abc", add "import abc"
             regular_prefixes.append(REGULAR_PREFIX + prefix + '.')
+            # Eclipse formatting does not enforce prefix order for static imports.
         else:
             # Empty prefix means everything will match.
             # Empty prefix is added manually below.
