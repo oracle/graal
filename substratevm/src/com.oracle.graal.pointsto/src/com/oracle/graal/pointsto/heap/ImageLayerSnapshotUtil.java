@@ -62,6 +62,8 @@ public class ImageLayerSnapshotUtil {
     public static final int UNDEFINED_CONSTANT_ID = -1;
     public static final int UNDEFINED_FIELD_INDEX = -1;
 
+    private static final String TRACKED_REASON = "reachable from a graph";
+
     protected final List<Field> externalValueFields;
     /** This needs to be initialized after analysis, as some fields are not available before. */
     protected Map<Object, Field> externalValues;
@@ -140,10 +142,10 @@ public class ImageLayerSnapshotUtil {
         public GraphEncoder(Map<Object, Field> externalValues, ImageLayerWriter imageLayerWriter) {
             super(externalValues);
             addBuiltin(new ImageHeapConstantBuiltIn(imageLayerWriter, null));
-            addBuiltin(new AnalysisTypeBuiltIn(imageLayerWriter, null));
-            addBuiltin(new AnalysisMethodBuiltIn(imageLayerWriter, null, null));
-            addBuiltin(new AnalysisFieldBuiltIn(imageLayerWriter, null));
-            addBuiltin(new FieldLocationIdentityBuiltIn(imageLayerWriter, null));
+            addBuiltin(new AnalysisTypeBuiltIn(null));
+            addBuiltin(new AnalysisMethodBuiltIn(null, null));
+            addBuiltin(new AnalysisFieldBuiltIn(null));
+            addBuiltin(new FieldLocationIdentityBuiltIn(null));
         }
     }
 
@@ -155,10 +157,10 @@ public class ImageLayerSnapshotUtil {
             super(classLoader);
             this.imageLayerLoader = imageLayerLoader;
             addBuiltin(new ImageHeapConstantBuiltIn(null, imageLayerLoader));
-            addBuiltin(new AnalysisTypeBuiltIn(null, imageLayerLoader));
-            addBuiltin(new AnalysisMethodBuiltIn(null, imageLayerLoader, analysisMethod));
-            addBuiltin(new AnalysisFieldBuiltIn(null, imageLayerLoader));
-            addBuiltin(new FieldLocationIdentityBuiltIn(null, imageLayerLoader));
+            addBuiltin(new AnalysisTypeBuiltIn(imageLayerLoader));
+            addBuiltin(new AnalysisMethodBuiltIn(imageLayerLoader, analysisMethod));
+            addBuiltin(new AnalysisFieldBuiltIn(imageLayerLoader));
+            addBuiltin(new FieldLocationIdentityBuiltIn(imageLayerLoader));
         }
 
         @Override
@@ -192,19 +194,17 @@ public class ImageLayerSnapshotUtil {
     }
 
     public static class AnalysisTypeBuiltIn extends ObjectCopier.Builtin {
-        private final ImageLayerWriter imageLayerWriter;
         private final ImageLayerLoader imageLayerLoader;
 
-        protected AnalysisTypeBuiltIn(ImageLayerWriter imageLayerWriter, ImageLayerLoader imageLayerLoader) {
+        protected AnalysisTypeBuiltIn(ImageLayerLoader imageLayerLoader) {
             super(AnalysisType.class, PointsToAnalysisType.class);
-            this.imageLayerWriter = imageLayerWriter;
             this.imageLayerLoader = imageLayerLoader;
         }
 
         @Override
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             AnalysisType type = (AnalysisType) obj;
-            imageLayerWriter.ensureTypePersisted(type);
+            type.registerAsTrackedAcrossLayers(TRACKED_REASON);
             stream.writePackedUnsignedInt(type.getId());
         }
 
@@ -216,13 +216,11 @@ public class ImageLayerSnapshotUtil {
     }
 
     public static class AnalysisMethodBuiltIn extends ObjectCopier.Builtin {
-        private final ImageLayerWriter imageLayerWriter;
         private final ImageLayerLoader imageLayerLoader;
         private final AnalysisMethod analysisMethod;
 
-        protected AnalysisMethodBuiltIn(ImageLayerWriter imageLayerWriter, ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod) {
+        protected AnalysisMethodBuiltIn(ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod) {
             super(AnalysisMethod.class, PointsToAnalysisMethod.class);
-            this.imageLayerWriter = imageLayerWriter;
             this.imageLayerLoader = imageLayerLoader;
             this.analysisMethod = analysisMethod;
         }
@@ -230,12 +228,7 @@ public class ImageLayerSnapshotUtil {
         @Override
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             AnalysisMethod method = (AnalysisMethod) obj;
-            AnalysisType declaringClass = method.getDeclaringClass();
-            imageLayerWriter.ensureMethodPersisted(method);
-            for (AnalysisType parameter : method.toParameterList()) {
-                imageLayerWriter.ensureTypePersisted(parameter);
-            }
-            imageLayerWriter.ensureTypePersisted(declaringClass);
+            method.registerAsTrackedAcrossLayers(TRACKED_REASON);
             stream.writePackedUnsignedInt(method.getId());
         }
 
@@ -250,19 +243,17 @@ public class ImageLayerSnapshotUtil {
     }
 
     public static class AnalysisFieldBuiltIn extends ObjectCopier.Builtin {
-        private final ImageLayerWriter imageLayerWriter;
         private final ImageLayerLoader imageLayerLoader;
 
-        protected AnalysisFieldBuiltIn(ImageLayerWriter imageLayerWriter, ImageLayerLoader imageLayerLoader) {
+        protected AnalysisFieldBuiltIn(ImageLayerLoader imageLayerLoader) {
             super(AnalysisField.class, PointsToAnalysisField.class);
-            this.imageLayerWriter = imageLayerWriter;
             this.imageLayerLoader = imageLayerLoader;
         }
 
         @Override
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             AnalysisField field = (AnalysisField) obj;
-            int id = encodeField(field, imageLayerWriter);
+            int id = encodeField(field);
             stream.writePackedUnsignedInt(id);
         }
 
@@ -274,12 +265,10 @@ public class ImageLayerSnapshotUtil {
     }
 
     public static class FieldLocationIdentityBuiltIn extends ObjectCopier.Builtin {
-        private final ImageLayerWriter imageLayerWriter;
         private final ImageLayerLoader imageLayerLoader;
 
-        protected FieldLocationIdentityBuiltIn(ImageLayerWriter imageLayerWriter, ImageLayerLoader imageLayerLoader) {
+        protected FieldLocationIdentityBuiltIn(ImageLayerLoader imageLayerLoader) {
             super(FieldLocationIdentity.class);
-            this.imageLayerWriter = imageLayerWriter;
             this.imageLayerLoader = imageLayerLoader;
         }
 
@@ -287,7 +276,7 @@ public class ImageLayerSnapshotUtil {
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             FieldLocationIdentity fieldLocationIdentity = (FieldLocationIdentity) obj;
             AnalysisField field = (AnalysisField) fieldLocationIdentity.getField();
-            int id = encodeField(field, imageLayerWriter);
+            int id = encodeField(field);
             stream.writePackedUnsignedInt(id);
         }
 
@@ -298,8 +287,8 @@ public class ImageLayerSnapshotUtil {
         }
     }
 
-    private static int encodeField(AnalysisField field, ImageLayerWriter imageLayerWriter) {
-        imageLayerWriter.ensureFieldPersisted(field);
+    private static int encodeField(AnalysisField field) {
+        field.registerAsTrackedAcrossLayers(TRACKED_REASON);
         return field.getId();
     }
 

@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.IntFunction;
 
@@ -291,7 +292,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         if (referencedObjects != null) {
             for (Object obj : referencedObjects) {
                 if (obj instanceof MethodPointer mp) {
-                    ensureMethodPersisted(getRelocatableConstantMethod(mp));
+                    getRelocatableConstantMethod(mp).registerAsTrackedAcrossLayers("In method pointer");
                 }
             }
         }
@@ -455,8 +456,13 @@ class ImageSingletonWriterImpl implements ImageSingletonWriter {
         return keyValueStore;
     }
 
+    private static boolean nonNullEntries(List<?> list) {
+        return list.stream().filter(Objects::isNull).findAny().isEmpty();
+    }
+
     @Override
     public void writeBoolList(String keyName, List<Boolean> value) {
+        assert nonNullEntries(value);
         boolean[] b = new boolean[value.size()];
         for (int i = 0; i < value.size(); i++) {
             b[i] = value.get(i);
@@ -473,6 +479,7 @@ class ImageSingletonWriterImpl implements ImageSingletonWriter {
 
     @Override
     public void writeIntList(String keyName, List<Integer> value) {
+        assert nonNullEntries(value);
         var previous = keyValueStore.put(keyName, value.stream().mapToInt(i -> i).toArray());
         assert previous == null : Assertions.errorMessage(keyName, previous);
     }
@@ -491,6 +498,7 @@ class ImageSingletonWriterImpl implements ImageSingletonWriter {
 
     @Override
     public void writeStringList(String keyName, List<String> value) {
+        assert nonNullEntries(value);
         var previous = keyValueStore.put(keyName, value.toArray(String[]::new));
         assert previous == null : Assertions.errorMessage(keyName, previous);
     }

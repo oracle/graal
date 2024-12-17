@@ -47,6 +47,6 @@ public class ImageLayerWriterHelper {
     }
 
     @SuppressWarnings("unused")
-    protected void afterMethodAdded(AnalysisMethod method) {
+    protected void onTrackedAcrossLayer(AnalysisMethod method, Object reason) {
     }
 }
