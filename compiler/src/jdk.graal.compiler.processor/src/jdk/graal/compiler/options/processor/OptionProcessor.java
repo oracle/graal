@@ -333,7 +333,7 @@ public class OptionProcessor extends AbstractProcessor {
                 out.printf("                /*name*/ \"%s\",\n", name);
                 out.printf("                /*optionType*/ %s.%s,\n", getSimpleName(OPTION_TYPE_CLASS_NAME), optionType);
                 out.printf("                /*optionValueType*/ %s.class,\n", type);
-                out.printf("                /*help*/ \"%s\",\n", help);
+                out.printf("                /*help*/ \"%s\",\n", help.replace("\\", "\\\\").replace("\"", "\\\""));
                 if (extraHelp.size() != 0) {
                     out.printf("                /*extraHelp*/ new String[] {\n");
                     for (String line : extraHelp) {
