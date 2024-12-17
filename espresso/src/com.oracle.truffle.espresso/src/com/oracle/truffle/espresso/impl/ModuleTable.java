@@ -26,11 +26,12 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.tables.AbstractModuleTable;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public final class ModuleTable extends com.oracle.truffle.espresso.classfile.tables.ModuleTable<StaticObject, ModuleTable.ModuleEntry> {
+public final class ModuleTable extends AbstractModuleTable<StaticObject, ModuleTable.ModuleEntry> {
     public ModuleTable(ReadWriteLock lock) {
         super(lock);
     }
@@ -40,7 +41,7 @@ public final class ModuleTable extends com.oracle.truffle.espresso.classfile.tab
         return new ModuleEntry(name, data);
     }
 
-    public static final class ModuleEntry extends com.oracle.truffle.espresso.classfile.tables.ModuleTable.ModuleEntry<StaticObject> implements ModuleRef {
+    public static final class ModuleEntry extends AbstractModuleTable.AbstractModuleEntry<StaticObject> implements ModuleRef {
         ModuleEntry(Symbol<Name> name, ModuleData<StaticObject> data) {
             super(name, data);
         }

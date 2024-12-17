@@ -28,8 +28,8 @@ import java.util.concurrent.locks.ReadWriteLock;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
-public abstract class ModuleTable<M, ME extends ModuleTable.ModuleEntry<M>> extends EntryTable<ME, ModuleTable.ModuleData<M>> {
-    public ModuleTable(ReadWriteLock lock) {
+public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.AbstractModuleEntry<M>> extends EntryTable<ME, AbstractModuleTable.ModuleData<M>> {
+    public AbstractModuleTable(ReadWriteLock lock) {
         super(lock);
     }
 
@@ -57,15 +57,15 @@ public abstract class ModuleTable<M, ME extends ModuleTable.ModuleEntry<M>> exte
         }
     }
 
-    public abstract static class ModuleEntry<M> extends EntryTable.NamedEntry {
+    public abstract static class AbstractModuleEntry<M> extends EntryTable.NamedEntry {
         private final boolean isOpen;
         private M module;
         private String version;
         private String location;
         private boolean canReadAllUnnamed;
-        private ArrayList<ModuleEntry<M>> reads;
+        private ArrayList<AbstractModuleEntry<M>> reads;
 
-        protected ModuleEntry(Symbol<Name> name, ModuleData<M> data) {
+        protected AbstractModuleEntry(Symbol<Name> name, ModuleData<M> data) {
             super(name);
             this.version = data.version;
             this.location = data.location;
@@ -73,7 +73,7 @@ public abstract class ModuleTable<M, ME extends ModuleTable.ModuleEntry<M>> exte
             this.module = data.module;
         }
 
-        public void addReads(ModuleEntry<M> from) {
+        public void addReads(AbstractModuleEntry<M> from) {
             if (!isNamed()) {
                 return;
             }
@@ -91,7 +91,7 @@ public abstract class ModuleTable<M, ME extends ModuleTable.ModuleEntry<M>> exte
             }
         }
 
-        public boolean canRead(ModuleEntry<M> m, boolean mIsJavaBase) {
+        public boolean canRead(AbstractModuleEntry<M> m, boolean mIsJavaBase) {
             if (!isNamed() || mIsJavaBase) {
                 return true;
             }
@@ -112,7 +112,7 @@ public abstract class ModuleTable<M, ME extends ModuleTable.ModuleEntry<M>> exte
             }
         }
 
-        private boolean contains(ModuleEntry<M> from) {
+        private boolean contains(AbstractModuleEntry<M> from) {
             return reads.contains(from);
         }
 
