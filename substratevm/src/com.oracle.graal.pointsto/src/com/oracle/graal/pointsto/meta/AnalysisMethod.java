@@ -112,9 +112,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> allImplementationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "allImplementations");
 
-    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisMethod.class, Object.class, "trackAcrossLayers");
-
     public record Signature(String name, AnalysisType[] parameterTypes) {
     }
 
@@ -185,12 +182,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @SuppressWarnings("unused") private volatile Object allImplementations;
 
     /**
-     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
-     */
-    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
-    private final boolean enableTrackAcrossLayers;
-
-    /**
      * Indicates that this method has opaque return. This is necessary when there are control flows
      * present which cannot be tracked by analysis, which happens for continuation support.
      *
@@ -201,6 +192,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @SuppressWarnings({"this-escape", "unchecked"})
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
+        super(universe.hostVM.enableTrackAcrossLayers());
         this.wrapped = wrapped;
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
@@ -274,12 +266,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             startTrackInvocations();
         }
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
-
-        this.enableTrackAcrossLayers = universe.hostVM.enableTrackAcrossLayers();
     }
 
     @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
+        super(original.enableTrackAcrossLayers);
         wrapped = original.wrapped;
         id = original.id;
         isInBaseLayer = original.isInBaseLayer;
@@ -303,8 +294,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
         }
-
-        this.enableTrackAcrossLayers = original.enableTrackAcrossLayers;
     }
 
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
@@ -492,6 +481,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean registerAsInvoked(Object reason) {
         assert isValidReason(reason) : "Registering a method as invoked needs to provide a valid reason, found: " + reason;
+        registerAsTrackedAcrossLayers(reason);
         return AtomicUtils.atomicSet(this, reason, isInvokedUpdater);
     }
 
@@ -650,11 +640,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public boolean isTrackedAcrossLayers() {
-        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
-    }
-
-    @Override
     public boolean isTriggered() {
         if (isReachable()) {
             return true;
@@ -669,10 +654,19 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public void onReachable(Object reason) {
-        if (enableTrackAcrossLayers) {
-            AtomicUtils.atomicSet(this, reason, trackAcrossLayersUpdater);
-        }
+        registerAsTrackedAcrossLayers(reason);
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
+    }
+
+    @Override
+    protected void onTrackedAcrossLayers(Object reason) {
+        AnalysisError.guarantee(!getUniverse().sealed(), "Method %s was marked as tracked after the universe was sealed", this);
+        getUniverse().getImageLayerWriter().onTrackedAcrossLayer(this, reason);
+        declaringClass.registerAsTrackedAcrossLayers(reason);
+        for (AnalysisType parameter : toParameterList()) {
+            parameter.registerAsTrackedAcrossLayers(reason);
+        }
+        signature.getReturnType().registerAsTrackedAcrossLayers(reason);
     }
 
     public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {

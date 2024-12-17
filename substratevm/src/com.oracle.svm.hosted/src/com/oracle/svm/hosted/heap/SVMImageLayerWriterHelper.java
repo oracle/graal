@@ -103,12 +103,12 @@ public class SVMImageLayerWriterHelper extends ImageLayerWriterHelper {
     }
 
     @Override
-    protected void afterMethodAdded(AnalysisMethod method) {
+    public void onTrackedAcrossLayer(AnalysisMethod method, Object reason) {
         if (method.wrapped instanceof FactoryMethod factoryMethod) {
             AnalysisMethod targetConstructor = method.getUniverse().lookup(factoryMethod.getTargetConstructor());
-            imageLayerWriter.ensureMethodPersisted(targetConstructor);
+            targetConstructor.registerAsTrackedAcrossLayers(reason);
         }
-        super.afterMethodAdded(method);
+        super.onTrackedAcrossLayer(method, reason);
     }
 
     private static void persistWrappedMember(WrappedMethod.WrappedMember.Builder b, Executable member) {

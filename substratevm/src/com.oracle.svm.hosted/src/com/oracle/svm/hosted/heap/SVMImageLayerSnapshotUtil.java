@@ -238,7 +238,6 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         @SuppressWarnings("this-escape")
         public SVMGraphEncoder(Map<Object, Field> externalValues, ImageLayerWriter imageLayerWriter) {
             super(externalValues, imageLayerWriter);
-            addBuiltin(new HostedTypeBuiltIn(null));
             addBuiltin(new HostedMethodBuiltIn(null));
             addBuiltin(new HostedOptionValuesBuiltIn());
             addBuiltin(new HostedSnippetReflectionProviderBuiltIn(null));

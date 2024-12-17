@@ -590,8 +590,8 @@ public class ImageLayerLoader {
 
     /**
      * Currently we save analysis parsed graphs for methods considered
-     * {@link AnalysisMethod#isReachable}. See {@link ImageLayerWriter#persistMethodGraphs} for
-     * implementation.
+     * {@link AnalysisMethod#isTrackedAcrossLayers()}. See
+     * {@link ImageLayerWriter#persistAnalysisParsedGraph} for implementation.
      */
     public boolean hasAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         return getMethodData(analysisMethod).hasAnalysisGraphLocation();

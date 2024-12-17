@@ -121,38 +121,9 @@ public class ImageLayerWriter {
     private final boolean useSharedLayerGraphs;
     private final boolean useSharedLayerStrengthenedGraphs;
 
-    /*
-     * Types, members and constants to persist even when they are not considered reachable by the
-     * analysis, or referenced from the image heap. Typically, these elements would be reachable
-     * from a persisted graph.
-     */
-    private boolean sealed = false;
-    private final Set<AnalysisType> typesToPersist = ConcurrentHashMap.newKeySet();
-    private final Set<AnalysisMethod> methodsToPersist = ConcurrentHashMap.newKeySet();
-    private final Set<AnalysisField> fieldsToPersist = ConcurrentHashMap.newKeySet();
     private final Set<ImageHeapConstant> constantsToPersist = ConcurrentHashMap.newKeySet();
 
-    public void ensureTypePersisted(AnalysisType type) {
-        assert !sealed;
-        if (typesToPersist.add(type)) {
-            afterTypeAdded(type);
-        }
-    }
-
-    public void ensureMethodPersisted(AnalysisMethod method) {
-        assert !sealed;
-        if (methodsToPersist.add(method)) {
-            afterMethodAdded(method);
-        }
-    }
-
-    public void ensureFieldPersisted(AnalysisField field) {
-        assert !sealed;
-        fieldsToPersist.add(field);
-    }
-
     public void ensureConstantPersisted(ImageHeapConstant constant) {
-        assert !sealed;
         constantsToPersist.add(constant);
         afterConstantAdded(constant);
     }
@@ -164,7 +135,8 @@ public class ImageLayerWriter {
     private record FileInfo(Path layerFilePath, String fileName, String suffix) {
     }
 
-    protected record MethodGraphsInfo(String analysisGraphLocation, boolean analysisGraphIsIntrinsic, String strengthenedGraphLocation) {
+    protected record MethodGraphsInfo(String analysisGraphLocation, boolean analysisGraphIsIntrinsic,
+                    String strengthenedGraphLocation) {
 
         static final MethodGraphsInfo NO_GRAPHS = new MethodGraphsInfo(null, false, null);
 
@@ -254,6 +226,11 @@ public class ImageLayerWriter {
         this.aUniverse = aUniverse;
     }
 
+    @SuppressWarnings("unused")
+    public void onTrackedAcrossLayer(AnalysisMethod method, Object reason) {
+        imageLayerWriterHelper.onTrackedAcrossLayer(method, reason);
+    }
+
     public void dumpFiles() {
         graphsOutput.finish();
 
@@ -292,6 +269,10 @@ public class ImageLayerWriter {
         snapshotBuilder.setNextMethodId(aUniverse.getNextMethodId());
         snapshotBuilder.setNextFieldId(aUniverse.getNextFieldId());
         snapshotBuilder.setNextConstantId(ImageHeapConstant.getCurrentId());
+
+        List<AnalysisType> typesToPersist = aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).toList();
+        List<AnalysisMethod> methodsToPersist = aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).toList();
+        List<AnalysisField> fieldsToPersist = aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers).toList();
 
         initSortedList(snapshotBuilder::initTypes, typesToPersist, Comparator.comparingInt(AnalysisType::getId), this::persistType);
         initSortedList(snapshotBuilder::initMethods, methodsToPersist, Comparator.comparingInt(AnalysisMethod::getId), this::persistMethod);
@@ -347,7 +328,7 @@ public class ImageLayerWriter {
     }
 
     public boolean isTypePersisted(AnalysisType type) {
-        return typesToPersist.contains(type);
+        return type.isTrackedAcrossLayers();
     }
 
     private void persistType(AnalysisType type, Supplier<PersistedAnalysisType.Builder> builderSupplier) {
@@ -375,12 +356,6 @@ public class ImageLayerWriter {
             if (enclosingType != null) {
                 builder.setEnclosingTypeId(enclosingType.getId());
             }
-        } catch (AnalysisError.TypeNotFoundError e) {
-            /*
-             * GR-59571: The enclosing type is not automatically created when the inner type is
-             * created. If the enclosing type is missing, it is ignored for now. This try/catch
-             * block could be removed after the trackAcrossLayers is fully implemented.
-             */
         } catch (InternalError | TypeNotPresentException | LinkageError e) {
             /* Ignore missing type errors. */
         }
@@ -401,6 +376,8 @@ public class ImageLayerWriter {
         builder.setIsReachable(type.isReachable());
 
         imageLayerWriterHelper.persistType(type, builder);
+
+        afterTypeAdded(type);
     }
 
     protected static void initInts(IntFunction<PrimitiveList.Int.Builder> builderSupplier, IntStream ids) {
@@ -419,31 +396,17 @@ public class ImageLayerWriter {
         }
     }
 
+    @SuppressWarnings("unused")
     protected void afterTypeAdded(AnalysisType type) {
-        /*
-         * Some persisted types are not reachable. In this case, the super class and interfaces have
-         * to be persisted manually as well.
-         */
-        if (type.getSuperclass() != null) {
-            ensureTypePersisted(type.getSuperclass());
-        }
-        for (AnalysisType iface : type.getInterfaces()) {
-            ensureTypePersisted(iface);
-        }
-    }
-
-    protected void afterMethodAdded(AnalysisMethod method) {
-        ensureTypePersisted(method.getSignature().getReturnType());
-        imageLayerWriterHelper.afterMethodAdded(method);
     }
 
     private void afterConstantAdded(ImageHeapConstant constant) {
-        ensureTypePersisted(constant.getType());
+        constant.getType().registerAsTrackedAcrossLayers(constant);
         /* If this is a Class constant persist the corresponding type. */
         ConstantReflectionProvider constantReflection = aUniverse.getBigbang().getConstantReflectionProvider();
         AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
         if (typeFromClassConstant != null) {
-            ensureTypePersisted(typeFromClassConstant);
+            typeFromClassConstant.registerAsTrackedAcrossLayers(constant);
         }
     }
 
@@ -537,31 +500,25 @@ public class ImageLayerWriter {
         return methodsMap.containsKey(name);
     }
 
-    public void persistMethodGraphs() {
-        assert aUniverse.sealed();
-
-        aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers)
-                        .forEach(this::ensureTypePersisted);
-
-        aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers)
-                        .forEach(this::ensureMethodPersisted);
-
-        aUniverse.getFields().stream().filter(AnalysisField::isTrackedAcrossLayers)
-                        .forEach(this::ensureFieldPersisted);
-
+    public void persistAnalysisParsedGraphs() {
         // Persisting graphs discovers additional types, members and constants that need persisting
         Set<AnalysisMethod> persistedGraphMethods = new HashSet<>();
+        boolean modified;
         do {
-            for (AnalysisMethod method : methodsToPersist) {
+            modified = false;
+            /*
+             * GR-60503: It would be better to mark all the elements as trackedAcrossLayers before
+             * the end of the analysis and only iterate only once over all methods.
+             */
+            for (AnalysisMethod method : aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).toList()) {
                 if (persistedGraphMethods.add(method)) {
+                    modified = true;
                     persistAnalysisParsedGraph(method);
                 }
             }
-        } while (!persistedGraphMethods.equals(methodsToPersist));
+        } while (modified);
 
         // Note that constants are scanned late so all values are available.
-
-        sealed = true;
     }
 
     private void persistAnalysisParsedGraph(AnalysisMethod method) {
@@ -649,7 +606,9 @@ public class ImageLayerWriter {
     protected void persistConstant(ImageHeapConstant imageHeapConstant, ConstantParent parent, PersistedConstant.Builder builder, Set<Integer> constantsToRelink) {
         int id = getConstantId(imageHeapConstant);
         builder.setId(id);
-        builder.setTypeId(imageHeapConstant.getType().getId());
+        AnalysisType type = imageHeapConstant.getType();
+        AnalysisError.guarantee(type.isTrackedAcrossLayers(), "Type %s from constant %s should have been marked as trackedAcrossLayers, but was not", type, imageHeapConstant);
+        builder.setTypeId(type.getId());
 
         IdentityHashCodeProvider identityHashCodeProvider = (IdentityHashCodeProvider) aUniverse.getBigbang().getConstantReflectionProvider();
         int identityHashCode = identityHashCodeProvider.identityHashCode(imageHeapConstant);

@@ -570,6 +570,11 @@ public class NativeImageGenerator {
                 return;
             }
 
+            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
+                HostedImageLayerBuildingSupport.singleton().getWriter().persistAnalysisParsedGraphs();
+            }
+
             NativeImageHeap heap;
             HostedMetaAccess hMetaAccess;
             RuntimeConfiguration runtimeConfiguration;
@@ -587,10 +592,6 @@ public class NativeImageGenerator {
 
                 BeforeUniverseBuildingAccessImpl beforeUniverseBuildingConfig = new BeforeUniverseBuildingAccessImpl(featureHandler, loader, debug, hMetaAccess);
                 featureHandler.forEachFeature(feature -> feature.beforeUniverseBuilding(beforeUniverseBuildingConfig));
-
-                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
-                }
 
                 new UniverseBuilder(aUniverse, bb.getMetaAccess(), hUniverse, hMetaAccess, HostedConfiguration.instance().createStrengthenGraphs(bb, hUniverse),
                                 bb.getUnsupportedFeatures()).build(debug);
@@ -626,10 +627,6 @@ public class NativeImageGenerator {
                 bb.getUnsupportedFeatures().report(bb);
 
                 recordRestrictHeapAccessCallees(aUniverse.getMethods());
-
-                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    HostedImageLayerBuildingSupport.singleton().getWriter().persistMethodGraphs();
-                }
 
                 /*
                  * After this point, all TypeFlow (and therefore also TypeState) objects are

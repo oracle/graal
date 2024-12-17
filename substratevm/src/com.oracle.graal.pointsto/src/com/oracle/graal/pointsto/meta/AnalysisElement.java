@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.util.AtomicUtils;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -56,6 +57,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class AnalysisElement implements AnnotatedElement {
+
+    protected static final AtomicReferenceFieldUpdater<AnalysisElement, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisElement.class, Object.class, "trackAcrossLayers");
+    /**
+     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
+     */
+    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
+    protected final boolean enableTrackAcrossLayers;
+
+    protected AnalysisElement(boolean enableTrackAcrossLayers) {
+        this.enableTrackAcrossLayers = enableTrackAcrossLayers;
+    }
 
     public abstract AnnotatedElement getWrapped();
 
@@ -114,10 +127,20 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     protected abstract void onReachable(Object reason);
 
+    public void registerAsTrackedAcrossLayers(Object reason) {
+        if (enableTrackAcrossLayers && !isTrackedAcrossLayers()) {
+            AtomicUtils.atomicSetAndRun(this, reason, trackAcrossLayersUpdater, () -> onTrackedAcrossLayers(reason));
+        }
+    }
+
     /**
      * Indicates we need this information to be saved in the layer archive file.
      */
-    public abstract boolean isTrackedAcrossLayers();
+    public boolean isTrackedAcrossLayers() {
+        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
+    }
+
+    protected abstract void onTrackedAcrossLayers(Object reason);
 
     /** Return true if reachability handlers should be executed for this element. */
     public boolean isTriggered() {
