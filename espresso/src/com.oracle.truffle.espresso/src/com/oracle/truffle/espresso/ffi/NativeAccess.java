@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -219,8 +220,13 @@ public interface NativeAccess {
      *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
      * @throws IllegalArgumentException if the size is negative
      */
-    @Buffer
-    TruffleObject allocateMemory(long size);
+    default @Buffer TruffleObject allocateMemory(long size) {
+        long address = nativeMemory().allocateMemory(size);
+        if (address == 0) {
+            return null;
+        }
+        return RawPointer.create(address);
+    }
 
     /**
      * Similar to realloc. The result of allocating a 0-sized buffer is an implementation detail.
@@ -229,13 +235,32 @@ public interface NativeAccess {
      *         {@link InteropLibrary#hasBufferElements(Object) buffer}.
      * @throws IllegalArgumentException if the size is negative
      */
-    @Buffer
-    TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize);
+    default @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
+        long address = 0;
+        try {
+            address = InteropLibrary.getUncached().asPointer(buffer);
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        long rawPointer = nativeMemory().reallocateMemory(address, newSize);
+        if (rawPointer == 0) {
+            return null;
+        }
+        return RawPointer.create(rawPointer);
+    }
 
     /**
      * Similar to free. Accessing the buffer after free may cause explosive undefined behavior.
      */
-    void freeMemory(@Pointer TruffleObject buffer);
+    default void freeMemory(@Pointer TruffleObject buffer) {
+        long address = 0;
+        try {
+            address = InteropLibrary.getUncached().asPointer(buffer);
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        nativeMemory().freeMemory(address);
+    }
 
     /**
      * Sinking, make a Java method accessible to the native world. Returns an
@@ -292,4 +317,6 @@ public interface NativeAccess {
 
         NativeAccess create(TruffleLanguage.Env env);
     }
+
+    NativeMemory nativeMemory();
 }

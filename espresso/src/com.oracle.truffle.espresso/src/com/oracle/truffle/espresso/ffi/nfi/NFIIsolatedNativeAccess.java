@@ -40,12 +40,14 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
+import com.oracle.truffle.espresso.ffi.memory.NativeMemory;
+import com.oracle.truffle.espresso.ffi.memory.UnsafeNativeMemory;
 import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.Collect;
@@ -78,7 +80,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     private final DefaultLibrary defaultLibrary;
 
     NFIIsolatedNativeAccess(TruffleLanguage.Env env) {
-        super(env);
+        super(env, null);
         // libeden.so must be the first library loaded in the isolated namespace.
         Path espressoLibraryPath = EspressoLanguage.getEspressoLibs(env);
         this.edenLibrary = loadLibrary(Collections.singletonList(espressoLibraryPath), "eden", true);
@@ -93,13 +95,56 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
          * loaded inside the isolated namespace provides a dlsym shim inside the namespace.
          */
         this.defaultLibrary = new DefaultLibrary(this.dlsym, rtldDefault());
+
+        this.nativeMemory = new UnsafeNativeMemory() {
+            @Override
+            public long allocateMemory(long bytes) {
+                try {
+                    @Pointer TruffleObject address = (TruffleObject) UNCACHED_INTEROP.execute(malloc, bytes);
+                    if (UNCACHED_INTEROP.isNull(address)) {
+                        // malloc returned NULL
+                        return 0L;
+                    }
+                    return UNCACHED_INTEROP.asPointer(address);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+
+            @Override
+            public void freeMemory(long address) {
+                try {
+                    UNCACHED_INTEROP.execute(free, RawPointer.create(address));
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+
+            @Override
+            public long reallocateMemory(long address, long newSize) {
+                try {
+                    @Pointer
+                    TruffleObject newAddress = (TruffleObject) UNCACHED_INTEROP.execute(realloc, address, newSize);
+                    if (UNCACHED_INTEROP.isNull(address)) {
+                        // realloc returned NULL
+                        return 0L;
+                    }
+                    return UNCACHED_INTEROP.asPointer(newAddress);
+                } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+        };
     }
 
     private TruffleObject rtldDefault() {
         TruffleObject edenRtldDefault = lookupAndBindSymbol(edenLibrary, "eden_RTLD_DEFAULT", NativeSignature.create(NativeType.POINTER));
         try {
-            TruffleObject result = (TruffleObject) InteropLibrary.getUncached().execute(edenRtldDefault);
-            assert InteropLibrary.getUncached().isPointer(result);
+            TruffleObject result = (TruffleObject) UNCACHED_INTEROP.execute(edenRtldDefault);
+            assert UNCACHED_INTEROP.isPointer(result);
             return result;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -166,56 +211,6 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         @SuppressWarnings({"static-method", "unused"})
         Object toDisplayString(boolean allowSideEffects) {
             return "nfi-dlmopen default library";
-        }
-    }
-
-    @Override
-    public @Buffer TruffleObject allocateMemory(long size) {
-        if (size < 0) {
-            throw new IllegalArgumentException("negative buffer length: " + size);
-        }
-        try {
-            @Pointer
-            TruffleObject address = (TruffleObject) UNCACHED_INTEROP.execute(malloc, size);
-            if (InteropLibrary.getUncached().isNull(address)) {
-                // malloc returned NULL
-                return null;
-            }
-            return TruffleByteBuffer.wrap(address, Math.toIntExact(size));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    @Override
-    public void freeMemory(@Pointer TruffleObject buffer) {
-        assert InteropLibrary.getUncached().isPointer(buffer);
-        try {
-            UNCACHED_INTEROP.execute(free, buffer);
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-    }
-
-    @Override
-    public @Buffer TruffleObject reallocateMemory(@Pointer TruffleObject buffer, long newSize) {
-        if (newSize < 0) {
-            throw new IllegalArgumentException("negative buffer length: " + newSize);
-        }
-        assert InteropLibrary.getUncached().isPointer(buffer);
-        try {
-            @Pointer
-            TruffleObject address = (TruffleObject) UNCACHED_INTEROP.execute(realloc, buffer, newSize);
-            if (InteropLibrary.getUncached().isNull(address)) {
-                // realloc returned NULL
-                return null;
-            }
-            return TruffleByteBuffer.wrap(address, Math.toIntExact(newSize));
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
         }
     }
 
