@@ -43,6 +43,8 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
+
+import com.oracle.svm.hosted.phases.AnalyzeMethodsRequiringMetadataUsagePhase;
 import com.oracle.svm.hosted.phases.AnalyzeJavaHomeAccessPhase;
 
 import jdk.graal.compiler.graph.Node;
@@ -60,14 +62,22 @@ import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
 
 public class SubstrateStrengthenGraphs extends StrengthenGraphs {
-
+    private final Boolean trackMetadataRequiringMethodUsage;
     private final Boolean trackJavaHomeAccess;
     private final Boolean trackJavaHomeAccessDetailed;
 
     public SubstrateStrengthenGraphs(Inflation bb, Universe converter) {
         super(bb, converter);
-        trackJavaHomeAccess = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccess.getValue(bb.getOptions());
-        trackJavaHomeAccessDetailed = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccessDetailed.getValue(bb.getOptions());
+        trackMetadataRequiringMethodUsage = AnalyzeMethodsRequiringMetadataUsageFeature.Options.TrackMethodsRequiringMetadata.hasBeenSet();
+        trackJavaHomeAccess = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccess.getValue();
+        trackJavaHomeAccessDetailed = AnalyzeJavaHomeAccessFeature.Options.TrackJavaHomeAccessDetailed.getValue();
+    }
+
+    @Override
+    protected void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method) {
+        if (trackMetadataRequiringMethodUsage) {
+            new AnalyzeMethodsRequiringMetadataUsagePhase().apply(graph, bb.getProviders(method));
+        }
     }
 
     @Override
