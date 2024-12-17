@@ -44,7 +44,6 @@ import jdk.graal.compiler.options.Option;
  * A dedicated listener thread that accepts client connections and that handles diagnostic command
  * requests. At the moment, only jcmd is supported.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L453-L467")
 public abstract class AttachListenerThread extends Thread {
     private static final String JCMD_COMMAND_STRING = "jcmd";
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.hpp#L142") //
@@ -55,7 +54,7 @@ public abstract class AttachListenerThread extends Thread {
     protected static final int ARG_COUNT_MAX = 3;
 
     @SuppressWarnings("this-escape")
-    // This constructor should be annotated with @BasedOnJDK instead of the class, see GR-59171.
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/attachListener.cpp#L453-L467")
     public AttachListenerThread() {
         super(PlatformThreads.singleton().systemGroup, "Attach Listener");
         this.setDaemon(true);

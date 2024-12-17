@@ -32,15 +32,14 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.nmt.NativeMemoryTracking;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/nmt/nmtDCmd.hpp#L49-L52")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/nmt/nmtDCmd.cpp#L34-L64")
 public class VMNativeMemoryDCmd extends AbstractDCmd {
     private static final DCmdOption<Boolean> SUMMARY = new DCmdOption<>(Boolean.class, "summary",
                     "Request runtime to report current memory summary, which includes total reserved and committed memory, along with memory usage summary by each subsystem.",
                     false, false);
 
-    // This constructor should be annotated with @BasedOnJDK instead of the class, see GR-59171.
     @Platforms(Platform.HOSTED_ONLY.class)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/nmt/nmtDCmd.hpp#L49-L52")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/nmt/nmtDCmd.cpp#L34-L64")
     public VMNativeMemoryDCmd() {
         super("VM.native_memory", "Print native memory usage", Impact.Low, new DCmdOption<?>[0], new DCmdOption<?>[]{SUMMARY},
                         new String[]{"$ jcmd <pid> VM.native_memory summary"});
