@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,8 +80,6 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public static final String NAME = "WebAssembly";
     public static final String WASM_MIME_TYPE = "application/wasm";
     public static final String WASM_SOURCE_NAME_SUFFIX = ".wasm";
-    public static final String PARSE_JS_MODULE_MARKER = "js_module_decode";
-    public static final String[] PARSE_JS_MODULE_ARGS = {PARSE_JS_MODULE_MARKER};
 
     private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
 
@@ -124,10 +122,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final Source source = request.getSource();
         final String moduleName = source.getName();
         final byte[] data = source.getBytes().toByteArray();
-        ModuleLimits moduleLimits = null;
-        if (!request.getArgumentNames().isEmpty() && PARSE_JS_MODULE_MARKER.equals(request.getArgumentNames().get(0))) {
-            moduleLimits = JsConstants.JS_LIMITS;
-        }
+        ModuleLimits moduleLimits = JsConstants.JS_LIMITS;
         final WasmModule module = context.readModule(moduleName, data, moduleLimits);
         return new ParsedWasmModuleRootNode(this, module, source).getCallTarget();
     }
