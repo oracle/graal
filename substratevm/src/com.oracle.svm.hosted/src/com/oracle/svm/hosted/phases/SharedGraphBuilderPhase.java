@@ -748,52 +748,31 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (mergeState.areLocksMergeableWith(target.getState())) {
                 return target;
             }
-
-            /*
-             * If the current locks are not compatible with the target merge,
-             * the following code is created
-             *
-             * @formatter:off
-             *
-             * if(false)                // UnreachableBeginNode
-             *   goto originalTarget    // using adapted locks
-             * else
-             *   releaseMonitors()      // also methodSynchronizedObject
-             *   throw new UnsupportedFeatureError()
-             *
-             * @formatter:on
-             *
-             * Returns the newly created IfNode as updated target.
-             */
+            // Create an UnsupportedFeatureException and unwind.
             FixedWithNextNode originalLast = lastInstr;
             FrameStateBuilder originalState = frameState;
 
-            IfNode ifNode = graph.add(new IfNode(LogicConstantNode.contradiction(graph), graph.add(new UnreachableBeginNode()), graph.add(new BeginNode()), BranchProbabilityNode.NEVER_TAKEN_PROFILE));
-
-            /*
-             * Create an UnsupportedFeatureException in the always entered (false) branch and
-             * unwind.
-             */
-            lastInstr = ifNode.falseSuccessor();
+            BeginNode holder = graph.add(new BeginNode());
+            lastInstr = holder;
             frameState = target.getState().copy();
             genReleaseMonitors(true);
             genThrowUnsupportedFeatureError("Incompatible lock states at merge. Native Image enforces structured locking (JVMS 2.11.10)");
 
-            /*
-             * Update the never entered (true) branch to have a matching lock stack with the
-             * subsequent merge. This branch will fold away during canonicalization. Add an
-             * UnreachableNode as assurance.
-             */
+            FixedNode exceptionPath = holder.next();
+
             Target newTarget;
-            FrameStateBuilder newState = target.getState().copy();
-            newState.setLocks(mergeState);
             if (target.getOriginalEntry() == null) {
-                newTarget = new Target(ifNode, newState, target.getEntry());
+                newTarget = new Target(exceptionPath, frameState, null, false);
+                target.getEntry().replaceAtPredecessor(exceptionPath);
+                target.getEntry().safeDelete();
             } else {
-                target.getOriginalEntry().replaceAtPredecessor(ifNode);
-                newTarget = new Target(target.getEntry(), newState, target.getOriginalEntry());
+                newTarget = new Target(target.getEntry(), frameState, exceptionPath, false);
+                target.getOriginalEntry().replaceAtPredecessor(exceptionPath);
+                target.getOriginalEntry().safeDelete();
             }
-            ifNode.trueSuccessor().setNext(newTarget.getOriginalEntry());
+
+            holder.setNext(null);
+            holder.safeDelete();
 
             lastInstr = originalLast;
             frameState = originalState;
