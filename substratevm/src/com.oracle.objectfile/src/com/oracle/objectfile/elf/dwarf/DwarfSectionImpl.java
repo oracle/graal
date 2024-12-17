@@ -28,7 +28,6 @@ package com.oracle.objectfile.elf.dwarf;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -61,7 +60,6 @@ import com.oracle.objectfile.elf.dwarf.constants.DwarfUnitHeader;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
@@ -99,8 +97,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     protected final DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
     protected long debugAddress = 0;
-
-    private final ArrayList<Byte> contentBytes = new ArrayList<>();
 
     /**
      * The name of this section.
@@ -828,10 +824,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected String uniqueDebugString(String str) {
         return dwarfSections.uniqueDebugString(str);
-    }
-
-    protected TypeEntry lookupType(ResolvedJavaType type) {
-        return null; // dwarfSections.lookupTypeEntry(type, null, null);
     }
 
     protected ClassEntry lookupObjectClass() {

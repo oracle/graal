@@ -151,11 +151,6 @@ public abstract class DebugInfoBase {
     private String cachePath;
 
     /**
-     * The offset of the first byte beyond the end of the Java compiled code address range.
-     */
-    private int compiledCodeMax;
-
-    /**
      * The type entry for java.lang.Class.
      */
     private ClassEntry hubClassEntry;

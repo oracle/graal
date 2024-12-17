@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,9 +26,9 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import com.oracle.objectfile.debugentry.FrameSizeChangeEntry;
-
 import java.util.List;
+
+import com.oracle.objectfile.debugentry.FrameSizeChangeEntry;
 
 /**
  * x86_64-specific section generator for debug_frame section that knows details of x86_64 registers

@@ -680,7 +680,6 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.objectfile",
                 "com.oracle.graal.reachability",
                 "com.oracle.svm.core.graal.amd64",
             ],
