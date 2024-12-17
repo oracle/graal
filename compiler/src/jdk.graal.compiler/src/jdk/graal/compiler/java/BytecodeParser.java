@@ -864,17 +864,24 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         final FixedNode entry;
         final FixedNode originalEntry;
         final FrameStateBuilder state;
+        final boolean reachable;
 
         public Target(FixedNode entry, FrameStateBuilder state) {
-            this.entry = entry;
-            this.state = state;
-            this.originalEntry = null;
+            this(entry, state, null);
         }
 
         public Target(FixedNode entry, FrameStateBuilder state, FixedNode originalEntry) {
             this.entry = entry;
             this.state = state;
             this.originalEntry = originalEntry;
+            this.reachable = true;
+        }
+
+        public Target(FixedNode entry, FrameStateBuilder state, FixedNode originalEntry, boolean reachable) {
+            this.entry = entry;
+            this.state = state;
+            this.originalEntry = originalEntry;
+            this.reachable = reachable;
         }
 
         public FixedNode getEntry() {
@@ -887,6 +894,15 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
         public FrameStateBuilder getState() {
             return state;
+        }
+
+        /**
+         * Indicates whether the target block is actually reachable. If not, {@link #getEntry()}
+         * will lead to a dead end (e.g., exception). Thus, no ends must be added to the target
+         * block's merge.
+         */
+        public boolean isReachable() {
+            return reachable;
         }
     }
 
@@ -3438,6 +3454,13 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 } else {
                     setFirstInstruction(block, graph.add(new BeginNode()));
                 }
+                /*
+                 * The target is the block's first instruction which may be preceded by exits of
+                 * loops or exception handling that must be done before the jump. The target.entry
+                 * holds the start of this sequence of operations. As the block is seen the first
+                 * time as jump target, we cannot check for unstructured locking, as this requires
+                 * to compare the lock stacks of two framestates to be merged.
+                 */
                 Target target = checkLoopExit(checkUnwind(getFirstInstruction(block), block, state), block);
                 FixedNode result = target.entry;
                 FrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
@@ -3456,6 +3479,11 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                  */
                 LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block);
                 LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
+                /*
+                 * The target is created from the loopEnd which may be preceded by exits of loops or
+                 * exception handling that must be done before the jump. The target.entry holds the
+                 * start of this sequence of operations.
+                 */
                 Target target = checkUnstructuredLocking(checkLoopExit(new Target(loopEnd, state.copy()), block), block, getEntryState(block));
                 FixedNode result = target.entry;
                 /*
@@ -3466,15 +3494,30 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 assert !(block instanceof ExceptionDispatchBlock) : block;
                 assert !getEntryState(block).rethrowException();
                 target.state.setRethrowException(false);
-                getEntryState(block).merge(loopBegin, target.state);
-                debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
+
+                if (target.isReachable()) {
+                    getEntryState(block).merge(loopBegin, target.state);
+                    debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
+                } else {
+                    debug.log("createTarget %s: Unreachable target. This could be due to an exception being thrown (e.g., unstructured locking).", block);
+                }
 
                 return result;
             }
             assert currentBlock == null || currentBlock.getId() < block.getId() : "must not be backward branch";
             assert getFirstInstruction(block).next() == null : "bytecodes already parsed for block";
 
-            if (getFirstInstruction(block) instanceof AbstractBeginNode && !(getFirstInstruction(block) instanceof AbstractMergeNode)) {
+            // The EndNode for the new edge to merge.
+            EndNode newEnd = graph.add(new EndNode());
+            /*
+             * The target is created from the newEnd which may be preceded by exits of loops or
+             * exception handling that must be done before the jump. The target.entry holds the
+             * start of this sequence of operations.
+             */
+            Target target = checkUnstructuredLocking(checkLoopExit(checkUnwind(newEnd, block, state), block), block, getEntryState(block));
+            FixedNode result = target.entry;
+
+            if (target.isReachable() && getFirstInstruction(block) instanceof AbstractBeginNode && !(getFirstInstruction(block) instanceof AbstractMergeNode)) {
                 /*
                  * This is the second time we see this block. Create the actual MergeNode and the
                  * End Node for the already existing edge.
@@ -3500,15 +3543,14 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 setFirstInstruction(block, mergeNode);
             }
 
-            AbstractMergeNode mergeNode = (AbstractMergeNode) getFirstInstruction(block);
-
-            // The EndNode for the newly merged edge.
-            EndNode newEnd = graph.add(new EndNode());
-            Target target = checkUnstructuredLocking(checkLoopExit(checkUnwind(newEnd, block, state), block), block, getEntryState(block));
-            FixedNode result = target.entry;
-            getEntryState(block).merge(mergeNode, target.state);
-            mergeNode.addForwardEnd(newEnd);
-            debug.log("createTarget %s: merging state, result: %s", block, result);
+            if (target.isReachable()) {
+                AbstractMergeNode mergeNode = (AbstractMergeNode) getFirstInstruction(block);
+                getEntryState(block).merge(mergeNode, target.state);
+                mergeNode.addForwardEnd(newEnd);
+                debug.log("createTarget %s: merging state, result: %s", block, result);
+            } else {
+                debug.log("createTarget %s: Unreachable target. This could be due to an exception being thrown (e.g., unstructured locking).", block);
+            }
 
             return result;
         }
