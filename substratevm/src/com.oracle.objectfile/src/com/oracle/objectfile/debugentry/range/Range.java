@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -157,9 +157,9 @@ public abstract class Range implements Comparable<Range> {
         // this should be for an initial range extending beyond the stack decrement
         assert loOffset == 0 && loOffset < stackDecrement && stackDecrement < hiOffset : "invalid split request";
 
-        Map<LocalEntry, LocalValueEntry> localValueInfos = new HashMap<>();
+        Map<LocalEntry, LocalValueEntry> splitLocalValueInfos = new HashMap<>();
 
-        for (var localInfo : this.localValueInfos.entrySet()) {
+        for (var localInfo : localValueInfos.entrySet()) {
             if (localInfo.getValue() instanceof StackValueEntry stackValue) {
                 // need to redefine the value for this param using a stack slot value
                 // that allows for the stack being extended by framesize. however we
@@ -167,16 +167,16 @@ public abstract class Range implements Comparable<Range> {
                 // difference between the caller SP and the pre-extend callee SP
                 // because of a stacked return address.
                 int adjustment = frameSize - preExtendFrameSize;
-                localValueInfos.put(localInfo.getKey(), new StackValueEntry(stackValue.stackSlot() + adjustment));
+                splitLocalValueInfos.put(localInfo.getKey(), new StackValueEntry(stackValue.stackSlot() + adjustment));
             } else {
-                localValueInfos.put(localInfo.getKey(), localInfo.getValue());
+                splitLocalValueInfos.put(localInfo.getKey(), localInfo.getValue());
             }
         }
 
-        Range newRange = Range.createSubrange(this.primary, this.methodEntry, localValueInfos, stackDecrement, this.hiOffset, this.line, this.caller, this.isLeaf());
-        this.hiOffset = stackDecrement;
+        Range splitRange = Range.createSubrange(primary, methodEntry, splitLocalValueInfos, stackDecrement, hiOffset, line, caller, isLeaf());
+        hiOffset = stackDecrement;
 
-        return newRange;
+        return splitRange;
     }
 
     public boolean contains(Range other) {

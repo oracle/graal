@@ -154,11 +154,6 @@ public abstract class DebugInfoBase {
      */
     private String cachePath;
 
-    /**
-     * The offset of the first byte beyond the end of the Java compiled code address range.
-     */
-    private int compiledCodeMax;
-
     /*
      * A prefix used to label indirect types used to ensure gdb performs oop reference --> raw
      * address translation
