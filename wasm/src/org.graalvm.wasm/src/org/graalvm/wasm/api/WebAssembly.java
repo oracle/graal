@@ -334,7 +334,10 @@ public class WebAssembly extends Dictionary {
 
     private static WasmModule toModule(Object[] args) {
         checkArgumentCount(args, 1);
-        if (args[0] instanceof WasmModuleWithSource moduleObject) {
+        Object arg0 = args[0];
+        if (arg0 instanceof WasmModule moduleObject) {
+            return moduleObject;
+        } else if (arg0 instanceof WasmModuleWithSource moduleObject) {
             return moduleObject.module();
         } else {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm module");

@@ -48,12 +48,15 @@ import java.util.function.Function;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.wasm.api.JsConstants;
+import org.graalvm.wasm.api.WasmModuleWithSource;
 import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -69,17 +72,18 @@ import com.oracle.truffle.api.source.SourceSection;
 @Registration(id = WasmLanguage.ID, //
                 name = WasmLanguage.NAME, //
                 defaultMimeType = WasmLanguage.WASM_MIME_TYPE, //
-                byteMimeTypes = WasmLanguage.WASM_MIME_TYPE, //
+                byteMimeTypes = {WasmLanguage.WASM_MIME_TYPE}, //
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false, //
-                website = "https://www.graalvm.org/")
+                website = "https://www.graalvm.org/webassembly/")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public static final String ID = "wasm";
     public static final String NAME = "WebAssembly";
     public static final String WASM_MIME_TYPE = "application/wasm";
     public static final String WASM_SOURCE_NAME_SUFFIX = ".wasm";
+    public static final String MODULE_DECODE = "module_decode";
 
     private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
 
@@ -138,13 +142,40 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         }
 
         @Override
-        public WasmInstance execute(VirtualFrame frame) {
-            final WasmContext context = WasmContext.get(this);
-            WasmInstance instance = context.lookupModuleInstance(module);
-            if (instance == null) {
-                instance = context.readInstance(module);
+        public Object execute(VirtualFrame frame) {
+            if (frame.getArguments().length == 0) {
+                final WasmContext context = WasmContext.get(this);
+                WasmInstance instance = context.lookupModuleInstance(module);
+                if (instance == null) {
+                    instance = context.readInstance(module);
+                }
+                return instance;
+            } else {
+                if (frame.getArguments()[0] instanceof String mode) {
+                    if (mode.equals(MODULE_DECODE)) {
+                        return moduleDecode();
+                    } else {
+                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Unsupported first argument: '%s'", mode);
+                    }
+                } else {
+                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "First argument must be a string");
+                }
             }
-            return instance;
+        }
+
+        @TruffleBoundary
+        private Object moduleDecode() {
+            /*
+             * Get the source used for parsing on the JS side and associate it with the returned
+             * WasmModule, so that it will be kept alive with the JS WebAssembly.Module object.
+             */
+            Source sourceHandle = getParsingSource();
+            return new WasmModuleWithSource(module, sourceHandle);
+        }
+
+        @TruffleBoundary
+        private Source getParsingSource() {
+            return Source.newBuilder(source).build();
         }
 
         @Override
