@@ -41,8 +41,8 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.graal.compiler.options.Option;
@@ -219,6 +219,8 @@ public class ServiceLoaderFeature implements InternalFeature {
                 RuntimeReflection.register(providerClass);
                 if (nullaryConstructor != null) {
                     RuntimeReflection.register(nullaryConstructor);
+                } else {
+                    RuntimeReflection.registerConstructorLookup(providerClass);
                 }
                 if (nullaryProviderMethod != null) {
                     RuntimeReflection.register(nullaryProviderMethod);
@@ -229,8 +231,14 @@ public class ServiceLoaderFeature implements InternalFeature {
                      */
                     RuntimeReflection.registerMethodLookup(providerClass, "provider");
                 }
-                registeredProviders.add(provider);
             }
+            /*
+             * Register the provider in both cases: when it is JCA-compliant (has a nullary
+             * constructor or a provider method) or when it lacks both. If neither is present, a
+             * ServiceConfigurationError will be thrown at runtime, consistent with HotSpot
+             * behavior.
+             */
+            registeredProviders.add(provider);
         }
         if (!registeredProviders.isEmpty()) {
             String serviceResourceLocation = "META-INF/services/" + serviceProvider.getName();

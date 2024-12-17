@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,12 +40,8 @@ import org.junit.Test;
 // Checkstyle: allow Class.getSimpleName
 
 /**
- * Tests a workaround for {@linkplain ServiceLoader services} without a {@linkplain ServiceLoader
- * provider constructor} (nullary constructor) [GR-19958]. The workaround completely ignores
- * services without a provider constructor, instead of throwing an {@link ServiceConfigurationError}
- * when iterating the services. See the Github issue
- * <a href="https://github.com/oracle/graal/issues/2652">"Spring Service Registry native-image
- * failure due to service loader handling in jersey #2652"</a> for more details.
+ * Test both JCA-compliant services and non-JCA-compliant services (without a nullary constructor),
+ * and compare the behavior between Native Image and Hotspot.
  */
 public class NoProviderConstructorServiceLoaderTest {
 
@@ -73,81 +69,77 @@ public class NoProviderConstructorServiceLoaderTest {
 
     private static final Set<String> EXPECTED = Set.of(ProperService.class.getSimpleName());
 
-    /**
-     * This should actually throw an {@link ServiceConfigurationError}.
-     *
-     * @see #testLazyStreamHotspot()
-     */
-    @Test
+    @Test(expected = ServiceConfigurationError.class)
     public void testLazyStreamNativeImage() {
-        Assume.assumeTrue("native image specific behavior", ImageInfo.inImageRuntimeCode());
-        Set<String> simpleNames = ServiceLoader.load(ServiceInterface.class).stream()
-                        .map(provider -> provider.type().getSimpleName())
-                        .collect(Collectors.toSet());
+        assumeEnvironment(true);
+        Set<String> simpleNames = loadLazyStreamNames();
         Assert.assertEquals(EXPECTED, simpleNames);
     }
 
-    /**
-     * This should actually throw an {@link ServiceConfigurationError}.
-     *
-     * @see #testEagerStreamHotspot()
-     */
-    @Test
+    @Test(expected = ServiceConfigurationError.class)
     public void testEagerStreamNativeImage() {
-        Assume.assumeTrue("native image specific behavior", ImageInfo.inImageRuntimeCode());
-        Set<String> simpleNames = ServiceLoader.load(ServiceInterface.class).stream()
-                        .map(provider -> provider.get().getClass().getSimpleName())
-                        .collect(Collectors.toSet());
+        assumeEnvironment(true);
+        Set<String> simpleNames = loadEagerStreamNames();
         Assert.assertEquals(EXPECTED, simpleNames);
     }
 
-    /**
-     * This should actually throw an {@link ServiceConfigurationError}.
-     *
-     * @see #testEagerIteratorHotspot()
-     */
-    @Test
+    @Test(expected = ServiceConfigurationError.class)
     public void testEagerIteratorNativeImage() {
-        Assume.assumeTrue("native image specific behavior", ImageInfo.inImageRuntimeCode());
-        Set<String> simpleNames = new HashSet<>();
-        ServiceLoader.load(ServiceInterface.class).iterator()
-                        .forEachRemaining(s -> simpleNames.add(s.getClass().getSimpleName()));
+        assumeEnvironment(true);
+        Set<String> simpleNames = loadEagerIteratorNames();
         Assert.assertEquals(EXPECTED, simpleNames);
     }
 
-    /**
-     * @see #testLazyStreamNativeImage()
-     */
     @Test(expected = ServiceConfigurationError.class)
     public void testLazyStreamHotspot() {
-        Assume.assumeFalse("hotspot specific behavior", ImageInfo.inImageRuntimeCode());
-        Set<String> simpleNames = ServiceLoader.load(ServiceInterface.class).stream()
-                        .map(provider -> provider.type().getSimpleName())
-                        .collect(Collectors.toSet());
+        assumeEnvironment(false);
+        Set<String> simpleNames = loadLazyStreamNames();
         Assert.assertNull("should not reach", simpleNames);
     }
 
-    /**
-     * @see #testEagerStreamNativeImage()
-     */
-    @Test(expected = ServiceConfigurationError.class)
-    public void testEagerStreamHotspot() {
-        Assume.assumeFalse("hotspot specific behavior", ImageInfo.inImageRuntimeCode());
-        Set<String> simpleNames = ServiceLoader.load(ServiceInterface.class).stream()
-                        .map(provider -> provider.get().getClass().getSimpleName())
-                        .collect(Collectors.toSet());
-        Assert.assertNull("should not reach", simpleNames);
-    }
-
-    /**
-     * @see #testEagerIteratorNativeImage()
-     */
     @Test(expected = ServiceConfigurationError.class)
     public void testEagerIteratorHotspot() {
-        Assume.assumeFalse("hotspot specific behavior", ImageInfo.inImageRuntimeCode());
+        assumeEnvironment(false);
+        Set<String> simpleNames = loadEagerIteratorNames();
+        Assert.assertNull("should not reach", simpleNames);
+    }
+
+    /**
+     * Helper method to assume the environment (hotspot/native image).
+     */
+    private static void assumeEnvironment(boolean isNativeImage) {
+        if (isNativeImage) {
+            Assume.assumeTrue("native image specific behavior", ImageInfo.inImageRuntimeCode());
+        } else {
+            Assume.assumeFalse("hotspot specific behavior", ImageInfo.inImageRuntimeCode());
+        }
+    }
+
+    /**
+     * Helper method for lazy stream tests.
+     */
+    private static Set<String> loadLazyStreamNames() {
+        return ServiceLoader.load(ServiceInterface.class).stream()
+                        .map(provider -> provider.type().getSimpleName())
+                        .collect(Collectors.toSet());
+    }
+
+    /**
+     * Helper method for eager stream tests.
+     */
+    private static Set<String> loadEagerStreamNames() {
+        return ServiceLoader.load(ServiceInterface.class).stream()
+                        .map(provider -> provider.get().getClass().getSimpleName())
+                        .collect(Collectors.toSet());
+    }
+
+    /**
+     * Helper method for eager iterator tests.
+     */
+    private static Set<String> loadEagerIteratorNames() {
         Set<String> simpleNames = new HashSet<>();
         ServiceLoader.load(ServiceInterface.class).iterator()
                         .forEachRemaining(s -> simpleNames.add(s.getClass().getSimpleName()));
-        Assert.assertNull("should not reach", simpleNames);
+        return simpleNames;
     }
 }
