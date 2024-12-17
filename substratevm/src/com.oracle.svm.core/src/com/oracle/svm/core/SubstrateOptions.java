@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
@@ -84,7 +85,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.common.DeadCodeEliminationPhase;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.amd64.AMD64;
-import org.graalvm.nativeimage.ProcessProperties;
 
 public class SubstrateOptions {
 
@@ -496,7 +496,6 @@ public class SubstrateOptions {
     @Option(help = "Directory where Java source-files will be placed for the debugger")//
     public static final RuntimeOptionKey<String> RuntimeSourceDestDir = new RuntimeOptionKey<>(null, RelevantForCompilationIsolates);
 
-
     public static Path getRuntimeSourceDestDir() {
         String sourceDestDir = RuntimeSourceDestDir.getValue();
         if (sourceDestDir != null) {
@@ -505,8 +504,9 @@ public class SubstrateOptions {
         return Paths.get(ProcessProperties.getExecutableName()).getParent().resolve("sources");
     }
 
+    // TODO change to false
     @Option(help = "Provide debuginfo for runtime-compiled code.")//
-    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(true);  // TODO: change to false
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(true);
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//

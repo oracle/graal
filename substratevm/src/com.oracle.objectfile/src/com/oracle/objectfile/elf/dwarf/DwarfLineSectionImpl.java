@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -125,7 +125,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return LN_HEADER_SIZE;
     }
 
-    private int computeDirTableSize(ClassEntry classEntry) {
+    private static int computeDirTableSize(ClassEntry classEntry) {
         /*
          * Table contains a sequence of 'nul'-terminated UTF8 dir name bytes followed by an extra
          * 'nul'.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -84,9 +84,9 @@ public class ClassEntry extends StructureTypeEntry {
         addFile(fileEntry);
     }
 
-    private void addFile(FileEntry fileEntry) {
-        files.add(fileEntry);
-        dirs.add(fileEntry.dirEntry());
+    private void addFile(FileEntry addFileEntry) {
+        files.add(addFileEntry);
+        dirs.add(addFileEntry.dirEntry());
     }
 
     @Override
