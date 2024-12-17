@@ -85,33 +85,39 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/batik-all-1.7.jar"],
     },
 
-    "ASM_9.5" : {
-      "digest" : "sha512:9e65f2983783725bae196ca939b45246958731246df1c495089c8ea5ce646de77c4e01a5a9ba10642016bb3258e1727e9ebcece6e74d9e3c32f528025d76b955",
+    "ASM_9.7.1" : {
+      "digest" : "sha512:4767b01603dad5c79cc1e2b5f3722f72b1059d928f184f446ba11badeb1b381b3a3a9a801cc43d25d396df950b09d19597c73173c411b1da890de808b94f1f50",
+      "sourceDigest" : "sha512:d7c0de5912d04949a3d06cad366ff35a877da2682d9c74579625d62686032ea9349aff6102b17f92e9ec7eb4e9b1cd906b649c6a3ac798bfb9e31e5425de009d",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm",
-        "version" : "9.5",
+        "version" : "9.7.1",
       },
+      "license" : "BSD-new",
     },
 
-    "ASM_TREE_9.5" : {
-      "digest" : "sha512:816de8f84c216a7bd97b2458bde64a4b99a039b7b59fbd1ef52edf8bf869edabb93967736fe0c61e8eb3e1520e0cefe69ba59cda12df30f9f85db75fb6c064f3",
+    "ASM_TREE_9.7.1" : {
+      "digest" : "sha512:e55008c392fdd35e95d3404766b12dd4b46e13d5c362fcd0ab42a65751a82737eaf0ebc857691d1916190d34407adfde4437615d69c278785416fd911e00978d",
+      "sourceDigest" : "sha512:3cea80bc7b55679dfa3d2065c6cb6951007cc7817082e9fcf4c5e3cdc073c22eddf7c7899cff60b1092049ec9038e8d3aa9a8828ef731739bda8b5afcec30e86",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-tree",
-        "version" : "9.5",
+        "version" : "9.7.1",
       },
-      "dependencies" : ["ASM_9.5"],
+      "dependencies" : ["ASM_9.7.1"],
+      "license" : "BSD-new",
     },
 
-    "ASM_UTIL_9.5" : {
-      "digest" : "sha512:f68284d8f8fd029f3f428112225b2035ed3a4216cf3b34e0aacc83c32a6d44ab5e5d128b60a13ef768e3396041a62cf63f7fd3445dc5a05ce0ae03a2b2ed3080",
+    "ASM_UTIL_9.7.1" : {
+      "digest" : "sha512:522d793d15a2c5ea6504a50222cf0750f1eab7b881cf289675042539b1aba8b3868197b1bebe729de728dd10020eb028ae16252dcd5d84fdcbf7f925832bc269",
+      "sourceDigest" : "sha512:387aa887bfec24aec287d9aacebfdc0c2e1ab16a4adce933aecac6fc41545ce43a3eea0ed139db52dd0d0af910cfd2162aa4d6330a81b32b64b36f03b49db66a",
       "maven" : {
         "groupId" : "org.ow2.asm",
         "artifactId" : "asm-util",
-        "version" : "9.5",
+        "version" : "9.7.1",
       },
-      "dependencies" : ["ASM_9.5"],
+      "dependencies" : ["ASM_9.7.1"],
+      "license" : "BSD-new",
     },
 
     "HSDIS" : {
@@ -244,8 +250,8 @@ suite = {
       "dependencies" : [
         "jdk.graal.compiler",
         "mx:JUNIT",
-        "ASM_TREE_9.5",
-        "ASM_UTIL_9.5",
+        "ASM_TREE_9.7.1",
+        "ASM_UTIL_9.7.1",
         "JAVA_ALLOCATION_INSTRUMENTER",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
@@ -499,8 +505,8 @@ suite = {
         "truffle:TRUFFLE_COMPILER",
         "truffle:TRUFFLE_RUNTIME",
         "regex:TREGEX",
-        "ASM_TREE_9.5",
-        "ASM_UTIL_9.5",
+        "ASM_TREE_9.7.1",
+        "ASM_UTIL_9.7.1",
       ],
       "exclude" : [
         "mx:JUNIT",
