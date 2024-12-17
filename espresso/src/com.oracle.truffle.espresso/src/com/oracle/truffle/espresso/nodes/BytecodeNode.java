@@ -275,7 +275,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -324,12 +323,12 @@ import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
-import com.oracle.truffle.espresso.constantpool.CallSiteLink;
 import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.constantpool.ResolvedDynamicConstant;
 import com.oracle.truffle.espresso.constantpool.ResolvedWithInvokerClassMethodRefConstant;
@@ -1752,25 +1751,26 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
         // block while class redefinition is ongoing
         getMethod().getContext().getClassRedefinition().check();
-        BaseQuickNode result = quickNode;
-        result = atomic(() -> {
-            // re-check if node was already replaced by another thread
-            if (quickNode != nodes[readCPI(curBCI)]) {
+        // re-check if node was already replaced by another thread
+        if (quickNode != nodes[readCPI(curBCI)]) {
+            // another thread beat us
+            return nodes[readCPI(curBCI)];
+        }
+        BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
+        char originalCpi = original.readCPI(curBCI);
+        int originalOpcode = original.currentBC(curBCI);
+        ResolvedInvoke resolvedInvoke = reResolvedInvoke(originalOpcode, originalCpi);
+        return atomic(() -> {
+            char cpi = readCPI(curBCI);
+            if (quickNode != nodes[cpi]) {
                 // another thread beat us
-                return nodes[readCPI(curBCI)];
+                return nodes[cpi];
             } else {
-                // other threads might still have beat us but if
-                // so, the resolution failed and so will we below
-                BytecodeStream original = new BytecodeStream(getMethodVersion().getCodeAttribute().getOriginalCode());
-                char cpi = original.readCPI(curBCI);
-                int nodeOpcode = original.currentBC(curBCI);
-                Method resolutionSeed = resolveMethodNoCache(nodeOpcode, cpi);
-                BaseQuickNode toInsert = insert(dispatchQuickened(top, curBCI, cpi, nodeOpcode, statementIndex, resolutionSeed, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining));
-                nodes[readCPI(curBCI)] = toInsert;
-                return toInsert;
+                BaseQuickNode newNode = insert(dispatchQuickened(top, curBCI, originalOpcode, statementIndex, resolvedInvoke, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining));
+                nodes[cpi] = newNode;
+                return newNode;
             }
         });
-        return result;
     }
 
     private Object getReturnValueAsObject(VirtualFrame frame, int top) {
@@ -2179,20 +2179,52 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return quick;
     }
 
-    private BaseQuickNode tryPatchQuick(int curBCI, Supplier<BaseQuickNode> newQuickNode) {
+    @FunctionalInterface
+    private interface QuickNodeFactory<T> {
+        BaseQuickNode get(T t);
+    }
+
+    @FunctionalInterface
+    private interface QuickNodeResolver<T> {
+        T get(char cpi);
+    }
+
+    private <T> BaseQuickNode tryPatchQuick(int curBCI, QuickNodeResolver<T> resolver, QuickNodeFactory<T> newQuickNode) {
+        Object found = atomic(() -> {
+            if (bs.currentVolatileBC(curBCI) == QUICK) {
+                return nodes[readCPI(curBCI)];
+            } else {
+                return readCPI(curBCI);
+            }
+        });
+        if (found instanceof BaseQuickNode) {
+            return (BaseQuickNode) found;
+        }
+        char cpi = (char) found;
+        // Perform resolution outside the lock: it can call arbitrary guest code.
+        T resolved = resolver.get(cpi);
         return atomic(() -> {
             if (bs.currentVolatileBC(curBCI) == QUICK) {
                 return nodes[readCPI(curBCI)];
             } else {
-                return injectQuick(curBCI, newQuickNode.get(), QUICK);
+                return injectQuick(curBCI, newQuickNode.get(resolved), QUICK);
             }
         });
+    }
+
+    @FunctionalInterface
+    private interface QuickNodeSupplier {
+        BaseQuickNode get();
+    }
+
+    private BaseQuickNode tryPatchQuick(int curBCI, QuickNodeSupplier newQuickNode) {
+        return tryPatchQuick(curBCI, cpi -> null, unused -> newQuickNode.get());
     }
 
     private int quickenCheckCast(VirtualFrame frame, int top, int curBCI, int opcode) {
         CompilerAsserts.neverPartOfCompilation();
         assert opcode == CHECKCAST;
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new CheckCastQuickNode(resolveType(CHECKCAST, readCPI(curBCI)), top, curBCI));
+        BaseQuickNode quick = tryPatchQuick(curBCI, cpi -> resolveType(CHECKCAST, cpi), k -> new CheckCastQuickNode(k, top, curBCI));
         quick.execute(frame, false);
         assert Bytecodes.stackEffectOf(opcode) == 0;
         return 0; // Bytecodes.stackEffectOf(opcode);
@@ -2201,7 +2233,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     private int quickenInstanceOf(VirtualFrame frame, int top, int curBCI, int opcode) {
         CompilerAsserts.neverPartOfCompilation();
         assert opcode == INSTANCEOF;
-        BaseQuickNode quick = tryPatchQuick(curBCI, () -> new InstanceOfQuickNode(resolveType(INSTANCEOF, readCPI(curBCI)), top, curBCI));
+        BaseQuickNode quick = tryPatchQuick(curBCI, cpi -> resolveType(INSTANCEOF, cpi), k -> new InstanceOfQuickNode(k, top, curBCI));
         quick.execute(frame, false);
         assert Bytecodes.stackEffectOf(opcode) == 0;
         return 0; // Bytecodes.stackEffectOf(opcode);
@@ -2227,13 +2259,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         QUICKENED_INVOKES.inc();
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert Bytecodes.isInvoke(opcode);
-        InvokeQuickNode quick = (InvokeQuickNode) tryPatchQuick(curBCI, () -> {
-            // During resolution of the symbolic reference to the method, any of the exceptions
-            // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
-            char cpi = readCPI(curBCI);
-            Method resolutionSeed = resolveMethod(opcode, cpi);
-            return dispatchQuickened(top, curBCI, cpi, opcode, statementIndex, resolutionSeed, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining);
-        });
+        InvokeQuickNode quick = (InvokeQuickNode) tryPatchQuick(curBCI, cpi -> getResolvedInvoke(opcode, cpi),
+                        resolvedInvoke -> dispatchQuickened(top, curBCI, opcode, statementIndex, resolvedInvoke, getMethod().getContext().getEspressoEnv().bytecodeLevelInlining));
         return quick;
     }
 
@@ -2241,10 +2268,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * Revert speculative quickening e.g. revert inlined fields accessors to a normal invoke.
      * INVOKEVIRTUAL -> QUICK (InlinedGetter/SetterNode) -> QUICK (InvokeVirtualNode)
      */
-    public int reQuickenInvoke(VirtualFrame frame, int top, int opcode, int curBCI, int statementIndex, Method resolutionSeed) {
+    public int reQuickenInvoke(VirtualFrame frame, int top, int opcode, int curBCI, int statementIndex) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isInvoke(opcode);
-        BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex, resolutionSeed);
+        BaseQuickNode invoke = generifyInlinedMethodNode(top, opcode, curBCI, statementIndex);
         // Perform the call outside of the lock.
         return invoke.execute(frame, false);
     }
@@ -2279,8 +2306,9 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
      * Reverts Bytecode-level method inlining at the current bci, in case instrumentation starts
      * happening on this node.
      */
-    public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex, Method resolutionSeed) {
+    public BaseQuickNode generifyInlinedMethodNode(int top, int opcode, int curBCI, int statementIndex) {
         CompilerAsserts.neverPartOfCompilation();
+        ResolvedInvoke resolvedInvoke = getResolvedInvoke(opcode, readOriginalCPI(curBCI));
         return atomic(() -> {
             assert bs.currentBC(curBCI) == QUICK;
             char nodeIndex = readCPI(curBCI);
@@ -2290,7 +2318,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 // Might be racy, as read is not volatile, but redoing the work should be OK.
                 return currentQuick;
             }
-            BaseQuickNode invoke = dispatchQuickened(top, curBCI, readOriginalCPI(curBCI), opcode, statementIndex, resolutionSeed, false);
+            BaseQuickNode invoke = dispatchQuickened(top, curBCI, opcode, statementIndex, resolvedInvoke, false);
             nodes[nodeIndex] = currentQuick.replace(invoke);
             return invoke;
         });
@@ -2396,11 +2424,8 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     // endregion quickenForeign
 
-    private InvokeQuickNode dispatchQuickened(int top, int curBCI, char cpi, int opcode, int statementIndex, Method resolutionSeed, boolean allowBytecodeInlining) {
-
-        Klass symbolicRef = Resolution.getResolvedHolderKlass((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
-        ResolvedCall resolvedCall = LinkResolver.resolveCallSite(getMeta(), getDeclaringKlass(), resolutionSeed, CallSiteType.fromOpCode(opcode), symbolicRef);
-
+    private InvokeQuickNode dispatchQuickened(int top, int curBCI, int opcode, int statementIndex, ResolvedInvoke resolvedInvoke, boolean allowBytecodeInlining) {
+        ResolvedCall resolvedCall = resolvedInvoke.resolvedCall();
         Method resolved = resolvedCall.getResolvedMethod();
         CallKind callKind = resolvedCall.getCallKind();
 
@@ -2416,13 +2441,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
 
         if (resolved.isPolySignatureIntrinsic()) {
-            MethodHandleInvoker invoker = null;
-            // There might be an invoker if it's an InvokeGeneric
-            if (getConstantPool().resolvedMethodRefAt(getDeclaringKlass(), cpi) instanceof ResolvedWithInvokerClassMethodRefConstant withInvoker) {
-                invoker = withInvoker.invoker();
-                assert invoker == null || ((opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL) && resolved.isInvokeIntrinsic());
-            }
-            return new InvokeHandleNode(resolved, invoker, top, curBCI);
+            return new InvokeHandleNode(resolved, resolvedInvoke.invoker(), top, curBCI);
         } else {
             // @formatter:off
             return switch (callKind) {
@@ -2452,39 +2471,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
 
     private int quickenInvokeDynamic(final VirtualFrame frame, int top, int curBCI, int opcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        assert (Bytecodes.INVOKEDYNAMIC == opcode);
-        RuntimeConstantPool pool = getConstantPool();
-        BaseQuickNode quick = null;
-        int indyIndex = -1;
-        Lock lock = getLock();
-        try {
-            lock.lock();
-            if (bs.currentVolatileBC(curBCI) == QUICK) {
-                // Check if someone did the job for us. Defer the call until we are out of the lock.
-                quick = nodes[readCPI(curBCI)];
-            } else {
-                // fetch indy under lock.
-                indyIndex = readCPI(curBCI);
-            }
-        } finally {
-            lock.unlock();
-        }
-        if (quick != null) {
-            // Do invocation outside of the lock.
-            return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
-        }
-        // Resolution should happen outside of the bytecode patching lock.
-        CallSiteLink link = pool.linkInvokeDynamic(getMethod().getDeclaringKlass(), indyIndex, curBCI, getMethod());
-
-        // re-lock to check if someone did the job for us, since this was a heavy operation.
-        quick = atomic(() -> {
-            if (bs.currentVolatileBC(curBCI) == QUICK) {
-                // someone beat us to it, just trust him.
-                return nodes[readCPI(curBCI)];
-            } else {
-                return injectQuick(curBCI, new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMethod().getMeta(), top, curBCI), QUICK);
-            }
-        });
+        assert opcode == Bytecodes.INVOKEDYNAMIC;
+        BaseQuickNode quick = tryPatchQuick(curBCI,
+                        cpi -> getConstantPool().linkInvokeDynamic(getMethod().getDeclaringKlass(), cpi, curBCI, getMethod()),
+                        link -> new InvokeDynamicCallSiteNode(link.getMemberName(), link.getUnboxedAppendix(), link.getParsedSignature(), getMethod().getMeta(), top, curBCI));
         return quick.execute(frame, false) - Bytecodes.stackEffectOf(opcode);
     }
 
@@ -2498,17 +2488,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         return getConstantPool().resolvedKlassAt(getDeclaringKlass(), cpi);
     }
 
-    public Method resolveMethod(int opcode, char cpi) {
-        assert Bytecodes.isInvoke(opcode);
-        return getConstantPool().resolvedMethodAt(getDeclaringKlass(), cpi);
-    }
-
-    private Method resolveMethodNoCache(int opcode, char cpi) {
-        CompilerAsserts.neverPartOfCompilation();
-        assert Bytecodes.isInvoke(opcode);
-        return getConstantPool().resolvedMethodAtNoCache(getDeclaringKlass(), cpi);
-    }
-
     private Field resolveField(int opcode, char cpi) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
         Field field = getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
@@ -2518,6 +2497,33 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             field = getConstantPool().resolveFieldAndUpdate(getMethod().getDeclaringKlass(), cpi, field);
         }
         return field;
+    }
+
+    private record ResolvedInvoke(ResolvedCall resolvedCall, MethodHandleInvoker invoker) {
+    }
+
+    private ResolvedInvoke reResolvedInvoke(int opcode, char cpi) {
+        getConstantPool().resolveMethodAndUpdate(getDeclaringKlass(), cpi);
+        return getResolvedInvoke(opcode, cpi);
+    }
+
+    private ResolvedInvoke getResolvedInvoke(int opcode, char cpi) {
+        assert !lockIsHeld();
+        // During resolution of the symbolic reference to the method, any of the exceptions
+        // pertaining to method resolution (&sect;5.4.3.3) can be thrown.
+        MethodRefConstant methodRefConstant = getConstantPool().resolvedMethodRefAt(getDeclaringKlass(), cpi);
+        Method resolutionSeed = (Method) ((Resolvable.ResolvedConstant) methodRefConstant).value();
+
+        Klass symbolicRef = Resolution.getResolvedHolderKlass((MethodRefConstant.Indexes) getConstantPool().methodAt(cpi), getConstantPool(), getDeclaringKlass());
+        ResolvedCall resolvedCall = LinkResolver.resolveCallSite(getMeta(), getDeclaringKlass(), resolutionSeed, CallSiteType.fromOpCode(opcode), symbolicRef);
+        MethodHandleInvoker invoker = null;
+        // There might be an invoker if it's an InvokeGeneric
+        if (methodRefConstant instanceof ResolvedWithInvokerClassMethodRefConstant withInvoker) {
+            invoker = withInvoker.invoker();
+            assert invoker == null || ((opcode == INVOKEVIRTUAL || opcode == INVOKESPECIAL) && resolvedCall.getResolvedMethod().isInvokeIntrinsic());
+        }
+
+        return new ResolvedInvoke(resolvedCall, invoker);
     }
 
     // endregion Class/Method/Field resolution

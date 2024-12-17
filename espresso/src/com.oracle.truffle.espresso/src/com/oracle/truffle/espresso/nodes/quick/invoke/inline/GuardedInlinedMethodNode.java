@@ -46,7 +46,7 @@ public final class GuardedInlinedMethodNode extends InlinedMethodNode {
             return executeBody(frame);
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex, method.getMethod());
+            return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex);
         }
     }
 }

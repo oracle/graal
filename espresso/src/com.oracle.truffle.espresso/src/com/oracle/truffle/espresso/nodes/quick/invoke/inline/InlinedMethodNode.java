@@ -187,7 +187,7 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
     }
 
     public final BaseQuickNode revertToGeneric(BytecodeNode parent) {
-        return parent.generifyInlinedMethodNode(top, opcode, getCallerBCI(), statementIndex, method.getMethod());
+        return parent.generifyInlinedMethodNode(top, opcode, getCallerBCI(), statementIndex);
     }
 
     public static boolean isInlineCandidate(ResolvedCall resolvedCall) {
