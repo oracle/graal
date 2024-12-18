@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-
 import java.io.File;
+
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 
 /**
  * Encapsulates the contents of a file loaded from an {@linkplain ClasspathEntry entry} on a

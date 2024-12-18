@@ -29,9 +29,9 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubNode;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public abstract class MHLinkToNativeNode extends MethodHandleIntrinsicNode {
     protected static final int LIMIT = 3;

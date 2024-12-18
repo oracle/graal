@@ -22,16 +22,16 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import java.util.Objects;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-
-import java.util.Objects;
 
 public class ResolvedClassMethodRefConstant implements ClassMethodRefConstant, Resolvable.ResolvedConstant {
     private final Method resolved;

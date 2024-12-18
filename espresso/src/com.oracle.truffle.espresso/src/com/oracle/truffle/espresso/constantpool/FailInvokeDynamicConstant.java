@@ -22,18 +22,18 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-
-import java.nio.ByteBuffer;
 
 public final class FailInvokeDynamicConstant implements LinkableInvokeDynamicConstant {
     private final EspressoException failure;

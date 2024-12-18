@@ -137,11 +137,11 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SALOAD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SIPUSH;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 
 enum StackType {
     VOID(0),

@@ -22,12 +22,12 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 
 /**
  * Operations for sequentially scanning data items in a class file. Any IO exceptions that occur

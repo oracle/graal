@@ -28,12 +28,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.classfile.bytecode.VolatileArrayAccess;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsCache;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessCache;
-import com.oracle.truffle.espresso.classfile.bytecode.VolatileArrayAccess;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactories;
 

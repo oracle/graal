@@ -22,14 +22,15 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import java.util.Objects;
+
+import org.graalvm.collections.Equivalence;
+
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import org.graalvm.collections.Equivalence;
-
-import java.util.Objects;
 
 /**
  * Describes the type and bytecode index range in which a local variable is live.

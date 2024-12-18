@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.nodes.helper;
 
+import static com.oracle.truffle.espresso.vm.InterpreterToVM.outOfBoundsMessage;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -32,8 +34,6 @@ import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOfFactory;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-
-import static com.oracle.truffle.espresso.vm.InterpreterToVM.outOfBoundsMessage;
 
 public final class EspressoReferenceArrayStoreNode extends EspressoNode {
 

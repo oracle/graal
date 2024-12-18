@@ -22,10 +22,10 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import java.util.Objects;
+
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
-
-import java.util.Objects;
 
 /**
  * This is used for

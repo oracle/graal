@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
+import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -38,14 +40,12 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
-
-import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
