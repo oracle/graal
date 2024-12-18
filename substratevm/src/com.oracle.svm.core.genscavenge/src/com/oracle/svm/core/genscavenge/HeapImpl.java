@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
@@ -854,7 +853,7 @@ public final class HeapImpl extends Heap {
     public boolean verifyImageHeapMapping() {
         for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
             /* Read & write some data at the beginning and end of each writable chunk. */
-            writeToEachChunk(info.getFirstWritableAlignedChunk(), WordFactory.nullPointer());
+            writeToEachChunk(info.getFirstWritableAlignedChunk(), Word.nullPointer());
             writeToEachChunk(info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
         }
         return true;
@@ -975,7 +974,7 @@ public final class HeapImpl extends Heap {
              */
             UnsignedWord size = LayoutEncoding.getArrayAllocationSize(hubOfDynamicHub.getLayoutEncoding(), vTableSlots);
 
-            Pointer memory = WordFactory.nullPointer();
+            Pointer memory = Word.nullPointer();
             if (getHeapImpl().lastDynamicHubChunk.isNonNull()) {
                 /*
                  * GR-57355: move this fast-path out of vmOp. Needs some locking (it's not

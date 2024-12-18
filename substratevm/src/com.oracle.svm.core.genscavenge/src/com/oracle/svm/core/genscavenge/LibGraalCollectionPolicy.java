@@ -25,8 +25,8 @@
 package com.oracle.svm.core.genscavenge;
 
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -52,15 +52,15 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
         public static final RuntimeOptionKey<Long> ExpectedEdenSize = new RuntimeOptionKey<>(32L * 1024L * 1024L);
     }
 
-    protected static final UnsignedWord INITIAL_HEAP_SIZE = WordFactory.unsigned(64L * 1024L * 1024L);
-    protected static final UnsignedWord FULL_GC_BONUS = WordFactory.unsigned(2L * 1024L * 1024L);
+    protected static final UnsignedWord INITIAL_HEAP_SIZE = Word.unsigned(64L * 1024L * 1024L);
+    protected static final UnsignedWord FULL_GC_BONUS = Word.unsigned(2L * 1024L * 1024L);
 
     /**
      * See class javadoc for rationale behind this 16G limit.
      */
-    protected static final UnsignedWord MAXIMUM_HEAP_SIZE = WordFactory.unsigned(16L * 1024L * 1024L * 1024L);
+    protected static final UnsignedWord MAXIMUM_HEAP_SIZE = Word.unsigned(16L * 1024L * 1024L * 1024L);
 
-    private UnsignedWord sizeBefore = WordFactory.zero();
+    private UnsignedWord sizeBefore = Word.zero();
     private GCCause lastGCCause = null;
 
     /**
@@ -83,7 +83,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
              */
             edenUsedBytes = edenUsedBytes.add(FULL_GC_BONUS);
         }
-        return edenUsedBytes.aboveOrEqual(WordFactory.unsigned(Options.ExpectedEdenSize.getValue())) ||
+        return edenUsedBytes.aboveOrEqual(Word.unsigned(Options.ExpectedEdenSize.getValue())) ||
                         (UnsignedUtils.toDouble(edenUsedBytes) / UnsignedUtils.toDouble(edenSize) >= Options.UsedEdenProportionThreshold.getValue());
     }
 
@@ -110,7 +110,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
     @Override
     public void onCollectionEnd(boolean completeCollection, GCCause cause) {
         super.onCollectionEnd(completeCollection, cause);
-        sizeBefore = WordFactory.zero();
+        sizeBefore = Word.zero();
         lastGCCause = cause;
     }
 

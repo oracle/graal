@@ -46,7 +46,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.IsolateArgumentParser;
@@ -206,7 +205,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int createIsolateSnippet(CEntryPointCreateIsolateParameters parameters) {
-        writeCurrentVMThread(WordFactory.nullPointer());
+        writeCurrentVMThread(Word.nullPointer());
         int result = runtimeCall(CREATE_ISOLATE, parameters);
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
@@ -219,9 +218,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static final CGlobalData<Word> IMAGE_HEAP_PATCHING_STATE = CGlobalDataFactory.createWord();
 
     private static final class ImageHeapPatchingState {
-        static final Word UNINITIALIZED = WordFactory.zero();
-        static final Word IN_PROGRESS = WordFactory.unsigned(1);
-        static final Word SUCCESSFUL = WordFactory.unsigned(2);
+        static final Word UNINITIALIZED = Word.zero();
+        static final Word IN_PROGRESS = Word.unsigned(1);
+        static final Word SUCCESSFUL = Word.unsigned(2);
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
@@ -282,7 +281,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         UnsignedWord runtimePageSize = VirtualMemoryProvider.get().getGranularity();
-        UnsignedWord imagePageSize = WordFactory.unsigned(SubstrateOptions.getPageSize());
+        UnsignedWord imagePageSize = Word.unsigned(SubstrateOptions.getPageSize());
         boolean validPageSize = UnsignedUtils.isAMultiple(imagePageSize, runtimePageSize);
         if (!validPageSize) {
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
@@ -295,7 +294,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         CEntryPointCreateIsolateParameters parameters = providedParameters;
         if (parameters.isNull() || parameters.version() < 1) {
             parameters = StackValue.get(CEntryPointCreateIsolateParameters.class);
-            parameters.setReservedSpaceSize(WordFactory.zero());
+            parameters.setReservedSpaceSize(Word.zero());
             parameters.setVersion(1);
         }
 
@@ -500,7 +499,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Snippet(allowMissingProbabilities = true)
     public static int attachThreadSnippet(Isolate isolate, boolean startedByIsolate, boolean ensureJavaThread) {
-        writeCurrentVMThread(WordFactory.nullPointer());
+        writeCurrentVMThread(Word.nullPointer());
         int error = runtimeCall(ATTACH_THREAD, isolate, startedByIsolate, ensureJavaThread);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
@@ -536,7 +535,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
 
-        IsolateThread thread = WordFactory.nullPointer();
+        IsolateThread thread = Word.nullPointer();
         if (startedByIsolate) {
             assert VMThreads.singleton().findIsolateThreadForCurrentOSThread(inCrashHandler).isNull();
         } else {
@@ -711,7 +710,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Snippet(allowMissingProbabilities = true)
     public static int enterByIsolateSnippet(Isolate isolate) {
         int result;
-        writeCurrentVMThread(WordFactory.nullPointer());
+        writeCurrentVMThread(Word.nullPointer());
         result = runtimeCall(ENTER_BY_ISOLATE, isolate);
         if (result == CEntryPointErrors.NO_ERROR) {
             if (VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {

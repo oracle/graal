@@ -26,6 +26,7 @@ package com.oracle.svm.core.snippets;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -35,7 +36,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
@@ -208,7 +208,7 @@ public abstract class ExceptionUnwind {
 
             long exceptionOffset = frame.getExceptionOffset();
             if (exceptionOffset != CodeInfoQueryResult.NO_EXCEPTION_OFFSET) {
-                CodePointer handlerIP = (CodePointer) ((UnsignedWord) frame.getIP()).add(WordFactory.signed(exceptionOffset));
+                CodePointer handlerIP = (CodePointer) ((UnsignedWord) frame.getIP()).add(Word.signed(exceptionOffset));
                 jumpToHandler(sp, handlerIP, hasCalleeSavedRegisters);
                 UnreachableNode.unreachable();
                 return; /* Unreachable */

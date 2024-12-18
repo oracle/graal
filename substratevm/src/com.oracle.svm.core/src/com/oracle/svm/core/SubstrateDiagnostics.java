@@ -44,7 +44,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
 import com.oracle.svm.core.SubstrateDiagnostics.DumpCodeCacheHistory;
@@ -198,8 +197,8 @@ public class SubstrateDiagnostics {
         int maxPrintedBytes = elementSize == 1 ? 8 : 16;
         int printedElements = UninterruptibleUtils.Math.min(length, maxPrintedBytes / elementSize);
 
-        UnsignedWord curOffset = WordFactory.unsigned(arrayBaseOffset);
-        UnsignedWord endOffset = curOffset.add(WordFactory.unsigned(printedElements).multiply(elementSize));
+        UnsignedWord curOffset = Word.unsigned(arrayBaseOffset);
+        UnsignedWord endOffset = curOffset.add(Word.unsigned(printedElements).multiply(elementSize));
         while (curOffset.belowThan(endOffset)) {
             switch (elementSize) {
                 case 1 -> log.zhex(ObjectAccess.readByte(obj, curOffset));
@@ -221,7 +220,7 @@ public class SubstrateDiagnostics {
      * See {@link #printInformation(Log, Pointer, CodePointer, RegisterDumper.Context, boolean)}.
      */
     public static void printInformation(Log log, Pointer sp, CodePointer ip) {
-        printInformation(log, sp, ip, WordFactory.nullPointer(), false);
+        printInformation(log, sp, ip, Word.nullPointer(), false);
     }
 
     /**
@@ -254,7 +253,7 @@ public class SubstrateDiagnostics {
      * See {@link #printFatalError(Log, Pointer, CodePointer, RegisterDumper.Context, boolean)}.
      */
     public static boolean printFatalError(Log log, Pointer sp, CodePointer ip) {
-        return printFatalError(log, sp, ip, WordFactory.nullPointer(), false);
+        return printFatalError(log, sp, ip, Word.nullPointer(), false);
     }
 
     /**
@@ -506,7 +505,7 @@ public class SubstrateDiagnostics {
             }
             pos = pos.add(wordSize);
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.")
@@ -538,7 +537,7 @@ public class SubstrateDiagnostics {
 
         @SuppressWarnings("hiding")
         public boolean trySet(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
-            if (diagnosticThread.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread())) {
+            if (diagnosticThread.compareAndSet(Word.nullPointer(), CurrentIsolate.getCurrentThread())) {
                 assert diagnosticThunkIndex == -1;
                 assert invocationCount == 0;
                 this.log = log;
@@ -557,15 +556,15 @@ public class SubstrateDiagnostics {
             log = null;
 
             ErrorContext errorContext = getErrorContext();
-            errorContext.setStackPointer(WordFactory.nullPointer());
-            errorContext.setInstructionPointer(WordFactory.nullPointer());
-            errorContext.setRegisterContext(WordFactory.nullPointer());
+            errorContext.setStackPointer(Word.nullPointer());
+            errorContext.setInstructionPointer(Word.nullPointer());
+            errorContext.setRegisterContext(Word.nullPointer());
             errorContext.setFrameHasCalleeSavedRegisters(false);
 
             diagnosticThunkIndex = -1;
             invocationCount = 0;
 
-            diagnosticThread.set(WordFactory.nullPointer());
+            diagnosticThread.set(Word.nullPointer());
         }
     }
 

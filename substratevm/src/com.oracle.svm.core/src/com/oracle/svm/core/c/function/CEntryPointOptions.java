@@ -30,9 +30,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Function;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.word.PointerBase;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -106,7 +106,7 @@ public @interface CEntryPointOptions {
         @SuppressWarnings("unused")
         @Uninterruptible(reason = "Thread state not set up yet.")
         public static PointerBase bailout(int prologueResult) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 

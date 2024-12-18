@@ -34,12 +34,12 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
@@ -673,7 +673,7 @@ class CodeInfoVerifier {
                     CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult, constantAccess);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
-                    CodeReferenceMapDecoder.walkOffsetsFromPointer(WordFactory.zero(), CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor, null);
+                    CodeReferenceMapDecoder.walkOffsetsFromPointer(Word.zero(), CodeInfoAccess.getStackReferenceMapEncoding(info), queryResult.getReferenceMapIndex(), visitor, null);
                     ReferenceMapEncoder.Input expected = (ReferenceMapEncoder.Input) infopoint.debugInfo.getReferenceMap();
                     visitor.result.verify();
                     assert expected.equals(visitor.result) : infopoint;
@@ -791,7 +791,7 @@ class CodeInfoVerifier {
             int expectedLength = 0;
             for (int i = 0; i < expectedObject.getValues().length; i++) {
                 JavaValue expectedValue = expectedObject.getValues()[i];
-                UnsignedWord expectedOffset = WordFactory.unsigned(objectLayout.getArrayElementOffset(kind, expectedLength));
+                UnsignedWord expectedOffset = Word.unsigned(objectLayout.getArrayElementOffset(kind, expectedLength));
                 ValueInfo actualValue = findActualArrayElement(actualObject, expectedOffset);
                 verifyValue(compilation, expectedValue, actualValue, actualFrame, visitedVirtualObjects);
 
@@ -831,7 +831,7 @@ class CodeInfoVerifier {
                     fieldIdx++;
                 }
 
-                UnsignedWord expectedOffset = WordFactory.unsigned(expectedField.getLocation());
+                UnsignedWord expectedOffset = Word.unsigned(expectedField.getLocation());
                 ValueInfo actualValue = findActualField(actualObject, expectedOffset);
                 verifyValue(compilation, expectedValue, actualValue, actualFrame, visitedVirtualObjects);
             }
@@ -849,7 +849,7 @@ class CodeInfoVerifier {
         DynamicHub hub = (DynamicHub) constantAccess.asObject(actualObject[0].getValue());
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
         assert LayoutEncoding.isPureInstance(hub.getLayoutEncoding()) : hub;
-        return findActualValue(actualObject, expectedOffset, objectLayout, WordFactory.unsigned(objectLayout.getFirstFieldOffset()), 1);
+        return findActualValue(actualObject, expectedOffset, objectLayout, Word.unsigned(objectLayout.getFirstFieldOffset()), 1);
     }
 
     private static ValueInfo findActualValue(ValueInfo[] actualObject, UnsignedWord expectedOffset, ObjectLayout objectLayout, UnsignedWord startOffset, int startIdx) {

@@ -26,8 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
@@ -134,7 +134,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private long minorCount;
     private long latestMinorMutatorIntervalNanos;
     private boolean youngGenPolicyIsReady;
-    private UnsignedWord youngGenSizeIncrementSupplement = WordFactory.unsigned(YOUNG_GENERATION_SIZE_SUPPLEMENT);
+    private UnsignedWord youngGenSizeIncrementSupplement = Word.unsigned(YOUNG_GENERATION_SIZE_SUPPLEMENT);
     private long youngGenChangeForMinorThroughput;
     private int minorCountSinceMajorCollection;
 
@@ -145,7 +145,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     private final AdaptiveWeightedAverage avgOldLive = new AdaptiveWeightedAverage(ADAPTIVE_SIZE_POLICY_WEIGHT);
     private final ReciprocalLeastSquareFit majorCostEstimator = new ReciprocalLeastSquareFit(ADAPTIVE_SIZE_COST_ESTIMATORS_HISTORY_LENGTH);
     private long majorCount;
-    private UnsignedWord oldGenSizeIncrementSupplement = WordFactory.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
+    private UnsignedWord oldGenSizeIncrementSupplement = Word.unsigned(TENURED_GENERATION_SIZE_SUPPLEMENT);
     private long latestMajorMutatorIntervalNanos;
     private boolean oldSizeExceededInPreviousCollection;
     private long oldGenChangeForMajorThroughput;
@@ -323,7 +323,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private static UnsignedWord edenDecrement(UnsignedWord curEden) {
-        return spaceIncrement(curEden, WordFactory.unsigned(YOUNG_GENERATION_SIZE_INCREMENT))
+        return spaceIncrement(curEden, Word.unsigned(YOUNG_GENERATION_SIZE_INCREMENT))
                         .unsignedDivide(ADAPTIVE_SIZE_DECREMENT_SCALE_FACTOR);
     }
 
@@ -512,7 +512,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     }
 
     private static UnsignedWord promoIncrement(UnsignedWord curPromo) {
-        return spaceIncrement(curPromo, WordFactory.unsigned(TENURED_GENERATION_SIZE_INCREMENT));
+        return spaceIncrement(curPromo, Word.unsigned(TENURED_GENERATION_SIZE_INCREMENT));
     }
 
     private UnsignedWord promoIncrementWithSupplementAlignedUp(UnsignedWord curPromo) {

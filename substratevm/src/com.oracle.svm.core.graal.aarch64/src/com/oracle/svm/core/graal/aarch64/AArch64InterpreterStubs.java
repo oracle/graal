@@ -35,6 +35,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64Address;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
@@ -45,7 +46,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
@@ -520,7 +520,7 @@ public class AArch64InterpreterStubs {
                 case 7 -> p.getAbiGpArg7();
                 default -> {
                     StackSlot stackSlot = (StackSlot) ccArg;
-                    Pointer spVal = WordFactory.pointer(p.getAbiSpReg());
+                    Pointer spVal = Word.pointer(p.getAbiSpReg());
                     yield spVal.readLong(stackSlot.getOffset(0));
                 }
             };
@@ -546,7 +546,7 @@ public class AArch64InterpreterStubs {
             }
             StackSlot stackSlot = (StackSlot) ccArg;
 
-            Pointer spVal = WordFactory.pointer(p.getAbiSpReg());
+            Pointer spVal = Word.pointer(p.getAbiSpReg());
             int offset = stackSlot.getOffset(0);
             VMError.guarantee(spVal.isNonNull());
             VMError.guarantee(offset < p.getStackSize());
@@ -571,7 +571,7 @@ public class AArch64InterpreterStubs {
                 case 7 -> p.getAbiFpArg7();
                 default -> {
                     StackSlot stackSlot = (StackSlot) ccArg;
-                    Pointer spVal = WordFactory.pointer(p.getAbiSpReg());
+                    Pointer spVal = Word.pointer(p.getAbiSpReg());
                     yield spVal.readLong(stackSlot.getOffset(0));
                 }
             };
@@ -592,7 +592,7 @@ public class AArch64InterpreterStubs {
                 default -> {
                     StackSlot stackSlot = (StackSlot) ccArg;
 
-                    Pointer spVal = WordFactory.pointer(p.getAbiSpReg());
+                    Pointer spVal = Word.pointer(p.getAbiSpReg());
                     int offset = stackSlot.getOffset(0);
 
                     VMError.guarantee(spVal.isNonNull());

@@ -34,6 +34,7 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -53,7 +54,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.NeverInline;
@@ -557,7 +557,7 @@ public final class JNIFunctions {
     static CCharPointer GetStringUTFChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
         String str = JNIObjectHandles.getObject(hstr);
         if (str == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         if (isCopy.isNonNull()) {
             isCopy.write((byte) 1);
@@ -661,7 +661,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static WordPointer GetDirectBufferAddress(JNIEnvironment env, JNIObjectHandle handle) {
         Target_java_nio_Buffer buf = Support.directBufferFromJNIHandle(handle);
-        return (buf == null) ? WordFactory.nullPointer() : WordFactory.pointer(buf.address);
+        return (buf == null) ? Word.nullPointer() : Word.pointer(buf.address);
     }
 
     /*
@@ -801,7 +801,7 @@ public final class JNIFunctions {
     static WordPointer GetPrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, CCharPointer isCopy) {
         Object array = JNIObjectHandles.getObject(harray);
         if (array == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         PrimitiveArrayView ref = JNIThreadLocalPrimitiveArrayViews.createArrayView(array);
         if (isCopy.isNonNull()) {
@@ -948,7 +948,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIFieldId FromReflectedField(JNIEnvironment env, JNIObjectHandle fieldHandle) {
-        JNIFieldId fieldId = WordFactory.zero();
+        JNIFieldId fieldId = Word.zero();
         Field obj = JNIObjectHandles.getObject(fieldHandle);
         if (obj != null) {
             boolean isStatic = Modifier.isStatic(obj.getModifiers());
@@ -984,7 +984,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIMethodId FromReflectedMethod(JNIEnvironment env, JNIObjectHandle methodHandle) {
-        JNIMethodId methodId = WordFactory.nullPointer();
+        JNIMethodId methodId = Word.nullPointer();
         Executable method = JNIObjectHandles.getObject(methodHandle);
         if (method != null) {
             boolean isStatic = Modifier.isStatic(method.getModifiers());
@@ -1730,7 +1730,7 @@ public final class JNIFunctions {
             @Uninterruptible(reason = "exception handler")
             static WordBase handle(Throwable t) {
                 Support.handleException(t);
-                return WordFactory.nullPointer();
+                return Word.nullPointer();
             }
         }
 
@@ -1875,7 +1875,7 @@ public final class JNIFunctions {
         static CShortPointer getNulTerminatedStringCharsAndPin(JNIObjectHandle hstr, CCharPointer isCopy) {
             String str = JNIObjectHandles.getObject(hstr);
             if (str == null) {
-                return WordFactory.nullPointer();
+                return Word.nullPointer();
             }
             if (isCopy.isNonNull()) {
                 isCopy.write((byte) 1);
@@ -1971,8 +1971,8 @@ public final class JNIFunctions {
             if (count > 0) {
                 long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
                 int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-                UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
-                JavaMemoryUtil.copyOnHeap(obj, WordFactory.unsigned(offset), null, WordFactory.unsigned(buffer.rawValue()), bytes);
+                UnsignedWord bytes = Word.unsigned(count).multiply(elementSize);
+                JavaMemoryUtil.copyOnHeap(obj, Word.unsigned(offset), null, Word.unsigned(buffer.rawValue()), bytes);
             }
         }
 
@@ -1984,8 +1984,8 @@ public final class JNIFunctions {
             if (count > 0) {
                 long offset = ConfigurationValues.getObjectLayout().getArrayElementOffset(elementKind, start);
                 int elementSize = ConfigurationValues.getObjectLayout().sizeInBytes(elementKind);
-                UnsignedWord bytes = WordFactory.unsigned(count).multiply(elementSize);
-                JavaMemoryUtil.copyOnHeap(null, WordFactory.unsigned(buffer.rawValue()), obj, WordFactory.unsigned(offset), bytes);
+                UnsignedWord bytes = Word.unsigned(count).multiply(elementSize);
+                JavaMemoryUtil.copyOnHeap(null, Word.unsigned(buffer.rawValue()), obj, Word.unsigned(offset), bytes);
             }
         }
     }

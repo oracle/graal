@@ -35,13 +35,13 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.oracle.svm.core.code.FrameSourceInfo;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -150,7 +150,7 @@ final class Target_java_lang_StackWalker {
             /* Walk the stack of the current thread. */
             IsolateThread isolateThread = CurrentIsolate.getCurrentThread();
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
-            Pointer endSP = WordFactory.nullPointer();
+            Pointer endSP = Word.nullPointer();
             if (ContinuationSupport.isSupported() && (contScope != null || JavaThreads.isCurrentThreadVirtual())) {
                 var scope = (contScope != null) ? contScope : Target_java_lang_VirtualThread.continuationScope();
                 var top = Target_jdk_internal_vm_Continuation.getCurrentContinuation(scope);
@@ -335,7 +335,7 @@ final class Target_java_lang_StackWalker {
 
         @Override
         protected void invalidate() {
-            walk = WordFactory.nullPointer();
+            walk = Word.nullPointer();
             continuation = null;
             stored = null;
         }
@@ -366,7 +366,7 @@ final class Target_java_lang_StackWalker {
 
         @Override
         protected void invalidate() {
-            walk = WordFactory.nullPointer();
+            walk = Word.nullPointer();
         }
 
         @Override

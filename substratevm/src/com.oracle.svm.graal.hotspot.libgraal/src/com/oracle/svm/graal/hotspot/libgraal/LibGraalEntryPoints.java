@@ -59,6 +59,7 @@ import jdk.graal.compiler.options.OptionDescriptorsMap;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI;
@@ -86,7 +87,6 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.PointerBase;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.heap.Heap;
 import com.sun.management.ThreadMXBean;
@@ -133,7 +133,7 @@ final class LibGraalEntryPoints {
     static JNI.JNIEnv getJNIEnv() {
         try {
             long raw = (long) singleton().getJNIEnv.invoke();
-            return WordFactory.unsigned(raw);
+            return Word.unsigned(raw);
         } catch (RuntimeException | Error e) {
             throw e;
         } catch (Throwable e) {
@@ -250,7 +250,7 @@ final class LibGraalEntryPoints {
         try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
             String profileLoadPath;
             if (profilePathBufferAddress > 0) {
-                profileLoadPath = CTypeConversion.toJavaString(WordFactory.pointer(profilePathBufferAddress));
+                profileLoadPath = CTypeConversion.toJavaString(Word.pointer(profilePathBufferAddress));
             } else {
                 profileLoadPath = null;
             }
@@ -485,8 +485,8 @@ final class LibGraalTruffleToLibGraalEntryPoints {
             offset = (int) singleton().getLastJavaPCOffset.invoke();
             lastJavaPCOffset = offset;
         }
-        CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) WordFactory.unsigned((long) singleton().getCurrentJavaThread.invoke()).add(offset);
-        PointerBase javaFrameAnchor = WordFactory.pointer(currentThreadLastJavaPCOffset.read());
+        CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) Word.unsigned((long) singleton().getCurrentJavaThread.invoke()).add(offset);
+        PointerBase javaFrameAnchor = Word.pointer(currentThreadLastJavaPCOffset.read());
         return LibGraalJNIMethodScope.open(scopeName, env, javaFrameAnchor.isNonNull());
     }
 
@@ -573,7 +573,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -664,13 +664,13 @@ final class LibGraalTruffleToLibGraalEntryPoints {
                     String stackTrace = (String) singleton().getSuppliedString.invoke(stringSupplier);
                     scope.setObjectResult(JNIUtil.createHSString(env, stackTrace));
                 } else {
-                    scope.setObjectResult(WordFactory.nullPointer());
+                    scope.setObjectResult(Word.nullPointer());
                 }
             }
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -697,7 +697,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
                 Object graphInfo = LibGraalObjectHandles.resolve(handle, Object.class);
                 String[] nodeTypes = (String[]) singleton().getNodeTypes.invoke(graphInfo, simpleNames);
                 JClass componentType = getStringClass(env);
-                JObjectArray res = JNIUtil.NewObjectArray(env, nodeTypes.length, componentType, WordFactory.nullPointer());
+                JObjectArray res = JNIUtil.NewObjectArray(env, nodeTypes.length, componentType, Word.nullPointer());
                 for (int i = 0; i < nodeTypes.length; i++) {
                     JNIUtil.SetObjectArrayElement(env, res, i, JNIUtil.createHSString(env, nodeTypes[i]));
                 }
@@ -706,7 +706,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -776,7 +776,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
                 Object compilationResultInfo = LibGraalObjectHandles.resolve(handle, Object.class);
                 String[] infoPoints = (String[]) singleton().getInfopoints.invoke(compilationResultInfo);
                 JClass componentType = getStringClass(env);
-                JObjectArray res = JNIUtil.NewObjectArray(env, infoPoints.length, componentType, WordFactory.nullPointer());
+                JObjectArray res = JNIUtil.NewObjectArray(env, infoPoints.length, componentType, Word.nullPointer());
                 for (int i = 0; i < infoPoints.length; i++) {
                     JNIUtil.SetObjectArrayElement(env, res, i, JNIUtil.createHSString(env, infoPoints[i]));
                 }
@@ -785,7 +785,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -839,7 +839,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -868,7 +868,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -899,7 +899,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -907,7 +907,7 @@ final class LibGraalTruffleToLibGraalEntryPoints {
     @SuppressWarnings("unused")
     public static boolean releaseHandle(JNIEnv jniEnv, JClass jclass, @IsolateThreadContext long isolateThreadId, long handle) {
         try {
-            ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));
+            ObjectHandles.getGlobal().destroy(Word.pointer(handle));
             return true;
         } catch (Throwable t) {
             return false;

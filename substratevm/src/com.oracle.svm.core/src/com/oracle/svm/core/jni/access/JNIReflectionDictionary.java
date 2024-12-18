@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -260,7 +259,7 @@ public final class JNIReflectionDictionary {
 
     private static JNIMethodId toMethodID(JNIAccessibleMethod method) {
         if (method == null) {
-            return WordFactory.zero();
+            return Word.zero();
         }
         assert Heap.getHeap().isInImageHeap(method);
         return (JNIMethodId) Word.objectToUntrackedPointer(method).subtract(KnownIntrinsics.heapBase());
@@ -268,7 +267,7 @@ public final class JNIReflectionDictionary {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        if (!SubstrateOptions.SpawnIsolates.getValue() && method == WordFactory.zero()) {
+        if (!SubstrateOptions.SpawnIsolates.getValue() && method == Word.zero()) {
             return null;
         }
         Pointer p = KnownIntrinsics.heapBase().add((Pointer) method);
@@ -305,7 +304,7 @@ public final class JNIReflectionDictionary {
     public JNIFieldId getDeclaredFieldID(Class<?> classObject, String name, boolean isStatic) {
         JNIAccessibleField field = getDeclaredField(classObject, name, isStatic, "getDeclaredFieldID");
         field = checkField(field, classObject, name);
-        return (field != null) ? field.getId() : WordFactory.nullPointer();
+        return (field != null) ? field.getId() : Word.nullPointer();
     }
 
     private JNIAccessibleField findField(Class<?> clazz, CharSequence name, boolean isStatic, String dumpLabel) {
@@ -336,7 +335,7 @@ public final class JNIReflectionDictionary {
     public JNIFieldId getFieldID(Class<?> clazz, CharSequence name, boolean isStatic) {
         JNIAccessibleField field = findField(clazz, name, isStatic, "getFieldID");
         field = checkField(field, clazz, name);
-        return (field != null && field.isDiscoverableIn(clazz)) ? field.getId() : WordFactory.nullPointer();
+        return (field != null && field.isDiscoverableIn(clazz)) ? field.getId() : Word.nullPointer();
     }
 
     public String getFieldNameByID(Class<?> classObject, JNIFieldId id) {

@@ -65,7 +65,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import jdk.graal.compiler.word.WordFactory;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisType;

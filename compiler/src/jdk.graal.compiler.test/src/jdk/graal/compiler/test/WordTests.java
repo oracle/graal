@@ -29,9 +29,11 @@ import static jdk.graal.compiler.core.common.calc.UnsignedMath.aboveThan;
 import static jdk.graal.compiler.core.common.calc.UnsignedMath.belowOrEqual;
 import static jdk.graal.compiler.core.common.calc.UnsignedMath.belowThan;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,8 +42,7 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 /**
- * Tests word operations on boxed values produced by {@link org.graalvm.word.WordFactory} and
- * {@link jdk.graal.compiler.word.WordFactory}.
+ * Tests word operations on boxed values produced by {@link WordFactory} and {@link Word}.
  */
 public class WordTests {
 
@@ -62,15 +63,15 @@ public class WordTests {
     };
 
     static SignedWord graalSigned(long val) {
-        return jdk.graal.compiler.word.WordFactory.signed(val);
+        return Word.signed(val);
     }
 
     static UnsignedWord graalUnsigned(long val) {
-        return jdk.graal.compiler.word.WordFactory.unsigned(val);
+        return Word.unsigned(val);
     }
 
     static Pointer graalPointer(long val) {
-        return jdk.graal.compiler.word.WordFactory.pointer(val);
+        return Word.pointer(val);
     }
 
     static List<SignedWord> signedWords = Stream.concat(

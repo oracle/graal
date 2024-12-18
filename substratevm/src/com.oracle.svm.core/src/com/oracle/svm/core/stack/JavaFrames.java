@@ -27,10 +27,10 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -66,7 +66,7 @@ public class JavaFrames {
     public static UnsignedWord getTotalFrameSize(JavaFrame frame) {
         long size = CodeInfoQueryResult.getTotalFrameSize(frame.getEncodedFrameSize());
         assert size > 0;
-        return WordFactory.unsigned(size);
+        return Word.unsigned(size);
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -77,9 +77,9 @@ public class JavaFrames {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static void clearData(JavaFrame frame) {
-        frame.setSP(WordFactory.nullPointer());
-        frame.setIP(WordFactory.nullPointer());
-        frame.setIPCodeInfo(WordFactory.nullPointer());
+        frame.setSP(Word.nullPointer());
+        frame.setIP(Word.nullPointer());
+        frame.setIPCodeInfo(Word.nullPointer());
 
         frame.setEncodedFrameSize(CodeInfoDecoder.INVALID_SIZE_ENCODING);
         frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
@@ -93,7 +93,7 @@ public class JavaFrames {
 
         DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(frame);
         if (deoptimizedFrame != null) {
-            frame.setIPCodeInfo(WordFactory.nullPointer());
+            frame.setIPCodeInfo(Word.nullPointer());
             frame.setEncodedFrameSize(deoptimizedFrame.getSourceEncodedFrameSize());
             frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
             frame.setReferenceMapIndex(ReferenceMapIndex.NO_REFERENCE_MAP);

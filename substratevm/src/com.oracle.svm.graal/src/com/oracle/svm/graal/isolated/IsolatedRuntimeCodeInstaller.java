@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -31,7 +32,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
@@ -129,7 +129,7 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
         IsolatedRuntimeMethodInfoAccess.startTrackingInCurrentIsolate(installInfo);
 
         IsolatedReferenceAdjuster.adjustAndDispose(installInfo.getAdjusterData(), IsolatedCompileClient.get().getHandleSet());
-        installInfo.setAdjusterData(WordFactory.nullPointer());
+        installInfo.setAdjusterData(Word.nullPointer());
 
         doInstallPrepared(method, installInfo.getCodeInfo(), installedCode);
         NativeMemory.free(installInfo);
@@ -146,7 +146,7 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
 
     @Override
     protected Pointer allocateCodeMemory(long size) {
-        PointerBase memory = allocateCodeMemory0(targetIsolate, WordFactory.unsigned(size));
+        PointerBase memory = allocateCodeMemory0(targetIsolate, Word.unsigned(size));
         if (memory.isNull()) {
             throw new OutOfMemoryError("Could not allocate memory for runtime-compiled code.");
         }

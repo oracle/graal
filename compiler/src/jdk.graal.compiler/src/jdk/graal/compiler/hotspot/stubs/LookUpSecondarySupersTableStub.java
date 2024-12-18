@@ -32,8 +32,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUE
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import jdk.graal.compiler.word.WordFactory;
-
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
@@ -105,7 +103,7 @@ public class LookUpSecondarySupersTableStub extends SnippetStub {
     }
 
     public static KlassPointer loadSecondarySupersElement(Word metaspaceArray, long index) {
-        return KlassPointer.fromWord(metaspaceArray.readWord(WordFactory.signed(HotSpotReplacementsUtil.metaspaceArrayBaseOffset(INJECTED_VMCONFIG) + index * HotSpotReplacementsUtil.wordSize()),
+        return KlassPointer.fromWord(metaspaceArray.readWord(Word.signed(HotSpotReplacementsUtil.metaspaceArrayBaseOffset(INJECTED_VMCONFIG) + index * HotSpotReplacementsUtil.wordSize()),
                         HotSpotReplacementsUtil.SECONDARY_SUPERS_ELEMENT_LOCATION));
     }
 

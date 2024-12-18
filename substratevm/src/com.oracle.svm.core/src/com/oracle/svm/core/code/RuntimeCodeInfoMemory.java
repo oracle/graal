@@ -26,12 +26,12 @@ package com.oracle.svm.core.code;
 
 import java.util.concurrent.locks.ReentrantLock;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -110,11 +110,11 @@ public class RuntimeCodeInfoMemory {
     }
 
     public void clearPeakCodeAndDataCounters() {
-        peakCodeAndDataMemorySize = WordFactory.zero();
+        peakCodeAndDataMemorySize = Word.zero();
     }
 
     public void clearPeakNativeMetadataCounters() {
-        peakNativeMetadataSize = WordFactory.zero();
+        peakNativeMetadataSize = Word.zero();
     }
 
     @Uninterruptible(reason = "Manipulate the counters atomically with regard to GC.")
@@ -276,7 +276,7 @@ public class RuntimeCodeInfoMemory {
         for (int i = 0; i < oldLength; i++) {
             UntetheredCodeInfo tag = NonmovableArrays.getWord(oldTable, i);
             if (tag.isNonNull()) {
-                NonmovableArrays.setWord(oldTable, i, WordFactory.zero());
+                NonmovableArrays.setWord(oldTable, i, Word.zero());
                 int u = hashIndex(tag, newLength);
                 while (NonmovableArrays.getWord(table, u).isNonNull()) {
                     u = nextIndex(u, newLength);
@@ -295,7 +295,7 @@ public class RuntimeCodeInfoMemory {
         UntetheredCodeInfo entry = NonmovableArrays.getWord(table, index);
         while (entry.isNonNull()) {
             if (entry.equal(info)) {
-                NonmovableArrays.setWord(table, index, WordFactory.zero());
+                NonmovableArrays.setWord(table, index, Word.zero());
                 count--;
                 assert count >= 0 : "invalid counter value";
                 rehashAfterUnregisterAt(index);
@@ -319,7 +319,7 @@ public class RuntimeCodeInfoMemory {
             int r = hashIndex(info, length);
             if ((i < r && (r <= d || d <= i)) || (r <= d && d <= i)) {
                 NonmovableArrays.setWord(table, d, info);
-                NonmovableArrays.setWord(table, i, WordFactory.zero());
+                NonmovableArrays.setWord(table, i, Word.zero());
                 d = i;
             }
             i = nextIndex(i, length);

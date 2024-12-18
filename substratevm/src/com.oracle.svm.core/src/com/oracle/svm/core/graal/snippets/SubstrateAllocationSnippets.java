@@ -41,7 +41,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
@@ -142,7 +141,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), Word.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -404,7 +403,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public Object formatStoredContinuation(Word objectHeader, UnsignedWord allocationSize, int arrayLength, Word memory, boolean emitMemoryBarrier, long ipOffset,
                     AllocationSnippetCounters snippetCounters) {
         Object result = formatArray(objectHeader, allocationSize, arrayLength, memory, FillContent.DO_NOT_FILL, false, false, false, false, snippetCounters);
-        memory.writeWord(WordFactory.unsigned(ipOffset), WordFactory.nullPointer(), LocationIdentity.init());
+        memory.writeWord(Word.unsigned(ipOffset), Word.nullPointer(), LocationIdentity.init());
         emitMemoryBarrierIf(emitMemoryBarrier);
         return result;
     }

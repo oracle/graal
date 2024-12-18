@@ -27,6 +27,7 @@ package com.oracle.svm.graal.isolated;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolates;
@@ -36,7 +37,6 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.IsolateSupportImpl;
@@ -94,7 +94,7 @@ public final class IsolatedGraalUtils {
         CreateIsolateParameters.Builder builder = new CreateIsolateParameters.Builder();
         long addressSpaceSize = SubstrateOptions.CompilationIsolateAddressSpaceSize.getValue();
         if (addressSpaceSize > 0) {
-            builder.reservedAddressSpaceSize(WordFactory.signed(addressSpaceSize));
+            builder.reservedAddressSpaceSize(Word.signed(addressSpaceSize));
         }
         /*
          * if protection keys are used, the compilation isolate needs to use the same protection

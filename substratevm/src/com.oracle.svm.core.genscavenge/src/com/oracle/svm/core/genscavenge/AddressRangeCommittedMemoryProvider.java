@@ -28,10 +28,10 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static jdk.graal.compiler.word.WordFactory.unsigned;
-import static jdk.graal.compiler.word.WordFactory.nullPointer;
+import static jdk.graal.compiler.word.Word.unsigned;
+import static jdk.graal.compiler.word.Word.nullPointer;
 
-import jdk.graal.compiler.word.WordFactory;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -145,15 +145,15 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
         UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
-        UnsignedWord reserved = WordFactory.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
+        UnsignedWord reserved = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
         if (reserved.equal(0)) {
             /*
              * By default, always reserve at least 32 GB of address space. If a large maximum heap
              * size was specified, then reserve 2x of that maximum heap size (assuming that the max.
              * address space size is large enough for that).
              */
-            UnsignedWord maxHeapSize = WordFactory.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize))).multiply(2);
-            reserved = UnsignedUtils.clamp(maxHeapSize, WordFactory.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE), addressSpaceSize);
+            UnsignedWord maxHeapSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize))).multiply(2);
+            reserved = UnsignedUtils.clamp(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE), addressSpaceSize);
         }
 
         UnsignedWord alignment = unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
@@ -650,7 +650,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
 
                     removeFromUnusedList(unusedNext);
                     freeNode(unusedNext);
-                    unusedNext = WordFactory.nullPointer();
+                    unusedNext = Word.nullPointer();
                 }
             } else if (adjacentSuccessor) {
                 /* Add the freed memory to the successor node. */

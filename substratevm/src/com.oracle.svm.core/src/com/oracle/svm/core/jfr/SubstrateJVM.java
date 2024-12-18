@@ -26,12 +26,12 @@ package com.oracle.svm.core.jfr;
 
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -238,11 +238,11 @@ public class SubstrateJVM {
 
         long threadLocalBufferSize = options.threadBufferSize.getValue();
         assert threadLocalBufferSize > 0;
-        threadLocal.initialize(WordFactory.unsigned(threadLocalBufferSize));
+        threadLocal.initialize(Word.unsigned(threadLocalBufferSize));
 
         long globalBufferSize = options.globalBufferSize.getValue();
         assert globalBufferSize > 0;
-        globalMemory.initialize(WordFactory.unsigned(globalBufferSize), options.globalBufferCount.getValue());
+        globalMemory.initialize(Word.unsigned(globalBufferSize), options.globalBufferCount.getValue());
 
         unlockedChunkWriter.initialize(options.maxChunkSize.getValue());
         stackTraceRepo.setStackTraceDepth(NumUtil.safeToInt(options.stackDepth.getValue()));
@@ -513,7 +513,7 @@ public class SubstrateJVM {
 
         JfrBuffer oldBuffer = threadLocal.getJavaBuffer();
         assert oldBuffer.isNonNull() : "Java EventWriter should not be used otherwise";
-        JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
+        JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, Word.unsigned(uncommittedSize), requestedSize);
         if (newBuffer.isNull()) {
             /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
             JfrEventWriterAccess.update(writer, oldBuffer, 0, false);
@@ -552,7 +552,7 @@ public class SubstrateJVM {
             return nextPosition;
         }
 
-        Pointer next = WordFactory.pointer(nextPosition);
+        Pointer next = Word.pointer(nextPosition);
         assert next.aboveOrEqual(current.getCommittedPos()) : "invariant";
         assert next.belowOrEqual(JfrBufferAccess.getDataEnd(current)) : "invariant";
         if (JfrThreadLocal.isNotified()) {

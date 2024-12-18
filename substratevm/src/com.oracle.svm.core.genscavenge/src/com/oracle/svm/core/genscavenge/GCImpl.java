@@ -31,6 +31,7 @@ import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.During;
 
 import java.lang.ref.Reference;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -41,7 +42,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Isolates;
@@ -126,7 +126,7 @@ public final class GCImpl implements GC {
 
     private final CollectionPolicy policy;
     private boolean completeCollection = false;
-    private UnsignedWord collectionEpoch = WordFactory.zero();
+    private UnsignedWord collectionEpoch = Word.zero();
     private long lastWholeHeapExaminedNanos = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -191,7 +191,7 @@ public final class GCImpl implements GC {
 
         int size = SizeOf.get(CollectionVMOperationData.class);
         CollectionVMOperationData data = StackValue.get(size);
-        UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) data, Word.unsigned(size), (byte) 0);
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());
         data.setCompleteCollectionCount(GCImpl.getAccounting().getCompleteCollectionCount());
@@ -858,7 +858,7 @@ public final class GCImpl implements GC {
                      * passing (re-use of deopt slot).
                      */
                     long varStackSize = DeoptimizationSlotPacking.decodeVariableFrameSizeFromDeoptSlot(sp.readLong(0));
-                    Pointer actualSP = sp.add(WordFactory.unsigned(varStackSize));
+                    Pointer actualSP = sp.add(Word.unsigned(varStackSize));
 
                     InterpreterSupport.walkInterpreterLeaveStubFrame(visitor, actualSP, sp);
                 } else {
@@ -1310,11 +1310,11 @@ public final class GCImpl implements GC {
         void release(boolean keepAllAlignedChunks) {
             if (firstAligned.isNonNull()) {
                 HeapImpl.getChunkProvider().consumeAlignedChunks(firstAligned, keepAllAlignedChunks);
-                firstAligned = WordFactory.nullPointer();
+                firstAligned = Word.nullPointer();
             }
             if (firstUnaligned.isNonNull()) {
                 HeapChunkProvider.consumeUnalignedChunks(firstUnaligned);
-                firstUnaligned = WordFactory.nullPointer();
+                firstUnaligned = Word.nullPointer();
             }
         }
 

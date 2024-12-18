@@ -44,7 +44,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import java.lang.reflect.Array;
 
@@ -96,7 +95,7 @@ public class DeoptState {
                 return valueInfo.getValue();
             case StackSlot:
             case Register:
-                return readConstant(sourceSp, WordFactory.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference(), sourceFrame);
+                return readConstant(sourceSp, Word.signed(valueInfo.getData()), valueInfo.getKind(), valueInfo.isCompressedReference(), sourceFrame);
             case ReservedRegister:
                 if (ReservedRegisters.singleton().getThreadRegister() != null && ReservedRegisters.singleton().getThreadRegister().number == valueInfo.getData()) {
                     return JavaConstant.forIntegerKind(ConfigurationValues.getWordKind(), targetThread.rawValue());
@@ -158,7 +157,7 @@ public class DeoptState {
             } catch (InstantiationException ex) {
                 throw fatalDeoptimizationError("Instantiation exception: " + ex, sourceFrame);
             }
-            curOffset = WordFactory.unsigned(objectLayout.getFirstFieldOffset());
+            curOffset = Word.unsigned(objectLayout.getFirstFieldOffset());
             curIdx = 1;
         }
 

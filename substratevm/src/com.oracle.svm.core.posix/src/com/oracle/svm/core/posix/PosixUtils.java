@@ -39,7 +39,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -79,7 +78,7 @@ public class PosixUtils {
 
     private static String setLocale(int category, String locale) {
         if (locale == null) {
-            CCharPointer cstrResult = Locale.setlocale(category, WordFactory.nullPointer());
+            CCharPointer cstrResult = Locale.setlocale(category, Word.nullPointer());
             return CTypeConversion.toJavaString(cstrResult);
         }
         try (CCharPointerHolder localePin = CTypeConversion.toCString(locale)) {
@@ -224,7 +223,7 @@ public class PosixUtils {
         DynamicHub hub = KnownIntrinsics.readHub(data);
         UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
         Pointer dataPtr = Word.objectToUntrackedPointer(data).add(baseOffset);
-        return writeUninterruptibly(fd, dataPtr, WordFactory.unsigned(data.length));
+        return writeUninterruptibly(fd, dataPtr, Word.unsigned(data.length));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -283,7 +282,7 @@ public class PosixUtils {
         int readBytes = -1;
         if (bufferOffset < bufferLen) {
             do {
-                readBytes = (int) Unistd.NoTransitions.read(fd, buffer.add(bufferOffset), WordFactory.unsigned(bufferLen - bufferOffset)).rawValue();
+                readBytes = (int) Unistd.NoTransitions.read(fd, buffer.add(bufferOffset), Word.unsigned(bufferLen - bufferOffset)).rawValue();
             } while (readBytes == -1 && LibC.errno() == Errno.EINTR());
         }
         return readBytes;
@@ -292,7 +291,7 @@ public class PosixUtils {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static int readUninterruptibly(int fd, Pointer buffer, int bufferSize) {
         VMError.guarantee(bufferSize >= 0);
-        long readBytes = readUninterruptibly(fd, buffer, WordFactory.unsigned(bufferSize));
+        long readBytes = readUninterruptibly(fd, buffer, Word.unsigned(bufferSize));
         assert (int) readBytes == readBytes;
         return (int) readBytes;
     }
@@ -336,7 +335,7 @@ public class PosixUtils {
         }
 
         /* Does not use StackValue because it is not safe to use in virtual threads. */
-        UnsignedWord allocSize = WordFactory.unsigned(SizeOf.get(passwdPointer.class) + SizeOf.get(passwd.class) + bufSize);
+        UnsignedWord allocSize = Word.unsigned(SizeOf.get(passwdPointer.class) + SizeOf.get(passwd.class) + bufSize);
         Pointer alloc = NullableNativeMemory.malloc(allocSize, NmtCategory.Internal);
         if (alloc.isNull()) {
             return null;
@@ -346,7 +345,7 @@ public class PosixUtils {
             passwdPointer p = (passwdPointer) alloc;
             passwd pwent = (passwd) ((Pointer) p).add(SizeOf.get(passwdPointer.class));
             CCharPointer pwBuf = (CCharPointer) ((Pointer) pwent).add(SizeOf.get(passwd.class));
-            int code = Pwd.getpwuid_r(uid, pwent, pwBuf, WordFactory.unsigned(bufSize), p);
+            int code = Pwd.getpwuid_r(uid, pwent, pwBuf, Word.unsigned(bufSize), p);
             if (code != 0) {
                 return null;
             }

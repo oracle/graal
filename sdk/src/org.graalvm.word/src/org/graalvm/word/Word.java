@@ -40,30 +40,619 @@
  */
 package org.graalvm.word;
 
+import static java.lang.Long.compareUnsigned;
+
 /**
- * Unifies the {@link SignedWord}, {@link UnsignedWord} and {@link Pointer} interfaces so that
- * methods with the same signature but different return types (e.g.
- * {@link UnsignedWord#shiftLeft(UnsignedWord)} and {@link SignedWord#shiftLeft(UnsignedWord)}) are
- * overridden by a common method that merges the return types. This a requirement for creating a
- * proxy type in {@link WordFactory#box(long)}.
+ * A box for words that supports all operations except memory accesses (see
+ * {@link WordFactory#pointer(long)}).
  */
-interface Word extends SignedWord, UnsignedWord, Pointer {
+final class Word implements SignedWord, UnsignedWord, Pointer {
 
-    Word add(int p1);
+    private final long rawValue;
 
-    Word shiftLeft(int p1);
+    Word(long val) {
+        this.rawValue = val;
+    }
 
-    Word shiftLeft(UnsignedWord p1);
+    @SuppressWarnings("unchecked")
+    static <T extends WordBase> T box(long val) {
+        return (T) new Word(val);
+    }
 
-    Word multiply(int p1);
+    @Override
+    public native Object toObject();
 
-    Word or(int p1);
+    @Override
+    public native <T> T toObject(Class<T> clazz, boolean nonNull);
 
-    Word and(int p1);
+    @Override
+    public native Object toObjectNonNull();
 
-    Word not();
+    @Override
+    public native byte readByte(WordBase offset, LocationIdentity locationIdentity);
 
-    Word subtract(int p1);
+    @Override
+    public native char readChar(WordBase offset, LocationIdentity locationIdentity);
 
-    Word xor(int p1);
+    @Override
+    public native short readShort(WordBase offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native int readInt(WordBase offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native long readLong(WordBase offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native float readFloat(WordBase offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native double readDouble(WordBase offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native <T extends WordBase> T readWord(WordBase offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native Object readObject(WordBase offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native byte readByte(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native char readChar(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native short readShort(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native int readInt(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native long readLong(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native float readFloat(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native double readDouble(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native <T extends WordBase> T readWord(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native Object readObject(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native <T extends WordBase> T readWordVolatile(int offset, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeByte(WordBase offset, byte val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeChar(WordBase offset, char val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeShort(WordBase offset, short val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeInt(WordBase offset, int val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeLong(WordBase offset, long val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeFloat(WordBase offset, float val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeDouble(WordBase offset, double val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeWord(WordBase offset, WordBase val, LocationIdentity locationIdentity);
+
+    @Override
+    public void initializeLong(WordBase offset, long val, LocationIdentity locationIdentity) {
+
+    }
+
+    @Override
+    public native void writeObject(WordBase offset, Object val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeByte(int offset, byte val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeChar(int offset, char val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeShort(int offset, short val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeInt(int offset, int val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeLong(int offset, long val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeFloat(int offset, float val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeDouble(int offset, double val, LocationIdentity locationIdentity);
+
+    @Override
+    public native void writeWord(int offset, WordBase val, LocationIdentity locationIdentity);
+
+    @Override
+    public void initializeLong(int offset, long val, LocationIdentity locationIdentity) {
+
+    }
+
+    @Override
+    public native void writeObject(int offset, Object val, LocationIdentity locationIdentity);
+
+    @Override
+    public native byte readByte(WordBase offset);
+
+    @Override
+    public native char readChar(WordBase offset);
+
+    @Override
+    public native short readShort(WordBase offset);
+
+    @Override
+    public native int readInt(WordBase offset);
+
+    @Override
+    public native long readLong(WordBase offset);
+
+    @Override
+    public native float readFloat(WordBase offset);
+
+    @Override
+    public native double readDouble(WordBase offset);
+
+    @Override
+    public native <T extends WordBase> T readWord(WordBase offset);
+
+    @Override
+    public native Object readObject(WordBase offset);
+
+    @Override
+    public native byte readByte(int offset);
+
+    @Override
+    public native char readChar(int offset);
+
+    @Override
+    public native short readShort(int offset);
+
+    @Override
+    public native int readInt(int offset);
+
+    @Override
+    public native long readLong(int offset);
+
+    @Override
+    public native float readFloat(int offset);
+
+    @Override
+    public native double readDouble(int offset);
+
+    @Override
+    public native <T extends WordBase> T readWord(int offset);
+
+    @Override
+    public native Object readObject(int offset);
+
+    @Override
+    public native void writeByte(WordBase offset, byte val);
+
+    @Override
+    public native void writeChar(WordBase offset, char val);
+
+    @Override
+    public native void writeShort(WordBase offset, short val);
+
+    @Override
+    public native void writeInt(WordBase offset, int val);
+
+    @Override
+    public native void writeLong(WordBase offset, long val);
+
+    @Override
+    public native void writeFloat(WordBase offset, float val);
+
+    @Override
+    public native void writeDouble(WordBase offset, double val);
+
+    @Override
+    public native void writeWord(WordBase offset, WordBase val);
+
+    @Override
+    public native void writeObject(WordBase offset, Object val);
+
+    @Override
+    public native int compareAndSwapInt(WordBase offset, int expectedValue, int newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native long compareAndSwapLong(WordBase offset, long expectedValue, long newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native <T extends WordBase> T compareAndSwapWord(WordBase offset, T expectedValue, T newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native Object compareAndSwapObject(WordBase offset, Object expectedValue, Object newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public boolean logicCompareAndSwapInt(WordBase offset, int expectedValue, int newValue, LocationIdentity locationIdentity) {
+        return false;
+    }
+
+    @Override
+    public boolean logicCompareAndSwapLong(WordBase offset, long expectedValue, long newValue, LocationIdentity locationIdentity) {
+        return false;
+    }
+
+    @Override
+    public boolean logicCompareAndSwapWord(WordBase offset, WordBase expectedValue, WordBase newValue, LocationIdentity locationIdentity) {
+        return false;
+    }
+
+    @Override
+    public boolean logicCompareAndSwapObject(WordBase offset, Object expectedValue, Object newValue, LocationIdentity locationIdentity) {
+        return false;
+    }
+
+    @Override
+    public native void writeByte(int offset, byte val);
+
+    @Override
+    public native void writeChar(int offset, char val);
+
+    @Override
+    public native void writeShort(int offset, short val);
+
+    @Override
+    public native void writeInt(int offset, int val);
+
+    @Override
+    public native void writeLong(int offset, long val);
+
+    @Override
+    public native void writeFloat(int offset, float val);
+
+    @Override
+    public native void writeDouble(int offset, double val);
+
+    @Override
+    public native void writeWord(int offset, WordBase val);
+
+    @Override
+    public native void writeObject(int offset, Object val);
+
+    @Override
+    public native void writeWordVolatile(int offset, WordBase val);
+
+    @Override
+    public native int compareAndSwapInt(int offset, int expectedValue, int newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native long compareAndSwapLong(int offset, long expectedValue, long newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native <T extends WordBase> T compareAndSwapWord(int offset, T expectedValue, T newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native Object compareAndSwapObject(int offset, Object expectedValue, Object newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native boolean logicCompareAndSwapInt(int offset, int expectedValue, int newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native boolean logicCompareAndSwapLong(int offset, long expectedValue, long newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native boolean logicCompareAndSwapWord(int offset, WordBase expectedValue, WordBase newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public native boolean logicCompareAndSwapObject(int offset, Object expectedValue, Object newValue, LocationIdentity locationIdentity);
+
+    @Override
+    public Pointer add(UnsignedWord val) {
+        return box(this.rawValue + val.rawValue());
+    }
+
+    @Override
+    public Pointer subtract(UnsignedWord val) {
+        return box(this.rawValue - val.rawValue());
+    }
+
+    @Override
+    public UnsignedWord multiply(UnsignedWord val) {
+        return box(this.rawValue * val.rawValue());
+    }
+
+    @Override
+    public UnsignedWord unsignedDivide(UnsignedWord val) {
+        return box(Long.divideUnsigned(this.rawValue, val.rawValue()));
+    }
+
+    @Override
+    public UnsignedWord unsignedRemainder(UnsignedWord val) {
+        return box(Long.remainderUnsigned(this.rawValue, val.rawValue()));
+    }
+
+    @Override
+    public Pointer and(UnsignedWord val) {
+        return box(this.rawValue & val.rawValue());
+    }
+
+    @Override
+    public Pointer or(UnsignedWord val) {
+        return box(this.rawValue | val.rawValue());
+    }
+
+    @Override
+    public UnsignedWord xor(UnsignedWord val) {
+        return box(this.rawValue ^ val.rawValue());
+    }
+
+    @Override
+    public boolean isNull() {
+        return this.rawValue == 0;
+    }
+
+    @Override
+    public boolean isNonNull() {
+        return this.rawValue != 0;
+    }
+
+    @Override
+    public SignedWord add(SignedWord val) {
+        return box(this.rawValue + val.rawValue());
+    }
+
+    @Override
+    public SignedWord subtract(SignedWord val) {
+        return box(this.rawValue - val.rawValue());
+    }
+
+    @Override
+    public SignedWord multiply(SignedWord val) {
+        return box(this.rawValue * val.rawValue());
+    }
+
+    @Override
+    public SignedWord signedDivide(SignedWord val) {
+        return box(this.rawValue / val.rawValue());
+    }
+
+    @Override
+    public SignedWord signedRemainder(SignedWord val) {
+        return box(this.rawValue % val.rawValue());
+    }
+
+    @Override
+    public Word shiftLeft(UnsignedWord n) {
+        return box(this.rawValue << n.rawValue());
+    }
+
+    @Override
+    public UnsignedWord unsignedShiftRight(UnsignedWord n) {
+        return box(this.rawValue >>> n.rawValue());
+    }
+
+    @Override
+    public SignedWord signedShiftRight(UnsignedWord n) {
+        return box(this.rawValue >> n.rawValue());
+    }
+
+    @Override
+    public SignedWord and(SignedWord val) {
+        return box(this.rawValue & val.rawValue());
+    }
+
+    @Override
+    public SignedWord or(SignedWord val) {
+        return box(this.rawValue | val.rawValue());
+    }
+
+    @Override
+    public SignedWord xor(SignedWord val) {
+        return box(this.rawValue ^ val.rawValue());
+    }
+
+    @Override
+    public Word not() {
+        return box(~this.rawValue);
+    }
+
+    @Override
+    public boolean equal(UnsignedWord val) {
+        return this.rawValue == val.rawValue();
+    }
+
+    @Override
+    public boolean notEqual(UnsignedWord val) {
+        return this.rawValue != val.rawValue();
+    }
+
+    @Override
+    public boolean belowThan(UnsignedWord val) {
+        return compareUnsigned(this.rawValue, val.rawValue()) < 0;
+    }
+
+    @Override
+    public boolean belowOrEqual(UnsignedWord val) {
+        return compareUnsigned(this.rawValue, val.rawValue()) <= 0;
+    }
+
+    @Override
+    public boolean aboveThan(UnsignedWord val) {
+        return compareUnsigned(this.rawValue, val.rawValue()) > 0;
+    }
+
+    @Override
+    public boolean aboveOrEqual(UnsignedWord val) {
+        return compareUnsigned(this.rawValue, val.rawValue()) >= 0;
+    }
+
+    @Override
+    public boolean equal(SignedWord val) {
+        return this.rawValue == val.rawValue();
+    }
+
+    @Override
+    public boolean notEqual(SignedWord val) {
+        return this.rawValue != val.rawValue();
+    }
+
+    @Override
+    public boolean lessThan(SignedWord val) {
+        return this.rawValue < val.rawValue();
+    }
+
+    @Override
+    public boolean lessOrEqual(SignedWord val) {
+        return this.rawValue <= val.rawValue();
+    }
+
+    @Override
+    public boolean greaterThan(SignedWord val) {
+        return this.rawValue > val.rawValue();
+    }
+
+    @Override
+    public boolean greaterOrEqual(SignedWord val) {
+        return this.rawValue >= val.rawValue();
+    }
+
+    @Override
+    public Word add(int val) {
+        return box(this.rawValue + val);
+    }
+
+    @Override
+    public Word subtract(int val) {
+        return box(this.rawValue - val);
+    }
+
+    @Override
+    public Word multiply(int val) {
+        return box(this.rawValue * val);
+    }
+
+    @Override
+    public UnsignedWord unsignedDivide(int val) {
+        return box(Long.divideUnsigned(this.rawValue, val));
+    }
+
+    @Override
+    public UnsignedWord unsignedRemainder(int val) {
+        return box(Long.remainderUnsigned(this.rawValue, val));
+    }
+
+    @Override
+    public SignedWord signedDivide(int val) {
+        return box(this.rawValue / val);
+    }
+
+    @Override
+    public SignedWord signedRemainder(int val) {
+        return box(this.rawValue % val);
+    }
+
+    @Override
+    public Word shiftLeft(int n) {
+        return box(this.rawValue << n);
+    }
+
+    @Override
+    public UnsignedWord unsignedShiftRight(int n) {
+        return box(this.rawValue >>> n);
+    }
+
+    @Override
+    public SignedWord signedShiftRight(int n) {
+        return box(this.rawValue >> n);
+    }
+
+    @Override
+    public Word and(int val) {
+        return box(this.rawValue & val);
+    }
+
+    @Override
+    public Word or(int val) {
+        return box(this.rawValue | val);
+    }
+
+    @Override
+    public Word xor(int val) {
+        return box(this.rawValue ^ val);
+    }
+
+    @Override
+    public boolean equal(int val) {
+        return this.rawValue == 0;
+    }
+
+    @Override
+    public boolean notEqual(int val) {
+        return this.rawValue != 0;
+    }
+
+    @Override
+    public boolean belowThan(int val) {
+        return compareUnsigned(this.rawValue, val) < 0;
+    }
+
+    @Override
+    public boolean belowOrEqual(int val) {
+        return compareUnsigned(this.rawValue, val) <= 0;
+    }
+
+    @Override
+    public boolean aboveThan(int val) {
+        return compareUnsigned(this.rawValue, val) > 0;
+    }
+
+    @Override
+    public boolean aboveOrEqual(int val) {
+        return compareUnsigned(this.rawValue, val) >= 0;
+    }
+
+    @Override
+    public boolean lessThan(int val) {
+        return this.rawValue < val;
+    }
+
+    @Override
+    public boolean lessOrEqual(int val) {
+        return this.rawValue <= val;
+    }
+
+    @Override
+    public boolean greaterThan(int val) {
+        return this.rawValue > val;
+    }
+
+    @Override
+    public boolean greaterOrEqual(int val) {
+        return this.rawValue >= val;
+    }
+
+    @Override
+    public boolean equal(ComparableWord val) {
+        return this.rawValue == val.rawValue();
+    }
+
+    @Override
+    public boolean notEqual(ComparableWord val) {
+        return this.rawValue != val.rawValue();
+    }
+
+    @Override
+    public long rawValue() {
+        return rawValue;
+    }
 }

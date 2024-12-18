@@ -29,7 +29,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput
 
 import java.util.Arrays;
 
-import jdk.graal.compiler.word.WordFactory;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -649,7 +649,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         } else if (returnType == Long.class) {
             return value;
         } else if (WordBase.class.isAssignableFrom(returnType)) {
-            return WordFactory.unsigned(value);
+            return Word.unsigned(value);
         } else {
             throw VMError.shouldNotReachHere("Unexpected returnType: " + returnType.getName());
         }

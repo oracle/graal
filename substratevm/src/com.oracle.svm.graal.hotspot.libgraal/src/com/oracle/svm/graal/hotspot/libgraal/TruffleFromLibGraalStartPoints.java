@@ -80,6 +80,7 @@ import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
@@ -95,7 +96,6 @@ import org.graalvm.nativebridge.BinaryInput;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
@@ -340,7 +340,7 @@ public final class TruffleFromLibGraalStartPoints {
     public static boolean isSameOrSplit(Object hsHandle, Object otherHsHandle) {
         JNIEnv env = JNIMethodScope.env();
         return callIsSameOrSplit(calls, env, ((HSObject) hsHandle).getHandle(),
-                        otherHsHandle == null ? WordFactory.nullPointer() : ((HSObject) otherHsHandle).getHandle());
+                        otherHsHandle == null ? Word.nullPointer() : ((HSObject) otherHsHandle).getHandle());
     }
 
     @TruffleFromLibGraal(Id.GetKnownCallSiteCount)
@@ -353,7 +353,7 @@ public final class TruffleFromLibGraalStartPoints {
     public static void consumeOptimizedAssumptionDependency(Object hsHandle, Object compilableHsHandle, long installedCode) {
         JNIEnv env = JNIMethodScope.env();
         callConsumeOptimizedAssumptionDependency(calls, env, ((HSObject) hsHandle).getHandle(),
-                        compilableHsHandle == null ? WordFactory.nullPointer() : ((HSObject) compilableHsHandle).getHandle(),
+                        compilableHsHandle == null ? Word.nullPointer() : ((HSObject) compilableHsHandle).getHandle(),
                         installedCode);
     }
 

@@ -49,12 +49,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.BigBang;
@@ -290,7 +290,7 @@ public abstract class NativeImageCodeCache {
     }
 
     public void buildRuntimeMetadata(DebugContext debug, SnippetReflectionProvider snippetReflectionProvider) {
-        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.signed(getCodeAreaSize()));
+        buildRuntimeMetadata(debug, snippetReflectionProvider, new MethodPointer(getFirstCompilation().getLeft(), true), Word.signed(getCodeAreaSize()));
     }
 
     static class HostedConstantAccess extends ConstantAccess {
@@ -528,7 +528,7 @@ public abstract class NativeImageCodeCache {
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
         imageCodeInfo.setDataOffset(codeSize);
-        imageCodeInfo.setDataSize(WordFactory.zero()); // (only for data immediately after code)
+        imageCodeInfo.setDataSize(Word.zero()); // (only for data immediately after code)
         imageCodeInfo.setCodeAndDataMemorySize(codeSize);
         return imageCodeInfo;
     }

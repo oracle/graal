@@ -27,11 +27,11 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -91,12 +91,12 @@ public class CodeInfoTable {
     public static void prepareImageCodeInfo() {
         // Stored in this class because ImageCodeInfo is immutable
         imageCodeInfo = getImageCodeCache().prepareCodeInfo();
-        assert imageCodeInfo.notEqual(WordFactory.zero());
+        assert imageCodeInfo.notEqual(Word.zero());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodeInfo getFirstImageCodeInfo() {
-        assert imageCodeInfo.notEqual(WordFactory.zero()) : "uninitialized";
+        assert imageCodeInfo.notEqual(Word.zero()) : "uninitialized";
         return imageCodeInfo;
     }
 
@@ -289,7 +289,7 @@ public class CodeInfoTable {
         @Override
         protected void operate() {
             counters().invalidateInstalledCodeCount.inc();
-            CodePointer codePointer = WordFactory.pointer(installedCode.getAddress());
+            CodePointer codePointer = Word.pointer(installedCode.getAddress());
             invalidateInstalledCodeAtSafepoint(installedCode, codePointer);
         }
     }

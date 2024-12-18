@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.os;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import jdk.graal.compiler.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -91,7 +91,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
     @Fold
     protected static UnsignedWord getAlignmentForUnalignedChunks() {
         int alignment = Math.max(ConfigurationValues.getTarget().wordSize, ConfigurationValues.getObjectLayout().getAlignment());
-        return WordFactory.unsigned(alignment);
+        return Word.unsigned(alignment);
     }
 
     /**

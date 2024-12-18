@@ -28,11 +28,13 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.VerifyPhase;
-import jdk.vm.ci.meta.MetaUtil;
+import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.WordFactory;
 
 /**
- * Ensures that Graal compiler code uses {@link jdk.graal.compiler.word.WordFactory} instead of
- * {@link org.graalvm.word.WordFactory} to create word values.
+ * Ensures that Graal compiler code uses factory methods in {@link Word} instead of
+ * {@link WordFactory} to create word values.
  */
 public class VerifyWordFactoryUsage extends VerifyPhase<CoreProviders> {
 
@@ -44,14 +46,14 @@ public class VerifyWordFactoryUsage extends VerifyPhase<CoreProviders> {
     @Override
     protected void verify(StructuredGraph graph, CoreProviders context) {
 
-        String badWordFactory = MetaUtil.toInternalName(org.graalvm.word.WordFactory.class.getName());
-
+        ResolvedJavaType wordFactory = context.getMetaAccess().lookupJavaType(WordFactory.class);
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            if (t.targetMethod().getDeclaringClass().getName().equals(badWordFactory)) {
-                throw new VerificationError("accessing %s in %s is prohibited - use %s instead",
-                                badWordFactory,
+            if (t.targetMethod().getDeclaringClass().equals(wordFactory)) {
+                throw new VerificationError("accessing %s in %s is prohibited - use %s.%s instead",
+                                wordFactory.toJavaName(),
                                 graph.method().format("%H.%n(%p)"),
-                                jdk.graal.compiler.word.WordFactory.class.getName());
+                                Word.class.getName(),
+                                graph.method().format("%n(%p)"));
 
             }
         }
