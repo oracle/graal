@@ -695,7 +695,7 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         return compilationSupport instanceof LibGraalTruffleCompilationSupport;
     }
 
-    static final MethodHandle getCompilationActivityMode;
+    private static final MethodHandle getCompilationActivityMode;
     static {
         MethodHandle mHandle = null;
         try {
@@ -711,15 +711,29 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
      * Returns the current host compilation activity mode based on HotSpot's code cache state.
      */
     @Override
-    public CompilationActivityMode getCompilationActivityMode() {
+    protected CompilationActivityMode getCompilationActivityMode() {
         int activityMode = 1; // Default is to run compilations
         if (getCompilationActivityMode != null) {
             try {
                 activityMode = (int) getCompilationActivityMode.invokeExact(HotSpotJVMCIRuntime.runtime());
             } catch (Throwable t) {
-                throw new RuntimeException("Can't get HotSpot's compilation activity mode", t);
+                throw CompilerDirectives.shouldNotReachHere("Can't get HotSpot's compilation activity mode", t);
             }
         }
-        return CompilationActivityMode.fromInteger(activityMode);
+        return resolveHotSpotActivityMode(activityMode);
+    }
+
+    /**
+     * Represents HotSpot's compilation activity mode which is one of: {@code stop_compilation = 0},
+     * {@code run_compilation = 1} or {@code shutdown_compilation = 2}. Should be in sync with the
+     * {@code CompilerActivity} enum in {@code hotspot/share/compiler/compileBroker.hpp}.
+     */
+    private static CompilationActivityMode resolveHotSpotActivityMode(int i) {
+        return switch (i) {
+            case 0 -> CompilationActivityMode.STOP_COMPILATION;
+            case 1 -> CompilationActivityMode.RUN_COMPILATION;
+            case 2 -> CompilationActivityMode.SHUTDOWN_COMPILATION;
+            default -> throw CompilerDirectives.shouldNotReachHere("Invalid CompilationActivityMode " + i);
+        };
     }
 }

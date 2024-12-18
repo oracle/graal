@@ -859,12 +859,12 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return compilationFailed;
     }
 
-    final CompilationActivityMode getCompilationActivityMode() {
+    private CompilationActivityMode getCompilationActivityMode() {
         CompilationActivityMode compilationActivityMode = runtime().getCompilationActivityMode();
-        long sct = runtime().stoppedCompilationTime().get();
+        long stoppedTime = runtime().stoppedCompilationTime().get();
         if (compilationActivityMode == CompilationActivityMode.STOP_COMPILATION) {
-            if (sct != 0 && System.currentTimeMillis() - sct > engine.stoppedCompilationRetryDelay) {
-                runtime().stoppedCompilationTime().compareAndSet(sct, 0);
+            if (stoppedTime != 0 && System.currentTimeMillis() - stoppedTime > engine.stoppedCompilationRetryDelay) {
+                runtime().stoppedCompilationTime().compareAndSet(stoppedTime, 0);
                 // Try again every StoppedCompilationRetryDelay milliseconds to potentially trigger
                 // a code cache sweep.
                 compilationActivityMode = CompilationActivityMode.RUN_COMPILATION;
@@ -872,12 +872,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         }
 
         switch (compilationActivityMode) {
-            case RUN_COMPILATION: {
+            case RUN_COMPILATION:
                 // This is the common case - compilations are not stopped.
                 return CompilationActivityMode.RUN_COMPILATION;
-            }
-            case STOP_COMPILATION: {
-                if (sct == 0) {
+            case STOP_COMPILATION:
+                if (stoppedTime == 0) {
                     runtime().stoppedCompilationTime().compareAndSet(0, System.currentTimeMillis());
                 }
                 // Flush the compilations queue for now. There's still a chance that compilation
@@ -892,8 +891,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
                     }
                 }
                 return CompilationActivityMode.STOP_COMPILATION;
-            }
-            case SHUTDOWN_COMPILATION: {
+            case SHUTDOWN_COMPILATION:
                 // Compilation was shut down permanently because the hosts code cache ran full and
                 // the host was configured without support for code cache sweeping.
                 TruffleLogger logger = engine.getLogger("engine");
@@ -908,11 +906,9 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
                     target.compilationFailed = true;
                 }
                 return CompilationActivityMode.SHUTDOWN_COMPILATION;
-            }
             default:
-                CompilerDirectives.shouldNotReachHere("Invalid compilation activity mode: " + compilationActivityMode);
+                throw CompilerDirectives.shouldNotReachHere("Invalid compilation activity mode: " + compilationActivityMode);
         }
-        return CompilationActivityMode.RUN_COMPILATION;
     }
 
     /**
