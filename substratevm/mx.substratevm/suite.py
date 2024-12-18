@@ -2327,15 +2327,6 @@ suite = {
             },
         },
 
-        "NATIVE_IMAGE_JUNITCP_SUPPORT" : {
-            "native" : True,
-            "description" : "Native-image based junit testing support but with running image-builder on classpath",
-            "layout" : {
-                "native-image.properties" : "file:mx.substratevm/macro-junitcp.properties",
-                "svm-junit.packages" : "file:mx.substratevm/svm-junit.packages",
-            },
-        },
-
         "SVM_FOREIGN": {
             "subDir": "src",
             "description" : "SubstrateVM support for the Foreign API",
