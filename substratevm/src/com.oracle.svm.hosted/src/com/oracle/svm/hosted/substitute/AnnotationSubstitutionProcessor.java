@@ -134,7 +134,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaType lookup(ResolvedJavaType type) {
         Delete deleteAnnotation = deleteAnnotations.get(type);
-        if (deleteAnnotation != null) {
+        if (deleteAnnotation != null && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             throw new DeletedElementException(deleteErrorMessage(type, deleteAnnotation, true));
         }
         ResolvedJavaType substitution = findTypeSubstitution(type);
@@ -182,7 +182,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaField lookup(ResolvedJavaField field) {
         Delete deleteAnnotation = deleteAnnotations.get(field);
-        if (deleteAnnotation != null) {
+        if (deleteAnnotation != null && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             throw new DeletedElementException(deleteErrorMessage(field, deleteAnnotation, true));
         }
 
@@ -246,7 +246,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         Delete deleteAnnotation = deleteAnnotations.get(method);
-        if (deleteAnnotation != null) {
+        if (deleteAnnotation != null && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             throw new DeletedElementException(deleteErrorMessage(method, deleteAnnotation, true));
         }
         ResolvedJavaMethod substitution = methodSubstitutions.get(method);
@@ -632,18 +632,17 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             for (ResolvedJavaField f : type.getStaticFields()) {
                 registerAsDeleted(null, f, deleteAnnotation);
             }
-        } else {
-            deleteAnnotations.put(metaAccess.lookupJavaType(originalClass), deleteAnnotation);
         }
+        deleteAnnotations.put(metaAccess.lookupJavaType(originalClass), deleteAnnotation);
     }
 
     private void registerAsDeleted(ResolvedJavaMethod annotated, ResolvedJavaMethod original, Delete deleteAnnotation) {
         if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             register(methodSubstitutions, annotated, original, new DeletedMethod(original, deleteAnnotation));
-        } else {
-            deleteAnnotations.put(original, deleteAnnotation);
-            deleteAnnotations.put(annotated, deleteAnnotation);
         }
+        deleteAnnotations.put(original, deleteAnnotation);
+        deleteAnnotations.put(annotated, deleteAnnotation);
+
     }
 
     private void registerAsDeleted(ResolvedJavaField annotated, ResolvedJavaField original, Delete deleteAnnotation) {
@@ -651,10 +650,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             AnnotatedField annotatedField = new AnnotatedField(original, deleteAnnotation);
             register(fieldSubstitutions, annotated, original, annotatedField);
             fieldValueInterceptionSupport.registerFieldValueTransformer(original, null, new ValueNeverAvailableFieldValueTransformer(annotatedField));
-        } else {
-            deleteAnnotations.put(original, deleteAnnotation);
-            deleteAnnotations.put(annotated, deleteAnnotation);
         }
+        deleteAnnotations.put(original, deleteAnnotation);
+        deleteAnnotations.put(annotated, deleteAnnotation);
     }
 
     @Delete("The declaring class of this element has been substituted, but this element is not present in the substitution class") //
