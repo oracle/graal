@@ -203,6 +203,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return quantifiers.toArray(Token.Quantifier[]::new);
     }
 
+    public Token.Quantifier getQuantifier(int quantifierIndex) {
+        return quantifiers.get(quantifierIndex);
+    }
+
     public void registerZeroWidthQuantifiable(QuantifiableTerm zeroWidthQuantifiable) {
         zeroWidthQuantifiable.getQuantifier().setZeroWidthIndex(zeroWidthQuantifiables.size());
         zeroWidthQuantifiables.add(zeroWidthQuantifiable);
