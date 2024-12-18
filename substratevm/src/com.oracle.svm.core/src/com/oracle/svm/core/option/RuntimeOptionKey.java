@@ -47,7 +47,8 @@ import jdk.graal.compiler.options.OptionKey;
  * @see com.oracle.svm.core.option
  */
 public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
-    private final Consumer<RuntimeOptionKey<T>> validation;
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    private final Consumer<RuntimeOptionKey<T>> buildTimeValidation;
     private final int flags;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -56,9 +57,9 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeOptionKey(T defaultValue, Consumer<RuntimeOptionKey<T>> validation, RuntimeOptionKeyFlag... flags) {
+    public RuntimeOptionKey(T defaultValue, Consumer<RuntimeOptionKey<T>> buildTimeValidation, RuntimeOptionKeyFlag... flags) {
         super(defaultValue);
-        this.validation = validation;
+        this.buildTimeValidation = buildTimeValidation;
         this.flags = EnumBitmask.computeBitmask(flags);
     }
 
@@ -102,8 +103,8 @@ public class RuntimeOptionKey<T> extends OptionKey<T> implements SubstrateOption
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
     public void validate() {
-        if (validation != null) {
-            validation.accept(this);
+        if (buildTimeValidation != null) {
+            buildTimeValidation.accept(this);
         }
     }
 
