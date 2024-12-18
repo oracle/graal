@@ -133,6 +133,9 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private volatile int initState = LOADED;
 
+    @CompilationFinal //
+    private EspressoException linkError;
+
     @CompilationFinal volatile KlassVersion klassVersion;
 
     // instance and hidden fields declared in this class and in its super classes
@@ -156,12 +159,15 @@ public final class ObjectKlass extends Klass {
 
     public static final int LOADED = 0;
     public static final int LINKING = 1;
-    public static final int PREPARED = 2;
-    public static final int LINKED = 3;
+    public static final int VERIFYING = 2;
+    public static final int FAILED_LINK = 3;
+    public static final int VERIFIED = 4;
+    public static final int PREPARED = 5;
+    public static final int LINKED = 6;
+    public static final int INITIALIZING = 7;
     // Can be erroneous only if initialization triggered !
-    public static final int ERRONEOUS = 4;
-    public static final int INITIALIZING = 5;
-    public static final int INITIALIZED = 6;
+    public static final int ERRONEOUS = 8;
+    public static final int INITIALIZED = 9;
 
     private final StaticObject definingClassLoader;
 
@@ -378,7 +384,7 @@ public final class ObjectKlass extends Klass {
          * case, if the state is INITIALIZING we cannot really check the lock because an object
          * might have been leaked to another thread by the clinit.
          */
-        return initState >= ERRONEOUS;
+        return initState >= INITIALIZING;
     }
 
     boolean isInitializedImpl() {
@@ -417,6 +423,12 @@ public final class ObjectKlass extends Klass {
             }
             initState = INITIALIZING;
             getContext().getLogger().log(Level.FINEST, "Initializing: {0}", this.getNameAsString());
+
+            for (Field f : getInitialStaticFields()) {
+                if (!f.isRemoved()) {
+                    initField(f);
+                }
+            }
 
             var tls = getContext().getLanguage().getThreadLocalState();
             tls.blockContinuationSuspension();
@@ -477,11 +489,6 @@ public final class ObjectKlass extends Klass {
         try {
             if (!isPrepared()) {
                 checkLoadingConstraints();
-                for (Field f : getInitialStaticFields()) {
-                    if (!f.isRemoved()) {
-                        initField(f);
-                    }
-                }
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
@@ -593,7 +600,7 @@ public final class ObjectKlass extends Klass {
     @Override
     public void ensureLinked() {
         if (!isLinked()) {
-            checkErroneousVerification();
+            checkErroneousLink();
             if (CompilerDirectives.isCompilationConstant(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
@@ -607,20 +614,30 @@ public final class ObjectKlass extends Klass {
         try {
             if (!isLinkingOrLinked()) {
                 initState = LINKING;
-                if (getSuperKlass() != null) {
-                    getSuperKlass().ensureLinked();
+                try {
+                    if (getSuperKlass() != null) {
+                        getSuperKlass().ensureLinked();
+                    }
+                    for (ObjectKlass interf : getSuperInterfaces()) {
+                        interf.ensureLinked();
+                    }
+                } catch (EspressoException e) {
+                    setErroneousLink(e);
+                    throw e;
                 }
-                for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.ensureLinked();
-                }
-                prepare();
                 verify();
+                try {
+                    prepare();
+                } catch (EspressoException e) {
+                    setErroneousLink(e);
+                    throw e;
+                }
                 initState = LINKED;
             }
         } finally {
             getInitLock().unlock();
         }
-        checkErroneousVerification();
+        checkErroneousLink();
     }
 
     void initializeImpl() {
@@ -632,7 +649,7 @@ public final class ObjectKlass extends Klass {
 
     @HostCompilerDirectives.InliningCutoff
     private void doInitialize() {
-        checkErroneousVerification();
+        checkErroneousLink();
         checkErroneousInitialization();
         if (CompilerDirectives.isCompilationConstant(this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -656,60 +673,45 @@ public final class ObjectKlass extends Klass {
 
     // region Verification
 
-    @CompilationFinal //
-    private volatile int verificationStatus = UNVERIFIED;
-
-    @CompilationFinal //
-    private EspressoException verificationError = null;
-
-    private static final int FAILED_VERIFICATION = -1;
-    private static final int UNVERIFIED = 0;
-    private static final int VERIFYING = 1;
-    private static final int VERIFIED = 2;
-
-    private void setVerificationStatus(int status) {
-        verificationStatus = status;
-    }
-
     private boolean isVerifyingOrVerified() {
-        return verificationStatus >= VERIFYING;
+        return initState >= VERIFYING;
     }
 
     boolean isVerified() {
-        return verificationStatus >= VERIFIED;
+        return initState >= VERIFIED;
     }
 
-    private void checkErroneousVerification() {
-        if (verificationStatus == FAILED_VERIFICATION) {
-            throw verificationError;
+    private void checkErroneousLink() {
+        if (initState == FAILED_LINK) {
+            throw linkError;
         }
     }
 
-    private void setErroneousVerification(EspressoException e) {
-        verificationStatus = FAILED_VERIFICATION;
-        verificationError = e;
+    private void setErroneousLink(EspressoException e) {
+        initState = FAILED_LINK;
+        linkError = e;
     }
 
     private void verify() {
         if (!isVerified()) {
-            checkErroneousVerification();
+            checkErroneousLink();
             getInitLock().lock();
             try {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setVerificationStatus(VERIFYING);
+                    initState = VERIFYING;
                     try {
                         verifyImpl();
                     } catch (EspressoException e) {
-                        setErroneousVerification(e);
+                        setErroneousLink(e);
                         throw e;
                     }
-                    setVerificationStatus(VERIFIED);
+                    initState = VERIFIED;
                 }
             } finally {
                 getInitLock().unlock();
             }
-            checkErroneousVerification();
+            checkErroneousLink();
         }
     }
 
