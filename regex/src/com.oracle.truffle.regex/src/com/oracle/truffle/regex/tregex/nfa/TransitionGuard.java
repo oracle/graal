@@ -153,6 +153,10 @@ public final class TransitionGuard {
         return create(Kind.countSet1, quantifier);
     }
 
+    public static long createCountSet1(int quantifierIndex) {
+        return create(Kind.countSet1, quantifierIndex);
+    }
+
     public static long createCountSetMin(Quantifier quantifier) {
         return create(Kind.countSetMin, quantifier);
     }
@@ -179,6 +183,10 @@ public final class TransitionGuard {
 
     public static long createCountLtMax(Quantifier quantifier) {
         return create(Kind.countLtMax, quantifier);
+    }
+
+    public static long createCountLtMax(int quantifierIndex) {
+        return create(Kind.countLtMax, quantifierIndex);
     }
 
     public static long createEnterZeroWidth(Quantifier quantifier) {

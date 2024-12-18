@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import static com.oracle.truffle.regex.tregex.util.MathUtil.saturatingInc;
+
 import java.util.Arrays;
 import java.util.Set;
 
@@ -1214,13 +1216,8 @@ public abstract class NFATraversalRegexASTVisitor {
             case countSet1, countSetMin -> {
                 bqLastCounterReset[TransitionGuard.getQuantifierIndex(guard)] = transitionGuards.length();
             }
-            case countLtMin, countGeMin -> {
-                if (canOmitCounterMinCheck(guard)) {
-                    return;
-                }
-            }
-            case countLtMax -> {
-                if (canOmitCounterMaxCheck(guard)) {
+            case countLtMin, countGeMin, countLtMax -> {
+                if (canOmitCounterCheck(guard)) {
                     return;
                 }
             }
@@ -1298,47 +1295,74 @@ public abstract class NFATraversalRegexASTVisitor {
         transitionGuards.add(guard);
     }
 
-    private boolean canOmitCounterMinCheck(long guard) {
-        assert TransitionGuard.is(guard, TransitionGuard.Kind.countLtMin) || TransitionGuard.is(guard, TransitionGuard.Kind.countGeMin);
+    private boolean canOmitCounterCheck(long guard) {
+        assert TransitionGuard.is(guard, TransitionGuard.Kind.countLtMin) || TransitionGuard.is(guard, TransitionGuard.Kind.countGeMin) || TransitionGuard.is(guard, TransitionGuard.Kind.countLtMax);
         int quantifierIndex = TransitionGuard.getQuantifierIndex(guard);
+        int min = ast.getQuantifier(quantifierIndex).getMin();
+        int max = ast.getQuantifier(quantifierIndex).getMax();
+        int minPlus1 = saturatingInc(min);
+
+        long countLtMin = TransitionGuard.createCountLtMin(quantifierIndex);
+        long countGeMin = TransitionGuard.createCountGeMin(quantifierIndex);
+        long countLtMax = TransitionGuard.createCountLtMax(quantifierIndex);
         long countInc = TransitionGuard.createCountInc(quantifierIndex);
         long countSetMin = TransitionGuard.createCountSetMin(quantifierIndex);
-        boolean isLtMin = TransitionGuard.is(guard, TransitionGuard.Kind.countLtMin);
-        long inverseGuard = isLtMin ? TransitionGuard.createCountGeMin(quantifierIndex) : TransitionGuard.createCountLtMin(quantifierIndex);
-        boolean omit = false;
-        boolean existingIsSetMin = false;
-        for (long existingGuard : transitionGuards) {
-            if (existingGuard == countSetMin) {
-                existingIsSetMin = true;
-            }
-            if (existingGuard == guard) {
-                omit = true;
-            }
-            if (existingGuard == countInc && !(!isLtMin && existingIsSetMin)) {
-                omit = false;
-            }
-            if (existingGuard == inverseGuard || isLtMin && existingIsSetMin) {
-                setShouldRetreat();
-                return true;
-            }
-        }
-        return omit;
-    }
+        long countSet1 = TransitionGuard.createCountSet1(quantifierIndex);
 
-    private boolean canOmitCounterMaxCheck(long guard) {
-        assert TransitionGuard.is(guard, TransitionGuard.Kind.countLtMax);
-        int quantifierIndex = TransitionGuard.getQuantifierIndex(guard);
-        long countInc = TransitionGuard.createCountInc(quantifierIndex);
-        boolean omit = false;
+        int counterLow = 0;
+        int counterHigh = Integer.MAX_VALUE;
         for (long existingGuard : transitionGuards) {
-            if (existingGuard == guard) {
-                omit = true;
-            }
-            if (existingGuard == countInc) {
-                omit = false;
+            if (existingGuard == countLtMin) {
+                counterHigh = Math.min(counterHigh, min - 1);
+            } else if (existingGuard == countGeMin) {
+                counterLow = Math.max(counterLow, min);
+            } else if (existingGuard == countLtMax) {
+                counterHigh = Math.min(counterHigh, max - 1);
+            } else if (existingGuard == countSetMin) {
+                counterLow = minPlus1;
+                counterHigh = minPlus1;
+            } else if (existingGuard == countSet1) {
+                counterLow = 1;
+                counterHigh = 1;
+            } else if (existingGuard == countInc) {
+                counterLow = saturatingInc(counterLow);
+                counterHigh = saturatingInc(counterHigh);
             }
         }
-        return omit;
+
+        switch (TransitionGuard.getKind(guard)) {
+            case countLtMin -> {
+                if (counterHigh < min) {
+                    return true;
+                } else if (counterLow >= min) {
+                    setShouldRetreat();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            case countLtMax -> {
+                if (counterHigh < max) {
+                    return true;
+                } else if (counterLow >= max) {
+                    setShouldRetreat();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            case countGeMin -> {
+                if (counterLow >= min) {
+                    return true;
+                } else if (counterHigh < min) {
+                    setShouldRetreat();
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     /// Visited set management
