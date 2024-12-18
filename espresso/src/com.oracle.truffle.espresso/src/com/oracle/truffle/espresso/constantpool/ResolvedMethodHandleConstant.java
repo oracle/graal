@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import java.lang.invoke.MethodHandle;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodHandleConstant;
@@ -29,8 +31,6 @@ import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-
-import java.lang.invoke.MethodHandle;
 
 public final class ResolvedMethodHandleConstant implements MethodHandleConstant, Resolvable.ResolvedConstant {
     private final @JavaType(MethodHandle.class) StaticObject payload;

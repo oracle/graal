@@ -41,11 +41,12 @@ import mx_sdk_vm_impl
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
 from os.path import join, isabs, exists, dirname, relpath, basename
+from import_order import verify_order, validate_format
 
 _suite = mx.suite('espresso')
 
 # re-export custom mx project classes, so they can be used from suite.py
-from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
+from mx_sdk_shaded import ShadedLibraryProject
 
 # JDK compiled with the Sulong toolchain.
 espresso_llvm_java_home = mx.get_env('ESPRESSO_LLVM_JAVA_HOME') or mx.get_env('LLVM_JAVA_HOME')
@@ -134,9 +135,48 @@ def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):
     ] + _espresso_standalone_command(args, allow_jacoco=False), nonZeroIsFatal=nonZeroIsFatal, timeout=timeout)
 
 
+def _run_verify_imports(s):
+    # Look for the format specification in the suite
+    prefs = s.eclipse_settings_sources().get('org.eclipse.jdt.ui.prefs')
+    prefix_order = []
+    if prefs:
+        for pref in prefs:
+            with open(pref) as f:
+                for line in f.readlines():
+                    if line.startswith('org.eclipse.jdt.ui.importorder'):
+                        key_value_sep_index = line.find('=')
+                        if key_value_sep_index != -1:
+                            value = line.strip()[key_value_sep_index + 1:]
+                            prefix_order = value.split(';')
+
+    # Validate import order format
+    err = validate_format(prefix_order)
+    if err:
+        mx.abort(err)
+
+    # Find invalid files
+    invalid_files = []
+    for project in s.projects:
+        if isinstance(project, ShadedLibraryProject):
+            # Ignore shaded libraries
+            continue
+        for src_dir in project.source_dirs():
+            invalid_files += verify_order(src_dir, prefix_order)
+
+    if invalid_files:
+        mx.abort("The following files have wrong imports order:\n" + '\n'.join(invalid_files))
+
+    print("All imports correctly ordered!")
+
+def _run_verify_imports_espresso(args):
+    if args:
+        mx.abort("No arguments expected for verify-imports")
+    _run_verify_imports(_suite)
+
 class EspressoTags:
     jackpot = 'jackpot'
     verify = 'verify'
+    imports = 'imports'
 
 
 def _espresso_gate_runner(args, tasks):
@@ -148,6 +188,10 @@ def _espresso_gate_runner(args, tasks):
     with Task('Espresso: GraalVM dist names', tasks, tags=['names']) as t:
         if t:
             mx_sdk_vm.verify_graalvm_configs(suites=['espresso'])
+
+    with Task('Espresso: verify import order', tasks, tags=[EspressoTags.imports]) as t:
+        if t:
+            _run_verify_imports(_suite)
 
     mokapot_header_gate_name = 'Verify consistency of mokapot headers'
     with Task(mokapot_header_gate_name, tasks, tags=[EspressoTags.verify]) as t:
@@ -831,6 +875,7 @@ mx.update_commands(_suite, {
     'java-truffle': [_run_java_truffle, '[args]'],
     'espresso-meta': [_run_espresso_meta, '[args]'],
     'gen-gc-option-check': [gen_gc_option_check, '[path to isolate-creation-only-options.txt]'],
+    'verify-imports': [_run_verify_imports_espresso, ''],
 })
 
 
