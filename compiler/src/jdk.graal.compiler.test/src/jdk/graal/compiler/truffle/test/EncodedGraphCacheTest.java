@@ -128,8 +128,8 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     }
 
     private static boolean encodedGraphCacheContains(TruffleCompilerImpl compiler, ResolvedJavaMethod method) {
-        EconomicMap<ResolvedJavaMethod, EncodedGraph> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
-        return cache.containsKey(method);
+        EconomicMap<ResolvedJavaMethod, EncodedGraph> cache1 = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
+        return cache1.containsKey(method);
     }
 
     @SuppressWarnings("try")
@@ -218,8 +218,8 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
             boolean encodedGraphCache = true;
             testHelper(encodedGraphCache, 100_000, compiler -> {
                 runWithBooleanFlag(compiler, EncodedGraphCacheTest::disableEncodedGraphCachePurges, true, () -> {
-                    EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
-                    nonEmptyGraphCache[0] = !cache.isEmpty();
+                    EconomicMap<?, ?> cache1 = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
+                    nonEmptyGraphCache[0] = !cache1.isEmpty();
                 });
             });
         }

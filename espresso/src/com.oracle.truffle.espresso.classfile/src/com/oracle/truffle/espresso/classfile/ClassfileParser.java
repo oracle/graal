@@ -1821,6 +1821,18 @@ public final class ClassfileParser {
                 if (constantValue.getConstantValueIndex() == 0) {
                     throw classFormatError("Invalid ConstantValue index");
                 }
+                PoolConstant entry = pool.at(constantValue.getConstantValueIndex(), "constant value index");
+                boolean isValid = switch (entry.tag()) {
+                    case INTEGER -> Types.getJavaKind(descriptor).isStackInt();
+                    case FLOAT -> descriptor == Type._float;
+                    case LONG -> descriptor == Type._long;
+                    case DOUBLE -> descriptor == Type._double;
+                    case STRING -> descriptor == Type.java_lang_String;
+                    default -> false;
+                };
+                if (!isValid) {
+                    throw classFormatError("Invalid ConstantValue index entry type");
+                }
             } else if (attributeName.equals(Name.Synthetic)) {
                 fieldFlags |= ACC_SYNTHETIC;
                 fieldAttributes[i] = new Attribute(attributeName, null);
