@@ -255,6 +255,7 @@ struct SharedLayerSnapshot {
   singletonKeys @11 :List(ImageSingletonKey);
   singletonObjects @12 :List(ImageSingletonObject);
   fields @13 :List(PersistedAnalysisField);
+  nextLayerNumber @14 :Int32;
 }
 
 struct PrimitiveValue {

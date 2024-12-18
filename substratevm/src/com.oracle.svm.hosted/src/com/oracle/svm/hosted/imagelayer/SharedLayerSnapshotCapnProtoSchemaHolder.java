@@ -4317,7 +4317,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class SharedLayerSnapshot {
-    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)7);
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)5,(short)7);
     public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4477,6 +4477,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final org.capnproto.StructList.Builder<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField.Builder> initFields(int size) {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField.listFactory, 6, size);
       }
+      public final int getNextLayerNumber() {
+        return _getIntField(8);
+      }
+      public final void setNextLayerNumber(int value) {
+        _setIntField(8, value);
+      }
+
     }
 
     public static final class Reader extends org.capnproto.StructReader {
@@ -4559,6 +4566,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public final org.capnproto.StructList.Reader<com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField.Reader> getFields() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisField.listFactory, 6, null, 0);
+      }
+
+      public final int getNextLayerNumber() {
+        return _getIntField(8);
       }
 
     }

@@ -86,7 +86,7 @@ public class SVMImageLayerSingletonLoader {
             try {
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
                 Method createMethod = ReflectionUtil.lookupMethod(clazz, "createFromLoader", ImageSingletonLoader.class);
-                result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore));
+                result = createMethod.invoke(null, new ImageSingletonLoaderImpl(keyStore, snapshot));
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere("Failed to recreate image singleton", t);
             }
@@ -122,44 +122,50 @@ public class SVMImageLayerSingletonLoader {
     public Class<?> lookupClass(boolean optional, String className) {
         return imageLayerBuildingSupport.lookupClass(optional, className);
     }
-}
 
-class ImageSingletonLoaderImpl implements ImageSingletonLoader {
-    private final UnmodifiableEconomicMap<String, Object> keyStore;
+    public static class ImageSingletonLoaderImpl implements ImageSingletonLoader {
+        private final UnmodifiableEconomicMap<String, Object> keyStore;
+        private final SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader snapshotReader;
 
-    ImageSingletonLoaderImpl(UnmodifiableEconomicMap<String, Object> keyStore) {
-        this.keyStore = keyStore;
-    }
+        ImageSingletonLoaderImpl(UnmodifiableEconomicMap<String, Object> keyStore, SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader snapshotReader) {
+            this.keyStore = keyStore;
+            this.snapshotReader = snapshotReader;
+        }
 
-    @Override
-    public List<Boolean> readBoolList(String keyName) {
-        boolean[] l = (boolean[]) keyStore.get(keyName);
-        return IntStream.range(0, l.length).mapToObj(i -> l[i]).toList();
-    }
+        @Override
+        public List<Boolean> readBoolList(String keyName) {
+            boolean[] l = (boolean[]) keyStore.get(keyName);
+            return IntStream.range(0, l.length).mapToObj(i -> l[i]).toList();
+        }
 
-    @Override
-    public int readInt(String keyName) {
-        return (int) keyStore.get(keyName);
-    }
+        @Override
+        public int readInt(String keyName) {
+            return (int) keyStore.get(keyName);
+        }
 
-    @Override
-    public List<Integer> readIntList(String keyName) {
-        int[] l = (int[]) keyStore.get(keyName);
-        return IntStream.of(l).boxed().toList();
-    }
+        @Override
+        public List<Integer> readIntList(String keyName) {
+            int[] l = (int[]) keyStore.get(keyName);
+            return IntStream.of(l).boxed().toList();
+        }
 
-    @Override
-    public long readLong(String keyName) {
-        return (long) keyStore.get(keyName);
-    }
+        @Override
+        public long readLong(String keyName) {
+            return (long) keyStore.get(keyName);
+        }
 
-    @Override
-    public String readString(String keyName) {
-        return (String) keyStore.get(keyName);
-    }
+        @Override
+        public String readString(String keyName) {
+            return (String) keyStore.get(keyName);
+        }
 
-    @Override
-    public List<String> readStringList(String keyName) {
-        return List.of((String[]) keyStore.get(keyName));
+        @Override
+        public List<String> readStringList(String keyName) {
+            return List.of((String[]) keyStore.get(keyName));
+        }
+
+        public SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader getSnapshotReader() {
+            return snapshotReader;
+        }
     }
 }
