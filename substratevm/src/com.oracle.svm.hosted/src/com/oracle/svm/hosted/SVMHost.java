@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,6 +111,7 @@ import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
+import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingPhase;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
@@ -662,12 +663,20 @@ public class SVMHost extends HostVM {
             if (deoptsForbidden(method)) {
                 graph.getGraphState().configureExplicitExceptionsNoDeoptIfNecessary();
             }
-
             if (parsingSupport != null) {
                 parsingSupport.afterParsingHook(method, graph);
             }
 
             if (!SubstrateCompilationDirectives.isRuntimeCompiledMethod(method)) {
+                /*
+                 * All JIT-compiled classes that we care about, like Truffle languages, are
+                 * initialized at image build time. So we do not need to make the
+                 * StaticFinalFieldFoldingPhase and the nodes it references safe for execution at
+                 * image run time.
+                 */
+                if (StaticFinalFieldFoldingPhase.isEnabled() && !SubstrateCompilationDirectives.isDeoptTarget(method)) {
+                    new StaticFinalFieldFoldingPhase().apply(graph, getProviders(method.getMultiMethodKey()));
+                }
                 /*
                  * Runtime compiled methods should not have assertions. If they do, then they should
                  * be caught via the blocklist instead of being converted to bytecode exceptions.

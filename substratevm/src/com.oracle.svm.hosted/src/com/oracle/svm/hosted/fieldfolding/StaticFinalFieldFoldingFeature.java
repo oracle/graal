@@ -30,12 +30,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
@@ -44,8 +46,11 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedField;
 
 import jdk.graal.compiler.graph.Node;
@@ -56,6 +61,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Performs constant folding for some static final fields in classes that are initialized at run
@@ -97,6 +103,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * that case, the class initialization check is in a caller method, i.e., there is no
  * {@link EnsureClassInitializedNode} necessary in the method that performs the field access.</li>
  * </ul>
+ *
+ * This feature makes use of staged parsing to be able to optimize field loads in class
+ * initializers. Since those can have cyclic dependencies, it is necessary to do the field store
+ * analysis in a separate pass. Otherwise, the graph parsing may end up in a deadlock because
+ * parsing requests may be processed by different threads and could then depend on each other.
  */
 @AutomaticallyRegisteredFeature
 public final class StaticFinalFieldFoldingFeature implements InternalFeature {
@@ -106,8 +117,17 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
         public static final HostedOptionKey<Boolean> OptStaticFinalFieldFolding = new HostedOptionKey<>(true);
     }
 
+    /**
+     * Folded field values after stage {@link Stage#BYTECODE_PARSED}.
+     */
+    private final Map<AnalysisField, JavaConstant> bytecodeParsedFoldedFieldValues = new ConcurrentHashMap<>();
+
+    /**
+     * Folded field values after stage {@link Stage#AFTER_PARSING_HOOKS_DONE}.
+     */
+    private final Map<AnalysisField, JavaConstant> afterParsingHooksDoneFoldedFieldValues = new ConcurrentHashMap<>();
+
     BigBang bb;
-    final Map<AnalysisField, JavaConstant> foldedFieldValues = new ConcurrentHashMap<>();
     Map<AnalysisField, Integer> fieldCheckIndexMap;
     /**
      * Stores the field check index from the base layer.
@@ -119,8 +139,14 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
     Map<Integer, Integer> baseLayerFieldCheckIndexMap = new HashMap<>();
     boolean[] fieldInitializationStatus;
 
+    private final Set<AnalysisMethod> analyzedMethods = ConcurrentHashMap.newKeySet();
+
     public static StaticFinalFieldFoldingFeature singleton() {
         return ImageSingletons.lookup(StaticFinalFieldFoldingFeature.class);
+    }
+
+    static boolean isAvailable() {
+        return ImageSingletons.contains(StaticFinalFieldFoldingFeature.class);
     }
 
     @Override
@@ -132,7 +158,8 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
 
-        access.getHostVM().addMethodAfterParsingListener(this::onAnalysisMethodParsed);
+        access.getHostVM().addMethodAfterBytecodeParsedListener((method, graph) -> onAnalysisMethodParsed(Stage.BYTECODE_PARSED, method, graph));
+        access.getHostVM().addMethodAfterParsingListener((method, graph) -> onAnalysisMethodParsed(Stage.AFTER_PARSING_HOOKS_DONE, method, graph));
     }
 
     @Override
@@ -143,7 +170,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
              * initialized at image build time. So we do not need to make this plugin and the nodes
              * it references safe for execution at image run time.
              */
-            plugins.appendNodePlugin(new StaticFinalFieldFoldingNodePlugin(this));
+            plugins.appendNodePlugin(new StaticFinalFieldFoldingNodePlugin());
         }
     }
 
@@ -162,7 +189,12 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess access) {
         bb = null;
 
-        List<AnalysisField> foldedFields = new ArrayList<>(foldedFieldValues.keySet());
+        HashSet<AnalysisField> foldedFieldsSet = new HashSet<>();
+        for (Stage stage : Stage.values()) {
+            foldedFieldsSet.addAll(getFoldedFieldValues(stage).keySet());
+        }
+
+        List<AnalysisField> foldedFields = new ArrayList<>(foldedFieldsSet);
         /* Make the fieldCheckIndex deterministic by using an (arbitrary) sort order. */
         foldedFields.sort(Comparator.comparing(field -> field.format("%H.%n")));
 
@@ -192,33 +224,76 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
         }
     }
 
+    private Map<AnalysisField, JavaConstant> getFoldedFieldValues(Stage stage) {
+        return switch (stage) {
+            case BYTECODE_PARSED -> bytecodeParsedFoldedFieldValues;
+            case AFTER_PARSING_HOOKS_DONE -> afterParsingHooksDoneFoldedFieldValues;
+        };
+    }
+
     /**
      * Invoked for each method that is parsed during static analysis, before the type flow graph of
      * that method is created. If the method is a class initializer, the static final fields that
-     * can be optimized are detected and added to {@link #foldedFieldValues}. If the method is not a
-     * class initializer, it is verified that there is no illegal store to an optimized field.
+     * can be optimized are detected and added to {@link #bytecodeParsedFoldedFieldValues} or
+     * {@link #afterParsingHooksDoneFoldedFieldValues} (depending on the stage). If the method is
+     * not a class initializer, it is verified that there is no illegal store to an optimized field.
      */
-    void onAnalysisMethodParsed(AnalysisMethod method, StructuredGraph graph) {
+    private void onAnalysisMethodParsed(Stage stage, AnalysisMethod method, StructuredGraph graph) {
         boolean isClassInitializer = method.isClassInitializer();
         Map<AnalysisField, JavaConstant> optimizableFields = isClassInitializer ? new HashMap<>() : null;
         Set<AnalysisField> ineligibleFields = isClassInitializer ? new HashSet<>() : null;
 
         for (Node n : graph.getNodes()) {
-            if (n instanceof StoreFieldNode) {
-                StoreFieldNode node = (StoreFieldNode) n;
+            if (n instanceof StoreFieldNode node) {
                 AnalysisField field = (AnalysisField) node.field();
                 if (field.isStatic() && field.isFinal() && !field.isInBaseLayer()) {
                     if (isClassInitializer && field.getDeclaringClass().equals(method.getDeclaringClass())) {
                         analyzeStoreInClassInitializer(node, field, optimizableFields, ineligibleFields);
                     } else {
-                        analyzeStoreOutsideClassInitializer(method, field);
+                        analyzeStoreOutsideClassInitializer(stage, method, field);
                     }
                 }
             }
         }
 
         if (optimizableFields != null && !optimizableFields.isEmpty()) {
-            foldedFieldValues.putAll(optimizableFields);
+            verifyOptimizableFields(stage, method, optimizableFields);
+            getFoldedFieldValues(stage).putAll(optimizableFields);
+        }
+
+        // remember that the method was analyzed for static final fields
+        analyzedMethods.add(method);
+    }
+
+    /**
+     * Verifies that the constant value for an optimizable field is always the same in case a method
+     * is parsed several times.
+     *
+     * A method may be parsed several times (e.g. due to {@link Stage staged parsing} or if
+     * {@link AnalysisMethod#reparseGraph(BigBang) reparsing is forced}) and in such cases, we need
+     * to ensure that static final field folding always leads to the same constant value. If a
+     * violation is detected, the image build fails and static final field folding needs to be
+     * disabled.
+     */
+    private void verifyOptimizableFields(Stage stage, AnalysisMethod method, Map<AnalysisField, JavaConstant> optimizableFields) {
+        if (!analyzedMethods.contains(method)) {
+            return;
+        }
+
+        for (Entry<AnalysisField, JavaConstant> entry : optimizableFields.entrySet()) {
+            JavaConstant javaConstant = getFoldedFieldValue(stage, entry.getKey());
+            /*
+             * The field is found optimizable, i.e., a constant is assigned in a class initializer,
+             * and then the class initializer is parsed again (in a later stage or reparsing was
+             * forced) and a different value was encountered. The user needs to disable the
+             * optimization.
+             */
+            UserError.guarantee(javaConstant == null || javaConstant.equals(entry.getValue()), "" +
+                            "The static final field optimization found a static final field %s " +
+                            "which is initialized multiple times with different constant values. " +
+                            "You can use %s to disable the optimization.",
+                            entry.getKey().format("%H.%n"),
+                            SubstrateOptionsParser.commandArgument(Options.OptStaticFinalFieldFolding, "-"));
         }
     }
 
@@ -255,7 +330,7 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
      * to the latest Java VM spec, but languages like Scala do it anyway. As long as the field is
      * not found as optimizable, this is no problem.
      */
-    private void analyzeStoreOutsideClassInitializer(AnalysisMethod method, AnalysisField field) {
+    private void analyzeStoreOutsideClassInitializer(Stage stage, AnalysisMethod method, AnalysisField field) {
         if (field.getDeclaringClass().getClassInitializer() != null) {
             /*
              * Analyze the class initializer of the class that defines the field. This ensures that
@@ -265,17 +340,16 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
             field.getDeclaringClass().getClassInitializer().ensureGraphParsed(bb);
         }
 
-        if (foldedFieldValues.containsKey(field)) {
+        if (getFoldedFieldValues(stage).containsKey(field)) {
             /*
              * The field is found optimizable, i.e., a constant is assigned in a class initializer,
              * and then the field is written again outside the class initializer. The user needs to
              * disable the optimization.
              */
-            throw new UnsupportedOperationException("" +
+            throw UserError.abort("" +
                             "The static final field optimization found a static final field that is initialized both inside and outside of its class initializer. " +
-                            "Field " + field.format("%H.%n") + " is stored in method " + method.format("%H.%n(%p)") + ". " +
-                            "This violates the Java bytecode specification. " +
-                            "You can use " + SubstrateOptionsParser.commandArgument(Options.OptStaticFinalFieldFolding, "-") + " to disable the optimization.");
+                            "Field %s is stored in method %s. This violates the Java bytecode specification. You can use %s to disable the optimization.",
+                            field.format("%H.%n"), method.format("%H.%n(%p)"), SubstrateOptionsParser.commandArgument(Options.OptStaticFinalFieldFolding, "-"));
         }
     }
 
@@ -285,6 +359,21 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
         } else {
             return (AnalysisField) field;
         }
+    }
+
+    /**
+     * Looks up a folded field value for an AnalysisField. Since field stores may be folded and
+     * added in different parsing stages, the stage must be provided to ensure deterministic image
+     * builds. If the field could not be folded, null will be returned.
+     */
+    JavaConstant getFoldedFieldValue(Stage stage, AnalysisField field) {
+        for (Stage curStage = stage; curStage != null; curStage = curStage.previous()) {
+            JavaConstant javaConstant = getFoldedFieldValues(curStage).get(field);
+            if (javaConstant != null) {
+                return javaConstant;
+            }
+        }
+        return null;
     }
 
     public Integer getFieldCheckIndex(ResolvedJavaField field) {
@@ -301,5 +390,32 @@ public final class StaticFinalFieldFoldingFeature implements InternalFeature {
 
     public void putBaseLayerFieldCheckIndex(int id, Integer fieldCheckIndex) {
         baseLayerFieldCheckIndexMap.put(id, fieldCheckIndex);
+    }
+
+    static boolean isOptimizationCandidate(AnalysisField aField, AnalysisMethod definingClassInitializer, FieldValueInterceptionSupport fieldValueInterceptionSupport) {
+        if (definingClassInitializer == null) {
+            /* If there is no class initializer, there cannot be a foldable constant found in it. */
+            return false;
+        }
+
+        if (!fieldValueInterceptionSupport.isValueAvailable(aField)) {
+            /*
+             * Cannot optimize static field whose value is recomputed and is not yet available,
+             * i.e., it may depend on analysis/compilation derived data.
+             */
+            return false;
+        }
+        return true;
+    }
+
+    static boolean isAllowedTargetMethod(ResolvedJavaMethod method) {
+        /*
+         * (1) Don't do this optimization for run-time compiled methods because this plugin and the
+         * nodes it references are not safe for execution at image run time.
+         *
+         * (2) Don't apply this optimization to deopt targets to save effort since deopt targets are
+         * not expected to be optimized
+         */
+        return !SubstrateCompilationDirectives.isRuntimeCompiledMethod(method) && !SubstrateCompilationDirectives.isDeoptTarget(method);
     }
 }
