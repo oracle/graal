@@ -44,8 +44,8 @@ public final class ModulesHelperVM {
         return (ModuleTable.ModuleEntry) meta.HIDDEN_MODULE_ENTRY.getHiddenObject(module);
     }
 
-    private static PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol) {
-        return fromModuleEntry.registry().packages().lookup(nameSymbol);
+    private static PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol, Meta meta) {
+        return fromModuleEntry.registry(meta).packages().lookup(nameSymbol);
     }
 
     public static ModuleTable.ModuleEntry extractToModuleEntry(@JavaType(internalName = "Ljava/lang/Module") StaticObject toModule, Meta meta,
@@ -85,7 +85,7 @@ public final class ModulesHelperVM {
         PackageTable.PackageEntry packageEntry = null;
         Symbol<Symbol.Name> nameSymbol = meta.getContext().getNames().lookup(pkg);
         if (nameSymbol != null) {
-            packageEntry = getPackageEntry(fromModuleEntry, nameSymbol);
+            packageEntry = getPackageEntry(fromModuleEntry, nameSymbol, meta);
         }
         if (packageEntry == null) {
             if (profiler != null) {

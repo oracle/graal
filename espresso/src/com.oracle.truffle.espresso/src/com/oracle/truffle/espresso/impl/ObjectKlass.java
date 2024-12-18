@@ -1304,19 +1304,20 @@ public final class ObjectKlass extends Klass {
     private void initPackage(@JavaType(ClassLoader.class) StaticObject classLoader) {
         if (!Names.isUnnamedPackage(getRuntimePackage())) {
             ClassRegistry registry = getRegistries().getClassRegistry(classLoader);
-            packageEntry = registry.packages().lookup(getRuntimePackage());
+            PackageEntry entry = registry.packages().lookup(getRuntimePackage());
             // If the package name is not found in the loader's package
             // entry table, it is an indication that the package has not
             // been defined. Consider it defined within the unnamed module.
-            if (packageEntry == null) {
+            if (entry == null) {
                 if (!getRegistries().javaBaseDefined()) {
                     // Before java.base is defined during bootstrapping, define all packages in
                     // the java.base module.
-                    packageEntry = registry.packages().lookupOrCreate(getRuntimePackage(), getRegistries().getJavaBaseModule());
+                    entry = registry.packages().lookupOrCreate(getRuntimePackage(), getRegistries().getJavaBaseModule());
                 } else {
-                    packageEntry = registry.packages().lookupOrCreate(getRuntimePackage(), registry.getUnnamedModule());
+                    entry = registry.packages().lookupOrCreate(getRuntimePackage(), registry.getUnnamedModule());
                 }
             }
+            packageEntry = entry;
         }
     }
 
@@ -1325,10 +1326,13 @@ public final class ObjectKlass extends Klass {
         if (!inUnnamedPackage()) {
             return packageEntry.module();
         }
+        StaticObject classLoader;
         if (getHostClass() != null) {
-            return getRegistries().getClassRegistry(getHostClass().getDefiningClassLoader()).getUnnamedModule();
+            classLoader = getHostClass().getDefiningClassLoader();
+        } else {
+            classLoader = getDefiningClassLoader();
         }
-        return getRegistries().getClassRegistry(getDefiningClassLoader()).getUnnamedModule();
+        return getRegistries().getClassRegistry(classLoader).getUnnamedModule();
     }
 
     @Override

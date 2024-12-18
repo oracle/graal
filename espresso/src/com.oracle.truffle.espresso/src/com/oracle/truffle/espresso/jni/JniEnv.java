@@ -2954,7 +2954,8 @@ public final class JniEnv extends NativeEnv {
         if (!meta.java_lang_Class.isAssignableFrom(clazz.getKlass())) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Invalid Class");
         }
-        return clazz.getMirrorKlass(getMeta()).module().module();
+        StaticObject module = clazz.getMirrorKlass(getMeta()).module().module();
+        return module == null ? StaticObject.NULL : module;
     }
 
     @JniImpl

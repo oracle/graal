@@ -87,6 +87,7 @@ import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jni.JNIHandles;
@@ -417,7 +418,7 @@ public final class EspressoContext {
 
             if (getJavaVersion().modulesEnabled()) {
                 registries.initJavaBaseModule();
-                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
+                registries.getBootClassRegistry().initUnnamedModule(null);
             }
 
             initializeAgents();
@@ -1243,5 +1244,9 @@ public final class EspressoContext {
 
     public Path getEspressoRuntime() {
         return EspressoLanguage.getEspressoRuntime(getEnv());
+    }
+
+    public boolean isJavaBase(ModuleTable.ModuleEntry m) {
+        return m == getRegistries().getJavaBaseModule();
     }
 }
