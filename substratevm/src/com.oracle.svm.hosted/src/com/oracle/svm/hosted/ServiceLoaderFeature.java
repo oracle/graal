@@ -218,8 +218,20 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (nullaryConstructor != null || nullaryProviderMethod != null) {
                 RuntimeReflection.register(providerClass);
                 if (nullaryConstructor != null) {
+                    /*
+                     * Registering a constructor with
+                     * RuntimeReflection.registerConstructorLookup(providerClass) does not produce
+                     * the same behavior as using RuntimeReflection.register(nullaryConstructor). In
+                     * the first case, the constructor is marked for query purposes only, so this
+                     * if-statement cannot be eliminated.
+                     * 
+                     */
                     RuntimeReflection.register(nullaryConstructor);
                 } else {
+                    /*
+                     * If there's no nullary constructor, register it as negative lookup to avoid
+                     * throwing a MissingReflectionRegistrationError at run time.
+                     */
                     RuntimeReflection.registerConstructorLookup(providerClass);
                 }
                 if (nullaryProviderMethod != null) {
