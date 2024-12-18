@@ -45,6 +45,7 @@ import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.PinnedObjectSupportImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
+import com.oracle.svm.core.genscavenge.TlabOptionCache;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
@@ -101,6 +102,7 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(Heap.class, new HeapImpl());
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
+        ImageSingletons.add(TlabOptionCache.class, new TlabOptionCache());
         if (ImageLayerBuildingSupport.firstImageBuild()) {
             ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
         }
@@ -141,6 +143,8 @@ class GenScavengeGCFeature implements InternalFeature {
 
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);
+
+        TlabOptionCache.registerOptionValidations();
     }
 
     private static ImageHeapInfo getCurrentLayerImageHeapInfo() {
