@@ -33,6 +33,8 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -50,6 +52,8 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
@@ -135,10 +139,14 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
             return;
         }
 
-        String qualifiedName = getQualifiedName(annotatedElement);
+        String qualifiedShortName = getQualifiedName(annotatedElement);
+        String qualifiedSignature = getQualifiedSignature(annotatedElement);
+        String simpleName = getSimpleName(annotatedElement);
+        String qualifiedName = qualifiedShortName + qualifiedSignature;
+        String qualifiedNameHash = byteArrayToHexString(sha256encode(qualifiedName));
 
         Element[] originatingElements = new Element[]{annotatedElement};
-        String uniqueName = getUniqueName(qualifiedName, targetSourceInfo.committish, targetSourceInfo.path, targetSourceInfo.lineStart, targetSourceInfo.lineEnd);
+        String uniqueName = getUniqueName(qualifiedName, qualifiedNameHash, simpleName, targetSourceInfo.committish, targetSourceInfo.path, targetSourceInfo.lineStart, targetSourceInfo.lineEnd);
 
         String filename = "jdk_source_info/" + URLEncoder.encode(uniqueName, StandardCharsets.UTF_8) + ".json";
         SourceInfo annotatedSourceInfo = getAnnotatedSourceInfo(annotatedElement);
@@ -164,6 +172,23 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
         }
     }
 
+    private static byte[] sha256encode(String text) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(text.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String byteArrayToHexString(byte[] a) {
+        StringBuilder sb = new StringBuilder(a.length * 2);
+        for (byte b : a) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
     private static String getQualifiedName(Element annotatedElement) {
         if (annotatedElement instanceof TypeElement typeElement) {
             return typeElement.getQualifiedName().toString();
@@ -180,6 +205,52 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
             return packageElement.getQualifiedName().toString();
         }
         throw new RuntimeException("Unexpected element class: " + annotatedElement.getClass().getSimpleName());
+    }
+
+    private static String getSimpleName(Element annotatedElement) {
+        if (annotatedElement instanceof ExecutableElement executableElement) {
+            TypeElement enclosingElement = (TypeElement) executableElement.getEnclosingElement();
+            String simpleName = executableElement.getSimpleName().toString();
+            if ("<init>".equals(simpleName)) {
+                // constructor
+                return enclosingElement.getSimpleName().toString();
+            }
+            return enclosingElement.getSimpleName().toString() + "#" + simpleName;
+        }
+        return null;
+    }
+
+    private static String getQualifiedSignature(Element annotatedElement) {
+        if (annotatedElement instanceof ExecutableElement executableElement) {
+            return getMethodDescriptor(executableElement);
+        }
+        return "";
+    }
+
+    private static String getDescriptorForClass(TypeMirror c) {
+        return switch (c.getKind()) {
+            case BOOLEAN -> "Z";
+            case BYTE -> "B";
+            case CHAR -> "C";
+            case SHORT -> "S";
+            case INT -> "I";
+            case LONG -> "J";
+            case FLOAT -> "F";
+            case DOUBLE -> "D";
+            case VOID -> "V";
+            case ARRAY -> "[" + getDescriptorForClass(((ArrayType) c).getComponentType());
+            case DECLARED -> "L" + c.toString().replace('.', '/') + ";";
+            default -> throw new RuntimeException("Unexpected null type: " + c);
+        };
+    }
+
+    private static String getMethodDescriptor(ExecutableElement m) {
+        String s = "(";
+        for (var parameter : m.getParameters()) {
+            s += getDescriptorForClass(parameter.asType());
+        }
+        s += ')';
+        return s + getDescriptorForClass(m.getReturnType());
     }
 
     private SourceInfo parseBasedOnJDKFileAnnotation(String annotationValue) {
@@ -228,9 +299,15 @@ public class BasedOnJDKFileProcessor extends AbstractProcessor {
         return new SourceInfo(null, sourceFileName, lineMap.getLineNumber(start), lineMap.getLineNumber(end));
     }
 
-    private static String getUniqueName(String qualifiedName, String committish, String path, long lineStart, long lineEnd) {
+    private static String getUniqueName(String qualifiedName, String qualifiedNameHash, String simpleName, String committish, String path, long lineStart, long lineEnd) {
         String strippedPath = path.charAt(path.length() - 1) == '/' ? path.substring(0, path.length() - 1) : path;
-        return String.format("%s/%s/%s-%s/%s", committish, strippedPath, lineStart, lineEnd, qualifiedName);
+        if (simpleName == null) {
+            // packages, classes
+            return String.format("%s/%s/%s-%s/%s", committish, strippedPath, lineStart, lineEnd, qualifiedName);
+        } else {
+            // methods, ctors
+            return String.format("%s/%s/%s-%s/%s_%s", committish, strippedPath, lineStart, lineEnd, simpleName, qualifiedNameHash);
+        }
     }
 
     private static void printSourceInfo(PrintWriter writer, SourceInfo annotatedSourceInfo, String indent) {
