@@ -54,7 +54,6 @@ import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.VM;
 

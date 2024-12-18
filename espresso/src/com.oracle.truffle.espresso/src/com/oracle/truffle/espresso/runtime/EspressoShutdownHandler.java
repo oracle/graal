@@ -32,10 +32,10 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.impl.ContextAccessImpl;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 

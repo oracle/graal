@@ -22,16 +22,16 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
-
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
 /**
  * Immutable constant pool implementation backed by an array of constants.

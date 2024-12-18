@@ -22,14 +22,14 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import static com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 
 import java.nio.ByteBuffer;
 
-import static com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface MethodTypeConstant extends PoolConstant {
 

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -34,7 +35,6 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 
 public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
 

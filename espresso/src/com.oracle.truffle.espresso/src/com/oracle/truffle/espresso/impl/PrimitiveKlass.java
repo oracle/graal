@@ -27,6 +27,7 @@ import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
@@ -37,7 +38,6 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**

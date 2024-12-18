@@ -24,12 +24,12 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 /**
  * Interface denoting a class entry in a constant pool.

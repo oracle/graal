@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
@@ -44,7 +45,6 @@ import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class ArrayKlass extends Klass {

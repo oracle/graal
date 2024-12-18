@@ -23,10 +23,10 @@
 package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 
 /**
  * Immutable raw representation of methods in Espresso, this is the output of the parser.

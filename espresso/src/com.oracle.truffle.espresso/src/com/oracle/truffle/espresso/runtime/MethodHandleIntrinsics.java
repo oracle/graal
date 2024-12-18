@@ -26,6 +26,11 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -37,11 +42,6 @@ import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNativeNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNodeGen;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
 
 /**
  * This class manages MethodHandle polymorphic methods dispatch. It creates and records dummy

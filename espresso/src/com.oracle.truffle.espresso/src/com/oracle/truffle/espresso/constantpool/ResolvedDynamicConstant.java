@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
@@ -33,7 +34,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 
 public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.ResolvedConstant {
     void putResolved(VirtualFrame frame, int top, BytecodeNode node);

@@ -36,14 +36,14 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.classfile.attributes.Local;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.attributes.Local;
-import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 
 @EspressoSubstitutions
 public final class Target_jdk_internal_misc_ScopedMemoryAccess {

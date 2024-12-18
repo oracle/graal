@@ -23,11 +23,11 @@
 
 package com.oracle.truffle.espresso.analysis.frame;
 
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class FrameType {
     public static final FrameType INT = new PrimitiveFrameType(JavaKind.Int);

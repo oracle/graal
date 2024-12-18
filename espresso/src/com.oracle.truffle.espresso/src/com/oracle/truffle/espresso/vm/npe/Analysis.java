@@ -232,6 +232,9 @@ import java.util.ArrayList;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
@@ -239,9 +242,6 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.LanguageAccess;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 
 final class Analysis implements LanguageAccess {
 

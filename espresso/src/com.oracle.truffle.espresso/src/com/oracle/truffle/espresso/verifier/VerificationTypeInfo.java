@@ -34,13 +34,13 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 
 public abstract class VerificationTypeInfo {
 

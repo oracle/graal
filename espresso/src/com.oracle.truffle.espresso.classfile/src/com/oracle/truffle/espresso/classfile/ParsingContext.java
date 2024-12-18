@@ -22,14 +22,14 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import java.util.function.Supplier;
+
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
-
-import java.util.function.Supplier;
 
 public interface ParsingContext {
 

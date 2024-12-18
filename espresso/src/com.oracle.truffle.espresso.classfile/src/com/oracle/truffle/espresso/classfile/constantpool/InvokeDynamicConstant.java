@@ -24,13 +24,13 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
 public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 

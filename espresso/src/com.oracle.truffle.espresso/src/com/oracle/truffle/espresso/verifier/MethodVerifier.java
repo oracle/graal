@@ -33,17 +33,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTERFACE_METHOD_REF;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Bogus;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Double;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Float;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Integer;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ACONST_NULL;
@@ -258,6 +247,7 @@ import com.oracle.truffle.espresso.analysis.frame.FrameType;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
@@ -292,7 +282,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
@@ -35,7 +36,6 @@ import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 
 public final class InvokeDynamicCallSiteNode extends QuickNode {
 

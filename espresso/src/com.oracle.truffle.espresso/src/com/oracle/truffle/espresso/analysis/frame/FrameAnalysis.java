@@ -237,6 +237,7 @@ import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
@@ -252,7 +253,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
 import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
 

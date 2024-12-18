@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-
 import java.io.File;
+
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 
 /**
  * An entry in a classpath is a file system path that denotes an existing directory, an existing

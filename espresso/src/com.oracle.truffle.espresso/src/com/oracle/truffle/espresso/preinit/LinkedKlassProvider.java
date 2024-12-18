@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextDescription;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
 
 public interface LinkedKlassProvider {
     LinkedKlass getLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces,

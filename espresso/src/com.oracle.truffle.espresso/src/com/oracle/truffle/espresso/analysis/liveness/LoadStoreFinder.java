@@ -70,9 +70,9 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.isStore;
 
 import com.oracle.truffle.espresso.analysis.graph.Graph;
 import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.impl.Method;
 
 /**
  * Examines each block's opodes to find all relevant history for Liveness analysis (ie: finds LOADs,

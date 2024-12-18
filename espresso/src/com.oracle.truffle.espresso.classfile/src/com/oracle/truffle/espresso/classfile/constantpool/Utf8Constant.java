@@ -24,15 +24,15 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public final class Utf8Constant implements PoolConstant {
 

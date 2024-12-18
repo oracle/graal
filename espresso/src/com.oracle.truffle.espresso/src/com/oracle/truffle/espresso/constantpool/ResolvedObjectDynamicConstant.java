@@ -23,11 +23,11 @@
 package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 
 public final class ResolvedObjectDynamicConstant implements ResolvedDynamicConstant {
     final StaticObject resolved;

@@ -29,7 +29,6 @@ import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
 
 public abstract class JavaSubstitution extends SubstitutionProfiler {
 

@@ -37,10 +37,10 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormat;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormatNoFallback;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 
 public final class StackMapFrameParser<T extends StackMapFrameParser.FrameState> {
 
