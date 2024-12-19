@@ -50,6 +50,7 @@ public final class ErrorCodes {
     public static final int ABSENT_INFORMATION = 101;
     public static final int INVALID_EVENT_TYPE = 102;
     public static final int INTERNAL = 113;
+    public static final int INVALID_INDEX = 503;
     public static final int INVALID_LENGTH = 504;
     public static final int INVALID_STRING = 506;
     public static final int INVALID_CLASS_LOADER = 507;
