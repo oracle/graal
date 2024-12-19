@@ -28,6 +28,7 @@ import java.util.Formatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -281,7 +282,7 @@ public final class JVMCIVersionCheck {
      */
     public static void check(Map<String, String> props, boolean exitOnFailure, PrintFormat format, Map<String, Map<String, Version>> jvmciMinVersions) {
         JVMCIVersionCheck checker = newJVMCIVersionCheck(props);
-        String reason = checker.run(getMinVersion(props, jvmciMinVersions), format);
+        String reason = checker.run(getMinVersion(props, jvmciMinVersions), format, jvmciMinVersions);
         if (reason != null) {
             Formatter errorMessage = new Formatter().format("%s%n", reason);
             errorMessage.format("Set the JVMCI_VERSION_CHECK environment variable to \"ignore\" to suppress ");
@@ -340,7 +341,7 @@ public final class JVMCIVersionCheck {
      */
     public static String check(Map<String, String> props) {
         JVMCIVersionCheck checker = newJVMCIVersionCheck(props);
-        String reason = checker.run(getMinVersion(props, JVMCI_MIN_VERSIONS), null);
+        String reason = checker.run(getMinVersion(props, JVMCI_MIN_VERSIONS), null, JVMCI_MIN_VERSIONS);
         if (reason != null) {
             Formatter errorMessage = new Formatter().format("%s%n", reason);
             checker.appendJVMInfo(errorMessage);
@@ -354,7 +355,7 @@ public final class JVMCIVersionCheck {
      *
      * @return an error message if the version check fails, or {@code null} if no error is detected
      */
-    private String run(Version minVersion, PrintFormat format) {
+    private String run(Version minVersion, PrintFormat format, Map<String, Map<String, Version>> jvmciMinVersions) {
         if (javaSpecVersion.compareTo(Integer.toString(JAVA_MIN_RELEASE)) < 0) {
             return "Graal requires JDK " + JAVA_MIN_RELEASE + " or later.";
         } else {
@@ -374,6 +375,14 @@ public final class JVMCIVersionCheck {
             }
             // A "labsjdk" or a known OpenJDK
             if (minVersion == null) {
+                OptionalInt max = jvmciMinVersions.keySet().stream().mapToInt(Integer::parseInt).max();
+                if (max.isPresent()) {
+                    int maxVersion = max.getAsInt();
+                    int specVersion = Integer.parseInt(javaSpecVersion);
+                    if (specVersion < maxVersion) {
+                        return String.format("The VM does not support JDK %s. Please update to JDK %s.", specVersion, maxVersion);
+                    }
+                }
                 // No minimum JVMCI version specified for JDK version
                 return null;
             }
