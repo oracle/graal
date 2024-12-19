@@ -2111,8 +2111,7 @@ public final class JDWP {
                 }
 
                 int startFrame = input.readInt();
-                int length = input.readInt();
-                final int requestedLength = length;
+                int requestedLength = input.readInt();
 
                 controller.fine(() -> "requesting frames for thread: " + controller.getContext().getThreadName(thread));
                 controller.fine(() -> "startFrame requested: " + startFrame);
@@ -2127,13 +2126,21 @@ public final class JDWP {
                 }
 
                 CallFrame[] frames = suspendedInfo.getStackFrames();
-
-                if (length == -1 || length > frames.length) {
-                    length = frames.length;
+                if (startFrame < 0 || startFrame >= frames.length) {
+                    reply.errorCode(ErrorCodes.INVALID_INDEX);
+                    return new CommandResult(reply);
+                }
+                int length;
+                if (requestedLength == -1) {
+                    length = frames.length - startFrame;
+                } else if (requestedLength < 0 || startFrame + requestedLength > frames.length) {
+                    reply.errorCode(ErrorCodes.INVALID_LENGTH);
+                    return new CommandResult(reply);
+                } else {
+                    length = requestedLength;
                 }
                 reply.writeInt(length);
-                final int finalLength = length;
-                controller.fine(() -> "returning " + finalLength + " frames for thread: " + controller.getContext().getThreadName(thread));
+                controller.fine(() -> "returning " + length + " frames for thread: " + controller.getContext().getThreadName(thread));
 
                 for (int i = startFrame; i < startFrame + length; i++) {
                     CallFrame frame = frames[i];
