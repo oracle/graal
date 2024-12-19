@@ -111,7 +111,6 @@ import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
-import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode.MethodHandleInvoker;
@@ -120,11 +119,15 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM.EspressoStackElement;
 
-public final class Method extends Member<Signature> implements TruffleObject, ContextAccess {
+public final class Method extends Member<Signature> implements TruffleObject, ContextAccess,
+                MethodAccess<Klass, Method, Field> {
 
     public static final Method[] EMPTY_ARRAY = new Method[0];
     public static final MethodVersion[] EMPTY_VERSION_ARRAY = new MethodVersion[0];
@@ -523,6 +526,19 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         } finally {
             tls.unblockContinuationSuspension();
         }
+    }
+
+    public static Object call(ResolvedCall<Klass, Method, Field> resolved, Object... args) {
+        return switch (resolved.getCallKind()) {
+            case STATIC ->
+                resolved.getResolvedMethod().invokeDirectStatic(args);
+            case DIRECT ->
+                resolved.getResolvedMethod().invokeDirect(args);
+            case VTABLE_LOOKUP ->
+                resolved.getResolvedMethod().invokeDirectVirtual(args);
+            case ITABLE_LOOKUP ->
+                resolved.getResolvedMethod().invokeDirectInterface(args);
+        };
     }
 
     @TruffleBoundary
@@ -1298,6 +1314,32 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
         return instance;
     }
+
+    // region MethodAccess impl
+
+    @Override
+    public Symbol<Signature> getSymbolicSignature() {
+        return getRawSignature();
+    }
+
+    @Override
+    @Idempotent
+    // Re-implement here for indempotent annotation. Some of our nodes benefit from it.
+    public boolean isAbstract() {
+        return super.isAbstract();
+    }
+
+    @Override
+    public boolean shouldSkipLoadingConstraints() {
+        return isPolySignatureIntrinsic();
+    }
+
+    @Override
+    public void loadingConstraints(Klass accessingClass) {
+        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
+    }
+
+    // endregion MethodAccess impl
 
     private static final class Continuum {
         Continuum(LivenessAnalysis livenessAnalysis) {

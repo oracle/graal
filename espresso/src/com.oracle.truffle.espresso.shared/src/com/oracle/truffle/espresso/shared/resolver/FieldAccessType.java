@@ -21,12 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.resolver;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.meta.EspressoError;
+package com.oracle.truffle.espresso.shared.resolver;
 
 public enum FieldAccessType {
     GetStatic(true, false),
@@ -48,37 +43,5 @@ public enum FieldAccessType {
 
     public boolean isPut() {
         return isPut;
-    }
-
-    public static FieldAccessType fromOpCode(int opcode) {
-        switch (opcode) {
-            case Bytecodes.GETSTATIC:
-                return GetStatic;
-            case Bytecodes.PUTSTATIC:
-                return PutStatic;
-            case Bytecodes.GETFIELD:
-                return GetInstance;
-            case Bytecodes.PUTFIELD:
-                return PutInstance;
-            default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(opcode));
-        }
-    }
-
-    public static FieldAccessType fromRefKind(int refKind) {
-        switch (refKind) {
-            case Constants.REF_getField:
-                return GetInstance;
-            case Constants.REF_getStatic:
-                return GetStatic;
-            case Constants.REF_putField:
-                return PutInstance;
-            case Constants.REF_putStatic:
-                return PutStatic;
-            default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("refkind: " + refKind);
-        }
     }
 }

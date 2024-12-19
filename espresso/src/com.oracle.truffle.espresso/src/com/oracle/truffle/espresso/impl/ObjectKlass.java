@@ -1092,7 +1092,7 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    public void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
+    void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
         Symbol<Name> methodName = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
         for (Method.MethodVersion m : getVTable()) {
@@ -1122,6 +1122,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
+    @TruffleBoundary
     public Method resolveInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         assert isInterface();
         /*

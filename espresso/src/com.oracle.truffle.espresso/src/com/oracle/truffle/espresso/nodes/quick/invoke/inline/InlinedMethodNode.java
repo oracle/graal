@@ -28,6 +28,8 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -36,8 +38,8 @@ import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies.InlinedFieldAccessNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.bodies.InlinedSubstitutionBodyNode;
-import com.oracle.truffle.espresso.resolver.CallKind;
-import com.oracle.truffle.espresso.resolver.ResolvedCall;
+import com.oracle.truffle.espresso.shared.resolver.CallKind;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
@@ -108,7 +110,7 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
 
     @Child BodyNode body;
 
-    public static InlinedMethodNode createFor(ResolvedCall resolvedCall, int top, int opcode, int curBCI, int statementIndex) {
+    public static InlinedMethodNode createFor(ResolvedCall<Klass, Method, Field> resolvedCall, int top, int opcode, int curBCI, int statementIndex) {
         if (!isInlineCandidate(resolvedCall)) {
             return null;
         }
@@ -190,7 +192,7 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
         return parent.generifyInlinedMethodNode(top, opcode, getCallerBCI(), statementIndex, method.getMethod());
     }
 
-    public static boolean isInlineCandidate(ResolvedCall resolvedCall) {
+    public static boolean isInlineCandidate(ResolvedCall<Klass, Method, Field> resolvedCall) {
         Method resolutionSeed = resolvedCall.getResolvedMethod();
         if (resolutionSeed.isSynchronized()) {
             return false;
@@ -209,7 +211,7 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
         return false;
     }
 
-    public static boolean isUnconditionalInlineCandidate(ResolvedCall resolvedCall) {
+    public static boolean isUnconditionalInlineCandidate(ResolvedCall<Klass, Method, Field> resolvedCall) {
         return resolvedCall.getCallKind().isDirectCall();
     }
 }
