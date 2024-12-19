@@ -44,9 +44,11 @@ on:
   push:
     paths:
       - '.github/workflows/ni-layers.yml'
+      - 'vm/tests/gh_workflows/NILayerTests/**'
   pull_request:
     paths:
       - '.github/workflows/ni-layers.yml'
+      - 'vm/tests/gh_workflows/NILayerTests/**'
   schedule:
   - cron: "0 0 * * 1" # Once a week, at midnight on Monday (00:00 UTC)
   workflow_dispatch:

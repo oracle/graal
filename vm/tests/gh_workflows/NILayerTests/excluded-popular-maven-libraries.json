@@ -6,12 +6,6 @@
     "reason": "Library too large to be built in a GitHub action. Finishes generating on better systems locally"
   },
   {
-    "group_id": "org.apache.logging.log4j",
-    "artifact_id": "log4j-core",
-    "version": "2.24.0",
-    "reason": "GR-57711"
-  },
-  {
     "group_id": "org.scalatest",
     "artifact_id": "scalatest_3",
     "version": "3.2.19",
@@ -138,12 +132,6 @@
     "reason": "[Maven ERROR] Unknown packaging: bundle"
   },
   {
-    "group_id": "org.gwtproject",
-    "artifact_id": "gwt-user",
-    "version": "2.11.0",
-    "reason": "GR-57738"
-  },
-  {
     "group_id": "io.vertx",
     "artifact_id": "vertx-core",
     "version": "4.5.10",
@@ -202,12 +190,6 @@
     "artifact_id": "spark-streaming_2.13",
     "version": "3.5.2",
     "reason": "GR-57816"
-  },
-  {
-    "group_id": "org.springframework.security",
-    "artifact_id": "spring-security-web",
-    "version": "6.3.3",
-    "reason": "GR-57738"
   },
   {
     "group_id": "org.eclipse.paho",
@@ -346,5 +328,47 @@
     "artifact_id": "cats-effect_3",
     "version": "3.6-0142603",
     "reason": "GR-59420"
+  },
+  {
+    "group_id": "org.mockito",
+    "artifact_id": "mockito-core",
+    "version": "5.13.0",
+    "reason": "GR-60601"
+  },
+  {
+    "group_id": "org.assertj",
+    "artifact_id": "assertj-core",
+    "version": "3.26.3",
+    "reason": "GR-60601"
+  },
+  {
+    "group_id": "org.easymock",
+    "artifact_id": "easymock",
+    "version": "5.4.0",
+    "reason": "GR-60601"
+  },
+  {
+    "group_id": "net.bytebuddy",
+    "artifact_id": "byte-buddy",
+    "version": "1.15.1",
+    "reason": "GR-60601"
+  },
+  {
+    "group_id": "org.powermock",
+    "artifact_id": "powermock-core",
+    "version": "2.0.9",
+    "reason": "GR-60601"
+  },
+  {
+    "group_id": "org.infinispan",
+    "artifact_id": "infinispan-core",
+    "version": "15.0.8.Final",
+    "reason": "GR-60601"
+  },
+  {
+    "group_id": "org.hibernate.orm",
+    "artifact_id": "hibernate-core",
+    "version": "6.6.0.Final",
+    "reason": "GR-60601"
   }
 ]
