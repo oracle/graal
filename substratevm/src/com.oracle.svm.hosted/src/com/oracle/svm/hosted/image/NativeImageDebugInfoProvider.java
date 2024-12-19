@@ -49,7 +49,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.EnumClassEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
@@ -140,27 +139,31 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                         .collect(Collectors.toSet());
     }
 
+    @SuppressWarnings("unused")
     private static ResolvedJavaType getOriginal(ResolvedJavaType type) {
         /*
          * unwrap then traverse through substitutions to the original. We don't want to get the
          * original type of LambdaSubstitutionType to keep the stable name
          */
-        while (type instanceof WrappedJavaType wrappedJavaType) {
-            type = wrappedJavaType.getWrapped();
+        ResolvedJavaType targetType = type;
+        while (targetType instanceof WrappedJavaType wrappedJavaType) {
+            targetType = wrappedJavaType.getWrapped();
         }
 
-        if (type instanceof SubstitutionType substitutionType) {
-            type = substitutionType.getOriginal();
-        } else if (type instanceof InjectedFieldsType injectedFieldsType) {
-            type = injectedFieldsType.getOriginal();
+        if (targetType instanceof SubstitutionType substitutionType) {
+            targetType = substitutionType.getOriginal();
+        } else if (targetType instanceof InjectedFieldsType injectedFieldsType) {
+            targetType = injectedFieldsType.getOriginal();
         }
 
-        return type;
+        return targetType;
     }
 
+    @SuppressWarnings("unused")
     private static ResolvedJavaMethod getAnnotatedOrOriginal(ResolvedJavaMethod method) {
-        while (method instanceof WrappedJavaMethod wrappedJavaMethod) {
-            method = wrappedJavaMethod.getWrapped();
+        ResolvedJavaMethod targetMethod = method;
+        while (targetMethod instanceof WrappedJavaMethod wrappedJavaMethod) {
+            targetMethod = wrappedJavaMethod.getWrapped();
         }
         // This method is only used when identifying the modifiers or the declaring class
         // of a HostedMethod. Normally the method unwraps to the underlying JVMCI method
@@ -177,11 +180,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         // reference to the bytecode of the original. Hence, there is no associated file and the
         // permissions need to be determined from the custom substitution method itself.
 
-        if (method instanceof SubstitutionMethod substitutionMethod) {
-            method = substitutionMethod.getAnnotated();
+        if (targetMethod instanceof SubstitutionMethod substitutionMethod) {
+            targetMethod = substitutionMethod.getAnnotated();
         }
 
-        return method;
+        return targetMethod;
     }
 
     @Override
@@ -347,18 +350,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
     @Override
     public MethodEntry lookupMethodEntry(SharedMethod method) {
-        if (method instanceof HostedMethod hostedMethod && !hostedMethod.isOriginalMethod()) {
-            method = hostedMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
+        SharedMethod targetMethod = method;
+        if (targetMethod instanceof HostedMethod hostedMethod && !hostedMethod.isOriginalMethod()) {
+            targetMethod = hostedMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
         }
-        return super.lookupMethodEntry(method);
-    }
-
-    @Override
-    public CompiledMethodEntry lookupCompiledMethodEntry(MethodEntry methodEntry, SharedMethod method, CompilationResult compilation) {
-        if (method instanceof HostedMethod hostedMethod && !hostedMethod.isOriginalMethod()) {
-            // method = hostedMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
-        }
-        return super.lookupCompiledMethodEntry(methodEntry, method, compilation);
+        return super.lookupMethodEntry(targetMethod);
     }
 
     @Override
@@ -526,7 +522,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         assert type instanceof HostedType;
         HostedType hostedType = (HostedType) type;
 
-        String typeName = hostedType.toJavaName(); // stringTable.uniqueDebugString(idType.toJavaName());
+        String typeName = hostedType.toJavaName();
         int size = getTypeSize(hostedType);
         long classOffset = getClassOffset(hostedType);
         LoaderEntry loaderEntry = lookupLoaderEntry(hostedType);
@@ -786,14 +782,15 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
     @Override
     public FileEntry lookupFileEntry(ResolvedJavaMethod method) {
-        if (method instanceof HostedMethod hostedMethod && hostedMethod.getWrapped().getWrapped() instanceof SubstitutionMethod substitutionMethod) {
+        ResolvedJavaMethod targetMethod = method;
+        if (targetMethod instanceof HostedMethod hostedMethod && hostedMethod.getWrapped().getWrapped() instanceof SubstitutionMethod substitutionMethod) {
             // we always want to look up the file of the annotated method
-            method = substitutionMethod.getAnnotated();
+            targetMethod = substitutionMethod.getAnnotated();
         }
-        return super.lookupFileEntry(method);
+        return super.lookupFileEntry(targetMethod);
     }
 
-    private int getTypeSize(HostedType type) {
+    private static int getTypeSize(HostedType type) {
         switch (type) {
             case HostedInstanceClass hostedInstanceClass -> {
                 /* We know the actual instance size in bytes. */
@@ -840,6 +837,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
      * @return the offset into the initial heap at which the object identified by constant is
      *         located or -1 if the object is not present in the initial heap.
      */
+    @Override
     public long objectOffset(JavaConstant constant) {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : "invalid constant for object offset lookup";
         NativeImageHeap.ObjectInfo objectInfo = heap.getConstantInfo(constant);

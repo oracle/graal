@@ -1032,28 +1032,6 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.native.debug": {
-            "native": "static_lib",
-            "subDir": "src",
-            "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
-                "windows": {
-                    "<others>": {
-                        "cflags": ["-W4", "-O2", "-Zi"],
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "cflags": ["-Wall", "-fPIC", "-O2", "-g", "-gdwarf-5"],
-                    },
-                },
-            },
-        },
-
         "svm-jvmfuncs-fallback-builder": {
             "class" : "SubstrateJvmFuncsFallbacksBuilder",
         },
@@ -2101,7 +2079,7 @@ suite = {
                             "dependency:com.oracle.svm.native.libchelper/*",
                             "dependency:com.oracle.svm.native.jvm.posix/*",
                             "dependency:com.oracle.svm.native.libcontainer/*",
-                            "dependency:com.oracle.svm.native.debug/*",
+                            "file:debug/include",
                         ],
                     },
                 },
@@ -2110,11 +2088,10 @@ suite = {
                         # on all other os's we don't want libc specific subdirectories
                         "include/": [
                             "dependency:com.oracle.svm.native.libchelper/include/*",
-                            "dependency:com.oracle.svm.native.debug/include/*",
+                            "file:debug/include/*",
                         ],
                         "<os>-<arch>/": [
                             "dependency:com.oracle.svm.native.libchelper/<os>-<arch>/default/*",
-                            "dependency:com.oracle.svm.native.debug/<os>-<arch>/default/*",
                             "dependency:com.oracle.svm.native.jvm.posix/<os>-<arch>/default/*",
                             "dependency:com.oracle.svm.native.darwin/*",
                             "dependency:com.oracle.svm.native.jvm.windows/*",

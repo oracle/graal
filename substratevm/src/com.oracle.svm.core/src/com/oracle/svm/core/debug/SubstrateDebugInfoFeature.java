@@ -55,6 +55,6 @@ public class SubstrateDebugInfoFeature implements InternalFeature {
         // This is called at image build-time -> the factory then creates a RuntimeDebugInfoProvider
         // at runtime
         ImageSingletons.lookup(InstalledCodeObserverSupport.class).addObserverFactory(new SubstrateDebugInfoInstaller.Factory(runtimeConfig.getProviders().getMetaAccess(), runtimeConfig));
-        ImageSingletons.add(SubstrateDebugInfoInstaller.Accessor.class, new SubstrateDebugInfoInstaller.Accessor());
+        ImageSingletons.add(SubstrateDebugInfoInstaller.GDBJITAccessor.class, new SubstrateDebugInfoInstaller.GDBJITAccessor());
     }
 }

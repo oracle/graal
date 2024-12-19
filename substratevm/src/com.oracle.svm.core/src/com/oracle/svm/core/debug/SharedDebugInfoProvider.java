@@ -86,7 +86,6 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.java.StableMethodNameFormatter;
 import jdk.graal.compiler.util.Digest;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -335,11 +334,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    protected void handleDataInfo(Object data) {
+    protected void handleDataInfo(@SuppressWarnings("unused") Object data) {
     }
 
     private void handleTypeInfo(SharedType type) {
-        TypeEntry typeEntry = lookupTypeEntry(type);
+        lookupTypeEntry(type);
     }
 
     private void handleCodeInfo(SharedMethod method, CompilationResult compilation) {
@@ -501,9 +500,9 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             String symbolName = getSymbolName(method);
             int vTableOffset = getVTableOffset(method);
 
-            boolean isDeopt = isDeopt(method, methodName);
             boolean isOverride = isOverride(method);
-            boolean isConstructor = isConstructor(method);
+            boolean isDeopt = method.isDeoptTarget();
+            boolean isConstructor = method.isConstructor();
 
             return methodIndex.computeIfAbsent(method, m -> new MethodEntry(fileEntry, line, methodName, ownerType,
                             valueType, modifiers, paramInfos, thisParam, symbolName, isDeopt, isOverride, isConstructor,
@@ -657,22 +656,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return UniqueShortNameProvider.singleton().uniqueShortName(null, method.getDeclaringClass(), method.getName(), method.getSignature(), method.isConstructor());
     }
 
-    public boolean isDeopt(SharedMethod method, String methodName) {
-        if (method instanceof SharedMethod sharedMethod) {
-            return sharedMethod.isDeoptTarget();
-        }
-        return methodName.endsWith(StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR);
-    }
-
-    public boolean isOverride(SharedMethod method) {
+    public boolean isOverride(@SuppressWarnings("unused") SharedMethod method) {
         return false;
     }
 
-    public boolean isConstructor(SharedMethod method) {
-        return method.isConstructor();
-    }
-
-    public boolean isVirtual(SharedMethod method) {
+    public boolean isVirtual(@SuppressWarnings("unused") SharedMethod method) {
         return false;
     }
 
@@ -726,10 +714,11 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     public LoaderEntry lookupLoaderEntry(SharedType type) {
+        SharedType targetType = type;
         if (type.isArray()) {
-            type = (SharedType) type.getElementalType();
+            targetType = (SharedType) type.getElementalType();
         }
-        return type.getHub().isLoaded() ? lookupLoaderEntry(UniqueShortNameProvider.singleton().uniqueShortLoaderName(type.getHub().getClassLoader())) : null;
+        return targetType.getHub().isLoaded() ? lookupLoaderEntry(UniqueShortNameProvider.singleton().uniqueShortLoaderName(targetType.getHub().getClassLoader())) : null;
     }
 
     public LoaderEntry lookupLoaderEntry(String loaderName) {
@@ -754,7 +743,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     public FileEntry lookupFileEntry(Path fullFilePath) {
-        if (fullFilePath == null) {
+        if (fullFilePath == null || fullFilePath.getFileName() == null) {
             return null;
         }
 
@@ -770,11 +759,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     public DirEntry lookupDirEntry(Path dirPath) {
-        if (dirPath == null) {
-            dirPath = EMPTY_PATH;
-        }
-
-        return dirIndex.computeIfAbsent(dirPath, DirEntry::new);
+        return dirIndex.computeIfAbsent(dirPath == null ? EMPTY_PATH : dirPath, DirEntry::new);
     }
 
     /* Other helper functions. */
@@ -821,7 +806,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return wordBaseType.isAssignableFrom(type);
     }
 
-    private int findMarkOffset(SubstrateBackend.SubstrateMarkId markId, CompilationResult compilation) {
+    private static int findMarkOffset(SubstrateBackend.SubstrateMarkId markId, CompilationResult compilation) {
         for (CompilationResult.CodeMark mark : compilation.getMarks()) {
             if (mark.id.equals(markId)) {
                 return mark.pcOffset;
@@ -1043,11 +1028,12 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
-        protected void handleCallNode(CompilationResultFrameTree.CallNode callNode, CallRange locationInfo) {
+        protected void handleCallNode(@SuppressWarnings("unused") CompilationResultFrameTree.CallNode callNode, @SuppressWarnings("unused") CallRange locationInfo) {
             // do nothing by default
         }
 
-        protected void handleNodeToEmbed(CompilationResultFrameTree.CallNode nodeToEmbed, CompilationResultFrameTree.FrameNode node, CallRange callerInfo, Object... args) {
+        protected void handleNodeToEmbed(@SuppressWarnings("unused") CompilationResultFrameTree.CallNode nodeToEmbed, @SuppressWarnings("unused") CompilationResultFrameTree.FrameNode node,
+                        @SuppressWarnings("unused") CallRange callerInfo, @SuppressWarnings("unused") Object... args) {
             // do nothing by default
         }
 
