@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -912,6 +913,12 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     protected void onEngineCreated(EngineData engine) {
     }
 
+    private final AtomicLong stoppedCompilationTime = new AtomicLong(0);
+
+    public final AtomicLong stoppedCompilationTime() {
+        return stoppedCompilationTime;
+    }
+
     @SuppressWarnings("try")
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
@@ -1483,4 +1490,25 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         }
     }
 
+    public enum CompilationActivityMode {
+        /**
+         * Process compilations regularly.
+         */
+        RUN_COMPILATION,
+        /**
+         * Stop compilations temporarily.
+         */
+        STOP_COMPILATION,
+        /**
+         * Shutdown compilations permanently.
+         */
+        SHUTDOWN_COMPILATION;
+    }
+
+    /**
+     * Returns the current host compilation activity mode. The default is to run compilations.
+     */
+    protected CompilationActivityMode getCompilationActivityMode() {
+        return CompilationActivityMode.RUN_COMPILATION;
+    }
 }
