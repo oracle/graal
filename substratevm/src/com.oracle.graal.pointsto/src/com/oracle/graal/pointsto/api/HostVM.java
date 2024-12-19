@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -330,8 +331,20 @@ public abstract class HostVM {
         return providers;
     }
 
+    /**
+     * This method should only be used by the {@code ClassInclusionPolicy} to determine which fields
+     * should be included in the shared layer.
+     */
     @SuppressWarnings("unused")
     public boolean isFieldIncluded(BigBang bb, Field field) {
+        return true;
+    }
+
+    /**
+     * See {@link HostVM#isFieldIncluded(BigBang, Field)}.
+     */
+    @SuppressWarnings("unused")
+    public boolean isFieldIncluded(BigBang bb, AnalysisField field) {
         return true;
     }
 
