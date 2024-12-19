@@ -182,8 +182,6 @@ def _check_jvmci_version(jdk):
         if out.data:
             try:
                 (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = out.data.split(',')
-                if jdk_version.endswith('-LTS'):
-                    jdk_version = jdk_version[:-len('-LTS')]
                 return JVMCIVersionCheckVersion(JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
             except ValueError:
                 mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
