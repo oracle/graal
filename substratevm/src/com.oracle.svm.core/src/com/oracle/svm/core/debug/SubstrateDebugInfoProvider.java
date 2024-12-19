@@ -52,14 +52,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
-    private final SharedMethod method;
+    private final SharedMethod sharedMethod;
     private final CompilationResult compilation;
     private final long codeAddress;
 
-    public SubstrateDebugInfoProvider(DebugContext debug, SharedMethod method, CompilationResult compilation, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess,
+    public SubstrateDebugInfoProvider(DebugContext debug, SharedMethod sharedMethod, CompilationResult compilation, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess,
                     long codeAddress) {
         super(debug, runtimeConfiguration, metaAccess, SubstrateOptions.getRuntimeSourceDestDir());
-        this.method = method;
+        this.sharedMethod = sharedMethod;
         this.compilation = compilation;
         this.codeAddress = codeAddress;
     }
@@ -69,8 +69,8 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         if (compilation != null) {
             name = compilation.getName();
         }
-        if ((name == null || name.isEmpty()) && method != null) {
-            name = method.format("%h.%n");
+        if ((name == null || name.isEmpty()) && sharedMethod != null) {
+            name = sharedMethod.format("%h.%n");
         }
         if (name == null || name.isEmpty()) {
             name = "UnnamedCompilation";
@@ -91,7 +91,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
     @Override
     protected Stream<Pair<SharedMethod, CompilationResult>> codeInfo() {
-        return Stream.of(Pair.create(method, compilation));
+        return Stream.of(Pair.create(sharedMethod, compilation));
     }
 
     @Override
@@ -101,7 +101,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @Override
-    protected long getCodeOffset(SharedMethod method) {
+    protected long getCodeOffset(@SuppressWarnings("unused") SharedMethod method) {
         return codeAddress;
     }
 
@@ -118,7 +118,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         return super.lookupFileEntry(type);
     }
 
-    private int getTypeSize(SharedType type) {
+    private static int getTypeSize(SharedType type) {
         if (type.isPrimitive()) {
             JavaKind javaKind = type.getStorageKind();
             return (javaKind == JavaKind.Void ? 0 : javaKind.getByteCount());
@@ -169,12 +169,12 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     @Override
-    protected void processTypeEntry(SharedType type, TypeEntry typeEntry) {
+    protected void processTypeEntry(@SuppressWarnings("unused") SharedType type, @SuppressWarnings("unused") TypeEntry typeEntry) {
         // nothing to do here
     }
 
     @Override
-    public long objectOffset(JavaConstant constant) {
+    public long objectOffset(@SuppressWarnings("unused") JavaConstant constant) {
         return 0;
     }
 }

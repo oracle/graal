@@ -27,20 +27,22 @@ package com.oracle.svm.core.debug;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
-import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CUnsigned;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -58,12 +60,14 @@ public class GDBJITInterface {
 
         @Override
         public List<String> getHeaderFiles() {
-            return Collections.singletonList(ProjectHeaderFile.resolve("com.oracle.svm.native.debug", "include/gdb_jit_compilation_interface.h"));
+            return Collections.singletonList(ProjectHeaderFile.resolve("", "include/gdb_jit_compilation_interface.h"));
         }
+    }
 
+    private static class IncludeForRuntimeDebugOnly implements BooleanSupplier {
         @Override
-        public List<String> getLibraries() {
-            return Collections.singletonList("debug");
+        public boolean getAsBoolean() {
+            return SubstrateOptions.RuntimeDebugInfo.getValue();
         }
     }
 
@@ -143,8 +147,10 @@ public class GDBJITInterface {
         void setFirstEntry(JITCodeEntry jitCodeEntry);
     }
 
-    @CFunction(value = "__jit_debug_register_code", transition = CFunction.Transition.NO_TRANSITION)
-    private static native void jitDebugRegisterCode();
+    @NeverInline("Register JIT code stub for GDB.")
+    @CEntryPoint(name = "__jit_debug_register_code", include = IncludeForRuntimeDebugOnly.class, publishAs = CEntryPoint.Publish.SymbolOnly)
+    private static void jitDebugRegisterCode(@SuppressWarnings("unused") IsolateThread thread) {
+    }
 
     private static final CGlobalData<JITDescriptor> jitDebugDescriptor = CGlobalDataFactory.forSymbol("__jit_debug_descriptor");
 
@@ -166,10 +172,10 @@ public class GDBJITInterface {
         jitDebugDescriptor.get().setActionFlag(JITActions.JIT_REGISTER.getCValue());
         jitDebugDescriptor.get().setFirstEntry(entry);
         jitDebugDescriptor.get().setRelevantEntry(entry);
-        jitDebugRegisterCode();
+        jitDebugRegisterCode(CurrentIsolate.getCurrentThread());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called with raw object pointer.", calleeMustBe = false)
     public static void unregisterJITCode(JITCodeEntry entry) {
         JITCodeEntry prevEntry = entry.getPrevEntry();
         JITCodeEntry nextEntry = entry.getNextEntry();
@@ -187,10 +193,8 @@ public class GDBJITInterface {
         }
 
         /* Notify GDB. */
-        jitDebugDescriptor.get().setActionFlag(JITActions.JIT_REGISTER.ordinal());
+        jitDebugDescriptor.get().setActionFlag(JITActions.JIT_REGISTER.getCValue());
         jitDebugDescriptor.get().setRelevantEntry(entry);
-        jitDebugRegisterCode();
-
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(entry);
+        jitDebugRegisterCode(CurrentIsolate.getCurrentThread());
     }
 }
