@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -157,6 +157,15 @@ public final class OptimizedRuntimeOptions {
                     "The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect. default: 10000", usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
     // TODO: GR-29949
     public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(10000L);
+
+    @Option(help = "Before the Truffle runtime submits an OptimizedCallTarget for compilation, it checks for the compilation " +
+                    "activity mode in the host VM. If the activity mode indicates a full code cache, no new compilation " +
+                    "requests are submitted and the compilation queue is flushed. After 'StoppedCompilationRetryDelay' " +
+                    "milliseconds new compilations will be submitted again (which might trigger a sweep of the code " +
+                    "cache and a reset of the compilation activity mode in the host JVM). The option is only supported on " +
+                    "the HotSpot Truffle runtime. On runtimes which don't support it the option has no effect. default: 5000", //
+                    usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
+    public static final OptionKey<Long> StoppedCompilationRetryDelay = new OptionKey<>(5000L);
 
     @Option(help = "Manually set the number of compiler threads. By default, the number of compiler threads is scaled with the number of available cores on the CPU.", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED) //

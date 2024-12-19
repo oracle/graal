@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.runtime.hotspot;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -692,4 +695,31 @@ public final class HotSpotTruffleRuntime extends OptimizedTruffleRuntime {
         return compilationSupport instanceof LibGraalTruffleCompilationSupport;
     }
 
+    static final MethodHandle getCompilationActivityMode;
+    static {
+        MethodHandle mHandle = null;
+        try {
+            MethodType mt = MethodType.methodType(int.class);
+            mHandle = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class, "getCompilationActivityMode", mt);
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            // Older JVMCI runtimes might not support `getCompilationActivityMode()`
+        }
+        getCompilationActivityMode = mHandle;
+    }
+
+    /**
+     * Returns the current host compilation activity mode based on HotSpot's code cache state.
+     */
+    @Override
+    public CompilationActivityMode getCompilationActivityMode() {
+        int activityMode = 1; // Default is to run compilations
+        if (getCompilationActivityMode != null) {
+            try {
+                activityMode = (int) getCompilationActivityMode.invokeExact(HotSpotJVMCIRuntime.runtime());
+            } catch (Throwable t) {
+                throw new RuntimeException("Can't get HotSpot's compilation activity mode", t);
+            }
+        }
+        return CompilationActivityMode.fromInteger(activityMode);
+    }
 }
