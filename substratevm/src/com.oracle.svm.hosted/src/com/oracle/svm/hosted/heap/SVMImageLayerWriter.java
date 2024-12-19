@@ -156,11 +156,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private void persistAnnotationValue(Object v, AnnotationValue.Builder b) {
-        if (v.getClass().isEnum()) {
-            var ba = b.initEnum();
-            ba.setClassName(v.getClass().getName());
-            ba.setName(v.toString());
-        } else if (v.getClass().isArray()) {
+        if (v.getClass().isArray()) {
             if (v instanceof Object[] array) {
                 var ba = b.initMembers();
                 ba.setClassName(v.getClass().getComponentType().getName());
@@ -187,6 +183,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 case Annotation innerAnnotation ->
                     persistAnnotationValues(innerAnnotation, innerAnnotation.annotationType(), b.initAnnotation()::initValues);
                 case String s -> b.setString(s);
+                case Enum<?> e -> {
+                    var ba = b.initEnum();
+                    ba.setClassName(e.getDeclaringClass().getName());
+                    ba.setName(e.name());
+                }
                 default -> throw AnalysisError.shouldNotReachHere("Unknown annotation value: " + v);
             }
         }
