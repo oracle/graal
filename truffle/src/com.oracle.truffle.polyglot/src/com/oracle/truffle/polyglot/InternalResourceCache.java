@@ -95,10 +95,10 @@ final class InternalResourceCache {
 
     /**
      * Recomputed before the analyses by a substitution in the {@code TruffleBaseFeature} based on
-     * the {@code CopyLanguageResources} option value. The field must not be declared as
-     * {@code final} to make the substitution function correctly.
+     * the {@code CopyLanguageResources} option value. The field must not qualify as a Java language
+     * constant (as defined in JLS 15.28) to prevent the Java compiler from inlining its value.
      */
-    private static boolean useInternalResources = true;
+    private static final boolean useInternalResources = Boolean.TRUE.booleanValue();
     private static boolean useExternalDirectoryInNativeImage = true;
 
     private final String id;
@@ -292,8 +292,9 @@ final class InternalResourceCache {
     }
 
     /**
-     * Returns true if internal resources are enabled. Internal resources can be disabled in the
-     * native image using {-H:-CopyLanguageResources} option.
+     * Returns true if internal resources are enabled. Internal resources are disabled in the native
+     * image when both the copying and inclusion of language resources are turned off. This can be
+     * achieved by using the {@code -H:-IncludeLanguageResources} option.
      */
     public static boolean usesInternalResources() {
         return useInternalResources;
