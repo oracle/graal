@@ -129,6 +129,19 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
+        # Shared link resolver
+        "com.oracle.truffle.espresso.shared": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso.classfile",
+            ],
+            "requires": [
+            ],
+            "javaCompliance" : "17+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -137,6 +150,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "com.oracle.truffle.espresso.jdwp",
                 "com.oracle.truffle.espresso.shadowed.asm",
+                "com.oracle.truffle.espresso.shared",
             ],
             "requires": [
                 "java.logging",

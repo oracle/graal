@@ -21,38 +21,36 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.resolver;
+package com.oracle.truffle.espresso.shared.resolver;
 
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
-public final class ResolvedCall {
+/**
+ * Represents a resolved call-site.
+ */
+public final class ResolvedCall<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
     private final CallKind callKind;
-    private final Method resolved;
+    private final M resolved;
 
-    public ResolvedCall(CallKind callKind, Method resolved) {
+    public ResolvedCall(CallKind callKind, M resolved) {
         this.callKind = Objects.requireNonNull(callKind);
         this.resolved = Objects.requireNonNull(resolved);
     }
 
-    public Object call(Object... args) {
-        return switch (callKind) {
-            case STATIC ->
-                resolved.invokeDirectStatic(args);
-            case DIRECT ->
-                resolved.invokeDirect(args);
-            case VTABLE_LOOKUP ->
-                resolved.invokeDirectVirtual(args);
-            case ITABLE_LOOKUP ->
-                resolved.invokeDirectInterface(args);
-        };
-    }
-
-    public Method getResolvedMethod() {
+    /**
+     * Returns the resolved method.
+     */
+    public M getResolvedMethod() {
         return resolved;
     }
 
+    /**
+     * Returns the {@link CallKind kind} of call to perform at the call-site.
+     */
     public CallKind getCallKind() {
         return callKind;
     }
