@@ -90,6 +90,10 @@ public final class VMEventListenerImpl implements VMEventListener {
         this.ids = context.getIds();
     }
 
+    public void replaceController(DebuggerController newController) {
+        this.debuggerController = newController;
+    }
+
     @Override
     public void onDetach() {
         // free up request, to avoid attempting to send anything further

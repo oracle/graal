@@ -62,4 +62,20 @@ public final class EventFilters {
             readLock.unlock();
         }
     }
+
+    public void clearAll() {
+        try {
+            lock.writeLock().lock();
+            // traverse all filters and clear all registered breakpoint information
+            for (RequestFilter requestFilter : requestFilters) {
+                BreakpointInfo breakpointInfo = requestFilter.getBreakpointInfo();
+                if (breakpointInfo != null) {
+                    breakpointInfo.dispose();
+                }
+            }
+            requestFilters = new RequestFilter[0];
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
 }
