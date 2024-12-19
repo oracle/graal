@@ -36,8 +36,6 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.oracle.svm.core.graal.meta.KnownOffsets;
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
@@ -48,6 +46,7 @@ import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
@@ -75,6 +74,7 @@ import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
 import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -346,7 +346,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new InstantiationException("Cannot allocate objects of special hybrid types: " + DynamicHub.toClass(hub).getTypeName());
         } else {
             if (hub.canUnsafeInstantiateAsInstanceSlowPath()) {
-                hub.getCompanion().setUnsafeAllocate();
+                hub.setCanUnsafeAllocate();
                 return hub;
             } else {
                 if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {

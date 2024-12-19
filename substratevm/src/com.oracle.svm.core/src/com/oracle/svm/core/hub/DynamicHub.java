@@ -113,6 +113,7 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
+import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
@@ -169,6 +170,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute //
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
+
+    /** Marker value for {@link DynamicHubCompanion#classLoader}. */
+    static final Object NO_CLASS_LOADER = new Object();
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final Class<?> hostedJavaClass;
@@ -395,8 +399,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         this.flags = flags;
 
-        this.companion = new DynamicHubCompanion(hostedJavaClass, hostedJavaClass.getModule(), superType, sourceFileName,
-                        modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        Object loader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
+        this.companion = DynamicHubCompanion.createHosted(hostedJavaClass.getModule(), superType, sourceFileName,
+                        modifiers, loader, nestHost, simpleBinaryName, declaringClass, signature);
     }
 
     /**
@@ -430,10 +435,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         // GR-59683
         Module module = null;
 
-        DynamicHubCompanion companion = new DynamicHubCompanion(classLoader, module, superHub, sourceFileName, modifiers, nestHost, simpleBinaryName, declaringClass, signature);
+        DynamicHubCompanion companion = DynamicHubCompanion.createAtRuntime(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
 
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
-        companion.setUnsafeAllocate();
+        companion.canUnsafeAllocate = true;
 
         // GR-59687: Correct size and content for vtable
         int vTableEntries = 0x100;
@@ -840,16 +845,24 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public boolean canUnsafeInstantiateAsInstanceFastPath() {
-        return companion.canUnsafeAllocate();
+        return canUnsafeAllocate();
     }
 
     public boolean canUnsafeInstantiateAsInstanceSlowPath() {
         if (ClassForNameSupport.canUnsafeInstantiateAsInstance(this)) {
-            companion.setUnsafeAllocate();
+            setCanUnsafeAllocate();
             return true;
         } else {
             return false;
         }
+    }
+
+    public boolean canUnsafeAllocate() {
+        return companion.canUnsafeAllocate;
+    }
+
+    public void setCanUnsafeAllocate() {
+        companion.canUnsafeAllocate = true;
     }
 
     public boolean isProxyClass() {
@@ -1010,18 +1023,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     public ClassLoader getClassLoader() {
-        return companion.getClassLoader();
+        Object loader = companion.classLoader;
+        VMError.guarantee(loader != NO_CLASS_LOADER);
+        return (ClassLoader) loader;
     }
 
     @KeepOriginal
     private native ClassLoader getClassLoader0();
 
     public boolean isLoaded() {
-        return companion.hasClassLoader();
+        return companion.classLoader != NO_CLASS_LOADER;
     }
 
     void setClassLoaderAtRuntime(ClassLoader loader) {
-        companion.setClassLoader(loader);
+        VMError.guarantee(companion.classLoader == NO_CLASS_LOADER && loader != NO_CLASS_LOADER);
+        companion.classLoader = loader;
     }
 
     @KeepOriginal
@@ -1613,7 +1629,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         if (SubstrateUtil.HOSTED) { // avoid eager initialization in image heap
             return computePackageName();
         }
-        return companion.getPackageName(this);
+        if (companion.packageName == null) {
+            companion.packageName = computePackageName();
+        }
+        return companion.packageName;
     }
 
     private boolean isHybrid() {
@@ -1681,7 +1700,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     public ProtectionDomain getProtectionDomain() {
-        return companion.getProtectionDomain();
+        if (companion.protectionDomain == null) {
+            companion.protectionDomain = ProtectionDomainSupport.allPermDomain();
+        }
+        return companion.protectionDomain;
     }
 
     @Substitute
@@ -1690,7 +1712,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     void setProtectionDomainAtRuntime(ProtectionDomain protectionDomain) {
-        companion.setProtectionDomain(protectionDomain);
+        VMError.guarantee(companion.protectionDomain == null && protectionDomain != null);
+        companion.protectionDomain = protectionDomain;
     }
 
     @Substitute
@@ -1940,7 +1963,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute
     private ClassRepository getGenericInfo() {
-        return companion.getGenericInfo(this);
+        if (companion.genericInfo == null) {
+            companion.genericInfo = computeGenericInfo();
+        }
+        return (companion.genericInfo != ClassRepository.NONE) ? companion.genericInfo : null;
     }
 
     ClassRepository computeGenericInfo() {
@@ -2061,11 +2087,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     public void setJrfEventConfiguration(Object configuration) {
-        companion.setJfrEventConfiguration(configuration);
+        companion.jfrEventConfiguration = configuration;
     }
 
     public Object getJfrEventConfiguration() {
-        return companion.getJfrEventConfiguration();
+        return companion.jfrEventConfiguration;
     }
 
     public boolean isReached() {
@@ -2075,7 +2101,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static final class ReflectionDataAccessors {
         @SuppressWarnings("unused")
         private static SoftReference<Target_java_lang_Class_ReflectionData<?>> getReflectionData(DynamicHub that) {
-            return that.companion.getReflectionData();
+            return that.companion.reflectionData;
         }
     }
 
@@ -2089,21 +2115,21 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static final class ClassLoaderAccessors {
         @SuppressWarnings("unused")
         private static ClassLoader getClassLoader(DynamicHub that) {
-            return that.companion.getClassLoader();
+            return that.getClassLoader();
         }
     }
 
     private static final class AnnotationDataAccessors {
         @SuppressWarnings("unused")
         private static Target_java_lang_Class_AnnotationData getAnnotationData(DynamicHub that) {
-            return that.companion.getAnnotationData();
+            return that.companion.annotationData;
         }
     }
 
     private static final class AnnotationTypeAccessors {
         @SuppressWarnings("unused")
         private static AnnotationType getAnnotationType(DynamicHub that) {
-            return that.companion.getAnnotationType();
+            return that.companion.annotationType;
         }
     }
 
@@ -2117,12 +2143,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
              * initialized. We eagerly initialize the class to conform with JCK tests.
              */
             that.ensureInitialized();
-            return that.companion.getCachedConstructor();
+            return that.companion.cachedConstructor;
         }
 
         @SuppressWarnings("unused")
         private static void setCachedConstructor(DynamicHub that, Constructor<?> value) {
-            that.companion.setCachedConstructor(value);
+            that.companion.cachedConstructor = value;
         }
     }
 
