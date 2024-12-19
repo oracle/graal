@@ -435,6 +435,8 @@ public abstract class NativeImageCodeCache {
             }
         }
 
+        watchdog.recordActivity();
+
         if (SubstrateOptions.IncludeMethodData.getValue()) {
             for (HostedField field : hUniverse.getFields()) {
                 if (field.isAccessed() && !field.getWrapped().isInBaseLayer() && !includedFields.contains(field.getWrapped())) {
