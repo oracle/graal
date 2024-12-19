@@ -38,6 +38,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.interpreter.InterpreterSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
@@ -1244,7 +1245,14 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             return new DeoptEntryStubContext(method, callingConvention);
         } else if (stubType == Deoptimizer.StubType.ExitStub) {
             return new DeoptExitStubContext(method, callingConvention);
+        } else if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {
+            assert InterpreterSupport.isEnabled();
+            return new AArch64InterpreterStubs.InterpreterEnterStubContext(method);
+        } else if (stubType == Deoptimizer.StubType.InterpreterLeaveStub) {
+            assert InterpreterSupport.isEnabled();
+            return new AArch64InterpreterStubs.InterpreterLeaveStubContext(method);
         }
+
         return new SubstrateAArch64FrameContext(method);
     }
 
@@ -1364,7 +1372,19 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterAllocationConfig registerAllocationConfig, StructuredGraph graph, Object stub) {
         SharedMethod method = (SharedMethod) graph.method();
         CallingConvention callingConvention = CodeUtil.getCallingConvention(getCodeCache(), method.getCallingConventionKind().toType(false), method, this);
-        return new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), registerAllocationConfig, callingConvention, method);
+        LIRGenerationResult lirGenerationResult = new SubstrateLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), registerAllocationConfig,
+                        callingConvention, method);
+
+        FrameMap frameMap = ((FrameMapBuilderTool) lirGenerationResult.getFrameMapBuilder()).getFrameMap();
+        Deoptimizer.StubType stubType = method.getDeoptStubType();
+        if (stubType == Deoptimizer.StubType.InterpreterEnterStub) {
+            assert InterpreterSupport.isEnabled();
+            frameMap.reserveOutgoing(AArch64InterpreterStubs.additionalFrameSizeEnterStub());
+        } else if (stubType == Deoptimizer.StubType.InterpreterLeaveStub) {
+            assert InterpreterSupport.isEnabled();
+            frameMap.reserveOutgoing(AArch64InterpreterStubs.additionalFrameSizeLeaveStub());
+        }
+        return lirGenerationResult;
     }
 
     @Override
