@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -57,6 +59,7 @@ import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
+import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.MatchFound;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
@@ -65,7 +68,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.collections.EconomicMap;
 
 public final class NFAGenerator {
 
@@ -75,6 +77,7 @@ public final class NFAGenerator {
     private final NFAState dummyInitialState;
     private final NFAState[] anchoredInitialStates;
     private final NFAState[] initialStates;
+    private NFAState checkFinalTransitionState;
     /**
      * These are like {@link #initialStates}, but with {@code mustAdvance} set to {@code false},
      * i.e. we have already advanced when we are in these states. In a regular expression with
@@ -96,6 +99,7 @@ public final class NFAGenerator {
     private final ASTTransitionCanonicalizer astTransitionCanonicalizer;
     private final TBitSet transitionGBUpdateIndices;
     private final TBitSet transitionGBClearIndices;
+    private int lastGroup = -1;
     private final ArrayList<NFAStateTransition> transitionsBuffer = new ArrayList<>();
     private final CompilationBuffer compilationBuffer;
 
@@ -106,15 +110,15 @@ public final class NFAGenerator {
         this.transitionGBClearIndices = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.astTransitionCanonicalizer = new ASTTransitionCanonicalizer(ast, true, false);
         this.compilationBuffer = compilationBuffer;
-        dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CodePointSet.getEmpty(), Collections.emptySet(), false, ast.getOptions().isMustAdvance());
+        dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), Collections.emptySet(), false, ast.getOptions().isMustAdvance());
         nfaStates.put(NFAStateID.create(dummyInitialState), dummyInitialState);
         anchoredFinalState = createFinalState(StateSet.create(ast, ast.getRoot().getSubTreeParent().getAnchoredFinalState()), false);
         anchoredFinalState.setAnchoredFinalState();
         finalState = createFinalState(StateSet.create(ast, ast.getRoot().getSubTreeParent().getMatchFound()), false);
         finalState.setUnAnchoredFinalState();
         assert transitionGBUpdateIndices.isEmpty() && transitionGBClearIndices.isEmpty();
-        anchoredReverseEntry = createTransition(anchoredFinalState, dummyInitialState, ast.getEncoding().getFullSet(), -1);
-        unAnchoredReverseEntry = createTransition(finalState, dummyInitialState, ast.getEncoding().getFullSet(), -1);
+        anchoredReverseEntry = createTransition(anchoredFinalState, dummyInitialState, ast.getEncoding().getFullSet());
+        unAnchoredReverseEntry = createTransition(finalState, dummyInitialState, ast.getEncoding().getFullSet());
         int nEntries = ast.getWrappedPrefixLength() + 1;
         initialStates = new NFAState[nEntries];
         advancedInitialState = ast.getOptions().isMustAdvance() ? createFinalState(StateSet.create(ast, ast.getNFAUnAnchoredInitialState(0)), false) : null;
@@ -122,7 +126,7 @@ public final class NFAGenerator {
         for (int i = 0; i < initialStates.length; i++) {
             initialStates[i] = createFinalState(StateSet.create(ast, ast.getNFAUnAnchoredInitialState(i)), ast.getOptions().isMustAdvance());
             initialStates[i].setUnAnchoredInitialState(true);
-            unAnchoredEntries[i] = createTransition(dummyInitialState, initialStates[i], ast.getEncoding().getFullSet(), -1);
+            unAnchoredEntries[i] = createTransition(dummyInitialState, initialStates[i], ast.getEncoding().getFullSet());
             if (i > 0) {
                 initialStates[i].setHasPrefixStates(true);
             }
@@ -141,7 +145,7 @@ public final class NFAGenerator {
                 if (i > 0) {
                     initialStates[i].setHasPrefixStates(true);
                 }
-                anchoredEntries[i] = createTransition(dummyInitialState, anchoredInitialStates[i], ast.getEncoding().getFullSet(), -1);
+                anchoredEntries[i] = createTransition(dummyInitialState, anchoredInitialStates[i], ast.getEncoding().getFullSet());
             }
             NFAStateTransition[] dummyInitNext = Arrays.copyOf(anchoredEntries, nEntries * 2);
             System.arraycopy(unAnchoredEntries, 0, dummyInitNext, nEntries, nEntries);
@@ -149,6 +153,14 @@ public final class NFAGenerator {
         }
         NFAStateTransition[] dummyInitPrev = new NFAStateTransition[]{anchoredReverseEntry, unAnchoredReverseEntry};
         dummyInitialState.setPredecessors(dummyInitPrev);
+    }
+
+    private NFAState getFinalCheckedTransitionState() {
+        if (checkFinalTransitionState == null) {
+            checkFinalTransitionState = createFinalState(StateSet.create(ast, ast.getRoot().getSubTreeParent().getMatchFoundChecked()), ast.getOptions().isMustAdvance());
+            checkFinalTransitionState.setSuccessors(new NFAStateTransition[]{createNoCGTransition(checkFinalTransitionState, finalState, ast.getEncoding().getFullSet())}, true);
+        }
+        return checkFinalTransitionState;
     }
 
     public static NFA createNFA(RegexAST ast, CompilationBuffer compilationBuffer) {
@@ -174,9 +186,9 @@ public final class NFAGenerator {
         }
         if (ast.getOptions().isMustAdvance()) {
             addNewLoopBackTransition(initialStates[0], advancedInitialState);
-            initialLoopBack = createTransition(advancedInitialState, advancedInitialState, ast.getEncoding().getFullSet(), -1);
+            initialLoopBack = createTransition(advancedInitialState, advancedInitialState, ast.getEncoding().getFullSet());
         } else {
-            initialLoopBack = createTransition(initialStates[0], initialStates[0], ast.getEncoding().getFullSet(), -1);
+            initialLoopBack = createTransition(initialStates[0], initialStates[0], ast.getEncoding().getFullSet());
         }
 
         for (NFAState s : nfaStates.values()) {
@@ -262,17 +274,19 @@ public final class NFAGenerator {
                 boolean containsPositionAssertion = false;
                 boolean containsMatchFound = false;
                 boolean containsPrefixStates = false;
-                int lastGroup = -1;
+                boolean allCCInLookBehind = true;
                 EconomicMap<Integer, TBitSet> matchedConditionGroupsMap = ast.getProperties().hasConditionalBackReferences() ? EconomicMap.create() : null;
                 for (ASTTransition astTransition : mergeBuilder.getTransitionSet().getTransitions()) {
                     Term target = astTransition.getTarget();
+                    boolean inLookBehindAssertion = target.isInLookBehindAssertion();
                     if (target instanceof CharacterClass) {
                         if (stateSetCC == null) {
                             stateSetCC = StateSet.create(ast);
                             finishedLookBehinds = StateSet.create(ast);
                         }
                         stateSetCC.add((CharacterClass) target);
-                        if (target.isInLookBehindAssertion() && target == ((Sequence) target.getParent()).getLastTerm()) {
+                        allCCInLookBehind &= inLookBehindAssertion;
+                        if (inLookBehindAssertion && target == ((Sequence) target.getParent()).getLastTerm()) {
                             finishedLookBehinds.add((LookBehindAssertion) target.getSubTreeParent());
                         }
                     } else if (target instanceof PositionAssertion) {
@@ -283,7 +297,7 @@ public final class NFAGenerator {
                     }
                     containsPrefixStates |= target.isPrefix();
                     astTransition.getGroupBoundaries().updateBitSets(transitionGBUpdateIndices, transitionGBClearIndices);
-                    if (!target.isInLookAheadAssertion() && !target.isInLookBehindAssertion()) {
+                    if (!target.isInLookAroundAssertion()) {
                         lastGroup = astTransition.getGroupBoundaries().getLastGroup();
                     }
                     if (ast.getProperties().hasConditionalBackReferences()) {
@@ -291,45 +305,70 @@ public final class NFAGenerator {
                     }
                 }
                 if (!(sourceState.isMustAdvance() && transitionGBUpdateIndices.get(0) && transitionGBUpdateIndices.get(1))) {
-                    if (stateSetCC == null) {
-                        if (containsPositionAssertion) {
-                            transitionsBuffer.add(createTransition(sourceState, anchoredFinalState, ast.getEncoding().getFullSet(), lastGroup));
-                        } else if (containsMatchFound) {
-                            transitionsBuffer.add(createTransition(sourceState, finalState, ast.getEncoding().getFullSet(), lastGroup));
-                            // Transitions dominated by a transition to a final state will never end
-                            // up being used and so we can skip generating them and return the
-                            // current list of transitions.
-                            transitionGBUpdateIndices.clear();
-                            transitionGBClearIndices.clear();
-                            return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
+                    if (containsPositionAssertion) {
+                        if (stateSetCC == null || allCCInLookBehind) {
+                            transitionsBuffer.add(createTransition(sourceState, anchoredFinalState, ast.getEncoding().getFullSet()));
                         }
-                    } else if (!containsPositionAssertion) {
+                    } else if (stateSetCC == null) {
+                        if (containsMatchFound) {
+                            if (mergeBuilder.getCodePointSet().matchesEverything(ast.getEncoding())) {
+                                transitionsBuffer.add(createTransition(sourceState, finalState, ast.getEncoding().getFullSet()));
+                                // Transitions dominated by a transition to a final state will never
+                                // end up being used, so we can skip generating them and return the
+                                // current list of transitions.
+                                clearGroupBoundaries();
+                                return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
+                            }
+                            // This case is only reachable when merging a lookbehind with an empty
+                            // transition to the final state.
+                            // The issue is that the priority between transitions after running the
+                            // canonicalizer is lost, but that doesn't matter since
+                            // they have disjoint code point sets. But when the transition reaches
+                            // the final state, then it's cps is not checked.
+                            // In that case we use this special checkFinalTransitionState, which
+                            // will still check that last code point set matches.
+                            transitionsBuffer.add(createTransition(sourceState, getFinalCheckedTransitionState(), mergeBuilder.getCodePointSet()));
+                        }
+                    } else {
+                        if (containsMatchFound && allCCInLookBehind) {
+                            // possible when a not fully matched lookbehind is still being tracked
+                            // when the main expression already reached a final state.
+                            transitionsBuffer.add(createTransition(sourceState, finalState, ast.getEncoding().getFullSet()));
+                        }
                         assert mergeBuilder.getCodePointSet().matchesSomething();
-                        NFAState targetState = registerMatcherState(stateSetCC, mergeBuilder.getCodePointSet(), finishedLookBehinds, containsPrefixStates,
+                        NFAState targetState = registerMatcherState(stateSetCC, finishedLookBehinds, containsPrefixStates,
                                         sourceState.isMustAdvance() && !ast.getHardPrefixNodes().isDisjoint(stateSetCC), matchedConditionGroupsMap);
-                        transitionsBuffer.add(createTransition(sourceState, targetState, mergeBuilder.getCodePointSet(), lastGroup));
+                        transitionsBuffer.add(createTransition(sourceState, targetState, mergeBuilder.getCodePointSet()));
                     }
                 }
-                transitionGBUpdateIndices.clear();
-                transitionGBClearIndices.clear();
+                clearGroupBoundaries();
             }
         }
         return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
     }
 
+    private void clearGroupBoundaries() {
+        transitionGBUpdateIndices.clear();
+        transitionGBClearIndices.clear();
+        lastGroup = -1;
+    }
+
     private NFAState createFinalState(StateSet<RegexAST, ? extends RegexASTNode> stateSet, boolean mustAdvance) {
-        NFAState state = new NFAState((short) stateID.inc(), stateSet, ast.getEncoding().getFullSet(), Collections.emptySet(), false, mustAdvance);
+        NFAState state = new NFAState((short) stateID.inc(), stateSet, Collections.emptySet(), false, mustAdvance);
         assert !nfaStates.containsKey(NFAStateID.create(state));
         nfaStates.put(NFAStateID.create(state), state);
         return state;
     }
 
-    private NFAStateTransition createTransition(NFAState source, NFAState target, CodePointSet codePointSet, int lastGroup) {
-        return new NFAStateTransition((short) transitionID.inc(), source, target, codePointSet, ast.createGroupBoundaries(transitionGBUpdateIndices, transitionGBClearIndices, lastGroup));
+    private NFAStateTransition createTransition(NFAState source, NFAState target, CodePointSet codePointSet) {
+        return new NFAStateTransition((short) transitionID.inc(), source, target, codePointSet, ast.createGroupBoundaries(transitionGBUpdateIndices, transitionGBClearIndices, -1, lastGroup));
+    }
+
+    private NFAStateTransition createNoCGTransition(NFAState source, NFAState target, CodePointSet codePointSet) {
+        return new NFAStateTransition((short) transitionID.inc(), source, target, codePointSet, GroupBoundaries.getEmptyInstance(ast.getLanguage()));
     }
 
     private NFAState registerMatcherState(StateSet<RegexAST, CharacterClass> stateSetCC,
-                    CodePointSet matcherBuilder,
                     StateSet<RegexAST, LookBehindAssertion> finishedLookBehinds,
                     boolean containsPrefixStates,
                     boolean mustAdvance,
@@ -338,7 +377,7 @@ public final class NFAGenerator {
         if (nfaStates.containsKey(nfaStateID)) {
             return nfaStates.get(nfaStateID);
         } else {
-            NFAState state = new NFAState((short) stateID.inc(), stateSetCC, matcherBuilder, finishedLookBehinds, containsPrefixStates, mustAdvance, matchedConditionGroupsMap);
+            NFAState state = new NFAState((short) stateID.inc(), stateSetCC, finishedLookBehinds, containsPrefixStates, mustAdvance, matchedConditionGroupsMap);
             expansionQueue.push(state);
             nfaStates.put(nfaStateID, state);
             return state;
@@ -346,7 +385,7 @@ public final class NFAGenerator {
     }
 
     private void addNewLoopBackTransition(NFAState source, NFAState target) {
-        source.addLoopBackNext(createTransition(source, target, ast.getEncoding().getFullSet(), -1));
+        source.addLoopBackNext(createTransition(source, target, ast.getEncoding().getFullSet()));
         if (ast.getHardPrefixNodes().isDisjoint(source.getStateSet()) || ast.getFlags().isSticky()) {
             target.incPredecessors();
         }

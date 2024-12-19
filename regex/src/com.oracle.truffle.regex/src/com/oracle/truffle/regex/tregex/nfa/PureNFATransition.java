@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,6 +147,6 @@ public final class PureNFATransition implements AbstractTransition<PureNFAState,
                         Json.prop("target", target.getId()),
                         Json.prop("groupBoundaries", groupBoundaries),
                         Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(ast)),
-                        Json.prop("guards", Arrays.stream(guards).mapToObj(TransitionGuard::toJson)));
+                        Json.prop("guards", guards.length == 0 ? Json.array(Json.val("no guards")) : Json.array(Arrays.stream(guards).mapToObj(TransitionGuard::toJson))));
     }
 }

@@ -179,6 +179,10 @@ public final class JavaFlags extends AbstractConstantKeysObject {
         return sb.toString();
     }
 
+    public int getValue() {
+        return value;
+    }
+
     public boolean isCanonEq() {
         return isSet(Pattern.CANON_EQ);
     }

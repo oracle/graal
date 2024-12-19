@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import org.junit.BeforeClass;
 
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
@@ -132,6 +133,49 @@ public abstract class RegexTestBase {
         return compiledRegex.invokeMember("exec", input.switchEncodingUncached(encoding.getTStringEncoding()), fromIndex, toIndex, regionFrom, regionTo);
     }
 
+    Value execRegexBoolean(Value compiledRegex, String input, int fromIndex) {
+        return execRegexBoolean(compiledRegex, getTRegexEncoding(), input, fromIndex);
+    }
+
+    Value execRegexBoolean(Value compiledRegex, Encodings.Encoding encoding, String input, int fromIndex) {
+        return execRegexBoolean(compiledRegex, encoding, TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding()), fromIndex);
+    }
+
+    Value execRegexBoolean(Value compiledRegex, Encodings.Encoding encoding, TruffleString input, int fromIndex) {
+        TruffleString converted = input.switchEncodingUncached(encoding.getTStringEncoding());
+        int length = converted.byteLength(encoding.getTStringEncoding()) >> encoding.getStride();
+        return execRegexBoolean(compiledRegex, encoding, converted, fromIndex, length, 0, length);
+    }
+
+    Value execRegexBoolean(Value compiledRegex, Encodings.Encoding encoding, TruffleString input, int fromIndex, int toIndex, int regionFrom, int regionTo) {
+        return compiledRegex.invokeMember("execBoolean", input.switchEncodingUncached(encoding.getTStringEncoding()), fromIndex, toIndex, regionFrom, regionTo);
+    }
+
+    void testBoolean(String pattern, String flags, String options, String input, int fromIndex, boolean isMatch) {
+        String expectedResult = isMatch ? "Match" : "NoMatch";
+        try {
+            Value compiledRegex = compileRegex(pattern, flags, options, getTRegexEncoding());
+            Value result = execRegexBoolean(compiledRegex, getTRegexEncoding(), input, fromIndex);
+            if (result.asBoolean() != isMatch) {
+                String actualResult = result.asBoolean() ? "Match" : "NoMatch";
+                printTable(pattern, flags, input, fromIndex, expectedResult, actualResult);
+                if (ASSERTS) {
+                    Assert.fail(options + regexSlashes(pattern, flags) + ' ' + quote(input) + " expected: " + expectedResult + ", actual: " + actualResult);
+                }
+            }
+        } catch (PolyglotException e) {
+            if (!ASSERTS && e.isSyntaxError()) {
+                printTable(pattern, flags, input, fromIndex, expectedResult, syntaxErrorToString(e.getMessage()));
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    void testBoolean(String pattern, String flags, String input, int fromIndex, boolean isMatch) {
+        testBoolean(pattern, flags, "BooleanMatch=true", input, fromIndex, isMatch);
+    }
+
     void test(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         test(pattern, flags, "", input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
@@ -155,6 +199,7 @@ public abstract class RegexTestBase {
                 throw e;
             }
         }
+        testBoolean(pattern, flags, "BooleanMatch=true" + (options.isEmpty() ? "" : "," + options), input, fromIndex, isMatch);
     }
 
     void test(Value compiledRegex, String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
@@ -235,12 +280,12 @@ public abstract class RegexTestBase {
         expectSyntaxError(pattern, flags, "", getTRegexEncoding(), "", 0, expectedMessage, expectedPosition);
     }
 
-    void expectSyntaxError(String pattern, String flags, String options, String expectedMessage, int expectedPosition) {
-        expectSyntaxError(pattern, flags, options, getTRegexEncoding(), "", 0, expectedMessage, expectedPosition);
+    void expectSyntaxError(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, ErrorCode expectedErrorCode) {
+        expectSyntaxError(pattern, flags, options, encoding, input, fromIndex, expectedErrorCode, Integer.MIN_VALUE);
     }
 
-    void expectSyntaxError(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, String expectedMessage) {
-        expectSyntaxError(pattern, flags, options, encoding, input, fromIndex, expectedMessage, Integer.MIN_VALUE);
+    void expectSyntaxError(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, ErrorCode expectedErrorCode, int expectedPosition) {
+        expectSyntaxError(pattern, flags, options, encoding, input, fromIndex, expectedErrorCode.name(), expectedPosition);
     }
 
     void expectSyntaxError(String pattern, String flags, String options, Encodings.Encoding encoding, String input, int fromIndex, String expectedMessage, int expectedPosition) {

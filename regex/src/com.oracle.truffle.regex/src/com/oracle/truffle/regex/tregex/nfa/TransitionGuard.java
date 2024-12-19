@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,26 +59,33 @@ public final class TransitionGuard {
 
     public enum Kind {
         /**
-         * Transition represents a back-edge in the quantifier loop. Check if the loop count is
-         * below {@link Quantifier#getMax()}, then increase loop count.
+         * Increment loop count.
          */
-        loop,
+        countInc,
         /**
-         * Transition represents either a first entry into a quantified expression, or a back-edge
-         * in a quantifier loop without upper bound, i.e. quantifiers where
-         * {@link Quantifier#isInfiniteLoop()} is {@code true}. Just increase the loop count.
+         * Set loop count to 1.
          */
-        loopInc,
+        countSet1,
         /**
-         * Transition is leaving a quantified expression. Check if the loop count is above
-         * {@link Quantifier#getMin()}, then reset the loop count.
+         * Set loop count to the quantifier's minimum number of iterations + 1. The extra iteration
+         * is added because this guard is executed when entering the optional part of a split
+         * quantifier, i.e. this guard represents a counter value initialization to {@code min} with
+         * an immediate increment, analogous to how {@link #countSet1} represents a counter value
+         * initialization to 0 followed by an immediate increment.
          */
-        exit,
+        countSetMin,
         /**
-         * Transition is leaving a quantified expression without lower bound, i.e. quantifiers where
-         * {@link Quantifier#getMin()} {@code == 0}. Just reset the loop count.
+         * Check if the loop count is less than {@link Quantifier#getMin()}.
          */
-        exitReset,
+        countLtMin,
+        /**
+         * Check if the loop count is greater or equal to {@link Quantifier#getMin()}.
+         */
+        countGeMin,
+        /**
+         * Check if the loop count is less than {@link Quantifier#getMax()}.
+         */
+        countLtMax,
         /**
          * Transition is entering a quantified expression that may match the empty string. Save the
          * current index.
@@ -122,32 +129,64 @@ public final class TransitionGuard {
          * {@link ConditionalBackReferenceGroup}. The capture group identified by
          * {@link #getGroupNumber(long)} must be *not* matched in order to proceed.
          */
-        checkGroupNotMatched
+        checkGroupNotMatched,
     }
 
     @CompilationFinal(dimensions = 1) private static final Kind[] KIND_VALUES = Arrays.copyOf(Kind.values(), Kind.values().length);
 
-    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.loop, Kind.loopInc, Kind.exit, Kind.exitReset);
+    private static final EnumSet<Kind> QUANTIFIER_GUARDS = EnumSet.of(Kind.countInc, Kind.countSet1, Kind.countSetMin, Kind.countLtMin, Kind.countGeMin, Kind.countLtMax);
     private static final EnumSet<Kind> ZERO_WIDTH_QUANTIFIER_GUARDS = EnumSet.of(Kind.enterZeroWidth, Kind.exitZeroWidth, Kind.escapeZeroWidth);
     private static final EnumSet<Kind> GROUP_NUMBER_GUARDS = EnumSet.of(Kind.updateRecursiveBackrefPointer, Kind.checkGroupMatched, Kind.checkGroupNotMatched);
     private static final EnumSet<Kind> GROUP_BOUNDARY_INDEX_GUARDS = EnumSet.of(Kind.updateCG);
 
     public static final long[] NO_GUARDS = {};
 
-    public static long createLoop(Quantifier quantifier) {
-        return create(Kind.loop, quantifier);
+    public static long createCountInc(Quantifier quantifier) {
+        return create(Kind.countInc, quantifier);
     }
 
-    public static long createLoopInc(Quantifier quantifier) {
-        return create(Kind.loopInc, quantifier);
+    public static long createCountInc(int quantifierIndex) {
+        return create(Kind.countInc, quantifierIndex);
     }
 
-    public static long createExit(Quantifier quantifier) {
-        return create(Kind.exit, quantifier);
+    public static long createCountSet1(Quantifier quantifier) {
+        return create(Kind.countSet1, quantifier);
     }
 
-    public static long createExitReset(Quantifier quantifier) {
-        return create(Kind.exitReset, quantifier);
+    public static long createCountSet1(int quantifierIndex) {
+        return create(Kind.countSet1, quantifierIndex);
+    }
+
+    public static long createCountSetMin(Quantifier quantifier) {
+        return create(Kind.countSetMin, quantifier);
+    }
+
+    public static long createCountSetMin(int quantifierIndex) {
+        return create(Kind.countSetMin, quantifierIndex);
+    }
+
+    public static long createCountLtMin(Quantifier quantifier) {
+        return create(Kind.countLtMin, quantifier);
+    }
+
+    public static long createCountLtMin(int quantifierIndex) {
+        return create(Kind.countLtMin, quantifierIndex);
+    }
+
+    public static long createCountGeMin(Quantifier quantifier) {
+        return create(Kind.countGeMin, quantifier);
+    }
+
+    public static long createCountGeMin(int quantifierIndex) {
+        return create(Kind.countGeMin, quantifierIndex);
+    }
+
+    public static long createCountLtMax(Quantifier quantifier) {
+        return create(Kind.countLtMax, quantifier);
+    }
+
+    public static long createCountLtMax(int quantifierIndex) {
+        return create(Kind.countLtMax, quantifierIndex);
     }
 
     public static long createEnterZeroWidth(Quantifier quantifier) {
@@ -165,6 +204,11 @@ public final class TransitionGuard {
 
     public static long createEscapeZeroWidth(Quantifier quantifier) {
         return createZeroWidth(Kind.escapeZeroWidth, quantifier);
+    }
+
+    public static long createEscapeZeroWidthFromEnter(long guard) {
+        assert is(guard, Kind.enterZeroWidth);
+        return create(Kind.escapeZeroWidth, getZeroWidthQuantifierIndex(guard));
     }
 
     public static long createUpdateCG(int index) {

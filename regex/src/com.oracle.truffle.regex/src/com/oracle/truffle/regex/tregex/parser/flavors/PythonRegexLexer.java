@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import static com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor.UNICODE;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
@@ -51,6 +53,7 @@ import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.chardata.UnicodeCharacterAliases;
 import com.oracle.truffle.regex.charset.ClassSetContents;
@@ -64,8 +67,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
-
-import static com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor.UNICODE;
 
 public final class PythonRegexLexer extends RegexLexer {
 
@@ -137,7 +138,15 @@ public final class PythonRegexLexer extends RegexLexer {
         // Similarly as for \S, we will not be able to produce a replacement string for \W.
         // We will need to construct the set ourselves.
         CodePointSet alpha = UNICODE.getProperty("General_Category=Letter");
-        CodePointSet numericExtras = CodePointSet.createNoDedup(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
+        CodePointSet numericExtras = CodePointSet.createNoDedup(
+                        0xf96b, 0xf96b,
+                        0xf973, 0xf973,
+                        0xf978, 0xf978,
+                        0xf9b2, 0xf9b2,
+                        0xf9d1, 0xf9d1,
+                        0xf9d3, 0xf9d3,
+                        0xf9fd, 0xf9fd,
+                        0x2f890, 0x2f890);
         CodePointSet numeric = UNICODE.getProperty("General_Category=Number").union(numericExtras);
         CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_'));
         CodePointSet nonWordChars = wordChars.createInverse(Encodings.UTF_32);
@@ -400,12 +409,12 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     private RegexSyntaxException handleBadCharacterInGroupName(ParseGroupNameResult result) {
-        return syntaxErrorAtRel(PyErrorMessages.badCharacterInGroupName(result.groupName), result.groupName.length() + 1);
+        return syntaxErrorAtRel(PyErrorMessages.badCharacterInGroupName(result.groupName), result.groupName.length() + 1, ErrorCode.InvalidNamedGroup);
     }
 
     @Override
     protected RegexSyntaxException handleBoundedQuantifierOutOfOrder() {
-        return syntaxErrorAtAbs(PyErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, getLastTokenPosition() + 1);
+        return syntaxErrorAtAbs(PyErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, getLastTokenPosition() + 1, ErrorCode.InvalidQuantifier);
     }
 
     @Override
@@ -431,12 +440,12 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleCCRangeOutOfOrder(int rangeStart) {
-        return syntaxErrorAtAbs(PyErrorMessages.badCharacterRange(pattern.substring(rangeStart, position)), rangeStart);
+        return syntaxErrorAtAbs(PyErrorMessages.badCharacterRange(pattern.substring(rangeStart, position)), rangeStart, ErrorCode.InvalidCharacterClass);
     }
 
     @Override
     protected void handleCCRangeWithPredefCharClass(int rangeStart, ClassSetContents firstAtom, ClassSetContents secondAtom) {
-        throw syntaxErrorAtAbs(PyErrorMessages.badCharacterRange(pattern.substring(rangeStart, position)), rangeStart);
+        throw syntaxErrorAtAbs(PyErrorMessages.badCharacterRange(pattern.substring(rangeStart, position)), rangeStart, ErrorCode.InvalidCharacterClass);
     }
 
     @Override
@@ -461,18 +470,18 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected void handleGroupRedefinition(String name, int newId, int oldId) {
-        throw syntaxErrorAtRel(PyErrorMessages.redefinitionOfGroupName(name, newId, oldId), name.length() + 1);
+        throw syntaxErrorAtRel(PyErrorMessages.redefinitionOfGroupName(name, newId, oldId), name.length() + 1, ErrorCode.InvalidNamedGroup);
     }
 
     @Override
     protected void handleIncompleteEscapeX() {
-        throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + count(RegexLexer::isHexDigit))));
+        throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + count(RegexLexer::isHexDigit))), ErrorCode.InvalidEscape);
     }
 
     @Override
     protected Token handleInvalidBackReference(int reference) {
         String ref = Integer.toString(reference);
-        throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(ref), ref.length());
+        throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(ref), ref.length(), ErrorCode.InvalidBackReference);
     }
 
     @Override
@@ -483,7 +492,7 @@ public final class PythonRegexLexer extends RegexLexer {
     @Override
     protected RegexSyntaxException handleInvalidGroupBeginQ() {
         retreat();
-        return syntaxErrorAtAbs(PyErrorMessages.unknownExtensionQ(curChar()), getLastTokenPosition() + 1);
+        return syntaxErrorAtAbs(PyErrorMessages.unknownExtensionQ(curChar()), getLastTokenPosition() + 1, ErrorCode.InvalidGroup);
     }
 
     @Override
@@ -498,7 +507,7 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected void handleOctalOutOfRange() {
-        throw syntaxError(PyErrorMessages.invalidOctalEscape(substring(4)));
+        throw syntaxError(PyErrorMessages.invalidOctalEscape(substring(4)), ErrorCode.InvalidEscape);
     }
 
     @Override
@@ -508,17 +517,17 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected void handleUnfinishedEscape() {
-        throw syntaxError(PyErrorMessages.BAD_ESCAPE_END_OF_PATTERN);
+        throw syntaxError(PyErrorMessages.BAD_ESCAPE_END_OF_PATTERN, ErrorCode.InvalidEscape);
     }
 
     @Override
     protected void handleUnfinishedGroupComment() {
-        throw syntaxError(PyErrorMessages.UNTERMINATED_COMMENT);
+        throw syntaxError(PyErrorMessages.UNTERMINATED_COMMENT, ErrorCode.UnmatchedParenthesis);
     }
 
     @Override
     protected RegexSyntaxException handleUnfinishedGroupQ() {
-        return syntaxErrorHere(PyErrorMessages.UNEXPECTED_END_OF_PATTERN);
+        return syntaxErrorHere(PyErrorMessages.UNEXPECTED_END_OF_PATTERN, ErrorCode.UnmatchedParenthesis);
     }
 
     @Override
@@ -533,7 +542,7 @@ public final class PythonRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleUnmatchedLeftBracket() {
-        return syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_CHARACTER_SET, getLastCharacterClassBeginPosition());
+        return syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_CHARACTER_SET, getLastCharacterClassBeginPosition(), ErrorCode.UnmatchedBracket);
     }
 
     @Override
@@ -585,42 +594,42 @@ public final class PythonRegexLexer extends RegexLexer {
                     }
                     int length = countUpTo(RegexLexer::isHexDigit, escapeLength);
                     if (length != escapeLength) {
-                        throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + length)));
+                        throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + length)), ErrorCode.InvalidEscape);
                     }
                     advance(length);
                     try {
                         int codePoint = Integer.parseInt(pattern, position - length, position, 16);
                         if (codePoint > 0x10FFFF) {
-                            throw syntaxError(PyErrorMessages.invalidUnicodeEscape(substring(2 + length)));
+                            throw syntaxError(PyErrorMessages.invalidUnicodeEscape(substring(2 + length)), ErrorCode.InvalidEscape);
                         }
                         return codePoint;
                     } catch (NumberFormatException e) {
-                        throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + length)));
+                        throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + length)), ErrorCode.InvalidEscape);
                     }
                 } else {
                     // \\u or \\U in 'bytes' patterns
-                    throw syntaxError(PyErrorMessages.badEscape(c));
+                    throw syntaxError(PyErrorMessages.badEscape(c), ErrorCode.InvalidEscape);
                 }
             case 'N': {
                 if (mode != PythonREMode.Str) {
-                    throw syntaxError(PyErrorMessages.badEscape(c));
+                    throw syntaxError(PyErrorMessages.badEscape(c), ErrorCode.InvalidEscape);
                 }
                 if (!consumingLookahead("{")) {
-                    throw syntaxErrorHere(PyErrorMessages.missing("{"));
+                    throw syntaxErrorHere(PyErrorMessages.missing("{"), ErrorCode.InvalidEscape);
                 }
                 int nameStart = position;
                 int nameEnd = pattern.indexOf('}', position);
                 if (atEnd() || nameEnd == position) {
-                    throw syntaxErrorHere(PyErrorMessages.missing("character name"));
+                    throw syntaxErrorHere(PyErrorMessages.missing("character name"), ErrorCode.InvalidEscape);
                 }
                 if (nameEnd < 0) {
-                    throw syntaxErrorHere(PyErrorMessages.missingUnterminatedName('}'));
+                    throw syntaxErrorHere(PyErrorMessages.missingUnterminatedName('}'), ErrorCode.InvalidEscape);
                 }
                 String characterName = pattern.substring(nameStart, nameEnd);
                 position = nameEnd + 1;
                 int codePoint = lookupCharacterByName(characterName);
                 if (codePoint == -1) {
-                    throw syntaxError(PyErrorMessages.undefinedCharacterName(characterName));
+                    throw syntaxError(PyErrorMessages.undefinedCharacterName(characterName), ErrorCode.InvalidEscape);
                 }
                 return codePoint;
             }
@@ -632,7 +641,7 @@ public final class PythonRegexLexer extends RegexLexer {
     @Override
     protected int parseCustomEscapeCharFallback(int c, boolean inCharClass) {
         if (c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9') {
-            throw syntaxError(PyErrorMessages.badEscape(c));
+            throw syntaxError(PyErrorMessages.badEscape(c), ErrorCode.InvalidEscape);
         }
         return c;
     }
@@ -649,9 +658,9 @@ public final class PythonRegexLexer extends RegexLexer {
                         ParseGroupNameResult result = parseGroupName('>');
                         switch (result.state) {
                             case empty:
-                                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
+                                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME, ErrorCode.InvalidNamedGroup);
                             case unterminated:
-                                throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_NAME_ANGLE_BRACKET, pos);
+                                throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_NAME_ANGLE_BRACKET, pos, ErrorCode.InvalidNamedGroup);
                             case invalidStart:
                             case invalidRest:
                                 throw handleBadCharacterInGroupName(result);
@@ -667,7 +676,7 @@ public final class PythonRegexLexer extends RegexLexer {
                         return parseNamedBackReference();
                     }
                     default:
-                        throw syntaxErrorAtRel(PyErrorMessages.unknownExtensionP(ch2), 3);
+                        throw syntaxErrorAtRel(PyErrorMessages.unknownExtensionP(ch2), 3, ErrorCode.InvalidGroup);
                 }
             }
             case '>':
@@ -681,7 +690,6 @@ public final class PythonRegexLexer extends RegexLexer {
             case 's':
             case 'x':
             case 'a':
-            case 't':
             case 'u':
                 return parseInlineFlags(charAfterQuestionMark);
             default:
@@ -692,9 +700,9 @@ public final class PythonRegexLexer extends RegexLexer {
     @Override
     protected Token parseGroupLt() {
         if (atEnd()) {
-            throw syntaxErrorHere(PyErrorMessages.UNEXPECTED_END_OF_PATTERN);
+            throw syntaxErrorHere(PyErrorMessages.UNEXPECTED_END_OF_PATTERN, ErrorCode.InvalidGroup);
         }
-        throw syntaxErrorAtAbs(PyErrorMessages.unknownExtensionLt(curChar()), getLastTokenPosition() + 1);
+        throw syntaxErrorAtAbs(PyErrorMessages.unknownExtensionLt(curChar()), getLastTokenPosition() + 1, ErrorCode.InvalidGroup);
     }
 
     /**
@@ -706,9 +714,9 @@ public final class PythonRegexLexer extends RegexLexer {
         ParseGroupNameResult result = parseGroupName(')');
         switch (result.state) {
             case empty:
-                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
+                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME, ErrorCode.InvalidNamedGroup);
             case unterminated:
-                throw syntaxErrorAtRel(PyErrorMessages.UNTERMINATED_NAME, result.groupName.length());
+                throw syntaxErrorAtRel(PyErrorMessages.UNTERMINATED_NAME, result.groupName.length(), ErrorCode.InvalidNamedGroup);
             case invalidStart:
             case invalidRest:
                 position -= result.groupName.length() + 1;
@@ -723,9 +731,9 @@ public final class PythonRegexLexer extends RegexLexer {
                 assert curChar() == ')';
                 advance();
                 if (groupNumber == 0) {
-                    throw syntaxErrorAtRel(PyErrorMessages.BAD_GROUP_NUMBER, result.groupName.length() + 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.BAD_GROUP_NUMBER, result.groupName.length() + 1, ErrorCode.InvalidBackReference);
                 } else if (groupNumber == -1) {
-                    throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(result.groupName), result.groupName.length() + 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.invalidGroupReference(result.groupName), result.groupName.length() + 1, ErrorCode.InvalidBackReference);
                 }
                 break;
             case valid:
@@ -734,7 +742,7 @@ public final class PythonRegexLexer extends RegexLexer {
                     groupNumber = getSingleNamedGroupNumber(result.groupName);
                     namedReference = true;
                 } else {
-                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1, ErrorCode.InvalidBackReference);
                 }
                 break;
             default:
@@ -758,52 +766,43 @@ public final class PythonRegexLexer extends RegexLexer {
             case ')':
                 return Token.createInlineFlags(positiveFlags, true);
             case ':':
-                if (positiveFlags.includesGlobalFlags()) {
-                    throw syntaxErrorAtRel(PyErrorMessages.INLINE_FLAGS_CANNOT_TURN_ON_GLOBAL_FLAG, 1);
-                }
                 return parseLocalFlags(positiveFlags, PythonFlags.EMPTY_INSTANCE);
             case '-':
-                if (positiveFlags.includesGlobalFlags()) {
-                    throw syntaxErrorAtRel(PyErrorMessages.INLINE_FLAGS_CANNOT_TURN_ON_GLOBAL_FLAG, 1);
-                }
                 if (atEnd()) {
-                    throw syntaxErrorHere(PyErrorMessages.MISSING_FLAG);
+                    throw syntaxErrorHere(PyErrorMessages.MISSING_FLAG, ErrorCode.InvalidInlineFlag);
                 }
                 ch = consumeChar();
                 if (!PythonFlags.isValidFlagChar(ch)) {
                     if (Character.isAlphabetic(ch)) {
-                        throw syntaxErrorAtRel(PyErrorMessages.UNKNOWN_FLAG, 1);
+                        throw syntaxErrorAtRel(PyErrorMessages.UNKNOWN_FLAG, 1, ErrorCode.InvalidInlineFlag);
                     } else {
-                        throw syntaxErrorAtRel(PyErrorMessages.MISSING_FLAG, 1);
+                        throw syntaxErrorAtRel(PyErrorMessages.MISSING_FLAG, 1, ErrorCode.InvalidInlineFlag);
                     }
                 }
                 PythonFlags negativeFlags = PythonFlags.EMPTY_INSTANCE;
                 while (PythonFlags.isValidFlagChar(ch)) {
                     negativeFlags = negativeFlags.addFlag(ch);
                     if (PythonFlags.isTypeFlagChar(ch)) {
-                        throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_CANNOT_TURN_OFF_FLAGS_A_U_AND_L);
+                        throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_CANNOT_TURN_OFF_FLAGS_A_U_AND_L, ErrorCode.InvalidInlineFlag);
                     }
                     if (atEnd()) {
-                        throw syntaxErrorHere(PyErrorMessages.MISSING_COLON);
+                        throw syntaxErrorHere(PyErrorMessages.MISSING_COLON, ErrorCode.InvalidInlineFlag);
                     }
                     ch = consumeChar();
                 }
                 if (ch != ':') {
                     if (Character.isAlphabetic(ch)) {
-                        throw syntaxErrorAtRel(PyErrorMessages.UNKNOWN_FLAG, 1);
+                        throw syntaxErrorAtRel(PyErrorMessages.UNKNOWN_FLAG, 1, ErrorCode.InvalidInlineFlag);
                     } else {
-                        throw syntaxErrorAtRel(PyErrorMessages.MISSING_COLON, 1);
+                        throw syntaxErrorAtRel(PyErrorMessages.MISSING_COLON, 1, ErrorCode.InvalidInlineFlag);
                     }
-                }
-                if (negativeFlags.includesGlobalFlags()) {
-                    throw syntaxErrorAtRel(PyErrorMessages.INLINE_FLAGS_CANNOT_TURN_OFF_GLOBAL_FLAG, 1);
                 }
                 return parseLocalFlags(positiveFlags, negativeFlags);
             default:
                 if (Character.isAlphabetic(ch)) {
-                    throw syntaxErrorAtRel(PyErrorMessages.UNKNOWN_FLAG, 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.UNKNOWN_FLAG, 1, ErrorCode.InvalidInlineFlag);
                 } else {
-                    throw syntaxErrorAtRel(PyErrorMessages.MISSING_DASH_COLON_PAREN, 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.MISSING_DASH_COLON_PAREN, 1, ErrorCode.InvalidInlineFlag);
                 }
         }
     }
@@ -811,16 +810,16 @@ public final class PythonRegexLexer extends RegexLexer {
     private PythonFlags addFlag(PythonFlags flagsArg, int ch) {
         PythonFlags flags = flagsArg.addFlag(ch);
         if (mode == PythonREMode.Str && ch == 'L') {
-            throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_CANNOT_USE_L_FLAG_WITH_A_STR_PATTERN);
+            throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_CANNOT_USE_L_FLAG_WITH_A_STR_PATTERN, ErrorCode.InvalidInlineFlag);
         }
         if (mode == PythonREMode.Bytes && ch == 'u') {
-            throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_CANNOT_USE_U_FLAG_WITH_A_BYTES_PATTERN);
+            throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_CANNOT_USE_U_FLAG_WITH_A_BYTES_PATTERN, ErrorCode.InvalidInlineFlag);
         }
         if (flags.numberOfTypeFlags() > 1) {
-            throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_FLAGS_A_U_AND_L_ARE_INCOMPATIBLE);
+            throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_FLAGS_A_U_AND_L_ARE_INCOMPATIBLE, ErrorCode.InvalidInlineFlag);
         }
         if (atEnd()) {
-            throw syntaxErrorHere(PyErrorMessages.MISSING_DASH_COLON_PAREN);
+            throw syntaxErrorHere(PyErrorMessages.MISSING_DASH_COLON_PAREN, ErrorCode.InvalidInlineFlag);
         }
         return flags;
     }
@@ -834,7 +833,7 @@ public final class PythonRegexLexer extends RegexLexer {
      */
     private Token parseLocalFlags(PythonFlags positiveFlags, PythonFlags negativeFlags) {
         if (positiveFlags.overlaps(negativeFlags)) {
-            throw syntaxErrorAtRel(PyErrorMessages.INLINE_FLAGS_FLAG_TURNED_ON_AND_OFF, 1);
+            throw syntaxErrorAtRel(PyErrorMessages.INLINE_FLAGS_FLAG_TURNED_ON_AND_OFF, 1, ErrorCode.InvalidInlineFlag);
         }
         PythonFlags newFlags = getLocalFlags().addFlags(positiveFlags).delFlags(negativeFlags);
         if (positiveFlags.numberOfTypeFlags() > 0) {
@@ -846,7 +845,7 @@ public final class PythonRegexLexer extends RegexLexer {
 
     private void mustHaveMore() {
         if (atEnd()) {
-            throw syntaxErrorHere(PyErrorMessages.UNEXPECTED_END_OF_PATTERN);
+            throw syntaxErrorHere(PyErrorMessages.UNEXPECTED_END_OF_PATTERN, ErrorCode.InvalidGroup);
         }
     }
 
@@ -857,9 +856,9 @@ public final class PythonRegexLexer extends RegexLexer {
         ParseGroupNameResult result = parseGroupName(')');
         switch (result.state) {
             case empty:
-                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
+                throw syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME, ErrorCode.InvalidBackReference);
             case unterminated:
-                throw syntaxErrorAtRel(PyErrorMessages.UNTERMINATED_NAME, result.groupName.length());
+                throw syntaxErrorAtRel(PyErrorMessages.UNTERMINATED_NAME, result.groupName.length(), ErrorCode.InvalidBackReference);
             case invalidStart:
             case invalidRest:
                 throw handleBadCharacterInGroupName(result);
@@ -868,7 +867,7 @@ public final class PythonRegexLexer extends RegexLexer {
                     assert namedCaptureGroups.get(result.groupName).size() == 1;
                     return Token.createBackReference(namedCaptureGroups.get(result.groupName).get(0), true);
                 } else {
-                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1);
+                    throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName, mode), result.groupName.length() + 1, ErrorCode.InvalidBackReference);
                 }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
@@ -879,16 +878,16 @@ public final class PythonRegexLexer extends RegexLexer {
         return pattern.substring(getLastAtomPosition(), getLastAtomPosition() + length);
     }
 
-    public RegexSyntaxException syntaxErrorAtAbs(String msg, int i) {
-        return RegexSyntaxException.createPattern(source, msg, i);
+    public RegexSyntaxException syntaxErrorAtAbs(String msg, int i, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(source, msg, i, errorCode);
     }
 
-    private RegexSyntaxException syntaxErrorAtRel(String msg, int i) {
-        return RegexSyntaxException.createPattern(source, msg, position - i);
+    private RegexSyntaxException syntaxErrorAtRel(String msg, int i, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(source, msg, position - i, errorCode);
     }
 
-    public RegexSyntaxException syntaxErrorHere(String msg) {
-        return RegexSyntaxException.createPattern(source, msg, position);
+    public RegexSyntaxException syntaxErrorHere(String msg, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(source, msg, position, errorCode);
     }
 
 }

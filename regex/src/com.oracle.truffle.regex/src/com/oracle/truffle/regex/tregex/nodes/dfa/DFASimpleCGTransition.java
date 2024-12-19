@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,7 @@ public final class DFASimpleCGTransition implements JsonConvertible {
         return EMPTY_INSTANCE;
     }
 
-    public void apply(int[] result, int currentIndex, boolean trackLastGroup) {
+    public void apply(int[] result, int currentIndex, boolean trackLastGroup, boolean forward) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (indexClears == FULL_CLEAR_ARRAY) {
             Arrays.fill(result, -1);
@@ -94,11 +94,11 @@ public final class DFASimpleCGTransition implements JsonConvertible {
         }
         applyIndexUpdate(result, currentIndex);
         if (trackLastGroup && lastGroup != -1) {
-            result[result.length - 1] = lastGroup;
+            applyLastGroup(result, forward);
         }
     }
 
-    public void applyFinal(DFACaptureGroupTrackingData cgData, int currentIndex, boolean simpleCGMustCopy, boolean trackLastGroup) {
+    public void applyFinal(DFACaptureGroupTrackingData cgData, int currentIndex, boolean simpleCGMustCopy, boolean trackLastGroup, boolean forward) {
         CompilerAsserts.partialEvaluationConstant(this);
         int[] result = simpleCGMustCopy ? cgData.currentResult : cgData.results;
         if (indexClears == FULL_CLEAR_ARRAY) {
@@ -109,10 +109,16 @@ public final class DFASimpleCGTransition implements JsonConvertible {
         applyIndexUpdate(result, currentIndex);
         if (trackLastGroup && lastGroup != -1) {
             if (simpleCGMustCopy) {
-                cgData.currentResult[cgData.currentResult.length - 1] = lastGroup;
+                applyLastGroup(cgData.currentResult, forward);
             } else {
-                cgData.results[cgData.results.length - 1] = lastGroup;
+                applyLastGroup(cgData.results, forward);
             }
+        }
+    }
+
+    private void applyLastGroup(int[] result, boolean forward) {
+        if (forward || result[result.length - 1] == -1) {
+            result[result.length - 1] = lastGroup;
         }
     }
 

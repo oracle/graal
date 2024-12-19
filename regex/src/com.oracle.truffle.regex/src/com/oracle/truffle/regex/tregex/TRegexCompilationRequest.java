@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -278,15 +278,15 @@ public final class TRegexCompilationRequest {
         boolean traceFinder = preCalculatedResults != null && preCalculatedResults.length > 0;
         final boolean trackLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
         executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && !traceFinder && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()), trackLastGroup);
-        final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions() || ast.getOptions().isMustAdvance()) &&
-                        !traceFinder;
-        if (createCaptureGroupTracker) {
-            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false, trackLastGroup);
-        }
         if (traceFinder && preCalculatedResults.length > 1) {
             executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false, false, false);
         } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (!traceFinder || !nfa.hasReverseUnAnchoredEntry()) && !source.getOptions().isBooleanMatch()) {
             executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()), trackLastGroup);
+        }
+        final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (executorNodeBackward == null || !executorNodeBackward.isSimpleCG()) &&
+                        (properties.hasCaptureGroups() || properties.hasLookAroundAssertions() || ast.getOptions().isMustAdvance()) && !traceFinder;
+        if (createCaptureGroupTracker) {
+            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false, trackLastGroup);
         }
         logAutomatonSizes(rootNode);
         return new TRegexExecNode.LazyCaptureGroupRegexSearchNode(
@@ -367,56 +367,89 @@ public final class TRegexCompilationRequest {
 
     private void debugAST() {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexContext.get(null).getEnv();
-            TruffleFile file = env.getPublicTruffleFile("./ast.tex");
-            ASTLaTexExportVisitor.exportLatex(ast, file);
-            file = env.getPublicTruffleFile("ast.json");
-            ast.getWrappedRoot().toJson().dump(file);
+            dumpAST();
         }
+    }
+
+    private void dumpAST() {
+        Env env = RegexContext.get(null).getEnv();
+        TruffleFile file = env.getPublicTruffleFile("./ast.tex");
+        ASTLaTexExportVisitor.exportLatex(ast, file);
+        file = env.getPublicTruffleFile("ast.json");
+        ast.getWrappedRoot().toJson().dump(file);
     }
 
     private void debugPureNFA() {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexContext.get(null).getEnv();
-            TruffleFile file = env.getPublicTruffleFile("pure_nfa.json");
-            Json.obj(Json.prop("dfa", Json.obj(
-                            Json.prop("pattern", source.toString()),
-                            Json.prop("pureNfa", pureNFA.toJson(ast))))).dump(file);
+            dumpPureNFA();
         }
+    }
+
+    private void dumpPureNFA() {
+        dumpPureNFA(pureNFA, "pure_nfa.json");
+        PureNFA[] subtrees = pureNFA.getSubtrees();
+        for (int i = 0; i < subtrees.length; i++) {
+            PureNFA subtree = subtrees[i];
+            dumpPureNFA(subtree, String.format("pure_nfa_%d.json", i));
+        }
+    }
+
+    private void dumpPureNFA(PureNFA subtree, String fileName) {
+        Env env = RegexContext.get(null).getEnv();
+        TruffleFile file = env.getPublicTruffleFile(fileName);
+        Json.obj(Json.prop("dfa", Json.obj(
+                        Json.prop("pattern", source.toString()),
+                        Json.prop("pureNfa", subtree.toJson(ast))))).dump(file);
     }
 
     private void debugNFA() {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexContext.get(null).getEnv();
-            TruffleFile file = env.getPublicTruffleFile("./nfa.gv");
-            NFAExport.exportDot(nfa, file, true, false);
-            file = env.getPublicTruffleFile("./nfa.tex");
-            NFAExport.exportLaTex(nfa, file, false, true);
-            file = env.getPublicTruffleFile("./nfa_reverse.gv");
-            NFAExport.exportDotReverse(nfa, file, true, false);
-            file = env.getPublicTruffleFile("nfa.json");
-            Json.obj(Json.prop("dfa", Json.obj(Json.prop("pattern", source.toString()), Json.prop("nfa", nfa.toJson(true))))).dump(file);
+            dumpNFA();
         }
+    }
+
+    private void dumpNFA() {
+        Env env = RegexContext.get(null).getEnv();
+        TruffleFile file = env.getPublicTruffleFile("./nfa.gv");
+        NFAExport.exportDot(nfa, file, true, false);
+        file = env.getPublicTruffleFile("./nfa.tex");
+        NFAExport.exportLaTex(nfa, file, false, true);
+        file = env.getPublicTruffleFile("./nfa_reverse.gv");
+        NFAExport.exportDotReverse(nfa, file, true, false);
+        file = env.getPublicTruffleFile("nfa.json");
+        dumpNFAJson(file, nfa, true);
+    }
+
+    private void dumpNFAJson(TruffleFile file, NFA dumpNFA, boolean forward) {
+        Json.obj(Json.prop("dfa", Json.obj(Json.prop("pattern", source.toString()), Json.prop("nfa", dumpNFA.toJson(forward))))).dump(file);
     }
 
     private void debugTraceFinder() {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexContext.get(null).getEnv();
-            TruffleFile file = env.getPublicTruffleFile("./trace_finder.gv");
-            NFAExport.exportDotReverse(traceFinderNFA, file, true, false);
-            file = env.getPublicTruffleFile("nfa_trace_finder.json");
-            traceFinderNFA.toJson().dump(file);
+            dumpTraceFinder();
         }
+    }
+
+    private void dumpTraceFinder() {
+        Env env = RegexContext.get(null).getEnv();
+        TruffleFile file = env.getPublicTruffleFile("./trace_finder.gv");
+        NFAExport.exportDotReverse(traceFinderNFA, file, true, false);
+        file = env.getPublicTruffleFile("nfa_trace_finder.json");
+        dumpNFAJson(file, traceFinderNFA, false);
     }
 
     private void debugDFA(DFAGenerator dfa, String debugDumpName) {
         if (source.getOptions().isDumpAutomata()) {
-            Env env = RegexContext.get(null).getEnv();
-            TruffleFile file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".gv");
-            DFAExport.exportDot(dfa, file, false);
-            file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".json");
-            Json.obj(Json.prop("dfa", dfa.toJson())).dump(file);
+            dumpDFA(dfa, debugDumpName);
         }
+    }
+
+    private static void dumpDFA(DFAGenerator dfa, String debugDumpName) {
+        Env env = RegexContext.get(null).getEnv();
+        TruffleFile file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".gv");
+        DFAExport.exportDot(dfa, file, false);
+        file = env.getPublicTruffleFile("dfa_" + dfa.getDebugDumpName(debugDumpName) + ".json");
+        Json.obj(Json.prop("dfa", dfa.toJson())).dump(file);
     }
 
     private static boolean shouldLogPhases() {
