@@ -313,13 +313,13 @@ final class BreakpointInterceptor {
         return handleGetClasses(jni, thread, bp, state);
     }
 
-    private static boolean getSigners(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
-        return handleGetClasses(jni, thread, bp, state);
+    private static boolean handleGetClasses(JNIEnvironment jni, JNIObjectHandle thread, AbstractBreakpoint<?> bp, InterceptedState state) {
+        JNIObjectHandle self = getReceiver(thread);
+        return handleGetClassesWithReceiver(jni, self, bp, state);
     }
 
-    private static boolean handleGetClasses(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+    private static boolean handleGetClassesWithReceiver(JNIEnvironment jni, JNIObjectHandle self, AbstractBreakpoint<?> bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
-        JNIObjectHandle self = getReceiver(thread);
         traceReflectBreakpoint(jni, self, nullHandle(), callerClass, bp.specification.methodName, null, state.getFullStackTraceOrNull());
         return true;
     }
@@ -366,10 +366,10 @@ final class BreakpointInterceptor {
     @CEntryPoint
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     static long nativeAllocateInstance(JNIEnvironment jni, JNIObjectHandle self, JNIObjectHandle clazz) {
-        VMError.guarantee(NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC.installed != null &&
-                        NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC.installed.replacedFunction.isNonNull(), "incompletely installed");
+        NativeBreakpoint breakpoint = NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC.installed;
+        VMError.guarantee(breakpoint != null && breakpoint.replacedFunction.isNonNull(), "incompletely installed");
 
-        AllocateInstanceFunctionPointer original = (AllocateInstanceFunctionPointer) NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC.installed.replacedFunction;
+        AllocateInstanceFunctionPointer original = (AllocateInstanceFunctionPointer) breakpoint.replacedFunction;
         long result = original.invoke(jni, self, clazz);
         if (!Support.isInitialized()) { // in case of a (very) late call
             return result;
@@ -390,6 +390,32 @@ final class BreakpointInterceptor {
                 traceReflectBreakpoint(jni, clazz, nullHandle(), callerClass, "allocateInstance", true, state.getFullStackTraceOrNull());
             }
         }
+    }
+
+    private static final CEntryPointLiteral<AllocateInstanceFunctionPointer> nativeGetSigners = CEntryPointLiteral.create(
+                    BreakpointInterceptor.class, "nativeGetSigners", JNIEnvironment.class, JNIObjectHandle.class);
+    private static final NativeBreakpointSpecification NATIVE_GET_SIGNERS_BREAKPOINT_SPEC = new NativeBreakpointSpecification(
+                    "java/lang/Class", "getSigners", "()[Ljava/lang/Object;", nativeGetSigners);
+
+    private interface GetSignersFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment jni, JNIObjectHandle self);
+    }
+
+    /** Native breakpoint for the {@code java/lang/Class#getSigners} method. */
+    @CEntryPoint
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
+    static JNIObjectHandle nativeGetSigners(JNIEnvironment jni, JNIObjectHandle self) {
+        NativeBreakpoint breakpoint = NATIVE_GET_SIGNERS_BREAKPOINT_SPEC.installed;
+        VMError.guarantee(breakpoint != null && breakpoint.replacedFunction.isNonNull(), "incompletely installed");
+        GetSignersFunctionPointer original = (GetSignersFunctionPointer) breakpoint.replacedFunction;
+        JNIObjectHandle result = original.invoke(jni, self);
+        if (!Support.isInitialized()) {
+            return result;
+        }
+        InterceptedState state = interceptedStateSupplier.get();
+        handleGetClassesWithReceiver(jni, self, breakpoint, state);
+        return result;
     }
 
     private static boolean objectFieldOffsetByName(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
@@ -1326,17 +1352,13 @@ final class BreakpointInterceptor {
         BreakpointInterceptor.experimentalClassDefineSupport = exptlClassDefineSupport;
         BreakpointInterceptor.experimentalUnsafeAllocationSupport = exptlUnsafeAllocationSupport;
         BreakpointInterceptor.trackReflectionMetadata = trackReflectionData;
+        BreakpointInterceptor.boundNativeMethods = new HashMap<>();
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
         capabilities.setCanGenerateBreakpointEvents(1);
         capabilities.setCanAccessLocalVariables(1);
-
-        if (exptlUnsafeAllocationSupport) {
-            capabilities.setCanGenerateNativeMethodBindEvents(1);
-            callbacks.setNativeMethodBind(onNativeMethodBindLiteral.getFunctionPointer());
-            BreakpointInterceptor.boundNativeMethods = new HashMap<>();
-        }
+        capabilities.setCanGenerateNativeMethodBindEvents(1);
 
         if (exptlClassLoaderSupport) {
             capabilities.setCanGetBytecodes(1);
@@ -1348,8 +1370,10 @@ final class BreakpointInterceptor {
         }
         check(jvmti.getFunctions().AddCapabilities().invoke(jvmti, capabilities));
         UnmanagedMemory.free(capabilities);
+        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_NATIVE_METHOD_BIND, nullHandle()));
 
         callbacks.setBreakpoint(onBreakpointLiteral.getFunctionPointer());
+        callbacks.setNativeMethodBind(onNativeMethodBindLiteral.getFunctionPointer());
 
         if (exptlClassDefineSupport) {
             callbacks.setClassFileLoadHook(onClassFileLoadHookLiteral.getFunctionPointer());
@@ -1359,9 +1383,6 @@ final class BreakpointInterceptor {
             callbacks.setClassPrepare(onClassPrepareLiteral.getFunctionPointer());
         }
 
-        if (exptlUnsafeAllocationSupport) {
-            Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_NATIVE_METHOD_BIND, nullHandle()));
-        }
     }
 
     public static void onVMInit(JvmtiEnv jvmti, JNIEnvironment jni) {
@@ -1412,9 +1433,7 @@ final class BreakpointInterceptor {
         }
         installedBreakpoints = breakpoints;
 
-        if (experimentalUnsafeAllocationSupport) {
-            setupNativeBreakpoints(jni, lastClass, lastClassName);
-        }
+        setupNativeBreakpoints(jni, lastClass, lastClassName);
 
         if (experimentalClassDefineSupport) {
             setupClassLoadEvent(jvmti, jni);
@@ -1431,8 +1450,12 @@ final class BreakpointInterceptor {
         String lastClassName = previousClassName;
         nativeBreakpointsInitLock.lock();
         try {
-            nativeBreakpoints = new HashMap<>(NATIVE_BREAKPOINT_SPECIFICATIONS.length);
-            for (NativeBreakpointSpecification br : NATIVE_BREAKPOINT_SPECIFICATIONS) {
+            List<NativeBreakpointSpecification> nativeBreakpointsList = new ArrayList<>(Arrays.asList(NATIVE_BREAKPOINT_SPECIFICATIONS));
+            if (experimentalUnsafeAllocationSupport) {
+                nativeBreakpointsList.addAll(Arrays.asList(EXPERIMENTAL_UNSAFE_ALLOCATION_NATIVE_BREAKPOINT_SPECIFICATIONS));
+            }
+            nativeBreakpoints = new HashMap<>(nativeBreakpointsList.size());
+            for (NativeBreakpointSpecification br : nativeBreakpointsList) {
                 JNIObjectHandle clazz;
                 if (lastClassName != null && lastClassName.equals(br.className)) {
                     clazz = lastClass;
@@ -1709,8 +1732,6 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::getPermittedSubclasses),
                     optionalBrk("java/lang/Class", "getNestMembers", "()[Ljava/lang/Class;",
                                     BreakpointInterceptor::getNestMembers),
-                    optionalBrk("java/lang/Class", "getSigners", "()[Ljava/lang/Object;",
-                                    BreakpointInterceptor::getSigners)
     };
 
     private static boolean allocateInstance(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
@@ -1724,6 +1745,10 @@ final class BreakpointInterceptor {
                     "(Ljava/lang/String;)Ljava/lang/Class;", BreakpointInterceptor::loadClass);
 
     private static final NativeBreakpointSpecification[] NATIVE_BREAKPOINT_SPECIFICATIONS = {
+                    NATIVE_GET_SIGNERS_BREAKPOINT_SPEC,
+    };
+
+    private static final NativeBreakpointSpecification[] EXPERIMENTAL_UNSAFE_ALLOCATION_NATIVE_BREAKPOINT_SPECIFICATIONS = {
                     NATIVE_ALLOCATE_INSTANCE_BREAKPOINT_SPEC
     };
 
