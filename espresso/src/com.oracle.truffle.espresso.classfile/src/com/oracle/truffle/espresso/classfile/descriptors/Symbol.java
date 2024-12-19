@@ -617,6 +617,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_INTERNAL_TYPE = StaticSymbols.putName("0HIDDEN_INTERNAL_TYPE");
         public static final Symbol<Name> rawType = StaticSymbols.putName("rawType");
 
+        public static final Symbol<Name> espresso_polyglot = StaticSymbols.putName("espresso.polyglot");
+
         // Class redefinition plugin helpers
         public static final Symbol<Name> flushFromCaches = StaticSymbols.putName("flushFromCaches");
         public static final Symbol<Name> generateProxyClass = StaticSymbols.putName("generateProxyClass");

@@ -20,15 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.truffle.espresso.classfile.tables;
 
-package com.oracle.truffle.espresso.impl;
-
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.Consumer;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
@@ -45,9 +43,16 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
     }
 
     @SuppressWarnings("try")
-    public Collection<T> values() {
+    public void collectValues(Consumer<T> consumer) {
         try (BlockLock block = read()) {
-            return Collections.unmodifiableCollection(entries.values());
+            entries.values().forEach(consumer);
+        }
+    }
+
+    @SuppressWarnings({"try", "unchecked", "rawtypes"})
+    public Symbol<Name>[] getKeys() {
+        try (BlockLock block = read()) {
+            return entries.keySet().toArray(new Symbol[entries.size()]);
         }
     }
 
@@ -88,11 +93,11 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
 
         protected final Symbol<Name> name;
 
-        public Symbol<Name> getName() {
+        public final Symbol<Name> getName() {
             return name;
         }
 
-        public String getNameAsString() {
+        public final String getNameAsString() {
             if (name == null) {
                 return "unnamed";
             }
@@ -100,7 +105,7 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
         }
 
         @Override
-        public int hashCode() {
+        public final int hashCode() {
             if (name == null) {
                 return 0;
             }
@@ -108,7 +113,7 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
         }
 
         @Override
-        public boolean equals(Object obj) {
+        public final boolean equals(Object obj) {
             if (obj instanceof NamedEntry) {
                 return Objects.equals(((NamedEntry) obj).getName(), this.getName());
             }

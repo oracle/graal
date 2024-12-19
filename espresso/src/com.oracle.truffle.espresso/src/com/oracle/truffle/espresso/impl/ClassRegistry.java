@@ -123,7 +123,6 @@ public abstract class ClassRegistry {
         public final boolean isHidden;
         public final boolean isStrongHidden;
         public final boolean forceAllowVMAnnotations;
-        public long klassID = -1;
 
         public boolean addedToRegistry() {
             return !isAnonymousClass() && !isHidden();
@@ -276,7 +275,7 @@ public abstract class ClassRegistry {
     }
 
     public void initUnnamedModule(StaticObject unnamedModule) {
-        this.unnamed = ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
+        this.unnamed = modules.createUnnamedModuleEntry(unnamedModule);
     }
 
     /**
@@ -619,7 +618,7 @@ public abstract class ClassRegistry {
         return dynamicModuleWrapper;
     }
 
-    public final class DynamicModuleWrapper {
+    public static final class DynamicModuleWrapper {
         private ModuleEntry dynamicProxyModule;
 
         public ModuleEntry getDynamicProxyModule() {

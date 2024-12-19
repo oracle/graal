@@ -71,6 +71,7 @@ public final class GuestClassRegistry extends ClassRegistry {
         this.addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
         if (env.getJavaVersion().modulesEnabled()) {
             StaticObject unnamedModule = env.getMeta().java_lang_ClassLoader_unnamedModule.getObject(classLoader);
+            assert StaticObject.notNull(unnamedModule);
             initUnnamedModule(unnamedModule);
             env.getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(unnamedModule, getUnnamedModule());
         }
