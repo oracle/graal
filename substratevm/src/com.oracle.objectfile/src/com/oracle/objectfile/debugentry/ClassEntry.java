@@ -27,7 +27,9 @@
 package com.oracle.objectfile.debugentry;
 
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.oracle.objectfile.debugentry.range.Range;
@@ -63,11 +65,14 @@ public class ClassEntry extends StructureTypeEntry {
      * inline method ranges.
      */
     private final ConcurrentSkipListSet<FileEntry> files;
+    private final Map<FileEntry, Integer> indexedFiles = new HashMap<>();
+
     /**
      * A list of all directories referenced from info associated with this class, including info
      * detailing inline method ranges.
      */
     private final ConcurrentSkipListSet<DirEntry> dirs;
+    private final Map<DirEntry, Integer> indexedDirs = new HashMap<>();
 
     public ClassEntry(String typeName, int size, long classOffset, long typeSignature,
                     long compressedTypeSignature, long layoutTypeSignature,
@@ -85,8 +90,13 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     private void addFile(FileEntry addFileEntry) {
-        files.add(addFileEntry);
-        dirs.add(addFileEntry.dirEntry());
+        if (addFileEntry != null && !addFileEntry.fileName().isEmpty()) {
+            files.add(addFileEntry);
+            DirEntry addDirEntry = addFileEntry.dirEntry();
+            if (addDirEntry != null && !addDirEntry.getPathString().isEmpty()) {
+                dirs.add(addDirEntry);
+            }
+        }
     }
 
     @Override
@@ -150,7 +160,17 @@ public class ClassEntry extends StructureTypeEntry {
         if (file == null || files.isEmpty() || !files.contains(file)) {
             return 0;
         }
-        return (int) (files.stream().takeWhile(f -> f != file).count() + 1);
+
+        // Create a file index for all files in this class entry
+        if (indexedFiles.isEmpty()) {
+            int index = 1;
+            for (FileEntry f : getFiles()) {
+                indexedFiles.put(f, index);
+                index++;
+            }
+        }
+
+        return indexedFiles.get(file);
     }
 
     public DirEntry getDirEntry(FileEntry file) {
@@ -169,7 +189,17 @@ public class ClassEntry extends StructureTypeEntry {
         if (dir == null || dir.getPathString().isEmpty() || dirs.isEmpty() || !dirs.contains(dir)) {
             return 0;
         }
-        return (int) (dirs.stream().takeWhile(d -> d != dir).count() + 1);
+
+        // Create a dir index for all dirs in this class entry
+        if (indexedDirs.isEmpty()) {
+            int index = 1;
+            for (DirEntry d : getDirs()) {
+                indexedDirs.put(d, index);
+                index++;
+            }
+        }
+
+        return indexedDirs.get(dir);
     }
 
     public String getLoaderId() {

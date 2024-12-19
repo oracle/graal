@@ -732,7 +732,7 @@ public class BFDNameProvider implements UniqueShortNameProvider {
             } else {
                 String loaderName = nameProvider.classLoaderNameAndId(type);
                 String className = type.toJavaName();
-                if (nameProvider.needsPointerPrefix(type)) {
+                if (needsPointerPrefix(type)) {
                     mangleClassPointer(loaderName, className);
                 } else {
                     mangleClassName(loaderName, className);
@@ -891,7 +891,7 @@ public class BFDNameProvider implements UniqueShortNameProvider {
      * @param type The type to be checked.
      * @return true if the type needs to be encoded using pointer prefix P otherwise false.
      */
-    private boolean needsPointerPrefix(ResolvedJavaType type) {
+    private static boolean needsPointerPrefix(ResolvedJavaType type) {
         if (type instanceof SharedType sharedType) {
             /* Word types have the kind Object, but a primitive storageKind. */
             return sharedType.getJavaKind() == JavaKind.Object && sharedType.getStorageKind() == sharedType.getJavaKind();

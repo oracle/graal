@@ -33,10 +33,4 @@ struct jit_descriptor
   struct jit_code_entry *first_entry;
 };
 
-/* GDB puts a breakpoint in this function.  */
-void __attribute__((noinline)) __jit_debug_register_code() { };
-
-struct jit_code_entry *register_jit_code(const char *addr, uint64_t size);
-void unregister_jit_code(struct jit_code_entry *const entry);
-
 #endif

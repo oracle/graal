@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 
 import com.oracle.objectfile.BasicNobitsSectionImpl;
@@ -49,6 +48,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -140,12 +140,12 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         void setState(int value);
     }
 
-    static final class Accessor implements InstalledCodeObserverHandleAccessor {
+    static final class GDBJITAccessor implements InstalledCodeObserverHandleAccessor {
 
         static Handle createHandle(NonmovableArray<Byte> debugInfoData) {
             Handle handle = UnmanagedMemory.malloc(SizeOf.get(Handle.class));
             GDBJITInterface.JITCodeEntry entry = UnmanagedMemory.calloc(SizeOf.get(GDBJITInterface.JITCodeEntry.class));
-            handle.setAccessor(ImageSingletons.lookup(Accessor.class));
+            handle.setAccessor(ImageSingletons.lookup(GDBJITAccessor.class));
             handle.setRawHandle(entry);
             handle.setDebugInfoData(debugInfoData);
             handle.setState(Handle.INITIALIZED);
@@ -167,17 +167,19 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void release(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
             VMOperation.guaranteeInProgress("SubstrateDebugInfoInstaller.Accessor.release must run in a VMOperation");
-            VMError.guarantee(handle.getState() == Handle.ACTIVATED);
-
             GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
-            GDBJITInterface.unregisterJITCode(entry);
-
-            handle.setState(Handle.RELEASED);
+            // Handle may still be just initialized here, so it never got registered in GDB.
+            if (handle.getState() == Handle.ACTIVATED) {
+                GDBJITInterface.unregisterJITCode(entry);
+                handle.setState(Handle.RELEASED);
+            }
+            NativeMemory.free(entry);
             NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
-            UnmanagedMemory.free(handle);
+            NativeMemory.free(handle);
         }
 
         @Override
@@ -195,22 +197,14 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void releaseOnTearDown(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            if (handle.getState() == Handle.ACTIVATED) {
-                GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
-                GDBJITInterface.unregisterJITCode(entry);
-                handle.setState(Handle.RELEASED);
-            }
-            NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
-            // UnmanagedMemory.free(handle); -> change because of Uninterruptible annotation
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(handle);
+            release(installedCodeObserverHandle);
         }
     }
 
     @Override
     public InstalledCodeObserverHandle install() {
         NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
-        Handle handle = Accessor.createHandle(debugInfoData);
+        Handle handle = GDBJITAccessor.createHandle(debugInfoData);
         System.out.println(toString(handle));
         return handle;
     }
