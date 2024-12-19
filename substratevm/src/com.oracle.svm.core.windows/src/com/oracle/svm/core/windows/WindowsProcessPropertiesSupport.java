@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
@@ -47,6 +46,8 @@ import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
 public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSupport {

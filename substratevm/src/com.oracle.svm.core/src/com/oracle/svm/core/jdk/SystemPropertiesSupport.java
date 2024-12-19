@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,15 @@ package com.oracle.svm.core.jdk;
 
 import static java.util.Locale.Category.DISPLAY;
 import static java.util.Locale.Category.FORMAT;
+import static jdk.graal.compiler.nodes.extended.MembarNode.FenceKind.STORE_STORE;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.graalvm.nativeimage.ImageInfo;
@@ -43,6 +46,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 import com.oracle.svm.core.LibCHelper;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.headers.LibCSupport;
@@ -50,15 +54,16 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.extended.MembarNode;
 
 /**
  * This class maintains the system properties at run time.
  *
- * Some of the standard system properties can just be taken from the image generator:
- * {@link #HOSTED_PROPERTIES}. Other important system properties need to be computed at run time.
- * However, we want to do the computation lazily to reduce the startup cost. For example, getting
- * the current working directory is quite expensive. We initialize such a property either when it is
- * explicitly accessed, or when all properties are accessed.
+ * Some of the standard system properties can just be taken from the image generator, see
+ * {@link #HOSTED_PROPERTIES}. Other system properties need to be computed at run time. However, we
+ * want to do the computation lazily to reduce the startup cost. For example, getting the current
+ * working directory is quite expensive. We initialize such a property either when it is explicitly
+ * accessed, or when all properties are accessed.
  */
 public abstract class SystemPropertiesSupport implements RuntimeSystemPropertiesSupport {
 
@@ -68,12 +73,18 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "java.version.date",
                     ImageInfo.PROPERTY_IMAGE_KIND_KEY,
                     /*
-                     * We do not support cross-compilation for now. Separator might also be cached
+                     * We do not support cross-compilation for now. Separators might also be cached
                      * in other classes, so changing them would be tricky.
                      */
-                    "line.separator", "path.separator", "file.separator",
+                    "line.separator",
+                    "path.separator",
+                    "file.separator",
                     /* For our convenience for now. */
-                    "file.encoding", "sun.jnu.encoding", "native.encoding", "stdout.encoding", "stderr.encoding",
+                    "file.encoding",
+                    "sun.jnu.encoding",
+                    "native.encoding",
+                    "stdout.encoding",
+                    "stderr.encoding",
                     "java.class.version",
                     "java.runtime.version",
                     "java.specification.name",
@@ -91,22 +102,19 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     private static final int VARIANT_POSITION = COUNTRY_POSITION + 1;
     private static final int EXTENSION_POSITION = VARIANT_POSITION + 1;
 
-    /** System properties that are lazily computed at run time on first access. */
-    private final Map<String, Supplier<String>> lazyRuntimeValues;
-
-    private Properties properties;
-
+    /** System properties that are computed at run time on first access. */
+    private final Map<String, LazySystemProperty> lazySystemProperties = new HashMap<>();
     /**
-     * Initial value of the system properties after parsing command line options at run time.
-     * Changes by the application using {@link System#setProperties} do not affect this map.
+     * Initial system property values after parsing command line options at run time. Changes by the
+     * application (e.g., via {@link System#setProperties}) do not affect this map. Note that this
+     * map must not contain any null values (see usages on the libgraal-side).
      */
-    final Map<String, String> savedProperties;
+    private final Map<String, String> initialProperties = new ConcurrentHashMap<>();
+    /** Read-only wrapper for the initial system property values. */
+    private final Map<String, String> readOnlyInitialProperties = Collections.unmodifiableMap(initialProperties);
 
-    private final Map<String, String> readOnlySavedProperties;
-    private final String hostOS = System.getProperty("os.name");
-    // needed as fallback for platforms that don't implement osNameValue
-
-    private volatile boolean fullyInitialized;
+    private Properties currentProperties = new Properties();
+    private boolean allPropertiesInitialized;
 
     @Fold
     public static SystemPropertiesSupport singleton() {
@@ -116,15 +124,10 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     @Platforms(Platform.HOSTED_ONLY.class)
     @SuppressWarnings("this-escape")
     protected SystemPropertiesSupport() {
-        properties = new Properties();
-        savedProperties = new HashMap<>();
-        readOnlySavedProperties = Collections.unmodifiableMap(savedProperties);
-
         for (String key : HOSTED_PROPERTIES) {
             String value = System.getProperty(key);
             if (value != null) {
-                properties.put(key, value);
-                savedProperties.put(key, value);
+                initializeProperty(key, value);
             }
         }
 
@@ -147,188 +150,195 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
-        lazyRuntimeValues = new HashMap<>();
-        lazyRuntimeValues.put("user.name", this::userName);
-        lazyRuntimeValues.put("user.home", this::userHome);
-        lazyRuntimeValues.put("user.dir", this::userDir);
-        lazyRuntimeValues.put("java.io.tmpdir", this::javaIoTmpDir);
-        lazyRuntimeValues.put("java.library.path", this::javaLibraryPath);
-        lazyRuntimeValues.put("os.version", this::osVersionValue);
-        lazyRuntimeValues.put(UserSystemProperty.USER_LANGUAGE, () -> postProcessLocale(UserSystemProperty.USER_LANGUAGE, parseLocale(DISPLAY).language(), null));
-        lazyRuntimeValues.put(UserSystemProperty.USER_LANGUAGE_DISPLAY, () -> postProcessLocale(UserSystemProperty.USER_LANGUAGE, parseLocale(DISPLAY).language(), DISPLAY));
-        lazyRuntimeValues.put(UserSystemProperty.USER_LANGUAGE_FORMAT, () -> postProcessLocale(UserSystemProperty.USER_LANGUAGE, parseLocale(FORMAT).language(), FORMAT));
-        lazyRuntimeValues.put(UserSystemProperty.USER_SCRIPT, () -> postProcessLocale(UserSystemProperty.USER_SCRIPT, parseLocale(DISPLAY).script(), null));
-        lazyRuntimeValues.put(UserSystemProperty.USER_SCRIPT_DISPLAY, () -> postProcessLocale(UserSystemProperty.USER_SCRIPT, parseLocale(DISPLAY).script(), DISPLAY));
-        lazyRuntimeValues.put(UserSystemProperty.USER_SCRIPT_FORMAT, () -> postProcessLocale(UserSystemProperty.USER_SCRIPT, parseLocale(FORMAT).script(), FORMAT));
-        lazyRuntimeValues.put(UserSystemProperty.USER_COUNTRY, () -> postProcessLocale(UserSystemProperty.USER_COUNTRY, parseLocale(DISPLAY).country(), null));
-        lazyRuntimeValues.put(UserSystemProperty.USER_COUNTRY_DISPLAY, () -> postProcessLocale(UserSystemProperty.USER_COUNTRY, parseLocale(DISPLAY).country(), DISPLAY));
-        lazyRuntimeValues.put(UserSystemProperty.USER_COUNTRY_FORMAT, () -> postProcessLocale(UserSystemProperty.USER_COUNTRY, parseLocale(FORMAT).country(), FORMAT));
-        lazyRuntimeValues.put(UserSystemProperty.USER_VARIANT, () -> postProcessLocale(UserSystemProperty.USER_VARIANT, parseLocale(DISPLAY).variant(), null));
-        lazyRuntimeValues.put(UserSystemProperty.USER_VARIANT_DISPLAY, () -> postProcessLocale(UserSystemProperty.USER_VARIANT, parseLocale(DISPLAY).variant(), DISPLAY));
-        lazyRuntimeValues.put(UserSystemProperty.USER_VARIANT_FORMAT, () -> postProcessLocale(UserSystemProperty.USER_VARIANT, parseLocale(FORMAT).variant(), FORMAT));
-        lazyRuntimeValues.put(UserSystemProperty.USER_EXTENSIONS, () -> postProcessLocale(UserSystemProperty.USER_EXTENSIONS, parseLocale(DISPLAY).extensions(), null));
-        lazyRuntimeValues.put(UserSystemProperty.USER_EXTENSIONS_DISPLAY, () -> postProcessLocale(UserSystemProperty.USER_EXTENSIONS, parseLocale(DISPLAY).extensions(), DISPLAY));
-        lazyRuntimeValues.put(UserSystemProperty.USER_EXTENSIONS_FORMAT, () -> postProcessLocale(UserSystemProperty.USER_EXTENSIONS, parseLocale(FORMAT).extensions(), FORMAT));
+        ArrayList<LazySystemProperty> lazyProperties = new ArrayList<>();
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.NAME, this::userNameValue));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.HOME, this::userHomeValue));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.DIR, this::userDirValue));
+        lazyProperties.add(new LazySystemProperty("java.io.tmpdir", this::javaIoTmpdirValue));
+        lazyProperties.add(new LazySystemProperty("java.library.path", this::javaLibraryPathValue));
+        lazyProperties.add(new LazySystemProperty("os.version", this::osVersionValue));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE, () -> postProcessLocale(UserSystemProperty.LANGUAGE, parseLocale(DISPLAY).language(), null)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE_DISPLAY, () -> postProcessLocale(UserSystemProperty.LANGUAGE, parseLocale(DISPLAY).language(), DISPLAY)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE_FORMAT, () -> postProcessLocale(UserSystemProperty.LANGUAGE, parseLocale(FORMAT).language(), FORMAT)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT, () -> postProcessLocale(UserSystemProperty.SCRIPT, parseLocale(DISPLAY).script(), null)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT_DISPLAY, () -> postProcessLocale(UserSystemProperty.SCRIPT, parseLocale(DISPLAY).script(), DISPLAY)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT_FORMAT, () -> postProcessLocale(UserSystemProperty.SCRIPT, parseLocale(FORMAT).script(), FORMAT)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY, () -> postProcessLocale(UserSystemProperty.COUNTRY, parseLocale(DISPLAY).country(), null)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY_DISPLAY, () -> postProcessLocale(UserSystemProperty.COUNTRY, parseLocale(DISPLAY).country(), DISPLAY)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY_FORMAT, () -> postProcessLocale(UserSystemProperty.COUNTRY, parseLocale(FORMAT).country(), FORMAT)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT, () -> postProcessLocale(UserSystemProperty.VARIANT, parseLocale(FORMAT).country(), FORMAT)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_DISPLAY, () -> postProcessLocale(UserSystemProperty.VARIANT, parseLocale(DISPLAY).variant(), DISPLAY)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_FORMAT, () -> postProcessLocale(UserSystemProperty.VARIANT, parseLocale(FORMAT).variant(), FORMAT)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.EXTENSIONS, () -> postProcessLocale(UserSystemProperty.EXTENSIONS, parseLocale(DISPLAY).extensions(), null)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.EXTENSIONS_DISPLAY, () -> postProcessLocale(UserSystemProperty.EXTENSIONS, parseLocale(DISPLAY).extensions(), DISPLAY)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.EXTENSIONS_FORMAT, () -> postProcessLocale(UserSystemProperty.EXTENSIONS, parseLocale(FORMAT).extensions(), FORMAT)));
 
         String targetName = System.getProperty("svm.targetName");
         if (targetName != null) {
             initializeProperty("os.name", targetName);
         } else {
-            lazyRuntimeValues.put("os.name", this::osNameValue);
+            lazyProperties.add(new LazySystemProperty("os.name", this::osNameValue));
         }
 
         String targetArch = System.getProperty("svm.targetArch");
         if (targetArch != null) {
             initializeProperty("os.arch", targetArch);
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
+            /* On Darwin, we need to use the hosted value to be consistent with HotSpot. */
+            initializeProperty("os.arch", System.getProperty("os.arch"));
         } else {
             initializeProperty("os.arch", ImageSingletons.lookup(Platform.class).getArchitecture());
         }
-    }
 
-    private void ensureFullyInitialized() {
-        if (!fullyInitialized) {
-            for (String key : lazyRuntimeValues.keySet()) {
-                initializeLazyValue(key);
-            }
-            fullyInitialized = true;
-        }
-    }
+        /* Register all lazy properties. */
+        for (LazySystemProperty property : lazyProperties) {
+            assert !initialProperties.containsKey(property.getKey());
+            assert !currentProperties.containsKey(property.getKey());
 
-    public Map<String, String> getSavedProperties() {
-        ensureFullyInitialized();
-        return readOnlySavedProperties;
-    }
-
-    public Properties getProperties() {
-        /*
-         * We do not know what the user is going to do with the returned Properties object, so we
-         * need to do a full initialization.
-         */
-        ensureFullyInitialized();
-        return properties;
-    }
-
-    protected String getProperty(String key) {
-        initializeLazyValue(key);
-        return properties.getProperty(key);
-    }
-
-    protected String getSavedProperty(String key, String defaultValue) {
-        initializeLazyValue(key);
-        String value = savedProperties.get(key);
-        return value != null ? value : defaultValue;
-    }
-
-    public void setProperties(Properties props) {
-        // Flush lazy values into savedProperties
-        ensureFullyInitialized();
-        if (props == null) {
-            Properties newProps = new Properties();
-            for (Map.Entry<String, String> e : savedProperties.entrySet()) {
-                newProps.setProperty(e.getKey(), e.getValue());
-            }
-            properties = newProps;
-        } else {
-            properties = props;
+            lazySystemProperties.put(property.getKey(), property);
         }
     }
 
     /**
-     * Initializes a property at startup from external input (e.g., command line arguments). This
-     * must only be called while the runtime is single threaded.
+     * Initializes a system property at build-time or during VM startup from external input (e.g.,
+     * command line arguments).
      */
     @Override
     public void initializeProperty(String key, String value) {
-        initializeProperty(key, value, true);
-    }
+        VMError.guarantee(key != null, "The key for a system property must not be null.");
+        VMError.guarantee(value != null, "System property must have a non-null value.");
 
-    public void initializeProperty(String key, String value, boolean strict) {
-        String prevValue = savedProperties.put(key, value);
-        if (strict && prevValue != null && !prevValue.equals(value)) {
-            VMError.shouldNotReachHere("System property " + key + " is initialized to " + value + " but was previously initialized to " + prevValue + ".");
-        }
-        properties.setProperty(key, value);
-    }
+        initialProperties.put(key, value);
+        currentProperties.setProperty(key, value);
 
-    public String setProperty(String key, String value) {
         /*
-         * The return value of setProperty is the previous value of the key, so we need to ensure
-         * that a lazy value for that property was computed.
+         * If there is a lazy system property, then mark it as initialized to ensure that the lazy
+         * initialization code is not executed at run-time.
          */
-        initializeLazyValue(key);
-        return (String) properties.setProperty(key, value);
-    }
-
-    public String clearProperty(String key) {
-        initializeLazyValue(key);
-        return (String) properties.remove(key);
-    }
-
-    private void initializeLazyValue(String key) {
-        if (!fullyInitialized && lazyRuntimeValues.containsKey(key) && properties.get(key) == null) {
-            /*
-             * Hashtable.putIfAbsent has the correct synchronization to guard against concurrent
-             * manual updates of the same property key.
-             */
-            String value = lazyRuntimeValues.get(key).get();
-            setRawProperty(key, value);
+        LazySystemProperty property = lazySystemProperties.get(key);
+        if (property != null) {
+            property.markAsInitialized();
         }
     }
 
-    private void setRawProperty(String key, String value) {
-        if (value != null && properties.putIfAbsent(key, value) == null) {
-            synchronized (savedProperties) {
-                savedProperties.put(key, value);
+    public Map<String, String> getInitialProperties() {
+        ensureAllPropertiesInitialized();
+        return readOnlyInitialProperties;
+    }
+
+    public String getInitialProperty(String key) {
+        return getInitialProperty(key, true);
+    }
+
+    public String getInitialProperty(String key, boolean initializeLazyProperty) {
+        if (initializeLazyProperty) {
+            ensurePropertyInitialized(key);
+        }
+        return initialProperties.get(key);
+    }
+
+    public String getInitialProperty(String key, String defaultValue) {
+        String value = getInitialProperty(key);
+        return value != null ? value : defaultValue;
+    }
+
+    public Properties getCurrentProperties() {
+        ensureAllPropertiesInitialized();
+        return currentProperties;
+    }
+
+    public void setCurrentProperties(Properties props) {
+        ensureAllPropertiesInitialized();
+        if (props == null) {
+            /* Reset to initial values. */
+            Properties newProps = new Properties();
+            for (Map.Entry<String, String> e : initialProperties.entrySet()) {
+                String value = e.getValue();
+                newProps.setProperty(e.getKey(), value);
             }
+            currentProperties = newProps;
+        } else {
+            currentProperties = props;
         }
     }
 
-    private String cachedUserName;
-
-    String userName() {
-        if (cachedUserName == null) {
-            cachedUserName = userNameValue();
-        }
-        return cachedUserName;
+    protected String getCurrentProperty(String key) {
+        ensurePropertyInitialized(key);
+        return currentProperties.getProperty(key);
     }
 
-    private String cachedUserHome;
-
-    String userHome() {
-        if (cachedUserHome == null) {
-            cachedUserHome = userHomeValue();
-        }
-        return cachedUserHome;
+    protected String getCurrentProperty(String key, String defaultValue) {
+        String value = getCurrentProperty(key);
+        return value != null ? value : defaultValue;
     }
 
-    private String cachedUserDir;
-
-    String userDir() {
-        if (cachedUserDir == null) {
-            cachedUserDir = userDirValue();
-        }
-        return cachedUserDir;
+    public String setCurrentProperty(String key, String value) {
+        ensurePropertyInitialized(key);
+        return (String) currentProperties.setProperty(key, value);
     }
 
-    private String cachedJavaIoTmpdir;
-
-    String javaIoTmpDir() {
-        if (cachedJavaIoTmpdir == null) {
-            cachedJavaIoTmpdir = javaIoTmpdirValue();
-        }
-        return cachedJavaIoTmpdir;
+    public String clearCurrentProperty(String key) {
+        ensurePropertyInitialized(key);
+        return (String) currentProperties.remove(key);
     }
 
-    private String cachedJavaLibraryPath;
-
-    String javaLibraryPath() {
-        if (cachedJavaLibraryPath == null) {
-            cachedJavaLibraryPath = javaLibraryPathValue();
+    private void ensureAllPropertiesInitialized() {
+        if (!allPropertiesInitialized) {
+            initializeAllProperties();
         }
-        return cachedJavaLibraryPath;
     }
 
-    // Platform-specific subclasses compute the actual system property values lazily at run time.
+    private synchronized void initializeAllProperties() {
+        if (allPropertiesInitialized) {
+            return;
+        }
+
+        for (var entry : lazySystemProperties.entrySet()) {
+            LazySystemProperty property = entry.getValue();
+            initializeProperty(property);
+        }
+
+        /*
+         * No memory barrier is needed because the loop above already emits one STORE_STORE barrier
+         * per initialized system property.
+         */
+        allPropertiesInitialized = true;
+    }
+
+    private void ensurePropertyInitialized(String key) {
+        if (allPropertiesInitialized) {
+            return;
+        }
+
+        LazySystemProperty property = lazySystemProperties.get(key);
+        if (property != null) {
+            ensureInitialized(property);
+        }
+    }
+
+    private void ensureInitialized(LazySystemProperty property) {
+        if (!property.isInitialized()) {
+            initializeProperty(property);
+        }
+    }
+
+    private synchronized void initializeProperty(LazySystemProperty property) {
+        if (property.isInitialized()) {
+            return;
+        }
+
+        String key = property.getKey();
+        String value = property.computeValue();
+        if (value != null) {
+            currentProperties.put(key, value);
+            initialProperties.put(key, value);
+        }
+
+        /* Publish the value. */
+        property.markAsInitialized();
+    }
+
+    // Platform-specific subclasses compute the actual values lazily at run time.
 
     protected abstract String userNameValue();
 
@@ -336,28 +346,24 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
     protected abstract String userDirValue();
 
+    protected abstract String osNameValue();
+
+    protected abstract String osVersionValue();
+
     protected String javaIoTmpdirValue() {
         return tmpdirValue();
     }
 
+    /* Should be removed, see GR-61420. */
     protected String tmpdirValue() {
-        throw VMError.intentionallyUnimplemented();
+        throw VMError.shouldNotReachHere("Subclasses must either implement javaIoTmpdirValue() or tmpdirValue().");
     }
 
+    /* Should be removed, see GR-61420. */
     protected String javaLibraryPathValue() {
-        /* Default implementation. */
+        /* Fallback for platforms that don't implement this method. */
         return "";
     }
-
-    protected String osNameValue() {
-        /*
-         * Fallback for systems that don't implement osNameValue in their SystemPropertiesSupport
-         * implementation.
-         */
-        return hostOS;
-    }
-
-    protected abstract String osVersionValue();
 
     public record LocaleEncoding(String language, String script, String country, String variant, String extensions) {
         private LocaleEncoding(CCharPointerPointer properties) {
@@ -407,7 +413,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
             /* user.xxx property */
             String baseValue = null;
             if (value != null) {
-                setRawProperty(base, value);
+                initializeProperty(base, value);
                 baseValue = value;
             }
             return baseValue;
@@ -415,9 +421,9 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         switch (category) {
             case DISPLAY, FORMAT -> {
                 /* user.xxx.(display|format) property */
-                String baseValue = getProperty(base);
+                String baseValue = getCurrentProperty(base);
                 if (baseValue == null && value != null) {
-                    setRawProperty(base + '.' + category.name().toLowerCase(Locale.ROOT), value);
+                    initializeProperty(base + '.' + category.name().toLowerCase(Locale.ROOT), value);
                     return value;
                 }
                 return null;
@@ -426,22 +432,36 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         }
     }
 
-    public static class UserSystemProperty {
-        public static final String USER_LANGUAGE = "user.language";
-        public static final String USER_LANGUAGE_DISPLAY = USER_LANGUAGE + ".display";
-        public static final String USER_LANGUAGE_FORMAT = USER_LANGUAGE + ".format";
-        public static final String USER_SCRIPT = "user.script";
-        public static final String USER_SCRIPT_DISPLAY = USER_SCRIPT + ".display";
-        public static final String USER_SCRIPT_FORMAT = USER_SCRIPT + ".format";
-        public static final String USER_COUNTRY = "user.country";
-        public static final String USER_COUNTRY_DISPLAY = USER_COUNTRY + ".display";
-        public static final String USER_COUNTRY_FORMAT = USER_COUNTRY + ".format";
-        public static final String USER_VARIANT = "user.variant";
-        public static final String USER_VARIANT_DISPLAY = USER_VARIANT + ".display";
-        public static final String USER_VARIANT_FORMAT = USER_VARIANT + ".format";
-        public static final String USER_EXTENSIONS = "user.extensions";
-        public static final String USER_EXTENSIONS_DISPLAY = USER_EXTENSIONS + ".display";
-        public static final String USER_EXTENSIONS_FORMAT = USER_EXTENSIONS + ".format";
-        public static final String USER_REGION = "user.region";
+    private static class LazySystemProperty {
+        private final String key;
+        private final Supplier<String> supplier;
+
+        private boolean initialized;
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        LazySystemProperty(String key, Supplier<String> supplier) {
+            this.key = key;
+            this.supplier = supplier;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public boolean isInitialized() {
+            return initialized;
+        }
+
+        public String computeValue() {
+            return supplier.get();
+        }
+
+        public void markAsInitialized() {
+            if (!SubstrateUtil.HOSTED) {
+                /* Ensure that other threads see consistent values once 'initialized' is true. */
+                MembarNode.memoryBarrier(STORE_STORE);
+            }
+            initialized = true;
+        }
     }
 }
