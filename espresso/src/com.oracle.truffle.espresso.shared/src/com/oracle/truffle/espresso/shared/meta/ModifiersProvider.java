@@ -20,15 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.meta;
+package com.oracle.truffle.espresso.shared.meta;
 
 import static java.lang.reflect.Modifier.PRIVATE;
 import static java.lang.reflect.Modifier.PROTECTED;
 import static java.lang.reflect.Modifier.PUBLIC;
 
 import java.lang.reflect.Modifier;
-
-import com.oracle.truffle.api.dsl.Idempotent;
 
 /**
  * A Java element (i.e., a class, interface, field or method) that is described by a set of Java
@@ -140,7 +138,6 @@ public interface ModifiersProvider {
     /**
      * @see Modifier#isAbstract(int)
      */
-    @Idempotent
     default boolean isAbstract() {
         return Modifier.isAbstract(getModifiers());
     }

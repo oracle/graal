@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.resolver;
+package com.oracle.truffle.espresso.shared.resolver;
 
 /**
  * Indicates what dispatch behavior should be performed for a call-site.

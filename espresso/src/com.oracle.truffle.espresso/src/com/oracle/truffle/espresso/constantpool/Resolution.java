@@ -63,9 +63,9 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeGenericNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MHLinkToNode;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
-import com.oracle.truffle.espresso.resolver.LinkResolver;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
@@ -202,18 +202,18 @@ public final class Resolution {
         Symbol<Name> name = thiz.getName(pool);
         Symbol<Type> type = thiz.getType(pool);
 
-        Meta meta = pool.getContext().getMeta();
+        EspressoContext context = pool.getContext();
         Field field;
         ClassRedefinition classRedefinition = null;
         try {
             try {
-                field = LinkResolver.resolveFieldSymbol(meta, accessingKlass, name, type, holderKlass, true, true);
+                field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
             } catch (EspressoException e) {
-                classRedefinition = pool.getContext().getClassRedefinition();
+                classRedefinition = context.getClassRedefinition();
                 if (classRedefinition != null) {
                     // could be due to ongoing redefinition
                     classRedefinition.check();
-                    field = LinkResolver.resolveFieldSymbol(meta, accessingKlass, name, type, holderKlass, true, true);
+                    field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
                 } else {
                     throw e;
                 }
@@ -230,7 +230,8 @@ public final class Resolution {
     }
 
     @TruffleBoundary
-    public static void memberDoAccessCheck(ObjectKlass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, Meta meta) {
+    public static void memberDoAccessCheck(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, Meta meta) {
+        assert accessingKlass != null && resolvedKlass != null && member != null : "pre-conditions failed.";
         if (!memberCheckAccess(accessingKlass, resolvedKlass, member)) {
             String message = "Class " + accessingKlass.getExternalName() + " cannot access method " + resolvedKlass.getExternalName() + "#" + member.getName();
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(message));
@@ -253,7 +254,7 @@ public final class Resolution {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean memberCheckAccess(ObjectKlass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
+    static boolean memberCheckAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
         if (member.isPublic()) {
             return true;
         }
@@ -354,10 +355,11 @@ public final class Resolution {
         METHODREF_RESOLVE_COUNT.inc();
 
         Klass holderInterface = getResolvedHolderKlass(thiz, pool, accessingKlass);
+        EspressoContext context = pool.getContext();
         Symbol<Name> name = thiz.getName(pool);
         Symbol<Signature> signature = thiz.getSignature(pool);
 
-        Method method = LinkResolver.resolveMethodSymbol(pool.getContext().getMeta(), accessingKlass, name, signature, holderInterface, true, true, true);
+        Method method = EspressoLinkResolver.resolveMethodSymbol(context, accessingKlass, name, signature, holderInterface, true, true, true);
 
         return new ResolvedInterfaceMethodRefConstant(method);
     }
@@ -472,17 +474,17 @@ public final class Resolution {
     public static Resolvable.ResolvedConstant resolveClassMethodRefConstant(ClassMethodRefConstant.Indexes thiz, RuntimeConstantPool pool, @SuppressWarnings("unused") int thisIndex,
                     ObjectKlass accessingKlass) {
         METHODREF_RESOLVE_COUNT.inc();
+
         EspressoContext context = pool.getContext();
-        Meta meta = context.getMeta();
 
         Klass holderKlass = getResolvedHolderKlass(thiz, pool, accessingKlass);
         Symbol<Name> name = thiz.getName(pool);
         Symbol<Signature> signature = thiz.getSignature(pool);
 
-        Method method = LinkResolver.resolveMethodSymbol(meta, accessingKlass, name, signature, holderKlass, false, true, true);
+        Method method = EspressoLinkResolver.resolveMethodSymbol(context, accessingKlass, name, signature, holderKlass, false, true, true);
 
         if (method.isInvokeIntrinsic()) {
-            MHInvokeGenericNode.MethodHandleInvoker invoker = MHInvokeGenericNode.linkMethod(meta.getLanguage(), meta, accessingKlass, method, name, signature);
+            MHInvokeGenericNode.MethodHandleInvoker invoker = MHInvokeGenericNode.linkMethod(context.getMeta().getLanguage(), context.getMeta(), accessingKlass, method, name, signature);
             return new ResolvedWithInvokerClassMethodRefConstant(method, invoker);
         }
 

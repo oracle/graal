@@ -21,12 +21,9 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.resolver;
+package com.oracle.truffle.espresso.shared.resolver;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * Describes the type of call-site resolution that should happen for a given call-site. For
@@ -39,37 +36,4 @@ public enum CallSiteType {
     Special,
     Virtual,
     Interface;
-
-    public static CallSiteType fromOpCode(int opcode) {
-        switch (opcode) {
-            case Bytecodes.INVOKESTATIC:
-                return Static;
-            case Bytecodes.INVOKESPECIAL:
-                return Special;
-            case Bytecodes.INVOKEVIRTUAL:
-                return Virtual;
-            case Bytecodes.INVOKEINTERFACE:
-                return Interface;
-            default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(opcode));
-        }
-    }
-
-    public static CallSiteType fromRefKind(int refKind) {
-        switch (refKind) {
-            case Constants.REF_invokeVirtual:
-                return Virtual;
-            case Constants.REF_invokeStatic:
-                return Static;
-            case Constants.REF_invokeSpecial: // fallthrough
-            case Constants.REF_newInvokeSpecial:
-                return Special;
-            case Constants.REF_invokeInterface:
-                return Interface;
-            default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("refKind: " + refKind);
-        }
-    }
 }
