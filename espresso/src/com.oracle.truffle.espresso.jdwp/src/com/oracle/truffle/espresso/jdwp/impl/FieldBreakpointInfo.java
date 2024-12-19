@@ -63,4 +63,9 @@ public final class FieldBreakpointInfo extends AbstractBreakpointInfo implements
     public boolean isAccessBreakpoint() {
         return accessBreakpoint;
     }
+
+    @Override
+    public void dispose() {
+        field.disposeFieldBreakpoint();
+    }
 }

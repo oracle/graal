@@ -114,4 +114,6 @@ public interface FieldRef {
      * @return true if this field has any breakpoints, false otherwise
      */
     boolean hasActiveBreakpoint();
+
+    void disposeFieldBreakpoint();
 }
