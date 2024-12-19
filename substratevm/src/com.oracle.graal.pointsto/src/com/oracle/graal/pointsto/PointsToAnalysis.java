@@ -501,12 +501,15 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @Override
     public AnalysisType addRootField(Field field) {
-        AnalysisField analysisField = getMetaAccess().lookupJavaField(field);
-        if (analysisField.isStatic()) {
-            return addRootStaticField(analysisField);
+        return addRootField(getMetaAccess().lookupJavaField(field));
+    }
+
+    @Override
+    public AnalysisType addRootField(AnalysisField field) {
+        if (field.isStatic()) {
+            return addRootStaticField(field);
         } else {
-            AnalysisType analysisType = getMetaAccess().lookupJavaType(field.getDeclaringClass());
-            return addRootField(analysisType, analysisField);
+            return addRootField(field.getDeclaringClass(), field);
         }
     }
 

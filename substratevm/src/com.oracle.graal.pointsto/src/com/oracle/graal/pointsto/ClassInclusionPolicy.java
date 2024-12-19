@@ -32,6 +32,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -89,6 +90,16 @@ public abstract class ClassInclusionPolicy {
     }
 
     /**
+     * Determine if the given field needs to be included in the image according to the policy.
+     */
+    public boolean isFieldIncluded(AnalysisField field) {
+        if (!bb.getHostVM().platformSupported(field)) {
+            return false;
+        }
+        return bb.getHostVM().isFieldIncluded(bb, field);
+    }
+
+    /**
      * Includes the given class in the image.
      */
     public void includeClass(Class<?> cls) {
@@ -118,6 +129,13 @@ public abstract class ClassInclusionPolicy {
      * Includes the given field in the image.
      */
     public void includeField(Field field) {
+        bb.postTask(debug -> bb.addRootField(field));
+    }
+
+    /**
+     * Includes the given field in the image.
+     */
+    public void includeField(AnalysisField field) {
         bb.postTask(debug -> bb.addRootField(field));
     }
 

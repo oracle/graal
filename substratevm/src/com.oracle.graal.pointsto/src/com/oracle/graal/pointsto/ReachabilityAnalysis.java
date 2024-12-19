@@ -60,6 +60,8 @@ public interface ReachabilityAnalysis {
 
     AnalysisType addRootField(Field field);
 
+    AnalysisType addRootField(AnalysisField field);
+
     /**
      * Registers the method as root. Must be an {@link MultiMethod#ORIGINAL_METHOD}.
      *

@@ -143,8 +143,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
             AnalysisField field = (AnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
-                field.registerAsAccessed("root field");
-                return field.getType();
+                return addRootField(field);
             }
         }
         throw AnalysisError.userError("Field not found: " + fieldName);
@@ -153,6 +152,11 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisType addRootField(Field field) {
         AnalysisField analysisField = getMetaAccess().lookupJavaField(field);
+        return addRootField(analysisField);
+    }
+
+    @Override
+    public AnalysisType addRootField(AnalysisField analysisField) {
         analysisField.registerAsAccessed("root field");
         return analysisField.getType();
     }

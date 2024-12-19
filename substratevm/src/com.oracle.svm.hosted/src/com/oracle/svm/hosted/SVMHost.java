@@ -58,6 +58,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -76,6 +77,7 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
@@ -195,6 +197,8 @@ public class SVMHost extends HostVM {
     private final int layerId;
     private final boolean useBaseLayer;
     private Set<Field> excludedFields;
+    private AnalysisType cGlobalData;
+    private AnalysisType optionKey;
 
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
@@ -906,6 +910,10 @@ public class SVMHost extends HostVM {
         excludedFields.add(ReflectionUtil.lookupField(NativeLibraries.class, "nativeLibraryLockMap"));
     }
 
+    /**
+     * This method cannot use an {@link AnalysisField} because it is used before the analysis is set
+     * up.
+     */
     @Override
     public boolean isFieldIncluded(BigBang bb, Field field) {
         /*
@@ -935,7 +943,53 @@ public class SVMHost extends HostVM {
         /* Fields that are deleted or substituted should not be in the image */
         if (bb instanceof NativeImagePointsToAnalysis nativeImagePointsToAnalysis) {
             AnnotationSubstitutionProcessor annotationSubstitutionProcessor = nativeImagePointsToAnalysis.getAnnotationSubstitutionProcessor();
-            return !annotationSubstitutionProcessor.isDeleted(field) && !annotationSubstitutionProcessor.isAnnotationPresent(field, InjectAccessors.class);
+            boolean included = !annotationSubstitutionProcessor.isDeleted(field) && !annotationSubstitutionProcessor.isAnnotationPresent(field, InjectAccessors.class);
+            if (!included) {
+                return false;
+            }
+        }
+        return super.isFieldIncluded(bb, field);
+    }
+
+    /**
+     * This method needs to be kept in sync with {@link SVMHost#isFieldIncluded(BigBang, Field)}.
+     */
+    @Override
+    public boolean isFieldIncluded(BigBang bb, AnalysisField field) {
+        /*
+         * Fields of type CGlobalData can use a CGlobalDataFactory which must not be reachable at
+         * run time
+         */
+        if (cGlobalData == null) {
+            cGlobalData = bb.getMetaAccess().lookupJavaType(CGlobalData.class);
+        }
+        if (field.getType().equals(cGlobalData)) {
+            return false;
+        }
+
+        if (excludedFields.contains(OriginalFieldProvider.getJavaField(field))) {
+            return false;
+        }
+
+        /* Fields with those names are not allowed in the image */
+        if (NativeImageGenerator.checkName(field.getType().toJavaName() + "." + field.getName()) != null) {
+            return false;
+        }
+        /* Options should not be in the image */
+        if (optionKey == null) {
+            optionKey = bb.getMetaAccess().lookupJavaType(OptionKey.class);
+        }
+        if (optionKey.isAssignableFrom(field.getType())) {
+            return false;
+        }
+        /* Fields from this package should not be in the image */
+        if (field.getDeclaringClass().toJavaName().startsWith("jdk.graal.compiler")) {
+            return false;
+        }
+        /* Fields that are deleted or substituted should not be in the image */
+        boolean included = field.getAnnotation(Delete.class) == null && field.getAnnotation(InjectAccessors.class) == null;
+        if (!included) {
+            return false;
         }
         return super.isFieldIncluded(bb, field);
     }
