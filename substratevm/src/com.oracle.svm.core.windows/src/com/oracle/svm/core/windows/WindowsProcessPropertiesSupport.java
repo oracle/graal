@@ -48,6 +48,8 @@ import com.oracle.svm.core.windows.headers.WinBase;
 import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
 import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
+import jdk.graal.compiler.word.Word;
+
 @AutomaticallyRegisteredImageSingleton(ProcessPropertiesSupport.class)
 public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSupport {
 
