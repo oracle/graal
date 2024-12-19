@@ -985,11 +985,8 @@ public class CompileQueue {
     }
 
     private static boolean parseInCurrentLayer(HostedMethod method) {
-        if (method.wrapped.isInBaseLayer() && !method.wrapped.reachableInCurrentLayer()) {
-            return false;
-        }
         var hasAnalyzedGraph = method.wrapped.getAnalyzedGraph() != null;
-        if (!hasAnalyzedGraph && method.wrapped.reachableInCurrentLayer() && HostedImageLayerBuildingSupport.buildingExtensionLayer()) {
+        if (!hasAnalyzedGraph && method.wrapped.reachableInCurrentLayer()) {
             ImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
             hasAnalyzedGraph = imageLayerLoader.hasStrengthenedGraph(method.wrapped);
         }
