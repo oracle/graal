@@ -225,6 +225,17 @@ public final class JVMCIVersionCheck {
                 case AS_TAG -> toString();
             };
         }
+
+        public Version stripLTS() {
+            if ("LTS".equals(jdkVersion.optional().orElse(null))) {
+                String version = jdkVersion.toString();
+                assert version.endsWith("-LTS");
+                String stripped = version.substring(0, version.length() - 4);
+                return new Version(stripped, jvmciMajor, jvmciMinor, jvmciBuild, legacy, isOpenJDK);
+            } else {
+                return this;
+            }
+        }
     }
 
     public static final String OPEN_LABSJDK_RELEASE_URL_PATTERN = "https://github.com/graalvm/labs-openjdk-*/releases";
@@ -369,7 +380,7 @@ public final class JVMCIVersionCheck {
             Version v = Version.parse(vmVersion);
             if (v != null) {
                 if (format != null) {
-                    System.out.println(v.printFormat(format));
+                    System.out.println(v.stripLTS().printFormat(format));
                 }
                 if (v.isLessThan(minVersion)) {
                     return String.format("The VM does not support the minimum JVMCI API version required by Graal: %s < %s.", v, minVersion);
