@@ -61,6 +61,7 @@ import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @NodeInfo(shortName = "Convert to Espresso StaticObject")
@@ -325,8 +326,33 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization
         public StaticObject doStaticObject(StaticObject value, EspressoType targetType,
                         @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
-            if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), targetType.getRawType())) {
-                return value; // pass through, NULL coercion not needed.
+            Klass rawType = targetType.getRawType();
+            if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), rawType)) {
+                return value;
+            }
+            try {
+                Meta meta = getMeta();
+                if (rawType == meta.java_lang_Double && EspressoInterop.fitsInDouble(value)) {
+                    return meta.boxDouble(EspressoInterop.asDouble(value));
+                }
+                if (rawType == meta.java_lang_Float && EspressoInterop.fitsInFloat(value)) {
+                    return meta.boxFloat(EspressoInterop.asFloat(value));
+                }
+                if (rawType == meta.java_lang_Long && EspressoInterop.fitsInLong(value)) {
+                    return meta.boxLong(EspressoInterop.asLong(value));
+                }
+                if (rawType == meta.java_lang_Integer && EspressoInterop.fitsInInt(value)) {
+                    return meta.boxInteger(EspressoInterop.asInt(value));
+                }
+                if (rawType == meta.java_lang_Short && EspressoInterop.fitsInShort(value)) {
+                    return meta.boxShort(EspressoInterop.asShort(value));
+                }
+                if (rawType == meta.java_lang_Byte && EspressoInterop.fitsInByte(value)) {
+                    return meta.boxByte(EspressoInterop.asByte(value));
+                }
+            } catch (UnsupportedMessageException ex) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("Contract violation: if fitsIn* returns true, as* must succeed.");
             }
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", targetType.getRawType().getTypeAsString()));
         }
@@ -497,6 +523,10 @@ public abstract class ToReference extends ToEspressoNode {
             StaticObject result = tryConverterForUnknownTarget(value, targetType, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, meta);
             if (result != null) {
                 return result;
+            }
+            // no generic conversion to abstract target types allowed
+            if (targetType.getRawType().isAbstract()) {
+                throw UnsupportedTypeException.create(new Object[]{value}, targetType.getRawType().getTypeAsString());
             }
             if (targetType instanceof ObjectKlass rawType) {
                 noConverterProfile.enter(node);
@@ -2608,6 +2638,10 @@ public abstract class ToReference extends ToEspressoNode {
             StaticObject result = tryConverterForUnknownTarget(value, target, interop, lookupTypeConverterNode, lookupInternalTypeConverterNode, converterToEspresso, context.getMeta());
             if (result != null) {
                 return result;
+            }
+            // no generic conversion to abstract target types allowed
+            if (target.getRawType().isAbstract()) {
+                throw UnsupportedTypeException.create(new Object[]{value}, target.getRawType().getTypeAsString());
             }
             noConverterProfile.enter(node);
             checkHasAllFieldsOrThrow(value, (ObjectKlass) target.getRawType(), interop, context.getMeta());
