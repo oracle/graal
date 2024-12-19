@@ -175,7 +175,7 @@ public class Container {
         return cachedMemoryLimitInBytes;
     }
 
-    private static class State {
+    private static final class State {
         static final UnsignedWord UNINITIALIZED = Word.unsigned(0);
         static final UnsignedWord INITIALIZING = Word.unsigned(1);
         static final UnsignedWord NOT_CONTAINERIZED = Word.unsigned(2);

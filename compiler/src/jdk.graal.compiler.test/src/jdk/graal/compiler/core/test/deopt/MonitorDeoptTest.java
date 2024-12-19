@@ -55,7 +55,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
 
     static final long TIMEOUT = 5000;
 
-    private static class Monitor {
+    private static final class Monitor {
         private volatile State state = State.INITIAL;
 
         public synchronized void setState(State newState) {

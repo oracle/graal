@@ -327,7 +327,7 @@ public class JfrTypeRepository implements JfrRepository {
         currentClassLoaderId = 0;
     }
 
-    private static class TypeInfo {
+    private static final class TypeInfo {
         final Set<Class<?>> classes = new HashSet<>();
         final Map<String, PackageInfo> packages = new HashMap<>();
         final Map<Module, Long> modules = new HashMap<>();

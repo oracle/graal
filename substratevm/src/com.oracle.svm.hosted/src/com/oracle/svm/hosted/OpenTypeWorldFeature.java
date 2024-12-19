@@ -164,7 +164,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
     }
 
-    private static class LayerTypeCheckInfo implements LayeredImageSingleton {
+    private static final class LayerTypeCheckInfo implements LayeredImageSingleton {
         Map<Integer, TypeCheckInfo> identifierToTypeInfo = new HashMap<>();
         int maxTypeID = 0;
 

@@ -88,6 +88,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
     }
 
     protected AMD64Kind getVectorKind(JavaKind valueKind) {
+        // Checkstyle: stop FallThrough
         switch (vectorSize) {
             case XMM:
                 switch (valueKind) {
@@ -143,9 +144,11 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
             default:
                 throw GraalError.shouldNotReachHere("Unsupported vector size.");
         }
+        // Checkstyle: resume FallThrough
     }
 
     protected AMD64Kind getVectorKind(Stride stride) {
+        // Checkstyle: stop FallThrough
         switch (vectorSize) {
             case XMM:
                 switch (stride) {
@@ -189,6 +192,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
             default:
                 throw GraalError.shouldNotReachHere("Unsupported vector size."); // ExcludeFromJacocoGeneratedReport
         }
+        // Checkstyle: resume FallThrough
     }
 
     protected Value[] allocateTempRegisters(LIRGeneratorTool tool, AMD64Kind kind, int n) {

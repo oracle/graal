@@ -222,7 +222,7 @@ public class LanguageContextFreedTest {
 
     }
 
-    private static class ContextLocalValue {
+    private static final class ContextLocalValue {
     }
 
 }

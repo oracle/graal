@@ -902,7 +902,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         return config.snippetReflection();
     }
 
-    private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
+    private final class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
 
         @Override
         public Backend.CodeInstallationTask create() {

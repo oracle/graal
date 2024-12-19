@@ -426,7 +426,7 @@ public class HeapDumpMetadata {
         FieldName read();
     }
 
-    private static class ComputeHubDataVisitor implements ObjectVisitor {
+    private static final class ComputeHubDataVisitor implements ObjectVisitor {
         private int classSerialNum;
 
         public void initialize() {

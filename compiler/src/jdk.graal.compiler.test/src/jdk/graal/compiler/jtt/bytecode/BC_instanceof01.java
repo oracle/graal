@@ -48,10 +48,10 @@ public class BC_instanceof01 extends JTTTest {
 
     }
 
-    private static class TestClass extends BaseClass implements IObject {
+    private static final class TestClass extends BaseClass implements IObject {
     }
 
-    private static class DerivedTestClass extends BaseClass implements IDerivedObject {
+    private static final class DerivedTestClass extends BaseClass implements IDerivedObject {
 
     }
 

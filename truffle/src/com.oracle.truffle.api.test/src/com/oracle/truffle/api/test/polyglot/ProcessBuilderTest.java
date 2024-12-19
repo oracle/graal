@@ -555,7 +555,7 @@ public class ProcessBuilderTest {
         return map;
     }
 
-    private static class MockProcessHandler implements ProcessHandler {
+    private static final class MockProcessHandler implements ProcessHandler {
 
         private ProcessCommand lastCommand;
 

@@ -1126,7 +1126,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             }
         }
 
-        private static class GuardOrder {
+        private static final class GuardOrder {
             /**
              * After an earliest schedule, this will re-sort guards to honor their
              * {@linkplain StaticDeoptimizingNode#computePriority() priority}.
