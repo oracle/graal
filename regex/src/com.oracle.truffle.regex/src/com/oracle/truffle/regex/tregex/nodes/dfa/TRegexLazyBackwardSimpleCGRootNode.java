@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-package com.oracle.truffle.regex.tregex.util;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.regex.RegexBodyNode;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorEntryNode;
 
-public final class MathUtil {
+public class TRegexLazyBackwardSimpleCGRootNode extends RegexBodyNode {
 
-    public static int log2floor(int x) {
-        return 31 - Integer.numberOfLeadingZeros(x);
+    @Child private TRegexExecutorEntryNode entryNode;
+
+    public TRegexLazyBackwardSimpleCGRootNode(RegexLanguage language, RegexSource source, TRegexExecutorEntryNode backwardNode) {
+        super(language, source);
+        this.entryNode = insert(backwardNode);
     }
 
-    public static int log2ceil(int x) {
-        return 32 - Integer.numberOfLeadingZeros(x - 1);
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        final Object[] args = frame.getArguments();
+        assert args.length == 1;
+        final RegexResult receiver = (RegexResult) args[0];
+        int[] result = (int[]) entryNode.execute(frame, receiver.getInput(), receiver.getFromIndex(), receiver.getEnd(), receiver.getRegionFrom(), receiver.getRegionTo(), receiver.getEnd());
+        receiver.setResult(result);
+        return null;
     }
 
-    public static int saturatingInc(int x) {
-        if (x == Integer.MAX_VALUE) {
-            return x;
-        }
-        return x + 1;
+    @Override
+    public String getEngineLabel() {
+        return "TRegex bck";
     }
 }

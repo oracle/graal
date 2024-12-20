@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ package com.oracle.truffle.regex.tregex.buffer;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.function.IntFunction;
 
 /**
  * This class is designed as a "scratchpad" for generating many Object arrays of unknown size. It
@@ -149,6 +150,10 @@ public final class ObjectArrayBuffer<T> extends AbstractArrayBuffer implements I
         }
         System.arraycopy(buf, 0, a, 0, length);
         return a;
+    }
+
+    public <ST> ST[] toArray(IntFunction<ST[]> generator) {
+        return toArray(generator.apply(length));
     }
 
     @Override
