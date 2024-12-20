@@ -97,7 +97,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
      * null on failure. A return value of null will ultimately disable the shared memory feature.
      */
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+13/src/hotspot/os/posix/perfMemory_posix.cpp#L1015-L1082")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/posix/perfMemory_posix.cpp#L1015-L1082")
     public ByteBuffer create() {
         assert backingFilePath == null;
 
