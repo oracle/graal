@@ -130,7 +130,7 @@ def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, 
 
 def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):
     """Run Espresso (standalone) on Espresso (launcher)"""
-    return _run_espresso_launcher([
+    return _run_espresso([
         '--vm.Xss4m',
     ] + _espresso_standalone_command(args, allow_jacoco=False), nonZeroIsFatal=nonZeroIsFatal, timeout=timeout)
 
