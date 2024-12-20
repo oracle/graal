@@ -176,10 +176,11 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         SVMImageLayerWriter writer = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
         Boolean useSharedLayerGraphs = SubstrateOptions.UseSharedLayerGraphs.getValue(values);
+        Boolean useSharedLayerStrengthenedGraphs = SubstrateOptions.UseSharedLayerStrengthenedGraphs.getValue(values);
         if (buildingSharedLayer) {
             LayerOption layerOption = LayerOption.parse(SubstrateOptions.LayerCreate.getValue(values).lastValue().orElseThrow());
             writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, layerOption.fileName());
-            writer = new SVMImageLayerWriter(useSharedLayerGraphs);
+            writer = new SVMImageLayerWriter(useSharedLayerGraphs, useSharedLayerStrengthenedGraphs);
         }
         SVMImageLayerLoader loader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;

@@ -698,6 +698,8 @@ public class MethodTypeFlowBuilder {
         assert !processed : "can only call apply once per MethodTypeFlowBuilder";
         processed = true;
 
+        method.setReachableInCurrentLayer();
+
         if (method.analyzedInPriorLayer()) {
             /*
              * We don't need to analyze this method. We already know its return type state from the

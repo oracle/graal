@@ -163,7 +163,7 @@ public final class PointsToAnalyzer {
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
         HostedValuesProvider hostedValuesProvider = new HostedValuesProvider(aMetaAccess, aUniverse);
-        ImageLayerSnapshotUtil imageLayerSnapshotUtil = new ImageLayerSnapshotUtil();
+        ImageLayerSnapshotUtil imageLayerSnapshotUtil = new ImageLayerSnapshotUtil(false);
         ImageLayerLoader imageLayerLoader = new ImageLayerLoader();
         imageLayerLoader.setImageLayerSnapshotUtil(imageLayerSnapshotUtil);
         imageLayerLoader.setUniverse(aUniverse);
@@ -172,7 +172,7 @@ public final class PointsToAnalyzer {
                         snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader, hostedValuesProvider);
         aUniverse.setHeapScanner(heapScanner);
         imageLayerLoader.executeHeapScannerTasks();
-        ImageLayerWriter imageLayerWriter = new ImageLayerWriter(true);
+        ImageLayerWriter imageLayerWriter = new ImageLayerWriter(true, true);
         imageLayerWriter.setImageLayerSnapshotUtil(imageLayerSnapshotUtil);
         imageLayerWriter.setImageHeap(heap);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);

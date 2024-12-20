@@ -188,13 +188,9 @@ public class ImageLayerWriter {
         }
     }
 
-    public ImageLayerWriter() {
-        this(true);
-    }
-
-    public ImageLayerWriter(boolean useSharedLayerGraphs) {
+    public ImageLayerWriter(boolean useSharedLayerGraphs, boolean useSharedLayerStrengthenedGraphs) {
         this.useSharedLayerGraphs = useSharedLayerGraphs;
-        this.useSharedLayerStrengthenedGraphs = false;
+        this.useSharedLayerStrengthenedGraphs = useSharedLayerStrengthenedGraphs;
     }
 
     public void setImageLayerSnapshotUtil(ImageLayerSnapshotUtil imageLayerSnapshotUtil) {

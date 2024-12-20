@@ -53,6 +53,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -112,6 +113,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> allImplementationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "allImplementations");
 
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Boolean> reachableInCurrentLayerUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Boolean.class, "reachableInCurrentLayer");
+
     public record Signature(String name, AnalysisType[] parameterTypes) {
     }
 
@@ -166,6 +170,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @SuppressWarnings("unused") private volatile Object implementationInvokedNotifications;
     @SuppressWarnings("unused") private volatile Object isIntrinsicMethod;
     @SuppressWarnings("unused") private volatile Object isInlined;
+    @SuppressWarnings("unused") private volatile Boolean reachableInCurrentLayer;
+    private final boolean enableReachableInCurrentLayer;
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
@@ -266,6 +272,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             startTrackInvocations();
         }
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
+
+        this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
     }
 
     @SuppressWarnings("this-escape")
@@ -294,6 +302,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
         }
+
+        this.enableReachableInCurrentLayer = original.enableReachableInCurrentLayer;
     }
 
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
@@ -457,6 +467,21 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean analyzedInPriorLayer() {
         return analyzedInPriorLayer;
+    }
+
+    public boolean reachableInCurrentLayer() {
+        return enableReachableInCurrentLayer && reachableInCurrentLayer != null && reachableInCurrentLayer;
+    }
+
+    public void setReachableInCurrentLayer() {
+        if (enableReachableInCurrentLayer && !reachableInCurrentLayer()) {
+            AtomicUtils.atomicSetAndRun(this, true, reachableInCurrentLayerUpdater, () -> {
+                ImageLayerLoader imageLayerLoader = getUniverse().getImageLayerLoader();
+                if (imageLayerLoader != null) {
+                    imageLayerLoader.loadPriorStrengthenedGraphAnalysisElements(this);
+                }
+            });
+        }
     }
 
     /**

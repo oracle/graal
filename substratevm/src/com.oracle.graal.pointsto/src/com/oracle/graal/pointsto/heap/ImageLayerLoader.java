@@ -91,6 +91,7 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -179,7 +180,7 @@ public class ImageLayerLoader {
         loadLayerAnalysis0();
     }
 
-    public void cleanupAfterAnalysis() {
+    public void cleanupAfterCompilation() {
         if (graphsChannel != null) {
             try {
                 graphsChannel.close();
@@ -594,26 +595,31 @@ public class ImageLayerLoader {
      * {@link ImageLayerWriter#persistAnalysisParsedGraph} for implementation.
      */
     public boolean hasAnalysisParsedGraph(AnalysisMethod analysisMethod) {
-        return getMethodData(analysisMethod).hasAnalysisGraphLocation();
+        return hasGraph(analysisMethod, PersistedAnalysisMethod.Reader::hasAnalysisGraphLocation);
     }
 
     public AnalysisParsedGraph getAnalysisParsedGraph(AnalysisMethod analysisMethod) {
         PersistedAnalysisMethod.Reader methodData = getMethodData(analysisMethod);
         boolean intrinsic = methodData.getAnalysisGraphIsIntrinsic();
         EncodedGraph analyzedGraph = getEncodedGraph(analysisMethod, methodData.getAnalysisGraphLocation());
-        if (hasStrengthenedGraph(analysisMethod)) {
-            throw AnalysisError.shouldNotReachHere("Strengthened graphs are not supported until late loading is implemented.");
-        }
         return new AnalysisParsedGraph(analyzedGraph, intrinsic);
     }
 
     public boolean hasStrengthenedGraph(AnalysisMethod analysisMethod) {
-        return getMethodData(analysisMethod).hasStrengthenedGraphLocation();
+        return hasGraph(analysisMethod, PersistedAnalysisMethod.Reader::hasStrengthenedGraphLocation);
     }
 
     public EncodedGraph getStrengthenedGraph(AnalysisMethod analysisMethod) {
         PersistedAnalysisMethod.Reader methodData = getMethodData(analysisMethod);
         return getEncodedGraph(analysisMethod, methodData.getStrengthenedGraphLocation());
+    }
+
+    private boolean hasGraph(AnalysisMethod analysisMethod, Function<PersistedAnalysisMethod.Reader, Boolean> hasGraphFunction) {
+        var methodData = getMethodData(analysisMethod);
+        if (methodData == null) {
+            return false;
+        }
+        return hasGraphFunction.apply(methodData);
     }
 
     protected EncodedGraph getEncodedGraph(AnalysisMethod analysisMethod, Text.Reader location) {
@@ -641,6 +647,65 @@ public class ImageLayerLoader {
             throw AnalysisError.shouldNotReachHere("Failed reading a graph from location: " + location, e);
         }
         return bb.array();
+    }
+
+    /**
+     * This method is needed to ensure all the base layer analysis elements from the strengthened
+     * graph are created early enough and seen by the analysis. This is done by decoding the graph
+     * using a decoder that loads analysis elements instead of hosted elements.
+     */
+    public void loadPriorStrengthenedGraphAnalysisElements(AnalysisMethod analysisMethod) {
+        if (hasStrengthenedGraph(analysisMethod)) {
+            PersistedAnalysisMethod.Reader methodData = getMethodData(analysisMethod);
+            byte[] encodedAnalyzedGraph = readEncodedGraph(methodData.getStrengthenedGraphLocation().toString());
+            EncodedGraph graph = (EncodedGraph) ObjectCopier.decode(imageLayerSnapshotUtil.getGraphAnalysisElementsDecoder(this, analysisMethod, universe.getSnippetReflection()),
+                            encodedAnalyzedGraph);
+            for (Object o : graph.getObjects()) {
+                if (o instanceof AnalysisMethod m) {
+                    m.setReachableInCurrentLayer();
+                } else if (o instanceof JavaMethodProfile javaMethodProfile) {
+                    for (var m : javaMethodProfile.getMethods()) {
+                        if (m.getMethod() instanceof AnalysisMethod aMethod) {
+                            aMethod.setReachableInCurrentLayer();
+                        }
+                    }
+                } else if (o instanceof ImageHeapConstant constant) {
+                    loadMaterializedChildren(constant);
+                }
+            }
+        }
+    }
+
+    private void loadMaterializedChildren(ImageHeapConstant constant) {
+        if (constant instanceof ImageHeapInstance imageHeapInstance && !imageHeapInstance.nullFieldValues()) {
+            loadMaterializedChildren(constant, imageHeapInstance.getFieldValues());
+        } else if (constant instanceof ImageHeapObjectArray imageHeapObjectArray) {
+            loadMaterializedChildren(constant, imageHeapObjectArray.getElementValues());
+        }
+    }
+
+    private void loadMaterializedChildren(ImageHeapConstant constant, Object[] values) {
+        PersistedConstant.Reader baseLayerConstant = findConstant(ImageHeapConstant.getConstantID(constant));
+        if (baseLayerConstant != null) {
+            StructList.Reader<ConstantReference.Reader> data = baseLayerConstant.getObject().getData();
+            for (int i = 0; i < data.size(); ++i) {
+                ConstantReference.Reader childConstant = data.get(i);
+                if (childConstant.isObjectConstant()) {
+                    if (childConstant.isNotMaterialized()) {
+                        continue;
+                    }
+                    loadMaterializedChild(values[i]);
+                }
+            }
+        }
+    }
+
+    private void loadMaterializedChild(Object child) {
+        if (child instanceof AnalysisFuture<?> analysisFuture) {
+            if (analysisFuture.ensureDone() instanceof ImageHeapConstant imageHeapConstant) {
+                loadMaterializedChildren(imageHeapConstant);
+            }
+        }
     }
 
     protected static int getId(String line) {

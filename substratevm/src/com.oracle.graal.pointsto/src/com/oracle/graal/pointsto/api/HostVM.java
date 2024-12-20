@@ -356,6 +356,10 @@ public abstract class HostVM {
         return false;
     }
 
+    public boolean enableReachableInCurrentLayer() {
+        return false;
+    }
+
     /**
      * Helpers to determine what analysis actions should be taken for a given Multi-Method version.
      */
