@@ -61,7 +61,7 @@ public class MaterializedFrameTest extends PartialEvaluationTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 MaterializedFrame mframe = frameClassProfile.profile(GraalDirectives.opaque(frame.materialize()));
-                if (mframe.getFrameDescriptor().getSlotKind(slot) != FrameSlotKind.Int) {
+                if (getFrameDescriptor().getSlotKind(slot) != FrameSlotKind.Int) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     mframe.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Int);
                 }

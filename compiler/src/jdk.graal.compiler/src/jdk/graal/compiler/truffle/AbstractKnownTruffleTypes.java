@@ -137,13 +137,17 @@ public abstract class AbstractKnownTruffleTypes {
         return getTypeCache(declaringClass).instanceFields;
     }
 
-    protected final ResolvedJavaField findField(ResolvedJavaType declaringClass, String name) {
+    protected final ResolvedJavaField findField(ResolvedJavaType declaringClass, String name, boolean required) {
         TypeCache fc = getTypeCache(declaringClass);
         ResolvedJavaField field = fc.fields.get(name);
-        if (field == null) {
+        if (field == null && required) {
             throw new GraalError("Could not find required field %s.%s", declaringClass.getName(), name);
         }
         return field;
+    }
+
+    protected final ResolvedJavaField findField(ResolvedJavaType declaringClass, String name) {
+        return findField(declaringClass, name, true);
     }
 
     private TypeCache getTypeCache(ResolvedJavaType declaringClass) {

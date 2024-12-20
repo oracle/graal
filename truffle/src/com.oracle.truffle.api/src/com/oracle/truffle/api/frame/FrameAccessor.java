@@ -58,5 +58,10 @@ final class FrameAccessor extends Accessor {
         public boolean getMaterializeCalled(FrameDescriptor descriptor) {
             return descriptor.materializeCalled;
         }
+
+        @Override
+        public Object getIllegalDefault() {
+            return FrameDescriptor.ILLEGAL_DEFAULT_VALUE;
+        }
     }
 }

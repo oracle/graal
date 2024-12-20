@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.api.frame;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /**
- * Exception thrown if the frame slot type does not match the access type.
+ * Exception thrown if the frame slot kind does not match the expected kind.
  *
  * @since 0.8 or earlier
  */
@@ -49,7 +51,79 @@ public final class FrameSlotTypeException extends IllegalStateException {
 
     private static final long serialVersionUID = 6972120475215757452L;
 
-    /** @since 0.8 or earlier */
+    private final int slot;
+    private final FrameSlotKind expectedKind;
+    private final FrameSlotKind actualKind;
+
+    /**
+     * @since 0.8 or earlier
+     * @deprecated use {@link #create(int, FrameSlotKind, FrameSlotKind)} instead
+     */
+    @Deprecated
     public FrameSlotTypeException() {
+        this.slot = -1;
+        this.expectedKind = null;
+        this.actualKind = null;
+    }
+
+    FrameSlotTypeException(int slot, FrameSlotKind expectedTag, FrameSlotKind actualTag) {
+        this.slot = slot;
+        this.expectedKind = expectedTag;
+        this.actualKind = actualTag;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 24.2
+     */
+    @Override
+    @TruffleBoundary
+    public String getMessage() {
+        if (slot < 0) {
+            // legacy support
+            return null;
+        }
+        return String.format("Frame slot kind %s expected, but got %s at frame slot index %s.", expectedKind, actualKind, slot);
+    }
+
+    /**
+     * Returns the frame slot index that was read.
+     *
+     * @since 24.2
+     */
+    public int getSlot() {
+        return slot;
+    }
+
+    /**
+     * Returns the expected frame slot kind when the exception occurred.
+     *
+     * @since 24.2
+     */
+    public FrameSlotKind getExpectedKind() {
+        return expectedKind;
+    }
+
+    /**
+     * Returns the actual frame slot kind when the exception occurred.
+     *
+     * @since 24.2
+     */
+    public FrameSlotKind getActualKind() {
+        return actualKind;
+    }
+
+    /**
+     * Creates a new frame slot type exception.
+     *
+     * @param slot the frame slot index used when reading
+     * @param expectedKind the expected frame slot kind when reading
+     * @param actualKind the actual frame slot kind when reading
+     *
+     * @since 24.2
+     */
+    public static FrameSlotTypeException create(int slot, FrameSlotKind expectedKind, FrameSlotKind actualKind) {
+        return new FrameSlotTypeException(slot, expectedKind, actualKind);
     }
 }
