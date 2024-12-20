@@ -234,7 +234,7 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
      * <li>For everything else (including missing host header), we deny the request.</li>
      * </ul>
      */
-    private class DNSRebindProtectionHandler implements Function<HttpRequest, HttpResponse> {
+    private final class DNSRebindProtectionHandler implements Function<HttpRequest, HttpResponse> {
 
         @Override
         public HttpResponse apply(HttpRequest request) {
@@ -305,7 +305,7 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         return DEV_TOOLS_PREFIX + wsAddress.replace("://", "=");
     }
 
-    private class JSONHandler implements Function<HttpRequest, HttpResponse> {
+    private final class JSONHandler implements Function<HttpRequest, HttpResponse> {
 
         @Override
         public HttpResponse apply(HttpRequest request) {

@@ -265,7 +265,7 @@ public class BuggyLanguageInspectDebugTest {
         }
     }
 
-    private static class ReadVarErrorVerifier extends ExceptionVerifier {
+    private static final class ReadVarErrorVerifier extends ExceptionVerifier {
 
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {
@@ -281,7 +281,7 @@ public class BuggyLanguageInspectDebugTest {
         }
     }
 
-    private static class WriteVarErrorVerifier implements BugVerifier {
+    private static final class WriteVarErrorVerifier implements BugVerifier {
 
         @Override
         public void verifyMessages(InspectorTester tester, int errNum) throws InterruptedException {

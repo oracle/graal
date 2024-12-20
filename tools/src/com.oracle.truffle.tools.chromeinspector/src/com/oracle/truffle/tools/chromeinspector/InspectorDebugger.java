@@ -998,7 +998,7 @@ public final class InspectorDebugger extends DebuggerDomain {
         return false;
     }
 
-    private class LoadScriptListenerImpl implements LoadScriptListener {
+    private final class LoadScriptListenerImpl implements LoadScriptListener {
 
         @Override
         public void loadedScript(Script script) {
@@ -1077,7 +1077,7 @@ public final class InspectorDebugger extends DebuggerDomain {
 
     }
 
-    private class SuspendedCallbackImpl implements SuspendedCallback {
+    private final class SuspendedCallbackImpl implements SuspendedCallback {
 
         private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, new SchedulerThreadFactory());
         private final AtomicReference<ScheduledFuture<?>> future = new AtomicReference<>();

@@ -346,7 +346,7 @@ public class LazyAccessInspectDebugTest {
             }
         }
 
-        private static class MetaObject extends ProxyInteropObject {
+        private static final class MetaObject extends ProxyInteropObject {
 
             @Override
             protected boolean isMetaObject() {
@@ -370,7 +370,7 @@ public class LazyAccessInspectDebugTest {
 
         }
 
-        private static class Keys extends ProxyInteropObject {
+        private static final class Keys extends ProxyInteropObject {
 
             @Override
             protected boolean hasArrayElements() {
