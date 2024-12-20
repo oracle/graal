@@ -44,6 +44,7 @@ import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier.ScanningObserver;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
@@ -830,7 +831,7 @@ public abstract class ImageHeapScanner {
         }
     }
 
-    void doScan(JavaConstant constant) {
+    public void doScan(JavaConstant constant) {
         doScan(constant, OtherReason.RESCAN);
     }
 

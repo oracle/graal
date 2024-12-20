@@ -39,6 +39,4 @@ public interface ImageSingletonLoader {
     String readString(String keyName);
 
     List<String> readStringList(String keyName);
-
-    Class<?> lookupClass(String className);
 }

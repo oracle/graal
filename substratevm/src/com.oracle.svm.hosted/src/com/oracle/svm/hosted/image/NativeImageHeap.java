@@ -647,9 +647,9 @@ public final class NativeImageHeap implements ImageHeap {
      * elements, we only want the JavaConstant -> ObjectInfo mapping for base layer constants that
      * are reachable from regular constants in this layer.
      */
-    private boolean processBaseLayerConstant(JavaConstant constant, ObjectInfo info) {
+    private static boolean processBaseLayerConstant(JavaConstant constant, ObjectInfo info) {
         if (((ImageHeapConstant) constant).isInBaseLayer()) {
-            info.setOffsetInPartition(aUniverse.getImageLayerLoader().getObjectOffset(constant));
+            info.setOffsetInPartition(HostedImageLayerBuildingSupport.singleton().getLoader().getObjectOffset(constant));
             info.setHeapPartition(BASE_LAYER_PARTITION);
             return true;
         }

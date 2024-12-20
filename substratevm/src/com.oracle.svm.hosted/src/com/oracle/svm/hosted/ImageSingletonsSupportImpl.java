@@ -44,8 +44,8 @@ import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 
 public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
 
@@ -141,18 +141,18 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 singletonDuringImageBuild.doAddInternal(ImageLayerBuildingSupport.class, new ImageLayerBuildingSupport(false, false, false) {
                 });
             }
-            if (support != null && support.getLoader() != null) {
+            if (support != null && support.getSingletonLoader() != null) {
                 /*
                  * Note eventually this may need to be moved to a later point after the Options
                  * Image Singleton is installed.
                  */
-                singletonDuringImageBuild.installPriorSingletonInfo(support.getLoader());
+                singletonDuringImageBuild.installPriorSingletonInfo(support.getSingletonLoader());
             } else {
                 singletonDuringImageBuild.doAddInternal(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(Set.of()));
             }
         }
 
-        private void installPriorSingletonInfo(SVMImageLayerLoader info) {
+        private void installPriorSingletonInfo(SVMImageLayerSingletonLoader info) {
             var result = info.loadImageSingletons(SINGLETON_INSTALLATION_FORBIDDEN);
             Set<Class<?>> installedKeys = new HashSet<>();
             for (var entry : result.entrySet()) {

@@ -42,7 +42,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
@@ -73,6 +72,7 @@ import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.diagnostic.HostedHeapDumpFeature;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LayeredDispatchTableSupport;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
@@ -987,7 +987,7 @@ public class CompileQueue {
     private static boolean parseInCurrentLayer(HostedMethod method) {
         var hasAnalyzedGraph = method.wrapped.getAnalyzedGraph() != null;
         if (!hasAnalyzedGraph && method.wrapped.reachableInCurrentLayer()) {
-            ImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
+            SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
             hasAnalyzedGraph = imageLayerLoader.hasStrengthenedGraph(method.wrapped);
         }
         assert hasAnalyzedGraph || method.isCompiledInPriorLayer() || method.compilationInfo.inParseQueue.get() : method;
@@ -1035,7 +1035,7 @@ public class CompileQueue {
              * Only the strengthened graphs of methods that need to be analyzed in the current layer
              * are loaded.
              */
-            ImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
+            SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
             boolean hasStrengthenedGraph = imageLayerLoader.hasStrengthenedGraph(method.wrapped);
             assert method.isCompiledInPriorLayer() || method.compilationInfo.inParseQueue.get() || hasStrengthenedGraph : method;
             if (hasStrengthenedGraph) {

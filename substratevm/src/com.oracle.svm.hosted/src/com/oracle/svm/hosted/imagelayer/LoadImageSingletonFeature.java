@@ -68,7 +68,6 @@ import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
-import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -602,7 +601,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
 
     @SuppressWarnings("unused")
     public static Object createFromLoader(ImageSingletonLoader loader) {
-        SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
+        SVMImageLayerSingletonLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getSingletonLoader();
         Iterator<String> keyClasses = loader.readStringList("keyClasses").iterator();
         Iterator<Integer> slotAssignments = loader.readIntList("slotAssignments").iterator();
         Iterator<String> slotKinds = loader.readStringList("slotKinds").iterator();
