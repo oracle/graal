@@ -545,7 +545,11 @@ public final class Deoptimizer {
          * <p>
          * Custom epilogue: prepare stack layout and ABI registers for outgoing call.
          */
-        InterpreterLeaveStub
+        InterpreterLeaveStub;
+
+        public boolean isInterpreterStub() {
+            return equals(InterpreterEnterStub) || equals(InterpreterLeaveStub);
+        }
     }
 
     @Retention(RetentionPolicy.RUNTIME)

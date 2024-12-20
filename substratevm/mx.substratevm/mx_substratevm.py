@@ -334,7 +334,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     yield native_image_func
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
-_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature,com.oracle.svm.test.ReflectionRegistrationTest$TestFeature'
+_native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.services.ServiceLoaderTest$TestFeature,com.oracle.svm.test.services.SecurityServiceTest$TestFeature,com.oracle.svm.test.ReflectionRegistrationTest$TestFeature'
 
 IMAGE_ASSERTION_FLAGS = svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'])
 
@@ -545,8 +545,8 @@ def native_unittests_task(extra_build_args=None):
             out.write(f"Simple file{i}" + '\n')
 
     additional_build_args = svm_experimental_options([
-        '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
-        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService',
+        '-H:AdditionalSecurityProviders=com.oracle.svm.test.services.SecurityServiceTest$NoOpProvider',
+        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.services.SecurityServiceTest$JCACompliantNoOpService',
         '-cp', cp_entry_name
     ])
     if extra_build_args is not None:
@@ -1605,6 +1605,42 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
     jlink=False,
 )
 mx_sdk_vm.register_graalvm_component(libgraal)
+
+libsvmjdwp_build_args = [
+    "-H:+UnlockExperimentalVMOptions",
+    "-H:+IncludeDebugHelperMethods",
+    "-H:-DeleteLocalSymbols",
+    "-H:+PreserveFramePointer",
+]
+
+libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
+    destination="<lib:svmjdwp>",
+    jvm_library=True,
+    use_modules='image',
+    jar_distributions=['substratevm:SVM_JDWP_SERVER'],
+    build_args=libsvmjdwp_build_args + [
+        '--features=com.oracle.svm.jdwp.server.ServerJDWPFeature',
+    ],
+    headers=False,
+)
+
+libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='SubstrateVM JDWP Debugger',
+    short_name='svmjdwp',
+    dir_name="svm",
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jar_distributions=[],
+    builder_jar_distributions=['substratevm:SVM_JDWP_COMMON', 'substratevm:SVM_JDWP_RESIDENT'],
+    support_distributions=[],
+    priority=1,
+    library_configs=[libsvmjdwp_lib_config],
+    stability="experimental",
+    jlink=False,
+)
+mx_sdk_vm.register_graalvm_component(libsvmjdwp)
 
 def _native_image_configure_extra_jvm_args():
     packages = ['jdk.graal.compiler/jdk.graal.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.graal.compiler/jdk.graal.compiler.core.common.util']
