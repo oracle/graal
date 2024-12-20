@@ -758,7 +758,7 @@ public final class CodeInfoDecoder {
         }
     }
 
-    private static class SingleShotFrameInfoQueryResultAllocator implements FrameInfoDecoder.FrameInfoQueryResultAllocator {
+    private static final class SingleShotFrameInfoQueryResultAllocator implements FrameInfoDecoder.FrameInfoQueryResultAllocator {
         private final FrameInfoQueryResult frameInfoQueryResult = new FrameInfoQueryResult();
         private boolean fired;
 

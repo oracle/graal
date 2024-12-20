@@ -879,7 +879,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
+    private static final class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -907,7 +907,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static class DumpHeapUsage extends DiagnosticThunk {
+    private static final class DumpHeapUsage extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -922,7 +922,7 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static class DumpChunkInformation extends DiagnosticThunk {
+    private static final class DumpChunkInformation extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;

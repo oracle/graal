@@ -794,7 +794,7 @@ public final class NativeImageClassLoader extends SecureClassLoader {
     /**
      * See {@code jdk.internal.loader.Loader#NullModuleReader}.
      */
-    private static class NullModuleReader implements ModuleReader {
+    private static final class NullModuleReader implements ModuleReader {
         @Override
         public Optional<URI> find(String name) {
             return Optional.empty();

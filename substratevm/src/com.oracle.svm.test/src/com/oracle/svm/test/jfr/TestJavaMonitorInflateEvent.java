@@ -94,7 +94,7 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
         assertTrue("Expected monitor inflate event not found.", foundCauseEnter);
     }
 
-    private class EnterHelper {
+    private final class EnterHelper {
         volatile boolean passedCheckpoint = false;
 
         synchronized void doWork() throws InterruptedException {

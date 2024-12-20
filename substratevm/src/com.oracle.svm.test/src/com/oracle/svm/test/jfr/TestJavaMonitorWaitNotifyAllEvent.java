@@ -113,7 +113,7 @@ public class TestJavaMonitorWaitNotifyAllEvent extends JfrRecordingTest {
                         notifierFound && waitersFound == 2);
     }
 
-    private class Helper {
+    private final class Helper {
         public synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(consumerThread)) {
                 wait(MILLIS);

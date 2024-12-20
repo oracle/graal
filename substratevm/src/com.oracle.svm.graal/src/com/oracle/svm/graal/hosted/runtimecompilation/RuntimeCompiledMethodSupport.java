@@ -499,7 +499,7 @@ public class RuntimeCompiledMethodSupport {
      * Removes {@link DeoptEntryNode}s, {@link DeoptProxyAnchorNode}s, and {@link DeoptProxyNode}s
      * which are determined to be unnecessary after the runtime compilation methods are optimized.
      */
-    private static class RemoveUnneededDeoptSupport extends Phase {
+    private static final class RemoveUnneededDeoptSupport extends Phase {
         enum RemovalDecision {
             KEEP,
             PROXIFY,

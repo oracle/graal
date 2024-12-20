@@ -245,7 +245,7 @@ public class JfrSymbolRepository implements JfrRepository {
         }
     }
 
-    private static class ReplaceDotWithSlash implements CharReplacer {
+    private static final class ReplaceDotWithSlash implements CharReplacer {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public char replace(char ch) {

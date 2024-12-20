@@ -74,7 +74,7 @@ public final class ArgFilesOption {
         IN_TOKEN
     }
 
-    private static class CTX_ARGS {
+    private static final class CTX_ARGS {
         PARSER_STATE state;
         int cptr;
         int eob;

@@ -220,7 +220,7 @@ final class CardTable {
         return true;
     }
 
-    private static class CardTableVerificationVisitor implements ObjectReferenceVisitor {
+    private static final class CardTableVerificationVisitor implements ObjectReferenceVisitor {
         private Object parentObject;
         private Pointer cardTableStart;
         private Pointer objectsStart;

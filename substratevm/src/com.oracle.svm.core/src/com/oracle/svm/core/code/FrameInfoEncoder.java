@@ -236,7 +236,7 @@ public class FrameInfoEncoder {
      * compressed and uncompressed frame slices, uncompressed frame slices start with the
      * {@link FrameInfoDecoder#UNCOMPRESSED_FRAME_SLICE_MARKER}.
      */
-    private static class CompressedFrameInfoEncodingMetadata {
+    private static final class CompressedFrameInfoEncodingMetadata {
         final List<CompressedFrameData> framesToEncode = new ArrayList<>();
         final EconomicMap<CompressedFrameData, Integer> framesToEncodeIndexMap = EconomicMap.create(Equivalence.DEFAULT);
         final List<List<CompressedFrameData>> frameSlices = new ArrayList<>();

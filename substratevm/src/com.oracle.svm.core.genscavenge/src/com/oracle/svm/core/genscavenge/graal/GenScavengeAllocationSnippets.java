@@ -147,7 +147,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             }
         }
 
-        private class FormatObjectLowering implements NodeLoweringProvider<FormatObjectNode> {
+        private final class FormatObjectLowering implements NodeLoweringProvider<FormatObjectNode> {
             @Override
             public void lower(FormatObjectNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -165,7 +165,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             }
         }
 
-        private class FormatArrayLowering implements NodeLoweringProvider<FormatArrayNode> {
+        private final class FormatArrayLowering implements NodeLoweringProvider<FormatArrayNode> {
             @Override
             public void lower(FormatArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -187,7 +187,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             }
         }
 
-        private class FormatStoredContinuationLowering implements NodeLoweringProvider<FormatStoredContinuationNode> {
+        private final class FormatStoredContinuationLowering implements NodeLoweringProvider<FormatStoredContinuationNode> {
             @Override
             public void lower(FormatStoredContinuationNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -207,7 +207,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
             }
         }
 
-        private class FormatPodLowering implements NodeLoweringProvider<FormatPodNode> {
+        private final class FormatPodLowering implements NodeLoweringProvider<FormatPodNode> {
             @Override
             public void lower(FormatPodNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();

@@ -216,7 +216,7 @@ public class JNIAccessFeature implements Feature {
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
     }
 
-    private class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry
+    private final class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry
                     implements RuntimeJNIAccessSupport {
 
         @Override

@@ -225,7 +225,7 @@ public class ChunkedImageHeapPartition implements ImageHeapPartition {
         return name;
     }
 
-    private static class SizeComparator implements Comparator<ImageHeapObject> {
+    private static final class SizeComparator implements Comparator<ImageHeapObject> {
         @Override
         public int compare(ImageHeapObject o1, ImageHeapObject o2) {
             return Long.signum(o1.getSize() - o2.getSize());

@@ -2137,35 +2137,35 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return classInitializationInfo.isTypeReached(this);
     }
 
-    private static class ReflectionDataAccessors {
+    private static final class ReflectionDataAccessors {
         @SuppressWarnings("unused")
         private static SoftReference<Target_java_lang_Class_ReflectionData<?>> getReflectionData(DynamicHub that) {
             return that.companion.getReflectionData();
         }
     }
 
-    private static class ClassLoaderAccessors {
+    private static final class ClassLoaderAccessors {
         @SuppressWarnings("unused")
         private static ClassLoader getClassLoader(DynamicHub that) {
             return that.companion.getClassLoader();
         }
     }
 
-    private static class AnnotationDataAccessors {
+    private static final class AnnotationDataAccessors {
         @SuppressWarnings("unused")
         private static Target_java_lang_Class_AnnotationData getAnnotationData(DynamicHub that) {
             return that.companion.getAnnotationData();
         }
     }
 
-    private static class AnnotationTypeAccessors {
+    private static final class AnnotationTypeAccessors {
         @SuppressWarnings("unused")
         private static AnnotationType getAnnotationType(DynamicHub that) {
             return that.companion.getAnnotationType();
         }
     }
 
-    private static class CachedConstructorAccessors {
+    private static final class CachedConstructorAccessors {
         @SuppressWarnings("unused")
         private static Constructor<?> getCachedConstructor(DynamicHub that) {
             /*

@@ -1438,6 +1438,6 @@ public class HeapDumpWriter {
         }
     }
 
-    private static class UnknownClass {
+    private static final class UnknownClass {
     }
 }

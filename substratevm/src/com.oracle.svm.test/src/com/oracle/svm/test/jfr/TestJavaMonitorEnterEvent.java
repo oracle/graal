@@ -94,7 +94,7 @@ public class TestJavaMonitorEnterEvent extends JfrRecordingTest {
         assertTrue("Expected monitor blocked event not found", found);
     }
 
-    private class Helper {
+    private final class Helper {
         private synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(secondThread)) {
                 return; // second thread doesn't need to do work.

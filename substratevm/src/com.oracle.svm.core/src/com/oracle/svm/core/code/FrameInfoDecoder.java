@@ -208,7 +208,7 @@ public class FrameInfoDecoder {
 
     static final HeapBasedValueInfoAllocator HeapBasedValueInfoAllocator = new HeapBasedValueInfoAllocator();
 
-    private static class CompressedFrameDecoderHelper {
+    private static final class CompressedFrameDecoderHelper {
         /**
          * Differentiates between compressed and uncompressed frame slices. Uncompressed frame
          * slices start with {@link #UNCOMPRESSED_FRAME_SLICE_MARKER}.

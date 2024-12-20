@@ -341,7 +341,7 @@ public class JavaMainWrapper {
 
     private static final CGlobalData<CFunctionPointer> RUN_MAIN_ROUTINE = CGlobalDataFactory.forSymbol("__svm_JavaMainWrapper_runMainRoutine");
 
-    private static class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
+    private static final class RunMainInNewThreadBooleanSupplier implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             if (!ImageSingletons.contains(JavaMainSupport.class)) {
@@ -438,7 +438,7 @@ public class JavaMainWrapper {
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
     }
 
-    private static class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {
+    private static final class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to create the main Isolate.");
 
