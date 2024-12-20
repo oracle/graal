@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,13 +131,14 @@ public final class PureNFAGenerator {
         Arrays.fill(nfaStates, null);
         stateID.reset();
         transitionID.reset();
-        transitionGen.setReverse(root.isLookBehindAssertion());
+        boolean createReverseNFA = root.isLookBehindAssertion() && !(ast.getFlavor().lookBehindsRunLeftToRight() && root.isFixedWidth());
+        transitionGen.setReverse(createReverseNFA);
 
         PureNFAState dummyInitialState = new PureNFAState(stateID.inc(), ast.getWrappedRoot());
         nfaStates[ast.getWrappedRoot().getId()] = dummyInitialState;
         assert dummyInitialState.getId() == 0;
 
-        if (root.isLookBehindAssertion()) {
+        if (createReverseNFA) {
             if (root.hasCaret()) {
                 anchoredFinalState = createFinalState(root.getAnchoredInitialState(), false);
                 anchoredFinalState.setAnchoredFinalState();

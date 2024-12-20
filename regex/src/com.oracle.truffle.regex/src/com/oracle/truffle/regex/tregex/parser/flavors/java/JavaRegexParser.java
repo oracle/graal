@@ -46,6 +46,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
@@ -107,11 +108,23 @@ public final class JavaRegexParser implements RegexParser {
                     addCaret();
                     break;
                 case Z:
-                    pushGroup(); // (?:
-                    lineTerminators();
+                    pushGroup();
+                    pushLookAheadAssertion();
+                    if (getFlags().isUnixLines()) {
+                        addCharClass(CodePointSet.create('\n'));
+                        addDollar();
+                    } else {
+                        addCharClass(CodePointSet.create('\r'));
+                        addCharClass(CodePointSet.create('\n'));
+                        addDollar();
+                        nextSequence();
+                        addCharClass(CodePointSet.createNoDedup('\n', '\n', '\r', '\r', 0x0085, 0x0085, 0x2028, 0x2029));
+                        addDollar();
+                    }
+                    popGroup();
                     nextSequence();
-                    popGroup(); // )
                     addDollar();
+                    popGroup();
                     break;
                 case z:
                     addDollar();
@@ -143,7 +156,7 @@ public final class JavaRegexParser implements RegexParser {
                     Token.Quantifier quantifier = (Token.Quantifier) token;
                     // quantifiers of type *, + or ? cannot directly follow another quantifier
                     if (last instanceof Token.Quantifier && quantifier.isSingleChar()) {
-                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
+                        throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier), ErrorCode.InvalidQuantifier);
                     }
                     if (astBuilder.getCurTerm() != null) {
                         if (quantifier.isPossessive()) {
@@ -152,7 +165,7 @@ public final class JavaRegexParser implements RegexParser {
                         addQuantifier((Token.Quantifier) token);
                     } else {
                         if (quantifier.isSingleChar()) {
-                            throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier));
+                            throw syntaxErrorHere(JavaErrorMessages.danglingMetaCharacter(quantifier), ErrorCode.InvalidQuantifier);
                         }
                     }
                     break;
@@ -185,7 +198,7 @@ public final class JavaRegexParser implements RegexParser {
                     break;
                 case groupEnd:
                     if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
-                        throw syntaxErrorHere(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                        throw syntaxErrorHere(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS, ErrorCode.UnmatchedParenthesis);
                     }
                     lexer.popLocalFlags();
                     astBuilder.popGroup(token);
@@ -215,7 +228,7 @@ public final class JavaRegexParser implements RegexParser {
             astBuilder.addDollar();
         }
         if (!astBuilder.curGroupIsRoot()) {
-            throw syntaxErrorHere(JavaErrorMessages.UNCLOSED_GROUP);
+            throw syntaxErrorHere(JavaErrorMessages.UNCLOSED_GROUP, ErrorCode.UnmatchedParenthesis);
         }
         return astBuilder.popRootGroup();
     }
@@ -232,8 +245,8 @@ public final class JavaRegexParser implements RegexParser {
 
     // Error reporting
 
-    private RegexSyntaxException syntaxErrorHere(String message) {
-        return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition());
+    private RegexSyntaxException syntaxErrorHere(String message, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(source, message, lexer.getLastTokenPosition(), errorCode);
     }
 
     private void literalString(Token.LiteralString token) {

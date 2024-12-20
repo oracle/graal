@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
-package com.oracle.truffle.regex.tregex.util;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 
-public final class MathUtil {
+public class MarkAsAliveVisitor extends DepthFirstTraversalRegexASTVisitor {
 
-    public static int log2floor(int x) {
-        return 31 - Integer.numberOfLeadingZeros(x);
+    public static void markAsAlive(RegexASTNode runRoot) {
+        new MarkAsAliveVisitor().run(runRoot);
     }
 
-    public static int log2ceil(int x) {
-        return 32 - Integer.numberOfLeadingZeros(x - 1);
-    }
-
-    public static int saturatingInc(int x) {
-        if (x == Integer.MAX_VALUE) {
-            return x;
-        }
-        return x + 1;
+    @Override
+    protected void doVisit(RegexASTNode cur) {
+        cur.setDead(false);
     }
 }
