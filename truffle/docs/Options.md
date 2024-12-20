@@ -81,6 +81,7 @@ The accepted values are:
 - `--engine.PartialBlockMaximumSize=[1, inf)` : Sets the maximum non-trivial Truffle node size for partial compilation of BlockNode nodes (default: 10000).
 - `--engine.SingleTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier (default: 1000).
 - `--engine.Splitting=true|false` : Enable automatic duplication of compilation profiles (splitting) (default: true).
+- `--engine.StoppedCompilationRetryDelay=<ms>` : Before the Truffle runtime submits an OptimizedCallTarget for compilation, it checks for the compilation activity mode in the host VM. If the activity mode indicates a full code cache, no new compilation requests are submitted and the compilation queue is flushed. After 'StoppedCompilationRetryDelay' milliseconds new compilations will be submitted again (which might trigger a sweep of the code cache and a reset of the compilation activity mode in the host JVM). The option is only supported on the HotSpot Truffle runtime. On runtimes which don't support it the option has no effect. default: 5000
 - `--engine.TraceCompilation` : Print information for compilation results.
 - `--compiler.EncodedGraphCache` : Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).
 - `--compiler.FirstTierUseEconomy` : Whether to use the economy configuration in the first-tier compilations. (default: true, syntax: true|false)

@@ -43,6 +43,7 @@ package com.oracle.truffle.runtime;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,9 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -82,6 +85,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.runtime.OptimizedBlockNode.PartialBlockRootNode;
 import com.oracle.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime.CompilationActivityMode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -897,6 +901,58 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return compilationFailed;
     }
 
+    private CompilationActivityMode getCompilationActivityMode() {
+        CompilationActivityMode compilationActivityMode = runtime().getCompilationActivityMode();
+        long stoppedTime = runtime().stoppedCompilationTime().get();
+        if (compilationActivityMode == CompilationActivityMode.STOP_COMPILATION) {
+            if (stoppedTime != 0 && System.currentTimeMillis() - stoppedTime > engine.stoppedCompilationRetryDelay) {
+                runtime().stoppedCompilationTime().compareAndSet(stoppedTime, 0);
+                // Try again every StoppedCompilationRetryDelay milliseconds to potentially trigger
+                // a code cache sweep.
+                compilationActivityMode = CompilationActivityMode.RUN_COMPILATION;
+            }
+        }
+
+        switch (compilationActivityMode) {
+            case RUN_COMPILATION:
+                // This is the common case - compilations are not stopped.
+                return CompilationActivityMode.RUN_COMPILATION;
+            case STOP_COMPILATION:
+                if (stoppedTime == 0) {
+                    runtime().stoppedCompilationTime().compareAndSet(0, System.currentTimeMillis());
+                }
+                // Flush the compilations queue for now. There's still a chance that compilation
+                // will be re-enabled eventually, if the hosts code cache can be cleaned up.
+                Collection<OptimizedCallTarget> targets = runtime().getCompileQueue().getQueuedTargets(null);
+                // If there's just a single compilation target in the queue, the chance is high that
+                // it is the one we've just added after the StoppedCompilationRetryDelay ran out, so
+                // keep it to potentially trigger a code cache sweep.
+                if (targets.size() > 1) {
+                    for (OptimizedCallTarget target : targets) {
+                        target.cancelCompilation("Compilation temporary disabled due to full code cache.");
+                    }
+                }
+                return CompilationActivityMode.STOP_COMPILATION;
+            case SHUTDOWN_COMPILATION:
+                // Compilation was shut down permanently because the hosts code cache ran full and
+                // the host was configured without support for code cache sweeping.
+                TruffleLogger logger = engine.getLogger("engine");
+                // The logger can be null if the engine is closed.
+                if (logger != null && engine.logShutdownCompilations().compareAndExchange(true, false)) {
+                    logger.log(Level.WARNING, "Truffle compilations permanently disabled because of full code cache. " +
+                                    "Increase the code cache size using '-XX:ReservedCodeCacheSize=' and/or run with '-XX:+UseCodeCacheFlushing -XX:+MethodFlushing'.");
+                }
+                // Flush the compilation queue and mark all methods as not compilable.
+                for (OptimizedCallTarget target : runtime().getCompileQueue().getQueuedTargets(null)) {
+                    target.cancelCompilation("Compilation permanently disabled due to full code cache.");
+                    target.compilationFailed = true;
+                }
+                return CompilationActivityMode.SHUTDOWN_COMPILATION;
+            default:
+                throw CompilerDirectives.shouldNotReachHere("Invalid compilation activity mode: " + compilationActivityMode);
+        }
+    }
+
     /**
      * Returns <code>true</code> if the call target was already compiled or was compiled
      * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
@@ -908,10 +964,20 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         if (!needsCompile(lastTier)) {
             return true;
         }
+
         if (!isSubmittedForCompilation()) {
             if (!acceptForCompilation()) {
                 // do not try to compile again
                 compilationFailed = true;
+                return false;
+            }
+
+            CompilationActivityMode cam = getCompilationActivityMode();
+            if (cam != CompilationActivityMode.RUN_COMPILATION) {
+                if (cam == CompilationActivityMode.SHUTDOWN_COMPILATION) {
+                    // Compilation was shut down permanently.
+                    compilationFailed = true;
+                }
                 return false;
             }
 

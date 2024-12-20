@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 25.0.0
+* GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
+
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.
 * GR-57681 Added the ability to use `Value#as(byte[].class)` to copy the contents of a guest language byte buffer (`Value#hasBufferElements()`) to a new byte array. The new functionality has precedence over accessing the guest object as array (`Value#hasArrayElements()`) if both ways are available. 
