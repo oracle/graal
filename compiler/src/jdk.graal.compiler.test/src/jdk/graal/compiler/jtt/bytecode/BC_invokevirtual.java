@@ -32,6 +32,8 @@ import org.junit.Test;
 public class BC_invokevirtual extends JTTTest {
 
     private static final class TestClass {
+
+        @SuppressWarnings("static-method")
         public int id(int i) {
             return i;
         }

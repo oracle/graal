@@ -33,7 +33,7 @@ import jdk.graal.compiler.jtt.JTTTest;
 public class Throw_Synchronized05 extends JTTTest {
 
     private static final class TestClass {
-        @SuppressWarnings("unused")
+        @SuppressWarnings({"unused", "static-method"})
         public synchronized boolean test2(int i) throws Exception {
             try {
                 throw new Exception();

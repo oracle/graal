@@ -108,7 +108,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
     }
 
     private static int getNumberOfRequiredVectorRegisters(ArrayIndexOfVariant variant, Stride stride, int nValues) {
-        //Checkstyle: stop FallThrough
+        // Checkstyle: stop FallThrough
         switch (variant) {
             case MatchAny:
                 return nValues + (nValues > 1 ? 6 : 3);
@@ -133,7 +133,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
             default:
                 throw GraalError.shouldNotReachHereUnexpectedValue(variant); // ExcludeFromJacocoGeneratedReport
         }
-        //Checkstyle: resume FallThrough
+        // Checkstyle: resume FallThrough
     }
 
     private void emitScalarCode(AArch64MacroAssembler masm, Register baseAddress, Register searchLength) {

@@ -545,7 +545,7 @@ public class RuntimeCompiledMethodSupport {
             }
         }
 
-        RemovalDecision getDecision(StateSplit node, EconomicMap<StateSplit, RemovalDecision> decisionCache) {
+        static RemovalDecision getDecision(StateSplit node, EconomicMap<StateSplit, RemovalDecision> decisionCache) {
             RemovalDecision cached = decisionCache.get(node);
             if (cached != null) {
                 return cached;

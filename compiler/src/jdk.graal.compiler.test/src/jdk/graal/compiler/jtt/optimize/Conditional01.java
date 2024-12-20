@@ -75,11 +75,11 @@ public class Conditional01 extends JTTTest {
             return r1.val;
         }
 
-        public int low(int tmp3) {
+        public static int low(int tmp3) {
             return tmp3 & 0x01;
         }
 
-        public int bit(boolean c2) {
+        public static int bit(boolean c2) {
             return c2 ? 1 : 0;
         }
     }
