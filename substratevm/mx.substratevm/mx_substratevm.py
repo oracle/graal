@@ -1606,6 +1606,42 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
 )
 mx_sdk_vm.register_graalvm_component(libgraal)
 
+libsvmjdwp_build_args = [
+    "-H:+UnlockExperimentalVMOptions",
+    "-H:+IncludeDebugHelperMethods",
+    "-H:-DeleteLocalSymbols",
+    "-H:+PreserveFramePointer",
+]
+
+libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
+    destination="<lib:svmjdwp>",
+    jvm_library=True,
+    use_modules='image',
+    jar_distributions=['substratevm:SVM_JDWP_SERVER'],
+    build_args=libsvmjdwp_build_args + [
+        '--features=com.oracle.svm.jdwp.server.ServerJDWPFeature',
+    ],
+    headers=False,
+)
+
+libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='SubstrateVM JDWP Debugger',
+    short_name='svmjdwp',
+    dir_name="svm",
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[],
+    jar_distributions=[],
+    builder_jar_distributions=['substratevm:SVM_JDWP_COMMON', 'substratevm:SVM_JDWP_RESIDENT'],
+    support_distributions=[],
+    priority=1,
+    library_configs=[libsvmjdwp_lib_config],
+    stability="experimental",
+    jlink=False,
+)
+mx_sdk_vm.register_graalvm_component(libsvmjdwp)
+
 def _native_image_configure_extra_jvm_args():
     packages = ['jdk.graal.compiler/jdk.graal.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.graal.compiler/jdk.graal.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
