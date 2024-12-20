@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static org.graalvm.word.WordFactory.signed;
+import static jdk.graal.compiler.word.Word.signed;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
@@ -154,8 +153,8 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
             cachedImageHeapRelocations = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             cachedImageFDs = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, UNASSIGNED_FD), CACHED_IMAGE_FDS_NAME);
-            cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, WordFactory.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
-            cachedImageHeapRelocations = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, WordFactory.zero()), CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
+            cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else {
             cachedImageFDs = null;
             cachedImageHeapOffsets = null;

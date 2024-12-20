@@ -28,9 +28,9 @@ import static com.oracle.svm.core.jni.access.JNIReflectionDictionary.WRAPPED_CST
 
 import java.util.function.Function;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.Signature;
  */
 public final class JNINativeLinkage {
 
-    private PointerBase entryPoint = WordFactory.nullPointer();
+    private PointerBase entryPoint = Word.nullPointer();
 
     private final CharSequence declaringClass;
     private final CharSequence name;
@@ -105,7 +105,7 @@ public final class JNINativeLinkage {
      * symbol lookup when the method is called the next time.
      */
     public void unsetEntryPoint() {
-        entryPoint = WordFactory.nullPointer();
+        entryPoint = Word.nullPointer();
     }
 
     @Override

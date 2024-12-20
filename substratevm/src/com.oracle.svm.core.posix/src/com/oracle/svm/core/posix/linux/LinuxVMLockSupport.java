@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CIsolateData;
@@ -64,7 +64,7 @@ final class LinuxVMSemaphore extends VMSemaphore {
     @Override
     @Uninterruptible(reason = "Too early for safepoints.")
     public int initialize() {
-        return Semaphore.NoTransitions.sem_init(getStructPointer(), WordFactory.signed(0), WordFactory.unsigned(0));
+        return Semaphore.NoTransitions.sem_init(getStructPointer(), Word.signed(0), Word.unsigned(0));
     }
 
     @Override

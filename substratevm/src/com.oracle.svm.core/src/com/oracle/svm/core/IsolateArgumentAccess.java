@@ -26,8 +26,8 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordFactory;
 
 public class IsolateArgumentAccess {
 
@@ -63,7 +63,7 @@ public class IsolateArgumentAccess {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static CCharPointer readCCharPointer(IsolateArguments arguments, int index) {
-        return WordFactory.pointer(readLong(arguments, index));
+        return Word.pointer(readLong(arguments, index));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

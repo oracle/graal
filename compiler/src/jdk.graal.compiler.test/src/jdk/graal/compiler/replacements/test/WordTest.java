@@ -34,7 +34,6 @@ import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 import org.junit.Test;
 
 /**
@@ -119,7 +118,7 @@ public class WordTest extends SnippetsTest {
 
     @Snippet
     public static long cast(long input) {
-        WordBase base = WordFactory.signed(input);
+        WordBase base = Word.signed(input);
         UnsignedWord unsigned = (UnsignedWord) base;
         Pointer pointer = (Pointer) unsigned;
         Word word = (Word) pointer;
@@ -128,111 +127,111 @@ public class WordTest extends SnippetsTest {
 
     @Snippet
     public static long unsignedLong(long word) {
-        return WordFactory.unsigned(word).rawValue();
+        return Word.unsigned(word).rawValue();
     }
 
     @Snippet
     public static long unsignedInt(int word) {
-        return WordFactory.unsigned(word).rawValue();
+        return Word.unsigned(word).rawValue();
     }
 
     @Snippet
     public static long signedLong(long word) {
-        return WordFactory.signed(word).rawValue();
+        return Word.signed(word).rawValue();
     }
 
     @Snippet
     public static long signedInt(int word) {
-        return WordFactory.signed(word).rawValue();
+        return Word.signed(word).rawValue();
     }
 
     @Snippet
     public static long unsignedPlusInt(long word, int addend) {
-        return WordFactory.unsigned(word).add(addend).rawValue();
+        return Word.unsigned(word).add(addend).rawValue();
     }
 
     @Snippet
     public static long unsignedMinusInt(long word, int addend) {
-        return WordFactory.unsigned(word).subtract(addend).rawValue();
+        return Word.unsigned(word).subtract(addend).rawValue();
     }
 
     @Snippet
     public static long unsignedPlusLong(long word, long addend) {
-        return WordFactory.unsigned(word).add(WordFactory.unsigned(addend)).rawValue();
+        return Word.unsigned(word).add(Word.unsigned(addend)).rawValue();
     }
 
     @Snippet
     public static long unsignedMinusLong(long word, long addend) {
-        return WordFactory.unsigned(word).subtract(WordFactory.unsigned(addend)).rawValue();
+        return Word.unsigned(word).subtract(Word.unsigned(addend)).rawValue();
     }
 
     @Snippet
     public static long signedPlusInt(long word, int addend) {
-        return WordFactory.signed(word).add(addend).rawValue();
+        return Word.signed(word).add(addend).rawValue();
     }
 
     @Snippet
     public static long signedMinusInt(long word, int addend) {
-        return WordFactory.signed(word).subtract(addend).rawValue();
+        return Word.signed(word).subtract(addend).rawValue();
     }
 
     @Snippet
     public static long signedPlusLong(long word, long addend) {
-        return WordFactory.signed(word).add(WordFactory.signed(addend)).rawValue();
+        return Word.signed(word).add(Word.signed(addend)).rawValue();
     }
 
     @Snippet
     public static long signedMinusLong(long word, long addend) {
-        return WordFactory.signed(word).subtract(WordFactory.signed(addend)).rawValue();
+        return Word.signed(word).subtract(Word.signed(addend)).rawValue();
     }
 
     @Snippet
     public static long signedNot(long word) {
-        return WordFactory.signed(word).not().rawValue();
+        return Word.signed(word).not().rawValue();
     }
 
     @Snippet
     public static long unsignedNot(long word) {
-        return WordFactory.unsigned(word).not().rawValue();
+        return Word.unsigned(word).not().rawValue();
     }
 
     @Snippet
     public static boolean aboveOrEqual(long word1, long word2) {
-        return WordFactory.unsigned(word1).aboveOrEqual(WordFactory.unsigned(word2));
+        return Word.unsigned(word1).aboveOrEqual(Word.unsigned(word2));
     }
 
     @Snippet
     public static boolean above(long word1, long word2) {
-        return WordFactory.unsigned(word1).aboveThan(WordFactory.unsigned(word2));
+        return Word.unsigned(word1).aboveThan(Word.unsigned(word2));
     }
 
     @Snippet
     public static boolean belowOrEqual(long word1, long word2) {
-        return WordFactory.unsigned(word1).belowOrEqual(WordFactory.unsigned(word2));
+        return Word.unsigned(word1).belowOrEqual(Word.unsigned(word2));
     }
 
     @Snippet
     public static boolean below(long word1, long word2) {
-        return WordFactory.unsigned(word1).belowThan(WordFactory.unsigned(word2));
+        return Word.unsigned(word1).belowThan(Word.unsigned(word2));
     }
 
     @Snippet
     public static long andInt(long word, int addend) {
-        return WordFactory.unsigned(word).and(addend).rawValue();
+        return Word.unsigned(word).and(addend).rawValue();
     }
 
     @Snippet
     public static long orInt(long word, int addend) {
-        return WordFactory.unsigned(word).or(addend).rawValue();
+        return Word.unsigned(word).or(addend).rawValue();
     }
 
     @Snippet
     public static long andLong(long word, long addend) {
-        return WordFactory.unsigned(word).and(WordFactory.unsigned(addend)).rawValue();
+        return Word.unsigned(word).and(Word.unsigned(addend)).rawValue();
     }
 
     @Snippet
     public static long orLong(long word, long addend) {
-        return WordFactory.unsigned(word).or(WordFactory.unsigned(addend)).rawValue();
+        return Word.unsigned(word).or(Word.unsigned(addend)).rawValue();
     }
 }

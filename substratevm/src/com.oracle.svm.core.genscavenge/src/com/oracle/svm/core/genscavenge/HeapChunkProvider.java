@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
@@ -107,7 +107,7 @@ final class HeapChunkProvider {
 
     void freeExcessAlignedChunks() {
         assert VMOperation.isGCInProgress();
-        consumeAlignedChunks(WordFactory.nullPointer(), false);
+        consumeAlignedChunks(Word.nullPointer(), false);
     }
 
     /**
@@ -118,14 +118,14 @@ final class HeapChunkProvider {
         assert VMOperation.isGCInProgress();
         assert firstChunk.isNull() || HeapChunk.getPrevious(firstChunk).isNull() : "prev must be null";
 
-        UnsignedWord maxChunksToKeep = WordFactory.zero();
-        UnsignedWord unusedChunksToFree = WordFactory.zero();
+        UnsignedWord maxChunksToKeep = Word.zero();
+        UnsignedWord unusedChunksToFree = Word.zero();
         if (keepAll) {
             maxChunksToKeep = UnsignedUtils.MAX_VALUE;
         } else {
             UnsignedWord freeListBytes = getBytesInUnusedChunks();
             UnsignedWord reserveBytes = GCImpl.getPolicy().getMaximumFreeAlignedChunksSize();
-            UnsignedWord maxHeapFree = WordFactory.unsigned(SerialGCOptions.MaxHeapFree.getValue());
+            UnsignedWord maxHeapFree = Word.unsigned(SerialGCOptions.MaxHeapFree.getValue());
             if (maxHeapFree.aboveThan(0)) {
                 reserveBytes = UnsignedUtils.min(reserveBytes, maxHeapFree);
             }
@@ -178,7 +178,7 @@ final class HeapChunkProvider {
 
         HeapChunk.setNext(chunk, unusedAlignedChunks.get());
         unusedAlignedChunks.set(chunk);
-        numUnusedAlignedChunks.addAndGet(WordFactory.unsigned(1));
+        numUnusedAlignedChunks.addAndGet(Word.unsigned(1));
     }
 
     /**
@@ -194,9 +194,9 @@ final class HeapChunkProvider {
     private AlignedHeader popUnusedAlignedChunk() {
         AlignedHeader result = popUnusedAlignedChunkUninterruptibly();
         if (result.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         } else {
-            numUnusedAlignedChunks.subtractAndGet(WordFactory.unsigned(1));
+            numUnusedAlignedChunks.subtractAndGet(Word.unsigned(1));
             return result;
         }
     }
@@ -206,11 +206,11 @@ final class HeapChunkProvider {
         while (true) {
             AlignedHeader result = unusedAlignedChunks.get();
             if (result.isNull()) {
-                return WordFactory.nullPointer();
+                return Word.nullPointer();
             } else {
                 AlignedHeader next = HeapChunk.getNext(result);
                 if (unusedAlignedChunks.compareAndSet(result, next)) {
-                    HeapChunk.setNext(result, WordFactory.nullPointer());
+                    HeapChunk.setNext(result, Word.nullPointer());
                     return result;
                 }
             }
@@ -224,7 +224,7 @@ final class HeapChunkProvider {
         }
 
         AlignedHeader chunk = unusedAlignedChunks.get();
-        UnsignedWord released = WordFactory.zero();
+        UnsignedWord released = Word.zero();
         while (chunk.isNonNull() && released.belowThan(count)) {
             AlignedHeader next = HeapChunk.getNext(chunk);
             freeAlignedChunk(chunk);

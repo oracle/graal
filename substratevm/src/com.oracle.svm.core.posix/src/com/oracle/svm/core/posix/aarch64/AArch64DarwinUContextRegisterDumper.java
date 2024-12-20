@@ -26,10 +26,10 @@ package com.oracle.svm.core.posix.aarch64;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.Uninterruptible;
@@ -93,27 +93,27 @@ class AArch64DarwinUContextRegisterDumper implements UContextRegisterDumper {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getHeapBase(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
-        return WordFactory.pointer(sigcontext.regs().read(27));
+        return Word.pointer(sigcontext.regs().read(27));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getThreadPointer(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
-        return WordFactory.pointer(sigcontext.regs().read(28));
+        return Word.pointer(sigcontext.regs().read(28));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
-        return WordFactory.pointer(sigcontext.sp());
+        return Word.pointer(sigcontext.sp());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
-        return WordFactory.pointer(sigcontext.pc());
+        return Word.pointer(sigcontext.pc());
     }
 }

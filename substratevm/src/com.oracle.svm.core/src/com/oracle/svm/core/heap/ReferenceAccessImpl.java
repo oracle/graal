@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
@@ -62,7 +61,7 @@ public class ReferenceAccessImpl implements ReferenceAccess {
     public Object readObjectAt(Pointer p, boolean compressed) {
         Word w = (Word) p;
         if (compressed) {
-            return ObjectAccess.readObject(WordFactory.nullPointer(), p);
+            return ObjectAccess.readObject(Word.nullPointer(), p);
         } else {
             return w.readObject(0);
         }
@@ -74,7 +73,7 @@ public class ReferenceAccessImpl implements ReferenceAccess {
     public void writeObjectAt(Pointer p, Object value, boolean compressed) {
         Word w = (Word) p;
         if (compressed) {
-            ObjectAccess.writeObject(WordFactory.nullPointer(), p, value);
+            ObjectAccess.writeObject(Word.nullPointer(), p, value);
         } else {
             // this overload has no uncompression semantics
             w.writeObject(0, value);
@@ -114,10 +113,10 @@ public class ReferenceAccessImpl implements ReferenceAccess {
         int compressionShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
         if (compressionShift > 0) {
             int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
-            return WordFactory.unsigned(1L << (referenceSize * Byte.SIZE)).shiftLeft(compressionShift);
+            return Word.unsigned(1L << (referenceSize * Byte.SIZE)).shiftLeft(compressionShift);
         }
         // Assume that 48 bit is the maximum address space that can be used.
-        return WordFactory.unsigned((1L << 48) - 1);
+        return Word.unsigned((1L << 48) - 1);
     }
 
     @Fold

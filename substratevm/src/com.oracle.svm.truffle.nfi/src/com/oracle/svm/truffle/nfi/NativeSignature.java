@@ -27,6 +27,7 @@ package com.oracle.svm.truffle.nfi;
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getOffset;
 import static com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NativeArgumentBuffer_TypeTag.getTag;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
@@ -37,7 +38,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -74,7 +74,7 @@ final class NativeSignature {
             CifData data = UnmanagedMemory.malloc(SizeOf.get(CifData.class) + argCount * SizeOf.get(ffi_type_array.class));
 
             for (int i = 0; i < argCount; i++) {
-                data.args().write(i, WordFactory.pointer(args[i].type));
+                data.args().write(i, Word.pointer(args[i].type));
             }
 
             return data;
@@ -141,7 +141,7 @@ final class NativeSignature {
                     }
                 }
 
-                ffiCall(cif, WordFactory.pointer(functionPointer), ret, argPtrs, ErrnoMirror.errnoMirror.getAddress());
+                ffiCall(cif, Word.pointer(functionPointer), ret, argPtrs, ErrnoMirror.errnoMirror.getAddress());
             } finally {
                 UnmanagedMemory.free(argPtrs);
             }

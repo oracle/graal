@@ -31,6 +31,7 @@ import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mmap;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.shm_open;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.shm_unlink;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -39,7 +40,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -58,7 +58,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
 
     private static final String FILE_NAME_PREFIX = "/ni-got-";
     private static final int FILE_NAME_PREFIX_LEN = FILE_NAME_PREFIX.length();
-    private static final CGlobalData<WordPointer> memoryViewFd = CGlobalDataFactory.createWord((WordBase) WordFactory.signed(-1));
+    private static final CGlobalData<WordPointer> memoryViewFd = CGlobalDataFactory.createWord((WordBase) Word.signed(-1));
     private static final CGlobalData<CCharPointer> fileNamePrefix = CGlobalDataFactory.createCString(FILE_NAME_PREFIX);
 
     @Override
@@ -74,7 +74,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
 
         /* GOT shared memory file name format: fileNamePrefix-pid */
         CCharPointer nameStr = StackValue.get(64 * SizeOf.get(CCharPointer.class));
-        LibC.memcpy(nameStr, fileNamePrefix.get(), WordFactory.unsigned(FILE_NAME_PREFIX_LEN));
+        LibC.memcpy(nameStr, fileNamePrefix.get(), Word.unsigned(FILE_NAME_PREFIX_LEN));
 
         int iter = FILE_NAME_PREFIX_LEN + pidLen;
         nameStr.write(iter, (byte) '\0');
@@ -107,12 +107,12 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
 
         UnsignedWord gotPageAlignedSize = getPageAlignedGotSize();
 
-        if (Unistd.NoTransitions.ftruncate(fd, WordFactory.signed(gotPageAlignedSize.rawValue())) != 0) {
+        if (Unistd.NoTransitions.ftruncate(fd, Word.signed(gotPageAlignedSize.rawValue())) != 0) {
             Unistd.NoTransitions.close(fd);
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_RESIZE_FAILED;
         }
 
-        Pointer gotMemory = mmap(WordFactory.nullPointer(), gotPageAlignedSize, PROT_READ() | PROT_WRITE(), MAP_SHARED(), fd, 0);
+        Pointer gotMemory = mmap(Word.nullPointer(), gotPageAlignedSize, PROT_READ() | PROT_WRITE(), MAP_SHARED(), fd, 0);
         if (gotMemory.isNull()) {
             Unistd.NoTransitions.close(fd);
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_MAP_FAILED;
@@ -123,7 +123,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
 
         /* Keep the initial GOT mapping for writing. */
 
-        memoryViewFd.get().write(WordFactory.signed(fd));
+        memoryViewFd.get().write(Word.signed(fd));
         gotStartAddress.write(gotMemory);
 
         return CEntryPointErrors.NO_ERROR;
@@ -141,7 +141,7 @@ public class LinuxGOTHeapSupport extends GOTHeapSupport {
                         start,
                         getPageAlignedGotSize(),
                         memViewFd,
-                        WordFactory.zero(),
+                        Word.zero(),
                         Access.READ);
 
         if (mappedAddress.isNull()) {

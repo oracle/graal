@@ -39,7 +39,6 @@ import jdk.graal.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -53,7 +52,7 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     }
 
     Word getSuperCheckOffset(KlassPointer destElemKlass) {
-        return WordFactory.signed(destElemKlass.readInt(HotSpotReplacementsUtil.superCheckOffsetOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION));
+        return Word.signed(destElemKlass.readInt(HotSpotReplacementsUtil.superCheckOffsetOffset(INJECTED_VMCONFIG), HotSpotReplacementsUtil.KLASS_SUPER_CHECK_OFFSET_LOCATION));
     }
 
     @Override

@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
@@ -62,9 +61,9 @@ import jdk.vm.ci.code.CodeUtil;
  * {@link Heap#isInImageHeap}.
  */
 public final class ObjectHeaderImpl extends ObjectHeader {
-    private static final UnsignedWord UNALIGNED_BIT = WordFactory.unsigned(0b00001);
-    private static final UnsignedWord REMSET_OR_MARKED1_BIT = WordFactory.unsigned(0b00010);
-    private static final UnsignedWord FORWARDED_OR_MARKED2_BIT = WordFactory.unsigned(0b00100);
+    private static final UnsignedWord UNALIGNED_BIT = Word.unsigned(0b00001);
+    private static final UnsignedWord REMSET_OR_MARKED1_BIT = Word.unsigned(0b00010);
+    private static final UnsignedWord FORWARDED_OR_MARKED2_BIT = Word.unsigned(0b00100);
     private static final UnsignedWord MARKED_BITS = REMSET_OR_MARKED1_BIT.or(FORWARDED_OR_MARKED2_BIT);
 
     /**
@@ -72,12 +71,12 @@ public final class ObjectHeaderImpl extends ObjectHeader {
      * initialized to {@link #IDHASH_STATE_UNASSIGNED}.
      */
     private static final int IDHASH_STATE_SHIFT = 3;
-    private static final UnsignedWord IDHASH_STATE_BITS = WordFactory.unsigned(0b11000);
+    private static final UnsignedWord IDHASH_STATE_BITS = Word.unsigned(0b11000);
 
     @SuppressWarnings("unused") //
-    private static final UnsignedWord IDHASH_STATE_UNASSIGNED = WordFactory.unsigned(0b00);
-    private static final UnsignedWord IDHASH_STATE_FROM_ADDRESS = WordFactory.unsigned(0b01);
-    private static final UnsignedWord IDHASH_STATE_IN_FIELD = WordFactory.unsigned(0b10);
+    private static final UnsignedWord IDHASH_STATE_UNASSIGNED = Word.unsigned(0b00);
+    private static final UnsignedWord IDHASH_STATE_FROM_ADDRESS = Word.unsigned(0b01);
+    private static final UnsignedWord IDHASH_STATE_IN_FIELD = Word.unsigned(0b10);
 
     private final int numAlignmentBits;
     private final int numReservedBits;
@@ -141,7 +140,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         boolean isIdentityHashFieldInObjectHeader = ol.isIdentityHashFieldInObjectHeader() || ol.isIdentityHashFieldAtTypeSpecificOffset() && isArrayLike;
         if (getReferenceSize() == Integer.BYTES) {
-            dynamicAssert(encodedHub.and(WordFactory.unsigned(0xFFFFFFFF00000000L)).isNull(), "hub can only use 32 bits");
+            dynamicAssert(encodedHub.and(Word.unsigned(0xFFFFFFFF00000000L)).isNull(), "hub can only use 32 bits");
             if (isIdentityHashFieldInObjectHeader) {
                 /* Use a single 64-bit write to initialize the hub and the identity hashcode. */
                 dynamicAssert(ol.getObjectHeaderIdentityHashOffset() == getHubOffset() + 4, "assumed layout to optimize initializing write");
@@ -279,7 +278,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     /** Clear the object header bits from a header. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord clearBits(UnsignedWord header) {
-        UnsignedWord mask = WordFactory.unsigned(reservedBitsMask);
+        UnsignedWord mask = Word.unsigned(reservedBitsMask);
         return header.and(mask.not());
     }
 
@@ -444,7 +443,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             if (hasShift()) {
                 // Compression with a shift uses all bits of a reference, so store the forwarding
                 // pointer in the location following the hub pointer.
-                result = compressedCopy.shiftLeft(32).or(WordFactory.unsigned(0x00000000e0e0e0e0L));
+                result = compressedCopy.shiftLeft(32).or(Word.unsigned(0x00000000e0e0e0e0L));
             } else {
                 result = compressedCopy;
             }

@@ -29,6 +29,7 @@ import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideE
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -36,7 +37,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
@@ -629,7 +629,7 @@ public final class Safepoint {
             SafepointEndEvent.emit(getSafepointId(), startTicks);
             ImageSingletons.lookup(Heap.class).endSafepoint();
             Statistics.setThawedNanos();
-            requestingThread = WordFactory.nullPointer();
+            requestingThread = Word.nullPointer();
 
             if (unlock) {
                 VMThreads.THREAD_MUTEX.unlock();

@@ -26,10 +26,10 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -66,7 +66,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected static final int DEFAULT_TIME_WEIGHT = 25; // -XX:AdaptiveTimeWeight
 
     /* Constants to compute defaults for values which can be set through existing options. */
-    protected static final UnsignedWord INITIAL_HEAP_SIZE = WordFactory.unsigned(128 * 1024 * 1024);
+    protected static final UnsignedWord INITIAL_HEAP_SIZE = Word.unsigned(128 * 1024 * 1024);
     protected static final int NEW_RATIO = 2; // HotSpot: -XX:NewRatio
 
     protected final AdaptiveWeightedAverage avgYoungGenAlignedChunkFraction = new AdaptiveWeightedAverage(DEFAULT_TIME_WEIGHT);
@@ -326,7 +326,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         UnsignedWord maxHeap;
         long optionMax = SubstrateGCOptions.MaxHeapSize.getValue();
         if (optionMax > 0L) {
-            maxHeap = WordFactory.unsigned(optionMax);
+            maxHeap = Word.unsigned(optionMax);
         } else {
             maxHeap = PhysicalMemory.size().unsignedDivide(100).multiply(HeapParameters.getMaximumHeapSizePercent());
         }
@@ -336,7 +336,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         UnsignedWord maxYoung;
         long optionMaxYoung = SubstrateGCOptions.MaxNewSize.getValue();
         if (optionMaxYoung > 0L) {
-            maxYoung = WordFactory.unsigned(optionMaxYoung);
+            maxYoung = Word.unsigned(optionMaxYoung);
         } else if (SerialAndEpsilonGCOptions.MaximumYoungGenerationSizePercent.hasBeenSet()) {
             maxYoung = maxHeap.unsignedDivide(100).multiply(HeapParameters.getMaximumYoungGenerationSizePercent());
         } else {
@@ -349,10 +349,10 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         VMError.guarantee(maxOld.aboveOrEqual(minSpaceSize()) && maxHeap.belowOrEqual(addressSpaceSize) &&
                         (maxHeap.belowOrEqual(unadjustedMaxHeap) || unadjustedMaxHeap.belowThan(minAllSpaces)));
 
-        UnsignedWord minHeap = WordFactory.zero();
+        UnsignedWord minHeap = Word.zero();
         long optionMin = SubstrateGCOptions.MinHeapSize.getValue();
         if (optionMin > 0L) {
-            minHeap = WordFactory.unsigned(optionMin);
+            minHeap = Word.unsigned(optionMin);
         }
         minHeap = UnsignedUtils.clamp(alignUp(minHeap), minAllSpaces, maxHeap);
 
@@ -366,7 +366,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
             initialYoung = initialHeap.unsignedDivide(initialNewRatio + 1);
             initialYoung = UnsignedUtils.clamp(alignUp(initialYoung), minYoungSpaces, maxYoung);
         }
-        UnsignedWord initialSurvivor = WordFactory.zero();
+        UnsignedWord initialSurvivor = Word.zero();
         if (HeapParameters.getMaxSurvivorSpaces() > 0) {
             /*
              * In HotSpot, this is the reserved capacity of each of the survivor From and To spaces,
@@ -427,7 +427,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         UnsignedWord maxSurvivorSize() {
             if (HeapParameters.getMaxSurvivorSpaces() == 0) {
-                return WordFactory.zero();
+                return Word.zero();
             }
             UnsignedWord size = maxYoungSize.unsignedDivide(MIN_SURVIVOR_RATIO);
             return minSpaceSize(alignDown(size));

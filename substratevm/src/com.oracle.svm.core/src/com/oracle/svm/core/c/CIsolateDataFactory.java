@@ -29,17 +29,12 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class CIsolateDataFactory {
 
     public static <T extends PointerBase> CIsolateData<T> createStruct(String name, Class<T> clazz) {
         return create(name, SizeOf.unsigned(clazz));
-    }
-
-    public static <T extends PointerBase> CIsolateData<T> create(String name, int size) {
-        return create(name, WordFactory.unsigned(size));
     }
 
     public static <T extends PointerBase> CIsolateData<T> create(String name, UnsignedWord size) {

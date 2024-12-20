@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.c.enums;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CodeUtil;
@@ -82,13 +82,13 @@ public abstract class CEnumRuntimeData {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final SignedWord enumToSignedWord(Enum<?> value) {
         long result = enumToLong(value);
-        return WordFactory.signed(result);
+        return Word.signed(result);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final UnsignedWord enumToUnsignedWord(Enum<?> value) {
         long result = CodeUtil.zeroExtend(enumToLong(value), bytesInC * Byte.SIZE);
-        return WordFactory.unsigned(result);
+        return Word.unsigned(result);
     }
 
     /**

@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.code;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -39,7 +39,7 @@ import com.oracle.svm.core.util.VMError;
 
 public class AbstractRuntimeCodeInstaller {
     protected Pointer allocateCodeMemory(long size) {
-        PointerBase result = RuntimeCodeInfoAccess.allocateCodeMemory(WordFactory.unsigned(size));
+        PointerBase result = RuntimeCodeInfoAccess.allocateCodeMemory(Word.unsigned(size));
         if (result.isNull()) {
             throw new OutOfMemoryError("Could not allocate memory for runtime-compiled code.");
         }

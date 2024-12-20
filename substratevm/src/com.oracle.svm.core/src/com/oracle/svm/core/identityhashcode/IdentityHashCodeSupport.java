@@ -28,7 +28,6 @@ import java.util.SplittableRandom;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -90,7 +89,7 @@ public final class IdentityHashCodeSupport {
     public static int computeHashCodeFromAddress(Object obj) {
         Word address = Word.objectToUntrackedPointer(obj);
         long salt = Heap.getHeap().getIdentityHashSalt(obj);
-        SignedWord salted = WordFactory.signed(salt).xor(address);
+        SignedWord salted = Word.signed(salt).xor(address);
         int hash = mix32(salted.rawValue()) >>> 1; // shift: ensure positive, same as on HotSpot
         return (hash == 0) ? 1 : hash; // ensure nonzero
     }

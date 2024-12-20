@@ -31,11 +31,11 @@ import static com.oracle.svm.core.posix.headers.Mman.PROT_READ;
 import static com.oracle.svm.core.posix.headers.Mman.PROT_WRITE;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mmap;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -55,7 +55,7 @@ public class DarwinGOTHeapSupport extends GOTHeapSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected int initialize(WordPointer gotStartAddress) {
         int flags = MAP_ANON() | MAP_PRIVATE();
-        Pointer gotMemory = mmap(WordFactory.nullPointer(), getPageAlignedGotSize(), PROT_READ() | PROT_WRITE(), flags, -1, 0);
+        Pointer gotMemory = mmap(Word.nullPointer(), getPageAlignedGotSize(), PROT_READ() | PROT_WRITE(), flags, -1, 0);
         if (gotMemory.isNull() || gotMemory.equal(MAP_FAILED())) {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_FD_CREATE_FAILED;
         }
@@ -92,7 +92,7 @@ public class DarwinGOTHeapSupport extends GOTHeapSupport {
          * Map reserved address space for GOT to "global" GOT allocation, so that all isolates are
          * backed by the same table.
          */
-        ret = DarwinVirtualMemory.vm_remap(taskSelf, gotStart, getPageAlignedGotSize(), WordFactory.nullPointer(), intFalse,
+        ret = DarwinVirtualMemory.vm_remap(taskSelf, gotStart, getPageAlignedGotSize(), Word.nullPointer(), intFalse,
                         taskSelf, DARWIN_GOT_START_ADDRESS.get().read(), intFalse, currentProt, maxProt, DarwinVirtualMemory.VM_INHERIT_SHARE());
         if (ret != 0) {
             return CEntryPointErrors.DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_WRONG_MMAP;

@@ -33,6 +33,7 @@ import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NONE;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NULL_POINTER;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_OUT_OF_MEMORY;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -49,7 +50,6 @@ import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -142,14 +142,14 @@ public final class JvmtiFunctions {
         if (memPtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         } else if (size < 0) {
-            memPtr.write(WordFactory.nullPointer());
+            memPtr.write(Word.nullPointer());
             return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
         }
 
         if (size == 0) {
-            memPtr.write(WordFactory.nullPointer());
+            memPtr.write(Word.nullPointer());
         } else {
-            CCharPointer mem = NullableNativeMemory.malloc(WordFactory.unsigned(size), NmtCategory.JVMTI);
+            CCharPointer mem = NullableNativeMemory.malloc(Word.unsigned(size), NmtCategory.JVMTI);
             memPtr.write(mem);
             if (mem.isNull()) {
                 return JVMTI_ERROR_OUT_OF_MEMORY.getCValue();
@@ -180,7 +180,7 @@ public final class JvmtiFunctions {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int GetCurrentThread(JvmtiExternalEnv externalEnv, JThreadPointer threadPtr) {
-        if (threadPtr.equal(WordFactory.nullPointer())) {
+        if (threadPtr.equal(Word.nullPointer())) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         }
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
@@ -1345,12 +1345,12 @@ public final class JvmtiFunctions {
         if (namePtr.isNull()) {
             return JVMTI_ERROR_NULL_POINTER.getCValue();
         } else if (jvmtiError == null) {
-            namePtr.write(WordFactory.nullPointer());
+            namePtr.write(Word.nullPointer());
             return JVMTI_ERROR_ILLEGAL_ARGUMENT.getCValue();
         }
 
         String name = jvmtiError.name();
-        UnsignedWord bufferSize = WordFactory.unsigned(name.length() + 1);
+        UnsignedWord bufferSize = Word.unsigned(name.length() + 1);
         Pointer mem = NullableNativeMemory.malloc(bufferSize, NmtCategory.JVMTI);
         namePtr.write((CCharPointer) mem);
         if (mem.isNull()) {

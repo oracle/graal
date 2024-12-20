@@ -33,11 +33,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -96,7 +96,7 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
         if (Dlfcn.dladdr(symbolAddress, info) == 0) {
             return null;
         }
-        CCharPointer realpath = Stdlib.realpath(info.dli_fname(), WordFactory.nullPointer());
+        CCharPointer realpath = Stdlib.realpath(info.dli_fname(), Word.nullPointer());
         if (realpath.isNull()) {
             return null;
         }
@@ -157,7 +157,7 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
          * pointer to it, so I have to free it.
          */
         try (CCharPointerHolder pathHolder = CTypeConversion.toCString(path)) {
-            CCharPointer realpath = Stdlib.realpath(pathHolder.get(), WordFactory.nullPointer());
+            CCharPointer realpath = Stdlib.realpath(pathHolder.get(), Word.nullPointer());
             if (realpath.isNull()) {
                 /* Failure to find a real path. */
                 return null;

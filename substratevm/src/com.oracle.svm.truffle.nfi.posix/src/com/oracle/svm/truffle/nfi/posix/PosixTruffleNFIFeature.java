@@ -26,13 +26,13 @@ package com.oracle.svm.truffle.nfi.posix;
 
 import static com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.LM_ID_NEWLM;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.libc.GLibC;
@@ -121,8 +121,8 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
             synchronized (context) {
                 namespaceId = context.isolatedNamespaceId;
                 if (namespaceId == 0) {
-                    PointerBase handle = dlmopen(WordFactory.signed(LM_ID_NEWLM()), name, mode);
-                    if (handle.equal(WordFactory.zero())) {
+                    PointerBase handle = dlmopen(Word.signed(LM_ID_NEWLM()), name, mode);
+                    if (handle.equal(Word.zero())) {
                         return handle;
                     }
 
@@ -143,7 +143,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
 
         // Namespace already created.
         assert namespaceId != 0;
-        return dlmopen(WordFactory.signed(namespaceId), name, mode);
+        return dlmopen(Word.signed(namespaceId), name, mode);
     }
 
     @Override
@@ -154,7 +154,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         } else {
             handle = PosixUtils.dlopen(name, flags);
         }
-        if (handle.equal(WordFactory.zero())) {
+        if (handle.equal(Word.zero())) {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
             throw SubstrateUtil.cast(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(error), AbstractTruffleException.class);
@@ -164,7 +164,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
 
     @Override
     protected void freeLibraryImpl(long library) {
-        Dlfcn.dlclose(WordFactory.pointer(library));
+        Dlfcn.dlclose(Word.pointer(library));
     }
 
     @Override
@@ -177,10 +177,10 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         if (library == 0) {
             ret = nativeLibrarySupport.findBuiltinSymbol(name);
         } else {
-            ret = PosixUtils.dlsym(WordFactory.pointer(library), name);
+            ret = PosixUtils.dlsym(Word.pointer(library), name);
         }
 
-        if (ret.equal(WordFactory.zero())) {
+        if (ret.equal(Word.zero())) {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
             if (error != null) {

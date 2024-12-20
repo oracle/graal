@@ -26,10 +26,10 @@ package com.oracle.svm.core.heap;
 
 import jdk.graal.compiler.core.common.util.AbstractTypeReader;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.FrameAccess;
@@ -58,8 +58,8 @@ public class CodeReferenceMapDecoder {
     public static boolean walkOffsetsFromPointer(PointerBase baseAddress, NonmovableArray<Byte> referenceMapEncoding, long referenceMapIndex, ObjectReferenceVisitor visitor, Object holderObject) {
         assert referenceMapIndex != ReferenceMapIndex.NO_REFERENCE_MAP;
         assert referenceMapEncoding.isNonNull();
-        UnsignedWord uncompressedSize = WordFactory.unsigned(FrameAccess.uncompressedReferenceSize());
-        UnsignedWord compressedSize = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
+        UnsignedWord uncompressedSize = Word.unsigned(FrameAccess.uncompressedReferenceSize());
+        UnsignedWord compressedSize = Word.unsigned(ConfigurationValues.getObjectLayout().getReferenceSize());
 
         Pointer objRef = (Pointer) baseAddress;
         long idx = referenceMapIndex;
@@ -115,7 +115,7 @@ public class CodeReferenceMapDecoder {
             }
             firstRun = false;
 
-            objRef = objRef.add(WordFactory.unsigned(gap));
+            objRef = objRef.add(Word.unsigned(gap));
             boolean compressed = (count < 0);
             UnsignedWord refSize = compressed ? compressedSize : uncompressedSize;
             count = (count < 0) ? -count : count;
@@ -152,9 +152,9 @@ public class CodeReferenceMapDecoder {
 
                     Pointer derivedRef;
                     if (refOffset >= 0) {
-                        derivedRef = objRef.add(WordFactory.unsigned(refOffset).multiply(refSize));
+                        derivedRef = objRef.add(Word.unsigned(refOffset).multiply(refSize));
                     } else {
-                        derivedRef = objRef.subtract(WordFactory.unsigned(-refOffset).multiply(refSize));
+                        derivedRef = objRef.subtract(Word.unsigned(-refOffset).multiply(refSize));
                     }
 
                     Pointer derivedPtr = baseAddress.isNull() ? derivedRef : derivedRef.readWord(0);

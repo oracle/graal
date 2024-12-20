@@ -29,13 +29,13 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -137,7 +137,7 @@ final class TrampolineSet {
         VirtualMemoryProvider memoryProvider = VirtualMemoryProvider.get();
         UnsignedWord pageSize = allocationSize();
         /* We request a specific alignment to guarantee correctness of getAllocationBase */
-        Pointer page = memoryProvider.commit(WordFactory.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
+        Pointer page = memoryProvider.commit(Word.nullPointer(), pageSize, VirtualMemoryProvider.Access.WRITE | VirtualMemoryProvider.Access.FUTURE_EXECUTE);
         if (page.isNull()) {
             throw new OutOfMemoryError("Could not allocate memory for trampolines.");
         }

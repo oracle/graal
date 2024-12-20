@@ -27,10 +27,10 @@ package com.oracle.svm.core.code;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -129,7 +129,7 @@ public final class InstalledCodeObserverSupport {
                 InstalledCodeObserverHandle handle = NonmovableArrays.getWord(observerHandles, i);
                 if (handle.isNonNull()) {
                     getAccessor(handle).releaseOnTearDown(handle);
-                    NonmovableArrays.setWord(observerHandles, i, WordFactory.nullPointer());
+                    NonmovableArrays.setWord(observerHandles, i, Word.nullPointer());
                 }
             }
         }

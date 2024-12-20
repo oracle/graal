@@ -41,7 +41,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
@@ -112,7 +111,7 @@ public class StackTraceUtils {
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread) {
-        return getStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
+        return getStackTraceAtSafepoint(isolateThread, Word.nullPointer());
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
@@ -128,7 +127,7 @@ public class StackTraceUtils {
     public static StackTraceElement[] getStackTraceAtSafepoint(IsolateThread isolateThread, Pointer startSP, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
-        JavaStackWalker.walkThread(isolateThread, startSP, endSP, WordFactory.nullPointer(), visitor);
+        JavaStackWalker.walkThread(isolateThread, startSP, endSP, Word.nullPointer(), visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
@@ -543,10 +542,10 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
      */
     static Class<?> readSourceClass(long[] backtrace, int pos) {
         if (useCompressedReferences()) {
-            UnsignedWord ref = WordFactory.unsigned(backtrace[pos + 1]).unsignedShiftRight(32);
+            UnsignedWord ref = Word.unsigned(backtrace[pos + 1]).unsignedShiftRight(32);
             return (Class<?>) ReferenceAccess.singleton().uncompressReference(ref);
         } else {
-            Word sourceClassPtr = WordFactory.pointer(backtrace[pos + 1]);
+            Word sourceClassPtr = Word.pointer(backtrace[pos + 1]);
             return sourceClassPtr.toObject(Class.class, true);
         }
     }
@@ -561,10 +560,10 @@ final class BacktraceVisitor extends JavaStackFrameVisitor {
      */
     static String readSourceMethodName(long[] backtrace, int pos) {
         if (useCompressedReferences()) {
-            UnsignedWord ref = WordFactory.unsigned(backtrace[pos + 1]).and(WordFactory.unsigned(0xffffffffL));
+            UnsignedWord ref = Word.unsigned(backtrace[pos + 1]).and(Word.unsigned(0xffffffffL));
             return (String) ReferenceAccess.singleton().uncompressReference(ref);
         } else {
-            Word sourceMethodNamePtr = WordFactory.pointer(backtrace[pos + 2]);
+            Word sourceMethodNamePtr = Word.pointer(backtrace[pos + 2]);
             return sourceMethodNamePtr.toObject(String.class, true);
         }
     }

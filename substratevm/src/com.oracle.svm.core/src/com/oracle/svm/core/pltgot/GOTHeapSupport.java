@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.pltgot;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
@@ -31,7 +32,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -54,8 +54,8 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
     public static final String IMAGE_GOT_BEGIN_SYMBOL_NAME = "__svm_got_begin";
     public static final CGlobalData<Pointer> IMAGE_GOT_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_GOT_BEGIN_SYMBOL_NAME);
 
-    private static final SignedWord GOT_UNINITIALIZED = WordFactory.signed(-1);
-    private static final SignedWord GOT_INITIALIZATION_IN_PROGRESS = WordFactory.signed(-2);
+    private static final SignedWord GOT_UNINITIALIZED = Word.signed(-1);
+    private static final SignedWord GOT_INITIALIZATION_IN_PROGRESS = Word.signed(-2);
     private static final CGlobalData<Pointer> GOT_STATUS = CGlobalDataFactory.createWord(GOT_UNINITIALIZED);
     static final CGlobalData<WordPointer> GOT_START_ADDRESS = CGlobalDataFactory.createWord();
 
@@ -150,7 +150,7 @@ public abstract class GOTHeapSupport extends DynamicMethodAddressResolutionHeapS
         if (ret == CEntryPointErrors.NO_ERROR) {
             makeGOTReadOnly();
         }
-        GOT_STATUS.get().writeWordVolatile(0, WordFactory.signed(ret));
+        GOT_STATUS.get().writeWordVolatile(0, Word.signed(ret));
         return ret;
     }
 

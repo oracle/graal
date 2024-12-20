@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
@@ -112,7 +111,7 @@ public class PerfMemory {
         memoryProvider = m;
         buffer = b;
         capacity = b.capacity();
-        rawMemory = WordFactory.pointer(SubstrateUtil.cast(b, Target_java_nio_Buffer.class).address);
+        rawMemory = Word.pointer(SubstrateUtil.cast(b, Target_java_nio_Buffer.class).address);
 
         assert verifyRawMemoryAccess();
 
@@ -193,7 +192,7 @@ public class PerfMemory {
     public void teardown() {
         if (buffer != null) {
             buffer = null;
-            rawMemory = WordFactory.zero();
+            rawMemory = Word.zero();
             capacity = 0;
             used = 0;
         }
@@ -213,13 +212,13 @@ public class PerfMemory {
 
     private static boolean tryAcquirePerfDataFile() {
         Pointer perfDataIsolatePtr = PERF_DATA_ISOLATE.get();
-        return perfDataIsolatePtr.logicCompareAndSwapWord(0, WordFactory.nullPointer(), CurrentIsolate.getIsolate(), LocationIdentity.ANY_LOCATION);
+        return perfDataIsolatePtr.logicCompareAndSwapWord(0, Word.nullPointer(), CurrentIsolate.getIsolate(), LocationIdentity.ANY_LOCATION);
     }
 
     private static void releasePerfDataFile() {
         Pointer perfDataIsolatePtr = PERF_DATA_ISOLATE.get();
         if (perfDataIsolatePtr.readWord(0) == CurrentIsolate.getIsolate()) {
-            perfDataIsolatePtr.writeWord(0, WordFactory.nullPointer());
+            perfDataIsolatePtr.writeWord(0, Word.nullPointer());
         }
     }
 }

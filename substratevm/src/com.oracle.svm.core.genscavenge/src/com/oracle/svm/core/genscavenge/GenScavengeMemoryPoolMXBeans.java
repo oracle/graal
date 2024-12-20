@@ -27,11 +27,11 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.management.MemoryUsage;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.VMError;
@@ -122,7 +122,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(WordFactory.zero());
+            return memoryUsage(Word.zero());
         }
 
         private static UnsignedWord getCurrentUsage() {
@@ -241,7 +241,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         public MemoryUsage getCollectionUsage() {
-            return memoryUsage(WordFactory.zero());
+            return memoryUsage(Word.zero());
         }
     }
 }

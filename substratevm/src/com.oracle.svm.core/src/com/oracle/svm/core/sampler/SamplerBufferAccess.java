@@ -27,10 +27,10 @@ package com.oracle.svm.core.sampler;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -48,7 +48,7 @@ public final class SamplerBufferAccess {
 
     @Fold
     static UnsignedWord getHeaderSize() {
-        return UnsignedUtils.roundUp(SizeOf.unsigned(SamplerBuffer.class), WordFactory.unsigned(ConfigurationValues.getTarget().wordSize));
+        return UnsignedUtils.roundUp(SizeOf.unsigned(SamplerBuffer.class), Word.unsigned(ConfigurationValues.getTarget().wordSize));
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

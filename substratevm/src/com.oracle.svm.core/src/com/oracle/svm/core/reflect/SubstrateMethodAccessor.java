@@ -26,10 +26,10 @@ package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Executable;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
@@ -128,7 +128,7 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
                  */
                 long methodOffset = tableStartingOffset + vtableOffset;
 
-                target = BarrieredAccess.readWord(obj.getClass(), WordFactory.pointer(methodOffset), NamedLocationIdentity.FINAL_LOCATION);
+                target = BarrieredAccess.readWord(obj.getClass(), Word.pointer(methodOffset), NamedLocationIdentity.FINAL_LOCATION);
             } else {
                 target = directTarget;
             }

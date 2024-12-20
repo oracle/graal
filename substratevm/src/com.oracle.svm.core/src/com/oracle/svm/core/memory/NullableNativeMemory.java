@@ -27,12 +27,12 @@ package com.oracle.svm.core.memory;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -77,7 +77,7 @@ public class NullableNativeMemory {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static <T extends PointerBase> T malloc(int size, NmtCategory category) {
         assert size >= 0;
-        return malloc(WordFactory.unsigned(size), category);
+        return malloc(Word.unsigned(size), category);
     }
 
     /**
@@ -99,7 +99,7 @@ public class NullableNativeMemory {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static <T extends PointerBase> T calloc(int size, NmtCategory category) {
         assert size >= 0;
-        return calloc(WordFactory.unsigned(size), category);
+        return calloc(Word.unsigned(size), category);
     }
 
     /**
@@ -127,10 +127,10 @@ public class NullableNativeMemory {
         /* Try to realloc. */
         T newOuterPointer = UntrackedNullableNativeMemory.realloc(oldOuterPointer, getAllocationSize(size));
         if (newOuterPointer.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
-        oldOuterPointer = WordFactory.nullPointer();
+        oldOuterPointer = Word.nullPointer();
 
         /* Only untrack the old block if the allocation was successful. */
         NativeMemoryTracking.singleton().untrack(oldSize, oldCategory);
@@ -154,7 +154,7 @@ public class NullableNativeMemory {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static <T extends PointerBase> T realloc(T ptr, int size, NmtCategory category) {
         assert size >= 0;
-        return realloc(ptr, WordFactory.unsigned(size), category);
+        return realloc(ptr, Word.unsigned(size), category);
     }
 
     /**

@@ -40,7 +40,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -436,7 +435,7 @@ public final class ThreadLocalAllocation {
         assert top.belowOrEqual(end);
 
         if (top.isNull() || end.isNull()) {
-            return WordFactory.unsigned(0);
+            return Word.unsigned(0);
         }
         return end.subtract(top);
     }
@@ -444,7 +443,7 @@ public final class ThreadLocalAllocation {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void guaranteeZeroed(Pointer memory, UnsignedWord size) {
         int wordSize = ConfigurationValues.getTarget().wordSize;
-        VMError.guarantee(UnsignedUtils.isAMultiple(size, WordFactory.unsigned(wordSize)));
+        VMError.guarantee(UnsignedUtils.isAMultiple(size, Word.unsigned(wordSize)));
 
         Pointer pos = memory;
         Pointer end = memory.add(size);
@@ -494,20 +493,20 @@ public final class ThreadLocalAllocation {
         Descriptor tlab = retireCurrentAllocationChunk(thread);
         AlignedHeader alignedChunk = tlab.getAlignedChunk();
         UnalignedHeader unalignedChunk = tlab.getUnalignedChunk();
-        tlab.setAlignedChunk(WordFactory.nullPointer());
-        tlab.setUnalignedChunk(WordFactory.nullPointer());
+        tlab.setAlignedChunk(Word.nullPointer());
+        tlab.setUnalignedChunk(Word.nullPointer());
 
         Space eden = HeapImpl.getHeapImpl().getYoungGeneration().getEden();
         while (alignedChunk.isNonNull()) {
             AlignedHeader next = HeapChunk.getNext(alignedChunk);
-            HeapChunk.setNext(alignedChunk, WordFactory.nullPointer());
+            HeapChunk.setNext(alignedChunk, Word.nullPointer());
             eden.appendAlignedHeapChunk(alignedChunk);
             alignedChunk = next;
         }
 
         while (unalignedChunk.isNonNull()) {
             UnalignedHeader next = HeapChunk.getNext(unalignedChunk);
-            HeapChunk.setNext(unalignedChunk, WordFactory.nullPointer());
+            HeapChunk.setNext(unalignedChunk, Word.nullPointer());
             eden.appendUnalignedHeapChunk(unalignedChunk);
             unalignedChunk = next;
         }
@@ -524,7 +523,7 @@ public final class ThreadLocalAllocation {
 
         tlab.setAllocationTop(HeapChunk.getTopPointer(newChunk), TLAB_TOP_IDENTITY);
         tlab.setAllocationEnd(HeapChunk.getEndPointer(newChunk), TLAB_END_IDENTITY);
-        HeapChunk.setTopPointer(newChunk, WordFactory.nullPointer());
+        HeapChunk.setTopPointer(newChunk, Word.nullPointer());
     }
 
     @Uninterruptible(reason = "Modifies and returns TLAB", callerMustBe = true)
@@ -543,8 +542,8 @@ public final class ThreadLocalAllocation {
              * and only set in the top aligned chunk when it is retired.
              */
             HeapChunk.setTopPointer(alignedChunk, allocationTop);
-            tlab.setAllocationTop(WordFactory.nullPointer(), TLAB_TOP_IDENTITY);
-            tlab.setAllocationEnd(WordFactory.nullPointer(), TLAB_END_IDENTITY);
+            tlab.setAllocationTop(Word.nullPointer(), TLAB_TOP_IDENTITY);
+            tlab.setAllocationEnd(Word.nullPointer(), TLAB_END_IDENTITY);
 
             UnsignedWord usedTlabSize = HeapChunk.getTopPointer(alignedChunk).subtract(AlignedHeapChunk.getObjectsStart(alignedChunk));
             allocatedBytes.set(thread, allocatedBytes.get(thread).add(usedTlabSize));

@@ -26,8 +26,8 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
@@ -191,7 +191,7 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
         caller = null;
         deoptMethod = null;
         deoptMethodOffset = 0;
-        deoptMethodImageCodeInfo = SubstrateUtil.HOSTED ? null : WordFactory.nullPointer();
+        deoptMethodImageCodeInfo = SubstrateUtil.HOSTED ? null : Word.nullPointer();
         isDeoptEntry = false;
         numLocals = 0;
         numStack = 0;
@@ -250,7 +250,7 @@ public class FrameInfoQueryResult extends FrameSourceInfo {
      */
     public CodePointer getDeoptMethodAddress() {
         if (deoptMethodOffset == 0) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         return CodeInfoAccess.absoluteIP(getDeoptMethodImageCodeInfo(), deoptMethodOffset);
     }

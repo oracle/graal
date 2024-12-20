@@ -26,12 +26,12 @@ package com.oracle.svm.core.jni.access;
 
 import java.lang.reflect.Modifier;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
@@ -138,7 +138,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
                 if (vtableOffset != STATICALLY_BOUND_METHOD) {
                     long tableStartingOffset = LoadOpenTypeWorldDispatchTableStartingOffset.createOpenTypeWorldLoadDispatchTableStartingOffset(instance.getClass(), interfaceTypeID);
 
-                    return BarrieredAccess.readWord(instance.getClass(), WordFactory.pointer(tableStartingOffset + vtableOffset), NamedLocationIdentity.FINAL_LOCATION);
+                    return BarrieredAccess.readWord(instance.getClass(), Word.pointer(tableStartingOffset + vtableOffset), NamedLocationIdentity.FINAL_LOCATION);
                 }
             }
         }

@@ -26,7 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import java.lang.ref.WeakReference;
 
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -198,7 +198,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     private void invalidateWithoutDeoptimization0() {
         this.entryPoint = 0;
 
-        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(this.address));
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(Word.pointer(this.address));
         assert untetheredInfo.isNonNull() && !UntetheredCodeInfoAccess.isAOTImageCode(untetheredInfo);
 
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
@@ -226,7 +226,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
          */
         long start = callTarget.installedCode.entryPoint;
         if (start != 0) {
-            SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = WordFactory.pointer(start);
+            SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = Word.pointer(start);
             return target.invoke(callTarget, args);
         } else {
             return callTarget.invokeCallBoundary(args);
@@ -238,7 +238,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         if (entryPoint == 0) {
             return false; // not valid
         }
-        UntetheredCodeInfo info = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(entryPoint));
+        UntetheredCodeInfo info = CodeInfoTable.lookupCodeInfo(Word.pointer(entryPoint));
         return info.isNonNull() && !UntetheredCodeInfoAccess.isAOTImageCode(info) &&
                         UntetheredCodeInfoAccess.getTier(info) == TruffleCompilerImpl.LAST_TIER_INDEX;
     }

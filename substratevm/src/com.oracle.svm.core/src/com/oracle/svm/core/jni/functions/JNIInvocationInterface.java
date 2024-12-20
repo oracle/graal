@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jni.functions;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
@@ -37,7 +38,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -113,8 +113,8 @@ public final class JNIInvocationInterface {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
                 boolean hasSpecialVmOptions = false;
-                CEntryPointCreateIsolateParameters params = WordFactory.nullPointer();
-                CCharPointerPointer errorstr = WordFactory.nullPointer();
+                CEntryPointCreateIsolateParameters params = Word.nullPointer();
+                CCharPointerPointer errorstr = Word.nullPointer();
                 if (vmArgs.isNonNull()) {
                     int vmArgc = vmArgs.getNOptions();
                     if (vmArgc > 0) {
@@ -127,7 +127,7 @@ public final class JNIInvocationInterface {
                         // The first argument is reserved for the name of the binary. We use null
                         // when we are called via JNI.
                         int argc = 0;
-                        argv.addressOf(argc).write(WordFactory.nullPointer());
+                        argv.addressOf(argc).write(Word.nullPointer());
                         argc++;
 
                         Pointer p = (Pointer) vmArgs.getOptions();
@@ -161,7 +161,7 @@ public final class JNIInvocationInterface {
                 int code = CEntryPointActions.enterCreateIsolate(params);
                 if (params.isNonNull()) {
                     UntrackedNullableNativeMemory.free(params.getArgv());
-                    params = WordFactory.nullPointer();
+                    params = Word.nullPointer();
                 }
 
                 if (code == CEntryPointErrors.NO_ERROR) {
@@ -171,7 +171,7 @@ public final class JNIInvocationInterface {
 
                 if (errorstr.isNonNull()) {
                     CCharPointer msg = CEntryPointErrors.getDescriptionAsCString(code);
-                    CCharPointer msgCopy = msg.isNonNull() ? LibC.strdup(msg) : WordFactory.nullPointer();
+                    CCharPointer msgCopy = msg.isNonNull() ? LibC.strdup(msg) : Word.nullPointer();
                     errorstr.write(msgCopy);
                 }
                 return JNIFunctions.Support.convertCEntryPointErrorToJNIError(code, true);
@@ -303,7 +303,7 @@ public final class JNIInvocationInterface {
             env.write(JNIThreadLocalEnvironment.getAddress());
             return JNIErrors.JNI_OK();
         } else {
-            env.write(WordFactory.nullPointer());
+            env.write(Word.nullPointer());
             return JNIErrors.JNI_EVERSION();
         }
     }
@@ -326,7 +326,7 @@ public final class JNIInvocationInterface {
                     return JNIErrors.JNI_ERR();
                 }
                 if (!CEntryPointActions.isCurrentThreadAttachedTo(vm.getFunctions().getIsolate())) {
-                    env.write(WordFactory.nullPointer());
+                    env.write(Word.nullPointer());
                     return JNIErrors.JNI_EDETACHED();
                 }
                 if (CEntryPointActions.enterByIsolate(vm.getFunctions().getIsolate()) != 0) {
@@ -385,7 +385,7 @@ public final class JNIInvocationInterface {
         }
 
         private static int finishInitialization0(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs, boolean hasSpecialVmOptions) {
-            WordPointer javaVmIdPointer = WordFactory.nullPointer();
+            WordPointer javaVmIdPointer = Word.nullPointer();
             if (hasSpecialVmOptions) {
                 javaVmIdPointer = parseVMOptions(vmArgs);
             }
@@ -394,7 +394,7 @@ public final class JNIInvocationInterface {
             JNIJavaVMList.addJavaVM(javaVm);
             if (javaVmIdPointer.isNonNull()) {
                 long javaVmId = ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
-                javaVmIdPointer.write(WordFactory.pointer(javaVmId));
+                javaVmIdPointer.write(Word.pointer(javaVmId));
             }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(new RuntimeSupport.Hook() {
                 @Override
@@ -408,7 +408,7 @@ public final class JNIInvocationInterface {
         }
 
         static WordPointer parseVMOptions(JNIJavaVMInitArgs vmArgs) {
-            WordPointer javaVmIdPointer = WordFactory.nullPointer();
+            WordPointer javaVmIdPointer = Word.nullPointer();
             Pointer p = (Pointer) vmArgs.getOptions();
             int vmArgc = vmArgs.getNOptions();
             for (int i = 0; i < vmArgc; i++) {

@@ -70,7 +70,6 @@ import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
@@ -148,7 +147,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateInstanceImpl(hub.asWord(), WordFactory.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
+        Object result = allocateInstanceImpl(hub.asWord(), Word.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -193,7 +192,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                  * FIXME(je,ds): we should actually pass typeContext instead of "" but late binding
                  * of parameters is not yet supported by the GraphBuilderPlugin system.
                  */
-                UnsignedWord size = WordFactory.unsigned(layoutHelper);
+                UnsignedWord size = Word.unsigned(layoutHelper);
                 return allocateInstanceImpl(nonNullHub.asWord(), size, false, fillContents, emitMemoryBarrier, false, profilingData, withException);
             }
         }
@@ -286,9 +285,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     private void verifyHeap() {
         Word tlabInfo = getTLABInfo();
         Word topValue = readTlabTop(tlabInfo);
-        if (!topValue.equal(WordFactory.zero())) {
+        if (!topValue.equal(Word.zero())) {
             Word topValueContents = topValue.readWord(0, MARK_WORD_LOCATION);
-            if (topValueContents.equal(WordFactory.zero())) {
+            if (topValueContents.equal(Word.zero())) {
                 AssertionSnippets.vmMessageC(VM_MESSAGE_C, true, cstring("overzeroing of TLAB detected"), 0L, 0L, 0L);
             }
         }
@@ -430,7 +429,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     @Override
     public final void initializeObjectHeader(Word memory, Word hub, boolean isArray) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
-        Word markWord = WordFactory.signed(HotSpotReplacementsUtil.defaultPrototypeMarkWord(INJECTED_VMCONFIG));
+        Word markWord = Word.signed(HotSpotReplacementsUtil.defaultPrototypeMarkWord(INJECTED_VMCONFIG));
         HotSpotReplacementsUtil.initializeObjectHeader(memory, markWord, klassPtr);
     }
 

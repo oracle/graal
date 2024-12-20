@@ -25,11 +25,11 @@
 
 package com.oracle.svm.core.sampler;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
@@ -163,7 +163,7 @@ public class SamplerBufferPool {
         if (result.isNonNull()) {
             bufferCount++;
             result.setSize(dataSize);
-            result.setNext(WordFactory.nullPointer());
+            result.setNext(Word.nullPointer());
             SamplerBufferAccess.reinitialize(result);
         }
         return result;

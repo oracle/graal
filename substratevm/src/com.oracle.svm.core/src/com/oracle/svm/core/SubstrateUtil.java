@@ -38,6 +38,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -45,7 +46,6 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -184,7 +184,7 @@ public class SubstrateUtil {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
-        UnsignedWord n = WordFactory.zero();
+        UnsignedWord n = Word.zero();
         while (((Pointer) str).readByte(n) != 0) {
             n = n.add(1);
         }
@@ -203,7 +203,7 @@ public class SubstrateUtil {
                 return str.addressOf(index);
             }
             if (b == 0) {
-                return WordFactory.zero();
+                return Word.zero();
             }
             index += 1;
         }

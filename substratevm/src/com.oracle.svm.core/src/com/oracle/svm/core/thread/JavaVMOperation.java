@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.thread;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -105,7 +105,7 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
 
     @Override
     protected void markAsFinished(NativeVMOperationData data) {
-        queuingThread = WordFactory.nullPointer();
+        queuingThread = Word.nullPointer();
         queuingThreadId = 0;
         finished = true;
     }

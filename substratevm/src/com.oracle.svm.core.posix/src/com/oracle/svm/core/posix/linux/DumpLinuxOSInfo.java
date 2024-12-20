@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
@@ -84,7 +84,7 @@ class DumpLinuxOSInfo extends SubstrateDiagnostics.DiagnosticThunk {
         try {
             int bufferSize = 64;
             CCharPointer buffer = StackValue.get(bufferSize);
-            long readBytes = fs.read(fd, (Pointer) buffer, WordFactory.unsigned(bufferSize));
+            long readBytes = fs.read(fd, (Pointer) buffer, Word.unsigned(bufferSize));
             int length = countLineBytes(buffer, NumUtil.safeToInt(readBytes));
             log.string(buffer, length);
         } finally {

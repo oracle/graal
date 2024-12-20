@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -36,7 +37,6 @@ import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -251,12 +251,12 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
          * size from the OS, we just use a hard-coded best guess. Using an inaccurate value does not
          * lead to correctness problems.
          */
-        UnsignedWord alignment = WordFactory.unsigned(64);
+        UnsignedWord alignment = Word.unsigned(64);
 
-        UnsignedWord memorySize = WordFactory.unsigned(isolateThreadSize).add(alignment);
+        UnsignedWord memorySize = Word.unsigned(isolateThreadSize).add(alignment);
         Pointer memory = UntrackedNullableNativeMemory.calloc(memorySize);
         if (memory.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         IsolateThread isolateThread = (IsolateThread) UnsignedUtils.roundUp(memory, alignment);
@@ -267,7 +267,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
     @Uninterruptible(reason = "Thread state no longer set up.")
     public void freeCurrentIsolateThread() {
         freeIsolateThread(CurrentIsolate.getCurrentThread());
-        writeCurrentVMThread(WordFactory.nullPointer());
+        writeCurrentVMThread(Word.nullPointer());
     }
 
     /** Free the native memory allocated by {@link #allocateIsolateThread}. */
@@ -371,7 +371,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
     public void detachCurrentThread() {
         threadExit();
         detachThread(CurrentIsolate.getCurrentThread(), true);
-        writeCurrentVMThread(WordFactory.nullPointer());
+        writeCurrentVMThread(Word.nullPointer());
     }
 
     /**
@@ -386,7 +386,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
         assert currentThread == (thread == CurrentIsolate.getCurrentThread());
         assert currentThread || VMOperation.isInProgressAtSafepoint();
 
-        OSThreadHandle threadToCleanup = WordFactory.nullPointer();
+        OSThreadHandle threadToCleanup = Word.nullPointer();
         if (currentThread) {
             lockThreadMutexInNativeCode(false);
         }
@@ -454,7 +454,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void cleanupExitedOsThreads() {
-        OSThreadHandle threadToCleanup = detachedOsThreadToCleanup.getAndSet(WordFactory.nullPointer());
+        OSThreadHandle threadToCleanup = detachedOsThreadToCleanup.getAndSet(Word.nullPointer());
         cleanupExitedOsThread(threadToCleanup);
     }
 
@@ -472,7 +472,7 @@ public abstract class VMThreads implements RuntimeOnlyImageSingleton {
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void removeFromThreadList(IsolateThread thread) {
-        IsolateThread previous = WordFactory.nullPointer();
+        IsolateThread previous = Word.nullPointer();
         IsolateThread current = head;
         while (current.isNonNull()) {
             IsolateThread next = nextTL.get(current);

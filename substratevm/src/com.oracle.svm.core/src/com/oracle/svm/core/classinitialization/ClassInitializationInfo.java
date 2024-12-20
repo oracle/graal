@@ -28,12 +28,12 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.svm.core.hub.RuntimeClassLoading;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
@@ -556,7 +556,7 @@ public final class ClassInitializationInfo {
             if (initState == InitState.FullyInitialized) {
                 this.slowPathRequired = false;
             }
-            this.initThread = WordFactory.nullPointer();
+            this.initThread = Word.nullPointer();
             /* Make sure previous stores are all done, notably the initState. */
             Unsafe.getUnsafe().storeFence();
 

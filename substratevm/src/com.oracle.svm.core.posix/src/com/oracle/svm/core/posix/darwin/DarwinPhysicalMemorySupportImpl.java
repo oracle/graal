@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
@@ -51,7 +51,7 @@ class DarwinPhysicalMemorySupportImpl implements PhysicalMemorySupport {
         WordPointer physicalMemoryPointer = UnsafeStackValue.get(WordPointer.class);
         WordPointer physicalMemorySizePointer = UnsafeStackValue.get(WordPointer.class);
         physicalMemorySizePointer.write(SizeOf.unsigned(WordPointer.class));
-        final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, WordFactory.nullPointer(), 0);
+        final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, Word.nullPointer(), 0);
         if (sysctlResult != 0) {
             Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(LibC.errno()).newline();
             throw VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");

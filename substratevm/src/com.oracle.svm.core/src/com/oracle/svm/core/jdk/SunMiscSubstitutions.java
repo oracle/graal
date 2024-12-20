@@ -29,9 +29,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.UnsafeMemorySupport;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -57,17 +57,17 @@ final class Target_jdk_internal_misc_Unsafe_Core {
 
     @Substitute
     private long allocateMemory0(long bytes) {
-        return NativeMemory.malloc(WordFactory.unsigned(bytes), NmtCategory.Unsafe).rawValue();
+        return NativeMemory.malloc(Word.unsigned(bytes), NmtCategory.Unsafe).rawValue();
     }
 
     @Substitute
     private long reallocateMemory0(long address, long bytes) {
-        return NativeMemory.realloc(WordFactory.unsigned(address), WordFactory.unsigned(bytes), NmtCategory.Unsafe).rawValue();
+        return NativeMemory.realloc(Word.unsigned(address), Word.unsigned(bytes), NmtCategory.Unsafe).rawValue();
     }
 
     @Substitute
     private void freeMemory0(long address) {
-        NativeMemory.free(WordFactory.unsigned(address));
+        NativeMemory.free(Word.unsigned(address));
     }
 
     @Substitute
@@ -153,7 +153,7 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     @Substitute
     public Object getUncompressedObject(long address) {
         /* Adapted from `Unsafe_GetUncompressedObject` in `src/hotspot/share/prims/unsafe.cpp`. */
-        return ReferenceAccess.singleton().readObjectAt(WordFactory.pointer(address), false);
+        return ReferenceAccess.singleton().readObjectAt(Word.pointer(address), false);
     }
 
     /*

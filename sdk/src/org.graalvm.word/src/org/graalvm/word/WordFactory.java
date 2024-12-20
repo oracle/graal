@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package org.graalvm.word;
 
-import org.graalvm.word.impl.WordBoxFactory;
 import org.graalvm.word.impl.WordFactoryOpcode;
 import org.graalvm.word.impl.WordFactoryOperation;
 
@@ -64,7 +63,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.ZERO)
     public static <T extends WordBase> T zero() {
-        return WordBoxFactory.box(0L);
+        return Word.box(0L);
     }
 
     /**
@@ -77,7 +76,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.ZERO)
     public static <T extends PointerBase> T nullPointer() {
-        return WordBoxFactory.box(0L);
+        return Word.box(0L);
     }
 
     /**
@@ -91,12 +90,17 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends UnsignedWord> T unsigned(long val) {
-        return WordBoxFactory.box(val);
+        return Word.box(val);
     }
 
     /**
      * Unsafe conversion from a Java long value to a {@link PointerBase pointer}. The parameter is
      * treated as an unsigned 64-bit value (in contrast to the semantics of a Java long).
+     *
+     * In an execution environment where this method returns a boxed value (e.g. not in Native
+     * Image), the returned value will throw {@link UnsatisfiedLinkError} if any of the
+     * {@link Pointer} memory access operations (i.e., read, write, compare-and-swap etc.) are
+     * invoked on it.
      *
      * @param val a 64 bit unsigned value
      * @return the value cast to PointerBase
@@ -105,7 +109,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends PointerBase> T pointer(long val) {
-        return WordBoxFactory.box(val);
+        return Word.box(val);
     }
 
     /**
@@ -119,7 +123,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_UNSIGNED)
     public static <T extends UnsignedWord> T unsigned(int val) {
-        return WordBoxFactory.box(val & 0xffffffffL);
+        return Word.box(val & 0xffffffffL);
     }
 
     /**
@@ -133,7 +137,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_SIGNED)
     public static <T extends SignedWord> T signed(long val) {
-        return WordBoxFactory.box(val);
+        return Word.box(val);
     }
 
     /**
@@ -147,6 +151,7 @@ public final class WordFactory {
      */
     @WordFactoryOperation(opcode = WordFactoryOpcode.FROM_SIGNED)
     public static <T extends SignedWord> T signed(int val) {
-        return WordBoxFactory.box(val);
+        return Word.box(val);
     }
+
 }

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.util;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.log.Log;
 
@@ -61,7 +61,7 @@ public class MetricsLogUtils {
     }
 
     public static void logMemoryMetric(String category, long bytes) {
-        logMemoryMetric(category, WordFactory.unsigned(bytes));
+        logMemoryMetric(category, Word.unsigned(bytes));
     }
 
     public static void logMemoryMetric(String category, UnsignedWord bytes) {
@@ -202,7 +202,7 @@ public class MetricsLogUtils {
         abstract UnsignedWord fromBytes(UnsignedWord bytes);
 
         private static UnsignedWord toKilo(final UnsignedWord bytes) {
-            final UnsignedWord bytedPerKilo = WordFactory.unsigned(1_024L);
+            final UnsignedWord bytedPerKilo = Word.unsigned(1_024L);
             final UnsignedWord result = bytes.unsignedDivide(bytedPerKilo);
             return result;
         }

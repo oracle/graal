@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -42,7 +43,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.annotate.Alias;
@@ -234,7 +234,7 @@ class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
         long initialValue = ((GlobalAtomicLong) receiver).getInitialValue();
-        return CGlobalDataFactory.createWord(WordFactory.unsigned(initialValue), null, true);
+        return CGlobalDataFactory.createWord(Word.unsigned(initialValue), null, true);
     }
 }
 

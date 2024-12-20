@@ -26,7 +26,7 @@ package com.oracle.svm.core.pltgot.amd64;
 
 import static com.oracle.svm.core.pltgot.ExitMethodAddressResolutionNode.exitMethodAddressResolution;
 
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.Word;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -57,7 +57,7 @@ public final class AMD64MethodAddressResolutionDispatcher extends MethodAddressR
     @NeverInline("This method must never be inlined or called directly because we only jump to it from the PLT stub.")
     public static long resolveMethodAddress(long gotEntry) {
         long resolvedMethodAddress = MethodAddressResolutionDispatcher.resolveMethodAddress(gotEntry);
-        exitMethodAddressResolution(WordFactory.pointer(resolvedMethodAddress));
+        exitMethodAddressResolution(Word.pointer(resolvedMethodAddress));
         throw UnreachableNode.unreachable();
     }
 }

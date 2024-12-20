@@ -26,8 +26,6 @@ package jdk.graal.compiler.hotspot.replacements;
 
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 
-import org.graalvm.word.WordFactory;
-
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.nodes.gc.SerialArrayRangeWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.SerialWriteBarrierNode;
@@ -47,7 +45,7 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
 
     @Override
     public Word cardTableAddress() {
-        return WordFactory.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
+        return Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
     }
 
     @Override

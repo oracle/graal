@@ -35,7 +35,6 @@ import jdk.graal.compiler.nodes.memory.address.AddressNode.Address;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
 
 public abstract class WriteBarrierSnippets {
     public static final LocationIdentity GC_CARD_LOCATION = NamedLocationIdentity.mutable("GC-Card");
@@ -53,7 +52,7 @@ public abstract class WriteBarrierSnippets {
             // the address points to the place after the last array element
             result = result + elementStride * length;
         }
-        return WordFactory.unsigned(result);
+        return Word.unsigned(result);
     }
 
     protected static Word getPointerToLastArrayElement(Address address, long length, int elementStride) {
@@ -64,6 +63,6 @@ public abstract class WriteBarrierSnippets {
         } else {
             result = result + (length - 1) * elementStride;
         }
-        return WordFactory.unsigned(result);
+        return Word.unsigned(result);
     }
 }

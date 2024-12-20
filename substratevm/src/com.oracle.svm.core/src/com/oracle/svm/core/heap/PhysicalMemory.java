@@ -26,10 +26,10 @@ package com.oracle.svm.core.heap;
 
 import java.lang.management.ManagementFactory;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
@@ -83,7 +83,7 @@ public class PhysicalMemory {
         assert !isInitialized() : "Physical memory already initialized.";
         long memoryLimit = IsolateArgumentParser.singleton().getLongOptionValue(IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.MaxRAM));
         if (memoryLimit > 0) {
-            cachedSize = WordFactory.unsigned(memoryLimit);
+            cachedSize = Word.unsigned(memoryLimit);
         } else if (Container.singleton().isContainerized()) {
             cachedSize = Container.singleton().getPhysicalMemory();
         } else {

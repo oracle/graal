@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.PosixUtils;
@@ -72,9 +72,9 @@ class ProcFSSupport {
         int state = ST_ADDR_START;
         int b;
 
-        UnsignedWord start = WordFactory.zero();
-        UnsignedWord end = WordFactory.zero();
-        UnsignedWord fileOffset = WordFactory.zero();
+        UnsignedWord start = Word.zero();
+        UnsignedWord end = Word.zero();
+        UnsignedWord fileOffset = Word.zero();
         OUT: for (;;) {
             while (position == endOffset) { // fill buffer
                 int readBytes = PosixUtils.readUninterruptibly(fd, (Pointer) buffer, bufferLen, readOffset);
@@ -112,7 +112,7 @@ class ProcFSSupport {
                 }
                 case ST_PERMS: {
                     if (b == ' ') {
-                        fileOffset = WordFactory.zero();
+                        fileOffset = Word.zero();
                         state = ST_OFFSET;
                     }
                     break; // ignore anything else
@@ -169,8 +169,8 @@ class ProcFSSupport {
                 }
                 case ST_SKIP: {
                     if (b == '\n') {
-                        start = WordFactory.zero();
-                        end = WordFactory.zero();
+                        start = Word.zero();
+                        end = Word.zero();
                         state = ST_ADDR_START;
                     }
                     break;

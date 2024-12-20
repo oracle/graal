@@ -337,6 +337,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
         verifiers.add(new VerifyLibGraalContextChecks());
+        verifiers.add(new VerifyWordFactoryUsage());
         verifiers.add(new VerifyBailoutUsage());
         verifiers.add(new VerifySystemPropertyUsage());
         verifiers.add(new VerifyInstanceOfUsage());

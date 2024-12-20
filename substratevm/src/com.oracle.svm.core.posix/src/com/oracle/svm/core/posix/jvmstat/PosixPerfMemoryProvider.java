@@ -40,6 +40,7 @@ import static com.oracle.svm.core.posix.headers.Fcntl.O_RDWR;
 
 import java.nio.ByteBuffer;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.LINUX;
@@ -48,7 +49,6 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
@@ -128,7 +128,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
             return null;
         }
 
-        Pointer mapAddress = Mman.mmap(WordFactory.nullPointer(), WordFactory.unsigned(size), Mman.PROT_READ() | Mman.PROT_WRITE(), Mman.MAP_SHARED(), fd, 0);
+        Pointer mapAddress = Mman.mmap(Word.nullPointer(), Word.unsigned(size), Mman.PROT_READ() | Mman.PROT_WRITE(), Mman.MAP_SHARED(), fd, 0);
 
         int result = Unistd.NoTransitions.close(fd);
         assert result != -1;
@@ -142,7 +142,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
         backingFilePath = filePath;
 
         /* Clear the shared memory region. */
-        LibC.memset(mapAddress, WordFactory.signed(0), WordFactory.unsigned(size));
+        LibC.memset(mapAddress, Word.signed(0), Word.unsigned(size));
         return DirectByteBufferUtil.allocate(mapAddress.rawValue(), size);
     }
 
@@ -275,7 +275,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
          * memory accesses if we don't.
          */
         RawFileOperationSupport fs = RawFileOperationSupport.nativeByteOrder();
-        RawFileDescriptor rawFd = WordFactory.signed(fd);
+        RawFileDescriptor rawFd = Word.signed(fd);
         int pageSize = NumUtil.safeToInt(VirtualMemoryProvider.get().getGranularity().rawValue());
 
         boolean success = true;
@@ -506,7 +506,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
     private static int restartableFtruncate(int fd, int size) {
         int result;
         do {
-            result = Unistd.NoTransitions.ftruncate(fd, WordFactory.signed(size));
+            result = Unistd.NoTransitions.ftruncate(fd, Word.signed(size));
         } while (result == -1 && LibC.errno() == Errno.EINTR());
 
         return result;

@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -47,24 +47,24 @@ public final class GCAccounting {
     private long incrementalCollectionTotalNanos = 0;
     private long completeCollectionCount = 0;
     private long completeCollectionTotalNanos = 0;
-    private UnsignedWord totalCollectedChunkBytes = WordFactory.zero();
-    private UnsignedWord totalAllocatedChunkBytes = WordFactory.zero();
-    private UnsignedWord lastIncrementalCollectionPromotedChunkBytes = WordFactory.zero();
+    private UnsignedWord totalCollectedChunkBytes = Word.zero();
+    private UnsignedWord totalAllocatedChunkBytes = Word.zero();
+    private UnsignedWord lastIncrementalCollectionPromotedChunkBytes = Word.zero();
     private boolean lastIncrementalCollectionOverflowedSurvivors = false;
 
     /* Before and after measures. */
-    private UnsignedWord youngChunkBytesBefore = WordFactory.zero();
-    private UnsignedWord oldChunkBytesBefore = WordFactory.zero();
-    private UnsignedWord oldChunkBytesAfter = WordFactory.zero();
+    private UnsignedWord youngChunkBytesBefore = Word.zero();
+    private UnsignedWord oldChunkBytesBefore = Word.zero();
+    private UnsignedWord oldChunkBytesAfter = Word.zero();
 
     /*
      * Bytes allocated in Objects, as opposed to bytes of chunks. These are only maintained if
      * -R:+PrintGCSummary because they are expensive.
      */
-    private UnsignedWord totalCollectedObjectBytes = WordFactory.zero();
-    private UnsignedWord youngObjectBytesBefore = WordFactory.zero();
-    private UnsignedWord oldObjectBytesBefore = WordFactory.zero();
-    private UnsignedWord allocatedObjectBytes = WordFactory.zero();
+    private UnsignedWord totalCollectedObjectBytes = Word.zero();
+    private UnsignedWord youngObjectBytesBefore = Word.zero();
+    private UnsignedWord oldObjectBytesBefore = Word.zero();
+    private UnsignedWord allocatedObjectBytes = Word.zero();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GCAccounting() {

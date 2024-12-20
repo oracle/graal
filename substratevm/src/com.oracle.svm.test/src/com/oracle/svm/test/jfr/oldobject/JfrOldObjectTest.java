@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.Word;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -85,7 +85,7 @@ public abstract class JfrOldObjectTest extends JfrRecordingTest {
         boolean success;
         long endTime = System.currentTimeMillis() + TimeUtils.secondsToMillis(5);
         do {
-            success = SubstrateJVM.getOldObjectProfiler().sample(obj, WordFactory.unsigned(1024 * 1024 * 1024), arrayLength);
+            success = SubstrateJVM.getOldObjectProfiler().sample(obj, Word.unsigned(1024 * 1024 * 1024), arrayLength);
         } while (!success && System.currentTimeMillis() < endTime);
 
         Assert.assertTrue("Timed out waiting for sampling to complete", success);

@@ -26,10 +26,10 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -215,7 +215,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Override
     public boolean verify(UnalignedHeader firstUnalignedHeapChunk) {
-        return verify(firstUnalignedHeapChunk, WordFactory.nullPointer());
+        return verify(firstUnalignedHeapChunk, Word.nullPointer());
     }
 
     @Override

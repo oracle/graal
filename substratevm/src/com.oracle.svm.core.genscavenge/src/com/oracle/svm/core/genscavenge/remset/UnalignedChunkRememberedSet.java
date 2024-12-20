@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -51,7 +51,7 @@ final class UnalignedChunkRememberedSet {
     @Fold
     public static UnsignedWord getHeaderSize() {
         UnsignedWord headerSize = getCardTableLimitOffset();
-        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 
@@ -112,15 +112,15 @@ final class UnalignedChunkRememberedSet {
 
     @Fold
     static UnsignedWord getCardTableStartOffset() {
-        UnsignedWord headerSize = WordFactory.unsigned(SizeOf.get(UnalignedHeader.class));
-        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord headerSize = Word.unsigned(SizeOf.get(UnalignedHeader.class));
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 
     @Fold
     static UnsignedWord getCardTableSize() {
-        UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(WordFactory.unsigned(1));
-        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(Word.unsigned(1));
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(requiredSize, alignment);
     }
 
@@ -129,13 +129,13 @@ final class UnalignedChunkRememberedSet {
         UnsignedWord tableStart = getCardTableStartOffset();
         UnsignedWord tableSize = getCardTableSize();
         UnsignedWord tableLimit = tableStart.add(tableSize);
-        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(tableLimit, alignment);
     }
 
     @Fold
     static UnsignedWord getObjectIndex() {
-        return WordFactory.zero();
+        return Word.zero();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

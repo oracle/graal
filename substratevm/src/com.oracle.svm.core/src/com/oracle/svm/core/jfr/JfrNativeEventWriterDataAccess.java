@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 
@@ -49,10 +49,10 @@ public final class JfrNativeEventWriterDataAccess {
             data.setCurrentPos(buffer.getCommittedPos());
             data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
         } else {
-            data.setJfrBuffer(WordFactory.nullPointer());
-            data.setStartPos(WordFactory.nullPointer());
-            data.setCurrentPos(WordFactory.nullPointer());
-            data.setEndPos(WordFactory.nullPointer());
+            data.setJfrBuffer(Word.nullPointer());
+            data.setStartPos(Word.nullPointer());
+            data.setCurrentPos(Word.nullPointer());
+            data.setEndPos(Word.nullPointer());
         }
     }
 

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.foreign;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.LinkToNativeSupport;
 import com.oracle.svm.core.c.InvokeJavaFunctionPointer;
@@ -47,7 +47,7 @@ public final class LinkToNativeSupportImpl implements LinkToNativeSupport {
     @Override
     public Object linkToNative(Object... args) throws Throwable {
         Target_jdk_internal_foreign_abi_NativeEntryPoint nep = (Target_jdk_internal_foreign_abi_NativeEntryPoint) args[args.length - 1];
-        StubPointer pointer = WordFactory.pointer(nep.downcallStubAddress);
+        StubPointer pointer = Word.pointer(nep.downcallStubAddress);
         /* The nep argument will be dropped in the invoked function */
         return pointer.invoke(args);
     }

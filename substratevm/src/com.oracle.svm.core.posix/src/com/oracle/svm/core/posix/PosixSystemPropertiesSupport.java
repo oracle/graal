@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.posix;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
@@ -56,7 +56,7 @@ public abstract class PosixSystemPropertiesSupport extends SystemPropertiesSuppo
     protected String userDirValue() {
         int bufSize = Limits.MAXPATHLEN();
         CCharPointer buf = UnsafeStackValue.get(bufSize);
-        if (Unistd.getcwd(buf, WordFactory.unsigned(bufSize)).isNonNull()) {
+        if (Unistd.getcwd(buf, Word.unsigned(bufSize)).isNonNull()) {
             return CTypeConversion.toJavaString(buf);
         } else {
             throw new java.lang.Error("Properties init: Could not determine current working directory.");

@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.thread;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -123,7 +123,7 @@ public class ContinuationSupport {
         assert totalSize % ConfigurationValues.getTarget().wordSize == 0;
 
         Pointer frameData = StoredContinuationAccess.getFramesStart(storedCont);
-        UnmanagedMemoryUtil.copyWordsForward(frameData, topSP, WordFactory.unsigned(totalSize));
+        UnmanagedMemoryUtil.copyWordsForward(frameData, topSP, Word.unsigned(totalSize));
         return StoredContinuationAccess.getIP(storedCont);
     }
 

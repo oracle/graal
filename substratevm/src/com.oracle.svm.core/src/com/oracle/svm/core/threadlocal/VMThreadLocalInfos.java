@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateDiagnostics;
@@ -69,13 +68,13 @@ public class VMThreadLocalInfos implements InitialLayerOnlyImageSingleton {
         for (VMThreadLocalInfo info : ImageSingletons.lookup(VMThreadLocalInfos.class).infos) {
             log.signed(info.offset).string(": ").string(info.name).string(" = ");
             if (info.threadLocalClass == FastThreadLocalInt.class) {
-                int value = threadLocals.readInt(WordFactory.signed(info.offset));
+                int value = threadLocals.readInt(Word.signed(info.offset));
                 log.string("(int) ").zhex(value).string(" (").signed(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalLong.class) {
-                long value = threadLocals.readLong(WordFactory.signed(info.offset));
+                long value = threadLocals.readLong(Word.signed(info.offset));
                 log.string("(long) ").zhex(value).string(" (").signed(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalWord.class) {
-                WordBase value = threadLocals.readWord(WordFactory.signed(info.offset));
+                WordBase value = threadLocals.readWord(Word.signed(info.offset));
                 log.string("(Word) ").zhex(value).string(" (").signed(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalObject.class) {
                 if (isJavaHeapAccessAllowed) {
@@ -92,7 +91,7 @@ public class VMThreadLocalInfos implements InitialLayerOnlyImageSingleton {
                 }
             } else if (info.threadLocalClass == FastThreadLocalBytes.class) {
                 log.string("(bytes) ");
-                Pointer data = threadLocals.add(WordFactory.signed(info.offset));
+                Pointer data = threadLocals.add(Word.signed(info.offset));
                 if (info.sizeInBytes == 8) {
                     log.zhex(data.readWord(0));
                 } else {

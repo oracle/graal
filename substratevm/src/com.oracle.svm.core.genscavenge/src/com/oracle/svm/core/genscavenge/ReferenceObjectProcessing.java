@@ -31,9 +31,9 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -131,7 +131,7 @@ final class ReferenceObjectProcessing {
             if (timestamp == 0) { // created or last accessed before the clock was initialized
                 timestamp = initialSoftRefClock;
             }
-            UnsignedWord elapsed = WordFactory.unsigned(clock - timestamp);
+            UnsignedWord elapsed = Word.unsigned(clock - timestamp);
             if (elapsed.belowThan(maxSoftRefAccessIntervalMs)) {
                 // Important: we need to pass the reference object as holder so that the remembered
                 // set can be updated accordingly!

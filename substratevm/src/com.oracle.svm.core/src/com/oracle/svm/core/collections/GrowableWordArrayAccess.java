@@ -26,7 +26,6 @@ package com.oracle.svm.core.collections;
 
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -42,7 +41,7 @@ public class GrowableWordArrayAccess {
     public static void initialize(GrowableWordArray array) {
         array.setSize(0);
         array.setCapacity(0);
-        array.setData(WordFactory.nullPointer());
+        array.setData(Word.nullPointer());
     }
 
     public static Word get(GrowableWordArray array, int i) {
@@ -63,7 +62,7 @@ public class GrowableWordArrayAccess {
     public static void freeData(GrowableWordArray array) {
         if (array.isNonNull()) {
             NullableNativeMemory.free(array.getData());
-            array.setData(WordFactory.nullPointer());
+            array.setData(Word.nullPointer());
             array.setSize(0);
             array.setCapacity(0);
         }
@@ -78,12 +77,12 @@ public class GrowableWordArrayAccess {
 
         assert newCapacity >= INITIAL_CAPACITY;
         WordPointer oldData = array.getData();
-        WordPointer newData = NullableNativeMemory.malloc(WordFactory.unsigned(newCapacity).multiply(wordSize()), nmtCategory);
+        WordPointer newData = NullableNativeMemory.malloc(Word.unsigned(newCapacity).multiply(wordSize()), nmtCategory);
         if (newData.isNull()) {
             return false;
         }
 
-        UnmanagedMemoryUtil.copyForward((Pointer) oldData, (Pointer) newData, WordFactory.unsigned(array.getSize()).multiply(wordSize()));
+        UnmanagedMemoryUtil.copyForward((Pointer) oldData, (Pointer) newData, Word.unsigned(array.getSize()).multiply(wordSize()));
         NullableNativeMemory.free(oldData);
 
         array.setData(newData);

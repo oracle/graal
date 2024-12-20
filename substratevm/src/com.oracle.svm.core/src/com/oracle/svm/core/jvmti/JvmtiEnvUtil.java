@@ -27,6 +27,7 @@ package com.oracle.svm.core.jvmti;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NONE;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NOT_AVAILABLE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
@@ -34,7 +35,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -62,13 +62,13 @@ public final class JvmtiEnvUtil {
     static JvmtiEnv allocate() {
         JvmtiInterface functionTable = JvmtiFunctionTable.allocateFunctionTable();
         if (functionTable.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
-        JvmtiEnv env = NullableNativeMemory.calloc(WordFactory.unsigned(internalEnvSize()), NmtCategory.JVMTI);
+        JvmtiEnv env = NullableNativeMemory.calloc(Word.unsigned(internalEnvSize()), NmtCategory.JVMTI);
         if (env.isNull()) {
             JvmtiFunctionTable.freeFunctionTable(functionTable);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         env.setIsolate(CurrentIsolate.getIsolate());
@@ -89,7 +89,7 @@ public final class JvmtiEnvUtil {
     static void free(JvmtiEnv env) {
         JvmtiExternalEnv externalEnv = toExternal(env);
         JvmtiFunctionTable.freeFunctionTable(externalEnv.getFunctions());
-        externalEnv.setFunctions(WordFactory.nullPointer());
+        externalEnv.setFunctions(Word.nullPointer());
 
         NullableNativeMemory.free(env);
     }

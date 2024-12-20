@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.thread;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfo;
@@ -81,7 +81,7 @@ public abstract class NativeVMOperation extends VMOperation {
 
     @Override
     protected void markAsFinished(NativeVMOperationData data) {
-        data.setQueuingThread(WordFactory.nullPointer());
+        data.setQueuingThread(Word.nullPointer());
         data.setQueuingThreadId(0);
         data.setFinished(true);
     }

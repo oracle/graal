@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -55,33 +55,33 @@ public final class HeapSizeVerifier {
     }
 
     private static void verifyReservedAddressSpaceSize() {
-        UnsignedWord reservedAddressSpaceSize = WordFactory.unsigned(SubstrateGCOptions.ReservedAddressSpaceSize.getValue());
+        UnsignedWord reservedAddressSpaceSize = Word.unsigned(SubstrateGCOptions.ReservedAddressSpaceSize.getValue());
         verifyAgainstMaxAddressSpaceSize(reservedAddressSpaceSize, "value of the option '" + SubstrateGCOptions.ReservedAddressSpaceSize.getName() + "'");
     }
 
     private static void verifyMaxHeapSize() {
-        UnsignedWord maxHeapSize = WordFactory.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
+        UnsignedWord maxHeapSize = Word.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
         verifyMaxHeapSizeAgainstMaxAddressSpaceSize(maxHeapSize);
         verifyAgainstReservedAddressSpaceSize(maxHeapSize, MAX_HEAP_SIZE_NAME);
     }
 
     private static void verifyMinHeapSize() {
-        UnsignedWord minHeapSize = WordFactory.unsigned(SubstrateGCOptions.MinHeapSize.getValue());
+        UnsignedWord minHeapSize = Word.unsigned(SubstrateGCOptions.MinHeapSize.getValue());
         verifyMinHeapSizeAgainstMaxAddressSpaceSize(minHeapSize);
         verifyAgainstReservedAddressSpaceSize(minHeapSize, MIN_HEAP_SIZE_NAME);
 
-        UnsignedWord maxHeapSize = WordFactory.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
+        UnsignedWord maxHeapSize = Word.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
         if (maxHeapSize.notEqual(0) && minHeapSize.aboveThan(maxHeapSize)) {
             throwError(minHeapSize, MIN_HEAP_SIZE_NAME, maxHeapSize, MAX_HEAP_SIZE_NAME);
         }
     }
 
     private static void verifyMaxNewSize() {
-        UnsignedWord maxNewSize = WordFactory.unsigned(SubstrateGCOptions.MaxNewSize.getValue());
+        UnsignedWord maxNewSize = Word.unsigned(SubstrateGCOptions.MaxNewSize.getValue());
         verifyMaxNewSizeAgainstMaxAddressSpaceSize(maxNewSize);
         verifyAgainstReservedAddressSpaceSize(maxNewSize, MAX_NEW_SIZE_NAME);
 
-        UnsignedWord maxHeapSize = WordFactory.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
+        UnsignedWord maxHeapSize = Word.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
         if (maxHeapSize.notEqual(0) && maxNewSize.aboveThan(maxHeapSize)) {
             throwError(maxNewSize, MAX_NEW_SIZE_NAME, maxHeapSize, MAX_HEAP_SIZE_NAME);
         }
@@ -107,7 +107,7 @@ public final class HeapSizeVerifier {
     }
 
     private static void verifyAgainstReservedAddressSpaceSize(UnsignedWord actualValue, String actualValueName) {
-        UnsignedWord reservedAddressSpaceSize = WordFactory.unsigned(SubstrateGCOptions.ReservedAddressSpaceSize.getValue());
+        UnsignedWord reservedAddressSpaceSize = Word.unsigned(SubstrateGCOptions.ReservedAddressSpaceSize.getValue());
         if (reservedAddressSpaceSize.notEqual(0) && actualValue.aboveThan(reservedAddressSpaceSize)) {
             throwError(actualValue, actualValueName, reservedAddressSpaceSize, "value of the option '" + SubstrateGCOptions.ReservedAddressSpaceSize.getName() + "'");
         }

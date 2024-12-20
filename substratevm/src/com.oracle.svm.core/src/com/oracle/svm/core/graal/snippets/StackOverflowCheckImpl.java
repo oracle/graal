@@ -32,13 +32,13 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import java.util.Map;
 import java.util.function.Predicate;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -259,7 +259,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
          * Setting the boundary to a low value effectively disables the check. We are not using 0 so
          * that we can distinguish the value set here from an uninitialized value.
          */
-        stackBoundaryTL.set(WordFactory.unsigned(1));
+        stackBoundaryTL.set(Word.unsigned(1));
         /*
          * A random marker value. The actual value does not matter, but having a high value also
          * ensures that any future calls to protectYellowZone() do not modify the stack boundary
@@ -293,7 +293,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     public void updateStackOverflowBoundary() {
         long threadSize = PlatformThreads.getRequestedStackSize(Thread.currentThread());
         if (threadSize != 0) {
-            updateStackOverflowBoundary(WordFactory.unsigned(threadSize));
+            updateStackOverflowBoundary(Word.unsigned(threadSize));
         }
     }
 
@@ -466,7 +466,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
              * Methods that can deoptimize must have enough space on the stack for all frames after
              * deoptimization.
              */
-            stackBoundary = stackBoundary.add(WordFactory.unsigned(deoptFrameSize));
+            stackBoundary = stackBoundary.add(Word.unsigned(deoptFrameSize));
         }
         if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, KnownIntrinsics.readStackPointer().belowOrEqual(stackBoundary))) {
 

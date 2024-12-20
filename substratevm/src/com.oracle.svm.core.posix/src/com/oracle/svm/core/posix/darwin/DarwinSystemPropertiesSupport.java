@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CLibrary;
@@ -32,7 +33,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -53,7 +53,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
         /* Darwin has a per-user temp dir */
         int buflen = Limits.PATH_MAX();
         CCharPointer tmpPath = UnsafeStackValue.get(buflen);
-        UnsignedWord pathSize = Unistd.confstr(Unistd._CS_DARWIN_USER_TEMP_DIR(), tmpPath, WordFactory.unsigned(buflen));
+        UnsignedWord pathSize = Unistd.confstr(Unistd._CS_DARWIN_USER_TEMP_DIR(), tmpPath, Word.unsigned(buflen));
         if (pathSize.aboveThan(0) && pathSize.belowOrEqual(buflen)) {
             return CTypeConversion.toJavaString(tmpPath);
         } else {

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ObjectHandles;
-import org.graalvm.word.WordFactory;
 
 /**
  * Manages handles to libgraal objects whose lifetime is controlled by
@@ -49,7 +49,7 @@ final class LibGraalObjectHandles {
      * @throws IllegalArgumentException if {@code} is invalid
      */
     static <T> T resolve(long handle, Class<T> type) {
-        return type.cast(ObjectHandles.getGlobal().get(WordFactory.pointer(handle)));
+        return type.cast(ObjectHandles.getGlobal().get(Word.pointer(handle)));
     }
 
     /**
@@ -57,6 +57,6 @@ final class LibGraalObjectHandles {
      * method, the handle must not be used anymore.
      */
     static void remove(long handle) {
-        ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));
+        ObjectHandles.getGlobal().destroy(Word.pointer(handle));
     }
 }

@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
@@ -157,7 +156,7 @@ public class HeapVerifier {
     private static boolean verifyChunkList(Space space, String kind, HeapChunk.Header<?> firstChunk, HeapChunk.Header<?> lastChunk) {
         boolean result = true;
         HeapChunk.Header<?> current = firstChunk;
-        HeapChunk.Header<?> previous = WordFactory.nullPointer();
+        HeapChunk.Header<?> previous = Word.nullPointer();
         while (current.isNonNull()) {
             HeapChunk.Header<?> previousOfCurrent = HeapChunk.getPrevious(current);
             if (previousOfCurrent.notEqual(previous)) {
@@ -193,7 +192,7 @@ public class HeapVerifier {
                 success = false;
             }
 
-            OBJECT_VERIFIER.initialize(aChunk, WordFactory.nullPointer());
+            OBJECT_VERIFIER.initialize(aChunk, Word.nullPointer());
             AlignedHeapChunk.walkObjects(aChunk, OBJECT_VERIFIER);
             aChunk = HeapChunk.getNext(aChunk);
             success &= OBJECT_VERIFIER.result;
@@ -202,7 +201,7 @@ public class HeapVerifier {
     }
 
     private static boolean verifyUnalignedChunks(Space space, UnalignedHeader firstUnalignedHeapChunk) {
-        return verifyUnalignedChunks(space, firstUnalignedHeapChunk, WordFactory.nullPointer());
+        return verifyUnalignedChunks(space, firstUnalignedHeapChunk, Word.nullPointer());
     }
 
     private static boolean verifyUnalignedChunks(Space space, UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
@@ -216,7 +215,7 @@ public class HeapVerifier {
                 success = false;
             }
 
-            OBJECT_VERIFIER.initialize(WordFactory.nullPointer(), uChunk);
+            OBJECT_VERIFIER.initialize(Word.nullPointer(), uChunk);
             UnalignedHeapChunk.walkObjects(uChunk, OBJECT_VERIFIER);
             success &= OBJECT_VERIFIER.result;
 

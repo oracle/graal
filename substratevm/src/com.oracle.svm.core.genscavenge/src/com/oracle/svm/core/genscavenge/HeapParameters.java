@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -108,7 +107,7 @@ public final class HeapParameters {
     }
 
     public static UnsignedWord getMaximumHeapFree() {
-        return WordFactory.unsigned(SerialGCOptions.MaxHeapFree.getValue());
+        return Word.unsigned(SerialGCOptions.MaxHeapFree.getValue());
     }
 
     public static int getHeapChunkHeaderPadding() {
@@ -129,7 +128,7 @@ public final class HeapParameters {
 
     @Fold
     public static UnsignedWord getAlignedHeapChunkSize() {
-        return WordFactory.unsigned(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
+        return Word.unsigned(SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue());
     }
 
     @Fold
@@ -144,7 +143,7 @@ public final class HeapParameters {
 
     @Fold
     public static UnsignedWord getLargeArrayThreshold() {
-        return WordFactory.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
+        return Word.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
     }
 
     /*
@@ -161,7 +160,7 @@ public final class HeapParameters {
     }
 
     static {
-        Word.ensureInitialized();
+        /* Calling this method ensures that the static initializer has been executed. */
     }
 
     /** Freshly committed but still uninitialized Java heap memory. */
@@ -169,10 +168,10 @@ public final class HeapParameters {
     /** Unused but still committed Java heap memory. */
     private static final int UNUSED_JAVA_HEAP = 0xdeadbeef;
 
-    private static final UnsignedWord producedHeapChunkZapInt = WordFactory.unsigned(UNINITIALIZED_JAVA_HEAP);
+    private static final UnsignedWord producedHeapChunkZapInt = Word.unsigned(UNINITIALIZED_JAVA_HEAP);
     private static final UnsignedWord producedHeapChunkZapWord = producedHeapChunkZapInt.shiftLeft(32).or(producedHeapChunkZapInt);
 
-    private static final UnsignedWord consumedHeapChunkZapInt = WordFactory.unsigned(UNUSED_JAVA_HEAP);
+    private static final UnsignedWord consumedHeapChunkZapInt = Word.unsigned(UNUSED_JAVA_HEAP);
     private static final UnsignedWord consumedHeapChunkZapWord = consumedHeapChunkZapInt.shiftLeft(32).or(consumedHeapChunkZapInt);
 
     public static final class TestingBackDoor {

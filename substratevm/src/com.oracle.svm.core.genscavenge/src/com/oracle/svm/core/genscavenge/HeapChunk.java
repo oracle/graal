@@ -35,7 +35,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
@@ -174,8 +173,8 @@ public final class HeapChunk {
         HeapChunk.setEndOffset(chunk, endOffset);
         HeapChunk.setTopPointer(chunk, objectsStart);
         HeapChunk.setSpace(chunk, null);
-        HeapChunk.setNext(chunk, WordFactory.nullPointer());
-        HeapChunk.setPrevious(chunk, WordFactory.nullPointer());
+        HeapChunk.setNext(chunk, Word.nullPointer());
+        HeapChunk.setPrevious(chunk, Word.nullPointer());
 
         /*
          * The epoch is obviously not random, but cheap to use, and we cannot use a random number
@@ -272,8 +271,8 @@ public final class HeapChunk {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressWarnings("unchecked")
     private static <T extends PointerBase> T pointerFromOffset(Header<?> that, ComparableWord offset) {
-        T pointer = WordFactory.nullPointer();
-        if (offset.notEqual(WordFactory.zero())) {
+        T pointer = Word.nullPointer();
+        if (offset.notEqual(Word.zero())) {
             pointer = (T) ((SignedWord) that).add((SignedWord) offset);
         }
         return pointer;
@@ -286,7 +285,7 @@ public final class HeapChunk {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static SignedWord offsetFromPointer(Header<?> that, PointerBase pointer) {
-        SignedWord offset = WordFactory.zero();
+        SignedWord offset = Word.zero();
         if (pointer.isNonNull()) {
             offset = ((SignedWord) pointer).subtract((SignedWord) that);
         }
