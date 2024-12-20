@@ -72,7 +72,7 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
         return handlers;
     }
 
-    private static class NodeDumper implements DebugDumpHandler {
+    private static final class NodeDumper implements DebugDumpHandler {
         @Override
         public void dump(Object object, DebugContext debug, boolean forced, String format, Object... arguments) {
             if (debug.isLogEnabled()) {

@@ -208,7 +208,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
             }
         }
 
-        private class ArrayPropertiesIterator implements Iterator<Property<Object>> {
+        private final class ArrayPropertiesIterator implements Iterator<Property<Object>> {
             int index;
 
             @Override
@@ -575,7 +575,7 @@ public abstract class Properties implements Iterable<Property<Object>> {
         }
     }
 
-    private static class PropertyCache {
+    private static final class PropertyCache {
         static final WeakHashMap</* Shared */ Properties, WeakReference<SharedProperties>> immutableCache = new WeakHashMap<>();
 
         static synchronized SharedProperties intern(Properties properties) {

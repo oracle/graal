@@ -1041,7 +1041,7 @@ public class ValueAPITest {
         }
     }
 
-    private static class DummyList extends DummyCollection implements List<Object> {
+    private static final class DummyList extends DummyCollection implements List<Object> {
 
         public boolean addAll(int index, Collection<? extends Object> c) {
             return values.addAll(index, c);
@@ -1150,13 +1150,13 @@ public class ValueAPITest {
 
     }
 
-    public static class EmptyObject {
+    public static final class EmptyObject {
     }
 
-    private static class PrivateObject {
+    private static final class PrivateObject {
     }
 
-    private static class FieldAccess {
+    private static final class FieldAccess {
         @SuppressWarnings("unused") public EmptyObject member;
     }
 
@@ -1332,7 +1332,7 @@ public class ValueAPITest {
 
     }
 
-    private static class MembersAndExecutable extends Members implements ProxyObject, ProxyExecutable {
+    private static final class MembersAndExecutable extends Members implements ProxyObject, ProxyExecutable {
 
         Object executableResult;
 
@@ -1341,7 +1341,7 @@ public class ValueAPITest {
         }
     }
 
-    private static class MembersAndInstantiable extends Members implements ProxyObject, ProxyInstantiable {
+    private static final class MembersAndInstantiable extends Members implements ProxyObject, ProxyInstantiable {
 
         Object instantiableResult;
 
@@ -1351,7 +1351,7 @@ public class ValueAPITest {
 
     }
 
-    private static class MembersAndArrayAndExecutable extends MembersAndArray implements ProxyArray, ProxyObject, ProxyExecutable {
+    private static final class MembersAndArrayAndExecutable extends MembersAndArray implements ProxyArray, ProxyObject, ProxyExecutable {
 
         Object executableResult;
 
@@ -1361,7 +1361,7 @@ public class ValueAPITest {
 
     }
 
-    private static class MembersAndArrayAndInstantiable extends MembersAndArray implements ProxyArray, ProxyObject, ProxyInstantiable {
+    private static final class MembersAndArrayAndInstantiable extends MembersAndArray implements ProxyArray, ProxyObject, ProxyInstantiable {
 
         Object instantiableResult;
 
@@ -1371,7 +1371,7 @@ public class ValueAPITest {
 
     }
 
-    private static class MembersAndArrayAndExecutableAndInstantiable extends MembersAndArray implements ProxyArray, ProxyObject, ProxyInstantiable, ProxyExecutable {
+    private static final class MembersAndArrayAndExecutableAndInstantiable extends MembersAndArray implements ProxyArray, ProxyObject, ProxyInstantiable, ProxyExecutable {
 
         Object executableResult;
         Object instantiableResult;
@@ -1386,7 +1386,7 @@ public class ValueAPITest {
 
     }
 
-    private static class Executable implements ProxyExecutable {
+    private static final class Executable implements ProxyExecutable {
 
         Object executableResult;
 
@@ -1591,7 +1591,7 @@ public class ValueAPITest {
 
     }
 
-    private static class EmptyProxy implements org.graalvm.polyglot.proxy.Proxy {
+    private static final class EmptyProxy implements org.graalvm.polyglot.proxy.Proxy {
 
         @Override
         public String toString() {

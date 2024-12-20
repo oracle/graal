@@ -531,7 +531,7 @@ public class LabeledBlockGeneration {
     /**
      * Generates {@link LabeledBlock}s with unique labels.
      */
-    private static class LabeledBlockGenerator {
+    private static final class LabeledBlockGenerator {
 
         private int currentId = 0;
 

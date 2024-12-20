@@ -32,7 +32,7 @@ import org.junit.Test;
 @SuppressWarnings("unused")
 public class List_reorder_bug extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         String s;
 
         private void print(String s2) {

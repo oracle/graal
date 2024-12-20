@@ -101,7 +101,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         }
     }
 
-    private static class TestTruffleCompilationTask implements TruffleCompilationTask {
+    private static final class TestTruffleCompilationTask implements TruffleCompilationTask {
 
         @Override
         public boolean isCancelled() {

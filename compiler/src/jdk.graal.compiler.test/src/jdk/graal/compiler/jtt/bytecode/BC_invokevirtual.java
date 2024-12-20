@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class BC_invokevirtual extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         public int id(int i) {
             return i;
         }

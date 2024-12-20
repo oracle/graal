@@ -76,7 +76,7 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         offset = fieldOffset;
     }
 
-    private static class CheckedObject {
+    private static final class CheckedObject {
         int id;
         int iid;
         @SuppressWarnings("unused") int field;

@@ -74,7 +74,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         return false;
     }
 
-    private static class RefCount {
+    private static final class RefCount {
         private int refCount = 1;
     }
 

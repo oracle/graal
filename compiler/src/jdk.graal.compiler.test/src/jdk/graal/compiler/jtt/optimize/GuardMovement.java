@@ -36,7 +36,7 @@ public class GuardMovement extends JTTTest {
 
     private static int staticValue;
 
-    private static class A {
+    private static final class A {
         int x;
         int y;
     }

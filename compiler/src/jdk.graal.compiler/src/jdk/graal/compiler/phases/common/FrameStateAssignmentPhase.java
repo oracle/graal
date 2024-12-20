@@ -61,7 +61,7 @@ import jdk.vm.ci.code.BytecodeFrame;
  */
 public class FrameStateAssignmentPhase extends Phase {
 
-    private static class FrameStateAssignmentClosure extends ReentrantNodeIterator.NodeIteratorClosure<FrameState> {
+    private static final class FrameStateAssignmentClosure extends ReentrantNodeIterator.NodeIteratorClosure<FrameState> {
 
         @Override
         protected FrameState processNode(FixedNode node, FrameState previousState) {

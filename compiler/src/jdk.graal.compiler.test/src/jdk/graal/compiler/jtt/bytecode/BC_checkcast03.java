@@ -40,7 +40,7 @@ public class BC_checkcast03 extends JTTTest {
 
     }
 
-    private static class TestClass extends BaseClass implements IObject {
+    private static final class TestClass extends BaseClass implements IObject {
     }
 
     static TestClass[] a1 = {new TestClass()};

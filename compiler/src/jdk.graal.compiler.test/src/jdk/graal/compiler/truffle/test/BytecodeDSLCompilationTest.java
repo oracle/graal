@@ -961,7 +961,7 @@ public class BytecodeDSLCompilationTest extends TestWithSynchronousCompiling {
         }
     }
 
-    private static class Counter {
+    private static final class Counter {
         private int count = 0;
 
         public int get() {

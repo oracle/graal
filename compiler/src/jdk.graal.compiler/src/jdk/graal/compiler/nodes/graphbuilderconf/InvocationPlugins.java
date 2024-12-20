@@ -1057,7 +1057,7 @@ public class InvocationPlugins {
     /**
      * Code only used in assertions. Putting this in a separate class reduces class load time.
      */
-    private static class Checks {
+    private static final class Checks {
         private static final int MAX_ARITY = 13;
         /**
          * The set of all {@link InvocationPlugin#apply} method signatures.

@@ -1680,7 +1680,7 @@ public final class FloatStamp extends PrimitiveStamp {
                     });
 
     // Use a separate class to avoid initialization cycles
-    private static class ConstantCache {
+    private static final class ConstantCache {
         private static final FloatStamp FLOAT_BOTTOM = new FloatStamp(Float.SIZE, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
         private static final FloatStamp DOUBLE_BOTTOM = new FloatStamp(Double.SIZE, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, false);
         private static final FloatStamp FLOAT_TOP = new FloatStamp(Float.SIZE, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, true);

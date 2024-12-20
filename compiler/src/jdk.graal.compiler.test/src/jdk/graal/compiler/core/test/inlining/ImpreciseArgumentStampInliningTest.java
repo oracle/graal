@@ -60,7 +60,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
 
-    private static class InlineMethodHolder {
+    private static final class InlineMethodHolder {
         static void inlineMe(UnresolveableClass argument) {
             GraalDirectives.blackhole(argument);
         }
@@ -76,7 +76,7 @@ public class ImpreciseArgumentStampInliningTest extends GraalCompilerTest {
     }
 
     // Will be unresolved during bytecode parsing, and resolved during inlining.
-    private static class UnresolveableClass {
+    private static final class UnresolveableClass {
     }
 
     @Test

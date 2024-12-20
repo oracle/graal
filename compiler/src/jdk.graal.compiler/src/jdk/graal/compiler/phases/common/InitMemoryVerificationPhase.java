@@ -85,7 +85,7 @@ public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> impl
      * {@link MemoryKill} writing to, we simply count the number of memory kills that are "live"
      * (not protected by a barrier) at any point in the control flow graph..
      */
-    private static class InitBarrierVerificationClosure extends ReentrantNodeIterator.NodeIteratorClosure<Integer> {
+    private static final class InitBarrierVerificationClosure extends ReentrantNodeIterator.NodeIteratorClosure<Integer> {
         @Override
         protected Integer processNode(FixedNode node, Integer kills) {
             int liveKills = kills;
@@ -131,7 +131,7 @@ public class InitMemoryVerificationPhase extends VerifyPhase<CoreProviders> impl
      * Verifies that all {@link AbstractNewObjectNode AbstractNewObjectNodes} are published by a
      * {@link PublishWritesNode}.
      */
-    private static class AllocPublishVerificationClosure extends ReentrantNodeIterator.NodeIteratorClosure<EconomicSet<AbstractNewObjectNode>> {
+    private static final class AllocPublishVerificationClosure extends ReentrantNodeIterator.NodeIteratorClosure<EconomicSet<AbstractNewObjectNode>> {
         private static void processAlloc(AbstractNewObjectNode allocation, EconomicSet<AbstractNewObjectNode> unpublished) {
             if (allocation.emitMemoryBarrier() && allocation.fillContents()) {
                 // Allocation was not lowered from a CommitAllocationNode, can ignore

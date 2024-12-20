@@ -102,7 +102,7 @@ public class ExplicitExceptionTest extends GraalCompilerTest {
         test("testNPEArraySnippet", array);
     }
 
-    private static class TestClass {
+    private static final class TestClass {
         int field;
     }
 

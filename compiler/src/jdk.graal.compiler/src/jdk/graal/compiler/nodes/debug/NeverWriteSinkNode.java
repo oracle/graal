@@ -42,7 +42,7 @@ public final class NeverWriteSinkNode extends FixedWithNextNode implements LIRLo
 
     public static final NodeClass<NeverWriteSinkNode> TYPE = NodeClass.create(NeverWriteSinkNode.class);
 
-    private static class Unique {
+    private static final class Unique {
     }
 
     protected Unique unique;

@@ -208,10 +208,10 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
     private static class A {
     }
 
-    private static class B extends A {
+    private static final class B extends A {
     }
 
-    private static class C {
+    private static final class C {
     }
 
     private static final A aInstance = new A();
