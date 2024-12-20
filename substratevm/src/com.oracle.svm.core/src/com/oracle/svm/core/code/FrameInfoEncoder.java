@@ -295,7 +295,7 @@ public class FrameInfoEncoder {
             sliceFrequency.addObject(frameSliceIndex);
         }
 
-        void encodeCompressedData(UnsafeArrayTypeWriter encodingBuffer, Encoders encoders) {
+        void encodeCompressedData(Runnable recordActivity, UnsafeArrayTypeWriter encodingBuffer, Encoders encoders) {
             assert !sealed : "already sealed";
             sealed = true;
 
@@ -332,6 +332,7 @@ public class FrameInfoEncoder {
                     uniqueSuccessorIndex = NO_SUCCESSOR_INDEX_MARKER;
                 }
                 encodeCompressedFrame(encodingBuffer, encoders, frame, uniqueSuccessorIndex);
+                recordActivity.run();
             }
 
             /*
@@ -901,7 +902,7 @@ public class FrameInfoEncoder {
 
     private NonmovableArray<Byte> encodeFrameDatas(Runnable recordActivity) {
         UnsafeArrayTypeWriter encodingBuffer = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        frameMetadata.encodeCompressedData(encodingBuffer, encoders);
+        frameMetadata.encodeCompressedData(recordActivity, encodingBuffer, encoders);
         for (FrameData data : allDebugInfos) {
             if (data.frameSliceIndex == UNCOMPRESSED_FRAME_SLICE_INDEX) {
                 data.encodedFrameInfoIndex = encodingBuffer.getBytesWritten();
