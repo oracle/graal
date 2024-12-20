@@ -41,8 +41,8 @@ import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.graal.compiler.options.Option;
@@ -218,7 +218,21 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (nullaryConstructor != null || nullaryProviderMethod != null) {
                 RuntimeReflection.register(providerClass);
                 if (nullaryConstructor != null) {
+                    /*
+                     * Registering a constructor with
+                     * RuntimeReflection.registerConstructorLookup(providerClass) does not produce
+                     * the same behavior as using RuntimeReflection.register(nullaryConstructor). In
+                     * the first case, the constructor is marked for query purposes only, so this
+                     * if-statement cannot be eliminated.
+                     * 
+                     */
                     RuntimeReflection.register(nullaryConstructor);
+                } else {
+                    /*
+                     * If there's no nullary constructor, register it as negative lookup to avoid
+                     * throwing a MissingReflectionRegistrationError at run time.
+                     */
+                    RuntimeReflection.registerConstructorLookup(providerClass);
                 }
                 if (nullaryProviderMethod != null) {
                     RuntimeReflection.register(nullaryProviderMethod);
@@ -229,8 +243,14 @@ public class ServiceLoaderFeature implements InternalFeature {
                      */
                     RuntimeReflection.registerMethodLookup(providerClass, "provider");
                 }
-                registeredProviders.add(provider);
             }
+            /*
+             * Register the provider in both cases: when it is JCA-compliant (has a nullary
+             * constructor or a provider method) or when it lacks both. If neither is present, a
+             * ServiceConfigurationError will be thrown at runtime, consistent with HotSpot
+             * behavior.
+             */
+            registeredProviders.add(provider);
         }
         if (!registeredProviders.isEmpty()) {
             String serviceResourceLocation = "META-INF/services/" + serviceProvider.getName();
