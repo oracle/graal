@@ -42,6 +42,9 @@ For example:
 
 ```shell
 ./mem-leak-example -XX:+HeapDumpOnOutOfMemoryError
+```
+You should see a similar output:
+```
 Dumping heap to svm-heapdump-67799-OOME.hprof ...
 Heap dump file created [10046752 bytes in 0.49 secs]
 Exception in thread "main" java.lang.OutOfMemoryError: Garbage-collected heap size exceeded.
@@ -54,10 +57,13 @@ This can be useful to identify which objects the Native Image build process allo
 For a HelloWorld example, use the option as follows:
 
 ```shell
-$JAVA_HOME/bin/native-image HelloWorld --enable-monitoring=heapdump
-./helloworld -XX:+DumpHeapAndExit
-Heap dump created at '/path/to/helloworld.hprof'.
+native-image HelloWorld --enable-monitoring=heapdump
 ```
+```shell
+./helloworld -XX:+DumpHeapAndExit
+```
+
+The heap dump is created at _path/to/helloworld.hprof_.
 
 ## Create a Heap Dump with SIGUSR1 (Linux/macOS only)
 
@@ -176,6 +182,9 @@ For other installation options, visit the [Downloads section](https://www.graalv
     Run the application:
     ```shell
     ./svmheapdump
+    ```
+    You should see a similar output:
+    ```
     17 May 2022, 16:38:13: Hello GraalVM native image developer! 
     The PID of this process is: 57509
     Send it a signal: 'kill -SIGUSR1 57509' 
@@ -285,11 +294,12 @@ The condition to create a heap dump is provided as an option on the command line
     ```
     When the command completes, the _svmheapdumpapi_ native executable is created in the current directory.
 
-3. Run the application and check the heap dump
-
-    Now you can run your native executable and create a heap dump from it with output similar to the following:
+3. Run the application and create a heap dump:
     ```shell
     ./svmheapdumpapi --heapdump
+    ```
+    You should see a similar output:
+    ```
     Sep 15, 2020, 4:06:36 PM: Hello GraalVM native image developer.
     Your command line options are: --heapdump
       Heap dump created /var/folders/hw/s9d78jts67gdc8cfyq5fjcdm0000gp/T/SVMHeapDump-6437252222863577987.hprof, size: 8051959
