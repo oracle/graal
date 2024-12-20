@@ -203,6 +203,7 @@ public class SVMHost extends HostVM {
     private final Boolean optionAllowUnsafeAllocationOfAllInstantiatedTypes = SubstrateOptions.AllowUnsafeAllocationOfAllInstantiatedTypes.getValue();
     private final boolean isClosedTypeWorld = SubstrateOptions.useClosedTypeWorld();
     private final boolean enableTrackAcrossLayers;
+    private final boolean enableReachableInCurrentLayer;
 
     /** Modules containing all {@code svm.core} and {@code svm.hosted} classes. */
     private final Set<Module> builderModules;
@@ -240,6 +241,7 @@ public class SVMHost extends HostVM {
         }
 
         enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
+        enableReachableInCurrentLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
         builderModules = ImageSingletons.contains(OpenTypeWorldFeature.class) ? ImageSingletons.lookup(OpenTypeWorldFeature.class).getBuilderModules() : null;
     }
 
@@ -1002,6 +1004,11 @@ public class SVMHost extends HostVM {
     @Override
     public boolean enableTrackAcrossLayers() {
         return enableTrackAcrossLayers;
+    }
+
+    @Override
+    public boolean enableReachableInCurrentLayer() {
+        return enableReachableInCurrentLayer;
     }
 
     private final List<BiPredicate<AnalysisMethod, AnalysisMethod>> neverInlineTrivialHandlers = new CopyOnWriteArrayList<>();

@@ -68,11 +68,15 @@ public class ImageLayerSnapshotUtil {
     /** This needs to be initialized after analysis, as some fields are not available before. */
     protected Map<Object, Field> externalValues;
 
-    public ImageLayerSnapshotUtil() {
-        try {
-            this.externalValueFields = ObjectCopier.getExternalValueFields();
-        } catch (IOException e) {
-            throw AnalysisError.shouldNotReachHere("Unexpected exception when creating external value fields list", e);
+    public ImageLayerSnapshotUtil(boolean computeExternalValues) {
+        if (computeExternalValues) {
+            try {
+                this.externalValueFields = ObjectCopier.getExternalValueFields();
+            } catch (IOException e) {
+                throw AnalysisError.shouldNotReachHere("Unexpected exception when creating external value fields list", e);
+            }
+        } else {
+            this.externalValueFields = List.of();
         }
     }
 
@@ -130,6 +134,11 @@ public class ImageLayerSnapshotUtil {
 
     public GraphEncoder getGraphEncoder(ImageLayerWriter imageLayerWriter) {
         return new GraphEncoder(externalValues, imageLayerWriter);
+    }
+
+    @SuppressWarnings("unused")
+    public GraphDecoder getGraphAnalysisElementsDecoder(ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
+        return new GraphDecoder(EncodedGraph.class.getClassLoader(), imageLayerLoader, analysisMethod);
     }
 
     @SuppressWarnings("unused")

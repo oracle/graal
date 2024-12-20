@@ -65,6 +65,7 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.thread.VMThreadLocalCollector;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -99,7 +100,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
 
     @SuppressWarnings("this-escape")
     public SVMImageLayerSnapshotUtil(ImageClassLoader imageClassLoader) {
-        super();
+        super(true);
         this.imageClassLoader = imageClassLoader;
         addSVMExternalValueFields();
     }
@@ -230,6 +231,11 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
     }
 
     @Override
+    public GraphDecoder getGraphAnalysisElementsDecoder(ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
+        return new SVMGraphAnalysisElementsDecoder(EncodedGraph.class.getClassLoader(), (SVMImageLayerLoader) imageLayerLoader, analysisMethod, snippetReflectionProvider);
+    }
+
+    @Override
     public GraphDecoder getGraphDecoder(ImageLayerLoader imageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
         return new SVMGraphDecoder(EncodedGraph.class.getClassLoader(), (SVMImageLayerLoader) imageLayerLoader, analysisMethod, snippetReflectionProvider);
     }
@@ -238,6 +244,7 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         @SuppressWarnings("this-escape")
         public SVMGraphEncoder(Map<Object, Field> externalValues, ImageLayerWriter imageLayerWriter) {
             super(externalValues, imageLayerWriter);
+            addBuiltin(new AnalysisTypeBuiltIn(null));
             addBuiltin(new HostedMethodBuiltIn(null));
             addBuiltin(new HostedOptionValuesBuiltIn());
             addBuiltin(new HostedSnippetReflectionProviderBuiltIn(null));
@@ -247,12 +254,10 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
     }
 
-    public static class SVMGraphDecoder extends GraphDecoder {
+    public abstract static class AbstractSVMGraphDecoder extends GraphDecoder {
         @SuppressWarnings("this-escape")
-        public SVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
+        public AbstractSVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
             super(classLoader, svmImageLayerLoader, analysisMethod);
-            addBuiltin(new HostedTypeBuiltIn(svmImageLayerLoader));
-            addBuiltin(new HostedMethodBuiltIn(svmImageLayerLoader));
             addBuiltin(new HostedOptionValuesBuiltIn());
             addBuiltin(new HostedSnippetReflectionProviderBuiltIn(snippetReflectionProvider));
             addBuiltin(new CInterfaceLocationIdentityBuiltIn());
@@ -261,10 +266,28 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         }
     }
 
-    public static class HostedTypeBuiltIn extends ObjectCopier.Builtin {
-        private final SVMImageLayerLoader svmImageLayerLoader;
+    public static class SVMGraphAnalysisElementsDecoder extends AbstractSVMGraphDecoder {
+        @SuppressWarnings("this-escape")
+        public SVMGraphAnalysisElementsDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
+            super(classLoader, svmImageLayerLoader, analysisMethod, snippetReflectionProvider);
+            addBuiltin(new AnalysisTypeBuiltIn(svmImageLayerLoader));
+            addBuiltin(new AnalysisMethodBuiltIn(svmImageLayerLoader));
+        }
+    }
 
-        protected HostedTypeBuiltIn(SVMImageLayerLoader svmImageLayerLoader) {
+    public static class SVMGraphDecoder extends AbstractSVMGraphDecoder {
+        @SuppressWarnings("this-escape")
+        public SVMGraphDecoder(ClassLoader classLoader, SVMImageLayerLoader svmImageLayerLoader, AnalysisMethod analysisMethod, SnippetReflectionProvider snippetReflectionProvider) {
+            super(classLoader, svmImageLayerLoader, analysisMethod, snippetReflectionProvider);
+            addBuiltin(new HostedTypeBuiltIn(svmImageLayerLoader));
+            addBuiltin(new HostedMethodBuiltIn(svmImageLayerLoader));
+        }
+    }
+
+    public abstract static class AbstractHostedTypeBuiltIn extends ObjectCopier.Builtin {
+        protected final SVMImageLayerLoader svmImageLayerLoader;
+
+        protected AbstractHostedTypeBuiltIn(SVMImageLayerLoader svmImageLayerLoader) {
             super(HostedType.class, HostedInstanceClass.class, HostedArrayClass.class);
             this.svmImageLayerLoader = svmImageLayerLoader;
         }
@@ -274,19 +297,40 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
             int id = ((HostedType) obj).getWrapped().getId();
             stream.writePackedUnsignedInt(id);
         }
+    }
+
+    public static class AnalysisTypeBuiltIn extends AbstractHostedTypeBuiltIn {
+        protected AnalysisTypeBuiltIn(SVMImageLayerLoader svmImageLayerLoader) {
+            super(svmImageLayerLoader);
+        }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readPackedUnsignedInt();
-            AnalysisType type = svmImageLayerLoader.getAnalysisTypeForBaseLayerId(id);
-            return svmImageLayerLoader.getHostedUniverse().lookup(type);
+            return getAnalysisType(svmImageLayerLoader, stream);
         }
     }
 
-    public static class HostedMethodBuiltIn extends ObjectCopier.Builtin {
-        private final SVMImageLayerLoader svmImageLayerLoader;
+    public static class HostedTypeBuiltIn extends AbstractHostedTypeBuiltIn {
+        protected HostedTypeBuiltIn(SVMImageLayerLoader svmImageLayerLoader) {
+            super(svmImageLayerLoader);
+        }
 
-        protected HostedMethodBuiltIn(SVMImageLayerLoader svmImageLayerLoader) {
+        @Override
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            HostedUniverse hostedUniverse = svmImageLayerLoader.getHostedUniverse();
+            return hostedUniverse.lookup(getAnalysisType(svmImageLayerLoader, stream));
+        }
+    }
+
+    private static AnalysisType getAnalysisType(SVMImageLayerLoader imageLayerLoader, ObjectCopierInputStream stream) throws IOException {
+        int id = stream.readPackedUnsignedInt();
+        return imageLayerLoader.getAnalysisTypeForBaseLayerId(id);
+    }
+
+    public abstract static class AbstractHostedMethodBuiltIn extends ObjectCopier.Builtin {
+        protected final SVMImageLayerLoader svmImageLayerLoader;
+
+        protected AbstractHostedMethodBuiltIn(SVMImageLayerLoader svmImageLayerLoader) {
             super(HostedMethod.class);
             this.svmImageLayerLoader = svmImageLayerLoader;
         }
@@ -295,13 +339,34 @@ public class SVMImageLayerSnapshotUtil extends ImageLayerSnapshotUtil {
         protected void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             stream.writePackedUnsignedInt(((HostedMethod) obj).getWrapped().getId());
         }
+    }
+
+    public static class AnalysisMethodBuiltIn extends AbstractHostedMethodBuiltIn {
+        protected AnalysisMethodBuiltIn(SVMImageLayerLoader svmImageLayerLoader) {
+            super(svmImageLayerLoader);
+        }
 
         @Override
         protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
-            int id = stream.readPackedUnsignedInt();
-            AnalysisMethod method = svmImageLayerLoader.getAnalysisMethodForBaseLayerId(id);
-            return svmImageLayerLoader.getHostedUniverse().lookup(method);
+            return getAnalysisMethod(svmImageLayerLoader, stream);
         }
+    }
+
+    public static class HostedMethodBuiltIn extends AbstractHostedMethodBuiltIn {
+        protected HostedMethodBuiltIn(SVMImageLayerLoader svmImageLayerLoader) {
+            super(svmImageLayerLoader);
+        }
+
+        @Override
+        protected Object decode(ObjectCopier.Decoder decoder, Class<?> concreteType, ObjectCopierInputStream stream) throws IOException {
+            HostedUniverse hostedUniverse = svmImageLayerLoader.getHostedUniverse();
+            return hostedUniverse.lookup(getAnalysisMethod(svmImageLayerLoader, stream));
+        }
+    }
+
+    private static AnalysisMethod getAnalysisMethod(SVMImageLayerLoader imageLayerLoader, ObjectCopierInputStream stream) throws IOException {
+        int id = stream.readPackedUnsignedInt();
+        return imageLayerLoader.getAnalysisMethodForBaseLayerId(id);
     }
 
     public static class HostedOptionValuesBuiltIn extends ObjectCopier.Builtin {

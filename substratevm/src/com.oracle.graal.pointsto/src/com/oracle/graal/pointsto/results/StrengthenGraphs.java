@@ -234,16 +234,21 @@ public abstract class StrengthenGraphs {
                         ? ptaMethod.getTypeFlow().getMethodFlowsGraph().getNodeFlows().getKeys()
                         : null;
         var debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
-        var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
-        if (graph == null) {
-            return;
-        }
 
         if (method.analyzedInPriorLayer()) {
             /*
-             * The method was already strengthened in a prior layer, so there is no need to
-             * strengthen it in this layer.
+             * The method was already strengthened in a prior layer. If the graph was persisted, it
+             * will be loaded on demand during compilation, so there is no need to strengthen it in
+             * this layer.
+             *
+             * GR-59646: The graphs from the base layer could be strengthened again in the
+             * application layer using closed world assumptions.
              */
+            return;
+        }
+
+        var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
+        if (graph == null) {
             return;
         }
 
@@ -503,6 +508,11 @@ public abstract class StrengthenGraphs {
                 Stamp newStamp = strengthenStamp(oldStamp);
                 if (newStamp != null) {
                     LogicNode replacement = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) oldStamp.improveWith(newStamp), node.getValue(), node.profile(), node.getAnchor()));
+                    /*
+                     * GR-59681: Once isAssignable is implemented for BaseLayerType, this check can
+                     * be removed
+                     */
+                    AnalysisError.guarantee(node != replacement, "The new stamp needs to be different from the old stamp");
                     node.replaceAndDelete(replacement);
                     tool.addToWorkList(replacement);
                 }
@@ -560,7 +570,13 @@ public abstract class StrengthenGraphs {
                 Stamp oldStamp = node.piStamp();
                 Stamp newStamp = strengthenStamp(oldStamp);
                 if (newStamp != null) {
-                    node.strengthenPiStamp(oldStamp.improveWith(newStamp));
+                    Stamp newPiStamp = oldStamp.improveWith(newStamp);
+                    /*
+                     * GR-59681: Once isAssignable is implemented for BaseLayerType, this check can
+                     * be removed
+                     */
+                    AnalysisError.guarantee(!newPiStamp.equals(oldStamp), "The new stamp needs to be different from the old stamp");
+                    node.strengthenPiStamp(newPiStamp);
                     tool.addToWorkList(node);
                 }
             }
