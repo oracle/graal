@@ -37,7 +37,6 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -154,9 +153,8 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  */
                 Stream.concat(Arrays.stream(getOrDefault(type, t -> t.getInstanceFields(true), new AnalysisField[0])),
                                 Arrays.stream(getOrDefault(type, AnalysisType::getStaticFields, new AnalysisField[0])))
-                                .map(OriginalFieldProvider::getJavaField)
-                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded(field))
-                                .forEach(classInclusionPolicy::includeField);
+                                .filter(field -> field != null && classInclusionPolicy.isFieldIncluded((AnalysisField) field))
+                                .forEach(field -> classInclusionPolicy.includeField((AnalysisField) field));
 
                 /*
                  * Only the class initializers that are executed at run time should be included in
