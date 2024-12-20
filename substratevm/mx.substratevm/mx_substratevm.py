@@ -2520,6 +2520,8 @@ def capnp_compile(args):
  */
 //@formatter:off
 //Checkstyle: stop
+// Generated via:
+//  $ mx capnp-compile
 """)
         for line in lines:
             if line.startswith("public final class "):

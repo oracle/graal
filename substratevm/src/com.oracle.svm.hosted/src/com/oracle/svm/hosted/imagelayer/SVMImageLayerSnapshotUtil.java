@@ -34,10 +34,10 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -119,7 +119,7 @@ public class SVMImageLayerSnapshotUtil {
      * This map stores the field indexes that should be relinked using the hosted value of a
      * constant from the key type.
      */
-    protected final Map<AnalysisType, Set<Integer>> fieldsToRelink = new HashMap<>();
+    protected final Map<AnalysisType, Set<Integer>> fieldsToRelink = new ConcurrentHashMap<>();
     private final ImageClassLoader imageClassLoader;
     protected final List<Field> externalValueFields;
     /** This needs to be initialized after analysis, as some fields are not available before. */

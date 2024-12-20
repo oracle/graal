@@ -89,7 +89,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -147,7 +146,6 @@ import sun.reflect.annotation.AnnotationParser;
 
 public class SVMImageLayerLoader extends ImageLayerLoader {
     private final Field dynamicHubCompanionField;
-    private final Field hubCompanionArrayHubField;
     private final boolean useSharedLayerGraphs;
     private final SVMImageLayerSnapshotUtil imageLayerSnapshotUtil;
     private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
@@ -186,7 +184,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     public SVMImageLayerLoader(SVMImageLayerSnapshotUtil imageLayerSnapshotUtil, HostedImageLayerBuildingSupport imageLayerBuildingSupport, SharedLayerSnapshot.Reader snapshot,
                     FileChannel graphChannel, boolean useSharedLayerGraphs) {
         this.dynamicHubCompanionField = ReflectionUtil.lookupField(DynamicHub.class, "companion");
-        this.hubCompanionArrayHubField = ReflectionUtil.lookupField(DynamicHubCompanion.class, "arrayHub");
         this.imageLayerSnapshotUtil = imageLayerSnapshotUtil;
         this.imageLayerBuildingSupport = imageLayerBuildingSupport;
         this.snapshot = snapshot;
@@ -583,17 +580,26 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (type.getWrapped() instanceof BaseLayerType baseLayerType) {
             return baseLayerType.getBaseLayerId();
         }
-        String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
-        Integer typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
-        if (typeId == null) {
+        PersistedAnalysisType.Reader typeData = findBaseLayerType(type);
+        if (typeData == null) {
             /* The type was not reachable in the base image */
             return -1;
         }
-        PersistedAnalysisType.Reader typeData = findType(typeId);
         int id = typeData.getId();
         int hubIdentityHashCode = typeData.getHubIdentityHashCode();
         typeToHubIdentityHashCode.put(id, hubIdentityHashCode);
         return id;
+    }
+
+    protected PersistedAnalysisType.Reader findBaseLayerType(AnalysisType type) {
+        assert !(type.getWrapped() instanceof BaseLayerType);
+        String typeDescriptor = imageLayerSnapshotUtil.getTypeDescriptor(type);
+        Integer typeId = typeDescriptorToBaseLayerId.get(typeDescriptor);
+        if (typeId == null) {
+            /* The type was not reachable in the base image */
+            return null;
+        }
+        return findType(typeId);
     }
 
     @Override
@@ -1252,14 +1258,17 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
                         JavaConstant hostedConstant = relink ? getReachableHostedValue(parentConstant, finalPosition) : null;
                         ImageHeapConstant baseLayerConstant = getOrCreateConstant(constantId, hostedConstant);
-                        values[finalPosition] = baseLayerConstant;
-
                         ensureHubInitialized(baseLayerConstant);
 
                         if (hostedConstant != null) {
                             addBaseLayerValueToImageHeap(baseLayerConstant, parentConstant, finalPosition);
                         }
 
+                        /*
+                         * The value needs to be published after the constant is added to the image
+                         * heap, as a non-base layer constant could then be created.
+                         */
+                        values[finalPosition] = baseLayerConstant;
                         return baseLayerConstant;
                     });
                 }
@@ -1463,12 +1472,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(hub);
             ensureHubInitialized(type);
             /*
-             * If the persisted constant contains a non-null arrayHub, the corresponding DynamicHub
-             * must be created and the initializeMetaDataTask needs to be executed to ensure the
-             * hosted object matches the persisted constant.
+             * If the persisted hub has a non-null arrayHub, the corresponding DynamicHub must be
+             * created and the initializeMetaDataTask needs to be executed to ensure the hosted
+             * object matches the persisted constant.
              */
-            var companion = (ImageHeapInstance) ((ImageHeapInstance) constant).readFieldValue(metaAccess.lookupJavaField(dynamicHubCompanionField));
-            if (companion.getFieldValue(metaAccess.lookupJavaField(hubCompanionArrayHubField)) != JavaConstant.NULL_POINTER && hub.getArrayHub() == null) {
+            PersistedAnalysisType.Reader typeData = findBaseLayerType(type);
+            if (typeData != null && typeData.getHasArrayType()) {
                 AnalysisType arrayClass = type.getArrayClass();
                 ensureHubInitialized(arrayClass);
             }
@@ -1529,19 +1538,28 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         }
     }
 
-    public void rescanHub(AnalysisType type, Object hubObject) {
-        DynamicHub hub = (DynamicHub) hubObject;
-        universe.getHeapScanner().rescanObject(hub);
-        universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.classInitializationInfo);
-        if (type.getJavaKind() == JavaKind.Object) {
-            if (type.isArray()) {
-                universe.getHeapScanner().rescanField(hub.getComponentHub().getCompanion(), SVMImageLayerSnapshotUtil.arrayHub);
-            }
-            universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.interfacesEncoding);
-            if (type.isEnum()) {
-                universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.enumConstantsReference);
+    public void rescanHub(AnalysisType type, DynamicHub hub) {
+        if (hasValueForObject(hub)) {
+            universe.getHeapScanner().rescanObject(hub);
+            scanCompanionField(hub);
+            universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.classInitializationInfo);
+            if (type.getJavaKind() == JavaKind.Object) {
+                if (type.isArray()) {
+                    DynamicHub componentHub = hub.getComponentHub();
+                    scanCompanionField(componentHub);
+                    universe.getHeapScanner().rescanField(componentHub.getCompanion(), SVMImageLayerSnapshotUtil.arrayHub);
+                }
+                universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.interfacesEncoding);
+                if (type.isEnum()) {
+                    universe.getHeapScanner().rescanField(hub.getCompanion(), SVMImageLayerSnapshotUtil.enumConstantsReference);
+                }
             }
         }
+    }
+
+    private void scanCompanionField(DynamicHub hub) {
+        var instance = (ImageHeapInstance) getValueForObject(hub);
+        instance.readFieldValue(metaAccess.lookupJavaField(dynamicHubCompanionField));
     }
 
     public ClassInitializationInfo getClassInitializationInfo(AnalysisType type) {
