@@ -51,6 +51,16 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
     RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
 
     /**
+     * Returns this runtime's representation of the class {@link Object}
+     */
+    C getJavaLangObject();
+
+    /**
+     * Returns this runtime's representation of the class {@link Throwable}
+     */
+    C getJavaLangThrowable();
+
+    /**
      * Performs class loading on behalf of the given accessing class.
      * <p>
      * Its defining class loader is the one to be used for loading.

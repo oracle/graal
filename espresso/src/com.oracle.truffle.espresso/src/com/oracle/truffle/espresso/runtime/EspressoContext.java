@@ -1275,6 +1275,16 @@ public final class EspressoContext
     }
 
     @Override
+    public Klass getJavaLangObject() {
+        return getMeta().java_lang_Object;
+    }
+
+    @Override
+    public Klass getJavaLangThrowable() {
+        return getMeta().java_lang_Throwable;
+    }
+
+    @Override
     public Klass lookupOrLoadType(Symbol<Type> type, Klass accessingClass) throws ClassLoadingException {
         try {
             return getMeta().loadKlassOrFail(type, accessingClass.getDefiningClassLoader(), accessingClass.protectionDomain());

@@ -189,4 +189,15 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      * The {@link ConstantPool} associated with this class.
      */
     ConstantPool getConstantPool();
+
+    /**
+     * Resolves a class in the runtime constant pool of this type, then returns it. Further calls to
+     * this method with the same cpi should not trigger class loading.
+     *
+     * @param cpi The constant pool index in which to find the class constant
+     * @throws IllegalArgumentException If there is no
+     *             {@link com.oracle.truffle.espresso.classfile.constantpool.ClassConstant} in the
+     *             constant pool at index {@code cpi}.
+     */
+    C resolveClassConstantInPool(int cpi);
 }

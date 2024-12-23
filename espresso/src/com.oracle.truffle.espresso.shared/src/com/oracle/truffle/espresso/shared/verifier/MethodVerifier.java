@@ -447,12 +447,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     };
 
-    final ReferenceOperand<R, C, M, F> jlObject = new ReferenceOperand<>(Type.java_lang_Object);
+    final ReferenceOperand<R, C, M, F> jlObject;
     private final Operand<R, C, M, F> jlClass = new ReferenceOperand<>(Type.java_lang_Class);
     private final Operand<R, C, M, F> jlString = new ReferenceOperand<>(Type.java_lang_String);
     private final Operand<R, C, M, F> jliMethodType = new ReferenceOperand<>(Type.java_lang_invoke_MethodType);
     private final Operand<R, C, M, F> jliMethodHandle = new ReferenceOperand<>(Type.java_lang_invoke_MethodHandle);
-    private final Operand<R, C, M, F> jlThrowable = new ReferenceOperand<>(Type.java_lang_Throwable);
+    private final Operand<R, C, M, F> jlThrowable;
 
     // Return type of the method
     private final Operand<R, C, M, F> returnOperand;
@@ -535,6 +535,8 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Arrays.fill(handlerStatus, UNENCOUNTERED);
 
         booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : byteOp;
+        jlObject = new ReferenceOperand<>(runtime.getJavaLangObject());
+        jlThrowable = new ReferenceOperand<>(runtime.getJavaLangThrowable());
 
         thisOperand = new ReferenceOperand<>(thisKlass);
         returnOperand = kindToOperand(Signatures.returnType(sig));
@@ -965,8 +967,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             // handler end BCI can be equal to code end.
             formatGuarantee(endBCI <= code.endBCI(), "Control flow falls through code end");
             if (handler.catchTypeCPI() != 0) {
-                Symbol<Type> catchType = getTypes().fromName(pool.classAt(handler.catchTypeCPI()).getName(pool));
-                verifyGuarantee(new ReferenceOperand<R, C, M, F>(catchType).compliesWith(jlThrowable, this), "Illegal exception handler catch type: " + catchType);
+                C catchType = thisKlass.resolveClassConstantInPool(handler.catchTypeCPI());
+                ReferenceOperand<R, C, M, F> catchTypeOperand = new ReferenceOperand<>(catchType);
+                verifyGuarantee(catchTypeOperand.compliesWith(jlThrowable, this), "Illegal exception handler catch type: " + catchType);
             }
 
             if (endBCI != code.endBCI()) {

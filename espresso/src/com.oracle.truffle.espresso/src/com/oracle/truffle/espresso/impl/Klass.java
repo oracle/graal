@@ -1877,17 +1877,17 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     // region TypeAccess impl
 
     @Override
-    public String getJavaName() {
+    public final String getJavaName() {
         return getExternalName();
     }
 
     @Override
-    public Klass getSuperClass() {
+    public final Klass getSuperClass() {
         return getSuperKlass();
     }
 
     @Override
-    public Method lookupInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
+    public final Method lookupInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).resolveInterfaceMethod(methodName, methodSignature);
         }
@@ -1895,33 +1895,46 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     }
 
     @Override
-    public Method lookupInstanceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
+    public final Method lookupInstanceMethod(Symbol<Name> methodName, Symbol<Signature> methodSignature) {
         return lookupMethod(methodName, methodSignature, LookupMode.INSTANCE_ONLY);
     }
 
     @Override
-    public Symbol<Type> getSymbolicType() {
+    public final Symbol<Type> getSymbolicType() {
         return getType();
     }
 
     @Override
-    public boolean hasSameDefiningClassLoader(Klass other) {
+    public final boolean hasSameDefiningClassLoader(Klass other) {
         return getDefiningClassLoader() == other.getDefiningClassLoader();
     }
 
     @Override
-    public Klass getHostType() {
+    public final Klass getHostType() {
         return getHostClass();
     }
 
     @Override
-    public Symbol<Name> getSymbolicRuntimePackage() {
+    public final Symbol<Name> getSymbolicRuntimePackage() {
         return getRuntimePackage();
     }
 
     @Override
-    public boolean isMagicAccessor() {
+    public final boolean isMagicAccessor() {
         return getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(this);
+    }
+
+    @Override
+    @TruffleBoundary
+    public final Klass resolveClassConstantInPool(int cpi) {
+        if (this instanceof ObjectKlass objectKlass) {
+            try {
+                return objectKlass.getConstantPool().resolvedKlassAt(objectKlass, cpi);
+            } catch (ClassCastException | IndexOutOfBoundsException e) {
+                throw new IllegalArgumentException("No ClassConstant at constant pool index " + cpi);
+            }
+        }
+        return null;
     }
 
     // endregion TypeAccess impl
