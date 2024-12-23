@@ -26,11 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -225,7 +225,7 @@ public class UninterruptibleUtils {
         protected final AtomicLong value;
 
         /**
-         * Creates a new AtomicWord with initial value {@link WordFactory#zero}.
+         * Creates a new AtomicWord with initial value {@link Word#zero}.
          */
         public AtomicWord() {
             value = new AtomicLong(0L);
@@ -238,7 +238,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final T get() {
-            return WordFactory.unsigned(value.get());
+            return Word.unsigned(value.get());
         }
 
         /**
@@ -259,7 +259,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final T getAndSet(T newValue) {
-            return WordFactory.unsigned(value.getAndSet(newValue.rawValue()));
+            return Word.unsigned(value.getAndSet(newValue.rawValue()));
         }
 
         /**
@@ -292,7 +292,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final UnsignedWord getAndAdd(UnsignedWord delta) {
-            return WordFactory.unsigned(value.getAndAdd(delta.rawValue()));
+            return Word.unsigned(value.getAndAdd(delta.rawValue()));
         }
 
         /**
@@ -303,7 +303,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final UnsignedWord addAndGet(UnsignedWord delta) {
-            return WordFactory.unsigned(value.addAndGet(delta.rawValue()));
+            return Word.unsigned(value.addAndGet(delta.rawValue()));
         }
 
         /**
@@ -314,7 +314,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final UnsignedWord getAndSubtract(UnsignedWord delta) {
-            return WordFactory.unsigned(value.getAndAdd(-delta.rawValue()));
+            return Word.unsigned(value.getAndAdd(-delta.rawValue()));
         }
 
         /**
@@ -325,7 +325,7 @@ public class UninterruptibleUtils {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public final UnsignedWord subtractAndGet(UnsignedWord delta) {
-            return WordFactory.unsigned(value.addAndGet(-delta.rawValue()));
+            return Word.unsigned(value.addAndGet(-delta.rawValue()));
         }
     }
 
@@ -346,7 +346,7 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public T get() {
-            return WordFactory.pointer(value);
+            return Word.pointer(value);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

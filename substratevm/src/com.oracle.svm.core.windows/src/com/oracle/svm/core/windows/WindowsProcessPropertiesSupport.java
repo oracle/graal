@@ -32,11 +32,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -53,7 +53,7 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     @Override
     public String getExecutableName() {
-        return getModulePath(LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer()));
+        return getModulePath(LibLoaderAPI.GetModuleHandleA(Word.nullPointer()));
     }
 
     @Override
@@ -104,7 +104,7 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
     @Override
     public String getObjectFile(String symbol) {
         try (CTypeConversion.CCharPointerHolder symbolHolder = CTypeConversion.toCString(symbol)) {
-            WinBase.HMODULE builtinHandle = LibLoaderAPI.GetModuleHandleA(WordFactory.nullPointer());
+            WinBase.HMODULE builtinHandle = LibLoaderAPI.GetModuleHandleA(Word.nullPointer());
             PointerBase symbolAddress = LibLoaderAPI.GetProcAddress(builtinHandle, symbolHolder.get());
             if (symbolAddress.isNonNull()) {
                 return getObjectFile(symbolAddress);

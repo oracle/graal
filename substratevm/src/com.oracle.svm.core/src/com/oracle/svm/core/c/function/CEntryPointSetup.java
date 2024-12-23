@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.c.function;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -52,7 +52,7 @@ public class CEntryPointSetup {
 
         @Uninterruptible(reason = "prologue")
         public static void enter() {
-            int code = CEntryPointActions.enterCreateIsolate(WordFactory.nullPointer());
+            int code = CEntryPointActions.enterCreateIsolate(Word.nullPointer());
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }

@@ -26,8 +26,8 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.windows.headers.SysinfoAPI.GetSystemTimeAsFileTime;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.BasedOnJDKFile;
@@ -48,7 +48,7 @@ public final class WindowsPlatformTimeUtils extends PlatformTimeUtils {
     /* Returns time ticks in (10th of micro seconds) */
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+3/src/hotspot/os/windows/os_windows.cpp#L1158-L1161")
     private static long windowsToTimeTicks(FILETIME wt) {
-        long a = WordFactory.unsigned(wt.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(wt.dwLowDateTime())).rawValue();
+        long a = Word.unsigned(wt.dwHighDateTime()).shiftLeft(32).or(Word.unsigned(wt.dwLowDateTime())).rawValue();
         return (a - offset());
     }
 

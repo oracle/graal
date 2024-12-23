@@ -26,11 +26,11 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -61,15 +61,15 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     public UnsignedWord getHeaderSizeOfAlignedChunk() {
-        UnsignedWord headerSize = WordFactory.unsigned(SizeOf.get(AlignedHeader.class));
-        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord headerSize = Word.unsigned(SizeOf.get(AlignedHeader.class));
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 
     @Override
     public UnsignedWord getHeaderSizeOfUnalignedChunk() {
-        UnsignedWord headerSize = WordFactory.unsigned(SizeOf.get(UnalignedHeader.class));
-        UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord headerSize = Word.unsigned(SizeOf.get(UnalignedHeader.class));
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 

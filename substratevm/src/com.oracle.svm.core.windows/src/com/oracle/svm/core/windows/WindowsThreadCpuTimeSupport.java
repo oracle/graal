@@ -25,11 +25,11 @@
 package com.oracle.svm.core.windows;
 
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
@@ -83,7 +83,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord fileTimeToNanos(FILETIME ft) {
-        UnsignedWord value = WordFactory.unsigned(ft.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(ft.dwLowDateTime()));
+        UnsignedWord value = Word.unsigned(ft.dwHighDateTime()).shiftLeft(32).or(Word.unsigned(ft.dwLowDateTime()));
         return value.multiply(100);
     }
 }

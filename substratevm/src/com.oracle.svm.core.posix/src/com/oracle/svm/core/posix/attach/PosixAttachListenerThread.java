@@ -28,11 +28,11 @@ package com.oracle.svm.core.posix.attach;
 
 import java.nio.charset.StandardCharsets;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.attach.AttachListenerThread;
 import com.oracle.svm.core.posix.PosixUtils;
@@ -145,7 +145,7 @@ public final class PosixAttachListenerThread extends AttachListenerThread {
         int start = index == 0 ? 0 : stringEnds[index - 1] + 1;
         int length = stringEnds[index] - start;
         assert length >= 0;
-        return CTypeConversion.toJavaString((CCharPointer) buf.add(start), WordFactory.unsigned(length), StandardCharsets.UTF_8);
+        return CTypeConversion.toJavaString((CCharPointer) buf.add(start), Word.unsigned(length), StandardCharsets.UTF_8);
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/os/posix/attachListener_posix.cpp#L436-L455")

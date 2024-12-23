@@ -30,8 +30,8 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_
 
 import java.util.Map;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -144,13 +144,13 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             int primitiveDataSize = objectOffset - curOffset;
             assert primitiveDataSize >= 0;
             assert curOffset >= 0;
-            JavaMemoryUtil.copyForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
+            JavaMemoryUtil.copyForward(original, Word.unsigned(curOffset), result, Word.unsigned(curOffset), Word.unsigned(primitiveDataSize));
             curOffset += primitiveDataSize;
 
             // copy object data
             assert curOffset >= 0;
             assert count >= 0;
-            JavaMemoryUtil.copyReferencesForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(count));
+            JavaMemoryUtil.copyReferencesForward(original, Word.unsigned(curOffset), result, Word.unsigned(curOffset), Word.unsigned(count));
             curOffset += count * referenceSize;
         }
 
@@ -160,7 +160,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         int primitiveDataSize = endOffset - curOffset;
         assert primitiveDataSize >= 0;
         assert curOffset >= 0;
-        JavaMemoryUtil.copyForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
+        JavaMemoryUtil.copyForward(original, Word.unsigned(curOffset), result, Word.unsigned(curOffset), Word.unsigned(primitiveDataSize));
         curOffset += primitiveDataSize;
         assert curOffset == endOffset;
 

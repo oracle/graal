@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
@@ -288,7 +288,7 @@ final class FirstObjectTable {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord entryToMemoryOffset(UnsignedWord index, int entry) {
         assert isMemoryOffsetEntry(entry) : "Entry out of bounds.";
-        UnsignedWord entryOffset = WordFactory.unsigned(-entry).multiply(memoryOffsetScale());
+        UnsignedWord entryOffset = Word.unsigned(-entry).multiply(memoryOffsetScale());
         assert entryOffset.belowThan(BYTES_COVERED_BY_ENTRY) : "Entry out of bounds.";
 
         UnsignedWord indexOffset = indexToMemoryOffset(index);
@@ -297,7 +297,7 @@ final class FirstObjectTable {
 
     public static boolean verify(Pointer tableStart, Pointer objectsStart, Pointer objectsLimit) {
         UnsignedWord indexLimit = getTableSizeForMemoryRange(objectsStart, objectsLimit);
-        for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
+        for (UnsignedWord index = Word.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
             Pointer objStart = getFirstObject(tableStart, objectsStart, index);
             if (objStart.belowThan(objectsStart) || objectsLimit.belowOrEqual(objStart)) {
                 Log.log().string("The first object table entry at index ").unsigned(index).string(" points to an object that is outside of the current chunk:  obj: ").zhex(objStart)
@@ -327,7 +327,7 @@ final class FirstObjectTable {
     private static UnsignedWord getTableSizeForMemoryRange(Pointer memoryStart, Pointer memoryLimit) {
         assert memoryStart.belowOrEqual(memoryLimit) : "Pointers out of order";
         UnsignedWord memorySize = memoryLimit.subtract(memoryStart);
-        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, WordFactory.unsigned(BYTES_COVERED_BY_ENTRY));
+        UnsignedWord roundedMemory = UnsignedUtils.roundUp(memorySize, Word.unsigned(BYTES_COVERED_BY_ENTRY));
         UnsignedWord index = FirstObjectTable.memoryOffsetToIndex(roundedMemory);
         return index.multiply(ENTRY_SIZE_BYTES);
     }
@@ -394,7 +394,7 @@ final class FirstObjectTable {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord exponentToOffset(int n) {
         assert 0 <= n && n <= 63 : "Exponent out of bounds.";
-        return WordFactory.unsigned(1L << n);
+        return Word.unsigned(1L << n);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

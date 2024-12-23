@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,7 +46,6 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -224,7 +224,7 @@ public class IsolateArgumentParser {
         for (int i = 0; i < getOptionCount(); i++) {
             if (OPTION_TYPES.get().read(i) == OptionValueType.C_CHAR_POINTER) {
                 UntrackedNullableNativeMemory.free(readCCharPointer(arguments, i));
-                writeCCharPointer(arguments, i, WordFactory.nullPointer());
+                writeCCharPointer(arguments, i, Word.nullPointer());
             }
         }
         return true;
@@ -234,7 +234,7 @@ public class IsolateArgumentParser {
     public boolean tearDown() {
         for (int i = 0; i < getOptionCount(); i++) {
             if (OPTION_TYPES.get().read(i) == OptionValueType.C_CHAR_POINTER) {
-                UntrackedNullableNativeMemory.free(WordFactory.pointer(parsedOptionValues[i]));
+                UntrackedNullableNativeMemory.free(Word.pointer(parsedOptionValues[i]));
                 parsedOptionValues[i] = 0;
             }
         }
@@ -260,7 +260,7 @@ public class IsolateArgumentParser {
                     VMError.guarantee(copy.isNonNull(), "Copying of string argument failed.");
                     writeCCharPointer(arguments, i, copy);
                 } else {
-                    writeCCharPointer(arguments, i, WordFactory.nullPointer());
+                    writeCCharPointer(arguments, i, Word.nullPointer());
                 }
             }
         }
@@ -332,7 +332,7 @@ public class IsolateArgumentParser {
     }
 
     protected CCharPointer getCCharPointerOptionValue(int index) {
-        return WordFactory.pointer(parsedOptionValues[index]);
+        return Word.pointer(parsedOptionValues[index]);
     }
 
     protected Object getOptionValue(int index) {
@@ -350,7 +350,7 @@ public class IsolateArgumentParser {
                 return null;
             }
 
-            return CTypeConversion.toJavaString(WordFactory.pointer(value));
+            return CTypeConversion.toJavaString(Word.pointer(value));
         } else {
             throw VMError.shouldNotReachHere("Option value has unexpected type: " + optionValueType);
         }
@@ -380,7 +380,7 @@ public class IsolateArgumentParser {
             arguments.setProtectionKey(parameters.protectionKey());
         } else {
             arguments.setArgc(0);
-            arguments.setArgv(WordFactory.nullPointer());
+            arguments.setArgv(Word.nullPointer());
             arguments.setProtectionKey(0);
         }
 
@@ -398,7 +398,7 @@ public class IsolateArgumentParser {
         if (arg.read(0) == '-') {
             return arg.addressOf(1);
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -406,7 +406,7 @@ public class IsolateArgumentParser {
         if (arg.read(0) == 'X' && arg.read(1) == 'm') {
             return arg.addressOf(2);
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -414,7 +414,7 @@ public class IsolateArgumentParser {
         if (arg.read(0) == 'X' && arg.read(1) == 'X' && arg.read(2) == ':') {
             return arg.addressOf(3);
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -519,7 +519,7 @@ public class IsolateArgumentParser {
             }
         }
 
-        UnsignedWord value = n.multiply(WordFactory.unsigned(modifier));
+        UnsignedWord value = n.multiply(Word.unsigned(modifier));
         if (checkForOverflow(value, n, modifier)) {
             return false;
         }
@@ -529,7 +529,7 @@ public class IsolateArgumentParser {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean checkForOverflow(UnsignedWord value, UnsignedWord n, long modifier) {
-        return value.unsignedDivide(WordFactory.unsigned(modifier)) != n;
+        return value.unsignedDivide(Word.unsigned(modifier)) != n;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -548,7 +548,7 @@ public class IsolateArgumentParser {
         if (prefix.read(i) == 0) {
             return input.addressOf(i);
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     @Fold

@@ -27,6 +27,7 @@ package com.oracle.svm.core.posix;
 import java.io.File;
 import java.nio.ByteOrder;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,7 +36,6 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -56,9 +56,9 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public CCharPointer allocateCPath(String path) {
         byte[] data = path.getBytes();
-        CCharPointer filename = UntrackedNullableNativeMemory.malloc(WordFactory.unsigned(data.length + 1));
+        CCharPointer filename = UntrackedNullableNativeMemory.malloc(Word.unsigned(data.length + 1));
         if (filename.isNull()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         for (int i = 0; i < data.length; i++) {
@@ -105,7 +105,7 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static RawFileDescriptor open0(CCharPointer cPath, int flags) {
         int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
-        return WordFactory.signed(Fcntl.NoTransitions.open(cPath, flags, permissions));
+        return Word.signed(Fcntl.NoTransitions.open(cPath, flags, permissions));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -135,14 +135,14 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     @Override
     public long position(RawFileDescriptor fd) {
         int posixFd = getPosixFileDescriptor(fd);
-        return Unistd.NoTransitions.lseek(posixFd, WordFactory.signed(0), Unistd.SEEK_CUR()).rawValue();
+        return Unistd.NoTransitions.lseek(posixFd, Word.signed(0), Unistd.SEEK_CUR()).rawValue();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public boolean seek(RawFileDescriptor fd, long position) {
         int posixFd = getPosixFileDescriptor(fd);
-        SignedWord newPos = Unistd.NoTransitions.lseek(posixFd, WordFactory.signed(position), Unistd.SEEK_SET());
+        SignedWord newPos = Unistd.NoTransitions.lseek(posixFd, Word.signed(position), Unistd.SEEK_SET());
         return position == newPos.rawValue();
     }
 

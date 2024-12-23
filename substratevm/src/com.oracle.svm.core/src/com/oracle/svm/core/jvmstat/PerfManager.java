@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
@@ -119,7 +118,7 @@ public class PerfManager {
         waitForInitialization();
         PerfLong entry = longEntries.get(name);
         assert Heap.getHeap().isInImageHeap(entry);
-        return (CLongPointer) Word.objectToUntrackedPointer(entry).add(WordFactory.unsigned(PerfLong.VALUE_OFFSET));
+        return (CLongPointer) Word.objectToUntrackedPointer(entry).add(Word.unsigned(PerfLong.VALUE_OFFSET));
     }
 
     public boolean hasLongPerfEntry(String name) {
