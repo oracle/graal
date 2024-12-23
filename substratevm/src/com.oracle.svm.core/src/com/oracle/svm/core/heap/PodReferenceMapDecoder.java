@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.heap;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.JavaMemoryUtil;
@@ -129,8 +129,8 @@ public final class PodReferenceMapDecoder {
         UnsignedWord nrefs;
         do {
             mapOffset = mapOffset.subtract(2);
-            gap = WordFactory.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset)));
-            nrefs = WordFactory.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset.add(1))));
+            gap = Word.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset)));
+            nrefs = Word.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset.add(1))));
 
             // Copy references separately with the required barriers
             JavaMemoryUtil.copyReferencesForward(original, refOffset, copy, refOffset, nrefs);

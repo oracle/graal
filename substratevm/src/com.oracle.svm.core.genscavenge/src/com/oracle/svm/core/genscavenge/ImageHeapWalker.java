@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
@@ -153,7 +152,7 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     public UnsignedWord getSize(ImageHeapInfo info) {
         Pointer firstStart = Word.objectToUntrackedPointer(getFirstObject(info));
         if (firstStart.isNull()) { // no objects
-            return WordFactory.zero();
+            return Word.zero();
         }
         Pointer lastEnd = LayoutEncoding.getImageHeapObjectEnd(getLastObject(info));
         return lastEnd.subtract(firstStart);

@@ -27,9 +27,9 @@ package com.oracle.svm.core.genscavenge.compacting;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 
 import com.oracle.svm.core.util.VMError;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -98,7 +98,7 @@ public final class ObjectMoveInfo {
         if (useCompressedLayout()) {
             long offset = objSeqStart.readInt(-8);
             offset *= ConfigurationValues.getObjectLayout().getAlignment();
-            return objSeqStart.add(WordFactory.signed(offset));
+            return objSeqStart.add(Word.signed(offset));
         } else {
             return objSeqStart.readWord(-16);
         }
@@ -117,10 +117,10 @@ public final class ObjectMoveInfo {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static UnsignedWord getObjectSeqSize(Pointer objSeqStart) {
         if (useCompressedLayout()) {
-            UnsignedWord value = WordFactory.unsigned(objSeqStart.readShort(-4) & 0xffff);
+            UnsignedWord value = Word.unsigned(objSeqStart.readShort(-4) & 0xffff);
             return value.multiply(ConfigurationValues.getObjectLayout().getAlignment());
         } else {
-            return WordFactory.unsigned(objSeqStart.readInt(-8));
+            return Word.unsigned(objSeqStart.readInt(-8));
         }
     }
 
@@ -137,10 +137,10 @@ public final class ObjectMoveInfo {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static UnsignedWord getNextObjectSeqOffset(Pointer objSeqStart) {
         if (useCompressedLayout()) {
-            UnsignedWord value = WordFactory.unsigned(objSeqStart.readShort(-2) & 0xffff);
+            UnsignedWord value = Word.unsigned(objSeqStart.readShort(-2) & 0xffff);
             return value.multiply(ConfigurationValues.getObjectLayout().getAlignment());
         } else {
-            return WordFactory.unsigned(objSeqStart.readInt(-4));
+            return Word.unsigned(objSeqStart.readInt(-4));
         }
     }
 
@@ -148,7 +148,7 @@ public final class ObjectMoveInfo {
     static Pointer getNextObjectSeqAddress(Pointer objSeqStart) {
         UnsignedWord offset = getNextObjectSeqOffset(objSeqStart);
         if (offset.equal(0)) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         return objSeqStart.add(offset);
     }
@@ -190,12 +190,12 @@ public final class ObjectMoveInfo {
 
         AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(objPointer);
         if (objPointer.aboveOrEqual(HeapChunk.getTopPointer(chunk))) {
-            return WordFactory.nullPointer(); // object did not survive, is in gap at chunk end
+            return Word.nullPointer(); // object did not survive, is in gap at chunk end
         }
 
         Pointer objSeq = BrickTable.getEntry(chunk, BrickTable.getIndex(chunk, objPointer));
         if (objSeq.aboveThan(objPointer)) { // object not alive, in gap across brick table entries
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         Pointer nextObjSeq = getNextObjectSeqAddress(objSeq);
@@ -204,7 +204,7 @@ public final class ObjectMoveInfo {
             nextObjSeq = getNextObjectSeqAddress(objSeq);
         }
         if (objPointer.aboveOrEqual(objSeq.add(getObjectSeqSize(objSeq)))) {
-            return WordFactory.nullPointer(); // object did not survive, in gap between objects
+            return Word.nullPointer(); // object did not survive, in gap between objects
         }
 
         Pointer newObjSeqAddress = getNewAddress(objSeq);
@@ -224,9 +224,9 @@ public final class ObjectMoveInfo {
         Pointer next = getNextObjectSeqAddress(p);
         do {
             // The visitor might overwrite the current and/or next move info, so read it eagerly.
-            UnsignedWord nextSize = next.isNonNull() ? getObjectSeqSize(next) : WordFactory.zero();
-            Pointer nextNewAddress = next.isNonNull() ? getNewAddress(next) : WordFactory.nullPointer();
-            Pointer nextNext = next.isNonNull() ? getNextObjectSeqAddress(next) : WordFactory.nullPointer();
+            UnsignedWord nextSize = next.isNonNull() ? getObjectSeqSize(next) : Word.zero();
+            Pointer nextNewAddress = next.isNonNull() ? getNewAddress(next) : Word.nullPointer();
+            Pointer nextNext = next.isNonNull() ? getNextObjectSeqAddress(next) : Word.nullPointer();
 
             if (!visitor.visit(p, size, newAddress, next)) {
                 return;

@@ -26,8 +26,8 @@ package com.oracle.svm.core.pltgot.aarch64;
 
 import static com.oracle.svm.core.pltgot.ExitMethodAddressResolutionNode.exitMethodAddressResolution;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -54,7 +54,7 @@ public final class AArch64MethodAddressResolutionDispatcher extends MethodAddres
         Pointer paddingSlot = KnownIntrinsics.readCallerStackPointer();
         long gotEntry = DeoptimizationSlotPacking.decodeGOTIndex(paddingSlot.readWord(0).rawValue());
         long resolvedMethodAddress = MethodAddressResolutionDispatcher.resolveMethodAddress(gotEntry);
-        exitMethodAddressResolution(WordFactory.pointer(resolvedMethodAddress));
+        exitMethodAddressResolution(Word.pointer(resolvedMethodAddress));
         throw UnreachableNode.unreachable();
     }
 }

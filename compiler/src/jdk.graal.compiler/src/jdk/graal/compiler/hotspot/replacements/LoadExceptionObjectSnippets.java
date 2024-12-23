@@ -35,8 +35,6 @@ import static jdk.graal.compiler.hotspot.replacements.HotspotSnippetsOptions.Loa
 import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
-import org.graalvm.word.WordFactory;
-
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.core.common.type.Stamp;
@@ -74,7 +72,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
         Word thread = registerAsWord(threadRegister);
         Object exception = readExceptionOop(thread);
         writeExceptionOop(thread, null);
-        writeExceptionPc(thread, WordFactory.zero());
+        writeExceptionPc(thread, Word.zero());
         return piCastToSnippetReplaceeStamp(exception);
     }
 

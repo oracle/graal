@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.jvmti;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -42,11 +42,11 @@ public final class JvmtiEventCallbacksUtil {
 
     public static void setEventCallbacks(JvmtiEventCallbacks envEventCallbacks, JvmtiEventCallbacks newCallbacks, int sizeOfCallbacks) {
         int internalStructSize = SizeOf.get(JvmtiEventCallbacks.class);
-        UnmanagedMemoryUtil.fill((Pointer) envEventCallbacks, WordFactory.unsigned(internalStructSize), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) envEventCallbacks, Word.unsigned(internalStructSize), (byte) 0);
 
         if (newCallbacks.isNonNull()) {
             int bytesToCopy = UninterruptibleUtils.Math.min(internalStructSize, sizeOfCallbacks);
-            UnmanagedMemoryUtil.copy((Pointer) newCallbacks, (Pointer) envEventCallbacks, WordFactory.unsigned(bytesToCopy));
+            UnmanagedMemoryUtil.copy((Pointer) newCallbacks, (Pointer) envEventCallbacks, Word.unsigned(bytesToCopy));
         }
     }
 }

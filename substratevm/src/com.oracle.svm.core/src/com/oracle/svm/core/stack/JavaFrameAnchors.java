@@ -27,10 +27,10 @@ package com.oracle.svm.core.stack;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
@@ -75,8 +75,8 @@ public class JavaFrameAnchors {
          * proper ones (see usages of KnownOffsets.getJavaFrameAnchorLastSPOffset() in the backend).
          * The intention is to not see stale values when debugging or in signal handlers.
          */
-        newAnchor.setLastJavaIP(WordFactory.nullPointer());
-        newAnchor.setLastJavaSP(WordFactory.nullPointer());
+        newAnchor.setLastJavaIP(Word.nullPointer());
+        newAnchor.setLastJavaSP(Word.nullPointer());
 
         JavaFrameAnchor prev = lastAnchorTL.get();
         newAnchor.setPreviousAnchor(prev);

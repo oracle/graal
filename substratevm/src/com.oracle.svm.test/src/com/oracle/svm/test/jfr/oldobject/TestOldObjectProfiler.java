@@ -33,8 +33,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import jdk.jfr.Recording;
-import org.graalvm.word.WordFactory;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -210,7 +210,7 @@ public class TestOldObjectProfiler extends AbstractJfrTest {
             TinyObject obj = new TinyObject(value);
             result.add(obj);
 
-            boolean success = JfrOldObjectProfiler.TestingBackdoor.sample(profiler, obj, WordFactory.unsigned(value), Integer.MIN_VALUE);
+            boolean success = JfrOldObjectProfiler.TestingBackdoor.sample(profiler, obj, Word.unsigned(value), Integer.MIN_VALUE);
             assertTrue(success);
         }
         return result;

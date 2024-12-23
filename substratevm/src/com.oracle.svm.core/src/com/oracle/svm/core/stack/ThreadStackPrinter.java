@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.stack;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -127,7 +127,7 @@ public class ThreadStackPrinter {
         @Override
         protected final boolean unknownFrame(Pointer sp, CodePointer ip, Object data) {
             Log log = (Log) data;
-            logFrameRaw(log, sp, ip, WordFactory.nullPointer());
+            logFrameRaw(log, sp, ip, Word.nullPointer());
             log.string("  IP is not within Java code. Aborting stack trace printing.").newline();
             printedFrames++;
             return false;
@@ -173,7 +173,7 @@ public class ThreadStackPrinter {
                 }
 
                 boolean compilationRoot = frame.getCaller() == null;
-                printFrameIdentifier(log, WordFactory.nullPointer(), deoptFrame, compilationRoot);
+                printFrameIdentifier(log, Word.nullPointer(), deoptFrame, compilationRoot);
                 logFrameRaw(log, sp, ip, codeInfo);
                 logFrameInfo(log, frame.getFrameInfo(), ImageCodeInfo.CODE_INFO_NAME + ", deopt");
                 if (!compilationRoot) {
@@ -245,7 +245,7 @@ public class ThreadStackPrinter {
 
     @Uninterruptible(reason = "IP is not within Java code, so there is no risk that it gets invalidated.", calleeMustBe = false)
     private static void logFrame(Log log, Pointer sp, CodePointer ip) {
-        Stage0StackFramePrintVisitor.logFrameRaw(log, sp, ip, WordFactory.nullPointer());
+        Stage0StackFramePrintVisitor.logFrameRaw(log, sp, ip, Word.nullPointer());
         log.string("  IP is not within Java code. Trying frame anchor of last Java frame instead.").newline();
     }
 }

@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -193,7 +193,7 @@ public final class YoungGeneration extends Generation {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord getSurvivorChunkBytes() {
-        UnsignedWord chunkBytes = WordFactory.zero();
+        UnsignedWord chunkBytes = Word.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             chunkBytes = chunkBytes.add(getSurvivorChunkBytes(i));
         }
@@ -216,7 +216,7 @@ public final class YoungGeneration extends Generation {
      * This value is only updated during a GC, be careful: see {@link #getChunkBytes}.
      */
     UnsignedWord getSurvivorAlignedChunkBytes() {
-        UnsignedWord chunkBytes = WordFactory.zero();
+        UnsignedWord chunkBytes = Word.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             chunkBytes = chunkBytes.add(this.survivorFromSpaces[i].getAlignedChunkBytes());
             chunkBytes = chunkBytes.add(this.survivorToSpaces[i].getAlignedChunkBytes());
@@ -229,7 +229,7 @@ public final class YoungGeneration extends Generation {
     }
 
     UnsignedWord computeSurvivorObjectBytes() {
-        UnsignedWord usedObjectBytes = WordFactory.zero();
+        UnsignedWord usedObjectBytes = Word.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             usedObjectBytes = usedObjectBytes.add(survivorFromSpaces[i].computeObjectBytes());
             usedObjectBytes = usedObjectBytes.add(survivorToSpaces[i].computeObjectBytes());
@@ -327,7 +327,7 @@ public final class YoungGeneration extends Generation {
     AlignedHeapChunk.AlignedHeader requestAlignedSurvivorChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         if (!alignedChunkFitsInSurvivors()) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         return HeapImpl.getChunkProvider().produceAlignedChunk();
     }

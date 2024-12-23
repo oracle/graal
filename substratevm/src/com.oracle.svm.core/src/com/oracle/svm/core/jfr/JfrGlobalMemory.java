@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.jfr;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -96,7 +96,7 @@ public class JfrGlobalMemory {
             try {
                 JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                 JfrBufferAccess.free(buffer);
-                node.setBuffer(WordFactory.nullPointer());
+                node.setBuffer(Word.nullPointer());
             } finally {
                 JfrBufferNodeAccess.unlock(node);
             }
@@ -169,6 +169,6 @@ public class JfrGlobalMemory {
                 node = node.getNext();
             }
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 }

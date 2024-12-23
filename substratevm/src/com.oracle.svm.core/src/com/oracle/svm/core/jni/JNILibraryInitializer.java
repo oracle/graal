@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.Platform;
@@ -36,7 +37,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -115,7 +115,7 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
         }
         if (onLoadFunction.isNonNull()) {
             JNIOnLoadFunctionPointer onLoad = (JNIOnLoadFunctionPointer) onLoadFunction;
-            int expected = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), WordFactory.nullPointer());
+            int expected = onLoad.invoke(JNIFunctionTables.singleton().getGlobalJavaVM(), Word.nullPointer());
             if (!JNIVersion.isSupported(expected, lib.isBuiltin())) {
                 throw new UnsatisfiedLinkError("Unsupported JNI version 0x" + Integer.toHexString(expected) + ", required by " + libName);
             }
@@ -124,6 +124,6 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
 
     private PointerBase getOnLoadSymbolAddress(String libName) {
         CGlobalData<PointerBase> symbol = onLoadCGlobalDataMap.get(libName);
-        return symbol == null ? WordFactory.nullPointer() : symbol.get();
+        return symbol == null ? Word.nullPointer() : symbol.get();
     }
 }

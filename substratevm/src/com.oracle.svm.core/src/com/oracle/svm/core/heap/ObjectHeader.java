@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -83,7 +82,7 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Word readHeaderFromPointer(Pointer objectPointer) {
         if (getReferenceSize() == Integer.BYTES) {
-            return WordFactory.unsigned(objectPointer.readInt(getHubOffset()));
+            return Word.unsigned(objectPointer.readInt(getHubOffset()));
         } else {
             return objectPointer.readWord(getHubOffset());
         }
@@ -92,7 +91,7 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Word readHeaderFromObject(Object o) {
         if (getReferenceSize() == Integer.BYTES) {
-            return WordFactory.unsigned(ObjectAccess.readInt(o, getHubOffset()));
+            return Word.unsigned(ObjectAccess.readInt(o, getHubOffset()));
         } else {
             return ObjectAccess.readWord(o, getHubOffset());
         }

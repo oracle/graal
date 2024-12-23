@@ -30,11 +30,11 @@ import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -238,7 +238,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
         getFileSupport().close(fd);
         filename = null;
-        fd = WordFactory.nullPointer();
+        fd = Word.nullPointer();
     }
 
     private void writeFileHeader() {
@@ -542,7 +542,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private void traverseThreadLocalBuffers(JfrBufferList list, boolean flushpoint) {
         JfrBufferNode node = list.getHead();
-        JfrBufferNode prev = WordFactory.nullPointer();
+        JfrBufferNode prev = Word.nullPointer();
 
         while (node.isNonNull()) {
             JfrBufferNode next = node.getNext();

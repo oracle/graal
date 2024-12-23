@@ -615,6 +615,27 @@ public class NativeImage {
                 builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
             } else if (getHostFlags().hasUseJVMCICompiler()) {
                 builderJavaArgs.add("-XX:-UseJVMCICompiler");
+
+                if (JavaVersionUtil.JAVA_SPEC == 21) {
+                    Runtime.Version version = Runtime.version();
+                    if (version.interim() == 0 && version.update() < 4) {
+                        /*
+                         * Native Image regularly crashes due to JDK-8328702. In JDK 21, the fix
+                         * only landed in 20.0.4 so in earlier JDK 21 versions, disable C2. This
+                         * workaround can be removed when GR-55515, GR-60648 or GR-60669 is
+                         * resolved.
+                         */
+                        builderJavaArgs.add("-XX:TieredStopAtLevel=1");
+
+                        /*
+                         * From the java man page section on ReservedCodeCacheSize: "the default
+                         * maximum code cache size is 240 MB; if you disable tiered compilation ...
+                         * then the default size is 48 MB". Experience shows that Native Image needs
+                         * the larger code cache, even when C2 is disabled.
+                         */
+                        builderJavaArgs.add("-XX:ReservedCodeCacheSize=240M");
+                    }
+                }
             }
 
             return builderJavaArgs;

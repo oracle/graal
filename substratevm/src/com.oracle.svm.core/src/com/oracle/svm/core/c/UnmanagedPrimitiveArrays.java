@@ -27,7 +27,6 @@ package com.oracle.svm.core.c;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
@@ -61,7 +60,7 @@ public final class UnmanagedPrimitiveArrays {
     public static <T extends UnmanagedPrimitiveArray<?>> T createArray(int length, Class<?> arrayType, NmtCategory nmtCategory) {
         DynamicHub hub = SubstrateUtil.cast(arrayType, DynamicHub.class);
         VMError.guarantee(LayoutEncoding.isPrimitiveArray(hub.getLayoutEncoding()));
-        UnsignedWord size = WordFactory.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(hub.getLayoutEncoding()));
+        UnsignedWord size = Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(hub.getLayoutEncoding()));
         Pointer array = NullableNativeMemory.calloc(size, nmtCategory);
         if (array.isNull()) {
             throw OUT_OF_MEMORY_ERROR;
@@ -107,7 +106,7 @@ public final class UnmanagedPrimitiveArrays {
         VMError.guarantee(srcPos >= 0 && destPos >= 0 && length >= 0 && destPos + length <= ArrayLengthNode.arrayLength(dest));
         Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         Pointer srcAddressAtPos = getAddressOf(src, destHub.getLayoutEncoding(), srcPos);
-        JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, WordFactory.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding())));
+        JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding())));
         return dest;
     }
 
@@ -119,13 +118,13 @@ public final class UnmanagedPrimitiveArrays {
         Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         Pointer srcAddressAtPos = getAddressOf(src, destHub.getLayoutEncoding(), srcPos);
 
-        UnsignedWord size = WordFactory.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding()));
+        UnsignedWord size = Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding()));
 
         // First compare until a difference is found
         UnsignedWord equalBytes = UnmanagedMemoryUtil.compare(srcAddressAtPos, destAddressAtPos, size);
         if (equalBytes.belowThan(size)) {
             // If the two arrays are not equal, copy over the remaining bytes
-            UnsignedWord alignBits = WordFactory.unsigned(0x7);
+            UnsignedWord alignBits = Word.unsigned(0x7);
             UnsignedWord offset = equalBytes.and(alignBits.not());
             JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos.add(offset), destAddressAtPos.add(offset), size.subtract(offset));
         }
@@ -140,7 +139,7 @@ public final class UnmanagedPrimitiveArrays {
         VMError.guarantee(srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= ArrayLengthNode.arrayLength(src));
         Pointer srcAddressAtPos = Word.objectToUntrackedPointer(src).add(LayoutEncoding.getArrayElementOffset(srcHub.getLayoutEncoding(), srcPos));
         Pointer destAddressAtPos = getAddressOf(dest, srcHub.getLayoutEncoding(), destPos);
-        JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, WordFactory.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(srcHub.getLayoutEncoding())));
+        JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, Word.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(srcHub.getLayoutEncoding())));
         return dest;
     }
 

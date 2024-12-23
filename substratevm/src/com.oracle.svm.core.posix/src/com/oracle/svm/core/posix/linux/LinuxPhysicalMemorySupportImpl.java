@@ -31,9 +31,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -54,7 +54,7 @@ public class LinuxPhysicalMemorySupportImpl implements PhysicalMemorySupport {
         if (numberOfPhysicalMemoryPages == -1 || sizeOfAPhysicalMemoryPage == -1) {
             throw VMError.shouldNotReachHere("Physical memory size (number of pages or page size) not available");
         }
-        return WordFactory.unsigned(numberOfPhysicalMemoryPages).multiply(WordFactory.unsigned(sizeOfAPhysicalMemoryPage));
+        return Word.unsigned(numberOfPhysicalMemoryPages).multiply(Word.unsigned(sizeOfAPhysicalMemoryPage));
     }
 
     @Override

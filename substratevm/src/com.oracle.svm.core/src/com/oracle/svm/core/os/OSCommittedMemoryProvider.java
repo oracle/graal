@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.os;
 
-import static org.graalvm.word.WordFactory.nullPointer;
-import static org.graalvm.word.WordFactory.zero;
+import static jdk.graal.compiler.word.Word.nullPointer;
+import static jdk.graal.compiler.word.Word.zero;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

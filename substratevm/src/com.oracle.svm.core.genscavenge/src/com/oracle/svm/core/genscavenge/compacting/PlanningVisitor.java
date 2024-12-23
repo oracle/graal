@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
@@ -65,14 +64,14 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
         Pointer initialTop = HeapChunk.getTopPointer(chunk); // top doesn't move until we are done
 
         Pointer objSeq = AlignedHeapChunk.getObjectsStart(chunk);
-        UnsignedWord gapSize = WordFactory.zero();
-        UnsignedWord objSeqSize = WordFactory.zero();
-        UnsignedWord brickIndex = WordFactory.zero();
+        UnsignedWord gapSize = Word.zero();
+        UnsignedWord objSeqSize = Word.zero();
+        UnsignedWord brickIndex = Word.zero();
 
         /* Initialize the move info structure at the chunk's object start location. */
         ObjectMoveInfo.setNewAddress(objSeq, allocPointer);
-        ObjectMoveInfo.setObjectSeqSize(objSeq, WordFactory.zero());
-        ObjectMoveInfo.setNextObjectSeqOffset(objSeq, WordFactory.zero());
+        ObjectMoveInfo.setObjectSeqSize(objSeq, Word.zero());
+        ObjectMoveInfo.setNextObjectSeqOffset(objSeq, Word.zero());
 
         BrickTable.setEntry(chunk, brickIndex, objSeq);
 
@@ -110,9 +109,9 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
 
                     // Initialize new move info.
                     objSeq = p;
-                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, WordFactory.zero());
+                    ObjectMoveInfo.setNextObjectSeqOffset(objSeq, Word.zero());
 
-                    gapSize = WordFactory.zero();
+                    gapSize = Word.zero();
                 }
 
                 objSeqSize = objSeqSize.add(objSize);
@@ -123,7 +122,7 @@ public final class PlanningVisitor implements AlignedHeapChunk.Visitor {
                     ObjectMoveInfo.setNewAddress(objSeq, newAddress);
                     ObjectMoveInfo.setObjectSeqSize(objSeq, objSeqSize);
 
-                    objSeqSize = WordFactory.zero();
+                    objSeqSize = Word.zero();
 
                     /* Set brick table entries. */
                     UnsignedWord currentBrick = BrickTable.getIndex(chunk, p);
