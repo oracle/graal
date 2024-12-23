@@ -1879,12 +1879,7 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
 
         protected BoxingEliminationTestRootNode(BytecodeDSLTestLanguage language,
                         FrameDescriptor.Builder frameDescriptor) {
-            super(language, customize(frameDescriptor).build());
-        }
-
-        private static FrameDescriptor.Builder customize(FrameDescriptor.Builder b) {
-            b.defaultValue("Nil");
-            return b;
+            super(language, frameDescriptor.build());
         }
 
         @Operation

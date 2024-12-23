@@ -543,16 +543,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "execute", new String[]{"frame"});
 
         CodeTreeBuilder b = ex.createBuilder();
-
-        if (model.defaultLocalValueExpression == null) {
-            ex.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
-            b.lineComment("Temporary until we can use FrameDescriptor.newBuilder().illegalDefaultValue().");
-            b.startFor().string("int slot = 0; slot < maxLocals; slot++").end();
-            b.startBlock();
-            b.statement(clearFrame("frame", "slot"));
-            b.end();
-        }
-
         b.startReturn().startCall("continueAt");
         b.string("bytecode");
         b.string("0"); // bci
@@ -5014,14 +5004,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             if (model.defaultLocalValueExpression != null) {
                 b.statement("frameDescriptorBuilder.defaultValue(DEFAULT_LOCAL_VALUE)");
+            } else {
+                b.statement("frameDescriptorBuilder.defaultValueIllegal()");
             }
+            b.statement("frameDescriptorBuilder.useSlotKinds(false)");
 
             b.startStatement().startCall("frameDescriptorBuilder.addSlots");
             b.startGroup();
             buildFrameSize(b);
             b.end();
-            b.staticReference(types.FrameSlotKind, "Illegal");
-            b.end(2);
+            b.end().end(); // call, statement
 
             b.startAssign("result").startNew(BytecodeRootNodeElement.this.asType());
             b.string("language");
