@@ -48,7 +48,6 @@ import java.util.function.Function;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.wasm.api.JsConstants;
-import org.graalvm.wasm.api.WasmModuleWithSource;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -56,7 +55,6 @@ import org.graalvm.wasm.predefined.BuiltinModule;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -141,6 +139,16 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             this.source = source;
         }
 
+        /**
+         * The CallTarget returned by {@code parse} supports two calling conventions:
+         *
+         * <ol>
+         * <li>(default) zero arguments provided: on the first call, instantiates the decoded module
+         * and puts it in the context's module instance map; then returns the {@link WasmInstance}.
+         * <li>first argument is {@code "module_decode"}: returns the decoded {@link WasmModule}
+         * (i.e. behaves like {@link WebAssembly#moduleDecode module_decode}). Used by the JS API.
+         * </ol>
+         */
         @Override
         public Object execute(VirtualFrame frame) {
             if (frame.getArguments().length == 0) {
@@ -153,7 +161,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             } else {
                 if (frame.getArguments()[0] instanceof String mode) {
                     if (mode.equals(MODULE_DECODE)) {
-                        return moduleDecode();
+                        return module;
                     } else {
                         throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Unsupported first argument: '%s'", mode);
                     }
@@ -161,21 +169,6 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
                     throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "First argument must be a string");
                 }
             }
-        }
-
-        @TruffleBoundary
-        private Object moduleDecode() {
-            /*
-             * Get the source used for parsing on the JS side and associate it with the returned
-             * WasmModule, so that it will be kept alive with the JS WebAssembly.Module object.
-             */
-            Source sourceHandle = getParsingSource();
-            return new WasmModuleWithSource(module, sourceHandle);
-        }
-
-        @TruffleBoundary
-        private Source getParsingSource() {
-            return Source.newBuilder(source).build();
         }
 
         @Override

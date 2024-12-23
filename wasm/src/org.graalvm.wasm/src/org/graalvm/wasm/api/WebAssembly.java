@@ -332,6 +332,11 @@ public class WebAssembly extends Dictionary {
         return (cause == null) ? new WasmJsApiException(kind, message) : new WasmJsApiException(kind, message, cause);
     }
 
+    /**
+     * Extract a {@link WasmModule} from argument 0. The argument may be a {@link WasmModule} or a
+     * {@link WasmModuleWithSource} as produced by the CallTarget returned from Env.parse or
+     * {@link #moduleDecode}, respectively.
+     */
     private static WasmModule toModule(Object[] args) {
         checkArgumentCount(args, 1);
         Object arg0 = args[0];
