@@ -40,11 +40,11 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeInt;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeChar;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeByte;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeChar;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeInt;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import java.io.InputStream;
@@ -239,8 +239,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     // region open-world only fields
 
     /**
-     * This stores the depth of the type in the inheritance hierarchy. If the type is an interface
-     * then the typeIDDepth is -1.
+     * This stores the depth of the type in the inheritance hierarchy. If the type is an interface,
+     * then the typeIDDepth is negative.
      */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
     private int typeIDDepth;
@@ -673,15 +673,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setOpenTypeWorldData(CFunctionPointer[] vtable, int typeID,
-                    int typeCheckDepth, int numClassTypes, int numInterfaceTypes, int[] typeCheckSlots) {
+                    int typeIDDepth, int numClassTypes, int numInterfaceTypes, int[] typeCheckSlots) {
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
-        this.typeIDDepth = typeCheckDepth;
+        this.typeIDDepth = typeIDDepth;
         this.numClassTypes = numClassTypes;
         this.numInterfaceTypes = numInterfaceTypes;
         this.openTypeWorldTypeCheckSlots = typeCheckSlots;
         this.vtable = vtable;
+
+        VMError.guarantee(getNumClassTypes() == numClassTypes);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -839,8 +841,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return typeIDDepth;
     }
 
+    /** @see #setOpenTypeWorldData */
     public int getNumClassTypes() {
-        return numClassTypes;
+        return (typeIDDepth < 0) ? -(typeIDDepth + 1) : (typeIDDepth + 1);
     }
 
     public int getNumInterfaceTypes() {
