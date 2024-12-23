@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
 import com.oracle.truffle.compiler.ConstantFieldInfo;
 import com.oracle.truffle.compiler.HostMethodInfo;
@@ -33,8 +33,8 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.libgraal.LibGraalUtil;
-import jdk.graal.compiler.libgraal.NativeImageHostEntryPoints;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -48,7 +48,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.word.WordFactory;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -69,7 +68,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
         if (this.classLoaderDelegate == null) {
             throw GraalError.shouldNotReachHere("The object class needs to be available for a Truffle runtime object.");
         }
-        NativeImageHostEntryPoints.initializeHost(runtimeClass);
+        TruffleFromLibGraalStartPoints.initializeJNI(Word.pointer(runtimeClass));
     }
 
     @Override
@@ -99,7 +98,7 @@ final class HSTruffleCompilerRuntime extends HSIndirectHandle implements Truffle
         if (scope == null) {
             return null;
         }
-        return new HSTruffleCompilable(new HSObject(scope, WordFactory.pointer(jniLocalRef)));
+        return new HSTruffleCompilable(new HSObject(scope, Word.pointer(jniLocalRef)));
     }
 
     @Override

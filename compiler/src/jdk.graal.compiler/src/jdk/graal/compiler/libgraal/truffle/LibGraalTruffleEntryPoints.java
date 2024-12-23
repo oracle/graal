@@ -22,11 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
@@ -43,7 +44,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
@@ -56,7 +56,6 @@ import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.libgraal.LibGraalFeature;
 import jdk.graal.compiler.libgraal.LibGraalJNIMethodScope;
 import jdk.graal.compiler.libgraal.LibGraalUtil;
-import jdk.graal.compiler.libgraal.NativeImageHostEntryPoints;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
@@ -85,8 +84,8 @@ public class LibGraalTruffleEntryPoints {
         }
 
         long currentJavaThread = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
-        CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) WordFactory.unsigned(currentJavaThread).add(offset);
-        PointerBase javaFrameAnchor = WordFactory.pointer(currentThreadLastJavaPCOffset.read());
+        CLongPointer currentThreadLastJavaPCOffset = (CLongPointer) Word.unsigned(currentJavaThread).add(offset);
+        PointerBase javaFrameAnchor = Word.pointer(currentThreadLastJavaPCOffset.read());
         return LibGraalJNIMethodScope.open(scopeName, env, javaFrameAnchor.isNonNull());
     }
 
@@ -179,7 +178,7 @@ public class LibGraalTruffleEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -277,13 +276,13 @@ public class LibGraalTruffleEntryPoints {
                     String stackTrace = stringSupplier.get();
                     scope.setObjectResult(JNIUtil.createHSString(env, stackTrace));
                 } else {
-                    scope.setObjectResult(WordFactory.nullPointer());
+                    scope.setObjectResult(Word.nullPointer());
                 }
             }
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -310,7 +309,7 @@ public class LibGraalTruffleEntryPoints {
                 Object graphInfo = LibGraalObjectHandles.resolve(handle, Object.class);
                 String[] nodeTypes = ((TruffleCompilerListener.GraphInfo) graphInfo).getNodeTypes(simpleNames);
                 JClass componentType = getStringClass(env);
-                JObjectArray res = JNIUtil.NewObjectArray(env, nodeTypes.length, componentType, WordFactory.nullPointer());
+                JObjectArray res = JNIUtil.NewObjectArray(env, nodeTypes.length, componentType, Word.nullPointer());
                 for (int i = 0; i < nodeTypes.length; i++) {
                     JNIUtil.SetObjectArrayElement(env, res, i, JNIUtil.createHSString(env, nodeTypes[i]));
                 }
@@ -319,7 +318,7 @@ public class LibGraalTruffleEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -389,7 +388,7 @@ public class LibGraalTruffleEntryPoints {
                 Object compilationResultInfo = LibGraalObjectHandles.resolve(handle, Object.class);
                 String[] infoPoints = ((TruffleCompilerListener.CompilationResultInfo) compilationResultInfo).getInfopoints();
                 JClass componentType = getStringClass(env);
-                JObjectArray res = JNIUtil.NewObjectArray(env, infoPoints.length, componentType, WordFactory.nullPointer());
+                JObjectArray res = JNIUtil.NewObjectArray(env, infoPoints.length, componentType, Word.nullPointer());
                 for (int i = 0; i < infoPoints.length; i++) {
                     JNIUtil.SetObjectArrayElement(env, res, i, JNIUtil.createHSString(env, infoPoints[i]));
                 }
@@ -398,7 +397,7 @@ public class LibGraalTruffleEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -435,23 +434,15 @@ public class LibGraalTruffleEntryPoints {
         try {
             JNIMethodScope scope = openScope(Id.ListCompilerOptions, env);
             try (JNIMethodScope s = scope) {
-                TruffleCompilerOptionDescriptor[] options1 = TruffleCompilerOptions.listOptions();
-                Object[] result = new Object[options1.length];
-                for (int i1 = 0; i1 < options1.length; i1++) {
-                    TruffleCompilerOptionDescriptor option = options1[i1];
-                    result[i1] = NativeImageHostEntryPoints.createTruffleCompilerOptionDescriptor(option.name(), option.type().ordinal(), option.deprecated(), option.help(),
-                                    option.deprecationMessage());
-                }
-                Object[] options = result;
+                TruffleCompilerOptionDescriptor[] options = TruffleCompilerOptions.listOptions();
                 BinaryOutput.ByteArrayBinaryOutput out = BinaryOutput.create();
                 out.writeInt(options.length);
-                for (int i = 0; i < options.length; i++) {
-                    TruffleCompilerOptionDescriptor descriptor = (TruffleCompilerOptionDescriptor) options[i];
-                    out.writeUTF(descriptor.name());
-                    out.writeInt(descriptor.type().ordinal());
-                    out.writeBoolean(descriptor.deprecated());
-                    out.writeUTF(descriptor.help());
-                    out.writeUTF(descriptor.deprecationMessage());
+                for (TruffleCompilerOptionDescriptor option : options) {
+                    out.writeUTF(option.name());
+                    out.writeInt(option.type().ordinal());
+                    out.writeBoolean(option.deprecated());
+                    out.writeUTF(option.help());
+                    out.writeUTF(option.deprecationMessage());
                 }
                 JByteArray res = JNIUtil.createHSArray(env, out.getArray());
                 scope.setObjectResult(res);
@@ -459,7 +450,7 @@ public class LibGraalTruffleEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -476,10 +467,6 @@ public class LibGraalTruffleEntryPoints {
         }
     }
 
-    private static String validateCompilerOption(String optionName, String optionValue) {
-        return TruffleCompilerOptions.validateOption(optionName, optionValue);
-    }
-
     @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_validateCompilerOption", include = LibGraalFeature.IsEnabled.class)
     @SuppressWarnings({"unused", "try"})
     @TruffleToLibGraal(Id.ValidateCompilerOption)
@@ -487,13 +474,14 @@ public class LibGraalTruffleEntryPoints {
         try {
             JNIMethodScope scope = openScope(Id.ValidateCompilerOption, env);
             try (JNIMethodScope s = scope) {
-                String result = validateCompilerOption(JNIUtil.createString(env, optionName), JNIUtil.createString(env, optionValue));
+                String optionName1 = JNIUtil.createString(env, optionName);
+                String result = TruffleCompilerOptions.validateOption(optionName1, JNIUtil.createString(env, optionValue));
                 scope.setObjectResult(JNIUtil.createHSString(env, result));
             }
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -524,7 +512,7 @@ public class LibGraalTruffleEntryPoints {
             return scope.getObjectResult();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -532,7 +520,7 @@ public class LibGraalTruffleEntryPoints {
     @SuppressWarnings("unused")
     public static boolean releaseHandle(JNIEnv jniEnv, JClass jclass, @IsolateThreadContext long isolateThreadId, long handle) {
         try {
-            ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));
+            ObjectHandles.getGlobal().destroy(Word.pointer(handle));
             return true;
         } catch (Throwable t) {
             return false;

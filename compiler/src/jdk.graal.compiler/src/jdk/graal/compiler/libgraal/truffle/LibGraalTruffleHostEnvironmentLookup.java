@@ -22,15 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
-import jdk.graal.compiler.libgraal.NativeImageHostEntryPoints;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
-import jdk.vm.ci.common.NativeImageReinitialize;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
 
 /**
  * This handles the Truffle host environment lookup on HotSpot with Libgraal.
@@ -50,7 +53,13 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
     private static final int NO_TRUFFLE_REGISTERED = 0;
     private static final GlobalAtomicLong WEAK_TRUFFLE_RUNTIME_INSTANCE = new GlobalAtomicLong("WEAK_TRUFFLE_RUNTIME_INSTANCE", NO_TRUFFLE_REGISTERED);
 
-    @NativeImageReinitialize private TruffleHostEnvironment previousRuntime;
+    private TruffleHostEnvironment previousRuntime;
+
+    public static Object createLocalHandleForWeakGlobalReference(long jniWeakGlobalRef) {
+        JNIMethodScope scope = JNIMethodScope.scope();
+        JNI.JObject localRef = JNIUtil.NewLocalRef(scope.getEnv(), Word.pointer(jniWeakGlobalRef));
+        return localRef.isNull() ? null : new HSObject(scope, localRef);
+    }
 
     @Override
     @SuppressWarnings("try")
@@ -60,15 +69,18 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
             // fast path if Truffle was not initialized
             return null;
         }
-        Object runtimeLocalHandle = NativeImageHostEntryPoints.createLocalHandleForWeakGlobalReference(globalReference);
-        if (runtimeLocalHandle == null) {
+
+        JNIMethodScope jniScope = JNIMethodScope.scope();
+        JNI.JObject localRef = JNIUtil.NewLocalRef(jniScope.getEnv(), Word.pointer(globalReference));
+        if (localRef.isNull()) {
             // The Truffle runtime was collected by the GC
             return null;
         }
+        HSObject runtimeLocalHandle = new HSObject(jniScope, localRef);
         TruffleHostEnvironment environment = this.previousRuntime;
         if (environment != null) {
             Object cached = hsRuntime(environment).hsHandle;
-            if (NativeImageHostEntryPoints.isSameObject(cached, runtimeLocalHandle)) {
+            if (JNIUtil.IsSameObject(JNIMethodScope.env(), ((HSObject) cached).getHandle(), runtimeLocalHandle.getHandle())) {
                 // fast path for registered and cached Truffle runtime handle
                 return environment;
             }
@@ -79,8 +91,8 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          */
         try (TruffleRuntimeScope scope = LibGraalTruffleHostEnvironment.openTruffleRuntimeScopeImpl()) {
             HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(
-                            NativeImageHostEntryPoints.createGlobalHandle(runtimeLocalHandle, true),
-                            NativeImageHostEntryPoints.getObjectClass(runtimeLocalHandle));
+                            new HSObject(JNIMethodScope.env(), runtimeLocalHandle.getHandle(), true, false),
+                            JNIUtil.GetObjectClass(JNIMethodScope.env(), runtimeLocalHandle.getHandle()).rawValue());
             this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
             return environment;
         }

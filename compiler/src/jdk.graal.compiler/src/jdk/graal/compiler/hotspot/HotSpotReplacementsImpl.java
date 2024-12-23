@@ -60,7 +60,6 @@ import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.replacements.IntrinsicGraphBuilder;
 import jdk.graal.compiler.replacements.ReplacementsImpl;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -185,7 +184,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     // When assertions are enabled, these fields are used to ensure all snippets are
     // registered during Graal initialization which in turn ensures that native image
     // building will not miss any snippets.
-    @NativeImageReinitialize private EconomicSet<ResolvedJavaMethod> registeredSnippets = EconomicSet.create();
+    private EconomicSet<ResolvedJavaMethod> registeredSnippets = EconomicSet.create();
     private boolean snippetRegistrationClosed;
 
     @Override
@@ -252,7 +251,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     private static volatile EncodedSnippets encodedSnippets;
 
-    @NativeImageReinitialize private static SymbolicSnippetEncoder snippetEncoder;
+    private static SymbolicSnippetEncoder snippetEncoder;
 
     @SuppressWarnings("try")
     @Override

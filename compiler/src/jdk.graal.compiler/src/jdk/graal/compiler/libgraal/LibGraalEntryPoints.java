@@ -27,22 +27,38 @@ package jdk.graal.compiler.libgraal;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
 
-import jdk.graal.compiler.hotspot.libgraal.RunTime;
+import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.hotspot.CompilationContext;
+import jdk.graal.compiler.hotspot.CompilationTask;
+import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.util.OptionsEncoder;
 import jdk.graal.compiler.word.Word;
-import jdk.graal.nativeimage.LibGraalRuntime;
-import org.graalvm.collections.EconomicSet;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotInstalledCode;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.runtime.JVMCIBackend;
+import jdk.vm.ci.runtime.JVMCICompiler;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -50,19 +66,52 @@ import org.graalvm.word.PointerBase;
 
 import jdk.internal.misc.Unsafe;
 
+import static jdk.graal.compiler.serviceprovider.GraalServices.getCurrentThreadAllocatedBytes;
+import static jdk.graal.compiler.serviceprovider.GraalServices.isThreadAllocatedMemorySupported;
+
 /**
  * Encapsulates {@link CEntryPoint} implementations.
  */
 final class LibGraalEntryPoints {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    LibGraalEntryPoints() {
+    private LibGraalEntryPoints() {
+    }
+
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
+    private record CachedOptions(OptionValues options, long hash) {
+    }
+
+    private static final ThreadLocal<CachedOptions> CACHED_OPTIONS_THREAD_LOCAL = new ThreadLocal<>();
+
+    private static OptionValues decodeOptions(long address, int size, int hash) {
+        CachedOptions options = CACHED_OPTIONS_THREAD_LOCAL.get();
+        if (options == null || options.hash != hash) {
+            byte[] buffer = new byte[size];
+            UNSAFE.copyMemory(null, address, buffer, Unsafe.ARRAY_BYTE_BASE_OFFSET, size);
+            int actualHash = Arrays.hashCode(buffer);
+            if (actualHash != hash) {
+                throw new IllegalArgumentException(actualHash + " != " + hash);
+            }
+            Map<String, Object> srcMap = OptionsEncoder.decode(buffer);
+            final EconomicMap<OptionKey<?>, Object> dstMap = OptionValues.newOptionMap();
+            final Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
+            for (Map.Entry<String, Object> e : srcMap.entrySet()) {
+                final String optionName = e.getKey();
+                final Object optionValue = e.getValue();
+                OptionsParser.parseOption(optionName, optionValue, dstMap, loader);
+            }
+
+            options = new CachedOptions(new OptionValues(dstMap), hash);
+            CACHED_OPTIONS_THREAD_LOCAL.set(options);
+        }
+        return options.options;
     }
 
     /**
      * The implementation of
      * {@code jdk.graal.compiler.hotspot.test.LibGraalCompilationDriver#compileMethodInLibgraal}.
-     * Calls {@link RunTime#compileMethod}.
      *
      * @param methodHandle the method to be compiled. This is a handle to a
      *            {@code HotSpotResolvedJavaMethod} in HotSpot's heap. A value of 0L can be passed
@@ -114,26 +163,45 @@ final class LibGraalEntryPoints {
                     long timeAndMemBufferAddress,
                     long profilePathBufferAddress) {
         try (JNIMethodScope jniScope = new JNIMethodScope("compileMethod", jniEnv)) {
-            String profileLoadPath;
-            if (profilePathBufferAddress > 0) {
-                profileLoadPath = CTypeConversion.toJavaString(Word.pointer(profilePathBufferAddress));
-            } else {
-                profileLoadPath = null;
-            }
-            BiConsumer<Long, Long> timeAndMemConsumer;
-            if (timeAndMemBufferAddress != 0) {
-                timeAndMemConsumer = (timeSpent, bytesAllocated) -> {
-                    Unsafe.getUnsafe().putLong(timeAndMemBufferAddress, bytesAllocated);
-                    Unsafe.getUnsafe().putLong(timeAndMemBufferAddress + 8, timeSpent);
-                };
-            } else {
-                timeAndMemConsumer = null;
+            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
+            if (methodHandle == 0L) {
+                return 0L;
             }
 
-            return RunTime.compileMethod(methodHandle, useProfilingInfo,
-                            installAsDefault, printMetrics, eagerResolving,
-                            optionsAddress, optionsSize, optionsHash,
-                            profileLoadPath, timeAndMemConsumer);
+            int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
+            HotSpotResolvedJavaMethod method = runtime.unhand(HotSpotResolvedJavaMethod.class, methodHandle);
+            HotSpotCompilationRequest request = new HotSpotCompilationRequest(method, entryBCI, 0L);
+            try (CompilationContext ignored = HotSpotGraalServices.openLocalCompilationContext(request)) {
+                CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, false, false, eagerResolving, installAsDefault);
+                long allocatedBytesBefore = 0;
+                long timeBefore = 0;
+                if (timeAndMemBufferAddress != 0) {
+                    allocatedBytesBefore = isThreadAllocatedMemorySupported() ? getCurrentThreadAllocatedBytes() : -1;
+                    timeBefore = System.nanoTime();
+                }
+                OptionValues options = decodeOptions(optionsAddress, optionsSize, optionsHash);
+                if (profilePathBufferAddress > 0) {
+                    String profileLoadPath = CTypeConversion.toJavaString(Word.pointer(profilePathBufferAddress));
+                    options = new OptionValues(options, ProfileReplaySupport.Options.LoadProfiles, profileLoadPath);
+                }
+                task.runCompilation(options);
+                if (timeAndMemBufferAddress != 0) {
+                    long allocatedBytesAfter = allocatedBytesBefore == -1 ? -1 : getCurrentThreadAllocatedBytes();
+                    long bytesAllocated = allocatedBytesAfter - allocatedBytesBefore;
+                    long timeAfter = System.nanoTime();
+                    long timeSpent = timeAfter - timeBefore;
+                    Unsafe.getUnsafe().putLong(timeAndMemBufferAddress, bytesAllocated);
+                    Unsafe.getUnsafe().putLong(timeAndMemBufferAddress + 8, timeSpent);
+                }
+                HotSpotInstalledCode installedCode = task.getInstalledCode();
+                if (printMetrics) {
+                    GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
+                    metricValues.print(options);
+                    metricValues.clear();
+                }
+                return runtime.translate(installedCode);
+            }
         } catch (Throwable t) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             t.printStackTrace(new PrintStream(baos));
@@ -147,7 +215,7 @@ final class LibGraalEntryPoints {
              * libgraal doesn't use a dedicated reference handler thread, so we trigger the
              * reference handling manually when a compilation finishes.
              */
-            doReferenceHandling();
+            HotSpotGraalRuntime.doReferenceHandling();
         }
     }
 
@@ -162,63 +230,57 @@ final class LibGraalEntryPoints {
                     int oopsPerIteration,
                     boolean verbose) {
         try (JNIMethodScope scope = new JNIMethodScope("hashConstantOopFields", jniEnv)) {
-            Runnable doReferenceHandling = LibGraalEntryPoints::doReferenceHandling;
-            return RunTime.hashConstantOopFields(typeHandle, useScope, iterations, oopsPerIteration, verbose, doReferenceHandling);
+            HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+            JVMCIBackend backend = runtime.getHostJVMCIBackend();
+            ConstantReflectionProvider constantReflection = backend.getConstantReflection();
+            HotSpotResolvedJavaType type = runtime.unhand(HotSpotResolvedJavaType.class, typeHandle);
+            ResolvedJavaField[] staticFields = type.getStaticFields();
+            JavaConstant receiver = null;
+            long hash = 13;
+
+            Object scopeDescription = "TestingOopHandles";
+
+            int remainingIterations = iterations;
+            while (remainingIterations-- > 0) {
+                ResolvedJavaField lastReadField = null;
+                try (CompilationContext scope1 = useScope ? HotSpotGraalServices.openLocalCompilationContext(scopeDescription) : null) {
+                    if (verbose && useScope) {
+                        System.out.println("Opened " + scopeDescription);
+                    }
+                    int remainingOops = oopsPerIteration;
+                    while (remainingOops-- > 0) {
+                        for (ResolvedJavaField field : staticFields) {
+                            if (field.getType().getJavaKind() == JavaKind.Object) {
+                                JavaConstant value = constantReflection.readFieldValue(field, receiver);
+                                if (value != null) {
+                                    lastReadField = field;
+                                    hash = hash ^ value.hashCode();
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!useScope) {
+                    System.gc();
+                    if (verbose) {
+                        System.out.println("calling reference handling");
+                    }
+                    HotSpotGraalRuntime.doReferenceHandling();
+                    if (verbose) {
+                        System.out.println("called reference handling");
+                    }
+                    // Need one more remote oop creation to trigger releasing
+                    // of remote oops that were wrapped in weakly reachable
+                    // IndirectHotSpotObjectConstantImpl objects just collected.
+                    constantReflection.readFieldValue(lastReadField, receiver);
+                } else if (verbose) {
+                    System.out.println(" Closed " + scopeDescription);
+                }
+            }
+            return hash;
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(jniEnv, t);
             return 0;
         }
-    }
-
-    /**
-     * Since reference handling is synchronous in libgraal, explicitly perform it here and then run
-     * any code which is expecting to process a reference queue to let it clean up.
-     */
-    static void doReferenceHandling() {
-        LibGraalRuntime.processReferences();
-        synchronized (LibGraalJVMCISubstitutions.Target_jdk_vm_ci_hotspot_Cleaner.class) {
-            LibGraalJVMCISubstitutions.Target_jdk_vm_ci_hotspot_Cleaner.clean();
-        }
-    }
-
-    static EconomicSet<String> explicitOptions = EconomicSet.create();
-
-    static void initializeOptions(Map<String, String> settings) {
-        for (var e : settings.entrySet()) {
-            String name = e.getKey();
-            String stringValue = e.getValue();
-            Object value;
-            if (name.startsWith("X") && stringValue.isEmpty()) {
-                name = name.substring(1);
-                value = stringValue;
-            } else {
-                RuntimeOptions.Descriptor desc = RuntimeOptions.getDescriptor(name);
-                if (desc == null) {
-                    throw new IllegalArgumentException("Could not find option " + name);
-                }
-                value = desc.convertValue(stringValue);
-                explicitOptions.add(name);
-            }
-            try {
-                RuntimeOptions.set(name, value);
-            } catch (RuntimeException ex) {
-                throw new IllegalArgumentException(ex);
-            }
-        }
-    }
-
-    static void printOptions(PrintStream out, String prefix) {
-        Comparator<RuntimeOptions.Descriptor> comparator = Comparator.comparing(RuntimeOptions.Descriptor::name);
-        RuntimeOptions.listDescriptors().stream().sorted(comparator).forEach(d -> {
-            String assign = explicitOptions.contains(d.name()) ? ":=" : "=";
-            OptionValues.printHelp(out, prefix,
-                            d.name(),
-                            RuntimeOptions.get(d.name()),
-                            d.valueType(),
-                            assign,
-                            "[community edition]",
-                            d.help(),
-                            List.of());
-        });
     }
 }

@@ -56,7 +56,6 @@ import jdk.graal.compiler.graphio.GraphOutput;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -878,7 +877,7 @@ public final class DebugContext implements AutoCloseable {
      * Arbitrary threads cannot be in the image so null out {@code DebugContext.invariants} which
      * holds onto a thread and is only used for assertions.
      */
-    @NativeImageReinitialize private final Invariants invariants = Assertions.assertionsEnabled() ? new Invariants() : null;
+    private final Invariants invariants = Assertions.assertionsEnabled() ? new Invariants() : null;
 
     static StackTraceElement[] getStackTrace(Thread thread) {
         return thread.getStackTrace();

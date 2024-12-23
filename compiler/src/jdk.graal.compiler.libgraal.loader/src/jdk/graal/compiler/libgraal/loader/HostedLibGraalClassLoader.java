@@ -55,13 +55,16 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * A classloader, that reads class files and resources from a jimage file at image build time.
+ * A classloader that reads class files and resources from a jimage file at image build time.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class HostedLibGraalClassLoader extends ClassLoader implements LibGraalLoader {
 
-    private static final String JAVA_HOME_PROPERTY_KEY = "jdk.graal.internal.libgraal.javahome";
-    private static final String JAVA_HOME_PROPERTY_VALUE = System.getProperty(JAVA_HOME_PROPERTY_KEY, System.getProperty("java.home"));
+    /**
+     * Name of the system property specifying the {@code java.home} of the JDK whose runtime image
+     * contains the Graal and JVMCI classes from which libgraal will be built.
+     */
+    private static final String LIBGRAAL_JAVA_HOME_PROPERTY_NAME = "libgraal.java.home";
 
     /**
      * Reader for the image.
@@ -85,12 +88,10 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     private final Map<String, String> modules;
 
     /**
-     * Modules in which Graal classes and their dependencies are defined.
+     * Modules in which Graal and JVMCI classes are defined.
      */
     private static final Set<String> LIBGRAAL_MODULES = Set.of(
                     "jdk.internal.vm.ci",
-// "org.graalvm.collections",
-// "org.graalvm.word",
                     "jdk.graal.compiler",
                     "org.graalvm.truffle.compiler",
                     "com.oracle.graal.graal_enterprise");
@@ -107,12 +108,16 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
         ClassLoader.registerAsParallelCapable();
     }
 
-    public final Path libGraalJavaHome;
+    private final Path libgraalJavaHome = Path.of(System.getProperty(LIBGRAAL_JAVA_HOME_PROPERTY_NAME, System.getProperty("java.home")));
+
+    @Override
+    public Path getJavaHome() {
+        return libgraalJavaHome;
+    }
 
     @SuppressWarnings("unused")
     public HostedLibGraalClassLoader() {
         super(LibGraalClassLoader.LOADER_NAME, Feature.class.getClassLoader());
-        libGraalJavaHome = Path.of(JAVA_HOME_PROPERTY_VALUE);
 
         try {
             /*
@@ -131,7 +136,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
 
             Map<String, String> modulesMap = new HashMap<>();
 
-            Path imagePath = libGraalJavaHome.resolve(Path.of("lib", "modules"));
+            Path imagePath = libgraalJavaHome.resolve(Path.of("lib", "modules"));
             this.imageReader = BasicImageReader.open(imagePath);
             for (var entry : imageReader.getEntryNames()) {
                 int secondSlash = entry.indexOf('/', 1);

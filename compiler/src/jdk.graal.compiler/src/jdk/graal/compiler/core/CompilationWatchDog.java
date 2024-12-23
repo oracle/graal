@@ -42,7 +42,6 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
-import jdk.vm.ci.common.NativeImageReinitialize;
 
 /**
  * A watch dog for {@linkplain #watch watching} and reporting on long running compilations.
@@ -292,7 +291,7 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
         }
     }
 
-    @NativeImageReinitialize private static ScheduledExecutorService watchDogService;
+    private static ScheduledExecutorService watchDogService;
 
     private static synchronized ScheduledFuture<?> schedule(CompilationWatchDog watchdog, int delay) {
         if (watchDogService == null) {

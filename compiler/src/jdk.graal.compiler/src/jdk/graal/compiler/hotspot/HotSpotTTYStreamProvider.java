@@ -43,7 +43,6 @@ import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 @ServiceProvider(TTYStreamProvider.class)
@@ -154,7 +153,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
          * initialization.
          */
         class DelayedOutputStream extends OutputStream {
-            @NativeImageReinitialize private volatile OutputStream lazy;
+            private volatile OutputStream lazy;
 
             private OutputStream lazy() {
                 if (lazy == null) {

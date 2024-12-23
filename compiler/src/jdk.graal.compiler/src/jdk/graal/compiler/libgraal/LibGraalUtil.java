@@ -27,6 +27,7 @@ package jdk.graal.compiler.libgraal;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -251,7 +252,7 @@ public final class LibGraalUtil {
                 return;
             }
             String accessor = accessingClass != null ? "class " + accessingClass.getTypeName() : "ALL-UNNAMED";
-            String message = access.name().toLowerCase() + " of packages from module " + moduleName + " to " +
+            String message = access.name().toLowerCase(Locale.ROOT) + " of packages from module " + moduleName + " to " +
                             accessor + " failed. No module named " + moduleName + " in boot layer.";
             throw new GraalError(message);
         }

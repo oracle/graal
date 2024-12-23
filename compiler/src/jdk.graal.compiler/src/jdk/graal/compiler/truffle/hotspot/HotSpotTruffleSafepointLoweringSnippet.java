@@ -60,7 +60,6 @@ import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.truffle.nodes.TruffleSafepointNode;
 import jdk.graal.compiler.truffle.phases.TruffleSafepointInsertionPhase;
 import jdk.graal.compiler.word.Word;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -124,14 +123,14 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
     static class TruffleHotSpotSafepointLoweringExtension implements DefaultHotSpotLoweringProvider.Extension {
 
-        @NativeImageReinitialize private Templates templates;
+        private Templates templates;
 
         private final HotSpotKnownTruffleTypes types;
 
         /**
          * Initialization deferred until the first Truffle compilation starts.
          */
-        @NativeImageReinitialize private volatile Runnable deferredInit;
+        private volatile Runnable deferredInit;
 
         TruffleHotSpotSafepointLoweringExtension(HotSpotKnownTruffleTypes types) {
             this.types = types;

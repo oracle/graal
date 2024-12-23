@@ -22,55 +22,55 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callAddInlinedTarget;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callAddTargetToDequeue;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callAsJavaConstant;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callCancelCompilation;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callCompilableToString;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callConsumeOptimizedAssumptionDependency;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callCountDirectCallNodes;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callCreateStringSupplier;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callEngineId;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetCompilableCallCount;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetCompilableName;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetCompilerOptions;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetConstantFieldInfo;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetDebugProperties;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetDescription;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetFailedSpeculationsAddress;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetKnownCallSiteCount;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetLanguage;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetLineNumber;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetNodeClassName;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetNodeId;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetNonTrivialNodeCount;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetOffsetEnd;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetOffsetStart;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetPartialEvaluationMethodInfo;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetPosition;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetSuppliedString;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetURI;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callHasNextTier;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsCancelled;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsLastTier;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsSameOrSplit;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsSuppressedFailure;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsTrivial;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsValueType;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callLog;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnCodeInstallation;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnCompilationFailed;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnCompilationRetry;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnFailure;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnGraalTierFinished;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnIsolateShutdown;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnSuccess;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnTruffleTierFinished;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callPrepareForCompilation;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callRegisterOptimizedAssumptionDependency;
-import static jdk.graal.compiler.hotspot.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callSetCallCounts;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callAddInlinedTarget;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callAddTargetToDequeue;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callAsJavaConstant;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callCancelCompilation;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callCompilableToString;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callConsumeOptimizedAssumptionDependency;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callCountDirectCallNodes;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callCreateStringSupplier;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callEngineId;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetCompilableCallCount;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetCompilableName;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetCompilerOptions;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetConstantFieldInfo;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetDebugProperties;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetDescription;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetFailedSpeculationsAddress;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetKnownCallSiteCount;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetLanguage;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetLineNumber;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetNodeClassName;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetNodeId;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetNonTrivialNodeCount;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetOffsetEnd;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetOffsetStart;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetPartialEvaluationMethodInfo;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetPosition;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetSuppliedString;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callGetURI;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callHasNextTier;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsCancelled;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsLastTier;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsSameOrSplit;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsSuppressedFailure;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsTrivial;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callIsValueType;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callLog;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnCodeInstallation;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnCompilationFailed;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnCompilationRetry;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnFailure;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnGraalTierFinished;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnIsolateShutdown;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnSuccess;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callOnTruffleTierFinished;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callPrepareForCompilation;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callRegisterOptimizedAssumptionDependency;
+import static jdk.graal.compiler.libgraal.truffle.TruffleFromLibGraalStartPointsGen.callSetCallCounts;
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIUtil.ExceptionClear;
 import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
@@ -112,7 +112,7 @@ public final class TruffleFromLibGraalStartPoints {
     private TruffleFromLibGraalStartPoints() {
     }
 
-    static void initializeJNI(JClass runtimeClass) {
+    public static void initializeJNI(JClass runtimeClass) {
         TruffleFromLibGraalCalls localCalls = calls;
         if (localCalls == null) {
             initialize(runtimeClass);

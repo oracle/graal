@@ -103,7 +103,6 @@ import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Assumptions.Assumption;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ProfilingInfo;
 
 /**
@@ -665,10 +664,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     public TruffleTier getTruffleTier() {
         return truffleTier;
-    }
-
-    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
-        return config.snippetReflection().asObject(TruffleCompilable.class, constant);
     }
 
     @Override

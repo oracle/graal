@@ -24,6 +24,7 @@
  */
 package jdk.graal.nativeimage;
 
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,6 +33,13 @@ import java.util.Set;
  * interface to provide extra information about the libgraal classes.
  */
 public interface LibGraalLoader {
+
+    /**
+     * Gets the {@code java.home} of the JDK whose runtime image contains the Graal and JVMCI
+     * classes from which libgraal will be built.
+     */
+    Path getJavaHome();
+
     /**
      * @return ClassLoader that implements this interface.
      */

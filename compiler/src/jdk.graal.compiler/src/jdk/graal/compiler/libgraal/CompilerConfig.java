@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal;
+package jdk.graal.compiler.libgraal;
 
 import java.lang.reflect.Field;
 import java.nio.file.Files;
@@ -49,6 +49,8 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * A command line program that initializes the compiler data structures to be serialized into the
@@ -61,6 +63,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  * {@link jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.Stubs#initStubs}</li>
  * </ul>
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class CompilerConfig {
 
     /**

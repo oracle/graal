@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core;
 
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
  * This is a utility class for Threads started by the compiler itself. In certain execution
@@ -42,7 +43,11 @@ public class GraalServiceThread extends Thread {
     @Override
     public final void run() {
         try {
-            beforeRun();
+            if (GraalServices.isInLibgraal()) {
+                if (!HotSpotJVMCIRuntime.runtime().attachCurrentThread(isDaemon(), null)) {
+                    throw new InternalError("Couldn't attach to HotSpot runtime");
+                }
+            }
         } catch (InternalError t) {
             // There was a problem attaching this thread to the libgraal peer runtime.
             // Not much that can be done apart from terminating the thread.
@@ -52,7 +57,9 @@ public class GraalServiceThread extends Thread {
         try {
             runnable.run();
         } finally {
-            afterRun();
+            if (GraalServices.isInLibgraal()) {
+                HotSpotJVMCIRuntime.runtime().detachCurrentThread(false);
+            }
         }
     }
 
@@ -70,17 +77,4 @@ public class GraalServiceThread extends Thread {
         }
     }
 
-    /**
-     * Substituted by {@code Target_jdk_graal_compiler_core_GraalServiceThread} to attach to the
-     * peer runtime if required.
-     */
-    private void afterRun() {
-    }
-
-    /**
-     * Substituted by {@code Target_jdk_graal_compiler_core_GraalServiceThread} to attach to the
-     * peer runtime if required.
-     */
-    private void beforeRun() {
-    }
 }

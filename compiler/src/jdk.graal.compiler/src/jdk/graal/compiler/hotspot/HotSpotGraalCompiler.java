@@ -46,6 +46,7 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.libgraal.LibGraalJNIMethodScope;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.Cancellable;
@@ -63,7 +64,7 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.compiler.serviceprovider.VMSupport;
+import jdk.graal.compiler.word.Word;
 import jdk.graal.nativeimage.LibGraalRuntime;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CompilationRequest;
@@ -78,6 +79,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.nativeimage.ImageInfo;
 
 public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JVMCICompilerShadow, GraalCompiler.RequestedCrashHandler {
@@ -126,12 +129,52 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         return graalRuntime;
     }
 
+    /**
+     * Performs the following actions around a libgraal compilation:
+     * <ul>
+     * <li>before: opens a JNIMethodScope to allow Graal compilations of Truffle host methods to
+     * call methods on the TruffleCompilerRuntime.</li>
+     * <li>after: closes the above JNIMethodScope</li>
+     * <li>after: triggers GC weak reference processing as SVM does not use a separate thread for
+     * this in libgraal</li>
+     * </ul>
+     */
+    static class LibGraalCompilationRequestScope implements AutoCloseable {
+        final JNIMethodScope scope;
+
+        LibGraalCompilationRequestScope() {
+            JNI.JNIEnv env = Word.unsigned(HotSpotGraalRuntime.getJNIEnv());
+            /*
+             * This scope is required to allow Graal compilations of host methods to call methods in
+             * the TruffleCompilerRuntime. This is, for example, required to find out about
+             * Truffle-specific method annotations.
+             */
+            scope = LibGraalJNIMethodScope.open("<called from VM>", env, false);
+        }
+
+        @Override
+        public void close() {
+            try {
+                if (scope != null) {
+                    scope.close();
+                }
+            } finally {
+                /*
+                 * libgraal doesn't use a dedicated reference handler thread, so trigger the
+                 * reference handling manually when a compilation finishes.
+                 */
+                HotSpotGraalRuntime.doReferenceHandling();
+            }
+        }
+    }
+
     @SuppressWarnings("try")
     @Override
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        try (AutoCloseable ignored = VMSupport.getCompilationRequestScope()) {
+        try (AutoCloseable ignored = ImageInfo.inImageRuntimeCode() ? new LibGraalCompilationRequestScope() : null) {
             return compileMethod(request, true, getGraalRuntime().getOptions());
         } catch (Exception e) {
+            e.printStackTrace(System.out);
             return HotSpotCompilationRequestResult.failure(e.toString(), false);
         }
     }
@@ -140,7 +183,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     public CompilationRequestResult compileMethod(CompilationRequest request, boolean installAsDefault, OptionValues initialOptions) {
         try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
             if (graalRuntime.isShutdown()) {
-                return HotSpotCompilationRequestResult.failure(String.format("Shutdown entered"), true);
+                return HotSpotCompilationRequestResult.failure("Shutdown entered", true);
             }
 
             ResolvedJavaMethod method = request.getMethod();

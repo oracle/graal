@@ -573,8 +573,6 @@ public final class NativeImageClassLoaderSupport {
     public void setupLibGraalClassLoader() {
         var className = NativeImageOptions.LibGraalClassLoader.getValue(parsedHostedOptions);
         if (!className.isEmpty()) {
-            // ModuleSupport.accessModule(Access.EXPORT, classLoader.getUnnamedModule(),
-            // LibGraalLoader.class.getModule(), LibGraalLoader.class.getPackageName());
             String nameOption = SubstrateOptionsParser.commandArgument(NativeImageOptions.LibGraalClassLoader, className);
             try {
                 Class<?> loaderClass = Class.forName(className, true, classLoader);

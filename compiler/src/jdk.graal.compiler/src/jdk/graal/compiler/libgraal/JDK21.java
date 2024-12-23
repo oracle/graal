@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
-/**
- * Class used to initialize the Truffle extensions to the Graal compiler in the image build time.
- */
-@Platforms(Platform.HOSTED_ONLY.class)
-public class BuildTime {
-
-    /**
-     * Configures Truffle services to the Graal compiler in the image build time.
-     */
-    public static void configureGraalForLibGraal() {
-        TruffleHostEnvironment.overrideLookup(new LibGraalTruffleHostEnvironmentLookup());
+public class JDK21 implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC == 21;
     }
 }

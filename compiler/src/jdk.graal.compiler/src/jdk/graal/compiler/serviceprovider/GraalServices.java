@@ -30,37 +30,34 @@ import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
+import java.util.Set;
 
+import jdk.graal.compiler.core.ArchitectureSpecific;
+import jdk.graal.nativeimage.LibGraalLoader;
+import jdk.vm.ci.code.Architecture;
 import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
 import jdk.internal.misc.VM;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
  */
 public final class GraalServices {
-
-    /**
-     * Returns true if code is executing in the context of building libgraal. Note that this is more
-     * specific than {@link ImageInfo#inImageBuildtimeCode()}. The latter will return true when
-     * building any native image, not just libgraal.
-     */
-    public static boolean isBuildingLibgraal() {
-        return Services.IS_BUILDING_NATIVE_IMAGE;
-    }
 
     /**
      * Returns true if code is executing in the context of executing libgraal. Note that this is
@@ -75,13 +72,62 @@ public final class GraalServices {
      * The set of services available in libgraal. This field is only non-null when
      * {@link GraalServices} is loaded by the LibGraalClassLoader.
      */
-    private static Map<Class<?>, List<?>> libgraalServices;
+    private static final Map<Class<?>, List<?>> libgraalServices;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setLibgraalServices(Map<Class<?>, List<?>> services) {
-        GraalError.guarantee(libgraalServices == null, "Libgraal services must be set exactly once");
-        GraalServices.libgraalServices = services;
+    private static Class<?> loadClassOrNull(String name) {
+        try {
+            return GraalServices.class.getClassLoader().loadClass(name);
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
+    /**
+     * Gets a name for the current architecture that is compatible with
+     * {@link Architecture#getName()}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String getJVMCIArch() {
+        String rawArch = getSavedProperty("os.arch");
+        return switch (rawArch) {
+            case "x86_64" -> "AMD64";
+            case "amd64" -> "AMD64";
+            case "aarch64" -> "aarch64";
+            case "riscv64" -> "riscv64";
+            default -> throw new GraalError("Unknown or unsupported arch: %s", rawArch);
+        };
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("unchecked")
+    private static void addProviders(String arch, Class<?> service) {
+        List<Object> providers = (List<Object>) GraalServices.libgraalServices.computeIfAbsent(service, key -> new ArrayList<>());
+        for (Object provider : ServiceLoader.load(service, GraalServices.class.getClassLoader())) {
+            if (provider instanceof ArchitectureSpecific as && !as.getArchitecture().equals(arch)) {
+                // Skip provider for another architecture
+                continue;
+            }
+            providers.add(provider);
+        }
+    }
+
+    static {
+        ClassLoader cl = GraalServices.class.getClassLoader();
+        if (cl instanceof LibGraalLoader libgraalLoader) {
+            libgraalServices = new HashMap<>();
+            Set<String> libgraalServicesModules = libgraalLoader.getServicesModules();
+            Map<String, String> modules = libgraalLoader.getModuleMap();
+            String arch = getJVMCIArch();
+            modules.entrySet().stream()//
+                            .filter(e -> libgraalServicesModules.contains(e.getValue()))
+                            .map(Map.Entry::getKey)//
+                            .map(GraalServices::loadClassOrNull)//
+                            .filter(c -> c != null && c.getAnnotation(LibGraalService.class) != null)//
+                            .forEach(service -> addProviders(arch, service));
+        } else {
+            libgraalServices = null;
+        }
     }
 
     private GraalServices() {
@@ -102,6 +148,19 @@ public final class GraalServices {
             return (Iterable<S>) list;
         }
         return load0(service);
+    }
+
+    /**
+     * An escape hatch for calling {@link System#getProperties()} without falling afoul of
+     * {@code VerifySystemPropertyUsage}.
+     * 
+     * @param justification explains why {@link #getSavedProperties()} cannot be used
+     */
+    public static Properties getSystemProperties(String justification) {
+        if (justification == null || justification.isEmpty()) {
+            throw new IllegalArgumentException("non-empty justification required");
+        }
+        return System.getProperties();
     }
 
     /**

@@ -36,16 +36,19 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.libgraal.CompilerConfig;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.ObjectCopier;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Gets the map created in a JVM subprocess by running {@link CompilerConfig}.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class GetCompilerConfig {
 
-    private static final boolean DEBUG = Boolean.getBoolean("debug." + GetCompilerConfig.class.getName());
+    private static final boolean DEBUG = Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + GetCompilerConfig.class.getName()));
 
     /**
      * Result returned by {@link GetCompilerConfig#from}.
