@@ -1303,7 +1303,7 @@ public class ElementUtils {
         return value.accept(new AnnotationValueVisitorImpl(), null);
     }
 
-    private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor8<Object, Void> {
+    private static final class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor8<Object, Void> {
 
         @Override
         public Object visitBoolean(boolean b, Void p) {

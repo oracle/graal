@@ -82,12 +82,12 @@ import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 
 public class TagsTest {
 
-    private static class MyTag extends Tag {
+    private static final class MyTag extends Tag {
 
     }
 
     @Tag.Identifier("MyTagWithIdentifier")
-    private static class MyTagWithIdentifier extends Tag {
+    private static final class MyTagWithIdentifier extends Tag {
 
     }
 

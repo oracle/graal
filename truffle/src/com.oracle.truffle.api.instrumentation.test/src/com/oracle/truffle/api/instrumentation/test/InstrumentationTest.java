@@ -367,7 +367,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     }
 
     @SuppressWarnings("serial")
-    private static class MyLanguageException extends RuntimeException {
+    private static final class MyLanguageException extends RuntimeException {
 
     }
 
@@ -1384,7 +1384,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Registration(id = "testUsedTagNotRequired1", services = Object.class)
     public static class TestUsedTagNotRequired1 extends TruffleInstrument {
 
-        private static class Foobar {
+        private static final class Foobar {
 
         }
 

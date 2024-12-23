@@ -3780,7 +3780,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     }
 
-    private static class StringBuilderWrapper {
+    private static final class StringBuilderWrapper {
         private final StringBuilder delegate = new StringBuilder();
 
         @TruffleBoundary
@@ -3857,7 +3857,7 @@ class InstrumentContext {
         return REFERENCE.get(node);
     }
 
-    private static class WeakSet<T> extends AbstractSet<T> {
+    private static final class WeakSet<T> extends AbstractSet<T> {
 
         private final Map<T, Void> map = new WeakHashMap<>();
 

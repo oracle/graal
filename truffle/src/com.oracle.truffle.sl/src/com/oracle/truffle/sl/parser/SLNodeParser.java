@@ -192,7 +192,7 @@ public class SLNodeParser extends SLBaseParser {
         return node;
     }
 
-    private class SLStatementVisitor extends SimpleLanguageBaseVisitor<SLStatementNode> {
+    private final class SLStatementVisitor extends SimpleLanguageBaseVisitor<SLStatementNode> {
         @Override
         public SLStatementNode visitBlock(BlockContext ctx) {
             List<TruffleString> newLocals = enterBlock(ctx);
@@ -326,7 +326,7 @@ public class SLNodeParser extends SLBaseParser {
         }
     }
 
-    private class SLExpressionVisitor extends SimpleLanguageBaseVisitor<SLExpressionNode> {
+    private final class SLExpressionVisitor extends SimpleLanguageBaseVisitor<SLExpressionNode> {
         @Override
         public SLExpressionNode visitExpression(ExpressionContext ctx) {
             return createBinary(ctx.logic_term(), ctx.OP_OR());

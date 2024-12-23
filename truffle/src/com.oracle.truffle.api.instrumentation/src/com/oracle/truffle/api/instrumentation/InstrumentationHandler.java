@@ -1689,7 +1689,7 @@ final class InstrumentationHandler {
      * visitorBuilder.buildVisitor();
      * </pre>
      */
-    private class VisitorBuilder {
+    private final class VisitorBuilder {
         List<VisitOperation> operations = new ArrayList<>();
         boolean shouldMaterializeSyntaxNodes;
 

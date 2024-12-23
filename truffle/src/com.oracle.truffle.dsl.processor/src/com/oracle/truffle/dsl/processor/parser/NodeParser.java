@@ -4263,7 +4263,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     private final Map<String, NodeData> nodeDataCache = new HashMap<>();
 
-    private static class FactoryMethodCacheKey {
+    private static final class FactoryMethodCacheKey {
     }
 
     private List<CodeExecutableElement> parseNodeFactoryMethods(TypeMirror nodeType) {
@@ -4911,7 +4911,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return hashCode;
         }
 
-        private static class DSLExpressionHash implements DSLExpressionVisitor {
+        private static final class DSLExpressionHash implements DSLExpressionVisitor {
             private int hash = 1;
 
             public void visitCast(Cast binary) {

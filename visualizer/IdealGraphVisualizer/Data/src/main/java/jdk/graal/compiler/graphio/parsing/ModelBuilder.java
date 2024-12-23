@@ -137,7 +137,7 @@ public class ModelBuilder implements Builder {
         }
     }
 
-    private static class ErrorMessages {
+    private static final class ErrorMessages {
         public static String edgeStartNodeNotExists(String label, int node) {
             return String.format("Start node for edge %s does not exist: %d", label, node);
         }
