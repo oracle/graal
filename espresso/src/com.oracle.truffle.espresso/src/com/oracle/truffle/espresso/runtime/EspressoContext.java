@@ -110,6 +110,7 @@ import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.ClassLoadingException;
 import com.oracle.truffle.espresso.shared.meta.ErrorType;
+import com.oracle.truffle.espresso.shared.meta.KnownTypes;
 import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -1275,13 +1276,8 @@ public final class EspressoContext
     }
 
     @Override
-    public Klass getJavaLangObject() {
-        return getMeta().java_lang_Object;
-    }
-
-    @Override
-    public Klass getJavaLangThrowable() {
-        return getMeta().java_lang_Throwable;
+    public KnownTypes<Klass, Method, Field> getKnownTypes() {
+        return meta;
     }
 
     @Override

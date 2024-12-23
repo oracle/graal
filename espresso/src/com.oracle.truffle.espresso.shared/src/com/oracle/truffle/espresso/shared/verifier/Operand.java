@@ -221,19 +221,26 @@ final class ReturnAddressOperand<R extends RuntimeAccess<C, M, F>, C extends Typ
 
 class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Operand<R, C, M, F> {
     protected final Symbol<Type> type;
-
+    static final int CPI_UNKNOWN = -1;
     // Load if needed.
     protected C klass = null;
+    final int cpi;
 
     ReferenceOperand(Symbol<Type> type) {
+        this(type, CPI_UNKNOWN);
+    }
+
+    ReferenceOperand(Symbol<Type> type, int cpi) {
         super(JavaKind.Object);
         this.type = type;
+        this.cpi = cpi;
     }
 
     ReferenceOperand(C klass) {
         super(JavaKind.Object);
         this.type = klass.getSymbolicType();
         this.klass = klass;
+        this.cpi = CPI_UNKNOWN;
     }
 
     @Override
@@ -252,6 +259,8 @@ class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
             try {
                 if (getType() == methodVerifier.getThisKlass().getSymbolicType()) {
                     klass = methodVerifier.getThisKlass();
+                } else if (cpi != CPI_UNKNOWN) {
+                    klass = methodVerifier.getThisKlass().resolveClassConstantInPool(cpi);
                 } else {
                     klass = methodVerifier.runtime.lookupOrLoadType(type, methodVerifier.getThisKlass());
                 }

@@ -270,6 +270,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.shared.meta.KnownTypes;
 import com.oracle.truffle.espresso.shared.meta.MemberAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
@@ -448,10 +449,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     };
 
     final ReferenceOperand<R, C, M, F> jlObject;
-    private final Operand<R, C, M, F> jlClass = new ReferenceOperand<>(Type.java_lang_Class);
-    private final Operand<R, C, M, F> jlString = new ReferenceOperand<>(Type.java_lang_String);
-    private final Operand<R, C, M, F> jliMethodType = new ReferenceOperand<>(Type.java_lang_invoke_MethodType);
-    private final Operand<R, C, M, F> jliMethodHandle = new ReferenceOperand<>(Type.java_lang_invoke_MethodHandle);
+    private final Operand<R, C, M, F> jlClass;
+    private final Operand<R, C, M, F> jlString;
+    private final Operand<R, C, M, F> jliMethodType;
+    private final Operand<R, C, M, F> jliMethodHandle;
     private final Operand<R, C, M, F> jlThrowable;
 
     // Return type of the method
@@ -535,8 +536,14 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Arrays.fill(handlerStatus, UNENCOUNTERED);
 
         booleanOperand = runtime.getJavaVersion().java9OrLater() ? new PrimitiveOperand<>(JavaKind.Boolean) : byteOp;
-        jlObject = new ReferenceOperand<>(runtime.getJavaLangObject());
-        jlThrowable = new ReferenceOperand<>(runtime.getJavaLangThrowable());
+
+        KnownTypes<C, M, F> knownTypes = runtime.getKnownTypes();
+        jlObject = new ReferenceOperand<>(knownTypes.java_lang_Object());
+        jlClass = new ReferenceOperand<>(knownTypes.java_lang_Class());
+        jlString = new ReferenceOperand<>(knownTypes.java_lang_String());
+        jliMethodType = new ReferenceOperand<>(knownTypes.java_lang_invoke_MethodType());
+        jliMethodHandle = new ReferenceOperand<>(knownTypes.java_lang_invoke_MethodHandle());
+        jlThrowable = new ReferenceOperand<>(knownTypes.java_lang_Throwable());
 
         thisOperand = new ReferenceOperand<>(thisKlass);
         returnOperand = kindToOperand(Signatures.returnType(sig));
@@ -821,7 +828,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 return new UninitReferenceOperand<>(thisKlass);
             case ITEM_Object:
                 assert vti.hasType();
-                return spawnFromType(vti.getType(pool, getTypes(), code));
+                return spawnFromType(vti.getType(pool, getTypes(), code), vti.getConstantPoolOffset());
             case ITEM_NewObject:
                 int newOffset = vti.getNewOffset();
                 validateFormatBCI(newOffset);
@@ -1078,7 +1085,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             locals = new Locals<>(this, registers);
             stack = new OperandStack<>(this, maxStack);
             Symbol<Type> catchType = handler.getCatchType();
-            stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType));
+            stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType, handler.catchTypeCPI()));
         } else {
             stack = frame.extractStack(maxStack);
             locals = frame.extractLocals();
@@ -1189,7 +1196,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             if (handler.covers(nextBCI)) {
                 OperandStack<R, C, M, F> stack = new OperandStack<>(this, 1);
                 Symbol<Type> catchType = handler.getCatchType();
-                stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType));
+                stack.push(catchType == null ? jlThrowable : new ReferenceOperand<>(catchType, handler.catchTypeCPI()));
                 StackFrame<R, C, M, F> oldFrame = stackFrames[handler.getHandlerBCI()];
                 StackFrame<R, C, M, F> newFrame = mergeFrames(stack, locals, oldFrame);
                 if (isStatus(handlerStatus[i], UNENCOUNTERED) || oldFrame != newFrame) {
@@ -1667,11 +1674,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Operand<R, C, M, F> stacKOp = stack.popRef();
 
         // Check CP validity
-        Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for CHECKCAST: ");
+        int cpi = code.readCPI(bci);
+        Symbol<Type> type = getTypeFromPool(cpi, "Invalid CP constant for CHECKCAST: ");
         verifyGuarantee(!Types.isPrimitive(type), "Primitive type for CHECKCAST: " + type);
 
         // push new type
-        Operand<R, C, M, F> castOp = spawnFromType(type);
+        Operand<R, C, M, F> castOp = spawnFromType(type, cpi);
         if (stacKOp.isUninit() && !castOp.isArrayType()) {
             stack.push(new UninitReferenceOperand<>(type, ((UninitReferenceOperand<R, C, M, F>) stacKOp).newBCI));
         } else {
@@ -1689,7 +1697,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         stack.popInt();
 
         // push result
-        Operand<R, C, M, F> ref = spawnFromType(type);
+        Operand<R, C, M, F> ref = spawnFromType(type, cpi);
         if (ref.isArrayType()) {
             stack.push(new ArrayOperand<>(ref.getElemental(), ref.getDimensions() + 1));
         } else {
@@ -2288,18 +2296,18 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
             case Long   : return longOp;
             case Double : return doubleOp;
             case Void   : return voidOp;
-            case Object : return spawnFromType(type);
+            case Object : return spawnFromType(type, ReferenceOperand.CPI_UNKNOWN);
             default:
                 throw VerifierError.fatal("Obtaining an operand with an unrecognized type: " + type);
         }
         // @formatter:on
     }
 
-    private Operand<R, C, M, F> spawnFromType(Symbol<Type> type) {
+    private Operand<R, C, M, F> spawnFromType(Symbol<Type> type, int cpi) {
         if (Types.isArray(type)) {
             return new ArrayOperand<>(kindToOperand(runtime.getSymbolPool().getTypes().getElementalType(type)), Types.getArrayDimensions(type));
         } else {
-            return new ReferenceOperand<>(type);
+            return new ReferenceOperand<>(type, cpi);
         }
     }
 
