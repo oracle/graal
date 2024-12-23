@@ -1967,7 +1967,9 @@ public final class TypeCheckBuilder {
         for (var entry : typeInfoMap.entrySet()) {
             HostedType type = entry.getKey();
             OpenTypeWorldTypeInfo info = entry.getValue();
-            int idDepth = isInterface(type) ? -1 : info.classDisplay.length - 1;
+            int numClassTypes = info.classDisplay.length;
+            VMError.guarantee(numClassTypes != 0, "breaks idDepth representation below");
+            int idDepth = (isInterface(type) ? -numClassTypes : numClassTypes) - 1;
             if (idDepth >= 0) {
                 assert info.classDisplay[idDepth] == type.typeID : String.format("Mismatch between class display and type. idDepth: %s typeID: %s info: %s ", idDepth, type.typeID, info);
             }
@@ -1975,7 +1977,6 @@ public final class TypeCheckBuilder {
             int numInterfaceTypes = info.implementedInterfaces.size();
             List<HostedType> orderedInterfaces = info.implementedInterfaces.stream().sorted(Comparator.comparingInt(HostedType::getTypeID)).toList();
             int[] interfaceTypeIDs = orderedInterfaces.stream().mapToInt(HostedType::getTypeID).toArray();
-            int numClassTypes = info.classDisplay.length;
             int[] typeIDSlots = new int[numClassTypes + numInterfaceTypes];
             System.arraycopy(info.classDisplay, 0, typeIDSlots, 0, numClassTypes);
             System.arraycopy(interfaceTypeIDs, 0, typeIDSlots, numClassTypes, numInterfaceTypes);

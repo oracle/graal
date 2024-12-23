@@ -883,7 +883,6 @@ public class SVMHost extends HostVM {
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "arrayHub"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "additionalFlags"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "layoutEncoding"));
-        excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "numClassTypes"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "numInterfaceTypes"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "openTypeWorldTypeCheckSlots"));
         excludedFields.add(ReflectionUtil.lookupField(DynamicHub.class, "typeIDDepth"));
