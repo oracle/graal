@@ -44,9 +44,12 @@ import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.analysis.Inflation;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.hosted.substitute.DeletedMethod;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Support for {@link ServiceLoader} on Substrate VM.
@@ -178,10 +181,6 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (!accessImpl.getHostVM().platformSupported(providerClass)) {
                 continue;
             }
-            if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
-                /* Disallow services with implementation classes that are marked as @Deleted */
-                continue;
-            }
 
             /*
              * Find either a public static provider() method or a nullary constructor (or both).
@@ -189,32 +188,15 @@ public class ServiceLoaderFeature implements InternalFeature {
              *
              * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
              */
-            Constructor<?> nullaryConstructor = null;
-            Method nullaryProviderMethod = null;
-            try {
-                /* Only look for a provider() method if provider class is in an explicit module. */
-                if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
-                    for (Method method : providerClass.getDeclaredMethods()) {
-                        if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
-                                        method.getParameterCount() == 0 && method.getName().equals("provider")) {
-                            if (nullaryProviderMethod == null) {
-                                nullaryProviderMethod = method;
-                            } else {
-                                /* There must be at most one public static provider() method. */
-                                nullaryProviderMethod = null;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                Constructor<?> constructor = providerClass.getDeclaredConstructor();
-                if (Modifier.isPublic(constructor.getModifiers())) {
-                    nullaryConstructor = constructor;
-                }
-            } catch (NoSuchMethodException | SecurityException | LinkageError e) {
-                // ignore
+            Method nullaryProviderMethod = findProviderMethod(providerClass);
+            Constructor<?> nullaryConstructor = findNullaryConstructor(providerClass);
+            MetaAccessProvider originalMetaAccess = accessImpl.getBigBang().getUniverse().getOriginalMetaAccess();
+            AnnotationSubstitutionProcessor substitutionProcessor = ((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor();
+            if (isServiceProviderDeleted(providerClass, nullaryProviderMethod, nullaryConstructor, originalMetaAccess, substitutionProcessor)) {
+                /* Disallow services with implementation classes that are marked as @Deleted */
+                continue;
             }
+
             if (nullaryConstructor != null || nullaryProviderMethod != null) {
                 RuntimeReflection.register(providerClass);
                 if (nullaryConstructor != null) {
@@ -257,5 +239,60 @@ public class ServiceLoaderFeature implements InternalFeature {
             byte[] serviceFileData = registeredProviders.stream().collect(Collectors.joining("\n")).getBytes(StandardCharsets.UTF_8);
             RuntimeResourceAccess.addResource(access.getApplicationClassLoader().getUnnamedModule(), serviceResourceLocation, serviceFileData);
         }
+    }
+
+    private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
+        Constructor<?> nullaryConstructor = null;
+        try {
+            Constructor<?> constructor = providerClass.getDeclaredConstructor();
+            if (Modifier.isPublic(constructor.getModifiers())) {
+                nullaryConstructor = constructor;
+            }
+        } catch (NoSuchMethodException | SecurityException | LinkageError e) {
+            // ignore
+        }
+        return nullaryConstructor;
+    }
+
+    private static Method findProviderMethod(Class<?> providerClass) {
+        Method nullaryProviderMethod = null;
+        try {
+            /* Only look for a provider() method if provider class is in an explicit module. */
+            if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
+                for (Method method : providerClass.getDeclaredMethods()) {
+                    if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
+                                    method.getParameterCount() == 0 && method.getName().equals("provider")) {
+                        if (nullaryProviderMethod == null) {
+                            nullaryProviderMethod = method;
+                        } else {
+                            /* There must be at most one public static provider() method. */
+                            nullaryProviderMethod = null;
+                            break;
+                        }
+                    }
+                }
+            }
+
+        } catch (SecurityException | LinkageError e) {
+            // ignore
+        }
+        return nullaryProviderMethod;
+    }
+
+    private static boolean isServiceProviderDeleted(Class<?> providerClass, Method nullaryProviderMethod, Constructor<?> nullaryConstructor, MetaAccessProvider originalMetaAccess,
+                    AnnotationSubstitutionProcessor substitutionProcessor) {
+        if (nullaryConstructor == null && nullaryProviderMethod == null) {
+            /* In case when service provider is not JCA compliant. */
+            return false;
+        }
+        boolean isNullaryConstructorDeletedOrNull = nullaryConstructor == null || substitutionProcessor.lookup(originalMetaAccess.lookupJavaMethod(nullaryConstructor)) instanceof DeletedMethod;
+        boolean isNullaryProviderMethodDeletedOrNull = nullaryProviderMethod == null ||
+                        substitutionProcessor.lookup(originalMetaAccess.lookupJavaMethod(nullaryProviderMethod)) instanceof DeletedMethod;
+        /*
+         * If ReportUnsupportedElementsAtRuntime is false, we can directly check the @Delete
+         * annotation on the substitute class. Otherwise, we need to verify if its methods are
+         * marked as deleted.
+         */
+        return substitutionProcessor.isDeleted(providerClass) || isNullaryConstructorDeletedOrNull && isNullaryProviderMethodDeletedOrNull;
     }
 }
