@@ -188,8 +188,8 @@ final class ObjectSizeCalculator {
 
     /**
      * Given an object, returns the allocated size, in bytes, of the object and all other objects
-     * reachable from it within {@link ObjectSizeCalculator#isContextHeapBoundary(Object) context
-     * heap boundary}.
+     * reachable from it within {@link ObjectSizeCalculator#isContextHeapBoundary(APIAccess, Object)
+     * context heap boundary}.
      *
      * @param obj the object; cannot be null.
      * @param stopAtBytes when calculated size exceeds stopAtBytes, calculation stops and returns
@@ -285,7 +285,7 @@ final class ObjectSizeCalculator {
         }
     }
 
-    private static void increaseByArraySize(CalculationState calculationState, ArrayMemoryLayout layout, int length) {
+    private static void increaseByArraySize(CalculationState calculationState, ArrayMemoryLayout layout, long length) {
         increaseSize(calculationState, roundToObjectAlignment(layout.baseOffset + length * layout.indexScale, getObjectAlignment()));
     }
 
