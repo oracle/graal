@@ -155,24 +155,6 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         jres.append(('LibGraal JRE', libgraal_jre, []))
         atexit.register(mx.rmtree, libgraal_jre)
 
-    # Tests that dropping libgraal into OracleJDK works
-    oraclejdk = mx.get_env('ORACLEJDK_JAVA_HOME')
-    if oraclejdk:
-        oraclejdk_confg = mx.JDKConfig(oraclejdk)
-        # Only run this test if JAVA_HOME and ORACLEJDK_JAVA_HOME have
-        # the same major Java version. Even then there's a chance of incompatibility
-        # if labsjdk is based on a different OracleJDK build.
-        if graalvm_jdk.javaCompliance.value >= 22 and graalvm_jdk.javaCompliance.value == oraclejdk_confg.javaCompliance.value:
-            libjvmci = libgraal_location
-            assert exists(libjvmci), ('missing', libjvmci)
-            oraclejdk_libgraal = abspath('oraclejdk_libgraal')
-            if exists(oraclejdk_libgraal):
-                mx.rmtree(oraclejdk_libgraal)
-            shutil.copytree(oraclejdk, oraclejdk_libgraal)
-            shutil.copy(libjvmci, join(oraclejdk_libgraal, 'bin' if mx.get_os() == 'windows' else 'lib'))
-            jres.append(('OracleJDK+libgraal', oraclejdk_libgraal, ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']))
-            atexit.register(mx.rmtree, oraclejdk_libgraal)
-
     expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')
 

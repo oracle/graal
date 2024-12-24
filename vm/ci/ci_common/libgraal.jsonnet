@@ -35,10 +35,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   },
 
   # enable asserts in the JVM building the image and enable asserts in the resulting native image
-  libgraal_compiler:: self.libgraal_compiler_base() {
-    # Tests that dropping libgraal into OracleJDK works (see mx_vm_gate.py)
-    downloads +: if utils.contains(self.name, 'labsjdk-21') then {"ORACLEJDK_JAVA_HOME" : graal_common.jdks_data["oraclejdk21"]} else {}
-  },
+  libgraal_compiler:: self.libgraal_compiler_base(),
   libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
   libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']) + {
@@ -86,10 +83,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-linux-amd64": {},
     "gate-vm-libgraal_compiler-labsjdk-latest-linux-aarch64": {},
     "gate-vm-libgraal_compiler-labsjdk-latest-darwin-aarch64": {},
-    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude,
-
-    "gate-vm-libgraal_compiler-labsjdk-21-linux-amd64": {},
-    "gate-vm-libgraal_truffle-labsjdk-21-linux-amd64": {}
+    "gate-vm-libgraal_compiler_quickbuild-labsjdk-latest-windows-amd64": {} + galahad.exclude
   },
 
   local gates = g.as_gates(gate_jobs),
@@ -98,10 +92,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   local dailies = {
     "daily-vm-libgraal_truffle_zgc-labsjdk-latest-linux-amd64": {},
 
-    "daily-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
-    "daily-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-latest-linux-amd64": t("1:10:00"),
-    "daily-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
   } + g.as_dailies(gate_jobs),
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -140,7 +131,6 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "21",
       "Latest"
     ]
     for os_arch in all_os_arches
@@ -179,8 +169,8 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
     ]
   ],
 
-  # Coverage builds only on jdk21 (GR-46676)
-  local coverage_jdk21_builds = [
+  # Coverage builds
+  local coverage_jdkLatest_builds = [
     c.vm_base(os(os_arch), arch(os_arch), 'gate') +
     svm_common(os_arch, jdk) +
     vm.custom_vm +
@@ -192,7 +182,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "21"
+      "Latest"
     ]
     for os_arch in [
       "linux-amd64",
@@ -208,7 +198,7 @@ local galahad = import '../../../ci/ci_common/galahad-common.libsonnet';
   local all_builds =
     all_platforms_builds +
     all_platforms_zgc_builds +
-    coverage_jdk21_builds,
+    coverage_jdkLatest_builds,
 
   builds: if
       g.check_manifest(gates, all_builds, std.thisFile, "gates").result
