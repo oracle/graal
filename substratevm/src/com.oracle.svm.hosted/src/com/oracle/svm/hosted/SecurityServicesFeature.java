@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -109,6 +110,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.internal.access.SharedSecrets;
 import sun.security.provider.NativePRNG;
 import sun.security.x509.OIDMap;
 
@@ -229,13 +231,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             SecurityProvidersSupport.singleton().setSunECConstructor(sunECConstructor);
         }
 
+        Properties securityProperties = SharedSecrets.getJavaSecurityPropertiesAccess().getInitialProperties();
+        SecurityProvidersSupport.singleton().setSavedInitialSecurityProperties(securityProperties);
+
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
          * Security providers will be initialized at run time because the class initialization
-         * simulation will determine that automatically. For the two classes below, however, we need
-         * to handle this explicitly because their packages are already marked for initialization at
-         * build time by JdkInitializationFeature#afterRegistration.
+         * simulation will determine that automatically. For the three classes below, however, we
+         * need to handle this explicitly because their packages are already marked for
+         * initialization at build time by JdkInitializationFeature#afterRegistration.
          */
+        rci.initializeAtRunTime("java.security.Security", SECURITY_PROVIDERS_INITIALIZATION);
         rci.initializeAtRunTime("sun.security.jca.Providers", SECURITY_PROVIDERS_INITIALIZATION);
         rci.initializeAtRunTime("sun.security.provider.certpath.ldap.JdkLDAP", SECURITY_PROVIDERS_INITIALIZATION);
 

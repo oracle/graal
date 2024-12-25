@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
+import java.io.File;
 import java.lang.reflect.Constructor;
 import java.net.URL;
 import java.security.AccessControlContext;
@@ -42,6 +43,7 @@ import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.WeakHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
@@ -71,6 +73,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import sun.security.util.Debug;
 import sun.security.util.SecurityConstants;
 
 /*
@@ -218,6 +221,54 @@ final class Target_java_security_Provider_Service {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private Object constructorCache;
+}
+
+@TargetClass(value = java.security.Security.class)
+final class Target_java_security_Security {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    static Properties props;
+
+    @Alias //
+    private static Properties initialSecurityProperties;
+
+    @Alias //
+    private static Debug sdebug;
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
+    private static void initialize() {
+        props = SecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
+        boolean overrideAll = false;
+
+        if ("true".equalsIgnoreCase(props.getProperty("security.overridePropertiesFile"))) {
+            String extraPropFile = System.getProperty("java.security.properties");
+            if (extraPropFile != null && extraPropFile.startsWith("=")) {
+                overrideAll = true;
+                extraPropFile = extraPropFile.substring(1);
+            }
+            loadProps(null, extraPropFile, overrideAll);
+        }
+        initialSecurityProperties = (Properties) props.clone();
+        if (sdebug != null) {
+            for (String key : props.stringPropertyNames()) {
+                sdebug.println("Initial security property: " + key + "=" + props.getProperty(key));
+            }
+        }
+    }
+
+    @Alias
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
+    private static native boolean loadProps(File masterFile, String extraPropFile, boolean overrideAll);
+}
+
+@TargetClass(value = java.security.Security.class, innerClass = "SecPropLoader", onlyWith = JDKLatest.class)
+final class Target_java_security_Security_SecPropLoader {
+
+    @Substitute
+    private static void loadMaster() {
+        Target_java_security_Security.props = SecurityProvidersSupport.singleton().getSavedInitialSecurityProperties();
+    }
 }
 
 class ServiceKeyProvider {
