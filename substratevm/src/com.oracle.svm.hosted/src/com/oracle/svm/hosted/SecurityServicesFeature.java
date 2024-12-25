@@ -236,6 +236,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * to handle this explicitly because their packages are already marked for initialization at
          * build time by JdkInitializationFeature#afterRegistration.
          */
+        rci.initializeAtRunTime("java.security.Security", SECURITY_PROVIDERS_INITIALIZATION);
         rci.initializeAtRunTime("sun.security.jca.Providers", SECURITY_PROVIDERS_INITIALIZATION);
         rci.initializeAtRunTime("sun.security.provider.certpath.ldap.JdkLDAP", SECURITY_PROVIDERS_INITIALIZATION);
 
