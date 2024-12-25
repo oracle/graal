@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -68,6 +69,8 @@ public final class SecurityProvidersSupport {
      * avoid keeping provider objects in the image heap.
      */
     private final Map<String, Object> verifiedSecurityProviders = Collections.synchronizedMap(new HashMap<>());
+
+    private Properties savedInitialSecurityProperties;
 
     private Constructor<?> sunECConstructor;
 
@@ -125,5 +128,13 @@ public final class SecurityProvidersSupport {
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere("The SunEC constructor is not present.");
         }
+    }
+
+    public void setSavedInitialSecurityProperties(Properties savedSecurityProperties) {
+        this.savedInitialSecurityProperties = savedSecurityProperties;
+    }
+
+    public Properties getSavedInitialSecurityProperties() {
+        return savedInitialSecurityProperties;
     }
 }
