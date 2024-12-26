@@ -96,7 +96,7 @@ def build_layers(native_image_path, coordinates, delimiter):
         currDir = os.getcwd()
         group_id, artifact_id, version = gav.rstrip().split(':')
 
-        subprocess.run(['mvn', 'dependency:get', f'-Dartifact={gav}', '-Dtransitive=true'])
+        subprocess.run(['mvn', '-B', 'dependency:get', f'-Dartifact={gav}', '-Dtransitive=true'])
 
         library_path = os.path.join(Path.home(), '.m2', 'repository', group_id.replace('.','/'), artifact_id, version)
         jar_path = os.path.join(library_path, f'{artifact_id}-{version}.jar')
