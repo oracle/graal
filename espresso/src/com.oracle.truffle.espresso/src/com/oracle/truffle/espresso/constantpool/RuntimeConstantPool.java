@@ -199,10 +199,13 @@ public final class RuntimeConstantPool extends ConstantPool {
         return (MethodRefConstant) resolved;
     }
 
-    public Method resolvedMethodAtNoCache(ObjectKlass accessingKlass, int index) {
+    public Method resolveMethodAndUpdate(ObjectKlass accessingKlass, int index) {
         CompilerAsserts.neverPartOfCompilation();
         Resolvable.ResolvedConstant resolved = resolvedAtNoCache(accessingKlass, index, "method");
-        return (Method) resolved.value();
+        synchronized (this) {
+            resolvedConstants[index] = resolved;
+        }
+        return ((Method) resolved.value());
     }
 
     public StaticObject resolvedMethodHandleAt(ObjectKlass accessingKlass, int index) {
