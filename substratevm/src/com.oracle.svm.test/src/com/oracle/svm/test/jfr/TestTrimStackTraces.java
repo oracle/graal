@@ -47,7 +47,7 @@ public class TestTrimStackTraces extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{"com.jfr.StackTrace"};
+        String[] events = new String[]{StackTraceEvent.class.getName()};
         SubstrateJVM.getStackTraceRepo().setTrimInternalStackTraces(true);
         Recording recording = startRecording(events);
 
