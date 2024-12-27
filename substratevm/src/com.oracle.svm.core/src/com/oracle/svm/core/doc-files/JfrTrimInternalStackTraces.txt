@@ -1,0 +1,3 @@
+Determine whether to trim internal frames from JFR stacktraces. Default is true.
+
+Usage: -XX:JfrTrimInternalStackTraces=false

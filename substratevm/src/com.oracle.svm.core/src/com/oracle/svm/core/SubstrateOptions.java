@@ -1145,6 +1145,9 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/StartFlightRecordingHelp.txt")//
     public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("", Immutable);
 
+    @Option(help = "file:doc-files/JfrTrimInternalStackTraces.txt")//
+    public static final RuntimeOptionKey<Boolean> JfrTrimInternalStackTraces = new RuntimeOptionKey<>(true);
+
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
     public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning", Immutable);
 
