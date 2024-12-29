@@ -252,7 +252,7 @@ public class DebugOptions {
             dumpDir = getPath(DumpPath.getValue(options));
         } else {
             Date date = new Date(GraalServices.getGlobalTimeStamp());
-            SimpleDateFormat formatter = new SimpleDateFormat("YYYY.MM.dd.HH.mm.ss.SSS");
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss.SSS");
             dumpDir = getPath(DumpPath.getValue(options), formatter.format(date));
         }
         dumpDir = getAbsolutePath(dumpDir);
