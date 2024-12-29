@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ThreadFactory;
 
 import jdk.graal.compiler.api.runtime.GraalJVMCICompiler;
 import jdk.graal.compiler.code.CompilationResult;
@@ -207,7 +208,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             boolean oneIsolatePerCompilation = ImageInfo.inImageRuntimeCode() &&
                             config.getFlag("JVMCIThreadsPerNativeLibraryRuntime", Integer.class, 0) == 1 &&
                             config.getFlag("JVMCICompilerIdleDelay", Integer.class, 1000) == 0;
-            try (CompilationWatchDog w1 = CompilationWatchDog.watch(task.getCompilationIdentifier(), options, oneIsolatePerCompilation, task);
+            ThreadFactory factory = ImageInfo.inImageRuntimeCode() ? HotSpotGraalServiceThread::new : null;
+            try (CompilationWatchDog w1 = CompilationWatchDog.watch(task.getCompilationIdentifier(), options, oneIsolatePerCompilation, task, factory);
                             BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request);
                             CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(options);) {
                 if (compilationCounters != null) {

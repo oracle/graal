@@ -356,7 +356,7 @@ public final class LibGraalFeature implements Feature {
      * JDK-8346781.
      */
     private void doLegacyJVMCIInitialization() {
-        if (has8346781()) {
+        if (!BeforeJDK8346781.VALUE) {
             return;
         }
         try {
@@ -395,7 +395,7 @@ public final class LibGraalFeature implements Feature {
      * Determines if the JDK runtime includes JDK-8346781. Without it, initialization of some JVMCI
      * static cache fields must be done explicitly by {@link LibGraalFeature}.
      */
-    private static boolean has8346781() {
+    static boolean has8346781() {
         try {
             Services.class.getField("IS_BUILDING_NATIVE_IMAGE");
             return false;

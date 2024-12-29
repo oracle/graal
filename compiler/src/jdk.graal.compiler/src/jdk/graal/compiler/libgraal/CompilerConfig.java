@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.libgraal;
 
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -85,20 +87,21 @@ public class CompilerConfig {
         encodedObjects.put("encodedSnippets", encodedSnippets);
         encodedObjects.put("foreignCallSignatures", foreignCallSignatures);
 
-        ObjectCopier.Encoder encoder = new ObjectCopier.Encoder(externalValueFields) {
-            @Override
-            protected ClassInfo makeClassInfo(Class<?> declaringClass) {
-                ClassInfo ci = ClassInfo.of(declaringClass);
-                for (var f : ci.fields().values()) {
-                    // Avoid problems with identity hash codes
-                    GraalError.guarantee(!f.getName().toLowerCase(Locale.ROOT).contains("hash"), "Cannot serialize hash field: %s", f);
+        try (PrintStream debugStream = new PrintStream(new FileOutputStream(args[1]))) {
+            ObjectCopier.Encoder encoder = new ObjectCopier.Encoder(externalValueFields, debugStream) {
+                @Override
+                protected ClassInfo makeClassInfo(Class<?> declaringClass) {
+                    ClassInfo ci = ClassInfo.of(declaringClass);
+                    for (var f : ci.fields().values()) {
+                        // Avoid problems with identity hash codes
+                        GraalError.guarantee(!f.getName().toLowerCase(Locale.ROOT).contains("hash"), "Cannot serialize hash field: %s", f);
+                    }
+                    return ci;
                 }
-                return ci;
-            }
-        };
-        byte[] encoded = ObjectCopier.encode(encoder, encodedObjects);
-
-        Files.write(Path.of(args[0]), encoded);
+            };
+            byte[] encoded = ObjectCopier.encode(encoder, encodedObjects);
+            Files.write(Path.of(args[0]), encoded);
+        }
     }
 
     private static EncodedSnippets getEncodedSnippets(HotSpotReplacementsImpl replacements, OptionValues options) {
@@ -112,13 +115,7 @@ public class CompilerConfig {
         MapCursor<ForeignCallSignature, HotSpotForeignCallLinkage> cursor = foreignCalls.getEntries();
         while (cursor.advance()) {
             ForeignCallSignature sig = cursor.getKey();
-            HotSpotForeignCallLinkage linkage = cursor.getValue();
             sigs.add(sig);
-            if (linkage != null) {
-                // Construct the stub so that all types it uses are registered in
-                // SymbolicSnippetEncoder.snippetTypes
-                linkage.finalizeAddress(graalRuntime.getHostBackend());
-            }
         }
         return sigs;
     }

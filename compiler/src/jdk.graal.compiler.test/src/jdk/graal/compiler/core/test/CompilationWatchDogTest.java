@@ -137,7 +137,7 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
 
         };
 
-        CompilationWatchDog watch = CompilationWatchDog.watch(compilation, options, false, longCompilationHandler);
+        CompilationWatchDog watch = CompilationWatchDog.watch(compilation, options, false, longCompilationHandler, null);
         try (CompilationWatchDog watchScope = watch) {
             event("start compiling");
             try (TTY.Filter f = new TTY.Filter()) {

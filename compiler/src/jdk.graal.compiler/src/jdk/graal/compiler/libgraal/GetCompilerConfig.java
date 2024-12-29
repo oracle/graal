@@ -129,8 +129,11 @@ public class GetCompilerConfig {
         }
 
         command.add(CompilerConfig.class.getName());
-        Path encodedConfigPath = Path.of(GetCompilerConfig.class.getSimpleName() + "_" + ProcessHandle.current().pid() + ".txt").toAbsolutePath();
+        String base = GetCompilerConfig.class.getSimpleName() + "_" + ProcessHandle.current().pid();
+        Path encodedConfigPath = Path.of(base + ".bin").toAbsolutePath();
+        Path debugPath = Path.of(base + ".txt").toAbsolutePath();
         command.add(encodedConfigPath.toString());
+        command.add(debugPath.toString());
 
         String quotedCommand = command.stream().map(e -> e.indexOf(' ') == -1 ? e : '\'' + e + '\'').collect(Collectors.joining(" "));
         ProcessBuilder pb = new ProcessBuilder(command);
@@ -155,8 +158,10 @@ public class GetCompilerConfig {
             if (DEBUG) {
                 System.out.printf("[%d] Executed: %s%n", p.pid(), quotedCommand);
                 System.out.printf("[%d] Output saved in %s%n", p.pid(), encodedConfigPath);
+                System.out.printf("[%d] Debug output saved in %s%n", p.pid(), debugPath);
             } else {
                 Files.deleteIfExists(encodedConfigPath);
+                Files.deleteIfExists(debugPath);
             }
             return new Result(encodedConfig, opens);
         } catch (IOException e) {

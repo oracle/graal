@@ -25,12 +25,19 @@
 package jdk.graal.compiler.libgraal;
 
 import java.util.function.BooleanSupplier;
+import java.util.stream.Stream;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.vm.ci.services.Services;
 
-public class JDK21 implements BooleanSupplier {
+/**
+ * Determines if the JDK runtime does not include JDK-8346781.
+ */
+public class BeforeJDK8346781 implements BooleanSupplier {
+
+    static final boolean VALUE = Stream.of(Services.class.getFields()).anyMatch(f -> f.getName().equals("IS_BUILDING_NATIVE_IMAGE"));
+
     @Override
     public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC == 21;
+        return VALUE;
     }
 }

@@ -39,7 +39,7 @@ class LibGraalSubstitutions {
         // Checkstyle: stop
         @Alias //
         @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
-        @TargetElement(onlyWith = JDK21.class)//
+        @TargetElement(onlyWith = BeforeJDK8346781.class)//
         public static boolean IS_BUILDING_NATIVE_IMAGE = false;
         // Checkstyle: resume
 

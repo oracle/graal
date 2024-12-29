@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -472,6 +473,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     }
 
     /**
+     * Gets a factory to use for creating the {@link CompilationWatchDog} watcher thread.
+     *
+     * @see CompilationWatchDog#watch
+     */
+    protected ThreadFactory getWatchDogThreadFactory() {
+        return null;
+    }
+
+    /**
      * Compiles a Truffle AST. If compilation succeeds, the AST will have compiled code associated
      * with it that can be executed instead of interpreting the AST.
      */
@@ -760,7 +770,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         @SuppressWarnings("try")
         @Override
         protected Void performCompilation(DebugContext debug) {
-            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this)) {
+            ThreadFactory factory = getWatchDogThreadFactory();
+            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this, factory)) {
                 compileAST(this, debug);
                 return null;
             }

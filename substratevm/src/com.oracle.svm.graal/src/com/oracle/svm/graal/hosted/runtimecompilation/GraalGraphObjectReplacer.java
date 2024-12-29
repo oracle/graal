@@ -166,8 +166,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         if (source instanceof MetaAccessProvider) {
             dest = sProviders.getMetaAccessProvider();
         } else if (source instanceof JVMCIRuntime) {
-            // throw new UnsupportedFeatureException("JVMCIRuntime should not appear in the image: "
-            // + source);
+            throw new UnsupportedFeatureException("JVMCIRuntime should not appear in the image: " + source);
         } else if (source instanceof GraalHotSpotVMConfig) {
             throw new UnsupportedFeatureException("GraalHotSpotVMConfig should not appear in the image: " + source);
         } else if (source instanceof HotSpotBackendFactory factory) {

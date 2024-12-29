@@ -36,7 +36,6 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Mixin for nodes that represent an entire custom assembly method. These nodes can either emit the
@@ -69,13 +68,6 @@ public interface IntrinsicMethodNodeInterface extends ValueNodeInterface, LIRLow
             }
         }
 
-        if (ImageInfo.inImageBuildtimeCode() && !canBeEmitted(gen.getLIRGeneratorTool().target().arch)) {
-            // When building libgraal, we unconditionally compile all stubs, including those not
-            // supported. In such case, we will emit hlt instruction and let the invocation plugin
-            // ensure the stub is not reachable.
-            gen.getLIRGeneratorTool().emitHalt();
-            return;
-        }
         emitIntrinsic(gen);
     }
 
