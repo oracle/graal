@@ -64,40 +64,31 @@ public class EmbeddedResourceExporter {
     }
 
     private static void resourceReportElement(ResourceReportEntry p, JsonWriter w) throws IOException {
-        w.indent().newline();
-        w.appendObjectStart().newline();
+        w.appendObjectStart();
         w.appendKeyValue("name", p.resourceName()).appendSeparator();
-        w.newline();
         if (p.module() != null) {
             w.appendKeyValue("module", p.module().getName()).appendSeparator();
-            w.newline();
         }
 
         if (p.isDirectory()) {
             w.appendKeyValue("is_directory", true).appendSeparator();
-            w.newline();
         }
 
         if (p.isMissing()) {
             w.appendKeyValue("is_missing", true).appendSeparator();
-            w.newline();
         }
 
-        w.quote("entries").append(":");
+        w.quote("entries").appendFieldSeparator();
         JsonPrinter.printCollection(w, p.entries(), Comparator.comparing(SourceSizePair::source), EmbeddedResourceExporter::sourceElement);
-        w.unindent().newline().appendObjectEnd();
+        w.appendObjectEnd();
     }
 
     private static void sourceElement(SourceSizePair p, JsonWriter w) throws IOException {
-        w.indent().newline();
-        w.appendObjectStart().newline();
+        w.appendObjectStart();
         w.appendKeyValue("origin", p.source()).appendSeparator();
-        w.newline();
         w.appendKeyValue("registration_origin", p.origin()).appendSeparator();
-        w.newline();
         w.appendKeyValue("size", p.size());
-        w.newline().appendObjectEnd();
-        w.unindent();
+        w.appendObjectEnd();
     }
 
     private static List<ResourceReportEntry> getResourceReportEntryList(ConcurrentHashMap<Resources.ModuleResourceKey, List<SourceAndOrigin>> collection) {
