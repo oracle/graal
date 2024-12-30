@@ -84,7 +84,7 @@ public class JfrManager {
     public static RuntimeSupport.Hook startupHook() {
         return isFirstIsolate -> {
             periodicEventSetup();
-
+            SubstrateJVM.getStackTraceRepo().setTrimInternalStackTraces(SubstrateOptions.JfrTrimInternalStackTraces.getValue());
             boolean startRecording = SubstrateOptions.FlightRecorder.getValue() || !SubstrateOptions.StartFlightRecording.getValue().isEmpty();
             if (startRecording) {
                 initRecording();
