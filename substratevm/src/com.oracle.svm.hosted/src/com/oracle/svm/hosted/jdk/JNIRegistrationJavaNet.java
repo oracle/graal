@@ -68,6 +68,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
             /* Caches the default interface. */
             initializeAtRunTime(a, "java.net.DefaultInterface");
         }
+        if (isWindows()) {
+            initializeAtRunTime(a, "sun.net.dns.ResolverConfigurationImpl");
+        }
     }
 
     @Override
@@ -102,6 +105,11 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         }
 
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDefaultProxySelectorInit, method(a, "sun.net.spi.DefaultProxySelector", "init"));
+
+        if (isWindows()) {
+            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerResolverConfigurationImplInit0,
+                            method(a, "sun.net.dns.ResolverConfigurationImpl", "init0"));
+        }
     }
 
     static void registerInitInetAddressIDs(DuringAnalysisAccess a) {
@@ -165,5 +173,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         RuntimeJNIAccess.register(fields(a, "java.net.Proxy$Type", "HTTP", "SOCKS"));
 
         RuntimeJNIAccess.register(method(a, "java.net.InetSocketAddress", "createUnresolved", String.class, int.class));
+    }
+
+    private static void registerResolverConfigurationImplInit0(DuringAnalysisAccess a) {
+        RuntimeJNIAccess.register(fields(a, "sun.net.dns.ResolverConfigurationImpl", "os_searchlist", "os_nameservers"));
     }
 }
