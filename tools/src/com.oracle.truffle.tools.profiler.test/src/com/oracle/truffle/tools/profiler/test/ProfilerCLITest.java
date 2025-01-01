@@ -117,6 +117,7 @@ public class ProfilerCLITest {
         Assert.assertTrue(output[14].matches(lineRegex));
         //    foo      ||              120ms  10.0% |   0.0% |  58.3% |  41.7% ||              120ms  10.0% |   0.0% |  58.3% |  41.7% || test~1:16-29
         Assert.assertTrue(output[15].matches(lineRegex));
+        // @formatter:on
     }
 
     @Test
