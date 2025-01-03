@@ -50,6 +50,8 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
+import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
@@ -75,6 +77,7 @@ public final class PythonRegexParser implements RegexParser {
     private final PythonRegexLexer lexer;
     private final RegexASTBuilder astBuilder;
     private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
+    private final CodePointSetAccumulator curCharClassCaseClosure = new CodePointSetAccumulator();
 
     public PythonRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.mode = PythonREMode.fromEncoding(source.getEncoding());
@@ -194,16 +197,16 @@ public final class PythonRegexParser implements RegexParser {
                     break;
                 case quantifier:
                     if (prevKind == Token.Kind.quantifier) {
-                        throw syntaxError(PyErrorMessages.MULTIPLE_REPEAT);
+                        throw syntaxError(PyErrorMessages.MULTIPLE_REPEAT, ErrorCode.InvalidQuantifier);
                     }
                     if (astBuilder.getCurTerm() == null || !QUANTIFIER_PREV.contains(prevKind)) {
-                        throw syntaxError(PyErrorMessages.NOTHING_TO_REPEAT);
+                        throw syntaxError(PyErrorMessages.NOTHING_TO_REPEAT, ErrorCode.InvalidQuantifier);
                     }
                     astBuilder.addQuantifier((Token.Quantifier) token);
                     break;
                 case alternation:
                     if (astBuilder.getCurGroup().isConditionalBackReferenceGroup() && astBuilder.getCurGroup().getAlternatives().size() == 2) {
-                        throw syntaxError(PyErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES);
+                        throw syntaxError(PyErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES, ErrorCode.InvalidBackReference);
                     }
                     astBuilder.nextSequence();
                     break;
@@ -224,7 +227,7 @@ public final class PythonRegexParser implements RegexParser {
                     break;
                 case groupEnd:
                     if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
-                        throw syntaxError(PyErrorMessages.UNBALANCED_PARENTHESIS);
+                        throw syntaxError(PyErrorMessages.UNBALANCED_PARENTHESIS, ErrorCode.UnmatchedParenthesis);
                     }
                     if (astBuilder.getCurGroup().isLocalFlags()) {
                         lexer.popLocalFlags();
@@ -243,14 +246,22 @@ public final class PythonRegexParser implements RegexParser {
                     break;
                 case charClassBegin:
                     curCharClass.clear();
+                    curCharClassCaseClosure.clear();
                     break;
                 case charClassAtom:
-                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents().getCodePointSet());
+                    ClassSetContents contents = ((Token.CharacterClassAtom) token).getContents();
+                    if (lexer.featureEnabledIgnoreCase() && !contents.isCharacterClass()) {
+                        curCharClassCaseClosure.addSet(contents.getCodePointSet());
+                    } else {
+                        curCharClass.addSet(contents.getCodePointSet());
+                    }
                     break;
                 case charClassEnd:
-                    boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();
+                    boolean wasSingleChar = !lexer.isCurCharClassInverted() &&
+                                    (curCharClass.matchesSingleChar() && curCharClassCaseClosure.isEmpty() || curCharClass.isEmpty() && curCharClassCaseClosure.matchesSingleChar());
                     if (lexer.featureEnabledIgnoreCase()) {
-                        lexer.caseFoldUnfold(curCharClass);
+                        lexer.caseFoldUnfold(curCharClassCaseClosure);
+                        curCharClass.addSet(curCharClassCaseClosure.get());
                     }
                     CodePointSet cps = curCharClass.toCodePointSet();
                     astBuilder.addCharClass(lexer.isCurCharClassInverted() ? cps.createInverse(lexer.source.getEncoding()) : cps, wasSingleChar);
@@ -266,7 +277,7 @@ public final class PythonRegexParser implements RegexParser {
                     if (inlineFlags.isGlobal()) {
                         boolean first = prev == null || (prevKind == Token.Kind.inlineFlags && ((Token.InlineFlags) prev).isGlobal());
                         if (!first) {
-                            throw syntaxErrorAtAbs(PyErrorMessages.GLOBAL_FLAGS_NOT_AT_START, inlineFlags.getPosition());
+                            throw syntaxErrorAtAbs(PyErrorMessages.GLOBAL_FLAGS_NOT_AT_START, inlineFlags.getPosition(), ErrorCode.InvalidInlineFlag);
                         }
                         lexer.addGlobalFlags((PythonFlags) inlineFlags.getFlags());
                     } else {
@@ -281,13 +292,14 @@ public final class PythonRegexParser implements RegexParser {
             astBuilder.addDollar();
         }
         if (!astBuilder.curGroupIsRoot()) {
-            throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_SUBPATTERN, astBuilder.getCurGroupStartPosition());
+            throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_SUBPATTERN, astBuilder.getCurGroupStartPosition(), ErrorCode.UnmatchedParenthesis);
         }
         RegexAST ast = astBuilder.popRootGroup();
         for (Token.BackReference conditionalBackReference : conditionalBackReferences) {
             assert conditionalBackReference.getGroupNumbers().length == 1;
             if (conditionalBackReference.getGroupNumbers()[0] >= ast.getNumberOfCaptureGroups()) {
-                throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNumbers()[0])), conditionalBackReference.getPosition() + 3);
+                throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNumbers()[0])), conditionalBackReference.getPosition() + 3,
+                                ErrorCode.InvalidBackReference);
             }
         }
         lexer.fixFlags();
@@ -322,7 +334,7 @@ public final class PythonRegexParser implements RegexParser {
         // references but also when a forward reference is made.
         if (conditional && insideLookBehind) {
             if (groupNumber >= lexer.numberOfCaptureGroupsSoFar()) {
-                throw syntaxErrorHere(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP);
+                throw syntaxErrorHere(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP, ErrorCode.InvalidBackReference);
             }
         }
         if (!conditional || insideLookBehind) {
@@ -330,7 +342,7 @@ public final class PythonRegexParser implements RegexParser {
             while (parent != null) {
                 if (parent instanceof Group && ((Group) parent).getGroupNumber() == groupNumber) {
                     int errorPosition = backRefToken.isNamedReference() ? backRefToken.getPosition() + 4 : backRefToken.getPosition();
-                    throw syntaxErrorAtAbs(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP, errorPosition);
+                    throw syntaxErrorAtAbs(PyErrorMessages.CANNOT_REFER_TO_AN_OPEN_GROUP, errorPosition, ErrorCode.InvalidBackReference);
                 }
                 parent = parent.getParent();
             }
@@ -345,8 +357,8 @@ public final class PythonRegexParser implements RegexParser {
             // other error that appears later in the expression. In such cases, we would not be
             // compatible with CPython error messages.
             while (parent != null) {
-                if (parent instanceof LookBehindAssertion && ((LookBehindAssertion) parent).getGroup().getEnclosedCaptureGroupsLow() <= groupNumber) {
-                    throw syntaxErrorHere(PyErrorMessages.CANNOT_REFER_TO_GROUP_DEFINED_IN_THE_SAME_LOOKBEHIND_SUBPATTERN);
+                if (parent instanceof LookBehindAssertion && ((LookBehindAssertion) parent).getGroup().getEnclosedCaptureGroupsLo() <= groupNumber) {
+                    throw syntaxErrorHere(PyErrorMessages.CANNOT_REFER_TO_GROUP_DEFINED_IN_THE_SAME_LOOKBEHIND_SUBPATTERN, ErrorCode.InvalidBackReference);
                 }
                 parent = parent.getSubTreeParent();
             }
@@ -365,15 +377,15 @@ public final class PythonRegexParser implements RegexParser {
         return insideLookBehind;
     }
 
-    private RegexSyntaxException syntaxError(String msg) {
-        return lexer.syntaxError(msg);
+    private RegexSyntaxException syntaxError(String msg, ErrorCode errorCode) {
+        return lexer.syntaxError(msg, errorCode);
     }
 
-    private RegexSyntaxException syntaxErrorHere(String msg) {
-        return lexer.syntaxErrorHere(msg);
+    private RegexSyntaxException syntaxErrorHere(String msg, ErrorCode errorCode) {
+        return lexer.syntaxErrorHere(msg, errorCode);
     }
 
-    private RegexSyntaxException syntaxErrorAtAbs(String msg, int i) {
-        return lexer.syntaxErrorAtAbs(msg, i);
+    private RegexSyntaxException syntaxErrorAtAbs(String msg, int i, ErrorCode errorCode) {
+        return lexer.syntaxErrorAtAbs(msg, i, errorCode);
     }
 }

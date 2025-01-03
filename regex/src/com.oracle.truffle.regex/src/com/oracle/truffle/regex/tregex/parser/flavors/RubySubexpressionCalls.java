@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkAsAliveVisitor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -74,7 +75,7 @@ public class RubySubexpressionCalls {
             CallGraphNode node = expansionStack.remove(expansionStack.size() - 1);
             if (node instanceof SubexpressionCallNode) {
                 SubexpressionCall subexpressionCall = ((SubexpressionCallNode) node).subexpressionCall;
-                replace(subexpressionCall, ast.getGroup(subexpressionCall.getGroupNr()), copyVisitor);
+                replace(subexpressionCall, ast.getGroup(subexpressionCall.getGroupNr()).get(0), copyVisitor);
             }
             if (callGraph.containsKey(node)) {
                 for (CallGraphNode dependent : callGraph.get(node)) {
@@ -98,6 +99,7 @@ public class RubySubexpressionCalls {
 
     private static void replace(SubexpressionCall caller, Group callee, CopyVisitor copyVisitor) {
         Group copy = (Group) copyVisitor.copy(callee);
+        MarkAsAliveVisitor.markAsAlive(copy);
         copy.setQuantifier(caller.getQuantifier());
         Sequence callerSeq = caller.getParent();
         int callerSeqIndex = caller.getSeqIndex();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -173,6 +173,6 @@ public class BackReference extends QuantifiableTerm {
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return toJson("BackReference").append(Json.prop("groupNumbers", Arrays.stream(groupNumbers).mapToObj(x -> Json.val(x))));
+        return toJson("BackReference").append(Json.prop("groupNumbers", Arrays.stream(groupNumbers).mapToObj(Json::val)));
     }
 }

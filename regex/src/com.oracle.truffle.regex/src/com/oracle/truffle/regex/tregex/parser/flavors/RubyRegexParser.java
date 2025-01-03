@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -97,9 +98,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private static final Map<String, CodePointSet> UNICODE_POSIX_CHAR_CLASSES;
     // This is the same as above but restricted to ASCII.
     private static final Map<String, CodePointSet> ASCII_POSIX_CHAR_CLASSES;
-
-    // The [\n\r] CodePointSet.
-    private static final CodePointSet NEWLINE_RETURN = CodePointSet.create('\n', '\n', '\r', '\r');
 
     // CodePointSet constants used for expanding the \R escape sequence.
     private static final CodePointSet UNICODE_LINE_BREAKS = CodePointSet.create(0x0a, 0x0c, 0x85, 0x85, 0x2028, 0x2029);
@@ -477,7 +475,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     private void advance() {
         if (atEnd()) {
-            throw syntaxErrorAtEnd(RbErrorMessages.UNEXPECTED_END_OF_PATTERN);
+            throw syntaxErrorAtEnd(RbErrorMessages.UNEXPECTED_END_OF_PATTERN, ErrorCode.UnfinishedSequence);
         }
         advance(1);
     }
@@ -499,10 +497,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
-    private void mustMatch(String next) {
-        assert "}".equals(next) || ")".equals(next);
+    private void mustMatch(String next, String errorMsg, ErrorCode errorCode) {
         if (!match(next)) {
-            throw syntaxErrorHere("}".equals(next) ? RbErrorMessages.EXPECTED_BRACE : RbErrorMessages.EXPECTED_PAREN);
+            throw syntaxErrorHere(errorMsg, errorCode);
         }
     }
 
@@ -618,16 +615,16 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
     // Error reporting
 
-    private RegexSyntaxException syntaxErrorAtEnd(String message) {
-        return RegexSyntaxException.createPattern(inSource, message, inPattern.length() - 1);
+    private RegexSyntaxException syntaxErrorAtEnd(String message, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(inSource, message, inPattern.length() - 1, errorCode);
     }
 
-    private RegexSyntaxException syntaxErrorHere(String message) {
-        return RegexSyntaxException.createPattern(inSource, message, position);
+    private RegexSyntaxException syntaxErrorHere(String message, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(inSource, message, position, errorCode);
     }
 
-    private RegexSyntaxException syntaxErrorAt(String message, int pos) {
-        return RegexSyntaxException.createPattern(inSource, message, pos);
+    private RegexSyntaxException syntaxErrorAt(String message, int pos, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(inSource, message, pos, errorCode);
     }
 
     // First pass - identifying capture groups
@@ -742,7 +739,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
 
         if (!atEnd()) {
             assert curChar() == ')';
-            throw syntaxErrorHere(RbErrorMessages.UNBALANCED_PARENTHESIS);
+            throw syntaxErrorHere(RbErrorMessages.UNBALANCED_PARENTHESIS, ErrorCode.UnmatchedParenthesis);
         }
     }
 
@@ -778,6 +775,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     }
 
     private void disjunction() {
+        canHaveQuantifier = false;
         disjunction(false);
     }
 
@@ -1151,17 +1149,19 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 addCaret();
                 return true;
             case 'Z':
-                // (?:$|(?=[\r\n]$))
+                notAllowedInLookbehind(restorePosition);
+                // (?:$|(?=[\n]$))
                 pushGroup(); // (?:
                 addDollar(); // $
                 nextSequence(); // |
                 pushLookAheadAssertion(false); // (?=
-                addCharClass(NEWLINE_RETURN); // [\r\n]
+                addCharClass(CodePointSet.create('\n')); // [\n]
                 addDollar(); // $
                 popGroup(); // )
                 popGroup(); // )
                 return true;
             case 'z':
+                notAllowedInLookbehind(restorePosition);
                 addDollar();
                 return true;
             case 'G':
@@ -1319,14 +1319,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 return false;
             }
             if (containsNamedCaptureGroups()) {
-                throw syntaxErrorAt(RbErrorMessages.NUMBERED_BACKREF_CALL_IS_NOT_ALLOWED, restorePosition);
+                throw syntaxErrorAt(RbErrorMessages.NUMBERED_BACKREF_CALL_IS_NOT_ALLOWED, restorePosition, ErrorCode.InvalidBackReference);
             }
             if (groupNumber > numberOfCaptureGroups()) {
-                throw syntaxErrorAt(RbErrorMessages.invalidGroupReference(number), restorePosition);
+                throw syntaxErrorAt(RbErrorMessages.invalidGroupReference(number), restorePosition, ErrorCode.InvalidBackReference);
             }
-            if (lookbehindDepth > 0) {
-                throw syntaxErrorAt(RbErrorMessages.INVALID_PATTERN_IN_LOOK_BEHIND, restorePosition);
-            }
+            notAllowedInLookbehind(restorePosition);
             if (groupNumber > groupIndex && groupNumber >= 10) {
                 // forward references >= 10 are interpreted as octal escapes instead
                 position = restorePosition;
@@ -1336,6 +1334,12 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             return true;
         } else {
             return false;
+        }
+    }
+
+    private void notAllowedInLookbehind(int errorPosition) {
+        if (lookbehindDepth > 0) {
+            throw syntaxErrorAt(RbErrorMessages.INVALID_PATTERN_IN_LOOK_BEHIND, errorPosition, ErrorCode.InvalidLookbehind);
         }
     }
 
@@ -1363,7 +1367,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         int beginPos = position;
         if (curChar() == '-' || RegexLexer.isDecimalDigit(curChar())) {
             if (!allowNumeric) {
-                throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
+                throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME, ErrorCode.InvalidBackReference);
             }
             int sign = match("-") ? -1 : 1;
             groupName = getMany(RegexLexer::isDecimalDigit);
@@ -1371,24 +1375,24 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             try {
                 groupNumber = sign * Integer.parseInt(groupName);
             } catch (NumberFormatException e) {
-                throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos);
+                throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos, ErrorCode.InvalidBackReference);
             }
             if (groupNumber < 0) {
                 groupNumber = numberOfCaptureGroups() + 1 + groupNumber;
             }
             if (containsNamedCaptureGroups()) {
-                throw syntaxErrorAt(RbErrorMessages.NUMBERED_BACKREF_CALL_IS_NOT_ALLOWED, beginPos);
+                throw syntaxErrorAt(RbErrorMessages.NUMBERED_BACKREF_CALL_IS_NOT_ALLOWED, beginPos, ErrorCode.InvalidBackReference);
             }
             if (resolveReference) {
                 if (groupNumber < 0 || groupNumber > numberOfCaptureGroups()) {
-                    throw syntaxErrorAt(RbErrorMessages.invalidGroupReference(groupName), beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.invalidGroupReference(groupName), beginPos, ErrorCode.InvalidBackReference);
                 }
                 groupNumbers = new ArrayList<>(1);
                 groupNumbers.add(groupNumber);
             }
         } else {
             if (!allowNamed) {
-                throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos);
+                throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos, ErrorCode.InvalidBackReference);
             }
             groupName = getMany(c -> {
                 if (allowLevels) {
@@ -1398,11 +1402,11 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 }
             });
             if (groupName.isEmpty()) {
-                throw syntaxErrorAt(RbErrorMessages.MISSING_GROUP_NAME, beginPos);
+                throw syntaxErrorAt(RbErrorMessages.MISSING_GROUP_NAME, beginPos, ErrorCode.InvalidBackReference);
             }
             if (resolveReference) {
                 if (namedCaptureGroups == null || !namedCaptureGroups.containsKey(groupName)) {
-                    throw syntaxErrorAt(RbErrorMessages.unknownGroupName(groupName), beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.unknownGroupName(groupName), beginPos, ErrorCode.InvalidBackReference);
                 }
                 groupNumbers = namedCaptureGroups.get(groupName);
             }
@@ -1411,22 +1415,20 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             advance(); // consume sign
             String level = getMany(RegexLexer::isDecimalDigit);
             if (level.isEmpty()) {
-                throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos);
+                throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos, ErrorCode.InvalidBackReference);
             }
             bailOut("backreferences to other levels are not supported");
         }
         if (!match(Character.toString(terminator))) {
-            throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos);
+            throw syntaxErrorAt(RbErrorMessages.INVALID_GROUP_NAME, beginPos, ErrorCode.InvalidBackReference);
         }
-        if (lookbehindDepth > 0) {
-            throw syntaxErrorAt(RbErrorMessages.INVALID_PATTERN_IN_LOOK_BEHIND, beginPos);
-        }
+        notAllowedInLookbehind(beginPos);
         return groupNumbers;
     }
 
     private void buildNamedBackreference(Integer[] groupNumbers, String name) {
         if (groupNumbers.length == 0) {
-            throw syntaxErrorHere(RbErrorMessages.undefinedReference(name));
+            throw syntaxErrorHere(RbErrorMessages.undefinedReference(name), ErrorCode.InvalidBackReference);
         } else if (groupNumbers.length == 1) {
             buildBackreference(groupNumbers[0], true);
         } else {
@@ -1534,7 +1536,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             List<Integer> targetGroups = parseGroupReference('>', true, true, false, true);
             int nameEnd = position - 1;
             if (targetGroups.size() > 1) {
-                throw syntaxErrorHere(RbErrorMessages.multiplexCall(inPattern.substring(nameStart, nameEnd)));
+                throw syntaxErrorHere(RbErrorMessages.multiplexCall(inPattern.substring(nameStart, nameEnd)), ErrorCode.InvalidSubexpressionCall);
             }
             addSubexpressionCall(targetGroups.get(0));
             hasSubexpressionCalls = true;
@@ -1560,11 +1562,11 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 try {
                     int codePoint = Integer.parseInt(code, 16);
                     if (codePoint > 0x10FFFF) {
-                        throw syntaxErrorAt(RbErrorMessages.invalidUnicodeEscape(code), beginPos);
+                        throw syntaxErrorAt(RbErrorMessages.invalidUnicodeEscape(code), beginPos, ErrorCode.InvalidEscape);
                     }
                     buildChar(codePoint);
                 } catch (NumberFormatException e) {
-                    throw syntaxErrorAt(RbErrorMessages.badEscape(code), beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.badEscape(code), beginPos, ErrorCode.InvalidEscape);
                 }
                 getMany(WHITESPACE::get);
             }
@@ -1614,10 +1616,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             case 'c':
             case 'C': {
                 if (atEnd()) {
-                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_CONTROL, beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_CONTROL, beginPos, ErrorCode.InvalidEscape);
                 }
                 if (ch == 'C' && !match("-")) {
-                    throw syntaxErrorAt(RbErrorMessages.INVALID_CONTROL_CODE_SYNTAX, beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.INVALID_CONTROL_CODE_SYNTAX, beginPos, ErrorCode.InvalidEscape);
                 }
                 int c = consumeChar();
                 if (c == '?') {
@@ -1630,13 +1632,13 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
             case 'M': {
                 if (atEnd()) {
-                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_META, beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_META, beginPos, ErrorCode.InvalidEscape);
                 }
                 if (!match("-")) {
-                    throw syntaxErrorAt(RbErrorMessages.INVALID_META_CODE_SYNTAX, beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.INVALID_META_CODE_SYNTAX, beginPos, ErrorCode.InvalidEscape);
                 }
                 if (atEnd()) {
-                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_META, beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_META, beginPos, ErrorCode.InvalidEscape);
                 }
                 int c = consumeChar();
                 if (c == '\\') {
@@ -1682,21 +1684,21 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 String code;
                 if (match("{")) {
                     code = getMany(RegexLexer::isHexDigit);
-                    mustMatch("}");
+                    mustMatch("}", RbErrorMessages.EXPECTED_BRACE, ErrorCode.InvalidEscape);
                 } else {
                     code = getUpTo(4, RegexLexer::isHexDigit);
                     if (code.length() < 4) {
-                        throw syntaxErrorAt(RbErrorMessages.incompleteEscape(code), beginPos);
+                        throw syntaxErrorAt(RbErrorMessages.incompleteEscape(code), beginPos, ErrorCode.InvalidEscape);
                     }
                 }
                 try {
                     int codePoint = Integer.parseInt(code, 16);
                     if (codePoint > 0x10FFFF) {
-                        throw syntaxErrorAt(RbErrorMessages.invalidUnicodeEscape(code), beginPos);
+                        throw syntaxErrorAt(RbErrorMessages.invalidUnicodeEscape(code), beginPos, ErrorCode.InvalidEscape);
                     }
                     return Optional.of(codePoint);
                 } catch (NumberFormatException e) {
-                    throw syntaxErrorAt(RbErrorMessages.badEscape(code), beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.badEscape(code), beginPos, ErrorCode.InvalidEscape);
                 }
             }
             case '0':
@@ -1707,10 +1709,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             case '5':
             case '6':
             case '7': {
-                String code = getUpTo(3, c -> RegexLexer.isOctalDigit(c));
+                String code = getUpTo(3, RegexLexer::isOctalDigit);
                 int codePoint = Integer.parseInt(code, 8);
                 if (codePoint > 0xFF) {
-                    throw syntaxErrorAt(RbErrorMessages.TOO_BIG_NUMBER, beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.TOO_BIG_NUMBER, beginPos, ErrorCode.InvalidEscape);
                 }
                 return Optional.of(codePoint);
             }
@@ -1772,7 +1774,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         int firstPosInside = position;
         classBody: while (true) {
             if (atEnd()) {
-                throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_CHARACTER_SET, beginPos);
+                throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_CHARACTER_SET, beginPos, ErrorCode.InvalidCharacterClass);
             }
             int rangeStart = position;
             Optional<Integer> lowerBound;
@@ -1811,7 +1813,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             // a hyphen following a nested char class is never interpreted as a range operator
             if (!wasNestedCharClass && match("-")) {
                 if (atEnd()) {
-                    throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_CHARACTER_SET, beginPos);
+                    throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_CHARACTER_SET, beginPos, ErrorCode.InvalidCharacterClass);
                 }
                 Optional<Integer> upperBound;
                 ch = consumeChar();
@@ -1852,7 +1854,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                 // both the left operand and the range operator
                 if (!wasNestedCharClass) {
                     if (!lowerBound.isPresent() || !upperBound.isPresent() || upperBound.get() < lowerBound.get()) {
-                        throw syntaxErrorAt(RbErrorMessages.badCharacterRange(inPattern.substring(rangeStart, position)), rangeStart);
+                        throw syntaxErrorAt(RbErrorMessages.badCharacterRange(inPattern.substring(rangeStart, position)), rangeStart, ErrorCode.InvalidCharacterClass);
                     }
                     curCharClassAddRange(lowerBound.get(), upperBound.get());
                 }
@@ -1954,7 +1956,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
         if (match(":]")) {
             if (!UNICODE_POSIX_CHAR_CLASSES.containsKey(className)) {
-                throw syntaxErrorAt(RbErrorMessages.INVALID_POSIX_BRACKET_TYPE, restorePosition);
+                throw syntaxErrorAt(RbErrorMessages.INVALID_POSIX_BRACKET_TYPE, restorePosition, ErrorCode.InvalidCharacterClass);
             }
             CodePointSet charSet;
             if (getLocalFlags().isAscii()) {
@@ -2015,7 +2017,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             if (canHaveQuantifier) {
                 addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy, quantifier.possessive, ch != '{'));
             } else {
-                throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
+                throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start, ErrorCode.InvalidQuantifier);
             }
         } else {
             string(consumeChar());
@@ -2053,7 +2055,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                     return null;
                 }
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
-                    throw syntaxErrorAt(RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
+                    throw syntaxErrorAt(RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start, ErrorCode.InvalidQuantifier);
                 }
                 boolean greedy = true;
                 if (canBeNonGreedy && match("?")) {
@@ -2117,7 +2119,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private void parens() {
         if (atEnd()) {
-            throw syntaxErrorAtEnd(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorAtEnd(RbErrorMessages.UNTERMINATED_SUBPATTERN, ErrorCode.UnmatchedParenthesis);
         }
         if (match("?")) {
             final int ch1 = consumeChar();
@@ -2182,7 +2184,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                     break;
 
                 default:
-                    throw syntaxErrorAt(RbErrorMessages.unknownExtension(ch1), position - 1);
+                    throw syntaxErrorAt(RbErrorMessages.unknownExtension(ch1), position - 1, ErrorCode.InvalidGroup);
             }
         } else {
             group(!containsNamedCaptureGroups());
@@ -2197,10 +2199,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
     private String parseGroupName(char terminator) {
         String groupName = getMany(c -> c != terminator);
         if (!match(Character.toString(terminator))) {
-            throw syntaxErrorHere(RbErrorMessages.unterminatedName(terminator));
+            throw syntaxErrorHere(RbErrorMessages.unterminatedName(terminator), ErrorCode.InvalidNamedGroup);
         }
         if (groupName.isEmpty()) {
-            throw syntaxErrorHere(RbErrorMessages.MISSING_GROUP_NAME);
+            throw syntaxErrorHere(RbErrorMessages.MISSING_GROUP_NAME, ErrorCode.InvalidNamedGroup);
         }
         return groupName;
     }
@@ -2212,7 +2214,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         int beginPos = position - 2;
         while (true) {
             if (atEnd()) {
-                throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_COMMENT, beginPos);
+                throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_COMMENT, beginPos, ErrorCode.UnmatchedParenthesis);
             }
             int ch = consumeChar();
             if (ch == '\\' && !atEnd()) {
@@ -2246,7 +2248,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             }
             canHaveQuantifier = true;
         } else {
-            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN, ErrorCode.UnmatchedParenthesis);
         }
     }
 
@@ -2257,13 +2259,14 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * @param negate {@code true} if the assertion to be pushed is a negative lookahead assertion
      */
     private void lookahead(boolean negate) {
+        notAllowedInLookbehind(position);
         pushLookAheadAssertion(negate);
         disjunction();
         if (match(")")) {
             popGroup();
             canHaveQuantifier = true;
         } else {
-            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN, ErrorCode.UnmatchedParenthesis);
         }
     }
 
@@ -2279,7 +2282,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             popGroup();
             canHaveQuantifier = true;
         } else {
-            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN, ErrorCode.UnmatchedParenthesis);
         }
     }
 
@@ -2294,7 +2297,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             popGroup();
             canHaveQuantifier = true;
         } else {
-            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN, ErrorCode.UnmatchedParenthesis);
         }
     }
 
@@ -2307,16 +2310,16 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (match("<")) {
             namedReference = curChar() != '-' && !RegexLexer.isDecimalDigit(curChar());
             groupNumbers = parseGroupReference('>', true, true, true, true);
-            mustMatch(")");
+            mustMatch(")", RbErrorMessages.EXPECTED_PAREN, ErrorCode.InvalidBackReference);
         } else if (match("'")) {
             namedReference = curChar() != '-' && !RegexLexer.isDecimalDigit(curChar());
             groupNumbers = parseGroupReference('\'', true, true, true, true);
-            mustMatch(")");
+            mustMatch(")", RbErrorMessages.EXPECTED_PAREN, ErrorCode.InvalidBackReference);
         } else if (RegexLexer.isDecimalDigit(curChar())) {
             namedReference = false;
             groupNumbers = parseGroupReference(')', true, false, true, true);
         } else {
-            throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME);
+            throw syntaxErrorHere(RbErrorMessages.INVALID_GROUP_NAME, ErrorCode.InvalidBackReference);
         }
         pushConditionalBackReferenceGroup(groupNumbers.get(0), namedReference);
         alternative();
@@ -2325,14 +2328,14 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             canHaveQuantifier = false;
             alternative();
             if (curChar() == '|') {
-                throw syntaxErrorHere(RbErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES);
+                throw syntaxErrorHere(RbErrorMessages.CONDITIONAL_BACKREF_WITH_MORE_THAN_TWO_BRANCHES, ErrorCode.InvalidGroup);
             }
         } else {
             // Generate the implicit empty else-branch, if it was not specified.
             nextSequence();
         }
         if (!match(")")) {
-            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN, ErrorCode.UnmatchedParenthesis);
         }
         popGroup();
         canHaveQuantifier = true;
@@ -2347,7 +2350,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         if (match(")")) {
             bailOut("absent expressions not supported");
         } else {
-            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN, ErrorCode.UnmatchedParenthesis);
         }
         canHaveQuantifier = true;
     }
@@ -2366,20 +2369,20 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
             } else if (RubyFlags.isValidFlagChar(ch)) {
                 if (negative) {
                     if (RubyFlags.isTypeFlag(ch)) {
-                        throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION);
+                        throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION, ErrorCode.InvalidInlineFlag);
                     }
                     newFlags = newFlags.delFlag(ch);
                 } else {
                     newFlags = newFlags.addFlag(ch);
                 }
             } else if (Character.isAlphabetic(ch)) {
-                throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION);
+                throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION, ErrorCode.InvalidInlineFlag);
             } else {
-                throw syntaxErrorHere(RbErrorMessages.MISSING_DASH_COLON_PAREN);
+                throw syntaxErrorHere(RbErrorMessages.MISSING_DASH_COLON_PAREN, ErrorCode.InvalidInlineFlag);
             }
 
             if (atEnd()) {
-                throw syntaxErrorAtEnd(RbErrorMessages.MISSING_FLAG_DASH_COLON_PAREN);
+                throw syntaxErrorAtEnd(RbErrorMessages.MISSING_FLAG_DASH_COLON_PAREN, ErrorCode.InvalidInlineFlag);
             }
             ch = consumeChar();
         }

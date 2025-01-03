@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -51,7 +52,9 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorBaseNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
@@ -68,18 +71,27 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
     private static final class Recording implements JsonConvertible {
 
-        private final String input;
+        private final TruffleString input;
+        private final Encodings.Encoding encoding;
         private final int fromIndex;
         private int initialIndex;
         private final int maxIndex;
-        private final List<RecordedTransition> transitions;
+        private final boolean forward;
+        private final int[] transitions;
+        private final int[] cgPartialTransitions;
 
-        private Recording(String input, int fromIndex, int initialIndex, int maxIndex) {
+        private Recording(TruffleString input, Encodings.Encoding encoding, int fromIndex, int initialIndex, int maxIndex, boolean forward) {
             this.input = input;
+            this.encoding = encoding;
             this.fromIndex = fromIndex;
             this.initialIndex = initialIndex;
             this.maxIndex = maxIndex;
-            transitions = new ArrayList<>();
+            this.forward = forward;
+            int codepoints = input.codePointLengthUncached(encoding.getTStringEncoding());
+            transitions = new int[codepoints];
+            cgPartialTransitions = new int[codepoints];
+            Arrays.fill(transitions, -1);
+            Arrays.fill(cgPartialTransitions, -1);
         }
 
         @TruffleBoundary
@@ -88,75 +100,46 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
         }
 
         @TruffleBoundary
-        private int getLowestIndex() {
-            return initialIndex < maxIndex ? initialIndex : maxIndex;
-        }
-
-        @TruffleBoundary
-        private void initUpToIndex(int currentIndex) {
-            for (int i = transitions.size(); i <= currentIndex - getLowestIndex(); i++) {
-                transitions.add(new RecordedTransition(getLowestIndex() + i));
-            }
-        }
-
-        @TruffleBoundary
-        private RecordedTransition getTransition(int currentIndex) {
-            RecordedTransition transition = transitions.get(currentIndex - getLowestIndex());
-            assert transition.currentIndex == currentIndex;
-            return transition;
-        }
-
-        @TruffleBoundary
         public void recordTransition(int currentIndex, int transitionID) {
-            initUpToIndex(currentIndex);
-            getTransition(currentIndex).setTransitionID(transitionID);
+            transitions[toCodePointIndex(currentIndex)] = transitionID;
         }
 
         @TruffleBoundary
         public void recordCGPartialTransition(int currentIndex, int cgPartialTransitionIndex) {
-            initUpToIndex(currentIndex);
-            getTransition(currentIndex).setCgPartialTransitionID(cgPartialTransitionIndex);
+            cgPartialTransitions[toCodePointIndex(currentIndex)] = cgPartialTransitionIndex;
+        }
+
+        private int toCodePointIndex(int currentIndex) {
+            return input.byteIndexToCodePointIndexUncached(0, currentIndex << encoding.getStride(), encoding.getTStringEncoding()) - (forward ? 0 : 1);
         }
 
         @TruffleBoundary
         @Override
         public JsonValue toJson() {
-            return Json.obj(Json.prop("input", input),
+            JsonArray jsonTransitions = Json.array();
+            if (forward) {
+                for (int i = 0; i < transitions.length; i++) {
+                    appendJsonTransition(i, jsonTransitions);
+                }
+            } else {
+                for (int i = transitions.length - 1; i >= 0; i--) {
+                    appendJsonTransition(i, jsonTransitions);
+                }
+            }
+            return Json.obj(Json.prop("input", input.toJavaStringUncached()),
                             Json.prop("fromIndex", fromIndex),
                             Json.prop("initialIndex", initialIndex),
                             Json.prop("maxIndex", maxIndex),
-                            Json.prop("transitions", transitions));
-        }
-    }
-
-    private static final class RecordedTransition implements JsonConvertible {
-
-        private final int currentIndex;
-        private int transitionID = -1;
-        private int cgPartialTransitionID = -1;
-
-        @TruffleBoundary
-        private RecordedTransition(int currentIndex) {
-            this.currentIndex = currentIndex;
+                            Json.prop("transitions", jsonTransitions));
         }
 
-        @TruffleBoundary
-        public void setTransitionID(int transitionID) {
-            this.transitionID = transitionID;
-        }
-
-        @TruffleBoundary
-        public void setCgPartialTransitionID(int cgPartialTransitionID) {
-            assert this.cgPartialTransitionID == -1 || this.cgPartialTransitionID == 0;
-            this.cgPartialTransitionID = cgPartialTransitionID;
-        }
-
-        @TruffleBoundary
-        @Override
-        public JsonValue toJson() {
-            return Json.obj(Json.prop("currentIndex", currentIndex),
-                            Json.prop("transitionID", transitionID),
-                            Json.prop("cgPartialTransitionID", cgPartialTransitionID));
+        private void appendJsonTransition(int i, JsonArray jsonTransitions) {
+            if (transitions[i] >= 0) {
+                jsonTransitions.append(Json.obj(
+                                Json.prop("currentIndex", i),
+                                Json.prop("transitionID", transitions[i]),
+                                Json.prop("cgPartialTransitionID", cgPartialTransitions[i])));
+            }
         }
     }
 
@@ -170,11 +153,11 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
     }
 
     private final DFAGenerator dfa;
-    private List<Recording> recordings = new ArrayList<>();
+    private final List<Recording> recordings = new ArrayList<>();
 
     @TruffleBoundary
     public void startRecording(TRegexDFAExecutorLocals locals) {
-        recordings.add(new Recording(locals.getInput().toString(), locals.getFromIndex(), locals.getIndex(), locals.getMaxIndex()));
+        recordings.add(new Recording(locals.getInput(), dfa.getOptions().getEncoding(), locals.getFromIndex(), locals.getIndex(), locals.getMaxIndex(), dfa.isForward()));
     }
 
     @TruffleBoundary

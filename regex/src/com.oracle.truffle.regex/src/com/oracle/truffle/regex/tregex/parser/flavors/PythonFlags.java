@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,6 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     private static final String PROP_IGNORECASE = "IGNORECASE";
     private static final String PROP_LOCALE = "LOCALE";
     private static final String PROP_MULTILINE = "MULTILINE";
-    private static final String PROP_TEMPLATE = "TEMPLATE";
     private static final String PROP_UNICODE = "UNICODE";
     private static final String PROP_VERBOSE = "VERBOSE";
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(
@@ -72,16 +71,15 @@ public final class PythonFlags extends AbstractConstantKeysObject {
                     PROP_IGNORECASE,
                     PROP_LOCALE,
                     PROP_MULTILINE,
-                    PROP_TEMPLATE,
                     PROP_UNICODE,
                     PROP_VERBOSE);
 
     private final int value;
 
-    private static final TBitSet ALL_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'i', 'm', 's', 't', 'u', 'x');
+    private static final TBitSet ALL_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'i', 'm', 's', 'u', 'x');
     private static final TBitSet TYPE_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'u');
 
-    private static final String FLAGS = "iLmsxatu";
+    private static final String FLAGS = "iLmsxau";
 
     private static final int FLAG_IGNORE_CASE = 1;
     private static final int FLAG_LOCALE = 1 << 1;
@@ -89,16 +87,14 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     private static final int FLAG_DOT_ALL = 1 << 3;
     private static final int FLAG_VERBOSE = 1 << 4;
     private static final int FLAG_ASCII = 1 << 5;
-    private static final int FLAG_TEMPLATE = 1 << 6;
-    private static final int FLAG_UNICODE = 1 << 7;
+    private static final int FLAG_UNICODE = 1 << 6;
 
     private static final int[] FLAG_LOOKUP = {
                     FLAG_ASCII, 0, 0, 0, 0, 0, 0, 0, FLAG_IGNORE_CASE, 0, 0, FLAG_LOCALE, FLAG_MULTILINE, 0, 0, 0,
-                    0, 0, FLAG_DOT_ALL, FLAG_TEMPLATE, FLAG_UNICODE, 0, 0, FLAG_VERBOSE
+                    0, 0, FLAG_DOT_ALL, 0, FLAG_UNICODE, 0, 0, FLAG_VERBOSE
     };
 
     private static final int TYPE_FLAGS = FLAG_LOCALE | FLAG_ASCII | FLAG_UNICODE;
-    private static final int GLOBAL_FLAGS = FLAG_TEMPLATE;
 
     public static final PythonFlags EMPTY_INSTANCE = new PythonFlags("");
     public static final PythonFlags TYPE_FLAGS_INSTANCE = new PythonFlags(TYPE_FLAGS);
@@ -149,10 +145,6 @@ public final class PythonFlags extends AbstractConstantKeysObject {
 
     public boolean isAscii() {
         return hasFlag(FLAG_ASCII);
-    }
-
-    public boolean isTemplate() {
-        return hasFlag(FLAG_TEMPLATE);
     }
 
     public boolean isUnicodeExplicitlySet() {
@@ -229,10 +221,6 @@ public final class PythonFlags extends AbstractConstantKeysObject {
         return Integer.bitCount(value & TYPE_FLAGS);
     }
 
-    public boolean includesGlobalFlags() {
-        return (value & GLOBAL_FLAGS) != 0;
-    }
-
     public boolean overlaps(PythonFlags otherFlags) {
         return (this.value & otherFlags.value) != 0;
     }
@@ -281,7 +269,6 @@ public final class PythonFlags extends AbstractConstantKeysObject {
             case PROP_IGNORECASE:
             case PROP_LOCALE:
             case PROP_MULTILINE:
-            case PROP_TEMPLATE:
             case PROP_UNICODE:
             case PROP_VERBOSE:
                 return true;
@@ -303,8 +290,6 @@ public final class PythonFlags extends AbstractConstantKeysObject {
                 return isLocale();
             case PROP_MULTILINE:
                 return isMultiLine();
-            case PROP_TEMPLATE:
-                return isTemplate();
             case PROP_UNICODE:
                 return isUnicodeExplicitlySet();
             case PROP_VERBOSE:

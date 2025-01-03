@@ -44,6 +44,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -178,16 +179,16 @@ public final class JSRegexParser implements RegexParser {
                     break;
                 case quantifier:
                     if (astBuilder.getCurTerm() == null || !QUANTIFIER_PREV.contains(prevKind)) {
-                        throw syntaxError(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                        throw syntaxError(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET, ErrorCode.InvalidQuantifier);
                     }
                     if (prevKind == Token.Kind.quantifier) {
-                        throw syntaxError(JsErrorMessages.QUANTIFIER_ON_QUANTIFIER);
+                        throw syntaxError(JsErrorMessages.QUANTIFIER_ON_QUANTIFIER, ErrorCode.InvalidQuantifier);
                     }
                     if (getLocalFlags().isEitherUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
-                        throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+                        throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION, ErrorCode.InvalidQuantifier);
                     }
                     if (astBuilder.getCurTerm().isLookBehindAssertion()) {
-                        throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
+                        throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION, ErrorCode.InvalidQuantifier);
                     }
                     astBuilder.addQuantifier((Token.Quantifier) token);
                     break;
@@ -214,7 +215,7 @@ public final class JSRegexParser implements RegexParser {
                     break;
                 case groupEnd:
                     if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
-                        throw syntaxError(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                        throw syntaxError(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS, ErrorCode.UnmatchedParenthesis);
                     }
                     if (astBuilder.getCurGroup().isLocalFlags()) {
                         lexer.popLocalFlags();
@@ -222,7 +223,7 @@ public final class JSRegexParser implements RegexParser {
                     astBuilder.popGroup(token);
                     break;
                 case literalChar:
-                    literalChar(((Token.LiteralCharacter) token).getCodePoint());
+                    literalChar((Token.LiteralCharacter) token);
                     break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
@@ -239,7 +240,7 @@ public final class JSRegexParser implements RegexParser {
                         lexer.caseFoldUnfold(curCharClass);
                     }
                     CodePointSet cps = curCharClass.toCodePointSet();
-                    astBuilder.addCharClass(lexer.isCurCharClassInverted() ? cps.createInverse(source.getEncoding()) : cps, wasSingleChar);
+                    astBuilder.addCharClass(lexer.isCurCharClassInverted() ? cps.createInverse(source.getEncoding()) : cps, wasSingleChar, token.getSourceSection());
                     break;
                 case classSet:
                     astBuilder.addClassSet((Token.ClassSet) token, getLocalFlags().isIgnoreCase() ? CaseFoldData.CaseFoldUnfoldAlgorithm.ECMAScriptUnicode : null);
@@ -249,21 +250,21 @@ public final class JSRegexParser implements RegexParser {
             }
         }
         if (!astBuilder.curGroupIsRoot()) {
-            throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP);
+            throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP, ErrorCode.UnmatchedParenthesis);
         }
         RegexAST ast = astBuilder.popRootGroup();
         checkNamedCaptureGroups(ast);
         return ast;
     }
 
-    private void literalChar(int codePoint) {
+    private void literalChar(Token.LiteralCharacter literalCharacter) {
         if (getLocalFlags().isIgnoreCase()) {
             curCharClass.clear();
-            curCharClass.addCodePoint(codePoint);
+            curCharClass.addCodePoint(literalCharacter.getCodePoint());
             lexer.caseFoldUnfold(curCharClass);
-            astBuilder.addCharClass(curCharClass.toCodePointSet(), true);
+            astBuilder.addCharClass(curCharClass.toCodePointSet(), true, literalCharacter.getSourceSection());
         } else {
-            astBuilder.addCharClass(CodePointSet.create(codePoint));
+            astBuilder.addLiteralChar(literalCharacter);
         }
     }
 
@@ -283,8 +284,8 @@ public final class JSRegexParser implements RegexParser {
             for (Map.Entry<String, List<Integer>> entry : lexer.getNamedCaptureGroups().entrySet()) {
                 for (int i = 0; i < entry.getValue().size() - 1; i++) {
                     for (int j = i + 1; j < entry.getValue().size(); j++) {
-                        if (canBothParticipate(ast.getGroup(entry.getValue().get(i)), ast.getGroup(entry.getValue().get(j)))) {
-                            throw syntaxError(JsErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
+                        if (canBothParticipate(ast.getGroup(entry.getValue().get(i)).get(0), ast.getGroup(entry.getValue().get(j)).get(0))) {
+                            throw syntaxError(JsErrorMessages.MULTIPLE_GROUPS_SAME_NAME, ErrorCode.InvalidNamedGroup);
                         }
                     }
                 }
@@ -318,7 +319,7 @@ public final class JSRegexParser implements RegexParser {
         throw CompilerDirectives.shouldNotReachHere("no common ancestor found for named capture groups in regexp");
     }
 
-    private RegexSyntaxException syntaxError(String msg) {
-        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition());
+    private RegexSyntaxException syntaxError(String msg, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition(), errorCode);
     }
 }

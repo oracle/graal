@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
+import com.oracle.truffle.regex.tregex.parser.ast.CalcASTFlagsVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.CalcASTPropsVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -56,6 +57,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
@@ -64,6 +66,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRe
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
+import com.oracle.truffle.regex.tregex.parser.ast.visitors.PropagateDeadFlagVisitor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RegexASTPostProcessor {
@@ -81,6 +84,7 @@ public class RegexASTPostProcessor {
     }
 
     public void prepareForDFA() {
+        CalcASTFlagsVisitor.run(ast);
         if (ast.getOptions().isBooleanMatch()) {
             DisableCaptureGroupsVisitor.disableCaptureGroups(ast);
         }
@@ -89,6 +93,7 @@ public class RegexASTPostProcessor {
             UnrollQuantifiersVisitor.unrollQuantifiers(ast);
         }
         CalcASTPropsVisitor.run(ast, compilationBuffer);
+        PropagateDeadFlagVisitor.propagateDeadFlag(ast.getRoot());
         ast.createPrefix();
         InitIDVisitor.init(ast);
         if (ast.canTransformToDFA()) {
@@ -160,7 +165,7 @@ public class RegexASTPostProcessor {
         @Override
         protected void leave(Group group) {
             if (group.hasQuantifier()) {
-                quantifierExpander.expandQuantifier(group, shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
+                quantifierExpander.expandQuantifier(group, group.getQuantifier().isUnrollTrivial() || shouldUnroll(group) && shouldUnrollVisitor.shouldUnroll(group));
             }
         }
 
@@ -204,6 +209,7 @@ public class RegexASTPostProcessor {
             private final RegexAST ast;
 
             private final CopyVisitor copyVisitor;
+            private final ClearRegisteredCaptureGroupsVisitor clearRegisteredCaptureGroupsVisitor;
             private Group curGroup;
             private Sequence curSequence;
             private Term curTerm;
@@ -211,6 +217,7 @@ public class RegexASTPostProcessor {
             QuantifierExpander(RegexAST ast) {
                 this.ast = ast;
                 this.copyVisitor = new CopyVisitor(ast);
+                this.clearRegisteredCaptureGroupsVisitor = new ClearRegisteredCaptureGroupsVisitor(ast);
             }
 
             private void pushGroup() {
@@ -249,40 +256,49 @@ public class RegexASTPostProcessor {
                     addTerm(copyVisitor.copy(term));
                     popGroup();
                     if (term.isGroup()) {
-                        curTerm.asGroup().setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
-                        curTerm.asGroup().setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
+                        curTerm.asGroup().setEnclosedCaptureGroupsLo(term.asGroup().getCaptureGroupsLo());
+                        curTerm.asGroup().setEnclosedCaptureGroupsHi(term.asGroup().getCaptureGroupsHi());
                     }
                 }
             }
 
-            private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
+            private void createOptionalBranch(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, boolean mandatory, boolean optional, int recurse) {
                 // We wrap the quantified term in a group, as NFATraversalRegexASTVisitor is set up
                 // to expect quantifier guards only on group boundaries.
+                if (term.isInLookBehindAssertion()) {
+                    createOptional(term, quantifier, unroll, mandatory, optional, recurse - 1);
+                }
                 addTermCopyAsGroup(term);
                 curTerm.asGroup().setQuantifier(quantifier);
                 curTerm.setExpandedQuantifier(unroll);
-                curTerm.setMandatoryUnrolledQuantifier(false);
+                curTerm.setMandatoryQuantifier(mandatory);
+                curTerm.setOptionalQuantifier(optional);
                 curTerm.setEmptyGuard(true);
-                createOptional(term, quantifier, unroll, recurse - 1);
+                if (!term.isInLookBehindAssertion()) {
+                    createOptional(term, quantifier, unroll, mandatory, optional, recurse - 1);
+                }
             }
 
-            private void createOptional(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, int recurse) {
+            private void createOptional(QuantifiableTerm term, Token.Quantifier quantifier, boolean unroll, boolean mandatory, boolean optional, int recurse) {
                 if (recurse < 0) {
                     return;
                 }
                 pushGroup();
                 if (term.isGroup()) {
-                    curGroup.setEnclosedCaptureGroupsLow(term.asGroup().getCaptureGroupsLow());
-                    curGroup.setEnclosedCaptureGroupsHigh(term.asGroup().getCaptureGroupsHigh());
+                    curGroup.setEnclosedCaptureGroupsLo(term.asGroup().getCaptureGroupsLo());
+                    curGroup.setEnclosedCaptureGroupsHi(term.asGroup().getCaptureGroupsHi());
                 }
-                if (quantifier.isGreedy()) {
-                    createOptionalBranch(term, quantifier, unroll, recurse);
+                if (quantifier.isGreedy() || mandatory) {
+                    createOptionalBranch(term, quantifier, unroll, mandatory, optional, recurse);
                     nextSequence();
                     curSequence.setQuantifierPassThroughSequence(true);
                 } else {
                     curSequence.setQuantifierPassThroughSequence(true);
                     nextSequence();
-                    createOptionalBranch(term, quantifier, unroll, recurse);
+                    createOptionalBranch(term, quantifier, unroll, false, optional, recurse);
+                }
+                if (!unroll && !mandatory && recurse == 0) {
+                    curGroup.setLoop(true);
                 }
                 popGroup();
             }
@@ -290,6 +306,7 @@ public class RegexASTPostProcessor {
             private void expandQuantifier(QuantifiableTerm toExpand, boolean unroll) {
                 assert toExpand.hasQuantifier();
                 assert !unroll || toExpand.isUnrollingCandidate();
+                clearRegisteredCaptureGroupsVisitor.clear(toExpand);
                 Token.Quantifier quantifier = toExpand.getQuantifier();
                 toExpand.setQuantifier(null);
 
@@ -300,17 +317,33 @@ public class RegexASTPostProcessor {
                 // replace the term to expand with a new wrapper group
                 replaceCurTermWithNewGroup();
 
+                boolean mandatoryOptionalSplit = !unroll && !ast.getFlavor().emptyChecksOnMandatoryLoopIterations() && quantifier.getMin() > 0 && toExpand.mayMatchEmptyString();
+
+                if (toExpand.isInLookBehindAssertion()) {
+                    unrollOptional(toExpand, quantifier, unroll, mandatoryOptionalSplit);
+                    unrollMandatory(toExpand, quantifier, unroll, mandatoryOptionalSplit);
+                } else {
+                    unrollMandatory(toExpand, quantifier, unroll, mandatoryOptionalSplit);
+                    unrollOptional(toExpand, quantifier, unroll, mandatoryOptionalSplit);
+                }
+            }
+
+            private void unrollMandatory(QuantifiableTerm toExpand, Token.Quantifier quantifier, boolean unroll, boolean mandatoryOptionalSplit) {
                 // unroll mandatory part ( x{3} -> xxx )
                 if (unroll) {
-                    // unroll non-optional part ( x{3} -> xxx )
                     for (int i = 0; i < quantifier.getMin(); i++) {
                         addTermCopyAsGroup(toExpand);
                         curTerm.asGroup().setQuantifier(quantifier);
                         curTerm.setExpandedQuantifier(true);
-                        curTerm.setMandatoryUnrolledQuantifier(true);
+                        curTerm.setMandatoryQuantifier(true);
                     }
+                } else if (mandatoryOptionalSplit) {
+                    createOptional(toExpand, quantifier, false, true, false, 0);
+                    ((Group) curTerm).setLoop(true);
                 }
+            }
 
+            private void unrollOptional(QuantifiableTerm toExpand, Token.Quantifier quantifier, boolean unroll, boolean mandatoryOptionalSplit) {
                 // unroll optional part ( x{0,3} -> (x(x(x|)|)|) )
                 // In flavors like Python or Ruby, loops can be repeated past the point where the
                 // position in the string keeps advancing (i.e. we are matching at least one
@@ -319,9 +352,13 @@ public class RegexASTPostProcessor {
                 // iteration is run because there is no backtracking after failing the empty check.
                 // We can emulate this behavior by dropping empty guards in small bounded loops,
                 // such as is the case for unrolled loops.
-                createOptional(toExpand, quantifier, unroll, !unroll || quantifier.isInfiniteLoop() ? 0 : (quantifier.getMax() - quantifier.getMin()) - 1);
-                if (!unroll || quantifier.isInfiniteLoop()) {
-                    ((Group) curTerm).setLoop(true);
+                if (unroll) {
+                    createOptional(toExpand, quantifier, true, false, false, quantifier.isInfiniteLoop() ? 0 : quantifier.getMax() - quantifier.getMin() - 1);
+                    if (quantifier.isInfiniteLoop()) {
+                        ((Group) curTerm).setLoop(true);
+                    }
+                } else if (quantifier.isInfiniteLoop() || quantifier.getMax() > quantifier.getMin() || !mandatoryOptionalSplit) {
+                    createOptional(toExpand, quantifier, false, false, mandatoryOptionalSplit, 0);
                 }
             }
         }
@@ -395,25 +432,39 @@ public class RegexASTPostProcessor {
         private LookAroundOptimization optimizeLookAround(LookAroundAssertion lookaround) {
             Group group = lookaround.getGroup();
 
-            // Drop empty lookarounds:
-            // * (?=) -> NOP
-            // * (?<=) -> NOP
-            // * (?!) -> DEAD
-            // * (?<!) -> DEAD
-            if (group.size() == 1 && group.getFirstAlternative().isEmpty()) {
-                if (lookaround.isNegated()) {
-                    // empty negative lookarounds never match
-                    ast.getNodeCount().dec(countVisitor.count(lookaround));
-                    return LookAroundOptimization.replace(ast.createCharacterClass(CodePointSet.getEmpty()));
-                } else {
-                    // empty positive lookarounds are no-ops
-                    ast.getNodeCount().dec(countVisitor.count(lookaround));
-                    return LookAroundOptimization.NO_OP;
+            // Simplify lookarounds with empty branches:
+            boolean hasCaptureGroups = false;
+            for (int i = 0; i < group.size(); i++) {
+                Sequence s = group.getAlternatives().get(i);
+                // we also check for s.isEmpty here, because a previous lookaround optimization may
+                // already have removed the capture groups, and we don't re-run CalcAstPropsVisitor
+                // between these optimizations.
+                // Example: in /(?<=(?=|()))/, we first remove the inner lookahead, so the outer
+                // lookbehind is empty but still has the hasGroups flag set.
+                hasCaptureGroups |= s.hasCaptureGroups() && !s.isEmpty();
+                if (s.isEmpty()) {
+                    if (lookaround.isNegated()) {
+                        // negative lookarounds with empty branches never match
+                        ast.getNodeCount().dec(countVisitor.count(lookaround));
+                        return LookAroundOptimization.replace(ast.createCharacterClass(CodePointSet.getEmpty()));
+                    } else {
+                        // positive lookarounds with empty branches are no-ops, but we still have to
+                        // keep higher priority branches if they have capture groups
+                        if (hasCaptureGroups) {
+                            if (group.size() > i + 1) {
+                                group.getAlternatives().subList(i + 1, group.size()).clear();
+                            }
+                            break;
+                        } else {
+                            ast.getNodeCount().dec(countVisitor.count(lookaround));
+                            return LookAroundOptimization.NO_OP;
+                        }
+                    }
                 }
             }
 
             // Extract position assertions from positive lookarounds
-            if (!lookaround.isNegated()) {
+            if (!lookaround.isNegated() && !lookaround.hasCaptureGroups()) {
                 if (group.size() == 1 && group.getFirstAlternative().size() == 1 && group.getFirstAlternative().getFirstTerm().isPositionAssertion()) {
                     // unwrap positive lookarounds containing only a position assertion
                     // * (?=$) -> $
@@ -436,10 +487,11 @@ public class RegexASTPostProcessor {
                     if (innerPositionAssertion >= 0) {
                         Sequence removed = group.getAlternatives().remove(innerPositionAssertion);
                         Group wrapGroup = ast.createGroup();
-                        wrapGroup.setEnclosedCaptureGroupsLow(group.getCaptureGroupsLow());
-                        wrapGroup.setEnclosedCaptureGroupsHigh(group.getCaptureGroupsHigh());
+                        wrapGroup.setEnclosedCaptureGroupsLo(group.getCaptureGroupsLo());
+                        wrapGroup.setEnclosedCaptureGroupsHi(group.getCaptureGroupsHi());
                         wrapGroup.add(removed);
                         Sequence wrapSeq = wrapGroup.addSequence(ast);
+                        assert !group.isEmpty();
                         wrapSeq.add(lookaround);
                         return LookAroundOptimization.replace(wrapGroup);
                     }
@@ -488,8 +540,29 @@ public class RegexASTPostProcessor {
 
         @Override
         protected void visit(Group group) {
-            if (group.isCapturing() && !ast.isGroupReferenced(group.getGroupNumber())) {
+            if (group.isCapturing() && !ast.isGroupReferenced(group.getGroupNumber()) &&
+                            !(group.getGroupNumber() == 0 && (ast.getProperties().hasMatchBoundaryAssertions() || ast.getOptions().isMustAdvance()))) {
                 group.clearGroupNumber();
+            }
+        }
+    }
+
+    private static final class ClearRegisteredCaptureGroupsVisitor extends DepthFirstTraversalRegexASTVisitor {
+
+        private final RegexAST ast;
+
+        private ClearRegisteredCaptureGroupsVisitor(RegexAST ast) {
+            this.ast = ast;
+        }
+
+        public void clear(RegexASTNode root) {
+            run(root);
+        }
+
+        @Override
+        protected void visit(Group group) {
+            if (group.isCapturing()) {
+                ast.clearRegisteredCaptureGroups(group.getGroupNumber());
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import static com.oracle.truffle.regex.tregex.parser.flavors.OracleDBConstants.W
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
@@ -137,19 +138,19 @@ public final class OracleDBRegexLexer extends RegexLexer {
         if (cps != null) {
             return cps;
         }
-        throw syntaxError(OracleDBErrorMessages.INVALID_CHARACTER_CLASS);
+        throw syntaxError(OracleDBErrorMessages.INVALID_CHARACTER_CLASS, ErrorCode.InvalidCharacterClass);
     }
 
     @Override
     protected void validatePOSIXCollationElement(String sequence) {
         assert !JavaStringUtil.isSingleCodePoint(sequence);
-        throw syntaxError(OracleDBErrorMessages.INVALID_COLLATION_ELEMENT);
+        throw syntaxError(OracleDBErrorMessages.INVALID_COLLATION_ELEMENT, ErrorCode.InvalidCharacterClass);
     }
 
     @Override
     protected void validatePOSIXEquivalenceClass(String sequence) {
         assert !JavaStringUtil.isSingleCodePoint(sequence);
-        throw syntaxError(OracleDBErrorMessages.INVALID_EQUIVALENCE_CLASS);
+        throw syntaxError(OracleDBErrorMessages.INVALID_EQUIVALENCE_CLASS, ErrorCode.InvalidCharacterClass);
     }
 
     @Override
@@ -277,7 +278,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleBoundedQuantifierOutOfOrder() {
-        return syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
+        return syntaxError(OracleDBErrorMessages.INVALID_INTERVAL, ErrorCode.InvalidQuantifier);
     }
 
     @Override
@@ -297,23 +298,23 @@ public final class OracleDBRegexLexer extends RegexLexer {
         if (Long.compareUnsigned(min, max) > 0) {
             throw handleBoundedQuantifierOutOfOrder();
         }
-        throw syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
+        throw syntaxError(OracleDBErrorMessages.INVALID_INTERVAL, ErrorCode.InvalidQuantifier);
     }
 
     @Override
     protected Token handleBoundedQuantifierOverflowMin(long min, long max) {
-        throw syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
+        throw syntaxError(OracleDBErrorMessages.INVALID_INTERVAL, ErrorCode.InvalidQuantifier);
     }
 
     @Override
     protected RegexSyntaxException handleCCRangeOutOfOrder(int startPos) {
-        return syntaxError(OracleDBErrorMessages.INVALID_RANGE);
+        return syntaxError(OracleDBErrorMessages.INVALID_RANGE, ErrorCode.InvalidCharacterClass);
     }
 
     @Override
     protected void handleCCRangeWithPredefCharClass(int startPos, ClassSetContents firstAtom, ClassSetContents secondAtom) {
         if ((firstAtom.isAllowedInRange() || !firstAtom.isCodePointSetOnly()) && secondAtom.isCodePointSetOnly()) {
-            throw syntaxError(OracleDBErrorMessages.INVALID_RANGE);
+            throw syntaxError(OracleDBErrorMessages.INVALID_RANGE, ErrorCode.InvalidCharacterClass);
         }
     }
 
@@ -334,7 +335,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected Token handleInvalidBackReference(int reference) {
-        throw syntaxError(OracleDBErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+        throw syntaxError(OracleDBErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE, ErrorCode.InvalidBackReference);
     }
 
     @Override
@@ -393,7 +394,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleUnmatchedLeftBracket() {
-        return syntaxError(OracleDBErrorMessages.UNMATCHED_LEFT_BRACKET);
+        return syntaxError(OracleDBErrorMessages.UNMATCHED_LEFT_BRACKET, ErrorCode.UnmatchedBracket);
     }
 
     @Override

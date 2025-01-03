@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -200,13 +200,23 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
         return size() == 1 && isLiteral();
     }
 
+    public QuantifiableTerm quantifierPassThroughGetQuantifiedTerm() {
+        assert isQuantifierPassThroughSequence();
+        assert getParent().isGroup();
+        assert getParent().size() == 2;
+        Sequence otherSeq = isFirstInGroup() ? getParent().getLastAlternative() : getParent().getFirstAlternative();
+        Term quantifiedTerm = isInLookBehindAssertion() ? otherSeq.getLastTerm() : otherSeq.getFirstTerm();
+        assert otherSeq.size() <= 2 || quantifiedTerm.isExpandedQuantifier();
+        return quantifiedTerm.asQuantifiableTerm();
+    }
+
     public int getEnclosedCaptureGroupsLow() {
         int lo = Integer.MAX_VALUE;
         for (Term t : terms) {
             if (t instanceof Group) {
                 Group g = (Group) t;
-                if (g.getEnclosedCaptureGroupsLow() != g.getEnclosedCaptureGroupsHigh()) {
-                    lo = Math.min(lo, g.getEnclosedCaptureGroupsLow());
+                if (g.getEnclosedCaptureGroupsLo() != g.getEnclosedCaptureGroupsHi()) {
+                    lo = Math.min(lo, g.getEnclosedCaptureGroupsLo());
                 }
                 if (g.isCapturing()) {
                     lo = Math.min(lo, g.getGroupNumber());
@@ -221,8 +231,8 @@ public final class Sequence extends RegexASTNode implements RegexASTVisitorItera
         for (Term t : terms) {
             if (t instanceof Group) {
                 Group g = (Group) t;
-                if (g.getEnclosedCaptureGroupsLow() != g.getEnclosedCaptureGroupsHigh()) {
-                    hi = Math.max(hi, g.getEnclosedCaptureGroupsHigh());
+                if (g.getEnclosedCaptureGroupsLo() != g.getEnclosedCaptureGroupsHi()) {
+                    hi = Math.max(hi, g.getEnclosedCaptureGroupsHi());
                 }
                 if (g.isCapturing()) {
                     hi = Math.max(hi, g.getGroupNumber() + 1);

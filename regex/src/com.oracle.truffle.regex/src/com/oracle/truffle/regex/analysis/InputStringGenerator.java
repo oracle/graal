@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,7 +143,7 @@ public final class InputStringGenerator {
                     int iRange = rng.nextInt(codePointSet.size());
                     codepoints[i] = rng.nextInt(codePointSet.getLo(iRange), codePointSet.getHi(iRange) + 1);
                 } else if (e instanceof BackRefElement backRef) {
-                    codepoints[i] = codepoints[backRef.ref];
+                    codepoints[i] = codepoints[backRef.ref + nPrepended];
                 }
             }
             return TruffleString.fromIntArrayUTF32Uncached(codepoints).switchEncodingUncached(encoding);
@@ -642,7 +642,7 @@ public final class InputStringGenerator {
             }
             afterTerm(term);
         } else if (term.isSubexpressionCall()) {
-            processGroup(ast.getGroup(term.asSubexpressionCall().getGroupNr()));
+            processGroup(ast.getGroup(term.asSubexpressionCall().getGroupNr()).get(0));
         } else {
             throw CompilerDirectives.shouldNotReachHere();
         }

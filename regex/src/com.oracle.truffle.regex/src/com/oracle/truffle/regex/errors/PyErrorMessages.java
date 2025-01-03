@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ public interface PyErrorMessages {
     String INLINE_FLAGS_CANNOT_USE_U_FLAG_WITH_A_BYTES_PATTERN = "bad inline flags: cannot use 'u' flag with a bytes pattern";
     String INLINE_FLAGS_FLAGS_A_U_AND_L_ARE_INCOMPATIBLE = "bad inline flags: flags 'a', 'u' and 'L' are incompatible";
     String INLINE_FLAGS_FLAG_TURNED_ON_AND_OFF = "bad inline flags: flag turned on and off";
+    String LOOK_BEHIND_REQUIRES_FIXED_WIDTH_PATTERN = "look-behind requires fixed-width pattern";
     String MIN_REPEAT_GREATER_THAN_MAX_REPEAT = "min repeat greater than max repeat";
     String MISSING_COLON = "missing :";
     String MISSING_DASH_COLON_PAREN = "missing -, : or )";

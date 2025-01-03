@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.RegexSyntaxException.ErrorCode;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -134,14 +135,14 @@ public class JSRegexValidator implements RegexValidator {
                 case quantifier:
                     switch (curTermState) {
                         case Null:
-                            throw syntaxError(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                            throw syntaxError(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET, ErrorCode.InvalidQuantifier);
                         case LookAheadAssertion:
                             if (flags.isEitherUnicode()) {
-                                throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+                                throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION, ErrorCode.InvalidQuantifier);
                             }
                             break;
                         case LookBehindAssertion:
-                            throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
+                            throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION, ErrorCode.InvalidQuantifier);
                         case Other:
                             break;
                     }
@@ -166,7 +167,7 @@ public class JSRegexValidator implements RegexValidator {
                     break;
                 case groupEnd:
                     if (syntaxStack.isEmpty()) {
-                        throw syntaxError(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                        throw syntaxError(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS, ErrorCode.UnmatchedParenthesis);
                     }
                     RegexStackElem poppedElem = syntaxStack.remove(syntaxStack.size() - 1);
                     switch (poppedElem) {
@@ -186,10 +187,10 @@ public class JSRegexValidator implements RegexValidator {
             }
         }
         if (lexer.inCharacterClass()) {
-            throw syntaxError(JsErrorMessages.UNMATCHED_LEFT_BRACKET);
+            throw syntaxError(JsErrorMessages.UNMATCHED_LEFT_BRACKET, ErrorCode.UnmatchedBracket);
         }
         if (!syntaxStack.isEmpty()) {
-            throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP);
+            throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP, ErrorCode.UnmatchedParenthesis);
         }
         checkNamedCaptureGroups();
     }
@@ -208,7 +209,7 @@ public class JSRegexValidator implements RegexValidator {
         }
     }
 
-    private RegexSyntaxException syntaxError(String msg) {
-        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition());
+    private RegexSyntaxException syntaxError(String msg, ErrorCode errorCode) {
+        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition(), errorCode);
     }
 }

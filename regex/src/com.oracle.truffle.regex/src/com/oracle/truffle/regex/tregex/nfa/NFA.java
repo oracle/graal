@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,8 +117,26 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         return unAnchoredEntry[0] == null ? null : unAnchoredEntry[0].getTarget();
     }
 
+    public NFAState getMaxOffsetUnAnchoredInitialState() {
+        return getMaxOffsetInitialState(unAnchoredEntry);
+    }
+
     public NFAState getAnchoredInitialState() {
         return anchoredEntry[0] == null ? null : anchoredEntry[0].getTarget();
+    }
+
+    public NFAState getMaxOffsetAnchoredInitialState() {
+        return getMaxOffsetInitialState(anchoredEntry);
+    }
+
+    private static NFAState getMaxOffsetInitialState(NFAStateTransition[] entries) {
+        NFAState ret = null;
+        for (NFAStateTransition t : entries) {
+            if (t != null) {
+                ret = t.getTarget();
+            }
+        }
+        return ret;
     }
 
     public boolean hasReverseUnAnchoredEntry() {
@@ -264,8 +282,8 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
 
     public boolean isFixedCodePointWidth() {
         boolean fixedCodePointWidth = true;
-        for (NFAState state : states) {
-            if (state != null && !ast.getEncoding().isFixedCodePointWidth(state.getCharSet())) {
+        for (NFAStateTransition transition : transitions) {
+            if (transition != null && !transition.getTarget().isFinalState() && !ast.getEncoding().isFixedCodePointWidth(transition.getCodePointSet())) {
                 fixedCodePointWidth = false;
                 break;
             }

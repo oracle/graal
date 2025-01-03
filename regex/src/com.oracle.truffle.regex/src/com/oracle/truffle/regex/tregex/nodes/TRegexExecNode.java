@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyBackwardSimpleCGRootNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyFindStartRootNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexTraceFinderRootNode;
@@ -428,6 +429,8 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 final RegexBodyNode bodyNode;
                 if (preCalculatedResults != null) {
                     bodyNode = new TRegexTraceFinderRootNode(language, source, preCalculatedResults, backwardNode);
+                } else if (getBackwardExecutor().isSimpleCG()) {
+                    bodyNode = new TRegexLazyBackwardSimpleCGRootNode(language, source, backwardNode);
                 } else {
                     bodyNode = new TRegexLazyFindStartRootNode(language, source, backwardNode, captureGroupNode == null);
                 }
@@ -485,17 +488,18 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 return preCalculatedResults[0].createFromEnd((int) end);
             }
             if (preCalculatedResults == null && captureGroupEntryNode == null) {
-                if (end == fromIndex) { // zero-length match
+                if ((backwardCallTarget == null || getForwardExecutor().getNumberOfCaptureGroups() == 1) && end == fromIndex) {
+                    // zero-length match
                     return RegexResult.create((int) end, (int) end);
                 }
                 if (getForwardExecutor().isAnchored() || flags.isSticky()) {
                     return RegexResult.create(fromIndex, (int) end);
                 }
-                if (getForwardExecutor().canFindStart()) {
+                if (backwardCallTarget == null && getForwardExecutor().canFindStart()) {
                     return RegexResult.create((int) (end >>> 32), (int) end);
-                } else {
-                    return RegexResult.createLazy(input, fromIndex, regionFrom, regionTo, -1, (int) end, backwardCallTarget);
                 }
+                assert backwardCallTarget != null;
+                return RegexResult.createLazy(input, fromIndex, regionFrom, regionTo, -1, (int) end, backwardCallTarget);
             } else {
                 if (preCalculatedResults != null) { // traceFinder
                     return RegexResult.createLazy(input, fromIndex, regionFrom, regionTo, -1, (int) end, backwardCallTarget);
