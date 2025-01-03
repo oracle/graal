@@ -38,15 +38,16 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.graal.compiler.options.OptionDescriptor;
-import jdk.graal.compiler.options.OptionDescriptors;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
 import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
 import com.oracle.svm.common.option.UnsupportedOptionClassException;
+
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
 
 public final class PointsToOptionParser {
 
@@ -94,9 +95,10 @@ public final class PointsToOptionParser {
             AnalysisError.interruptAnalysis(String.format("Unknown options: %s", Arrays.toString(remainingArgs.toArray(new String[0]))));
         }
         if (!errors.isEmpty()) {
-            StringBuilder errMsg = new StringBuilder("Option format error:\n");
+            StringBuilder errMsg = new StringBuilder("Option format error:");
+            errMsg.append(System.lineSeparator());
             for (String err : errors) {
-                errMsg.append(err).append("\n");
+                errMsg.append(err).append(System.lineSeparator());
             }
             AnalysisError.interruptAnalysis(errMsg.toString());
         }

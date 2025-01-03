@@ -525,9 +525,9 @@ public class DebuggerFeature implements InternalFeature {
             if (!interpreterMethod.isStatic() && !interpreterMethod.isConstructor()) {
                 if (hostedMethod.getImplementations().length > 1) {
                     if (!hostedMethod.hasVTableIndex()) {
-                        InterpreterUtil.log("[vtable assignment] %s has multiple implementations but no vtable slot.  This is not supported.\n", hostedMethod);
+                        InterpreterUtil.log("[vtable assignment] %s has multiple implementations but no vtable slot. This is not supported.%n", hostedMethod);
                     } else {
-                        InterpreterUtil.log("[vtable assignment] Setting to Index %s for methods %s <> %s\n", hostedMethod.getVTableIndex(), interpreterMethod, hostedMethod);
+                        InterpreterUtil.log("[vtable assignment] Setting to Index %s for methods %s <> %s%n", hostedMethod.getVTableIndex(), interpreterMethod, hostedMethod);
                         interpreterMethod.setVTableIndex(hostedMethod.getVTableIndex());
                         /*
                          * Do not null out native entry point, the method may be invoked via
@@ -535,14 +535,14 @@ public class DebuggerFeature implements InternalFeature {
                          */
                     }
                 } else if (hostedMethod.getImplementations().length == 1) {
-                    InterpreterUtil.log("[vtable assignment] Only one implementation available for %s\n", hostedMethod);
+                    InterpreterUtil.log("[vtable assignment] Only one implementation available for %s%n", hostedMethod);
                     interpreterMethod.setVTableIndex(VTBL_ONE_IMPL);
 
                     InterpreterResolvedJavaMethod oneImpl = (InterpreterResolvedJavaMethod) BuildTimeInterpreterUniverse.singleton().methodOrUnresolved(hostedMethod.getImplementations()[0]);
                     interpreterMethod.setOneImplementation(oneImpl);
-                    InterpreterUtil.log("[vtable assignment]  set oneImpl to -> %s\n", oneImpl);
+                    InterpreterUtil.log("[vtable assignment]  set oneImpl to -> %s%n", oneImpl);
                 } else {
-                    InterpreterUtil.log("[vtable assignment] No implementation available: %s\n", hostedMethod);
+                    InterpreterUtil.log("[vtable assignment] No implementation available: %s%n", hostedMethod);
                     interpreterMethod.setVTableIndex(VTBL_NO_ENTRY);
                 }
             }

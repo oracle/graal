@@ -51,11 +51,11 @@ public class CInterfaceError {
         StringBuilder result = new StringBuilder(msg);
         for (Object element : this.context) {
             if (element instanceof ResolvedJavaMethod) {
-                result.append("\n    method ").append(((ResolvedJavaMethod) element).format("%H.%n(%p)"));
+                result.append(System.lineSeparator()).append("    method ").append(((ResolvedJavaMethod) element).format("%H.%n(%p)"));
             } else if (element instanceof ResolvedJavaType) {
-                result.append("\n    type ").append(((ResolvedJavaType) element).toJavaName(true));
+                result.append(System.lineSeparator()).append("    type ").append(((ResolvedJavaType) element).toJavaName(true));
             } else {
-                result.append("\n    ").append(element);
+                result.append(System.lineSeparator()).append("    ").append(element);
             }
         }
         return result.toString();
