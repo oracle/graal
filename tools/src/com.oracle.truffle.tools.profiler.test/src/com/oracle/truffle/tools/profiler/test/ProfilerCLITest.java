@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,8 +50,10 @@ import com.oracle.truffle.tools.profiler.ProfilerNode;
 public class ProfilerCLITest {
 
     public static final String SAMPLING_HISTOGRAM_REGEX = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms. Missed [0-9]* samples.";
+    public static final String SAMPLING_CALLTREE_REGEX = "Sampling Call Tree. Recorded [0-9]* samples with period [0-9]*ms. Missed [0-9]* samples.";
     public static final int EXEC_COUNT = 10;
-    public static final String NAME_REGEX = " [a-z]* +";
+    public static final int LOOP_COUNT = 10;
+    public static final String NAME_REGEX = " +[a-z]* +";
     public static final String SEPARATOR_REGEX = "\\|";
     public static final String TIME_REGEX = " *[0-9]*ms +[0-9]*\\.[0-9]\\% ";
     public static final String PERCENT_REGEX = " *[0-9]*\\.[0-9]\\% ";
@@ -64,6 +66,58 @@ public class ProfilerCLITest {
 
     protected Source makeSource(String s) {
         return Source.newBuilder(InstrumentationTestLanguage.ID, s, "test").buildLiteral();
+    }
+
+    @Test
+    public void testCallTreeWithTiers() {
+        Assume.assumeFalse(checkRuntime());
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        options.put("cpusampler.Output", "calltree");
+        options.put("cpusampler.ShowTiers", "true");
+        options.put("engine.FirstTierCompilationThreshold", Integer.toString(5 * LOOP_COUNT));
+        options.put("engine.LastTierCompilationThreshold", Integer.toString(7 * LOOP_COUNT));
+        options.put("engine.BackgroundCompilation", "false");
+        String[] output = runSampler(options);
+        // @formatter:off
+        // OUTPUT IS:
+        // ----------------------------------------------------------------------------------------------------------------------------------------------------
+        // Sampling Call Tree. Recorded 120 samples with period 10ms. Missed 6 samples.
+        Assert.assertTrue(output[1].matches(SAMPLING_CALLTREE_REGEX));
+        // Self Time: Time spent on the top of the stack.
+        Assert.assertEquals(SELF_TIME, output[2]);
+        // Total Time: Time spent somewhere on the stack.
+        Assert.assertEquals(TOTAL_TIME, output[3]);
+        // T0: Percent of time spent in interpreter.
+        Assert.assertEquals(INTERPRETER, output[4]);
+        // T1: Percent of time spent in code compiled by tier 1 compiler.
+        Assert.assertEquals(T1, output[5]);
+        // T2: Percent of time spent in code compiled by tier 2 compiler.
+        Assert.assertEquals(T2, output[6]);
+        // ----------------------------------------------------------------------------------------------------------------------------------------------------
+        //  Name       ||             Total Time    |   T0   |   T1   |   T2   ||              Self Time    |   T0   |   T1   |   T2   || Location
+        // ----------------------------------------------------------------------------------------------------------------------------------------------------
+        Assert.assertEquals(" Name       ||             Total Time    |   T0   |   T1   |   T2   ||              Self Time    |   T0   |   T1   |   T2   || Location             ", output[8]);
+        //             ||             1200ms 100.0% | 100.0% |   0.0% |   0.0% ||                0ms   0.0% |   0.0% |   0.0% |   0.0% || test~1:0-161
+        //   baz       ||             1080ms  90.0% |  72.2% |  27.8% |   0.0% ||                0ms   0.0% |   0.0% |   0.0% |   0.0% || test~1:98-139
+        String lineRegex = NAME_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                TIME_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX + SEPARATOR_REGEX + PERCENT_REGEX +
+                SEPARATOR_REGEX + SEPARATOR_REGEX +
+                LOCATION_REGEX;
+        Assert.assertTrue(output[10].matches(lineRegex));
+        Assert.assertTrue(output[11].matches(lineRegex));
+        //    bar      ||             1080ms  90.0% |  13.0% |  50.9% |  36.1% ||                0ms   0.0% |   0.0% |   0.0% |   0.0% || test~1:43-84
+        Assert.assertTrue(output[12].matches(lineRegex));
+        //     foo     ||             1080ms  90.0% |   3.7% |  58.3% |  38.0% ||             1080ms  90.0% |   3.7% |  58.3% |  38.0% || test~1:16-29
+        Assert.assertTrue(output[13].matches(lineRegex));
+        //   bar       ||              120ms  10.0% |   8.3% |  58.3% |  33.3% ||                0ms   0.0% |   0.0% |   0.0% |   0.0% || test~1:43-84
+        Assert.assertTrue(output[14].matches(lineRegex));
+        //    foo      ||              120ms  10.0% |   0.0% |  58.3% |  41.7% ||              120ms  10.0% |   0.0% |  58.3% |  41.7% || test~1:16-29
+        Assert.assertTrue(output[15].matches(lineRegex));
+        // @formatter:on
     }
 
     @Test
@@ -196,8 +250,8 @@ public class ProfilerCLITest {
         try (Context context = Context.newBuilder().in(System.in).out(out).err(err).options(options).build()) {
             context.eval(makeSource("ROOT(" +
                             "DEFINE(foo,ROOT(SLEEP(1)))," +
-                            "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
-                            "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," +
+                            "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(" + LOOP_COUNT + ", CALL(foo)))))," +
+                            "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(" + LOOP_COUNT + ", CALL(bar)))))," +
                             ")"));
             Runnable evalSource1 = new Runnable() {
                 @Override
@@ -241,8 +295,8 @@ public class ProfilerCLITest {
         try (Context context = Context.newBuilder().in(System.in).out(out).err(err).options(options).build()) {
             Source source = makeSource("ROOT(" +
                             "DEFINE(foo,ROOT(SLEEP(1)))," +
-                            "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
-                            "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," +
+                            "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(" + LOOP_COUNT + ", CALL(foo)))))," +
+                            "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(" + LOOP_COUNT + ", CALL(bar)))))," +
                             "CALL(baz),CALL(bar)" +
                             ")");
             for (int i = 0; i < EXEC_COUNT; i++) {
@@ -350,8 +404,8 @@ public class ProfilerCLITest {
         Context context = Context.newBuilder().in(System.in).out(out).err(err).option("cpusampler", "true").option("cpusampler.Output", "json").build();
         Source defaultSourceForSampling = makeSource("ROOT(" +
                         "DEFINE(foo,ROOT(SLEEP(1)))," +
-                        "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(foo)))))," +
-                        "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(10, CALL(bar)))))," +
+                        "DEFINE(bar,ROOT(BLOCK(STATEMENT,LOOP(" + LOOP_COUNT + ", CALL(foo)))))," +
+                        "DEFINE(baz,ROOT(BLOCK(STATEMENT,LOOP(" + LOOP_COUNT + ", CALL(bar)))))," +
                         "CALL(baz),CALL(bar)" +
                         ")");
         for (int i = 0; i < 10; i++) {
