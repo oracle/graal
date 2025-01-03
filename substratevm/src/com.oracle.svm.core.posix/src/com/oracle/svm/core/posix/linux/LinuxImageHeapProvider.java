@@ -33,7 +33,6 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_PATCHED_END;
-import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_ANY_RELOCATABLE_POINTER;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_BEGIN;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_END;
 import static com.oracle.svm.core.imagelayer.ImageLayerSection.SectionEntries.HEAP_RELOCATABLE_BEGIN;
@@ -187,7 +186,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
             Word heapEnd = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_END));
             Word heapRelocBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_RELOCATABLE_BEGIN));
             Word heapRelocEnd = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_RELOCATABLE_END));
-            Word heapAnyRelocPointer = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_ANY_RELOCATABLE_POINTER));
+            /* This value is not used for layered images. */
+            Word heapAnyRelocPointer = Word.nullPointer();
             Word heapWritableBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_BEGIN));
             Word heapWritableEnd = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_END));
             Word heapWritablePatchedBegin = currentSection.readWord(ImageLayerSection.getEntryOffset(HEAP_WRITEABLE_PATCHED_BEGIN));
@@ -284,7 +284,7 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                     Word heapWritablePatchedEndSym, Word heapWritableSym, Word heapWritableEndSym) {
         assert heapBeginSym.belowOrEqual(heapWritableSym) && heapWritableSym.belowOrEqual(heapWritableEndSym) && heapWritableEndSym.belowOrEqual(heapEndSym);
         assert heapBeginSym.belowOrEqual(heapRelocsSym) && heapRelocsSym.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.belowOrEqual(heapEndSym);
-        assert heapRelocsSym.belowOrEqual(heapAnyRelocPointer) && heapAnyRelocPointer.belowThan(heapRelocsEndSym);
+        assert ImageLayerBuildingSupport.buildingImageLayer() || heapRelocsSym.belowOrEqual(heapAnyRelocPointer) && heapAnyRelocPointer.belowThan(heapRelocsEndSym);
         assert heapRelocsSym.belowOrEqual(heapRelocsEndSym) && heapRelocsEndSym.belowOrEqual(heapWritablePatchedSym) && heapWritablePatchedSym.belowOrEqual(heapWritableEndSym);
 
         SignedWord fd = cachedFd.read();
@@ -444,14 +444,26 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         Pointer sourceRelocsBoundary = cachedRelocsBoundary.isNonNull() ? cachedRelocsBoundary : linkedRelocsBoundary;
         Pointer linkedCopyStart = Word.nullPointer();
         if (heapRelocsEndSym.subtract(heapRelocsSym).isNonNull()) {
-            /*
-             * Use a representative pointer to determine whether it is necessary to copy over the
-             * relocations from the original image, or if it has already been performed during
-             * build-link time.
-             */
-            ComparableWord relocatedValue = sourceRelocsBoundary.readWord(heapAnyRelocPointer.subtract(linkedRelocsBoundary));
-            ComparableWord mappedValue = imageHeap.readWord(heapAnyRelocPointer.subtract(heapBeginSym));
-            if (relocatedValue.notEqual(mappedValue)) {
+            boolean copyRequired;
+            if (ImageLayerBuildingSupport.buildingImageLayer()) {
+                assert heapAnyRelocPointer.isNull();
+                /*
+                 * The relocatable section with layered images will normally contain relocations
+                 * referring to both the same and different layers. Hence, it is not possible to use
+                 * a representative pointer to determine whether copying is necessary.
+                 */
+                copyRequired = true;
+            } else {
+                /*
+                 * Use a representative pointer to determine whether it is necessary to copy over
+                 * the relocations from the original image, or if it has already been performed
+                 * during build-link time.
+                 */
+                ComparableWord relocatedValue = sourceRelocsBoundary.readWord(heapAnyRelocPointer.subtract(linkedRelocsBoundary));
+                ComparableWord mappedValue = imageHeap.readWord(heapAnyRelocPointer.subtract(heapBeginSym));
+                copyRequired = relocatedValue.notEqual(mappedValue);
+            }
+            if (copyRequired) {
                 linkedCopyStart = heapRelocsSym;
             }
         }
@@ -464,14 +476,17 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
         }
         if (linkedCopyStart.isNonNull()) {
             /*
-             * A portion of the image heap has relocations either resolved by the dynamic linker or
-             * (for layered images) manually during our runtime initialization code. To preserve the
-             * relocations, we must copy this code directly from the original image heap and not
-             * reload it from disk.
+             * A portion of the image heap needs to be manually copied over from the original image.
+             * This is needed whenever:
              *
-             * We need to round to page boundaries, so we may copy some extra data which could be
-             * copy-on-write. Also, we must first remap the pages to avoid loading them from disk
-             * (only to then overwrite them).
+             * 1. Relocations resolved by the dynamic linker are present.
+             *
+             * 2. (For layered images only): Heap relative relocations are present (i.e. the
+             * heapWritablePatched section is non-zero).
+             *
+             * To preserve this information, we must copy over this data from the original image
+             * heap and not reload it from disk. Note this copying must be performed at a page
+             * granularity, and hence may copy some extra data which could be copy-on-write.
              */
             Pointer linkedCopyStartBoundary = roundDown(linkedCopyStart, pageSize);
             UnsignedWord copyAlignedSize = roundUp(heapWritablePatchedEndSym.subtract(linkedCopyStartBoundary), pageSize);
