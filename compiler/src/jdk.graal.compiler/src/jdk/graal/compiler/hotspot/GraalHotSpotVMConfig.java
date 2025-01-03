@@ -239,7 +239,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int classMirrorOffset = getFieldOffset("Klass::_java_mirror", Integer.class, "OopHandle");
 
     public final int klassSuperKlassOffset = getFieldOffset("Klass::_super", Integer.class, "Klass*");
-    public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, "jint");
+    public final int klassModifierFlagsOffset = getFieldOffset("Klass::_modifier_flags", Integer.class, JDK == 21? "jint" : "u2");
     public final int klassAccessFlagsOffset = getFieldOffset("Klass::_access_flags", Integer.class, "AccessFlags");
     public final int klassMiscFlagsOffset = getFieldOffset("Klass::_misc_flags._flags", Integer.class, "u1", 0, JDK >= 24);
     public final int klassLayoutHelperOffset = getFieldOffset("Klass::_layout_helper", Integer.class, "jint");
@@ -277,7 +277,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int arrayClassElementOffset = getFieldOffset("ObjArrayKlass::_element_klass", Integer.class, "Klass*");
 
-    public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class);
+    public final int jvmAccWrittenFlags = getConstant("JVM_ACC_WRITTEN_FLAGS", Integer.class, -1, JDK == 21);
     public final int jvmAccIsHiddenClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_hidden_class", Integer.class) : getConstant("JVM_ACC_IS_HIDDEN_CLASS", Integer.class);
     public final int jvmAccIsValueBasedClass = JDK >= 24 ? getConstant("KlassFlags::_misc_is_value_based_class", Integer.class) : getConstant("JVM_ACC_IS_VALUE_BASED_CLASS", Integer.class);
     public final int jvmAccHasFinalizer = JDK >= 24 ? getConstant("KlassFlags::_misc_has_finalizer", Integer.class) : getConstant("JVM_ACC_HAS_FINALIZER", Integer.class);
