@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
+
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
@@ -84,8 +86,6 @@ import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.ModuleReferenceImpl;
 import jdk.internal.module.ServicesCatalog;
 import jdk.internal.module.SystemModuleFinders;
-
-import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 /**
  * This feature:
@@ -168,7 +168,7 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .toList();
         if (!bootLayerAutomaticModules.isEmpty()) {
             LogUtils.warning(
-                            "Detected automatic module(s) on the module-path of the image builder:\n%s\nExtending the image builder with automatic modules is not supported and might result in failed build. " +
+                            "Detected automatic module(s) on the module-path of the image builder:%n%s%nExtending the image builder with automatic modules is not supported and might result in failed build. " +
                                             "This is probably caused by specifying a jar-file that is not a proper module on the module-path. " +
                                             "Please ensure that only proper modules are found on the module-path.",
                             bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining(System.lineSeparator())));

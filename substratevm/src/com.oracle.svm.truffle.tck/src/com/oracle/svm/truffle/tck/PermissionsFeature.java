@@ -63,9 +63,9 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -309,9 +309,9 @@ public class PermissionsFeature implements Feature {
                                     StringBuilder builder = new StringBuilder();
                                     for (List<BaseMethodNode> callPath : report) {
                                         for (BaseMethodNode call : callPath) {
-                                            builder.append(call.asStackTraceElement()).append('\n');
+                                            builder.append(call.asStackTraceElement()).append(System.lineSeparator());
                                         }
-                                        builder.append('\n');
+                                        builder.append(System.lineSeparator());
                                     }
                                     pw.print(builder);
                                 });

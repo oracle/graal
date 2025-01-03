@@ -27,6 +27,12 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.graal.lir.DeoptEntryOp;
+import com.oracle.svm.core.heap.SubstrateReferenceMap;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.meta.HostedMethod;
+
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.LIR;
@@ -36,13 +42,6 @@ import jdk.graal.compiler.lir.framemap.FrameMap;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase;
 import jdk.graal.compiler.nodes.FrameState;
-
-import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.graal.lir.DeoptEntryOp;
-import com.oracle.svm.core.heap.SubstrateReferenceMap;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.meta.HostedMethod;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.StackSlot;
@@ -95,23 +94,22 @@ class Instance {
     private void reportError(LIRFrameState state, LIRInstruction op, String message) {
         if (errors == null) {
             errors = new StringBuilder();
-            errors.append("\nProblems found within VerifyDeoptLIRFrameStatesPhase\n");
+            errors.append(System.lineSeparator()).append("Problems found within VerifyDeoptLIRFrameStatesPhase").append(System.lineSeparator());
         }
-        errors.append("\nProblem: ").append(message);
+        errors.append(System.lineSeparator()).append("Problem: ").append(message);
         BytecodeFrame frame = state.topFrame;
         while (frame.caller() != null) {
             frame = frame.caller();
         }
-        errors.append("\nMethod: ").append(frame.getMethod());
-        errors.append("\nop id: ").append(op.id()).append(", ").append(op);
+        errors.append(System.lineSeparator()).append("Method: ").append(frame.getMethod());
+        errors.append(System.lineSeparator()).append("op id: ").append(op.id()).append(", ").append(op);
         frame = state.topFrame;
         do {
-            errors.append("\nat: bci ").append(frame.getBCI()).append(", duringCall: ").append(frame.duringCall).append(", rethrowException: ").append(frame.rethrowException).append(", method: ")
-                            .append(frame.getMethod());
-
+            errors.append(System.lineSeparator()).append("at: bci ").append(frame.getBCI()).append(", duringCall: ").append(frame.duringCall).append(", rethrowException: ")
+                            .append(frame.rethrowException).append(", method: ").append(frame.getMethod());
             frame = frame.caller();
         } while (frame != null);
-        errors.append("\nEnd Problem\n");
+        errors.append(System.lineSeparator()).append("End Problem").append(System.lineSeparator());
     }
 
     private static boolean isImplicitDeoptEntry(LIRFrameState state) {
