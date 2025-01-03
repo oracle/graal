@@ -50,10 +50,12 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.foreign.AbiUtils.Adapter.Adaptation;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.util.BasedOnJDKClass;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -230,11 +232,15 @@ public abstract class AbiUtils {
         }
 
         public static Adaptation extract(Extracted as, Class<?> type) {
-            return new Extract(Objects.requireNonNull(as), Objects.requireNonNull(type));
+            return new ExtractSingle(as, type);
+        }
+
+        public static Adaptation extractSegmentPair(Extracted as, Class<?> type) {
+            return new ExtractSegmentPair(as);
         }
 
         public static Adaptation drop() {
-            return Extract.DROP;
+            return Drop.SINGLETON;
         }
 
         public static Adaptation reinterpret(JavaKind to) {
@@ -342,29 +348,70 @@ public abstract class AbiUtils {
             @Override
             public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
                             Consumer<Node> appendToGraph) {
+                return List.of(computeAbsolutePointerFromSegmentPair(parameter, originalArguments, originalArgumentIndex, appendToGraph));
+            }
+
+            static ValueNode computeAbsolutePointerFromSegmentPair(ValueNode parameter, List<ValueNode> originalArguments, int originalArgumentIndex, Consumer<Node> appendToGraph) {
                 var offsetArg = originalArguments.get(originalArgumentIndex + 1);
 
-                // I originally wanted to use an OffsetAddressNode here
-                // (followed by WordCastNode.addressToWord),
-                // but NativeMemorySegmentImpls return null for `unsafeGetBase`,
-                // which seems to break the graph somewhere later.
+                /*
+                 * It would be most suitable to use OffsetAddressNode here (followed by
+                 * WordCastNode.addressToWord) but NativeMemorySegmentImpls return null for
+                 * `unsafeGetBase`,which seems to break the graph somewhere later.
+                 */
                 var basePointer = WordCastNode.objectToUntrackedPointer(parameter, ConfigurationValues.getWordKind());
                 appendToGraph.accept(basePointer);
                 var absolutePointer = AddNode.add(basePointer, offsetArg);
                 appendToGraph.accept(absolutePointer);
 
-                return List.of(absolutePointer);
+                return absolutePointer;
             }
         }
 
-        private static final class Extract extends Adaptation {
-            private static final Extract DROP = new Extract(null, null);
-            private final Extracted as;
+        /**
+         * Extract adaptations consume one or more stub parameters. In this case, "consuming" means
+         * that the adapted parameter(s) won't be passed to the stub's target but will be used by
+         * the stub itself. The result is usually one ValueNode that will be put into the
+         * 'extractedArguments' table.
+         */
+        private abstract static class Extract extends Adaptation {
+            final Extracted as;
+
+            private Extract(Extracted as) {
+                this.as = as;
+            }
+
+            @Override
+            public final List<AssignedLocation> apply(AssignedLocation parameter) {
+                return List.of();
+            }
+        }
+
+        private static final class Drop extends Extract {
+            private static final Drop SINGLETON = new Drop();
+
+            private Drop() {
+                super(null);
+            }
+
+            @Override
+            public List<Class<?>> apply(Class<?> parameter) {
+                return List.of();
+            }
+
+            @Override
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
+                return List.of();
+            }
+        }
+
+        private final static class ExtractSingle extends Extract {
             private final Class<?> type;
 
-            private Extract(Extracted as, Class<?> type) {
-                this.as = as;
-                this.type = type;
+            private ExtractSingle(Extracted as, Class<?> type) {
+                super(Objects.requireNonNull(as));
+                this.type = Objects.requireNonNull(type);
             }
 
             @Override
@@ -372,11 +419,6 @@ public abstract class AbiUtils {
                 if (type != null && parameter != type) {
                     throw new IllegalArgumentException("Expected type " + type + ", got " + parameter);
                 }
-                return List.of();
-            }
-
-            @Override
-            public List<AssignedLocation> apply(AssignedLocation parameter) {
                 return List.of();
             }
 
@@ -389,6 +431,37 @@ public abstract class AbiUtils {
                     }
                     extractedArguments.put(as, parameter);
                 }
+                return List.of();
+            }
+        }
+
+        /**
+         * Similar to {@link ComputeAddressFromSegmentPair}, consumes two parameters, i.e., an
+         * Object + offset pair, and creates and AddNode that computes the absolute address.
+         */
+        private static final class ExtractSegmentPair extends Extract {
+
+            private ExtractSegmentPair(Extracted as) {
+                super(Objects.requireNonNull(as));
+            }
+
+            @Override
+            public List<Class<?>> apply(Class<?> parameter) {
+                if (parameter != Object.class) {
+                    throw new IllegalArgumentException("Expected type " + Object.class + ", got " + parameter);
+                }
+                return List.of();
+            }
+
+            @Override
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments, List<ValueNode> originalArguments, int originalArgumentIndex,
+                            Consumer<Node> appendToGraph) {
+                assert as != null;
+                if (extractedArguments.containsKey(as)) {
+                    throw new IllegalStateException("%s was already extracted (%s).".formatted(as, extractedArguments.get(as)));
+                }
+                ValueNode extracted = ComputeAddressFromSegmentPair.computeAbsolutePointerFromSegmentPair(parameter, originalArguments, originalArgumentIndex, appendToGraph);
+                extractedArguments.put(as, extracted);
                 return List.of();
             }
         }
@@ -438,6 +511,7 @@ public abstract class AbiUtils {
     /**
      * Generate additional argument adaptations which are not done by HotSpot.
      */
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/CallingSequenceBuilder.java#L103-L147")
     @Platforms(Platform.HOSTED_ONLY.class)
     protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
         List<Adapter.Adaptation> adaptations = new ArrayList<>(Collections.nCopies(nep.methodType().parameterCount(), null));
@@ -446,34 +520,53 @@ public abstract class AbiUtils {
             adaptations.set(current++, Adapter.check(long.class));
         }
         adaptations.set(current++, Adapter.extract(Adapter.Extracted.CallTarget, long.class));
-        if (nep.capturesCallState()) {
-            adaptations.set(current++, Adapter.extract(Adapter.Extracted.CaptureBufferAddress, long.class));
-        }
 
         // Special handling in case Linker.Option.critical(true) is passed.
-        // See the doc of Adapter.CastObjectToWord.apply.
+        // See the doc of class Adapter.ComputeAddressFromSegmentPair
         var storages = nep.parametersAssignment();
+
+        /*
+         * It is possible to combine linker options 'captureCallState(...)' and 'critical(true)'.
+         * This means that one can pass a heap memory segment as capture buffer address.
+         */
+        if (nep.capturesCallState()) {
+            if (nep.allowHeapAccess()) {
+                VMError.guarantee(storages[current] != null && storages[current + 1] == null);
+                // consumes two parameters (i.e. object + offset pair)
+                handleCriticalWithHeapAccess(nep, current + 1, adaptations, Adapter.extractSegmentPair(Adapter.Extracted.CaptureBufferAddress, long.class));
+                current += 2;
+            } else {
+                adaptations.set(current, Adapter.extract(Adapter.Extracted.CaptureBufferAddress, long.class));
+                current++;
+            }
+        }
+
         for (int i = current; i < storages.length; ++i) {
             var storage = storages[i];
             if (storage == null) {
-                VMError.guarantee(nep.allowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
-                VMError.guarantee(JavaKind.fromJavaClass(
-                                nep.methodType().parameterArray()[i]) == JavaKind.Long &&
-                                JavaKind.fromJavaClass(nep.methodType().parameterArray()[i - 1]) == JavaKind.Object,
-                                """
-                                                Storage is null, but the other parameters are inconsistent.
-                                                Storage may be null only if its kind is Long and previous kind is Object.
-                                                See jdk/internal/foreign/abi/x64/sysv/CallArranger.java:286""");
-                VMError.guarantee(
-                                adaptations.get(i) == null && adaptations.get(i - 1) == null,
-                                "This parameter already has an adaptation when it should not.");
-
-                adaptations.set(i, Adapter.drop());
-                adaptations.set(i - 1, Adapter.computeAddressFromSegmentPair());
+                handleCriticalWithHeapAccess(nep, i, adaptations, Adapter.computeAddressFromSegmentPair());
             }
         }
 
         return adaptations;
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/x64/sysv/CallArranger.java#L280-L290")
+    private static void handleCriticalWithHeapAccess(NativeEntryPointInfo nep, int i, List<Adaptation> adaptations, Adaptation adaptation) {
+        VMError.guarantee(nep.allowHeapAccess(), "A storage may only be null when the Linker.Option.critical(true) option is passed.");
+        VMError.guarantee(
+                        JavaKind.fromJavaClass(nep.methodType().parameterArray()[i]) == JavaKind.Long &&
+                                        JavaKind.fromJavaClass(nep.methodType().parameterArray()[i - 1]) == JavaKind.Object,
+                        """
+                                        Storage is null, but the other parameters are inconsistent.
+                                        Storage may be null only if its kind is Long and previous kind is Object.
+                                        See jdk/internal/foreign/abi/x64/sysv/CallArranger.java:286""");
+        VMError.guarantee(
+                        adaptations.get(i) == null && adaptations.get(i - 1) == null,
+                        "This parameter already has an adaptation when it should not.");
+
+        adaptations.set(i, Adapter.drop());
+        adaptations.set(i - 1, adaptation);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
