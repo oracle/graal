@@ -102,7 +102,7 @@ public class ArrayNewInstanceTest extends GraalCompilerTest {
         assertTrue(box.inCompiledCode != shouldDeopt);
     }
 
-    private static class DeoptimizationBox {
+    private static final class DeoptimizationBox {
         volatile boolean inCompiledCode = false;
     }
 

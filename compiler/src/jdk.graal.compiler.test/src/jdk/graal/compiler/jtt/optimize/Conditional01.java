@@ -35,7 +35,7 @@ import org.junit.Test;
 @SuppressWarnings("unused")
 public class Conditional01 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         private int nextPC;
         private int pc;
         private boolean aC;
@@ -75,11 +75,11 @@ public class Conditional01 extends JTTTest {
             return r1.val;
         }
 
-        public int low(int tmp3) {
+        public static int low(int tmp3) {
             return tmp3 & 0x01;
         }
 
-        public int bit(boolean c2) {
+        public static int bit(boolean c2) {
             return c2 ? 1 : 0;
         }
     }
@@ -109,13 +109,13 @@ public class Conditional01 extends JTTTest {
         return c.cyclesConsumed;
     }
 
-    private static class Register {
+    private static final class Register {
 
         int val;
         int num;
     }
 
-    private static class CPC {
+    private static final class CPC {
 
         public Register r1;
         public Register r2;

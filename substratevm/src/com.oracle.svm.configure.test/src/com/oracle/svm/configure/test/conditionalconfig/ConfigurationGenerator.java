@@ -85,7 +85,7 @@ class NoPropagationNecessary {
     }
 
     @SuppressWarnings("unused")
-    private static class A {
+    private static final class A {
     }
 
     interface IA {
@@ -105,7 +105,7 @@ class PropagateToParent {
         ParentB.doWork();
     }
 
-    private static class ParentA {
+    private static final class ParentA {
         static void doWork() {
             Util.doWork("PropagateToParent$ParentA", "PropagateToParentA.txt", IA.class);
         }
@@ -114,7 +114,7 @@ class PropagateToParent {
     interface IA {
     }
 
-    private static class ParentB {
+    private static final class ParentB {
         static void doWork() {
             Util.doWork("PropagateToParent$ParentB", "PropagateToParentB.txt", IB.class);
         }
@@ -123,7 +123,7 @@ class PropagateToParent {
     interface IB {
     }
 
-    private static class Util {
+    private static final class Util {
         static void doWork(String clazz, String resource, Class<?>... interfaceList) {
             ClassUtil.forName(clazz);
             ClassUtil.getResource(resource);
@@ -148,20 +148,20 @@ class PropagateButLeaveCommonConfiguration {
         ParentB.doWork();
     }
 
-    private static class ParentA {
+    private static final class ParentA {
         static void doWork() {
             Util.doWork("PropagateButLeaveCommonConfiguration$ParentA", "PropagateToParentA.txt", IA.class);
         }
     }
 
-    private static class ParentB {
+    private static final class ParentB {
         static void doWork() {
             Util.doWork("PropagateButLeaveCommonConfiguration$ParentB", "PropagateToParentB.txt", IB.class);
         }
     }
 
     @SuppressWarnings("unused")
-    private static class C {
+    private static final class C {
     }
 
     interface IA {
@@ -173,7 +173,7 @@ class PropagateButLeaveCommonConfiguration {
     interface IC {
     }
 
-    private static class Util {
+    private static final class Util {
         static void doWork(String clazz, String resource, Class<?>... intefaceList) {
             ClassUtil.forName(clazz);
             ClassUtil.forName("PropagateButLeaveCommonConfiguration$C");

@@ -217,7 +217,7 @@ public class UntrustedInterfaces extends JTTTest {
         runTest("returnCheckcast", poisonPill);
     }
 
-    private static class PoisonLoader extends ExportingClassLoader {
+    private static final class PoisonLoader extends ExportingClassLoader {
         public static final String POISON_IMPL_NAME = "jdk.graal.compiler.jtt.except.PoisonPill";
 
         @Override

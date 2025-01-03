@@ -1023,7 +1023,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
     @ExpectError("Class must not be private to generate a wrapper.")
     @GenerateWrapper
-    private static class ErrorNode2 extends Node implements InstrumentableNode {
+    private static final class ErrorNode2 extends Node implements InstrumentableNode {
 
         public WrapperNode createWrapper(ProbeNode probe) {
             return null;

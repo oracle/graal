@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.36.0",
+  "mxversion": "7.36.5",
   "name" : "sdk",
   "version" : "25.0.0",
   "release" : False,
@@ -409,7 +409,7 @@ suite = {
       "dependencies" : [],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "workingSets" : "API,SDK",
     },
 

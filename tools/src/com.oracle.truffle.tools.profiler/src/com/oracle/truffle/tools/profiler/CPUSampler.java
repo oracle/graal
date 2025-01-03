@@ -693,7 +693,7 @@ public final class CPUSampler implements Closeable {
      * Process samples in a separate thread to avoid further delays during sampling and increase
      * accuracy.
      */
-    private class ResultProcessingRunnable implements Runnable {
+    private final class ResultProcessingRunnable implements Runnable {
 
         private volatile boolean cancelled;
 
@@ -806,7 +806,7 @@ public final class CPUSampler implements Closeable {
 
     }
 
-    private class SamplingTask implements Runnable {
+    private final class SamplingTask implements Runnable {
 
         @Override
         public void run() {

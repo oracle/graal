@@ -61,7 +61,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         Assert.assertFalse(target.isValid());
     }
 
-    private static class TestTruffleCompilationTask implements TruffleCompilationTask {
+    private static final class TestTruffleCompilationTask implements TruffleCompilationTask {
 
         @Override
         public boolean isCancelled() {

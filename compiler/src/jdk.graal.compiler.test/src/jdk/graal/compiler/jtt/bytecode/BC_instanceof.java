@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class BC_instanceof extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
     }
 
     static Object object2 = new Object();

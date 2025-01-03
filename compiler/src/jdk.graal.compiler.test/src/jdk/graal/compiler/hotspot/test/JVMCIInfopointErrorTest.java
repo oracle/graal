@@ -276,7 +276,7 @@ public class JVMCIInfopointErrorTest extends GraalCompilerTest {
         });
     }
 
-    private static class UnknownJavaValue implements JavaValue {
+    private static final class UnknownJavaValue implements JavaValue {
     }
 
     @SuppressWarnings("try")

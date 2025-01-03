@@ -48,7 +48,7 @@ public class LSPExtensionTestInstance extends TruffleInstrument implements LSPEx
         env.registerService(this);
     }
 
-    private static class LSPExtensionTestSimpleCommand implements LSPCommand {
+    private static final class LSPExtensionTestSimpleCommand implements LSPCommand {
 
         public String getName() {
             return COMMAND_SIMPLE;
@@ -59,7 +59,7 @@ public class LSPExtensionTestInstance extends TruffleInstrument implements LSPEx
         }
     }
 
-    private static class LSPExtensionTestTimeoutCommand implements LSPCommand {
+    private static final class LSPExtensionTestTimeoutCommand implements LSPCommand {
 
         public String getName() {
             return COMMAND_TIMEOUT;

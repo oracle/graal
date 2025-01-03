@@ -148,7 +148,7 @@ public class ImportGuardsTest {
         }
     }
 
-    private static class Imports2 {
+    private static final class Imports2 {
 
     }
 

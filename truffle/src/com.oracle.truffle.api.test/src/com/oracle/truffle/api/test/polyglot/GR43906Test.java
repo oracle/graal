@@ -75,7 +75,7 @@ public class GR43906Test {
         }
     }
 
-    private static class DummyOutputStream extends OutputStream {
+    private static final class DummyOutputStream extends OutputStream {
         private int i = 0;
         private int length = 0;
 

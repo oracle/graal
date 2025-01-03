@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class VerifyDebugUsageTest {
 
-    private static class InvalidLogUsagePhase extends TestPhase {
+    private static final class InvalidLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -65,7 +65,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidLogAndIndentUsagePhase extends TestPhase {
+    private static final class InvalidLogAndIndentUsagePhase extends TestPhase {
         @Override
         @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
@@ -107,7 +107,7 @@ public class VerifyDebugUsageTest {
         }
     }
 
-    private static class InvalidVerifyUsagePhase extends TestPhase {
+    private static final class InvalidVerifyUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -116,7 +116,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidConcatLogUsagePhase extends TestPhase {
+    private static final class InvalidConcatLogUsagePhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             DebugContext debug = graph.getDebug();
@@ -127,7 +127,7 @@ public class VerifyDebugUsageTest {
 
     }
 
-    private static class InvalidConcatLogAndIndentUsagePhase extends TestPhase {
+    private static final class InvalidConcatLogAndIndentUsagePhase extends TestPhase {
         @Override
         @SuppressWarnings("try")
         protected void run(StructuredGraph graph) {
@@ -218,14 +218,14 @@ public class VerifyDebugUsageTest {
 
     public static Object sideEffect;
 
-    private static class InvalidGraalErrorCtorPhase extends TestPhase {
+    private static final class InvalidGraalErrorCtorPhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             sideEffect = new GraalError("No Error %s", graph.toString());
         }
     }
 
-    private static class ValidGraalErrorCtorPhase extends TestPhase {
+    private static final class ValidGraalErrorCtorPhase extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             sideEffect = new GraalError("Error %s", graph);

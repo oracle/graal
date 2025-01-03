@@ -100,7 +100,7 @@ public class SLInteropObjectTest extends AbstractSLTest {
         Assert.assertEquals(20, ret.asLong());
     }
 
-    private static class TestType implements ProxyInstantiable {
+    private static final class TestType implements ProxyInstantiable {
 
         @Override
         public Object newInstance(Value... arguments) {
@@ -109,7 +109,7 @@ public class SLInteropObjectTest extends AbstractSLTest {
 
     }
 
-    private static class TestObject implements ProxyObject {
+    private static final class TestObject implements ProxyObject {
 
         private long value;
 

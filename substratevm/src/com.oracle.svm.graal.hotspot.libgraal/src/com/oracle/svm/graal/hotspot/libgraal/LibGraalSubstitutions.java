@@ -203,7 +203,7 @@ public class LibGraalSubstitutions {
      * instance at image build-time. This FieldValueTransformer ensures that.
      */
     @Platforms(HOSTED_ONLY.class)
-    private static class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
+    private static final class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             long initialValue;

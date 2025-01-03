@@ -1869,7 +1869,7 @@ public final class TypeCheckBuilder {
         }
     }
 
-    private static class OpenTypeWorldTypeInfo {
+    private static final class OpenTypeWorldTypeInfo {
 
         /**
          * Within {@link com.oracle.svm.core.hub.DynamicHub} typecheck metadata the ids of the

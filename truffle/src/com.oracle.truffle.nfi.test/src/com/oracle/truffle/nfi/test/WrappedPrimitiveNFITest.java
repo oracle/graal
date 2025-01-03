@@ -59,7 +59,7 @@ import org.junit.runners.Parameterized.Parameters;
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public class WrappedPrimitiveNFITest extends NFITest {
 
-    private static class TestObject implements TruffleObject {
+    private static final class TestObject implements TruffleObject {
     }
 
     private static final Object[] ARGUMENTS = {

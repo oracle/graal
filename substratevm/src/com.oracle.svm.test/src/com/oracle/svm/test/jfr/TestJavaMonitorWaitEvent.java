@@ -118,7 +118,7 @@ public class TestJavaMonitorWaitEvent extends JfrRecordingTest {
                         abs(prodCount - consCount) > 1 || abs(consCount - COUNT) > 1);
     }
 
-    private static class Helper {
+    private static final class Helper {
         private int count = 0;
         private final int bufferSize = 1;
 

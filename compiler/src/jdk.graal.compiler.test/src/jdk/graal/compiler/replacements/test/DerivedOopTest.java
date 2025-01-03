@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class DerivedOopTest extends ReplacementsTest implements Snippets {
 
-    private static class Pointers {
+    private static final class Pointers {
         public long basePointer;
         public long internalPointer;
 

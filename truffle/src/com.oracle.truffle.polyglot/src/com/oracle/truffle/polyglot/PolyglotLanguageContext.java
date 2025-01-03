@@ -1094,7 +1094,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return "PolyglotLanguageContext [language=" + language + ", initialized=" + (env != null) + "]";
     }
 
-    private class PolyglotUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+    private final class PolyglotUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
 
         @SuppressWarnings({"unused", "try"})
         @Override

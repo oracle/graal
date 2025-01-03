@@ -46,7 +46,7 @@ public class VisibilityTest {
         return PrivateClass.class;
     }
 
-    private static class PrivateClass {
+    private static final class PrivateClass {
 
     }
 }

@@ -76,7 +76,7 @@ public class StackMoveOptimizationPhase extends PostAllocationOptimizationPhase 
         }
     }
 
-    private static class Closure {
+    private static final class Closure {
         private static final int NONE = -1;
 
         private int begin = NONE;

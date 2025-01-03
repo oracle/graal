@@ -50,7 +50,7 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
         test("test1Snippet");
     }
 
-    private static class UnresolvedException extends RuntimeException {
+    private static final class UnresolvedException extends RuntimeException {
 
         private static final long serialVersionUID = 5215434338750728440L;
 

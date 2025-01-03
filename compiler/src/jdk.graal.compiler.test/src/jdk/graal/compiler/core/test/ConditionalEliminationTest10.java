@@ -47,7 +47,7 @@ public class ConditionalEliminationTest10 extends ConditionalEliminationTestBase
     private static boolean condition1;
     private static boolean condition2;
 
-    private static class TestClass {
+    private static final class TestClass {
         int x;
     }
 

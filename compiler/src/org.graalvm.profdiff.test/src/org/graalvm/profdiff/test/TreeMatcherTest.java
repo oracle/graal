@@ -39,7 +39,7 @@ public class TreeMatcherTest {
      * The {@link OptimizationTreeEditPolicy} discourages relabelling, however, we still want to
      * test that the algorithm can find relabelling.
      */
-    private static class TestOptimizationTreeEditPolicy extends OptimizationTreeEditPolicy {
+    private static final class TestOptimizationTreeEditPolicy extends OptimizationTreeEditPolicy {
         @Override
         public long relabelCost(OptimizationTreeNode node1, OptimizationTreeNode node2) {
             assert node1 != node2;

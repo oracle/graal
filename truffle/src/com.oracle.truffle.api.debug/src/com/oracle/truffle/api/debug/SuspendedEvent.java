@@ -1069,7 +1069,7 @@ public final class SuspendedEvent {
         }
 
         // This implementation prevents from calling size()
-        private class Itr implements Iterator<List<DebugStackTraceElement>> {
+        private final class Itr implements Iterator<List<DebugStackTraceElement>> {
             int cursor = 0;
 
             @Override

@@ -1350,7 +1350,7 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = MapCleaner.class, isFinal = true) //
     static ConcurrentHashMap<Object, Object> replacements;
 
-    private static class MapCleaner implements FieldValueTransformerWithAvailability {
+    private static final class MapCleaner implements FieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isCompilationFinished();
@@ -1582,7 +1582,7 @@ final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
     private long offset;
 
-    private static class OffsetComputer implements FieldValueTransformerWithAvailability {
+    private static final class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -1614,7 +1614,7 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
     @Delete private Class<?> declaringClass;
     @Delete private String name;
 
-    private static class OffsetComputer implements FieldValueTransformerWithAvailability {
+    private static final class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();

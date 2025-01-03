@@ -538,7 +538,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
      * com.oracle.svm.hosted.ImageClassLoader#findSystemElements for some reason.
      */
     @SuppressWarnings("unused")
-    private static class EntryPointHolder {
+    private static final class EntryPointHolder {
         @Uninterruptible(reason = "Dummy symbol to make HotSpot's native method linking to look for symbols in the main executable. Required to run the JDWP server (debugger) on HotSpot")
         @CEntryPoint(name = "JNI_OnLoad_DEFAULT_NAMESPACE", include = ResidentJDWPFeatureEnabled.class)
         @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)

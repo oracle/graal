@@ -256,7 +256,7 @@ public class DebuggerContextsTest extends AbstractDebugTest {
         }
     }
 
-    private static class TestContextsListener implements DebugContextsListener {
+    private static final class TestContextsListener implements DebugContextsListener {
 
         final List<ContextEvent> events = Collections.synchronizedList(new ArrayList<>());
 

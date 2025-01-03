@@ -68,7 +68,7 @@ public class DeltaTreeTest {
         }
     }
 
-    private static class MockInfoNode extends MockTreeNode {
+    private static final class MockInfoNode extends MockTreeNode {
         @Override
         public boolean isInfoNode() {
             return true;

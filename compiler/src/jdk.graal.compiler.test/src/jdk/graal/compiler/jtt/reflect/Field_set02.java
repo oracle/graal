@@ -33,7 +33,7 @@ import org.junit.Test;
  */
 public class Field_set02 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
         public byte byteField;
         public short shortField;
         public char charField;

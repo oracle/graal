@@ -108,7 +108,7 @@ public class OpaqueDirectiveTest extends GraalCompilerTest {
         test("opaqueDoubleSnippet");
     }
 
-    private static class Dummy {
+    private static final class Dummy {
     }
 
     @OpaqueSnippet(expectedReturnNode = ConstantNode.class)

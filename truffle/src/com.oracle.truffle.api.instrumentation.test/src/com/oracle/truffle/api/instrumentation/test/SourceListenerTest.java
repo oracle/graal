@@ -393,7 +393,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         }
     }
 
-    private static class TestLoadSourceExceptionClass extends RuntimeException {
+    private static final class TestLoadSourceExceptionClass extends RuntimeException {
 
         private static final long serialVersionUID = 1L;
 

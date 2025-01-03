@@ -107,7 +107,7 @@ public class TestThreshold extends JfrRecordingTest {
         assertTrue(foundJavaEvent && foundWaitEvent && foundParkEvent && foundSleepEvent);
     }
 
-    private static class Helper {
+    private static final class Helper {
         public synchronized void simpleWait(long millis) throws InterruptedException {
             wait(millis);
         }

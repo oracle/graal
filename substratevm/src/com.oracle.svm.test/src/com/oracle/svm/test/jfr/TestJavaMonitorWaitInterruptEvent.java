@@ -144,7 +144,7 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrRecordingTest {
                         simpleWaitFound && interruptedFound);
     }
 
-    private class Helper {
+    private final class Helper {
         public synchronized void interrupt() throws InterruptedException {
             if (Thread.currentThread().equals(interruptedThread)) {
                 // Ensure T1 enters critical section first

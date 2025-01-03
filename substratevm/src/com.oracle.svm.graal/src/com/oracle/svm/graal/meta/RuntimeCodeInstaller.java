@@ -300,7 +300,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         return patchesHandled;
     }
 
-    private static class RuntimeFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromImage {
+    private static final class RuntimeFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromImage {
         @Override
         protected boolean storeDeoptTargetMethod() {
             return true;

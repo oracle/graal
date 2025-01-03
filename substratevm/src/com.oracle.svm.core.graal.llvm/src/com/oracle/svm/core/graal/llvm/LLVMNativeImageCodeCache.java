@@ -374,7 +374,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         void close();
     }
 
-    private class EnabledStackMapDumper implements StackMapDumper {
+    private final class EnabledStackMapDumper implements StackMapDumper {
         private final FileWriter stackMapDump;
 
         {
@@ -454,7 +454,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         }
     }
 
-    private static class DisabledStackMapDumper implements StackMapDumper {
+    private static final class DisabledStackMapDumper implements StackMapDumper {
         @Override
         public void dumpOffsets(LLVMTextSectionInfo textSectionInfo) {
         }
