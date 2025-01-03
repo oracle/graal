@@ -42,7 +42,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.hotspot.stubs.InvokeJavaMethodStub;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -143,7 +143,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * method references into a symbolic form that can be resolved at graph decode time using
  * {@link SymbolicJVMCIReference}.
  * <p>
- * An instance of this class only exist when {@link GraalServices#isBuildingLibgraal()} is true.
+ * An instance of this class only exist when building libgraal.
  */
 public class SymbolicSnippetEncoder {
 
@@ -546,6 +546,7 @@ public class SymbolicSnippetEncoder {
         lookupSnippetType(NamedLocationIdentity.class);
         lookupSnippetType(SnippetTemplate.EagerSnippetInfo.class);
         lookupSnippetType(ForeignCallStub.class);
+        lookupSnippetType(InvokeJavaMethodStub.class);
 
         // Ensure AbstractForeignCallStub.getGraph is available
         MetaAccessProvider metaAccess = originalReplacements.getProviders().getMetaAccess();

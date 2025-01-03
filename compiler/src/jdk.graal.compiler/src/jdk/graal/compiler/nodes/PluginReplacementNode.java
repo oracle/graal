@@ -35,6 +35,7 @@ import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.nativeimage.FoldNodePlugin;
 
 @NodeInfo(nameTemplate = "PluginReplacement/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class PluginReplacementNode extends FixedWithNextNode implements PluginReplacementInterface {
@@ -56,7 +57,7 @@ public final class PluginReplacementNode extends FixedWithNextNode implements Pl
         return function.replace(b, injection, stamp, args);
     }
 
-    public interface ReplacementFunction {
+    public interface ReplacementFunction extends FoldNodePlugin {
         boolean replace(GraphBuilderContext b, Replacements injection, Stamp stamp, NodeInputList<ValueNode> args);
     }
 

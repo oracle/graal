@@ -164,13 +164,27 @@ suite = {
 
     # ------------- Graal -------------
 
+    # Native Image API extensions for libgraal.
+    "jdk.graal.nativeimage" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:NATIVEIMAGE"
+      ],
+      "checkstyle" : "jdk.graal.compiler",
+      "javaCompliance" : "21+"
+    },
+
     "jdk.graal.compiler" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "GRAAL_NATIVEIMAGE",
+        "sdk:JNIUTILS",
         "sdk:WORD",
         "sdk:COLLECTIONS",
         "sdk:NATIVEIMAGE",
+        "sdk:NATIVEBRIDGE",
         "truffle:TRUFFLE_COMPILER",
       ],
       "requires" : [
@@ -179,6 +193,7 @@ suite = {
       ],
       "requiresConcealed" : {
         "java.base" : [
+          "jdk.internal.module",
           "jdk.internal.misc"
         ],
         "jdk.internal.vm.ci" : [
@@ -209,7 +224,8 @@ suite = {
         "jdk.graal.compiler.truffle.substitutions.GraphDecoderInvocationPluginProvider"
       ],
       "annotationProcessors" : [
-        "GRAAL_PROCESSOR"
+        "GRAAL_PROCESSOR",
+        "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
       ],
       "checkPackagePrefix": "false",
       "checkstyleVersion" : "10.7.0",
@@ -478,7 +494,7 @@ suite = {
       "workingSets" : "Graal",
       "javaCompliance" : "21+",
       "dependencies" : [
-        "jdk.graal.compiler",
+        "jdk.graal.nativeimage",
       ],
       "requiresConcealed" : {
         "java.base" : [
@@ -552,6 +568,32 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_NATIVEIMAGE" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "jdk.graal.nativeimage",
+      ],
+      "distDependencies" : ["sdk:NATIVEIMAGE"],
+      "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "jdk.graal.nativeimage",
+        "requires" : [
+          "transitive org.graalvm.nativeimage",
+        ],
+        "exports" : [
+          "jdk.graal.nativeimage",
+          "jdk.graal.nativeimage.hosted",
+          "jdk.graal.nativeimage.impl to org.graalvm.nativeimage.builder",
+        ],
+        "uses" : [],
+        "opens" : [],
+      },
+      "description" : "Native Image API extensions for libgraal.",
+      "maven": {
+        "tag": ["default", "public"],
+      },
+    },
+
     "GRAAL" : {
       # This distribution defines a module.
       "moduleInfo" : {
@@ -603,9 +645,12 @@ suite = {
         "GRAAL_VERSION",
       ],
       "distDependencies" : [
+        "GRAAL_NATIVEIMAGE",
         "sdk:COLLECTIONS",
         "sdk:WORD",
         "sdk:NATIVEIMAGE",
+        "sdk:NATIVEBRIDGE",
+        "sdk:JNIUTILS",
         "truffle:TRUFFLE_COMPILER",
       ],
       "allowsJavadocWarnings": True,

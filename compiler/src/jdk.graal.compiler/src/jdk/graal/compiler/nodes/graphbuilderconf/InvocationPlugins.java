@@ -66,7 +66,6 @@ import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -977,13 +976,13 @@ public class InvocationPlugins {
     /**
      * The id of the single isolate to emit output for {@link Options#PrintIntrinsics}.
      */
-    private static final GlobalAtomicLong PRINTING_ISOLATE = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong PRINTING_ISOLATE = new GlobalAtomicLong("PRINTING_ISOLATE", 0L);
 
     /**
      * The intrinsic methods (in {@link Options#DisableIntrinsics} format) that have been printed by
      * {@link #maybePrintIntrinsics}.
      */
-    @NativeImageReinitialize private static Set<String> PrintedIntrinsics = new HashSet<>();
+    private static Set<String> PrintedIntrinsics = new HashSet<>();
 
     /**
      * Determines if {@code plugin} is disabled by {@link Options#DisableIntrinsics}.

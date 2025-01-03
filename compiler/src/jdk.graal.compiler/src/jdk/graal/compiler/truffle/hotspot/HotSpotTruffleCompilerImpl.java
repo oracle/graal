@@ -33,9 +33,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Supplier;
 
 import jdk.graal.compiler.core.GraalCompiler;
+import jdk.graal.compiler.hotspot.HotSpotGraalServiceThread;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment.TruffleRuntimeScope;
 import org.graalvm.collections.EconomicMap;
 
@@ -139,6 +141,11 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     @Override
     protected void parseGraalOptions(String[] options, EconomicMap<OptionKey<?>, Object> values) {
         OptionsParser.parseOptions(options, values, OptionsParser.getOptionsLoader());
+    }
+
+    @Override
+    protected ThreadFactory getWatchDogThreadFactory() {
+        return HotSpotGraalServiceThread::new;
     }
 
     public static HotSpotTruffleCompilerImpl create(final TruffleCompilerRuntime runtime, Supplier<TruffleRuntimeScope> openCanCallTruffleRuntimeScope) {

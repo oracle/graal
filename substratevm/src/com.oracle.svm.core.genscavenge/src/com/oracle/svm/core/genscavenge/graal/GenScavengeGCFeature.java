@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import jdk.graal.nativeimage.LibGraalRuntime;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -67,6 +68,7 @@ import com.oracle.svm.core.os.OSCommittedMemoryProvider;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
 
 @AutomaticallyRegisteredFeature
 class GenScavengeGCFeature implements InternalFeature {
@@ -127,6 +129,9 @@ class GenScavengeGCFeature implements InternalFeature {
         if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
             ImageSingletons.add(CommittedMemoryProvider.class, createCommittedMemoryProvider());
         }
+
+        String gcName = Heap.getHeap().getGC().getName();
+        RuntimeSystemProperties.register(LibGraalRuntime.NATIVE_IMAGE_SETTING_KEY_PREFIX + "gc", gcName);
 
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);

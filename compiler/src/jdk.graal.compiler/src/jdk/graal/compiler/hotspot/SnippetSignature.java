@@ -29,7 +29,6 @@ import java.util.EnumMap;
 import java.util.List;
 
 import jdk.graal.compiler.util.SignatureUtil;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -49,7 +48,7 @@ public final class SnippetSignature implements Signature {
     private final String returnType;
     private final String originalString;
 
-    @NativeImageReinitialize private static EnumMap<JavaKind, ResolvedJavaType> primitiveTypes = null;
+    private static EnumMap<JavaKind, ResolvedJavaType> primitiveTypes = null;
 
     static synchronized void initPrimitiveKindCache(MetaAccessProvider metaAccess) {
         if (primitiveTypes == null) {

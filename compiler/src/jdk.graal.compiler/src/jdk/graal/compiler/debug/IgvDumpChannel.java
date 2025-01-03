@@ -43,7 +43,6 @@ import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
 import jdk.graal.compiler.options.OptionValues;
 
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import org.graalvm.nativeimage.ImageInfo;
 
 final class IgvDumpChannel implements WritableByteChannel {
@@ -93,7 +92,7 @@ final class IgvDumpChannel implements WritableByteChannel {
         }
     }
 
-    @NativeImageReinitialize private static boolean networkDumpingUnsupportedWarned;
+    private static boolean networkDumpingUnsupportedWarned;
 
     WritableByteChannel channel() throws IOException {
         if (closed) {
@@ -147,7 +146,7 @@ final class IgvDumpChannel implements WritableByteChannel {
         }
     }
 
-    @NativeImageReinitialize private static String lastTargetAnnouncement;
+    private static String lastTargetAnnouncement;
 
     private static void maybeAnnounceTarget(String targetAnnouncement) {
         if (!targetAnnouncement.equals(lastTargetAnnouncement)) {

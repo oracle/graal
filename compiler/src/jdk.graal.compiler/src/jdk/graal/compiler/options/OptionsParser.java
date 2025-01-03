@@ -358,6 +358,9 @@ public class OptionsParser {
 
     static boolean isEnterpriseOption(OptionDescriptor desc) {
         if (inImageRuntimeCode()) {
+            if (libgraalOptions == null) {
+                return false;
+            }
             return Objects.requireNonNull(libgraalOptions.enterpriseOptions, "missing options").contains(desc.getName());
         }
         Class<?> declaringClass = desc.getDeclaringClass();
