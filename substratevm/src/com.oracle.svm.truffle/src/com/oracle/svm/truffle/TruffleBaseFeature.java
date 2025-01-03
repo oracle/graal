@@ -397,7 +397,8 @@ public final class TruffleBaseFeature implements InternalFeature {
     }
 
     private static RuntimeException throwVersionError(String errorFormat, Object... args) {
-        StringBuilder errorMessage = new StringBuilder("Polyglot version compatibility check failed.\n");
+        StringBuilder errorMessage = new StringBuilder("Polyglot version compatibility check failed.");
+        errorMessage.append(System.lineSeparator());
         errorMessage.append(String.format(errorFormat, args));
         errorMessage.append("""
                         To disable this version check the '-Dpolyglotimpl.DisableVersionChecks=true' system property can be used.

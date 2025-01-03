@@ -735,7 +735,7 @@ public final class CompilationResultFrameTree {
             if (node.getStartPos() > node.getEndPos()) {
                 printer.accept("Error: Node startPos > endPos: ");
                 printer.accept(node.toString());
-                printer.accept("\n");
+                printer.accept(System.lineSeparator());
                 issues += 1;
             }
             if (node.nextSibling != null) {
@@ -744,7 +744,7 @@ public final class CompilationResultFrameTree {
                     printer.accept(node.toString());
                     printer.accept(" with ");
                     printer.accept(node.nextSibling.toString());
-                    printer.accept("\n");
+                    printer.accept(System.lineSeparator());
                     issues += 1;
                 }
             }
@@ -754,9 +754,9 @@ public final class CompilationResultFrameTree {
 
     public static void dump(FrameNode node, Consumer<String> printer, boolean onlyCallTree, boolean showInfopoints, int maxDepth) {
         if (node != null) {
-            printer.accept("\n");
+            printer.accept(System.lineSeparator());
             node.visit(new FrameTreeDumper(printer, onlyCallTree, showInfopoints, maxDepth), 0);
-            printer.accept("\n");
+            printer.accept(System.lineSeparator());
         }
     }
 
@@ -791,7 +791,7 @@ public final class CompilationResultFrameTree {
             indent(level);
             printer.accept(node.toString());
             if (showSourcePos) {
-                printer.accept("\n");
+                printer.accept(System.lineSeparator());
                 indent(level);
                 printer.accept(" sourcePos: " + node.sourcePos.toString());
             } else {
@@ -802,7 +802,7 @@ public final class CompilationResultFrameTree {
                 printer.accept(" locals: ");
                 printer.accept(node.getLocalsStr());
             }
-            printer.accept("\n");
+            printer.accept(System.lineSeparator());
             node.visitChildren(this, level + 1);
         }
     }

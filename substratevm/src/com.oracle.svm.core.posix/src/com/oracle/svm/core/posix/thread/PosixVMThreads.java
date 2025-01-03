@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -50,6 +49,8 @@ import com.oracle.svm.core.posix.linux.LinuxLibCHelper;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
@@ -118,7 +119,7 @@ public final class PosixVMThreads extends VMThreads {
     private static native int fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
 
     private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");
-    private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)\n");
+    private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)" + System.lineSeparator());
 
     @Uninterruptible(reason = "Thread state not set up.")
     @Override
