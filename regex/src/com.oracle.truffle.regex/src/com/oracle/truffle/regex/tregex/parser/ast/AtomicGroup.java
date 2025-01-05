@@ -83,14 +83,14 @@ public final class AtomicGroup extends RegexASTSubtreeRootNode {
      * Gets the (inclusive) lower bound of the range of capture groups contained within this group.
      */
     public int getEnclosedCaptureGroupsLow() {
-        return getGroup().getEnclosedCaptureGroupsLow();
+        return getGroup().getEnclosedCaptureGroupsLo();
     }
 
     /**
      * Gets the (exclusive) upper bound of the range of capture groups contained within this group.
      */
     public int getEnclosedCaptureGroupsHigh() {
-        return getGroup().getEnclosedCaptureGroupsHigh();
+        return getGroup().getEnclosedCaptureGroupsHi();
     }
 
     @Override

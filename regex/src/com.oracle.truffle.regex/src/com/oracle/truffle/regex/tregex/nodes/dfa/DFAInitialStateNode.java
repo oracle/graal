@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,11 +59,13 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
 
     @CompilationFinal(dimensions = 1) private final short[] cgLastTransition;
     private final boolean hasUnanchoredEntry;
+    private final DFASimpleCG simpleCG;
 
-    public DFAInitialStateNode(short[] successors, short[] cgLastTransition) {
+    public DFAInitialStateNode(short[] successors, short[] cgLastTransition, DFASimpleCG simpleCG) {
         super((short) 0, successors);
         this.cgLastTransition = cgLastTransition;
         this.hasUnanchoredEntry = initUnanchoredEntry(successors);
+        this.simpleCG = simpleCG;
     }
 
     private static boolean initUnanchoredEntry(short[] successors) {
@@ -76,7 +78,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     }
 
     private DFAInitialStateNode(DFAInitialStateNode copy) {
-        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.cgLastTransition);
+        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.cgLastTransition, copy.simpleCG);
     }
 
     public short[] getCgLastTransition() {
@@ -89,6 +91,10 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
 
     public boolean hasUnAnchoredEntry() {
         return hasUnanchoredEntry;
+    }
+
+    public DFASimpleCG getSimpleCG() {
+        return simpleCG;
     }
 
     /**

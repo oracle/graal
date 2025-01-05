@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,28 +83,29 @@ public class InputStringGeneratorTests extends RegexTestBase {
         testInputStringGenerator(
                         "([-!#-''*+/-9=?A-Z^-~]+(\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"([ ]!#-[^-~ ]|(\\\\[-~ ]))+\")@[0-9A-Za-z]([0-9A-Za-z-]*[0-9A-Za-z])?(\\.[0-9A-Za-z]([0-9A-Za-z-]*[0-9A-Za-z])?)+");
         testInputStringGenerator("(\\S+) (\\S+) (\\S+) \\[([A-Za-z0-9_:/]+\\s[-+]\\d{4})\\] \"(\\S+)\\s?(\\S+)?\\s?(\\S+)?\" (\\d{3}|-) (\\d+|-)\\s?\"?([^\"]*)\"?\\s?\"?([^\"]*)?\"?");
+        testInputStringGenerator("(?<=(a))\\1");
     }
 
-    private TruffleString generateInputString(String pattern, String flags, String options, Encodings.Encoding encoding) {
+    private TruffleString generateInputString(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed) {
         String sourceString = createSourceString(pattern, flags, options, encoding);
         Source source = Source.newBuilder("regex", sourceString, "regexSource").build();
         RegexSource regexSource = RegexLanguage.createRegexSource(source);
         RegexAST ast = regexSource.getOptions().getFlavor().createParser(language, regexSource, new CompilationBuffer(regexSource.getEncoding())).parse();
-        return InputStringGenerator.generate(ast, rng.nextLong());
+        return InputStringGenerator.generate(ast, rngSeed);
     }
 
     void testInputStringGenerator(String pattern) {
-        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding());
+        testInputStringGenerator(pattern, "", getEngineOptions(), getTRegexEncoding(), rng.nextLong());
     }
 
-    void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding) {
+    void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed) {
         Value compiledRegex = compileRegex(pattern, flags);
-        testInputStringGenerator(pattern, flags, options, encoding, compiledRegex);
+        testInputStringGenerator(pattern, flags, options, encoding, rngSeed, compiledRegex);
     }
 
-    private void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding, Value compiledRegex) {
+    private void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed, Value compiledRegex) {
         for (int i = 0; i < 20; i++) {
-            TruffleString input = generateInputString(pattern, flags, options, encoding);
+            TruffleString input = generateInputString(pattern, flags, options, encoding, rngSeed);
             Assert.assertNotNull(input);
             Value result = execRegex(compiledRegex, encoding, input, 0);
             Assert.assertTrue(result.getMember("isMatch").asBoolean());
