@@ -49,4 +49,12 @@ public final class AbstractState<Domain extends AbstractDomain<Domain>> {
     public void resetCount() {
         visitedCount = 0;
     }
+
+    @Override
+    public String toString() {
+        return "AbstractState{" +
+                "postCondition=" + postCondition +
+                ", preCondition=" + preCondition +
+                '}';
+    }
 }
