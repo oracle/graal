@@ -1,7 +1,9 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.state;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ReturnNode;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -63,10 +65,7 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
     }
 
     public boolean isVisited(Node node) {
-        System.out.println("Checking if node is visited: " + node);
-        var a = stateMap.containsKey(node);
-        System.out.println(a);
-        return a;
+        return stateMap.containsKey(node);
     }
 
     public String toString() {
@@ -80,5 +79,18 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
 
     public void clear() {
         stateMap.clear();
+    }
+
+    /**
+     * Get the abstract context of the {@link ReturnNode}
+     * @return the abstract context of the {@link ReturnNode}
+     */
+    public AbstractState<Domain> getReturnState() {
+        for (Node node : stateMap.keySet()) {
+            if (node instanceof ReturnNode) {
+                return stateMap.get(node);
+            }
+        }
+        throw AnalysisError.shouldNotReachHere("ReturnNode not found in the state map");
     }
 }
