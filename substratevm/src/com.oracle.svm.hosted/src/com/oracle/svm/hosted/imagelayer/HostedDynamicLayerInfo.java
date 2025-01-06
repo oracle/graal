@@ -186,7 +186,8 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         /*
          * First write out next layer number.
          */
-        writer.writeInt("nextLayerNumber", nextLayerNumber);
+        var snapshotBuilder = ((SVMImageLayerWriter.ImageSingletonWriterImpl) writer).getSnapshotBuilder();
+        snapshotBuilder.setNextLayerNumber(nextLayerNumber);
 
         /*
          * Next write the start of the code section
@@ -228,7 +229,8 @@ public class HostedDynamicLayerInfo extends DynamicImageLayerInfo implements Lay
         assert loader.readIntList("offsets").size() == loader.readIntList("methodOffsetIDs").size() : Assertions.errorMessage("Offsets and methodIDs are incompatible", loader.readIntList("offsets"),
                         loader.readIntList("methodIDs"));
 
-        int layerNumber = loader.readInt("nextLayerNumber");
+        var snapshotReader = ((SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader).getSnapshotReader();
+        int layerNumber = snapshotReader.getNextLayerNumber();
 
         String codeSectionStartSymbol = loader.readString("codeSectionStartSymbol");
 
