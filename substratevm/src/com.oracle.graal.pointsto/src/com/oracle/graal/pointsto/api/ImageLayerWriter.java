@@ -22,25 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.heap;
+package com.oracle.graal.pointsto.api;
 
-import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisMethod;
-import com.oracle.graal.pointsto.heap.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
-public class ImageLayerLoaderHelper {
-    protected ImageLayerLoader imageLayerLoader;
-
-    public ImageLayerLoaderHelper(ImageLayerLoader imageLayerLoader) {
-        this.imageLayerLoader = imageLayerLoader;
-    }
+public class ImageLayerWriter {
 
     @SuppressWarnings("unused")
-    protected boolean loadType(PersistedAnalysisType.Reader typeData, int tid) {
-        return false;
-    }
-
-    @SuppressWarnings("unused")
-    protected boolean loadMethod(PersistedAnalysisMethod.Reader methodData, int mid) {
-        return false;
+    public void onTrackedAcrossLayer(AnalysisMethod method, Object reason) {
+        throw AnalysisError.shouldNotReachHere("This method should not be called");
     }
 }

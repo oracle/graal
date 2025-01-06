@@ -28,7 +28,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 
@@ -52,11 +51,11 @@ public class LoadLayerArchiveSupport extends LayerArchiveSupport {
     }
 
     public Path getSnapshotPath() {
-        return expandedInputLayerDir.resolve(ImageLayerSnapshotUtil.snapshotFileName(layerProperties.layerName()));
+        return expandedInputLayerDir.resolve(SVMImageLayerSnapshotUtil.snapshotFileName(layerProperties.layerName()));
     }
 
     public Path getSnapshotGraphsPath() {
-        return expandedInputLayerDir.resolve(ImageLayerSnapshotUtil.snapshotGraphsFileName(layerProperties.layerName()));
+        return expandedInputLayerDir.resolve(SVMImageLayerSnapshotUtil.snapshotGraphsFileName(layerProperties.layerName()));
     }
 
     private static Path validateLayerFile(Path layerFile) {

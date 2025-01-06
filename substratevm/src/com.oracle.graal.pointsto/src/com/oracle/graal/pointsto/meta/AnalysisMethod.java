@@ -50,10 +50,10 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
