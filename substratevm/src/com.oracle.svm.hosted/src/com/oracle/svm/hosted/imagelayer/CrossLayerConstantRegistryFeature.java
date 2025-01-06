@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -67,7 +66,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     ImageLayerIdTrackingSingleton tracker;
     boolean candidateRegistrySealed = false;
     boolean patchingSealed = false;
-    ImageLayerLoader loader;
+    SVMImageLayerLoader loader;
 
     Map<String, Object> constantCandidates;
     Map<String, Object> requiredConstants;
@@ -112,7 +111,7 @@ public class CrossLayerConstantRegistryFeature implements InternalFeature, Featu
     @Override
     public void duringSetup(DuringSetupAccess access) {
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
-        loader = config.getUniverse().getImageLayerLoader();
+        loader = HostedImageLayerBuildingSupport.singleton().getLoader();
         LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
         var registry = CrossLayerConstantRegistry.singletonOrNull();
         config.registerObjectToConstantReplacer(obj -> replacePriorMarkersWithConstant(registry, obj));

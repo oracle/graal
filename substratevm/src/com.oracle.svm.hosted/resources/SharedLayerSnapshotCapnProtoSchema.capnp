@@ -1,6 +1,6 @@
 @0x9eb32e19f86ee174;
 using Java = import "/capnp/java.capnp";
-$Java.package("com.oracle.graal.pointsto.heap");
+$Java.package("com.oracle.svm.hosted.imagelayer");
 $Java.outerClassname("SharedLayerSnapshotCapnProtoSchemaHolder");
 
 using TypeId = Int32;
