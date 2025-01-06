@@ -25,7 +25,6 @@
 
 package com.oracle.svm.core.sampler;
 
-import com.oracle.svm.core.VMInspectionOptions;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -50,6 +49,8 @@ import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.VMInspectionOptions;
+
 
 /**
  * A concrete implementation of {@link SamplerStackTraceSerializer} designed for JFR stack trace
