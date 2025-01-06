@@ -34,7 +34,7 @@ package com.oracle.svm.hosted.imagelayer;
 @SuppressWarnings("all")
 public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   public static class PersistedAnalysisType {
-    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)13);
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)14);
     public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -307,13 +307,32 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setBooleanField(104, value);
       }
 
+      public final boolean hasSubTypes() {
+        return !_pointerFieldIsNull(11);
+      }
+      public final org.capnproto.PrimitiveList.Int.Builder getSubTypes() {
+        return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 11, null, 0);
+      }
+      public final void setSubTypes(org.capnproto.PrimitiveList.Int.Reader value) {
+        _setPointerField(org.capnproto.PrimitiveList.Int.factory, 11, value);
+      }
+      public final org.capnproto.PrimitiveList.Int.Builder initSubTypes(int size) {
+        return _initPointerField(org.capnproto.PrimitiveList.Int.factory, 11, size);
+      }
+      public final boolean getIsAnySubtypeInstantiated() {
+        return _getBooleanField(105);
+      }
+      public final void setIsAnySubtypeInstantiated(boolean value) {
+        _setBooleanField(105, value);
+      }
+
       public final WrappedType.Builder getWrappedType() {
         return new PersistedAnalysisType.WrappedType.Builder(segment, data, pointers, dataSize, pointerCount);
       }
       public final WrappedType.Builder initWrappedType() {
         _setShortField(7,(short)0);
-        _clearPointerField(11);
         _clearPointerField(12);
+        _clearPointerField(13);
   return new PersistedAnalysisType.WrappedType.Builder(segment, data, pointers, dataSize, pointerCount);
       }
 
@@ -461,6 +480,17 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getBooleanField(104);
       }
 
+      public final boolean hasSubTypes() {
+        return !_pointerFieldIsNull(11);
+      }
+      public final org.capnproto.PrimitiveList.Int.Reader getSubTypes() {
+        return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 11, null, 0);
+      }
+
+      public final boolean getIsAnySubtypeInstantiated() {
+        return _getBooleanField(105);
+      }
+
       public WrappedType.Reader getWrappedType() {
         return new PersistedAnalysisType.WrappedType.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
       }
@@ -468,7 +498,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
     }
 
     public static class WrappedType {
-      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)13);
+      public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)14);
       public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
         public Factory() {
         }
@@ -524,8 +554,8 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         }
         public final SerializationGenerated.Builder initSerializationGenerated() {
           _setShortField(7, (short)PersistedAnalysisType.WrappedType.Which.SERIALIZATION_GENERATED.ordinal());
-          _clearPointerField(11);
           _clearPointerField(12);
+          _clearPointerField(13);
   return new PersistedAnalysisType.WrappedType.SerializationGenerated.Builder(segment, data, pointers, dataSize, pointerCount);
         }
 
@@ -537,7 +567,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         }
         public final Lambda.Builder initLambda() {
           _setShortField(7, (short)PersistedAnalysisType.WrappedType.Which.LAMBDA.ordinal());
-          _clearPointerField(11);
+          _clearPointerField(12);
   return new PersistedAnalysisType.WrappedType.Lambda.Builder(segment, data, pointers, dataSize, pointerCount);
         }
 
@@ -611,7 +641,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _NOT_IN_SCHEMA,
       }
       public static class SerializationGenerated {
-        public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)13);
+        public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)14);
         public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -639,34 +669,34 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
           }
           public final boolean hasRawDeclaringClass() {
-            return !_pointerFieldIsNull(11);
-          }
-          public final org.capnproto.Text.Builder getRawDeclaringClass() {
-            return _getPointerField(org.capnproto.Text.factory, 11, null, 0, 0);
-          }
-          public final void setRawDeclaringClass(org.capnproto.Text.Reader value) {
-            _setPointerField(org.capnproto.Text.factory, 11, value);
-          }
-          public final void setRawDeclaringClass(String value) {
-            _setPointerField(org.capnproto.Text.factory, 11, new org.capnproto.Text.Reader(value));
-          }
-          public final org.capnproto.Text.Builder initRawDeclaringClass(int size) {
-            return _initPointerField(org.capnproto.Text.factory, 11, size);
-          }
-          public final boolean hasRawTargetConstructor() {
             return !_pointerFieldIsNull(12);
           }
-          public final org.capnproto.Text.Builder getRawTargetConstructor() {
+          public final org.capnproto.Text.Builder getRawDeclaringClass() {
             return _getPointerField(org.capnproto.Text.factory, 12, null, 0, 0);
           }
-          public final void setRawTargetConstructor(org.capnproto.Text.Reader value) {
+          public final void setRawDeclaringClass(org.capnproto.Text.Reader value) {
             _setPointerField(org.capnproto.Text.factory, 12, value);
           }
-          public final void setRawTargetConstructor(String value) {
+          public final void setRawDeclaringClass(String value) {
             _setPointerField(org.capnproto.Text.factory, 12, new org.capnproto.Text.Reader(value));
           }
-          public final org.capnproto.Text.Builder initRawTargetConstructor(int size) {
+          public final org.capnproto.Text.Builder initRawDeclaringClass(int size) {
             return _initPointerField(org.capnproto.Text.factory, 12, size);
+          }
+          public final boolean hasRawTargetConstructor() {
+            return !_pointerFieldIsNull(13);
+          }
+          public final org.capnproto.Text.Builder getRawTargetConstructor() {
+            return _getPointerField(org.capnproto.Text.factory, 13, null, 0, 0);
+          }
+          public final void setRawTargetConstructor(org.capnproto.Text.Reader value) {
+            _setPointerField(org.capnproto.Text.factory, 13, value);
+          }
+          public final void setRawTargetConstructor(String value) {
+            _setPointerField(org.capnproto.Text.factory, 13, new org.capnproto.Text.Reader(value));
+          }
+          public final org.capnproto.Text.Builder initRawTargetConstructor(int size) {
+            return _initPointerField(org.capnproto.Text.factory, 13, size);
           }
         }
 
@@ -676,17 +706,17 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public boolean hasRawDeclaringClass() {
-            return !_pointerFieldIsNull(11);
+            return !_pointerFieldIsNull(12);
           }
           public org.capnproto.Text.Reader getRawDeclaringClass() {
-            return _getPointerField(org.capnproto.Text.factory, 11, null, 0, 0);
+            return _getPointerField(org.capnproto.Text.factory, 12, null, 0, 0);
           }
 
           public boolean hasRawTargetConstructor() {
-            return !_pointerFieldIsNull(12);
+            return !_pointerFieldIsNull(13);
           }
           public org.capnproto.Text.Reader getRawTargetConstructor() {
-            return _getPointerField(org.capnproto.Text.factory, 12, null, 0, 0);
+            return _getPointerField(org.capnproto.Text.factory, 13, null, 0, 0);
           }
 
         }
@@ -695,7 +725,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
       public static class Lambda {
-        public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)13);
+        public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)4,(short)14);
         public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
           public Factory() {
           }
@@ -723,19 +753,19 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
           }
           public final boolean hasCapturingClass() {
-            return !_pointerFieldIsNull(11);
+            return !_pointerFieldIsNull(12);
           }
           public final org.capnproto.Text.Builder getCapturingClass() {
-            return _getPointerField(org.capnproto.Text.factory, 11, null, 0, 0);
+            return _getPointerField(org.capnproto.Text.factory, 12, null, 0, 0);
           }
           public final void setCapturingClass(org.capnproto.Text.Reader value) {
-            _setPointerField(org.capnproto.Text.factory, 11, value);
+            _setPointerField(org.capnproto.Text.factory, 12, value);
           }
           public final void setCapturingClass(String value) {
-            _setPointerField(org.capnproto.Text.factory, 11, new org.capnproto.Text.Reader(value));
+            _setPointerField(org.capnproto.Text.factory, 12, new org.capnproto.Text.Reader(value));
           }
           public final org.capnproto.Text.Builder initCapturingClass(int size) {
-            return _initPointerField(org.capnproto.Text.factory, 11, size);
+            return _initPointerField(org.capnproto.Text.factory, 12, size);
           }
         }
 
@@ -745,10 +775,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           }
 
           public boolean hasCapturingClass() {
-            return !_pointerFieldIsNull(11);
+            return !_pointerFieldIsNull(12);
           }
           public org.capnproto.Text.Reader getCapturingClass() {
-            return _getPointerField(org.capnproto.Text.factory, 11, null, 0, 0);
+            return _getPointerField(org.capnproto.Text.factory, 12, null, 0, 0);
           }
 
         }

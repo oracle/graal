@@ -85,6 +85,7 @@ import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
@@ -164,7 +165,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final Map<Integer, BaseLayerMethod> baseLayerMethods = new ConcurrentHashMap<>();
     private final Map<Integer, BaseLayerField> baseLayerFields = new ConcurrentHashMap<>();
 
-    protected final Set<AnalysisFuture<Void>> heapScannerTasks = ConcurrentHashMap.newKeySet();
+    protected final Set<DebugContextRunnable> futureBigbangTasks = ConcurrentHashMap.newKeySet();
     protected final Map<Integer, Integer> typeToConstant = new ConcurrentHashMap<>();
     protected final Map<String, Integer> stringToConstant = new ConcurrentHashMap<>();
     protected final Map<Enum<?>, Integer> enumToConstant = new ConcurrentHashMap<>();
@@ -609,17 +610,28 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return;
         }
         PersistedAnalysisType.Reader td = findType(id);
-        registerFlag(td.getIsInstantiated(), () -> type.registerAsInstantiated(PERSISTED));
-        registerFlag(td.getIsUnsafeAllocated(), () -> type.registerAsUnsafeAllocated(PERSISTED));
-        registerFlag(td.getIsReachable(), () -> type.registerAsReachable(PERSISTED));
+        registerFlag(td.getIsInstantiated(), debug -> type.registerAsInstantiated(PERSISTED));
+        registerFlag(td.getIsUnsafeAllocated(), debug -> type.registerAsUnsafeAllocated(PERSISTED));
+        registerFlag(td.getIsReachable(), debug -> type.registerAsReachable(PERSISTED));
+
+        if (!td.getIsInstantiated() && td.getIsAnySubtypeInstantiated()) {
+            var subTypesReader = td.getSubTypes();
+            for (int i = 0; i < subTypesReader.size(); ++i) {
+                int tid = subTypesReader.get(i);
+                var subTypeReader = findType(tid);
+                if (subTypeReader.getIsInstantiated()) {
+                    registerFlag(true, debug -> getAnalysisTypeForBaseLayerId(subTypeReader.getId()));
+                }
+            }
+        }
     }
 
-    private void registerFlag(boolean flag, Runnable runnable) {
+    private void registerFlag(boolean flag, DebugContextRunnable task) {
         if (flag) {
             if (universe.getBigbang() != null) {
-                universe.getBigbang().postTask(debug -> runnable.run());
+                universe.getBigbang().postTask(task);
             } else {
-                heapScannerTasks.add(new AnalysisFuture<>(runnable));
+                futureBigbangTasks.add(task);
             }
         }
     }
@@ -806,11 +818,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         methods.putIfAbsent(analysisMethod.getId(), analysisMethod);
 
         PersistedAnalysisMethod.Reader md = getMethodData(analysisMethod);
-        registerFlag(md.getIsVirtualRootMethod(), () -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
-        registerFlag(md.getIsDirectRootMethod(), () -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
-        registerFlag(md.getIsInvoked(), () -> analysisMethod.registerAsInvoked(PERSISTED));
-        registerFlag(md.getIsImplementationInvoked(), () -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
-        registerFlag(md.getIsIntrinsicMethod(), () -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
+        registerFlag(md.getIsVirtualRootMethod(), debug -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
+        registerFlag(md.getIsDirectRootMethod(), debug -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
+        registerFlag(md.getIsInvoked(), debug -> analysisMethod.registerAsInvoked(PERSISTED));
+        registerFlag(md.getIsImplementationInvoked(), debug -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
+        registerFlag(md.getIsIntrinsicMethod(), debug -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
     }
 
     private PersistedAnalysisMethod.Reader getMethodData(AnalysisMethod analysisMethod) {
@@ -1063,10 +1075,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (!analysisField.isStatic() && (isAccessed || isRead)) {
             analysisField.getDeclaringClass().getInstanceFields(true);
         }
-        registerFlag(isAccessed, () -> analysisField.registerAsAccessed(PERSISTED));
-        registerFlag(isRead, () -> analysisField.registerAsRead(PERSISTED));
-        registerFlag(fieldData.getIsWritten(), () -> analysisField.registerAsWritten(PERSISTED));
-        registerFlag(fieldData.getIsFolded(), () -> analysisField.registerAsFolded(PERSISTED));
+        registerFlag(isAccessed, debug -> analysisField.registerAsAccessed(PERSISTED));
+        registerFlag(isRead, debug -> analysisField.registerAsRead(PERSISTED));
+        registerFlag(fieldData.getIsWritten(), debug -> analysisField.registerAsWritten(PERSISTED));
+        registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
     }
 
     private PersistedAnalysisField.Reader getFieldData(AnalysisField analysisField) {
@@ -1094,10 +1106,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return null;
     }
 
-    public void executeHeapScannerTasks() {
-        guarantee(universe.getHeapScanner() != null, "Those tasks should only be executed when the bigbang is not null.");
-        for (AnalysisFuture<Void> task : heapScannerTasks) {
-            task.ensureDone();
+    public void postFutureBigbangTasks() {
+        BigBang bigbang = universe.getBigbang();
+        guarantee(bigbang != null, "Those tasks should only be executed when the bigbang is not null.");
+        for (DebugContextRunnable task : futureBigbangTasks) {
+            bigbang.postTask(task);
         }
     }
 

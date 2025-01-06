@@ -1025,7 +1025,7 @@ public class NativeImageGenerator {
                 }
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 if (imageLayerLoader != null) {
-                    imageLayerLoader.executeHeapScannerTasks();
+                    imageLayerLoader.postFutureBigbangTasks();
                 }
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
                 aUniverse.setHeapVerifier(heapVerifier);

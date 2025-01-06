@@ -63,6 +63,7 @@ import java.util.function.BiConsumer;
 import java.util.function.IntFunction;
 import java.util.function.ObjIntConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -93,6 +94,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapObjectArray;
 import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.heap.ImageHeapRelocatableConstant;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -450,6 +452,15 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setIsReachable(type.isReachable());
 
         delegatePersistType(type, builder);
+
+        Set<AnalysisType> subTypes = type.getSubTypes().stream().filter(AnalysisElement::isTrackedAcrossLayers).collect(Collectors.toSet());
+        var subTypesBuilder = builder.initSubTypes(subTypes.size());
+        int i = 0;
+        for (AnalysisType subType : subTypes) {
+            subTypesBuilder.set(i, subType.getId());
+            i++;
+        }
+        builder.setIsAnySubtypeInstantiated(type.isAnySubtypeInstantiated());
 
         afterTypeAdded(type);
     }
