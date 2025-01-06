@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.sampler;
 
+import com.oracle.svm.core.VMInspectionOptions;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -170,7 +171,7 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
         FRAME_INFO_CURSOR.initialize(codeInfo, ip, false);
         while (FRAME_INFO_CURSOR.advance()) {
             FrameInfoQueryResult frame = FRAME_INFO_CURSOR.get();
-            if (SubstrateJVM.getStackTraceRepo().getTrimInternalStackTraces() &&
+            if (VMInspectionOptions.JfrTrimInternalStackTraces.getValue() &&
                             UninterruptibleUtils.String.startsWith(frame.getSourceClassName(), SUBSTRATEVM_PREFIX)) {
                 continue;
             }

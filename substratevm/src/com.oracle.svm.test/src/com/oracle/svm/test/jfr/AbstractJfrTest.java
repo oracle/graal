@@ -44,7 +44,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -64,11 +63,6 @@ public abstract class AbstractJfrTest {
     @BeforeClass
     public static void checkForJFR() {
         assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || HasJfrSupport.get());
-    }
-
-    @Before
-    public void disableTrimStacktraces() {
-        SubstrateJVM.getStackTraceRepo().setTrimInternalStackTraces(false);
     }
 
     @After

@@ -71,7 +71,6 @@ public class JfrStackTraceRepository implements JfrRepository {
     private final JfrStackTraceEpochData epochData1;
 
     private int stackTraceDepth;
-    private boolean trimInternalStackTraces;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrStackTraceRepository() {
@@ -88,15 +87,6 @@ public class JfrStackTraceRepository implements JfrRepository {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getStackTraceDepth() {
         return stackTraceDepth;
-    }
-
-    public void setTrimInternalStackTraces(boolean value) {
-        trimInternalStackTraces = value;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean getTrimInternalStackTraces() {
-        return trimInternalStackTraces;
     }
 
     public void teardown() {
