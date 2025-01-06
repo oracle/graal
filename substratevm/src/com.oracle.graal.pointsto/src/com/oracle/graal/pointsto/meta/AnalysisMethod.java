@@ -50,6 +50,7 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.api.ImageLayerLoader;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -112,8 +113,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> allImplementationsUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisMethod.class, Object.class, "allImplementations");
 
-    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisMethod.class, Object.class, "trackAcrossLayers");
+    private static final AtomicReferenceFieldUpdater<AnalysisMethod, Boolean> reachableInCurrentLayerUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisMethod.class, Boolean.class, "reachableInCurrentLayer");
 
     public record Signature(String name, AnalysisType[] parameterTypes) {
     }
@@ -169,6 +170,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @SuppressWarnings("unused") private volatile Object implementationInvokedNotifications;
     @SuppressWarnings("unused") private volatile Object isIntrinsicMethod;
     @SuppressWarnings("unused") private volatile Object isInlined;
+    @SuppressWarnings("unused") private volatile Boolean reachableInCurrentLayer;
+    private final boolean enableReachableInCurrentLayer;
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
@@ -185,12 +188,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @SuppressWarnings("unused") private volatile Object allImplementations;
 
     /**
-     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
-     */
-    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
-    private final boolean enableTrackAcrossLayers;
-
-    /**
      * Indicates that this method has opaque return. This is necessary when there are control flows
      * present which cannot be tracked by analysis, which happens for continuation support.
      *
@@ -201,6 +198,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @SuppressWarnings({"this-escape", "unchecked"})
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
+        super(universe.hostVM.enableTrackAcrossLayers());
         this.wrapped = wrapped;
 
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
@@ -275,11 +273,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
 
-        this.enableTrackAcrossLayers = universe.hostVM.enableTrackAcrossLayers();
+        this.enableReachableInCurrentLayer = universe.hostVM.enableReachableInCurrentLayer();
     }
 
     @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
+        super(original.enableTrackAcrossLayers);
         wrapped = original.wrapped;
         id = original.id;
         isInBaseLayer = original.isInBaseLayer;
@@ -304,7 +303,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             startTrackInvocations();
         }
 
-        this.enableTrackAcrossLayers = original.enableTrackAcrossLayers;
+        this.enableReachableInCurrentLayer = original.enableReachableInCurrentLayer;
     }
 
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
@@ -470,6 +469,21 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return analyzedInPriorLayer;
     }
 
+    public boolean reachableInCurrentLayer() {
+        return enableReachableInCurrentLayer && reachableInCurrentLayer != null && reachableInCurrentLayer;
+    }
+
+    public void setReachableInCurrentLayer() {
+        if (enableReachableInCurrentLayer && !reachableInCurrentLayer()) {
+            AtomicUtils.atomicSetAndRun(this, true, reachableInCurrentLayerUpdater, () -> {
+                ImageLayerLoader imageLayerLoader = getUniverse().getImageLayerLoader();
+                if (imageLayerLoader != null) {
+                    imageLayerLoader.loadPriorStrengthenedGraphAnalysisElements(this);
+                }
+            });
+        }
+    }
+
     /**
      * Registers this method as intrinsified to Graal nodes via a {@link InvocationPlugin graph
      * builder plugin}. Such a method is treated similar to an invoked method. For example, method
@@ -492,6 +506,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public boolean registerAsInvoked(Object reason) {
         assert isValidReason(reason) : "Registering a method as invoked needs to provide a valid reason, found: " + reason;
+        registerAsTrackedAcrossLayers(reason);
         return AtomicUtils.atomicSet(this, reason, isInvokedUpdater);
     }
 
@@ -650,11 +665,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     @Override
-    public boolean isTrackedAcrossLayers() {
-        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
-    }
-
-    @Override
     public boolean isTriggered() {
         if (isReachable()) {
             return true;
@@ -669,10 +679,19 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public void onReachable(Object reason) {
-        if (enableTrackAcrossLayers) {
-            AtomicUtils.atomicSet(this, reason, trackAcrossLayersUpdater);
-        }
+        registerAsTrackedAcrossLayers(reason);
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
+    }
+
+    @Override
+    protected void onTrackedAcrossLayers(Object reason) {
+        AnalysisError.guarantee(!getUniverse().sealed(), "Method %s was marked as tracked after the universe was sealed", this);
+        getUniverse().getImageLayerWriter().onTrackedAcrossLayer(this, reason);
+        declaringClass.registerAsTrackedAcrossLayers(reason);
+        for (AnalysisType parameter : toParameterList()) {
+            parameter.registerAsTrackedAcrossLayers(reason);
+        }
+        signature.getReturnType().registerAsTrackedAcrossLayers(reason);
     }
 
     public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {

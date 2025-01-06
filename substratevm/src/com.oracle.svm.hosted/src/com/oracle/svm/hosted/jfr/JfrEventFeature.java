@@ -93,7 +93,7 @@ public class JfrEventFeature implements InternalFeature {
         for (Class<?> eventSubClass : config.findSubclasses(Event.class)) {
             RuntimeClassInitialization.initializeAtBuildTime(eventSubClass.getName());
         }
-        config.registerSubstitutionProcessor(new JfrEventSubstitution(metaAccess));
+        config.registerSubstitutionProcessor(new JfrEventSubstitution(metaAccess, config.getUniverse().getHeapScanner()));
 
         /*
          * The value of this field is set later in the beforeCompilation method after analysis

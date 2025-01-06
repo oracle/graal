@@ -457,6 +457,26 @@ final class Encodings {
         return 2;
     }
 
+    static int utf16FEBrokenGetCodePointByteLength(Object arrayA, int offset, int length, int i, ErrorHandling errorHandling) {
+        char c = Character.reverseBytes(readS1(arrayA, offset, length, i));
+        if (errorHandling == ErrorHandling.BEST_EFFORT) {
+            return isUTF16HighSurrogate(c) && i + 1 < length && isUTF16LowSurrogate(Character.reverseBytes(readS1(arrayA, offset, length, i + 1))) ? 4 : 2;
+        }
+        assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
+        if (isUTF16Surrogate(c)) {
+            if (isUTF16HighSurrogate(c)) {
+                if (i + 1 == length) {
+                    return -3;
+                }
+                if (isUTF16LowSurrogate(Character.reverseBytes(readS1(arrayA, offset, length, i + 1)))) {
+                    return 4;
+                }
+            }
+            return -1;
+        }
+        return 2;
+    }
+
     static byte[] utf16Encode(int codepoint) {
         byte[] bytes = new byte[codepoint < 0x10000 ? 2 : 4];
         utf16Encode(codepoint, bytes, 0);
@@ -481,6 +501,24 @@ final class Encodings {
         writeToByteArray(bytes, 1, index + 1, c2);
     }
 
+    static int utf16FEEncode(int codepoint, byte[] bytes, int index) {
+        if (codepoint < 0x10000) {
+            writeToByteArray(bytes, 1, index, Character.reverseBytes((char) codepoint));
+            return 1;
+        } else {
+            utf16FEEncodeSurrogatePair(codepoint, bytes, index);
+            return 2;
+        }
+    }
+
+    static void utf16FEEncodeSurrogatePair(int codepoint, byte[] bytes, int index) {
+        assert codepoint > 0xffff;
+        char c1 = Character.reverseBytes(Character.highSurrogate(codepoint));
+        char c2 = Character.reverseBytes(Character.lowSurrogate(codepoint));
+        writeToByteArray(bytes, 1, index, c1);
+        writeToByteArray(bytes, 1, index + 1, c2);
+    }
+
     static int utf16ValidCodePointToCharIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
         int iCP = 0;
         int iChars = 0;
@@ -495,6 +533,25 @@ final class Encodings {
             TStringConstants.truffleSafePointPoll(location, iChars);
         }
         if (iChars >= a.length()) {
+            throw InternalErrors.indexOutOfBounds();
+        }
+        return iChars;
+    }
+
+    static int utf16FEValidCodePointToCharIndex(Node location, Object arrayA, int offsetA, int lengthA, int codePointIndex) {
+        int iCP = 0;
+        int iChars = 0;
+        while (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, iChars < lengthA)) {
+            if ((Character.reverseBytes(readS1(arrayA, offsetA, lengthA, iChars)) & 0xfc00) != 0xdc00) {
+                if (CompilerDirectives.injectBranchProbability(0.01, !(iCP < codePointIndex))) {
+                    break;
+                }
+                iCP++;
+            }
+            iChars++;
+            TStringConstants.truffleSafePointPoll(location, iChars);
+        }
+        if (iChars >= lengthA) {
             throw InternalErrors.indexOutOfBounds();
         }
         return iChars;
@@ -517,6 +574,24 @@ final class Encodings {
         return iChars;
     }
 
+    static int utf16FEBrokenCodePointToCharIndex(Node location, Object arrayA, int offsetA, int lengthA, int codePointIndex) {
+        int iCP = 0;
+        int iChars = 0;
+        while (iCP < codePointIndex) {
+            if (isUTF16HighSurrogate(Character.reverseBytes(readS1(arrayA, offsetA, lengthA, iChars))) && (iChars + 1) < lengthA &&
+                            isUTF16LowSurrogate(Character.reverseBytes(readS1(arrayA, offsetA, lengthA, iChars + 1)))) {
+                iChars++;
+            }
+            iChars++;
+            iCP++;
+            TStringConstants.truffleSafePointPoll(location, iCP);
+        }
+        if (iChars >= lengthA) {
+            throw InternalErrors.indexOutOfBounds();
+        }
+        return iChars;
+    }
+
     static int utf16DecodeValid(AbstractTruffleString a, Object arrayA, int i) {
         return utf16DecodeValid(arrayA, a.offset(), a.length(), i);
     }
@@ -527,6 +602,16 @@ final class Encodings {
             assert (i + 1) < lengthA;
             assert isUTF16LowSurrogate(readS1(arrayA, offsetA, lengthA, i + 1));
             return Character.toCodePoint(c, readS1(arrayA, offsetA, lengthA, i + 1));
+        }
+        return c;
+    }
+
+    static int utf16FEDecodeValid(Object arrayA, int offsetA, int lengthA, int i) {
+        char c = Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i));
+        if (isUTF16HighSurrogate(c)) {
+            assert (i + 1) < lengthA;
+            assert isUTF16LowSurrogate(Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i + 1)));
+            return Character.toCodePoint(c, Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i + 1)));
         }
         return c;
     }
@@ -560,12 +645,33 @@ final class Encodings {
         return c;
     }
 
-    static boolean isValidUnicodeCodepoint(int codepoint) {
-        return !isUTF16Surrogate(codepoint) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
+    static int utf16FEDecodeBroken(Object arrayA, int offsetA, int lengthA, int i, ErrorHandling errorHandling) {
+        char c = Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i));
+        if (errorHandling == ErrorHandling.BEST_EFFORT) {
+            if (isUTF16HighSurrogate(c) && (i + 1) < lengthA) {
+                char c2 = Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i + 1));
+                if (isUTF16LowSurrogate(c2)) {
+                    return Character.toCodePoint(c, c2);
+                }
+            }
+        } else {
+            assert errorHandling == ErrorHandling.RETURN_NEGATIVE;
+            if (isUTF16Surrogate(c)) {
+                if (isUTF16LowSurrogate(c) || i + 1 >= lengthA) {
+                    return -1;
+                }
+                char c2 = Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i + 1));
+                if (!isUTF16LowSurrogate(c2)) {
+                    return -1;
+                }
+                return Character.toCodePoint(c, c2);
+            }
+        }
+        return c;
     }
 
-    static boolean isValidUnicodeCodepoint(int codepoint, boolean allowUTF16Surrogates) {
-        return (allowUTF16Surrogates || !isUTF16Surrogate(codepoint)) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
+    static boolean isValidUnicodeCodepoint(int codepoint) {
+        return !isUTF16Surrogate(codepoint) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
     }
 
     static int maxCodePoint(TruffleString.Encoding encoding) {

@@ -28,11 +28,11 @@ import static com.oracle.truffle.espresso.classfile.descriptors.ByteSequence.wra
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 
 /**
  * Manages creation and parsing of type descriptors ("field descriptors" in the JVMS).

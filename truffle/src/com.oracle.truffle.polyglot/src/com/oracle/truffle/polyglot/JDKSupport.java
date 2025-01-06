@@ -41,7 +41,8 @@
 package com.oracle.truffle.polyglot;
 
 import java.io.IOException;
-import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -155,13 +156,15 @@ final class JDKSupport {
             case "ignore" -> {
             }
             case "warn" -> {
-                PrintStream err = System.err;
-                err.println(formatErrorMessage(reason));
+                PolyglotEngineImpl.logFallback(formatErrorMessage(reason));
             }
             case "diagnose" -> {
-                PrintStream err = System.err;
-                err.println(formatErrorMessage(reason));
-                t.printStackTrace(err);
+                StringWriter message = new StringWriter();
+                try (PrintWriter err = new PrintWriter(message)) {
+                    err.println(formatErrorMessage(reason));
+                    t.printStackTrace(err);
+                }
+                PolyglotEngineImpl.logFallback(message.toString());
             }
             case "throw" -> throw new InternalError(formatErrorMessage(reason), t);
             default -> throw new IllegalArgumentException("Invalid polyglotimpl.AttachLibraryFailureAction system property value. Supported values are ignore, warn, diagnose, throw");

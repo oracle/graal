@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.TBitSet;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
@@ -76,6 +77,9 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
                     PROP_HAS_INDICES,
                     PROP_UNICODE_SETS);
 
+    private static final TBitSet ALL_FLAG_CHARS = TBitSet.valueOf('d', 'g', 'i', 'm', 's', 'u', 'v', 'y');
+    private static final TBitSet LOCAL_FLAG_CHARS = TBitSet.valueOf('i', 'm', 's');
+
     private static final int NONE = 0;
     private static final int IGNORE_CASE = 1;
     private static final int MULTILINE = 1 << 1;
@@ -86,6 +90,10 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     private static final int HAS_INDICES = 1 << 6;
     private static final int UNICODE_SETS = 1 << 7;
 
+    private static final int[] FLAG_LOOKUP = {
+                    HAS_INDICES, 0, 0, GLOBAL, 0, IGNORE_CASE, 0, 0, 0, MULTILINE, 0, 0, 0, 0, 0, DOT_ALL, 0, UNICODE, UNICODE_SETS, 0, 0, STICKY
+    };
+
     public static final RegexFlags DEFAULT = new RegexFlags("", NONE);
 
     private final String source;
@@ -94,6 +102,17 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
     private RegexFlags(String source, int value) {
         this.source = source;
         this.value = value;
+    }
+
+    private RegexFlags(int value) {
+        this.source = generateSource(value);
+        this.value = value;
+    }
+
+    private static int maskForFlag(char flagChar) {
+        assert ALL_FLAG_CHARS.get(flagChar);
+        // flagChar must be one of [d-y].
+        return FLAG_LOOKUP[flagChar - 'd'];
     }
 
     public static Builder builder() {
@@ -109,49 +128,19 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
         int flags = NONE;
         for (int i = 0; i < flagsStr.length(); i++) {
             char ch = flagsStr.charAt(i);
-            switch (ch) {
-                case 'i':
-                    flags = addFlag(source, flags, i, IGNORE_CASE);
-                    break;
-                case 'm':
-                    flags = addFlag(source, flags, i, MULTILINE);
-                    break;
-                case 'g':
-                    flags = addFlag(source, flags, i, GLOBAL);
-                    break;
-                case 'y':
-                    flags = addFlag(source, flags, i, STICKY);
-                    break;
-                case 'u':
-                    if ((flags & UNICODE_SETS) != 0) {
-                        throw RegexSyntaxException.createFlags(source, JsErrorMessages.BOTH_FLAGS_SET_U_V, i);
-                    }
-                    flags = addFlag(source, flags, i, UNICODE);
-                    break;
-                case 's':
-                    flags = addFlag(source, flags, i, DOT_ALL);
-                    break;
-                case 'd':
-                    flags = addFlag(source, flags, i, HAS_INDICES);
-                    break;
-                case 'v':
-                    if ((flags & UNICODE) != 0) {
-                        throw RegexSyntaxException.createFlags(source, JsErrorMessages.BOTH_FLAGS_SET_U_V, i);
-                    }
-                    flags = addFlag(source, flags, i, UNICODE_SETS);
-                    break;
-                default:
-                    throw RegexSyntaxException.createFlags(source, JsErrorMessages.UNSUPPORTED_FLAG, i);
+            if (!isValidFlagChar(ch)) {
+                throw RegexSyntaxException.createFlags(source, JsErrorMessages.UNSUPPORTED_FLAG, i);
+            }
+            int flag = maskForFlag(ch);
+            if ((flags & flag) != 0) {
+                throw RegexSyntaxException.createFlags(source, JsErrorMessages.REPEATED_FLAG, i);
+            }
+            flags |= flag;
+            if ((flags & (UNICODE | UNICODE_SETS)) == (UNICODE | UNICODE_SETS)) {
+                throw RegexSyntaxException.createFlags(source, JsErrorMessages.BOTH_FLAGS_SET_U_V, i);
             }
         }
         return new RegexFlags(flagsStr, flags);
-    }
-
-    private static int addFlag(RegexSource source, int flags, int i, int flag) {
-        if ((flags & flag) != 0) {
-            throw RegexSyntaxException.createFlags(source, JsErrorMessages.REPEATED_FLAG, i);
-        }
-        return flags | flag;
     }
 
     public String getSource() {
@@ -200,6 +189,34 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
 
     private boolean isSet(int flag) {
         return (value & flag) != NONE;
+    }
+
+    public static boolean isValidFlagChar(char candidateChar) {
+        return ALL_FLAG_CHARS.get(candidateChar);
+    }
+
+    public static boolean isValidLocalFlagChar(char candidateChar) {
+        return LOCAL_FLAG_CHARS.get(candidateChar);
+    }
+
+    public RegexFlags addNewFlagModifier(RegexSource regexSource, char flagChar) {
+        int flag = maskForFlag(flagChar);
+        if (isSet(flag)) {
+            throw RegexSyntaxException.createFlags(regexSource, JsErrorMessages.REPEATED_FLAG_IN_MODIFIER);
+        }
+        return new RegexFlags(this.value | flag);
+    }
+
+    public RegexFlags addFlags(RegexFlags otherFlags) {
+        return new RegexFlags(this.value | otherFlags.value);
+    }
+
+    public RegexFlags delFlags(RegexFlags otherFlags) {
+        return new RegexFlags(this.value & ~otherFlags.value);
+    }
+
+    public boolean overlaps(RegexFlags otherFlags) {
+        return (this.value & otherFlags.value) != 0;
     }
 
     @Override
@@ -287,6 +304,35 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
         return "TRegexJSFlags{flags=" + toString() + '}';
     }
 
+    private static String generateSource(int value) {
+        StringBuilder sb = new StringBuilder(8);
+        if ((value & IGNORE_CASE) != 0) {
+            sb.append("i");
+        }
+        if ((value & MULTILINE) != 0) {
+            sb.append("m");
+        }
+        if ((value & STICKY) != 0) {
+            sb.append("y");
+        }
+        if ((value & GLOBAL) != 0) {
+            sb.append("g");
+        }
+        if ((value & UNICODE) != 0) {
+            sb.append("u");
+        }
+        if ((value & DOT_ALL) != 0) {
+            sb.append("s");
+        }
+        if ((value & HAS_INDICES) != 0) {
+            sb.append("d");
+        }
+        if ((value & UNICODE_SETS) != 0) {
+            sb.append("v");
+        }
+        return sb.toString();
+    }
+
     public static final class Builder {
 
         private int value;
@@ -342,7 +388,7 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
 
         @TruffleBoundary
         public RegexFlags build() {
-            return new RegexFlags(generateSource(), this.value);
+            return new RegexFlags(generateSource(this.value), this.value);
         }
 
         private void updateFlag(boolean enabled, int bitMask) {
@@ -351,39 +397,6 @@ public final class RegexFlags extends AbstractConstantKeysObject implements Json
             } else {
                 this.value &= ~bitMask;
             }
-        }
-
-        private boolean isSet(int flag) {
-            return (value & flag) != NONE;
-        }
-
-        private String generateSource() {
-            StringBuilder sb = new StringBuilder(7);
-            if (isSet(IGNORE_CASE)) {
-                sb.append("i");
-            }
-            if (isSet(MULTILINE)) {
-                sb.append("m");
-            }
-            if (isSet(STICKY)) {
-                sb.append("y");
-            }
-            if (isSet(GLOBAL)) {
-                sb.append("g");
-            }
-            if (isSet(UNICODE)) {
-                sb.append("u");
-            }
-            if (isSet(DOT_ALL)) {
-                sb.append("s");
-            }
-            if (isSet(HAS_INDICES)) {
-                sb.append("d");
-            }
-            if (isSet(UNICODE_SETS)) {
-                sb.append("v");
-            }
-            return sb.toString();
         }
     }
 }

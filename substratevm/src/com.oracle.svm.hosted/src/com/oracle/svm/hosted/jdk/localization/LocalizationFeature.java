@@ -261,7 +261,7 @@ public class LocalizationFeature implements InternalFeature {
         allLocales = processLocalesOption();
         if (Options.DefaultLocale.hasBeenSet()) {
             LogUtils.warning("Option %s is deprecated and has no effect. The program's default locale is determined at run-time. " +
-                            "Use %s and %s to manage the locales included in the image.\n",
+                            "Use %s and %s to manage the locales included in the image.%n",
                             Options.DefaultLocale.getName(), Options.IncludeLocales.getName(), Options.IncludeAllLocales.getName());
         }
         String defaultCharsetOptionValue = Options.DefaultCharset.getValue();

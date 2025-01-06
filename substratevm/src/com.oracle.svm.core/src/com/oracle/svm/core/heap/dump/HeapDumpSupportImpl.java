@@ -28,6 +28,7 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.io.IOException;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -36,7 +37,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.heap.GCCause;
@@ -81,7 +81,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
     @Override
     public void teardownDumpHeapOnOutOfMemoryError() {
         UntrackedNullableNativeMemory.free(outOfMemoryHeapDumpPath);
-        outOfMemoryHeapDumpPath = WordFactory.nullPointer();
+        outOfMemoryHeapDumpPath = Word.nullPointer();
     }
 
     @Override
@@ -149,7 +149,7 @@ public class HeapDumpSupportImpl extends HeapDumping {
     private boolean dumpHeap(RawFileDescriptor fd, boolean gcBefore) {
         int size = SizeOf.get(HeapDumpVMOperationData.class);
         HeapDumpVMOperationData data = StackValue.get(size);
-        UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) data, Word.unsigned(size), (byte) 0);
         data.setGCBefore(gcBefore);
         data.setRawFileDescriptor(fd);
         heapDumpOperation.enqueue(data);

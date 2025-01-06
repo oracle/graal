@@ -45,6 +45,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
@@ -59,7 +61,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -2559,12 +2560,18 @@ public final class Meta extends ContextAccessImpl {
         return str.getKlass().getMeta().toHostString(str);
     }
 
-    @TruffleBoundary
-    public StaticObject toGuestString(Symbol<?> hostString) {
-        if (hostString == null) {
+    public ByteSequence toByteSequence(@JavaType(String.class) StaticObject str) {
+        if (StaticObject.isNull(str)) {
+            return null;
+        }
+        return ByteSequence.create(toHostString(str));
+    }
+
+    public StaticObject toGuestString(Symbol<?> symbol) {
+        if (symbol == null) {
             return StaticObject.NULL;
         }
-        return toGuestString(hostString.toString());
+        return toGuestString(symbol.toString());
     }
 
     public static boolean isString(Object string) {

@@ -35,10 +35,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_AbstractDCmd;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L131-L133")
 public class JfrStopDCmd extends AbstractJfrDCmd {
-    // This constructor should be annotated with @BasedOnJDK instead of the class, see GR-59171.
     @Platforms(Platform.HOSTED_ONLY.class)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L131-L133")
     public JfrStopDCmd() {
         super("JFR.stop", "Stops a JFR recording.", Impact.Low);
     }

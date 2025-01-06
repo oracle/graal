@@ -111,7 +111,6 @@ Mostly all Native Image features are supported on Linux AArch64 architecture, ex
 
 * `-R:[+|-]WriteableCodeCache`: must be disabled.
 * `--libc=<value>`: `musl` is not supported.
-* `--gc=<value>`: The G1 garbage collector (`G1`) is not supported.
 
 Find a list of options for the `native-image` builder [here](BuildOptions.md).
 

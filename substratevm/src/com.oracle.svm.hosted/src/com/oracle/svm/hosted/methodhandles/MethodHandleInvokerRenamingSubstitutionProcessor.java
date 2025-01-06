@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -52,6 +53,20 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * which are assigned more or less arbitrary names by the host VM, to stable names that are based on
  * the {@code LambdaForm} which they were compiled from.
  */
+@BasedOnJDKClass(value = MethodHandle.class)
+@BasedOnJDKClass(value = MethodType.class)
+@BasedOnJDKClass(className = "java.lang.invoke.MethodHandleStatics")
+@BasedOnJDKClass(className = "java.lang.invoke.ClassSpecializer")
+@BasedOnJDKClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "SpeciesData")
+@BasedOnJDKClass(className = "java.lang.invoke.MemberName")
+@BasedOnJDKClass(className = "java.lang.invoke.MethodHandleNatives")
+@BasedOnJDKClass(className = "java.lang.invoke.LambdaForm")
+@BasedOnJDKClass(className = "java.lang.invoke.LambdaForm", innerClass = "BasicType")
+@BasedOnJDKClass(className = "java.lang.invoke.LambdaForm", innerClass = "Name")
+@BasedOnJDKClass(className = "java.lang.invoke.LambdaForm", innerClass = "NamedFunction")
+@BasedOnJDKClass(className = "java.lang.invoke.BoundMethodHandle")
+@BasedOnJDKClass(className = "java.lang.invoke.DirectMethodHandle")
+@BasedOnJDKClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "IntrinsicMethodHandle")
 public class MethodHandleInvokerRenamingSubstitutionProcessor extends SubstitutionProcessor {
     private static final Class<?> METHOD_HANDLE_STATICS_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.MethodHandleStatics");
     private static final Field DEBUG_METHOD_HANDLE_NAMES_FIELD = ReflectionUtil.lookupField(METHOD_HANDLE_STATICS_CLASS, "DEBUG_METHOD_HANDLE_NAMES");
@@ -85,6 +100,8 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     private static final Method BOUND_METHOD_HANDLE_SPECIES_DATA_METHOD = ReflectionUtil.lookupMethod(BOUND_METHOD_HANDLE_CLASS, "speciesData");
     private static final Class<?> DIRECT_METHOD_HANDLE_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle");
     private static final Method DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD = ReflectionUtil.lookupMethod(DIRECT_METHOD_HANDLE_CLASS, "internalMemberName");
+    private static final Class<?> METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS = ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl$IntrinsicMethodHandle");
+    private static final Method METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_INTRINSIC_DATA_METHOD = ReflectionUtil.lookupMethod(METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS, "intrinsicData");
 
     private static final String DMH_CLASS_NAME_SUBSTRING = "LambdaForm$DMH";
     private static final String DMH_STABLE_NAME_TEMPLATE = "Ljava/lang/invoke/LambdaForm$DMH.s";
@@ -289,41 +306,44 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
                      * result.
                      */
                     hash = hash * 31 + memberNameToString(member).hashCode();
-                } else {
-                    /*
-                     * If the member field is null, the method handle of the NamedFunction is used
-                     * in the string representation. To avoid potential aliasing, the hash of the
-                     * descriptor string is mixed in the result.
-                     */
-                    Object innerMethodHandle = NAMED_FUNCTION_RESOLVED_HANDLE_METHOD.invoke(function);
-                    MethodType methodType = ((MethodHandle) innerMethodHandle).type();
-                    hash = hash * 31 + methodType.descriptorString().hashCode();
-
-                    if (BOUND_METHOD_HANDLE_CLASS.isInstance(innerMethodHandle)) {
-                        /*
-                         * BoundMethodHandle.internalValues calls BoundMethodHandle.arg, which
-                         * retrieves the object that was bound to the corresponding argument, and
-                         * return its string representation. This method is only used if the debug
-                         * method handle names are activated. The object used may not have a stable
-                         * string representation, which would lead to an unstable name.
-                         */
-                        assert !DEBUG_METHOD_HANDLE_NAMES_FIELD.getBoolean(null) : "The method handle " + innerMethodHandle +
-                                        " with debug method handle names can contain the string representation from any object, which would cause the name to be unstable.";
-
-                        /*
-                         * Without the debug method handle names, the MethodHandle.toString method
-                         * does not include any additional detail if the method handle is a bound
-                         * method handle. To avoid potential aliasing, the custom hash of the
-                         * species data is mixed with the result.
-                         */
-                        Object speciesData = BOUND_METHOD_HANDLE_SPECIES_DATA_METHOD.invoke(innerMethodHandle);
-                        hash = hash * 31 + getSpeciesDataHash(speciesData);
+                }
+                /*
+                 * The method handle of the NamedFunction is used in the string representation. To
+                 * avoid potential aliasing, the hash of the descriptor string is mixed in the
+                 * result.
+                 */
+                Object resolvedHandle = NAMED_FUNCTION_RESOLVED_HANDLE_METHOD.invoke(function);
+                MethodType methodType = ((MethodHandle) resolvedHandle).type();
+                hash = hash * 31 + methodType.descriptorString().hashCode();
+                if (METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS.isInstance(resolvedHandle)) {
+                    if (METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_INTRINSIC_DATA_METHOD.invoke(resolvedHandle) instanceof Integer integer) {
+                        hash = hash * 31 + integer;
                     }
                 }
 
-                Object innerMethodHandle = NAMED_FUNCTION_RESOLVED_HANDLE_METHOD.invoke(function);
-                Object innerLambdaForm = FORM_FIELD.get(innerMethodHandle);
-                hash = hash * 31 + computeLambdaFormHash(innerLambdaForm, DIRECT_METHOD_HANDLE_CLASS.isInstance(innerMethodHandle));
+                if (BOUND_METHOD_HANDLE_CLASS.isInstance(resolvedHandle)) {
+                    /*
+                     * BoundMethodHandle.internalValues calls BoundMethodHandle.arg, which retrieves
+                     * the object that was bound to the corresponding argument, and return its
+                     * string representation. This method is only used if the debug method handle
+                     * names are activated. The object used may not have a stable string
+                     * representation, which would lead to an unstable name.
+                     */
+                    assert !DEBUG_METHOD_HANDLE_NAMES_FIELD.getBoolean(null) : "The method handle " + resolvedHandle +
+                                    " with debug method handle names can contain the string representation from any object, which would cause the name to be unstable.";
+
+                    /*
+                     * Without the debug method handle names, the MethodHandle.toString method does
+                     * not include any additional detail if the method handle is a bound method
+                     * handle. To avoid potential aliasing, the custom hash of the species data is
+                     * mixed with the result.
+                     */
+                    Object speciesData = BOUND_METHOD_HANDLE_SPECIES_DATA_METHOD.invoke(resolvedHandle);
+                    hash = hash * 31 + getSpeciesDataHash(speciesData);
+                }
+
+                Object innerLambdaForm = FORM_FIELD.get(resolvedHandle);
+                hash = hash * 31 + computeLambdaFormHash(innerLambdaForm, DIRECT_METHOD_HANDLE_CLASS.isInstance(resolvedHandle));
             }
         }
         return hash * 31 + lambdaFormString.hashCode();
@@ -379,7 +399,7 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
         if (lastIndex < 0) {
             return true;
         }
-        return !uniqueTypeNames.contains(methodHandleName.substring(lastIndex) + "_1;");
+        return !uniqueTypeNames.contains(methodHandleName.substring(0, lastIndex) + "_1;");
     }
 
     boolean checkAllTypeNames() {

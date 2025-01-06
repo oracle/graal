@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.BasicState;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
@@ -60,7 +61,6 @@ import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.collections.EconomicMap;
 
 /**
  * Represents a single state in the NFA form of a regular expression. States may either be matcher
@@ -85,27 +85,24 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     @CompilationFinal private short revTransitionToAnchoredFinalState = -1;
     @CompilationFinal private short revTransitionToUnAnchoredFinalState = -1;
     private TBitSet possibleResults;
-    private final CodePointSet matcherBuilder;
     private final Set<LookBehindAssertion> finishedLookBehinds;
     private final EconomicMap<Integer, TBitSet> matchedConditionGroupsMap;
 
     public NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
-                    CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates,
                     boolean mustAdvance) {
-        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds, initMatchedConditionGroupsMap(stateSet));
+        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, finishedLookBehinds, initMatchedConditionGroupsMap(stateSet));
     }
 
     public NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
-                    CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates,
                     boolean mustAdvance,
                     EconomicMap<Integer, TBitSet> matchedConditionGroupsMap) {
-        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, matcherBuilder, finishedLookBehinds, matchedConditionGroupsMap);
+        this(id, stateSet, initFlags(hasPrefixStates, mustAdvance), null, finishedLookBehinds, matchedConditionGroupsMap);
     }
 
     private static EconomicMap<Integer, TBitSet> initMatchedConditionGroupsMap(StateSet<RegexAST, ? extends RegexASTNode> stateSet) {
@@ -126,34 +123,27 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     private NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     short flags,
-                    CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     EconomicMap<Integer, TBitSet> matchedConditionGroupsMap) {
-        this(id, stateSet, flags, null, matcherBuilder, finishedLookBehinds, matchedConditionGroupsMap);
+        this(id, stateSet, flags, null, finishedLookBehinds, matchedConditionGroupsMap);
     }
 
     private NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     short flags,
                     TBitSet possibleResults,
-                    CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     EconomicMap<Integer, TBitSet> matchedConditionGroupsMap) {
         super(id, EMPTY_TRANSITIONS);
         setFlag(flags);
         this.stateSet = stateSet;
         this.possibleResults = possibleResults;
-        this.matcherBuilder = matcherBuilder;
         this.finishedLookBehinds = finishedLookBehinds;
         this.matchedConditionGroupsMap = matchedConditionGroupsMap;
     }
 
     public NFAState createTraceFinderCopy(short copyID) {
-        return new NFAState(copyID, getStateSet(), getFlags(), matcherBuilder, finishedLookBehinds, matchedConditionGroupsMap);
-    }
-
-    public CodePointSet getCharSet() {
-        return matcherBuilder;
+        return new NFAState(copyID, getStateSet(), getFlags(), finishedLookBehinds, matchedConditionGroupsMap);
     }
 
     public Set<LookBehindAssertion> getFinishedLookBehinds() {
@@ -366,7 +356,6 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
         this.revTransitionToAnchoredFinalState = original.revTransitionToAnchoredFinalState;
         this.revTransitionToUnAnchoredFinalState = original.revTransitionToUnAnchoredFinalState;
         this.possibleResults = original.possibleResults;
-        this.matcherBuilder = original.matcherBuilder;
         this.finishedLookBehinds = original.finishedLookBehinds;
         this.matchedConditionGroupsMap = original.matchedConditionGroupsMap;
     }
@@ -409,7 +398,6 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
                         Json.prop("stateSet", getStateSet().stream().map(x -> Json.val(x.getId()))),
                         Json.prop("mustAdvance", isMustAdvance()),
                         Json.prop("sourceSections", sourceSectionsToJson()),
-                        Json.prop("matcherBuilder", matcherBuilder.toString()),
                         Json.prop("forwardAnchoredFinalState", isAnchoredFinalState()),
                         Json.prop("forwardUnAnchoredFinalState", isUnAnchoredFinalState()),
                         Json.prop("reverseAnchoredFinalState", isAnchoredInitialState()),
@@ -422,9 +410,9 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     public JsonObject toJson(boolean forward) {
         return Json.obj(Json.prop("id", getId()),
                         Json.prop("stateSet", getStateSet().stream().map(x -> Json.val(x.getId()))),
+                        Json.prop("matcherBuilder", Arrays.stream(getPredecessors()).findFirst().map(t -> t.getCodePointSet().toString()).orElse("")),
                         Json.prop("mustAdvance", isMustAdvance()),
                         Json.prop("sourceSections", sourceSectionsToJson()),
-                        Json.prop("matcherBuilder", matcherBuilder.toString()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState(forward)),
                         Json.prop("unAnchoredFinalState", isUnAnchoredFinalState(forward)),
                         Json.prop("transitions", Arrays.stream(getSuccessors(forward)).map(x -> Json.val(x.getId()))));

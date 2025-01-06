@@ -31,6 +31,7 @@ import zipfile
 import re
 from glob import glob
 from pathlib import Path
+from typing import List
 
 import mx
 import mx_benchmark
@@ -287,13 +288,16 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         return self.context.benchmark
 
     def benchmarkList(self, bmSuiteArgs):
-        return self.completeBenchmarkList(bmSuiteArgs)
+        exclude = []
+        return [b for b in self.completeBenchmarkList(bmSuiteArgs) if b not in exclude]
 
-    def default_stages(self):
-        if self.context.benchmark == "micronaut-pegasus":
-            # The 'agent' stage is not supported, as currently we cannot run micronaut-pegasus on the JVM
-            return ['instrument-image', 'instrument-run', 'image', 'run']
-        return super().default_stages()
+    def stages(self, bm_suite_args: List[str]) -> List[mx_sdk_benchmark.Stage]:
+        stages = super().stages(bm_suite_args)
+        if self.context.benchmark == "micronaut-pegasus" and mx_sdk_benchmark.Stage.AGENT in stages:
+            # The 'agent' stage is not supported, as currently we cannot run micronaut-pegasus on the JVM (GR-59793)
+            stages.remove(mx_sdk_benchmark.Stage.AGENT)
+            mx.warn(f"Skipping the 'agent' stage as it is not supported for the 'micronaut-pegasus' benchmark. The stages that will be executed are: {[stage.value for stage in stages]}")
+        return stages
 
     def application_nib(self):
         if self.benchmarkName() not in self._application_nibs:

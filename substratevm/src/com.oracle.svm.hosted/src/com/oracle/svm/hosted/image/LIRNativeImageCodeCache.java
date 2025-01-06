@@ -384,7 +384,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     // which is also in the code cache (a.k.a. a section-local call).
                     // This will change, and we will have to case-split here... but not yet.
                     HostedMethod callTarget = (HostedMethod) call.target;
-                    VMError.guarantee(!callTarget.wrapped.isInBaseLayer(), "Unexpected direct call to base layer method %s. These calls are currently lowered to indirect calls.", callTarget);
+                    VMError.guarantee(!callTarget.isCompiledInPriorLayer(), "Unexpected direct call to base layer method %s. These calls are currently lowered to indirect calls.", callTarget);
                     int callTargetStart = callTarget.getCodeAddressOffset();
                     if (trampolineOffsetMap != null && trampolineOffsetMap.containsKey(callTarget)) {
                         callTargetStart = trampolineOffsetMap.get(callTarget);

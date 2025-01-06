@@ -177,12 +177,28 @@ final class TStringGuards {
         return enc == Encoding.UTF_16;
     }
 
+    static boolean isUTF16FE(Encoding enc) {
+        return enc == Encoding.UTF_16_FOREIGN_ENDIAN;
+    }
+
+    static boolean isUTF16FE(int enc) {
+        return enc == Encoding.UTF_16_FOREIGN_ENDIAN.id;
+    }
+
     static boolean isUTF32(int enc) {
         return enc == Encoding.UTF_32.id;
     }
 
     static boolean isUTF32(Encoding enc) {
         return enc == Encoding.UTF_32;
+    }
+
+    static boolean isUTF32FE(Encoding enc) {
+        return enc == Encoding.UTF_32_FOREIGN_ENDIAN;
+    }
+
+    static boolean isUTF32FE(int enc) {
+        return enc == Encoding.UTF_32_FOREIGN_ENDIAN.id;
     }
 
     static boolean isUTF16Or32(Encoding enc) {

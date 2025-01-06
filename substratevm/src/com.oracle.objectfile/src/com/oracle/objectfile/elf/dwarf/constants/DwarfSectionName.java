@@ -37,9 +37,9 @@ public enum DwarfSectionName {
     DW_FRAME_SECTION(".debug_frame"),
     DW_ABBREV_SECTION(".debug_abbrev"),
     DW_INFO_SECTION(".debug_info"),
-    DW_LOC_SECTION(".debug_loc"),
+    DW_LOCLISTS_SECTION(".debug_loclists"),
     DW_ARANGES_SECTION(".debug_aranges"),
-    DW_RANGES_SECTION(".debug_ranges");
+    DW_RNGLISTS_SECTION(".debug_rnglists");
 
     private final String value;
 

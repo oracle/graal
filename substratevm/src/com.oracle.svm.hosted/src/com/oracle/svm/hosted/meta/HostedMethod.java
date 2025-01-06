@@ -34,7 +34,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Function;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -150,20 +149,30 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     private static HostedMethod create0(AnalysisMethod wrapped, HostedType holder, ResolvedSignature<HostedType> signature,
                     ConstantPool constantPool, ExceptionHandler[] handlers, MultiMethodKey key, Map<MultiMethodKey, MultiMethod> multiMethodMap, LocalVariableTable localVariableTable) {
-        Function<Integer, HostedMethodNameFactory.MethodNameInfo> nameGenerator = (collisionCount) -> {
-            String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
-            if (key != ORIGINAL_METHOD) {
-                name += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + key;
-            }
-            if (collisionCount > 0) {
-                name = name + METHOD_NAME_COLLISION_SEPARATOR + collisionCount;
-            }
-            String uniqueShortName = SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+        var generator = new HostedMethodNameFactory.NameGenerator() {
 
-            return new HostedMethodNameFactory.MethodNameInfo(name, uniqueShortName);
+            @Override
+            public HostedMethodNameFactory.MethodNameInfo generateMethodNameInfo(int collisionCount) {
+                String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
+                if (key != ORIGINAL_METHOD) {
+                    name += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + key;
+                }
+                if (collisionCount > 0) {
+                    name = name + METHOD_NAME_COLLISION_SEPARATOR + collisionCount;
+                }
+
+                String uniqueShortName = generateUniqueName(name);
+
+                return new HostedMethodNameFactory.MethodNameInfo(name, uniqueShortName);
+            }
+
+            @Override
+            public String generateUniqueName(String name) {
+                return SubstrateUtil.uniqueShortName(holder.getJavaClass().getClassLoader(), holder, name, signature, wrapped.isConstructor());
+            }
         };
 
-        HostedMethodNameFactory.MethodNameInfo names = HostedMethodNameFactory.singleton().createNames(nameGenerator, wrapped);
+        HostedMethodNameFactory.MethodNameInfo names = HostedMethodNameFactory.singleton().createNames(generator, wrapped);
 
         return new HostedMethod(wrapped, holder, signature, constantPool, handlers, names.name(), names.uniqueShortName(), localVariableTable, key, multiMethodMap);
     }

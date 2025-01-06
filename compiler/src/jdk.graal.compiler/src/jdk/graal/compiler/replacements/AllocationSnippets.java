@@ -33,7 +33,6 @@ import static jdk.graal.compiler.replacements.nodes.ExplodeLoopNode.explodeLoop;
 
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.nodes.PrefetchAllocateNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
@@ -121,7 +120,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
         int alignment = objectAlignment();
-        return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
+        return Word.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
     }
 
     public static long arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize, int alignment) {
@@ -173,7 +172,7 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean supportsOptimizedFilling,
                     AllocationSnippetCounters snippetCounters) {
         ReplacementsUtil.dynamicAssert(endOffset.and(0x7).equal(0), "unaligned object size");
-        UnsignedWord offset = WordFactory.unsigned(startOffset);
+        UnsignedWord offset = Word.unsigned(startOffset);
         if (probability(SLOW_PATH_PROBABILITY, offset.and(0x7).notEqual(0))) {
             memory.writeInt(offset, (int) value, LocationIdentity.init());
             offset = offset.add(4);

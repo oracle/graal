@@ -63,7 +63,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.OpenTypeWorldFeature;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.heap.SVMImageLayerWriter;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -228,13 +227,17 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             var priorInfo = priorDispatchTables.get(type.getWrapped().getId());
             if (priorInfo != null) {
                 compareTypeInfo(dispatchTable, priorInfo);
-                dispatchTable.status = HubStatus.INSTALLED_PRIOR_LAYER;
-                for (int i = 0; i < dispatchTable.slots.length; i++) {
-                    HostedDispatchSlot slot = dispatchTable.slots[i];
-                    PriorDispatchSlot priorSlot = priorInfo.slots[i];
-                    if (priorSlot.status.isCompiled()) {
-                        slot.status = SlotResolutionStatus.PRIOR_LAYER;
-                        slot.symbol = priorSlot.slotSymbolName;
+                dispatchTable.status = priorInfo.installed ? HubStatus.INSTALLED_PRIOR_LAYER : HubStatus.COMPUTED_PRIOR_LAYER;
+                if (priorInfo.installed) {
+                    // record symbol info for installed hubs
+                    for (int i = 0; i < dispatchTable.slots.length; i++) {
+                        HostedDispatchSlot slot = dispatchTable.slots[i];
+                        PriorDispatchSlot priorSlot = priorInfo.slots[i];
+                        if (priorSlot.status.isCompiled()) {
+                            slot.status = SlotResolutionStatus.PRIOR_LAYER;
+                            assert !priorSlot.slotSymbolName.equals(PriorDispatchSlot.INVALID_SYMBOL_NAME);
+                            slot.symbol = priorSlot.slotSymbolName;
+                        }
                     }
                 }
             }
@@ -326,7 +329,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         var dispatchTable = typeToDispatchTable.get(hType);
 
         // upgrade status to being installed in current layer
-        assert dispatchTable.status == HubStatus.DISPATCH_INFO_CALCULATED : dispatchTable;
+        assert dispatchTable.status == HubStatus.DISPATCH_INFO_CALCULATED || dispatchTable.status == HubStatus.COMPUTED_PRIOR_LAYER : dispatchTable;
         dispatchTable.status = HubStatus.INSTALLED_CURRENT_LAYER;
 
         assert dispatchTable.slots.length == vtableLength : Assertions.errorMessage(vTable, dispatchTable.slots);
@@ -492,7 +495,6 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
          * To reduce redundancy, we maintain a separate table of all methods we refer to within the
          * dispatch tables.
          */
-        SVMImageLayerWriter layerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
         Map<HostedMethod, Integer> methodToOffsetMap = new HashMap<>();
         List<Boolean> methodBooleans = new ArrayList<>();
         List<Integer> methodInts = new ArrayList<>();
@@ -504,7 +506,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             } else {
                 offset = methodToOffsetMap.size();
                 methodToOffsetMap.put(hMethod, offset);
-                methodInts.add(layerWriter.isMethodPersisted(hMethod.getWrapped()) ? hMethod.wrapped.getId() : PriorDispatchMethod.UNKNOWN_ID);
+                methodInts.add(hMethod.getWrapped().isTrackedAcrossLayers() ? hMethod.wrapped.getId() : PriorDispatchMethod.UNKNOWN_ID);
                 methodInts.add(hMethod.hasVTableIndex() ? hMethod.getVTableIndex() : PriorDispatchMethod.UNKNOWN_VTABLE_IDX);
                 methodBooleans.add(virtualCallTargets.contains(hMethod));
                 methodStrings.add(NativeImage.localSymbolNameForMethod(hMethod));
@@ -517,11 +519,12 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
          * Write out dispatch tables for persisted types.
          */
         List<Integer> dispatchTableInts = new ArrayList<>();
+        List<Boolean> dispatchTableBooleans = new ArrayList<>();
         List<Integer> dispatchSlotInts = new ArrayList<>();
         List<String> dispatchSlotStrings = new ArrayList<>();
         int nextSlotIdx = 0;
         for (HostedDispatchTable info : typeToDispatchTable.values()) {
-            if (!layerWriter.isTypePersisted(info.type.getWrapped())) {
+            if (!info.type.getWrapped().isTrackedAcrossLayers()) {
                 // if a type contains target of a virtual call, then it should be persisted
                 assert Arrays.stream(info.locallyDeclaredSlots).noneMatch(virtualCallTargets::contains) : "Type should be persisted: " + info.type;
                 continue;
@@ -534,9 +537,11 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
                 localTargets.add(methodToOffsetMapper.apply(hMethod));
             }
 
+            boolean hubInstalled = info.status == HubStatus.INSTALLED_CURRENT_LAYER;
             if (info.slots != null) {
                 for (var slotInfo : info.slots) {
-                    dispatchSlotStrings.add(slotInfo.symbol);
+                    var symbolName = hubInstalled ? slotInfo.symbol : PriorDispatchSlot.INVALID_SYMBOL_NAME;
+                    dispatchSlotStrings.add(symbolName);
                     dispatchSlotInts.add(slotInfo.slotNum);
                     dispatchSlotInts.add(slotInfo.status.ordinal());
                     dispatchSlotInts.add(methodToOffsetMapper.apply(slotInfo.declaredMethod));
@@ -555,9 +560,11 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             dispatchTableInts.add(slotOffsets.size());
             dispatchTableInts.addAll(localTargets);
             dispatchTableInts.addAll(slotOffsets);
+            dispatchTableBooleans.add(hubInstalled);
         }
 
         writer.writeIntList("dispatchTableInts", dispatchTableInts);
+        writer.writeBoolList("dispatchTableBooleans", dispatchTableBooleans);
         writer.writeIntList("dispatchSlotInts", dispatchSlotInts);
         writer.writeStringList("dispatchSlotStrings", dispatchSlotStrings);
         writer.writeBoolList("methodBooleans", methodBooleans);
@@ -570,6 +577,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
     @SuppressWarnings("unused")
     public static Object createFromLoader(ImageSingletonLoader loader) {
         List<Integer> dispatchTableInts = loader.readIntList("dispatchTableInts");
+        List<Boolean> dispatchTableBooleans = loader.readBoolList("dispatchTableBooleans");
         List<Integer> dispatchSlotInts = loader.readIntList("dispatchSlotInts");
         List<String> dispatchSlotStrings = loader.readStringList("dispatchSlotStrings");
         List<Boolean> methodBooleans = loader.readBoolList("methodBooleans");
@@ -609,17 +617,15 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
                 resolvedMethod = priorMethods.get(index);
             }
 
-            if (status == SlotResolutionStatus.UNRESOLVED || status == SlotResolutionStatus.NOT_COMPILED) {
-                unresolvedSymbols.add(slotSymbolName);
-            }
-
             var slotInfo = new PriorDispatchSlot(declaredMethod, resolvedMethod, slotNum, status, slotSymbolName);
             priorDispatchSlots.add(slotInfo);
         }
 
         intIterator = dispatchTableInts.iterator();
+        boolIterator = dispatchTableBooleans.iterator();
         while (intIterator.hasNext()) {
             int typeId = intIterator.next();
+            boolean hubInstalled = boolIterator.next();
             int locallyDeclaredMethodsSize = intIterator.next();
             int allSlotsSize = intIterator.next();
             PriorDispatchMethod[] locallyDeclaredSlots = new PriorDispatchMethod[locallyDeclaredMethodsSize];
@@ -629,9 +635,17 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             }
             for (int i = 0; i < allSlotsSize; i++) {
                 dispatchTableSlots[i] = priorDispatchSlots.get(intIterator.next());
+                if (hubInstalled) {
+                    var status = dispatchTableSlots[i].status;
+                    if (status == SlotResolutionStatus.UNRESOLVED || status == SlotResolutionStatus.NOT_COMPILED) {
+                        assert !dispatchTableSlots[i].slotSymbolName.equals(PriorDispatchSlot.INVALID_SYMBOL_NAME);
+                        unresolvedSymbols.add(dispatchTableSlots[i].slotSymbolName);
+                    }
+
+                }
             }
 
-            var priorDispatchTable = new PriorDispatchTable(typeId, locallyDeclaredSlots, dispatchTableSlots);
+            var priorDispatchTable = new PriorDispatchTable(typeId, hubInstalled, locallyDeclaredSlots, dispatchTableSlots);
             Object prev = priorTypes.put(typeId, priorDispatchTable);
             assert prev == null : prev;
 
@@ -649,6 +663,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
     enum HubStatus {
         UNINITIALIZED,
         DISPATCH_INFO_CALCULATED,
+        COMPUTED_PRIOR_LAYER,
         INSTALLED_PRIOR_LAYER,
         INSTALLED_CURRENT_LAYER,
     }
@@ -697,7 +712,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
      * symbols.
      */
 
-    record PriorDispatchTable(int typeID,
+    record PriorDispatchTable(int typeID, boolean installed,
                     PriorDispatchMethod[] locallyDeclaredSlots, PriorDispatchSlot[] slots) {
     }
 
@@ -705,6 +720,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
                     PriorDispatchMethod declaredMethod, PriorDispatchMethod resolvedMethod,
                     int slotNum, SlotResolutionStatus status, String slotSymbolName) {
         static final int UNKNOWN_METHOD = -1;
+        static final String INVALID_SYMBOL_NAME = "invalid";
     }
 
     /**
@@ -743,7 +759,7 @@ final class LayeredDispatchTableSupportFeature implements InternalFeature {
             var loader = HostedImageLayerBuildingSupport.singleton().getLoader();
             var singleton = LayeredDispatchTableSupport.singleton();
             for (var entry : singleton.priorVirtualCallTargets.entrySet()) {
-                AnalysisType type = loader.getAnalysisType(entry.getKey());
+                AnalysisType type = loader.getAnalysisTypeForBaseLayerId(entry.getKey());
                 var methods = type.getOrCalculateOpenTypeWorldDispatchTableMethods();
                 var virtualCallTargets = entry.getValue();
                 methods.forEach(aMethod -> {

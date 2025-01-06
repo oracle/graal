@@ -27,8 +27,8 @@ package com.oracle.svm.core;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.IsolateCreationOnly;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.heap.HeapSizeVerifier;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -51,7 +51,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(WordFactory.unsigned(newValue));
+                HeapSizeVerifier.verifyMinHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
             }
             super.onValueUpdate(values, oldValue, newValue);
         }
@@ -62,7 +62,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(WordFactory.unsigned(newValue));
+                HeapSizeVerifier.verifyMaxHeapSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
             }
             super.onValueUpdate(values, oldValue, newValue);
         }
@@ -73,7 +73,7 @@ public class SubstrateGCOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
-                HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(WordFactory.unsigned(newValue));
+                HeapSizeVerifier.verifyMaxNewSizeAgainstMaxAddressSpaceSize(Word.unsigned(newValue));
             }
             super.onValueUpdate(values, oldValue, newValue);
         }

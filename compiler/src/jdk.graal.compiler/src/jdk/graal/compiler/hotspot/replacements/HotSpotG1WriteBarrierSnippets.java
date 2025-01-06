@@ -31,7 +31,6 @@ import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Trans
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -125,7 +124,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
 
     @Override
     protected Word cardTableAddress(Pointer oop) {
-        Word cardTable = WordFactory.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
+        Word cardTable = Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
         int cardTableShift = HotSpotReplacementsUtil.cardTableShift(INJECTED_VMCONFIG);
         return cardTable.add(oop.unsignedShiftRight(cardTableShift));
     }

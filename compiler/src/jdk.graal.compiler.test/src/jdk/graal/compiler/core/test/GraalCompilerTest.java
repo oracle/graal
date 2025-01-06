@@ -59,6 +59,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -129,6 +131,7 @@ import jdk.graal.compiler.nodes.spi.LoweringProvider;
 import jdk.graal.compiler.nodes.spi.ProfileProvider;
 import jdk.graal.compiler.nodes.spi.Replacements;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
@@ -395,7 +398,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
-    private static final ThreadLocal<HashMap<ResolvedJavaMethod, InstalledCode>> cache = ThreadLocal.withInitial(HashMap::new);
+    protected static final ThreadLocal<HashMap<ResolvedJavaMethod, Pair<OptionValues, InstalledCode>>> cache = ThreadLocal.withInitial(HashMap::new);
 
     /**
      * Reset the entire {@linkplain #cache} of {@linkplain InstalledCode}. Additionally, invalidate
@@ -404,8 +407,8 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     @BeforeClass
     public static void resetCodeCache() {
-        for (InstalledCode code : cache.get().values()) {
-            code.invalidate();
+        for (Pair<OptionValues, InstalledCode> code : cache.get().values()) {
+            code.getRight().invalidate();
         }
         cache.get().clear();
     }
@@ -1133,11 +1136,14 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         boolean useCache = !forceCompile && getArgumentToBind() == null;
         if (useCache && graph == null) {
-            HashMap<ResolvedJavaMethod, InstalledCode> tlCache = cache.get();
-            InstalledCode cached = tlCache.get(installedCodeOwner);
+            HashMap<ResolvedJavaMethod, Pair<OptionValues, InstalledCode>> tlCache = cache.get();
+            Pair<OptionValues, InstalledCode> cached = tlCache.get(installedCodeOwner);
             if (cached != null) {
-                if (cached.isValid()) {
-                    return cached;
+                // Reuse the cached code if it is still valid and the same options was used for
+                // the compilation. We use a deep equals for the option values to catch cases where
+                // users create new option values but with the same values.
+                if (cached.getRight().isValid() && (options.getMap().equals(cached.getLeft().getMap()) || optionsMapDeepEquals(options.getMap(), cached.getLeft().getMap()))) {
+                    return cached.getRight();
                 } else {
                     tlCache.remove(installedCodeOwner);
                 }
@@ -1184,11 +1190,33 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             if (useCache) {
-                cache.get().put(installedCodeOwner, installedCode);
+                cache.get().put(installedCodeOwner, Pair.create(options, installedCode));
             }
             return installedCode;
         }
         throw GraalError.shouldNotReachHere("Bailout limit reached"); // ExcludeFromJacocoGeneratedReport
+    }
+
+    private static boolean optionsMapDeepEquals(UnmodifiableEconomicMap<OptionKey<?>, Object> map1, UnmodifiableEconomicMap<OptionKey<?>, Object> map2) {
+        if (map1.size() != map2.size()) {
+            return false;
+        }
+        var c1 = map1.getEntries();
+        var c2 = map2.getEntries();
+        while (c1.advance() && c2.advance()) {
+            Object c1Key = c1.getKey();
+            Object c2Key = c2.getKey();
+            if (!c1Key.equals(c2Key)) {
+                return false;
+            }
+            Object c1Val = c1.getValue();
+            Object c2Val = c2.getValue();
+            if (!c1Val.equals(c2Val)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

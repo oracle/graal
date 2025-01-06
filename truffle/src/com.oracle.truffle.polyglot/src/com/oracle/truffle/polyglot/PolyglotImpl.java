@@ -75,9 +75,12 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.Value.StringEncoding;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.FileSystem.Selector;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -93,6 +96,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
@@ -560,13 +564,27 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public Value fromByteBasedString(byte[] bytes, int offset, int length, int encoding, boolean copy) {
+        return (Value) asValue(TruffleString.fromByteArrayUncached(bytes, offset, length, mapStringEncoding(encoding), copy));
+    }
+
+    @Override
+    public Value fromNativeString(long basePointer, int byteOffset, int byteLength, int encoding, boolean copy) {
+        return (Value) asValue(EngineAccessor.STRINGS.fromNativePointerEmbedder(basePointer, byteOffset, byteLength, mapStringEncoding(encoding), copy));
+    }
+
+    static Encoding mapStringEncoding(int encoding) {
+        return LazyEncodings.TABLE[encoding];
+    }
+
+    @Override
     public FileSystem newDefaultFileSystem(String hostTmpDir) {
         return FileSystems.newDefaultFileSystem(hostTmpDir);
     }
 
     @Override
     public FileSystem allowInternalResourceAccess(FileSystem fileSystem) {
-        return FileSystems.allowInternalResourceAccess(fileSystem);
+        return FileSystems.allowInternalResourceAccess(this, fileSystem);
     }
 
     @Override
@@ -577,6 +595,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
         return FileSystems.newNIOFileSystem(fileSystem);
+    }
+
+    @Override
+    public FileSystem newCompositeFileSystem(FileSystem fallbackFileSystem, Selector... delegates) {
+        return FileSystems.newCompositeFileSystem(this, fallbackFileSystem, delegates);
+    }
+
+    @Override
+    public FileSystem newDenyIOFileSystem() {
+        return FileSystems.newDenyIOFileSystem();
     }
 
     @Override
@@ -947,6 +975,27 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                         || receiver instanceof Boolean || receiver instanceof Character //
                         || receiver instanceof Byte || receiver instanceof Short //
                         || receiver instanceof String || receiver instanceof TruffleString;
+    }
+
+    /*
+     * Lazy class to avoid TruffleString class init eagerly with polyglot impls.
+     */
+    static class LazyEncodings {
+
+        /**
+         * Mapping table to {@link StringEncoding}.value.
+         */
+        static final Encoding[] TABLE;
+        static {
+            Encoding[] table = new Encoding[5];
+            table[0] = Encoding.UTF_8;
+            table[1] = Encoding.UTF_16LE;
+            table[2] = Encoding.UTF_16BE;
+            table[3] = Encoding.UTF_32LE;
+            table[4] = Encoding.UTF_32BE;
+            TABLE = table;
+        }
+
     }
 
     interface VMObject {

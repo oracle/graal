@@ -456,8 +456,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
             }
             HostedType hType = hUniverse.lookup(aType);
 
-            if (hType.getUniqueConcreteImplementation() != null) {
-                sType.setTypeCheckData(hType.getUniqueConcreteImplementation().getHub());
+            if (hType.getSingleImplementor() != null) {
+                sType.setSingleImplementor(hType.getSingleImplementor().getHub());
             }
 
             if (sType.getInstanceFieldCount() > 1) {

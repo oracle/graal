@@ -2277,7 +2277,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 continue;
             }
             boolean ignoreUnexpected = mode == ParseMode.EXPORTED_MESSAGE;
-            ExecutableTypeData executableType = new ExecutableTypeData(node, method, signatureSize, context.getFrameTypes(), ignoreUnexpected);
+            boolean reachableForRuntimeCompilation = !(mode == ParseMode.OPERATION && node.isGenerateUncached());
+            ExecutableTypeData executableType = new ExecutableTypeData(node, method, signatureSize, context.getFrameTypes(), ignoreUnexpected, reachableForRuntimeCompilation);
 
             if (executableType.getFrameParameter() != null) {
                 boolean supportedType = false;

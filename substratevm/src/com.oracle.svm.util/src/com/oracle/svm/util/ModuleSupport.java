@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.util;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -54,6 +56,15 @@ public final class ModuleSupport {
 
     private static boolean isModulePathBuild() {
         return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+    }
+
+    public static Set<String> parseModuleSetModifierProperty(String prop) {
+        Set<String> specifiedModules = new HashSet<>();
+        String args = System.getProperty(prop, "");
+        if (!args.isEmpty()) {
+            specifiedModules.addAll(Arrays.asList(args.split(",")));
+        }
+        return specifiedModules;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

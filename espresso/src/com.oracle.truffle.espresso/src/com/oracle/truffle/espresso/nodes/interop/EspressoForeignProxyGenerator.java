@@ -68,6 +68,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -84,7 +85,6 @@ import com.oracle.truffle.espresso.impl.generics.tree.ClassSignature;
 import com.oracle.truffle.espresso.impl.generics.tree.FormalTypeParameter;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -338,7 +338,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
         }
 
-        if (packagePrivateTypes.size() > 0) {
+        if (!packagePrivateTypes.isEmpty()) {
             // all package-private types must be in the same runtime package
             // i.e. same package name and same module (named or unnamed)
             //
@@ -372,7 +372,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                     continue;
                 }
 
-                if (!targetModule.canRead(m, context) || (!m.isOpen() && !intf.packageEntry().isUnqualifiedExported())) {
+                if (!targetModule.canRead(m, context.isJavaBase(m)) || (!m.isOpen() && !intf.packageEntry().isUnqualifiedExported())) {
                     throw new IllegalArgumentException(targetModule + " can't access " + intf.getName());
                 }
             }
@@ -443,7 +443,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private void ensureAccess(ModuleTable.ModuleEntry target, Klass c) {
         ModuleTable.ModuleEntry m = c.module();
         // add read edge and qualified export for the target module to access
-        if (!target.canRead(m, context)) {
+        if (!target.canRead(m, context.isJavaBase(m))) {
             target.addReads(m);
         }
         PackageTable.PackageEntry pe = c.packageEntry();

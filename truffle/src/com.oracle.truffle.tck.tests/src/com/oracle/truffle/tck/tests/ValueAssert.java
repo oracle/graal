@@ -61,6 +61,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -73,6 +74,9 @@ import static org.junit.Assert.fail;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -99,6 +103,7 @@ import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.Value.StringEncoding;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -521,6 +526,21 @@ public class ValueAssert {
                         assertEquals(stringValue.charAt(0), (char) value.as(Character.class));
                         assertEquals(stringValue.charAt(0), (char) value.as(char.class));
                     }
+                    Charset charSet = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? Charset.forName("UTF-16LE") : Charset.forName("UTF-16BE");
+                    byte[] expectedBytes = value.asString().getBytes(charSet);
+                    assertArrayEquals(expectedBytes, value.asStringBytes(StringEncoding.UTF_16));
+
+                    try {
+                        charSet = ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? Charset.forName("UTF-32LE") : Charset.forName("UTF-32BE");
+                        expectedBytes = value.asString().getBytes(charSet);
+                        assertArrayEquals(expectedBytes, value.asStringBytes(StringEncoding.UTF_32));
+                    } catch (UnsupportedCharsetException e) {
+                        // expected for JDK 21
+                    }
+
+                    charSet = StandardCharsets.UTF_8;
+                    expectedBytes = value.asString().getBytes(charSet);
+                    assertArrayEquals(expectedBytes, value.asStringBytes(StringEncoding.UTF_8));
                     break;
                 case NUMBER:
                     assertValueNumber(value);

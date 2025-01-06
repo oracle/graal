@@ -22,12 +22,39 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.ParserField;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.ParserMethod;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.Local;
+import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
+import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -40,48 +67,21 @@ import com.oracle.truffle.espresso.impl.RedefineAddedField;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.ParserField;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.ParserMethod;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
-import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.Local;
-import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.preinit.ParserKlassProvider;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefineListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Matcher;
 
 public final class ClassRedefinition {
-
+    public static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, ClassRedefinition.class);
     private final Object redefineLock = new Object();
     private volatile boolean locked = false;
     private Thread redefineThread = null;
-
     private final EspressoContext context;
     private final Ids<Object> ids;
-    private final DebuggerController controller;
     private final RedefineListener redefineListener;
     private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
     private ArrayList<Field> currentDelegationFields;
@@ -107,14 +107,13 @@ public final class ClassRedefinition {
         NEW_CLASS,
         SCHEMA_CHANGE,
         CLASS_HIERARCHY_CHANGED,
-        INVALID;
+        INVALID
     }
 
-    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener, DebuggerController controller) {
+    public ClassRedefinition(EspressoContext context, Ids<Object> ids, RedefineListener listener) {
         this.context = context;
         this.ids = ids;
         this.redefineListener = listener;
-        this.controller = controller;
     }
 
     public void begin() {
@@ -149,7 +148,7 @@ public final class ClassRedefinition {
     }
 
     public void runPostRedefinitionListeners(ObjectKlass[] changedKlasses) {
-        redefineListener.postRedefinition(changedKlasses, controller);
+        redefineListener.postRedefinition(changedKlasses);
     }
 
     public void check() {
@@ -316,10 +315,7 @@ public final class ClassRedefinition {
         Map<Method, ParserMethod> bodyChanges = new HashMap<>();
         List<ParserMethod> newSpecialMethods = new ArrayList<>(1);
 
-        boolean constantPoolChanged = false;
-        if (!Arrays.equals(oldParserKlass.getConstantPool().getRawBytes(), newParserKlass.getConstantPool().getRawBytes())) {
-            constantPoolChanged = true;
-        }
+        boolean constantPoolChanged = !Arrays.equals(oldParserKlass.getConstantPool().getRawBytes(), newParserKlass.getConstantPool().getRawBytes());
         Iterator<Method> oldIt = oldMethods.iterator();
         Iterator<ParserMethod> newIt;
         while (oldIt.hasNext()) {
@@ -674,13 +670,11 @@ public final class ClassRedefinition {
         Attribute oldAttribute = oldMethod.getAttribute(name);
         Attribute newAttribute = newMethod.getAttribute(name);
         if ((oldAttribute == null || newAttribute == null)) {
-            if (oldAttribute != null || newAttribute != null) {
-                return true;
-            } // else both null, so no change. Move on!
-        } else if (!oldAttribute.sameAs(newAttribute)) {
-            return true;
+            // else both null, so no change. Move on!
+            return oldAttribute != null || newAttribute != null;
+        } else {
+            return !oldAttribute.sameAs(newAttribute);
         }
-        return false;
     }
 
     private static boolean isSameMethod(ParserMethod oldMethod, ParserMethod newMethod) {
@@ -797,7 +791,7 @@ public final class ClassRedefinition {
         }
         oldKlass.redefineClass(packet, invalidatedClasses, ids);
         redefinedClasses.add(oldKlass);
-        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged(), controller)) {
+        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged())) {
             context.rerunclinit(oldKlass);
         }
     }
@@ -827,9 +821,5 @@ public final class ClassRedefinition {
 
     public int getNextAvailableFieldSlot() {
         return nextAvailableFieldSlot.getAndDecrement();
-    }
-
-    public DebuggerController getController() {
-        return controller;
     }
 }

@@ -1402,6 +1402,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object getHashValuesIterator(Object context, Object receiver);
 
         public abstract void pin(Object languageContext, Object receiver);
+
+        public abstract byte[] asStringBytes(Object context, Object receiver, int encoding);
     }
 
     public Class<?> loadLanguageClass(String className) {
@@ -1414,6 +1416,14 @@ public abstract class AbstractPolyglotImpl {
 
     public Object asValue(Object o) {
         return getNext().asValue(o);
+    }
+
+    public Value fromNativeString(long basePointer, int byteOffset, int byteLength, int encoding, boolean copy) {
+        return getNext().fromNativeString(basePointer, byteOffset, byteLength, encoding, copy);
+    }
+
+    public Value fromByteBasedString(byte[] bytes, int offset, int length, int encoding, boolean copy) {
+        return getNext().fromByteBasedString(bytes, offset, length, encoding, copy);
     }
 
     public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
@@ -1438,6 +1448,14 @@ public abstract class AbstractPolyglotImpl {
 
     public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
         return getNext().newNIOFileSystem(fileSystem);
+    }
+
+    public FileSystem newCompositeFileSystem(FileSystem fallbackFileSystem, FileSystem.Selector... delegates) {
+        return getNext().newCompositeFileSystem(fallbackFileSystem, delegates);
+    }
+
+    public FileSystem newDenyIOFileSystem() {
+        return getNext().newDenyIOFileSystem();
     }
 
     public ByteSequence asByteSequence(Object object) {

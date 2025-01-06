@@ -24,10 +24,9 @@
  */
 package com.oracle.svm.core.os;
 
-import static org.graalvm.word.WordFactory.nullPointer;
-import static org.graalvm.word.WordFactory.zero;
+import static jdk.graal.compiler.word.Word.nullPointer;
+import static jdk.graal.compiler.word.Word.zero;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
@@ -37,8 +36,6 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider {
@@ -66,15 +63,5 @@ public class OSCommittedMemoryProvider extends ChunkBasedCommittedMemoryProvider
             return CEntryPointErrors.NO_ERROR;
         }
         return ImageHeapProvider.get().freeImageHeap(KnownIntrinsics.heapBase());
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class OSCommittedMemoryProviderFeature implements InternalFeature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
-            ImageSingletons.add(CommittedMemoryProvider.class, new OSCommittedMemoryProvider());
-        }
     }
 }

@@ -106,7 +106,7 @@ The current state is encapsulated in a [`BytecodeNode`](https://github.com/oracl
 It is worth familiarizing yourself with its APIs.
 
 The `BytecodeNode` (and the bytecode itself) can change over the execution of a program for various reasons (e.g., [transitioning from uncached to cached](#cached-and-uncached-execution), [reparsing metadata](#reparsing), [quickening](Optimization.md#quickening)), so you should use `BytecodeRootNode#getBytecodeNode()` to obtain the up-to-date bytecode node each time you need it.
-Custom operations can also `@Bind BytecodeNode` in their specializations (see [Bind parameters](#bind-parameters)).
+Custom operations can also `@Bind BytecodeNode` in their specializations (more about special Bind parameters [here](#expressions-in-operations)).
 
 Because the bytecode may change, a bytecode index (obtained using `@Bind("$bytecodeIndex")`) must be paired with a `BytecodeNode` to meaningfully identify a program location.
 You can also instantiate a [`BytecodeLocation`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeLocation.java), which logically represents the bytecode node and index, using `BytecodeNode#getBytecodeLocation(int)` or `@Bind BytecodeLocation`.
@@ -271,7 +271,7 @@ The builder will emit code to collect these values into an `Object[]`.
 
 An operation can also define _constant operands_, which are embedded in the bytecode and produce partial evaluation constant values, by declaring [`@ConstantOperand`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/ConstantOperand.java)s.
 
-An operation may need to produce more than one result, or to modify local variables. For either case, the operation can use [`LocalAccessor`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessor.java) or [`LocalAccessorRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessorRange.java).
+An operation may need to produce more than one result, or to modify local variables. For either case, the operation can use [`LocalAccessor`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessor.java) or [`LocalRangeAccessor`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalRangeAccessor.java).
 
 
 ## Locals
@@ -298,7 +298,7 @@ b.endBlock();
 All local accesses must be (directly or indirectly) nested within the operation that created the local.
 
 The `LoadLocal` and `StoreLocal` operations are the preferred way to access locals because they are efficient and can be quickened to [avoid boxing](Optimization.md#boxing-elimination).
-Some behaviour cannot be easily implemented using only these operations, in which case an operation can declare a [`LocalAccessor`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessor.java) or [`LocalAccessorRange`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessorRange.java) operand to perform local accesses.
+Some behaviour cannot be easily implemented using only these operations, in which case an operation can declare a [`LocalAccessor`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalAccessor.java) or [`LocalRangeAccessor`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/LocalRangeAccessor.java) operand to perform local accesses.
 For example, an operation producing multiple values cannot "return" both values, and may instead use a local accessor to write one of the values back to a local.
 The [`BytecodeNode`](https://github.com/oracle/graal/blob/master/truffle/src/com.oracle.truffle.api.bytecode/src/com/oracle/truffle/api/bytecode/BytecodeNode.java) class also declares a variety of helper methods for accessing locals.
 These helpers often have extra indirection, so the built-in operations and accessors are preferred.
@@ -533,7 +533,7 @@ It is recommended to enclose the `Root` operation in appropriate `Source` and `S
 The generated root node will override `Node#getSourceSection` to return this information.
 
 Source information is designed to have no performance overhead until it is requested (see [Reparsing metadata](#reparsing)).
-This information [should generally not be accessed from compiled code](RuntimeCompilation.md#source-information).
+Take extra care if accessing source information in [compiled code](RuntimeCompilation.md#source-information).
 
 ### Instrumentation
 

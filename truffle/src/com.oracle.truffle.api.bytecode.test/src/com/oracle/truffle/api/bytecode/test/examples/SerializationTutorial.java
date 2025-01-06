@@ -93,7 +93,7 @@ public class SerializationTutorial {
      * {@link GenerateBytecode} specification, set {@code enableSerialization = true}. Then, rebuild
      * your project to update the generated interpreter.
      * <p>
-     * When serialization is enabled, The Bytecode DSL generates extra methods that you can use to
+     * When serialization is enabled, the Bytecode DSL generates extra methods that you can use to
      * serialize/deserialize your bytecode nodes. It also validates that all of the
      * non-{@code transient} fields (which will be serialized) are reachable.
      */

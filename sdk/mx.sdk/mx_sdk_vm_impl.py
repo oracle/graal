@@ -1238,8 +1238,8 @@ class SvmSupport(object):
         ])
 
         # Prefix native-image builds that print straight to stdout or stderr with [<output_filename>:<pid>]
-        out = out or mx.PrefixCapture(sys.stdout.write, basename(output_file))
-        err = err or mx.PrefixCapture(sys.stderr.write, basename(output_file))
+        out = out or mx.PrefixCapture(lambda l: mx.log(l, end=''), basename(output_file))
+        err = err or mx.PrefixCapture(lambda l: mx.log(l, end='', file=sys.stderr), basename(output_file))
 
         mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
 
@@ -2306,6 +2306,9 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
             if isinstance(self.subject.component, mx_sdk.GraalVmTruffleComponent) or image_config.is_polyglot:
                 extra_jvm_args = ' '.join([extra_jvm_args, '--enable-native-access=org.graalvm.truffle'])
+                # GR-59703: Migrate sun.misc.* usages.
+                if mx.VersionSpec("23.0.0") <= mx.get_jdk(tag='default').version:
+                    extra_jvm_args = ' '.join([extra_jvm_args, '--sun-misc-unsafe-memory-access=allow'])
             if not _jlink_libraries():
                 if mx.is_windows():
                     extra_jvm_args = ' '.join([extra_jvm_args, r'--upgrade-module-path "%location%\..\..\jvmci\graal.jar"'])
@@ -2513,6 +2516,7 @@ class PolyglotIsolateLibraryBuildTask(GraalVmLibraryBuildTask):
             '-H:APIFunctionPrefix=truffle_isolate_',
         ] + svm_experimental_options([
             '-H:+IgnoreMaxHeapSizeWhileInVMOperation',
+            '-H:+CopyLanguageResources',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
         ]) + mx.get_runtime_jvm_args(self.subject.native_image_jar_distributions) + \
         project.native_image_config.build_args + project.native_image_config.build_args_enterprise

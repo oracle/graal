@@ -53,8 +53,6 @@ public final class KnownOffsets {
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int typeIDSlotsOffset;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
-    private int componentHubOffset;
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int javaFrameAnchorLastSPOffset;
     @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int javaFrameAnchorLastIPOffset;
@@ -69,14 +67,15 @@ public final class KnownOffsets {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int typeIDSlotsOffset, int componentHubOffset,
-                    int javaFrameAnchorLastSPOffset, int javaFrameAnchorLastIPOffset, int vmThreadStatusOffset, int imageCodeInfoCodeStartOffset) {
+    public void setLazyState(int vtableBaseOffset, int vtableEntrySize, int typeIDSlotsOffset,
+                    int javaFrameAnchorLastSPOffset, int javaFrameAnchorLastIPOffset,
+                    int vmThreadStatusOffset, int imageCodeInfoCodeStartOffset) {
         assert !isFullyInitialized();
 
         this.vtableBaseOffset = vtableBaseOffset;
         this.vtableEntrySize = vtableEntrySize;
         this.typeIDSlotsOffset = typeIDSlotsOffset;
-        this.componentHubOffset = componentHubOffset;
+
         this.javaFrameAnchorLastSPOffset = javaFrameAnchorLastSPOffset;
         this.javaFrameAnchorLastIPOffset = javaFrameAnchorLastIPOffset;
         this.vmThreadStatusOffset = vmThreadStatusOffset;
@@ -89,7 +88,7 @@ public final class KnownOffsets {
                             vtableBaseOffset,
                             vtableEntrySize,
                             typeIDSlotsOffset,
-                            componentHubOffset,
+
                             javaFrameAnchorLastSPOffset,
                             javaFrameAnchorLastIPOffset,
                             vmThreadStatusOffset,
@@ -135,11 +134,6 @@ public final class KnownOffsets {
     public int getTypeIDSlotsOffset() {
         assert isFullyInitialized() && SubstrateOptions.useClosedTypeWorldHubLayout();
         return typeIDSlotsOffset;
-    }
-
-    public int getComponentHubOffset() {
-        assert isFullyInitialized();
-        return componentHubOffset;
     }
 
     public int getJavaFrameAnchorLastSPOffset() {

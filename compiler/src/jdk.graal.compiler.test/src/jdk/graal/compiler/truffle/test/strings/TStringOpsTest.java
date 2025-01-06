@@ -176,18 +176,18 @@ public abstract class TStringOpsTest<T extends Node> extends TStringTest {
     }
 
     protected InstalledCode cacheInstalledCodeConstantStride(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, OptionValues options, ResolvedJavaMethod expectedMethod,
-                    InstalledCode[] cache, int strideA, int strideB) {
-        return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, expectedMethod, cache, strideA, strideB, 0);
+                    InstalledCode[] cache1, int strideA, int strideB) {
+        return cacheInstalledCodeConstantStrideLength(installedCodeOwner, graph, options, expectedMethod, cache1, strideA, strideB, 0);
     }
 
     protected InstalledCode cacheInstalledCodeConstantStrideLength(ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, OptionValues options, ResolvedJavaMethod expectedMethod,
-                    InstalledCode[] cache, int strideA, int strideB, int iLength) {
+                    InstalledCode[] cache1, int strideA, int strideB, int iLength) {
         Assert.assertEquals(expectedMethod, installedCodeOwner);
         int index = (iLength * 9) + (strideA * 3) + strideB;
-        InstalledCode installedCode = cache[index];
+        InstalledCode installedCode = cache1[index];
         while (installedCode == null || !installedCode.isValid()) {
             installedCode = super.getCode(installedCodeOwner, graph, true, false, options);
-            cache[index] = installedCode;
+            cache1[index] = installedCode;
         }
         return installedCode;
     }

@@ -1191,13 +1191,7 @@ _baristaConfig = {
         "micronaut-similarity": {},
         "micronaut-pegasus": {},
         "quarkus-hello-world": {},
-        "quarkus-tika-odt": {
-            "barista-bench-name": "quarkus-tika",
-        },
-        "quarkus-tika-pdf": {
-            "barista-bench-name": "quarkus-tika",
-            "workload": "pdf-workload.barista.json",
-        },
+        "quarkus-tika": {},
         "spring-hello-world": {},
         "spring-petclinic": {},
     },
@@ -1262,7 +1256,7 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
 
     def benchmarkList(self, bmSuiteArgs):
         exclude = []
-        # Barista currently does not support running 'micronaut-pegasus' on the JVM - running it results in a crash
+        # Barista currently does not support running 'micronaut-pegasus' on the JVM - running it results in a crash (GR-59793)
         exclude.append("micronaut-pegasus")
         return [b for b in self.completeBenchmarkList(bmSuiteArgs) if not b in exclude]
 
@@ -1625,6 +1619,12 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 del benchmarks["log-regression"]
                 del benchmarks["naive-bayes"]
 
+        if self.version() in ["0.16.0"]:
+            del benchmarks["chi-square"]
+            del benchmarks["gauss-mix"]
+            del benchmarks["page-rank"]
+            del benchmarks["movie-lens"]
+
         return benchmarks
 
     def completeBenchmarkList(self, bmSuiteArgs):
@@ -1687,7 +1687,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         if any(benchmark in sparkBenchmarks for benchmark in benchmarks):
             # Spark benchmarks require a higher stack size than default in some configurations.
             # [JDK-8303076] [GR-44499] [GR-50671]
-            vmArgs.append("-Xss1090K")
+            vmArgs.append("-Xss1500K")
 
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
         return (vmArgs + ["-jar", self.renaissancePath()] + runArgs + [benchArg])

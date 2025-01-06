@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
@@ -87,9 +88,9 @@ import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -107,6 +108,8 @@ import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import com.oracle.truffle.espresso.runtime.panama.Platform;
 import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
+import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -115,7 +118,8 @@ import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
 
-public final class EspressoContext {
+public final class EspressoContext
+                implements RuntimeAccess<Klass, Method, Field> {
     // MaxJavaStackTraceDepth is 1024 by default
     public static final int DEFAULT_STACK_SIZE = 32;
 
@@ -418,7 +422,7 @@ public final class EspressoContext {
 
             if (getJavaVersion().modulesEnabled()) {
                 registries.initJavaBaseModule();
-                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
+                registries.getBootClassRegistry().initUnnamedModule(null);
             }
 
             initializeAgents();
@@ -1158,9 +1162,9 @@ public final class EspressoContext {
         return REFERENCE.get(node);
     }
 
-    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler, DebuggerController controller) {
+    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler) {
         if (classRedefinition == null) {
-            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler, controller);
+            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler);
         }
         return classRedefinition;
     }
@@ -1244,5 +1248,41 @@ public final class EspressoContext {
 
     public Path getEspressoRuntime() {
         return EspressoLanguage.getEspressoRuntime(getEnv());
+    }
+
+    public boolean isJavaBase(ModuleTable.ModuleEntry m) {
+        return m == getRegistries().getJavaBaseModule();
+    }
+
+    // RuntimeAccess impl
+
+    @Override
+    @TruffleBoundary
+    public RuntimeException throwError(ErrorType error, String messageFormat, Object... args) {
+        ObjectKlass exType = errorTypeToExceptionKlass(error);
+        if (exType == null) {
+            throw fatal(messageFormat, args);
+        }
+        throw meta.throwExceptionWithMessage(exType, String.format(Locale.ENGLISH, messageFormat, args));
+    }
+
+    @Override
+    public RuntimeException fatal(String messageFormat, Object... args) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere(String.format(Locale.ENGLISH, messageFormat, args));
+    }
+
+    private ObjectKlass errorTypeToExceptionKlass(ErrorType errorType) {
+        switch (errorType) {
+            case IllegalAccessError:
+                return meta.java_lang_IllegalAccessError;
+            case NoSuchFieldError:
+                return meta.java_lang_NoSuchFieldError;
+            case NoSuchMethodError:
+                return meta.java_lang_NoSuchMethodError;
+            case IncompatibleClassChangeError:
+                return meta.java_lang_IncompatibleClassChangeError;
+        }
+        return null;
     }
 }

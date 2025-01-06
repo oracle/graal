@@ -31,7 +31,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
+import com.oracle.truffle.api.TruffleLogger;
 
 /**
  * Class that keeps an ID representation of all entities when communicating with a debugger through
@@ -57,11 +57,10 @@ public final class Ids<T> {
 
     private HashMap<String, Long> innerClassIDMap = new HashMap<>(16);
 
-    private DebuggerController controller;
-
     private List<Object> pinnedObjects = new ArrayList<>();
 
     private volatile boolean pinningState = false;
+    private TruffleLogger logger;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Ids(T nullObject) {
@@ -202,14 +201,8 @@ public final class Ids<T> {
         return innerClassIDMap.containsValue(refTypeId);
     }
 
-    public void injectController(DebuggerController control) {
-        this.controller = control;
-    }
-
     private void log(Supplier<String> supplier) {
-        if (controller != null) {
-            controller.finest(supplier);
-        }
+        logger.finest(supplier);
     }
 
     public synchronized void pinAll() {
@@ -225,5 +218,9 @@ public final class Ids<T> {
     public synchronized void unpinAll() {
         pinningState = false;
         pinnedObjects.clear();
+    }
+
+    public void injectLogger(TruffleLogger truffleLogger) {
+        this.logger = truffleLogger;
     }
 }

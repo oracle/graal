@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.windows;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -53,11 +53,11 @@ public class WindowsGOTHeapSupport extends GOTHeapSupport {
 
         HANDLE gotMappingHandle = MemoryAPI.CreateFileMappingW(
                         WinBase.INVALID_HANDLE_VALUE(), // in-memory
-                        WordFactory.nullPointer(),
+                        Word.nullPointer(),
                         MemoryAPI.PAGE_READWRITE(),
                         0,
                         UnsignedUtils.safeToInt(alignedGotSize),
-                        WordFactory.nullPointer() // anonymous
+                        Word.nullPointer() // anonymous
         );
 
         if (gotMappingHandle.isNull()) {
@@ -69,7 +69,7 @@ public class WindowsGOTHeapSupport extends GOTHeapSupport {
                         MemoryAPI.FILE_MAP_READ() | MemoryAPI.FILE_MAP_WRITE(),
                         0,
                         0,
-                        WordFactory.zero() // map it whole
+                        Word.zero() // map it whole
         );
 
         if (gotMappedAddress.isNull()) {
@@ -100,7 +100,7 @@ public class WindowsGOTHeapSupport extends GOTHeapSupport {
                         address,
                         getPageAlignedGotSize(),
                         gotMappingHandle,
-                        WordFactory.zero(),
+                        Word.zero(),
                         Access.READ);
 
         if (mappedAddress.isNull()) {

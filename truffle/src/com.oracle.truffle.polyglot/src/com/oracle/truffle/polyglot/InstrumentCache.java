@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -291,7 +290,6 @@ final class InstrumentCache {
     }
 
     private static void emitWarning(String message, Object... args) {
-        PrintStream out = System.err;
-        out.printf(message + "%n", args);
+        PolyglotEngineImpl.logFallback(String.format(message + "%n", args));
     }
 }

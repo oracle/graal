@@ -62,6 +62,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -72,6 +73,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -79,6 +81,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.charset.UnsupportedCharsetException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -107,6 +112,7 @@ import org.graalvm.polyglot.HostAccess.Implementable;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.Value.StringEncoding;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
@@ -137,9 +143,29 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
+import sun.misc.Unsafe;
+
 public class ValueAPITest {
+
+    // used for native string tests
+    static final sun.misc.Unsafe UNSAFE = getUnsafe();
+
+    private static Unsafe getUnsafe() {
+        try {
+            return Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+        }
+        try {
+            Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeInstance.setAccessible(true);
+            return (Unsafe) theUnsafeInstance.get(Unsafe.class);
+        } catch (Exception e) {
+            throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
+    }
 
     private static Context context;
     private static Context secondaryContext;
@@ -205,6 +231,7 @@ public class ValueAPITest {
             assertValueInContexts(context.asValue(string), STRING);
             assertValueInContexts(context.asValue(new StringWrapper(string.toString())), STRING);
         }
+
     }
 
     @Test
@@ -291,8 +318,7 @@ public class ValueAPITest {
                     new JavaSuperClass(),
                     new BigInteger("42"),
                     new BigIntegerSubClass("42"),
-                    new BigDecimal("42"),
-                    new Function<>() {
+                    new BigDecimal("42"), new Function<>() {
                         public Object apply(Object t) {
                             return t;
                         }
@@ -2684,6 +2710,203 @@ public class ValueAPITest {
         assertEquals(BigInteger.ONE, val.as(Number.class));
         assertEquals((Character) (char) 1, val.as(char.class));
         assertEquals((Character) (char) 1, val.as(Character.class));
+    }
+
+    record TestEncoding(StringEncoding encoding, Charset charSet) {
+    }
+
+    static final TestEncoding[] ENCODINGS;
+
+    static {
+        List<TestEncoding> encodings = new ArrayList<>();
+        encodings.add(new TestEncoding(StringEncoding.UTF_8, StandardCharsets.UTF_8));
+        encodings.add(new TestEncoding(StringEncoding.UTF_16_LITTLE_ENDIAN, StandardCharsets.UTF_16LE));
+        encodings.add(new TestEncoding(StringEncoding.UTF_16_BIG_ENDIAN, StandardCharsets.UTF_16BE));
+        try {
+            encodings.add(new TestEncoding(StringEncoding.UTF_32_LITTLE_ENDIAN, Charset.forName("UTF-32LE")));
+            encodings.add(new TestEncoding(StringEncoding.UTF_32_BIG_ENDIAN, Charset.forName("UTF-32BE")));
+        } catch (UnsupportedCharsetException e) {
+            // expected for JDK 21
+        }
+        ENCODINGS = encodings.toArray(TestEncoding[]::new);
+    }
+
+    static final String[] SAMPLE_STRINGS = new String[]{
+                    "Hello world!", // English
+                    "Hello, \u4e16\u754c!", // Chinese
+                    "\u0048\u0065\u006c\u006c\u006f\u002c\u0020\ud83c\udf0d\u0021", // Emoticon
+                    "\u041f\u0440\u0438\u0432\u0456\u0442, \u0441\u0432\u0456\u0442\u0435!"}; // Ukrainian
+
+    @Test
+    public void testFromByteBasedString() {
+        for (TestEncoding e : ENCODINGS) {
+            for (String s : SAMPLE_STRINGS) {
+                byte[] bytes = s.getBytes(e.charSet);
+                Value value = Value.fromByteBasedString(bytes, e.encoding);
+
+                ValueAssert.assertValue(value, Trait.STRING);
+
+                assertTrue(value.isString());
+                for (TestEncoding e2 : ENCODINGS) {
+                    assertArrayEquals(e2.toString(), s.getBytes(e2.charSet), value.asStringBytes(e2.encoding));
+                }
+
+                value = Value.fromByteBasedString(bytes, 0, bytes.length, e.encoding, true);
+                assertArrayEquals(bytes, value.asStringBytes(e.encoding));
+                assertEquals(s, value.asString());
+                ValueAssert.assertValue(value, Trait.STRING);
+
+                value = Value.fromByteBasedString(bytes, 0, bytes.length, e.encoding, false);
+                assertArrayEquals(bytes, value.asStringBytes(e.encoding));
+                assertEquals(s, value.asString());
+                ValueAssert.assertValue(value, Trait.STRING);
+            }
+        }
+    }
+
+    @Test
+    public void testFromByteBasedStringMutation() {
+        for (TestEncoding e : ENCODINGS) {
+            for (String s : SAMPLE_STRINGS) {
+                byte[] bytes = s.getBytes(e.charSet);
+                // create invalid string
+                bytes[3] = 42;
+                Value value = Value.fromByteBasedString(bytes, 0, bytes.length, e.encoding, false);
+                bytes[3] = 43;
+                assertEquals(43, value.asStringBytes(e.encoding)[3]);
+            }
+        }
+    }
+
+    @Test
+    public void testFromByteBasedStringErrors() {
+        assertFails(() -> Value.fromByteBasedString(null, StringEncoding.UTF_8), NullPointerException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[0], null), NullPointerException.class, null);
+
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, 0, 1, null, false), NullPointerException.class, null);
+        assertFails(() -> Value.fromByteBasedString(null, 0, 1, StringEncoding.UTF_8, false), NullPointerException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, 0, 2, StringEncoding.UTF_8, false), IndexOutOfBoundsException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, 1, 1, StringEncoding.UTF_8, false), IndexOutOfBoundsException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, -1, 1, StringEncoding.UTF_8, false), IndexOutOfBoundsException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, 0, -1, StringEncoding.UTF_8, false), IndexOutOfBoundsException.class, null);
+
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, 0, 1, null, true), NullPointerException.class, null);
+        assertFails(() -> Value.fromByteBasedString(null, 0, 1, StringEncoding.UTF_8, true), NullPointerException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, 0, 2, StringEncoding.UTF_8, true), IndexOutOfBoundsException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, 1, 1, StringEncoding.UTF_8, true), IndexOutOfBoundsException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, -1, 1, StringEncoding.UTF_8, true), IndexOutOfBoundsException.class, null);
+        assertFails(() -> Value.fromByteBasedString(new byte[]{42}, 0, -1, StringEncoding.UTF_8, true), IndexOutOfBoundsException.class, null);
+    }
+
+    @Test
+    public void testFromNativeBasedString() {
+        for (TestEncoding e : ENCODINGS) {
+            for (String s : SAMPLE_STRINGS) {
+                byte[] bytes = s.getBytes(e.charSet);
+                long size = bytes.length;
+                long address = UNSAFE.allocateMemory(size);
+                try {
+                    UNSAFE.copyMemory(
+                                    bytes,
+                                    Unsafe.ARRAY_BYTE_BASE_OFFSET,
+                                    null,
+                                    address,
+                                    size);
+
+                    Value value = Value.fromNativeString(address, bytes.length, e.encoding);
+                    ValueAssert.assertValue(value, Trait.STRING);
+                    assertTrue(value.isString());
+                    for (TestEncoding e2 : ENCODINGS) {
+                        assertArrayEquals(e2.toString(), s.getBytes(e2.charSet), value.asStringBytes(e2.encoding));
+                    }
+                    assertEquals(s, value.asString());
+
+                    value = Value.fromNativeString(address, 0, bytes.length, e.encoding, true);
+                    assertArrayEquals(bytes, value.asStringBytes(e.encoding));
+                    assertEquals(s, value.asString());
+                    ValueAssert.assertValue(value, Trait.STRING);
+                    value = Value.fromNativeString(address, 0, bytes.length, e.encoding, false);
+                    assertArrayEquals(bytes, value.asStringBytes(e.encoding));
+                    assertEquals(s, value.asString());
+                    ValueAssert.assertValue(value, Trait.STRING);
+
+                } finally {
+                    UNSAFE.freeMemory(address);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testFromNativeBasedStringOffset() {
+        for (TestEncoding e : ENCODINGS) {
+            for (String s : SAMPLE_STRINGS) {
+                byte[] bytes = s.getBytes(e.charSet);
+                long size = bytes.length;
+                int offset = 42;
+                long address = UNSAFE.allocateMemory(size + offset);
+                try {
+                    UNSAFE.copyMemory(
+                                    bytes,
+                                    Unsafe.ARRAY_BYTE_BASE_OFFSET,
+                                    null,
+                                    address + offset,
+                                    size);
+
+                    Value value = Value.fromNativeString(address, offset, bytes.length, e.encoding, false);
+                    assertTrue(value.isString());
+                    assertEquals(s, value.asString());
+                    ValueAssert.assertValue(value, Trait.STRING);
+                } finally {
+                    UNSAFE.freeMemory(address);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testFromNativeStringMutation() {
+        for (TestEncoding e : ENCODINGS) {
+            for (String s : SAMPLE_STRINGS) {
+                byte[] bytes = s.getBytes(e.charSet);
+                long size = bytes.length;
+                long address = UNSAFE.allocateMemory(size);
+                try {
+                    UNSAFE.copyMemory(
+                                    bytes,
+                                    Unsafe.ARRAY_BYTE_BASE_OFFSET,
+                                    null,
+                                    address,
+                                    size);
+                    UNSAFE.putByte(address + 3, (byte) 42);
+                    Value value = Value.fromNativeString(address, 0, bytes.length, e.encoding, false);
+                    UNSAFE.putByte(address + 3, (byte) 43);
+
+                    assertTrue(value.isString());
+                    assertEquals(43, value.asStringBytes(e.encoding)[3]);
+                } finally {
+                    // Step 6: Free the allocated memory
+                    UNSAFE.freeMemory(address);
+                }
+
+            }
+        }
+    }
+
+    @Test
+    public void testFromNativeBasedStringErrors() {
+        assertFails(() -> Value.fromNativeString(0L, 0, StringEncoding.UTF_8), NullPointerException.class, null);
+        assertFails(() -> Value.fromNativeString(1L, -1, StringEncoding.UTF_8), IndexOutOfBoundsException.class, null);
+
+        assertFails(() -> Value.fromNativeString(0L, 0, 0, StringEncoding.UTF_8, false), NullPointerException.class, null);
+        assertFails(() -> Value.fromNativeString(1L, 0, 0, null, false), NullPointerException.class, null);
+        assertFails(() -> Value.fromNativeString(1L, 0, -1, StringEncoding.UTF_8, false), IndexOutOfBoundsException.class, null);
+        assertFails(() -> Value.fromNativeString(1L, -1, 0, StringEncoding.UTF_8, false), IndexOutOfBoundsException.class, null);
+
+        assertFails(() -> Value.fromNativeString(0L, 0, 0, StringEncoding.UTF_8, true), NullPointerException.class, null);
+        assertFails(() -> Value.fromNativeString(1L, 0, 0, null, true), NullPointerException.class, null);
+        assertFails(() -> Value.fromNativeString(1L, 0, -1, StringEncoding.UTF_8, true), IndexOutOfBoundsException.class, null);
+        assertFails(() -> Value.fromNativeString(1L, -1, 0, StringEncoding.UTF_8, true), IndexOutOfBoundsException.class, null);
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -182,9 +182,16 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         String pattern = srcStr.substring(firstSlash + 1, lastSlash);
         String flags = srcStr.substring(lastSlash + 1);
         // ECMAScript-specific: the 'u' and 'v' flags change the encoding
-        if (optBuilder.getFlavor() == ECMAScriptFlavor.INSTANCE && !optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW &&
-                        (flags.indexOf('u') >= 0 || flags.indexOf('v') >= 0)) {
-            optBuilder.encoding(Encodings.UTF_16);
+        if (optBuilder.getFlavor() == ECMAScriptFlavor.INSTANCE) {
+            if (flags.indexOf('u') >= 0 || flags.indexOf('v') >= 0) {
+                if (!optBuilder.isUtf16ExplodeAstralSymbols() && optBuilder.getEncoding() == Encodings.UTF_16_RAW) {
+                    optBuilder.encoding(Encodings.UTF_16);
+                }
+            } else {
+                if (optBuilder.getEncoding() == Encodings.UTF_16) {
+                    optBuilder.encoding(Encodings.UTF_16_RAW);
+                }
+            }
         }
         return new RegexSource(pattern, flags, optBuilder.build(), source);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.object.basic.test;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -59,7 +60,7 @@ public class LeakCheckTest {
     private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
     private static Shape newEmptyShape() {
-        return Shape.newBuilder().layout(TestDynamicObjectDefault.class).build();
+        return Shape.newBuilder().layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
     }
 
     private static DynamicObject newInstance(Shape emptyShape) {

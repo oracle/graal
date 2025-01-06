@@ -52,10 +52,12 @@ import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
 import com.oracle.svm.configure.config.TypeConfiguration;
+import com.oracle.svm.configure.test.AddExports;
 import com.oracle.svm.core.configure.ConfigurationTypeDescriptor;
 import com.oracle.svm.core.configure.NamedConfigurationTypeDescriptor;
 import com.oracle.svm.core.util.VMError;
 
+@AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util"})
 public class OmitPreviousConfigTests {
 
     private static final String PREVIOUS_CONFIG_DIR_NAME = "prev-config-dir";
@@ -117,7 +119,7 @@ public class OmitPreviousConfigTests {
 
         doTestResourceConfig(config.getResourceConfiguration());
 
-        doTestSerializationConfig(config.getSerializationConfiguration());
+        doTestSerializationConfig(config);
 
         doTestPredefinedClassesConfig(config.getPredefinedClassesConfiguration());
     }
@@ -181,6 +183,8 @@ public class OmitPreviousConfigTests {
 
         Assert.assertNull(ConfigurationType.TestBackdoor.getMethodInfoIfPresent(methodTestType, new ConfigurationMethod("<init>", "(I)V")));
         Assert.assertNotNull(ConfigurationType.TestBackdoor.getMethodInfoIfPresent(methodTestType, new ConfigurationMethod("method", "()V")));
+        Assert.assertNull(ConfigurationType.TestBackdoor.getMethodInfoIfPresent(methodTestType, new ConfigurationMethod("method2", "()V")));
+        Assert.assertNotNull(ConfigurationType.TestBackdoor.getMethodInfoIfPresent(methodTestType, new ConfigurationMethod("method3", "()V")));
     }
 
     private static void doTestProxyConfig(ProxyConfiguration proxyConfig) {
@@ -198,10 +202,16 @@ public class OmitPreviousConfigTests {
         Assert.assertTrue(resourceConfig.anyBundleMatches(condition, "unseenBundle"));
     }
 
-    private static void doTestSerializationConfig(SerializationConfiguration serializationConfig) {
+    /*
+     * Note: the parameter cannot be a SerializationConfiguration because the type depends on some
+     * module exports (see the AddExports annotation) which only get applied _after_ the class is
+     * loaded.
+     */
+    private static void doTestSerializationConfig(ConfigurationSet config) {
+        SerializationConfiguration serializationConfig = config.getSerializationConfiguration();
         UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.alwaysTrue();
-        Assert.assertFalse(serializationConfig.contains(condition, "seenType", null));
-        Assert.assertTrue(serializationConfig.contains(condition, "unseenType", null));
+        Assert.assertFalse(serializationConfig.contains(condition, "seenType"));
+        Assert.assertTrue(serializationConfig.contains(condition, "unseenType"));
     }
 
     private static ConfigurationType getConfigTypeOrFail(TypeConfiguration typeConfig, String typeName) {

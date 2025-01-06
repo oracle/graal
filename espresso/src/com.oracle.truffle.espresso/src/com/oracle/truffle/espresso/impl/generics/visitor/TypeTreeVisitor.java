@@ -35,8 +35,8 @@ import com.oracle.truffle.espresso.impl.generics.tree.IntSignature;
 import com.oracle.truffle.espresso.impl.generics.tree.LongSignature;
 import com.oracle.truffle.espresso.impl.generics.tree.ShortSignature;
 import com.oracle.truffle.espresso.impl.generics.tree.SimpleClassTypeSignature;
-import com.oracle.truffle.espresso.impl.generics.tree.VoidDescriptor;
 import com.oracle.truffle.espresso.impl.generics.tree.TypeVariableSignature;
+import com.oracle.truffle.espresso.impl.generics.tree.VoidDescriptor;
 
 /**
  * Visit a TypeTree and produce a result of type T.

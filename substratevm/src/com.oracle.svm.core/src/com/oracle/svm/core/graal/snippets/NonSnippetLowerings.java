@@ -112,6 +112,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -494,8 +495,8 @@ public abstract class NonSnippetLowerings {
 
         protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod method, JavaType[] signature,
                         CallingConvention.Type callType, InvokeKind invokeKind, ValueNode entry) {
-            return graph.add(new SubstrateIndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind,
-                            ((SubstrateMethodCallTargetNode) callTarget).getMethodProfile()));
+            JavaMethodProfile methodProfile = callTarget instanceof SubstrateMethodCallTargetNode substrateCallTarget ? substrateCallTarget.getMethodProfile() : null;
+            return graph.add(new SubstrateIndirectCallTargetNode(entry, parameters.toArray(ValueNode.EMPTY_ARRAY), callTarget.returnStamp(), signature, method, callType, invokeKind, methodProfile));
         }
 
         private static CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, JavaType[] signature,

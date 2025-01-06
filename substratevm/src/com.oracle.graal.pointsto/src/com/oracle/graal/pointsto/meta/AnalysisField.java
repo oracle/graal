@@ -64,10 +64,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> isUnsafeAccessedUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(AnalysisField.class, Object.class, "isUnsafeAccessed");
-
-    private static final AtomicReferenceFieldUpdater<AnalysisField, Object> trackAcrossLayersUpdater = AtomicReferenceFieldUpdater
-                    .newUpdater(AnalysisField.class, Object.class, "trackAcrossLayers");
-
     private final int id;
     /** Marks a field loaded from a base layer. */
     private final boolean isInBaseLayer;
@@ -93,12 +89,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @SuppressWarnings("unused") private volatile Object isFolded;
     @SuppressWarnings("unused") private volatile Object isUnsafeAccessed;
 
-    /**
-     * See {@link AnalysisElement#isTrackedAcrossLayers} for explanation.
-     */
-    @SuppressWarnings("unused") private volatile Object trackAcrossLayers;
-    private final boolean enableTrackAcrossLayers;
-
     private ConcurrentMap<Object, Boolean> readBy;
     private ConcurrentMap<Object, Boolean> writtenBy;
 
@@ -117,6 +107,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
+        super(universe.hostVM.enableTrackAcrossLayers());
         assert !wrappedField.isInternal() : wrappedField;
 
         this.position = -1;
@@ -159,8 +150,6 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
             id = universe.computeNextFieldId();
             isInBaseLayer = false;
         }
-
-        this.enableTrackAcrossLayers = universe.hostVM.enableTrackAcrossLayers();
     }
 
     @Override
@@ -383,15 +372,13 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public void onReachable(Object reason) {
-        if (enableTrackAcrossLayers) {
-            AtomicUtils.atomicSet(this, reason, trackAcrossLayersUpdater);
-        }
+        registerAsTrackedAcrossLayers(reason);
         notifyReachabilityCallbacks(declaringClass.getUniverse(), new ArrayList<>());
     }
 
     @Override
-    public boolean isTrackedAcrossLayers() {
-        return AtomicUtils.isSet(this, trackAcrossLayersUpdater);
+    protected void onTrackedAcrossLayers(Object reason) {
+        AnalysisError.guarantee(!getUniverse().sealed(), "Field %s was marked as tracked after the universe was sealed", this);
     }
 
     public Object getFieldValueInterceptor() {

@@ -26,11 +26,11 @@ package com.oracle.svm.core.handles;
 
 import java.lang.ref.WeakReference;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import jdk.internal.misc.Unsafe;
 
@@ -73,7 +73,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
     private volatile long unusedHandleSearchIndex = 0;
 
     public ObjectHandlesImpl() {
-        this(WordFactory.signed(1), WordFactory.signed(Long.MAX_VALUE), WordFactory.signed(0));
+        this(Word.signed(1), Word.signed(Long.MAX_VALUE), Word.signed(0));
     }
 
     public ObjectHandlesImpl(SignedWord rangeMin, SignedWord rangeMax, SignedWord nullHandle) {
@@ -106,7 +106,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
 
     private ObjectHandle toHandle(int bucketIndex, int indexInBucket) {
         long index = toIndex(bucketIndex, indexInBucket);
-        return (ObjectHandle) rangeMin.add(WordFactory.signed(index));
+        return (ObjectHandle) rangeMin.add(Word.signed(index));
     }
 
     private long toIndex(WordBase handle) {

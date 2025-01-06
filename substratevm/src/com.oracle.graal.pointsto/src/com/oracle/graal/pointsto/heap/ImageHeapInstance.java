@@ -81,7 +81,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         this(type, hostedObject, -1, -1);
     }
 
-    ImageHeapInstance(AnalysisType type, JavaConstant hostedObject, int identityHashCode, int id) {
+    public ImageHeapInstance(AnalysisType type, JavaConstant hostedObject, int identityHashCode, int id) {
         super(new InstanceData(type, hostedObject, null, identityHashCode, id), false);
     }
 
@@ -98,7 +98,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
         return (InstanceData) super.getConstantData();
     }
 
-    void setFieldValues(Object[] fieldValues) {
+    public void setFieldValues(Object[] fieldValues) {
         boolean success = valuesHandle.compareAndSet(constantData, null, fieldValues);
         AnalysisError.guarantee(success, "Unexpected field values reference for constant %s", this);
     }
@@ -149,7 +149,18 @@ public final class ImageHeapInstance extends ImageHeapConstant {
             /* Base layer constants that are not relinked might not have field positions computed */
             field.getType().getInstanceFields(true);
         }
-        return arrayHandle.getVolatile(getFieldValues(), field.getPosition());
+        return getFieldValue(field.getPosition());
+    }
+
+    public Object getFieldValue(int fieldPosition) {
+        return arrayHandle.getVolatile(getFieldValues(), fieldPosition);
+    }
+
+    public int getFieldValuesSize() {
+        if (isReaderInstalled()) {
+            return getConstantData().fieldValues.length;
+        }
+        return 0;
     }
 
     /**

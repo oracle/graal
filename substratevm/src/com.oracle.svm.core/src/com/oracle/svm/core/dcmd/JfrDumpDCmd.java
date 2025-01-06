@@ -35,10 +35,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.Target_jdk_jfr_internal_dcmd_AbstractDCmd;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L81-L83")
 public class JfrDumpDCmd extends AbstractJfrDCmd {
-    // This constructor should be annotated with @BasedOnJDK instead of the class, see GR-59171.
     @Platforms(Platform.HOSTED_ONLY.class)
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/jfr/dcmd/jfrDcmds.hpp#L81-L83")
     public JfrDumpDCmd() {
         super("JFR.dump", "Copies contents of a JFR recording to file. Either the name or the recording id must be specified.", Impact.Medium);
     }

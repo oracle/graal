@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -214,7 +213,7 @@ public final class Space {
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Pointer allocateMemory(UnsignedWord objectSize) {
-        Pointer result = WordFactory.nullPointer();
+        Pointer result = Word.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
         AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();
         if (oldChunk.isNonNull()) {
@@ -233,7 +232,7 @@ public final class Space {
         if (newChunk.isNonNull()) {
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -241,10 +240,10 @@ public final class Space {
         chunkReleaser.add(firstAlignedHeapChunk);
         chunkReleaser.add(firstUnalignedHeapChunk);
 
-        firstAlignedHeapChunk = WordFactory.nullPointer();
-        lastAlignedHeapChunk = WordFactory.nullPointer();
-        firstUnalignedHeapChunk = WordFactory.nullPointer();
-        lastUnalignedHeapChunk = WordFactory.nullPointer();
+        firstAlignedHeapChunk = Word.nullPointer();
+        lastAlignedHeapChunk = Word.nullPointer();
+        firstUnalignedHeapChunk = Word.nullPointer();
+        lastUnalignedHeapChunk = Word.nullPointer();
         accounting.reset();
     }
 
@@ -264,7 +263,7 @@ public final class Space {
         AlignedHeapChunk.AlignedHeader oldLast = getLastAlignedHeapChunk();
         HeapChunk.setSpace(aChunk, this);
         HeapChunk.setPrevious(aChunk, oldLast);
-        HeapChunk.setNext(aChunk, WordFactory.nullPointer());
+        HeapChunk.setNext(aChunk, Word.nullPointer());
         if (oldLast.isNonNull()) {
             HeapChunk.setNext(oldLast, aChunk);
         }
@@ -295,8 +294,8 @@ public final class Space {
         } else {
             setLastAlignedHeapChunk(chunkPrev);
         }
-        HeapChunk.setNext(aChunk, WordFactory.nullPointer());
-        HeapChunk.setPrevious(aChunk, WordFactory.nullPointer());
+        HeapChunk.setNext(aChunk, Word.nullPointer());
+        HeapChunk.setPrevious(aChunk, Word.nullPointer());
         HeapChunk.setSpace(aChunk, null);
     }
 
@@ -316,7 +315,7 @@ public final class Space {
         UnalignedHeapChunk.UnalignedHeader oldLast = getLastUnalignedHeapChunk();
         HeapChunk.setSpace(uChunk, this);
         HeapChunk.setPrevious(uChunk, oldLast);
-        HeapChunk.setNext(uChunk, WordFactory.nullPointer());
+        HeapChunk.setNext(uChunk, Word.nullPointer());
         if (oldLast.isNonNull()) {
             HeapChunk.setNext(oldLast, uChunk);
         }
@@ -348,8 +347,8 @@ public final class Space {
             setLastUnalignedHeapChunk(chunkPrev);
         }
         /* Reset the fields that the result chunk keeps for Space. */
-        HeapChunk.setNext(uChunk, WordFactory.nullPointer());
-        HeapChunk.setPrevious(uChunk, WordFactory.nullPointer());
+        HeapChunk.setNext(uChunk, Word.nullPointer());
+        HeapChunk.setPrevious(uChunk, Word.nullPointer());
         HeapChunk.setSpace(uChunk, null);
     }
 
@@ -577,7 +576,7 @@ public final class Space {
     }
 
     private UnsignedWord computeAlignedObjectBytes() {
-        UnsignedWord result = WordFactory.zero();
+        UnsignedWord result = Word.zero();
         AlignedHeapChunk.AlignedHeader aChunk = getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
             UnsignedWord allocatedBytes = HeapChunk.getTopOffset(aChunk).subtract(AlignedHeapChunk.getObjectsStartOffset());
@@ -588,7 +587,7 @@ public final class Space {
     }
 
     private UnsignedWord computeUnalignedObjectBytes() {
-        UnsignedWord result = WordFactory.zero();
+        UnsignedWord result = Word.zero();
         UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
             UnsignedWord allocatedBytes = HeapChunk.getTopOffset(uChunk).subtract(UnalignedHeapChunk.getObjectStartOffset());

@@ -26,10 +26,10 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -54,7 +54,7 @@ final class BasicCollectionPolicies {
     public abstract static class BasicPolicy implements CollectionPolicy {
         protected static UnsignedWord m(long bytes) {
             assert 0 <= bytes;
-            return WordFactory.unsigned(bytes).multiply(1024).multiply(1024);
+            return Word.unsigned(bytes).multiply(1024).multiply(1024);
         }
 
         @Override
@@ -98,7 +98,7 @@ final class BasicCollectionPolicies {
         public final UnsignedWord getMaximumHeapSize() {
             long runtimeValue = SubstrateGCOptions.MaxHeapSize.getValue();
             if (runtimeValue != 0L) {
-                return WordFactory.unsigned(runtimeValue);
+                return Word.unsigned(runtimeValue);
             }
 
             /*
@@ -117,7 +117,7 @@ final class BasicCollectionPolicies {
         public final UnsignedWord getMaximumYoungGenerationSize() {
             long runtimeValue = SubstrateGCOptions.MaxNewSize.getValue();
             if (runtimeValue != 0L) {
-                return WordFactory.unsigned(runtimeValue);
+                return Word.unsigned(runtimeValue);
             }
 
             /* If no value is set, use a fraction of the maximum heap size. */
@@ -135,7 +135,7 @@ final class BasicCollectionPolicies {
             long runtimeValue = SubstrateGCOptions.MinHeapSize.getValue();
             if (runtimeValue != 0L) {
                 /* If `-Xms` has been parsed from the command line, use that value. */
-                return WordFactory.unsigned(runtimeValue);
+                return Word.unsigned(runtimeValue);
             }
 
             /* A default value chosen to delay the first full collection. */
@@ -155,13 +155,13 @@ final class BasicCollectionPolicies {
 
         @Override
         public UnsignedWord getMaximumSurvivorSize() {
-            return WordFactory.zero();
+            return Word.zero();
         }
 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public UnsignedWord getSurvivorSpacesCapacity() {
-            return WordFactory.zero();
+            return Word.zero();
         }
 
         @Override
@@ -179,7 +179,7 @@ final class BasicCollectionPolicies {
             UnsignedWord heapCapacity = getCurrentHeapCapacity();
             UnsignedWord youngCapacity = getYoungGenerationCapacity();
             if (youngCapacity.aboveThan(heapCapacity)) {
-                return WordFactory.zero(); // should never happen unless options change in between
+                return Word.zero(); // should never happen unless options change in between
             }
             return heapCapacity.subtract(youngCapacity);
         }

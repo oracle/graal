@@ -38,6 +38,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -45,12 +46,12 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.HostedSubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
@@ -183,7 +184,7 @@ public class SubstrateUtil {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
-        UnsignedWord n = WordFactory.zero();
+        UnsignedWord n = Word.zero();
         while (((Pointer) str).readByte(n) != 0) {
             n = n.add(1);
         }
@@ -202,7 +203,7 @@ public class SubstrateUtil {
                 return str.addressOf(index);
             }
             if (b == 0) {
-                return WordFactory.zero();
+                return Word.zero();
             }
             index += 1;
         }
@@ -376,12 +377,14 @@ public class SubstrateUtil {
      * @return A unique identifier for the classloader or the empty string when the loader is one of
      *         the special set whose method names do not need qualification.
      */
-    public static String classLoaderNameAndId(ClassLoader loader) {
-        if (loader == null) {
+    public static String runtimeClassLoaderNameAndId(ClassLoader loader) {
+        ClassLoader runtimeClassLoader = SubstrateUtil.HOSTED ? HostedSubstrateUtil.getRuntimeClassLoader(loader) : loader;
+
+        if (runtimeClassLoader == null) {
             return "";
         }
         try {
-            return (String) classLoaderNameAndId.get(loader);
+            return (String) classLoaderNameAndId.get(runtimeClassLoader);
         } catch (IllegalAccessException e) {
             throw VMError.shouldNotReachHere("Cannot reflectively access ClassLoader.nameAndId");
         }

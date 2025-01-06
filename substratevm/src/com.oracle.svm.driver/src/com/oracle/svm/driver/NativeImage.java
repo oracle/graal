@@ -145,6 +145,19 @@ public class NativeImage {
 
     static final Map<String, String[]> graalCompilerFlags = getCompilerFlags();
 
+    private static Map<String, String> getSystemPackages() {
+        Map<String, String> res = new HashMap<>();
+        for (ModuleReference moduleRef : ModuleFinder.ofSystem().findAll()) {
+            ModuleDescriptor moduleDescriptor = moduleRef.descriptor();
+            for (String packageName : moduleDescriptor.packages()) {
+                res.put(packageName, moduleDescriptor.name());
+            }
+        }
+        return Map.copyOf(res);
+    }
+
+    final Map<String, String> systemPackagesToModules = getSystemPackages();
+
     static String getResource(String resourceName) {
         try (InputStream input = NativeImage.class.getResourceAsStream(resourceName)) {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
@@ -602,6 +615,27 @@ public class NativeImage {
                 builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
             } else if (getHostFlags().hasUseJVMCICompiler()) {
                 builderJavaArgs.add("-XX:-UseJVMCICompiler");
+
+                if (JavaVersionUtil.JAVA_SPEC == 21) {
+                    Runtime.Version version = Runtime.version();
+                    if (version.interim() == 0 && version.update() < 4) {
+                        /*
+                         * Native Image regularly crashes due to JDK-8328702. In JDK 21, the fix
+                         * only landed in 20.0.4 so in earlier JDK 21 versions, disable C2. This
+                         * workaround can be removed when GR-55515, GR-60648 or GR-60669 is
+                         * resolved.
+                         */
+                        builderJavaArgs.add("-XX:TieredStopAtLevel=1");
+
+                        /*
+                         * From the java man page section on ReservedCodeCacheSize: "the default
+                         * maximum code cache size is 240 MB; if you disable tiered compilation ...
+                         * then the default size is 48 MB". Experience shows that Native Image needs
+                         * the larger code cache, even when C2 is disabled.
+                         */
+                        builderJavaArgs.add("-XX:ReservedCodeCacheSize=240M");
+                    }
+                }
             }
 
             return builderJavaArgs;
@@ -963,7 +997,7 @@ public class NativeImage {
 
         /*
          * The presence of CDS and custom system class loaders disables the use of archived
-         * non-system class and and triggers a warning.
+         * non-system class and triggers a warning.
          */
         addImageBuilderJavaArgs("-Xshare:off");
 
@@ -1055,6 +1089,7 @@ public class NativeImage {
     void handleManifestFileAttributes(Path jarFilePath, Attributes mainAttributes) {
         handleMainClassAttribute(jarFilePath, mainAttributes);
         handleModuleAttributes(mainAttributes);
+        handleEnableNativeAccessAttribute(mainAttributes);
     }
 
     void handleMainClassAttribute(Path jarFilePath, Attributes mainAttributes) {
@@ -1075,6 +1110,16 @@ public class NativeImage {
         String addExportsValues = mainAttributes.getValue("Add-Exports");
         if (addExportsValues != null) {
             handleModuleExports(addExportsValues, NativeImageClassLoaderOptions.AddExports);
+        }
+    }
+
+    void handleEnableNativeAccessAttribute(Attributes mainAttributes) {
+        String nativeAccessAttrName = mainAttributes.getValue("Enable-Native-Access");
+        if (nativeAccessAttrName != null) {
+            if (!ALL_UNNAMED.equals(nativeAccessAttrName)) {
+                throw NativeImage.showError("illegal value \"" + nativeAccessAttrName + "\" for " + nativeAccessAttrName + " manifest attribute. Only " + ALL_UNNAMED + " is allowed");
+            }
+            addImageBuilderJavaArgs("--enable-native-access=" + ALL_UNNAMED);
         }
     }
 

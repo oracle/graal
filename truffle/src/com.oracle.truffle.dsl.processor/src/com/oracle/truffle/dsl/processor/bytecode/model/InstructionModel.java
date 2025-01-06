@@ -264,6 +264,8 @@ public final class InstructionModel implements PrettyPrintable {
      */
     public boolean returnTypeQuickening;
 
+    public boolean generic;
+
     /*
      * Alternative argument specialization type for builtin quickenings. E.g. for loadLocal
      * parameter types.
@@ -370,6 +372,19 @@ public final class InstructionModel implements PrettyPrintable {
         return !quickenedInstructions.isEmpty();
     }
 
+    public boolean isSpecializedQuickening() {
+        return quickeningBase != null && !returnTypeQuickening && !generic;
+    }
+
+    public boolean hasSpecializedQuickenings() {
+        for (InstructionModel instr : quickenedInstructions) {
+            if (instr.isSpecializedQuickening()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isQuickening() {
         return quickeningBase != null;
     }
@@ -389,6 +404,25 @@ public final class InstructionModel implements PrettyPrintable {
         if (signature != null) {
             printer.field("signature", signature);
         }
+
+        if (getQuickeningRoot().hasQuickenings()) {
+            String quickenKind;
+            if (quickeningBase == null) {
+                quickenKind = "base";
+            } else {
+                if (isReturnTypeQuickening()) {
+                    quickenKind = "return-type";
+                } else {
+                    if (generic) {
+                        quickenKind = "generic";
+                    } else {
+                        quickenKind = "specialized";
+                    }
+                }
+            }
+            printer.field("quicken-kind", quickenKind);
+        }
+
     }
 
     public boolean isTagInstrumentation() {
@@ -598,7 +632,7 @@ public final class InstructionModel implements PrettyPrintable {
 
     public InstructionModel findSpecializedInstruction(TypeMirror type) {
         for (InstructionModel specialization : quickenedInstructions) {
-            if (ElementUtils.typeEquals(type, specialization.specializedType)) {
+            if (!specialization.generic && ElementUtils.typeEquals(type, specialization.specializedType)) {
                 return specialization;
             }
         }
@@ -606,7 +640,12 @@ public final class InstructionModel implements PrettyPrintable {
     }
 
     public InstructionModel findGenericInstruction() {
-        return findSpecializedInstruction(null);
+        for (InstructionModel specialization : quickenedInstructions) {
+            if (specialization.generic) {
+                return specialization;
+            }
+        }
+        return null;
     }
 
     public void validateAlignment() {

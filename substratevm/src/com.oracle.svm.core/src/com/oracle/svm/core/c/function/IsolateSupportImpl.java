@@ -28,6 +28,7 @@ import java.util.List;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
@@ -38,7 +39,6 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
@@ -85,7 +85,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
             // Prepare argc and argv.
             int argc = 0;
-            CCharPointerPointer argv = WordFactory.nullPointer();
+            CCharPointerPointer argv = Word.nullPointer();
 
             List<String> args = parameters.getArguments();
             CTypeConversion.CCharPointerHolder[] pointerHolders = null;
@@ -96,7 +96,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
                 // the name of the binary. We use null when isolates are created manually.
                 argc = isolateArgCount + 1;
                 argv = NativeMemory.malloc(SizeOf.unsigned(CCharPointerPointer.class).multiply(argc), NmtCategory.Internal);
-                argv.write(0, WordFactory.nullPointer());
+                argv.write(0, Word.nullPointer());
 
                 pointerHolders = new CTypeConversion.CCharPointerHolder[isolateArgCount];
                 for (int i = 0; i < isolateArgCount; i++) {
@@ -119,7 +119,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
             // Try to create the isolate.
             IsolateThreadPointer isolateThreadPtr = UnsafeStackValue.get(IsolateThreadPointer.class);
-            int result = CEntryPointNativeFunctions.createIsolate(params, WordFactory.nullPointer(), isolateThreadPtr);
+            int result = CEntryPointNativeFunctions.createIsolate(params, Word.nullPointer(), isolateThreadPtr);
             IsolateThread isolateThread = isolateThreadPtr.read();
 
             // Cleanup all native memory related to argv.
@@ -173,7 +173,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
         }
     }
 
-    private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
+    private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) Word.unsigned(1L));
 
     private volatile long isolateId = 0;
 

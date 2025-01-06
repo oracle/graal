@@ -44,17 +44,16 @@ final class HandshakeController {
         DebuggerController.SetupState result;
         String connectionHost = controller.getHost();
         int port = controller.getListeningPort();
-        if (connectionHost == null) {
-            // only allow local host if nothing specified
-            connectionHost = "localhost";
-        }
         if (controller.isServer()) {
             ServerSocket serverSocket = new ServerSocket();
             serverSocket.setSoTimeout(0); // no timeout
             if (port != 0) {
                 serverSocket.setReuseAddress(true);
             }
-            if ("*".equals(controller.getHost())) {
+            if (connectionHost == null) {
+                // localhost only
+                serverSocket.bind(new InetSocketAddress(InetAddress.getLoopbackAddress(), port));
+            } else if ("*".equals(connectionHost)) {
                 // allow any host to bind
                 serverSocket.bind(new InetSocketAddress((InetAddress) null, port));
             } else {
@@ -62,7 +61,7 @@ final class HandshakeController {
                 serverSocket.bind(new InetSocketAddress(connectionHost, port));
             }
             // print to console that we're listening
-            String address = controller.getHost() != null ? controller.getHost() + ":" + port : "" + port;
+            String address = controller.getHost() != null ? controller.getHost() + ":" + serverSocket.getLocalPort() : "" + serverSocket.getLocalPort();
             System.out.println("Listening for transport dt_socket at address: " + address);
 
             synchronized (this) {
@@ -71,7 +70,19 @@ final class HandshakeController {
             }
             result = new DebuggerController.SetupState(null, serverSocket, false);
         } else {
-            result = new DebuggerController.SetupState(new Socket(connectionHost, port), null, false);
+            try {
+                controller.getResettingLock().lockInterruptibly();
+                if (!controller.isClosing()) {
+                    result = new DebuggerController.SetupState(new Socket(connectionHost, port), null, false);
+                } else {
+                    // if we're already closing down, simply mark as fatal connection error
+                    result = new DebuggerController.SetupState(null, null, true);
+                }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            } finally {
+                controller.getResettingLock().unlock();
+            }
         }
         controller.setSetupState(result);
     }

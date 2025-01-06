@@ -190,6 +190,7 @@ meth public com.oracle.truffle.api.InternalResource$CPUArchitecture getCPUArchit
 meth public com.oracle.truffle.api.InternalResource$OS getOS()
 meth public java.util.List<java.lang.String> readResourceLines(java.nio.file.Path) throws java.io.IOException
 meth public void unpackResourceFiles(java.nio.file.Path,java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
+meth public void unpackResourceFiles(java.nio.file.Path,java.nio.file.Path,java.nio.file.Path,java.util.function.Predicate<java.nio.file.Path>) throws java.io.IOException
 supr java.lang.Object
 hfds contextPreinitializationCheck,owner,resourceClass
 
@@ -921,17 +922,20 @@ meth public static com.oracle.truffle.api.frame.FrameDescriptor$Builder newBuild
 meth public void disableAuxiliarySlot(java.lang.Object)
 meth public void setSlotKind(int,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.Object
-hfds ALL_STATIC_MODE,EMPTY_BYTE_ARRAY,MIXED_STATIC_MODE,NEVER_PART_OF_COMPILATION_MESSAGE,NO_STATIC_MODE,activeAuxiliarySlotCount,auxiliarySlotCount,auxiliarySlotMap,defaultValue,descriptorInfo,disabledAuxiliarySlots,indexedSlotInfos,indexedSlotNames,indexedSlotTags,materializeCalled,staticMode
+hfds ALL_STATIC_MODE,EMPTY_BYTE_ARRAY,ILLEGAL_DEFAULT_VALUE,MIXED_STATIC_MODE,NEVER_PART_OF_COMPILATION_MESSAGE,NO_STATIC_MODE,activeAuxiliarySlotCount,auxiliarySlotCount,auxiliarySlotMap,defaultValue,descriptorInfo,disabledAuxiliarySlots,indexedSlotCount,indexedSlotInfos,indexedSlotNames,indexedSlotTags,materializeCalled,staticMode
 
 CLSS public final static com.oracle.truffle.api.frame.FrameDescriptor$Builder
  outer com.oracle.truffle.api.frame.FrameDescriptor
 meth public com.oracle.truffle.api.frame.FrameDescriptor build()
 meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder defaultValue(java.lang.Object)
+meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder defaultValueIllegal()
 meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder info(java.lang.Object)
+meth public com.oracle.truffle.api.frame.FrameDescriptor$Builder useSlotKinds(boolean)
 meth public int addSlot(com.oracle.truffle.api.frame.FrameSlotKind,java.lang.Object,java.lang.Object)
+meth public int addSlots(int)
 meth public int addSlots(int,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.Object
-hfds DEFAULT_CAPACITY,defaultValue,descriptorInfo,infos,names,size,tags
+hfds DEFAULT_CAPACITY,defaultValue,descriptorInfo,infos,names,size,tags,useSlotKinds
 
 CLSS public abstract com.oracle.truffle.api.frame.FrameExtensions
 cons protected init()
@@ -1001,8 +1005,14 @@ hfds VALUES
 
 CLSS public final com.oracle.truffle.api.frame.FrameSlotTypeException
 cons public init()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+meth public com.oracle.truffle.api.frame.FrameSlotKind getActualKind()
+meth public com.oracle.truffle.api.frame.FrameSlotKind getExpectedKind()
+meth public int getSlot()
+meth public java.lang.String getMessage()
+meth public static com.oracle.truffle.api.frame.FrameSlotTypeException create(int,com.oracle.truffle.api.frame.FrameSlotKind,com.oracle.truffle.api.frame.FrameSlotKind)
 supr java.lang.IllegalStateException
-hfds serialVersionUID
+hfds actualKind,expectedKind,serialVersionUID,slot
 
 CLSS public abstract interface com.oracle.truffle.api.frame.MaterializedFrame
 intf com.oracle.truffle.api.frame.VirtualFrame
@@ -1685,7 +1695,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation

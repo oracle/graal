@@ -52,6 +52,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
@@ -191,6 +192,7 @@ final class JCodingsImpl implements JCodings {
         return readCodePoint(encoding, arrayA, p, end, errorHandling.errorHandler);
     }
 
+    @InliningCutoff
     @Override
     public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, InlinedConditionProfile validCharacterProfile,
                     InlinedConditionProfile fixedWidthProfile) {

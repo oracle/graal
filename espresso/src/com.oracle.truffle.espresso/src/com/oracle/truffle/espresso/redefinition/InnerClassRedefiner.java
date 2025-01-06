@@ -22,21 +22,6 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
-import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.classfile.ParserException;
-import com.oracle.truffle.espresso.preinit.ParserKlassProvider;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,8 +36,20 @@ import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.espresso.classfile.ParserException;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.preinit.ParserKlassProvider;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+
 public final class InnerClassRedefiner {
-    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, InnerClassRedefiner.class);
 
     public static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
     public static final int METHOD_FINGERPRINT_EQUALS = 8;
@@ -94,7 +91,7 @@ public final class InnerClassRedefiner {
                 RedefineInfo redefineInfo = it.next();
                 Symbol<Name> klassName = ParserKlassProvider.getClassName(context.getMeta(), context.getClassLoadingEnv().getParsingContext(), redefineInfo.getClassBytes());
                 if (handled.containsKey(klassName)) {
-                    LOGGER.warning(() -> "Ignoring duplicate redefinition requests for name " + klassName);
+                    ClassRedefinition.LOGGER.warning(() -> "Ignoring duplicate redefinition requests for name " + klassName);
                     it.remove();
                     continue;
                 }
@@ -298,7 +295,7 @@ public final class InnerClassRedefiner {
     private static void addRenamingRule(Map<StaticObject, Map<Symbol<Name>, Symbol<Name>>> renamingRules, StaticObject classLoader, Symbol<Name> originalName,
                     Symbol<Name> newName, EspressoContext context) {
         Map<Symbol<Name>, Symbol<Name>> classLoaderRules = renamingRules.computeIfAbsent(classLoader, k -> new HashMap<>(4));
-        context.getClassRedefinition().getController().fine(() -> "Renaming inner class: " + originalName + " to: " + newName);
+        ClassRedefinition.LOGGER.fine(() -> "Renaming inner class: " + originalName + " to: " + newName);
         assert classLoaderRules.getOrDefault(originalName, newName).equals(newName) : "rules already contain " + originalName + " -> " + classLoaderRules.get(originalName) + ", cannot map to " +
                         newName;
         // add simple class names
@@ -354,8 +351,7 @@ public final class InnerClassRedefiner {
             // classes for this loader and fill in the map
             List<Klass> loadedKlasses = classRegistry.getLoadedKlasses();
             for (Klass loadedKlass : loadedKlasses) {
-                if (loadedKlass instanceof ObjectKlass) {
-                    ObjectKlass objectKlass = (ObjectKlass) loadedKlass;
+                if (loadedKlass instanceof ObjectKlass objectKlass) {
                     Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(loadedKlass.getNameAsString());
                     if (matcher.matches()) {
                         Symbol<Name> outerClassName = getOuterClassName(loadedKlass.getName());

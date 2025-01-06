@@ -57,7 +57,6 @@ public abstract class ImageLayerSection implements LayeredImageSingleton {
         HEAP_END,
         HEAP_RELOCATABLE_BEGIN,
         HEAP_RELOCATABLE_END,
-        HEAP_ANY_RELOCATABLE_POINTER,
         HEAP_WRITEABLE_BEGIN,
         HEAP_WRITEABLE_END,
         HEAP_WRITEABLE_PATCHED_BEGIN,

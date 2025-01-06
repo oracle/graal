@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class BuildPhaseProvider {
 
+    private boolean featureRegistrationFinished;
     private boolean analysisFinished;
     private boolean hostedUniverseBuilt;
     private boolean readyForCompilation;
@@ -49,6 +50,14 @@ public final class BuildPhaseProvider {
     }
 
     BuildPhaseProvider() {
+    }
+
+    public static void markFeatureRegistrationFinished() {
+        singleton().featureRegistrationFinished = true;
+    }
+
+    public static boolean isFeatureRegistrationFinished() {
+        return ImageSingletons.contains(BuildPhaseProvider.class) && singleton().featureRegistrationFinished;
     }
 
     public static void markAnalysisFinished() {

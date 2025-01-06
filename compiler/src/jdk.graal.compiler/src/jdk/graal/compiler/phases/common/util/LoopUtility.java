@@ -53,6 +53,7 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.loop.BasicInductionVariable;
+import jdk.graal.compiler.nodes.loop.CountedLoopInfo;
 import jdk.graal.compiler.nodes.loop.InductionVariable;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopsData;
@@ -60,6 +61,15 @@ import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
+
+    public static long tripCountSignedExact(CountedLoopInfo loop) {
+        ValueNode maxTripCountNode = loop.maxTripCountNode();
+        final long maxTripCountAsSigned = maxTripCountNode.asJavaConstant().asLong();
+        if (maxTripCountAsSigned < 0) {
+            throw new ArithmeticException("Unsigned value " + maxTripCountAsSigned + " overflows signed range");
+        }
+        return maxTripCountAsSigned;
+    }
 
     public static long addExact(int bits, long a, long b) {
         if (bits == 8) {

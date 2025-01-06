@@ -26,8 +26,8 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.Uninterruptible;
@@ -75,24 +75,24 @@ class WindowsRegisterDumper implements RegisterDumper {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getHeapBase(Context context) {
-        return WordFactory.pointer(((CONTEXT) context).R14());
+        return Word.pointer(((CONTEXT) context).R14());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getThreadPointer(Context context) {
-        return WordFactory.pointer(((CONTEXT) context).R15());
+        return Word.pointer(((CONTEXT) context).R15());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(Context context) {
-        return WordFactory.pointer(((CONTEXT) context).Rsp());
+        return Word.pointer(((CONTEXT) context).Rsp());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(Context context) {
-        return WordFactory.pointer(((CONTEXT) context).Rip());
+        return Word.pointer(((CONTEXT) context).Rip());
     }
 }

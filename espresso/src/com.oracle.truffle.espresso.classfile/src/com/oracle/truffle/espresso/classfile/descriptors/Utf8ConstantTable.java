@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.classfile.descriptors;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 
 /**
  * Global Utf8Constant table.

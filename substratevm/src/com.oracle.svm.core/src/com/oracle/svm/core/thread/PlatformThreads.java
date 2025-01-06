@@ -47,6 +47,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -67,7 +68,6 @@ import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
@@ -481,7 +481,7 @@ public abstract class PlatformThreads {
         Thread thread = currentThread.get(vmThread);
         if (thread != null) {
             toTarget(thread).threadData.detach();
-            toTarget(thread).isolateThread = WordFactory.nullPointer();
+            toTarget(thread).isolateThread = Word.nullPointer();
 
             if (!thread.isDaemon()) {
                 decrementNonDaemonThreads();
@@ -713,8 +713,8 @@ public abstract class PlatformThreads {
     }
 
     protected <T extends ThreadStartData> T prepareStart(Thread thread, int startDataSize) {
-        T startData = WordFactory.nullPointer();
-        ObjectHandle threadHandle = WordFactory.zero();
+        T startData = Word.nullPointer();
+        ObjectHandle threadHandle = Word.zero();
         try {
             startData = NativeMemory.malloc(startDataSize, NmtCategory.Threading);
             threadHandle = ObjectHandles.getGlobal().create(thread);
@@ -725,7 +725,7 @@ public abstract class PlatformThreads {
             if (startData.isNonNull()) {
                 freeStartData(startData);
             }
-            if (threadHandle.notEqual(WordFactory.zero())) {
+            if (threadHandle.notEqual(Word.zero())) {
                 ObjectHandles.getGlobal().destroy(threadHandle);
             }
             throw e;
@@ -806,7 +806,7 @@ public abstract class PlatformThreads {
         freeStartData(data);
 
         threadStartRoutine(threadHandle);
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
@@ -861,7 +861,7 @@ public abstract class PlatformThreads {
         assert !isVirtual(thread);
         if (thread != null && thread == currentThread.get()) {
             Pointer startSP = getCarrierSPOrElse(thread, callerSP);
-            return StackTraceUtils.getCurrentThreadStackTrace(filterExceptions, startSP, WordFactory.nullPointer());
+            return StackTraceUtils.getCurrentThreadStackTrace(filterExceptions, startSP, Word.nullPointer());
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
         return StackTraceUtils.asyncGetStackTrace(thread);
@@ -870,12 +870,12 @@ public abstract class PlatformThreads {
     static void visitCurrentStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
         assert !isVirtual(Thread.currentThread());
         Pointer startSP = getCarrierSPOrElse(Thread.currentThread(), callerSP);
-        StackTraceUtils.visitCurrentThreadStackFrames(startSP, WordFactory.nullPointer(), visitor);
+        StackTraceUtils.visitCurrentThreadStackFrames(startSP, Word.nullPointer(), visitor);
     }
 
     static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
         assert thread != null && !isVirtual(thread) : "may only be called for platform or carrier threads";
-        Pointer carrierSP = getCarrierSPOrElse(thread, WordFactory.nullPointer());
+        Pointer carrierSP = getCarrierSPOrElse(thread, Word.nullPointer());
         IsolateThread isolateThread = getIsolateThread(thread);
         if (isolateThread == CurrentIsolate.getCurrentThread()) {
             Pointer startSP = carrierSP.isNonNull() ? carrierSP : callerSP;
@@ -883,7 +883,7 @@ public abstract class PlatformThreads {
              * Internal frames from the VMOperation handling show up in the stack traces, but we are
              * OK with that.
              */
-            return StackTraceUtils.getCurrentThreadStackTrace(false, startSP, WordFactory.nullPointer());
+            return StackTraceUtils.getCurrentThreadStackTrace(false, startSP, Word.nullPointer());
         }
         if (carrierSP.isNonNull()) {
             /*
@@ -891,7 +891,7 @@ public abstract class PlatformThreads {
              * frames of the virtual thread and only visit the stack frames that belong to the
              * carrier thread.
              */
-            return StackTraceUtils.getStackTraceAtSafepoint(isolateThread, carrierSP, WordFactory.nullPointer());
+            return StackTraceUtils.getStackTraceAtSafepoint(isolateThread, carrierSP, Word.nullPointer());
         }
         return StackTraceUtils.getStackTraceAtSafepoint(isolateThread);
     }

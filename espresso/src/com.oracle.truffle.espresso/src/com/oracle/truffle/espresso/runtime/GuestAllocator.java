@@ -41,17 +41,17 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.JavaKind;
+import com.oracle.truffle.espresso.classfile.tables.EntryTable;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
-import com.oracle.truffle.espresso.impl.EntryTable;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.LanguageAccess;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -412,7 +412,7 @@ public final class GuestAllocator implements LanguageAccess {
     @SuppressWarnings("try")
     private static void setModule(StaticObject obj, Klass klass) {
         StaticObject module = klass.module().module();
-        if (StaticObject.isNull(module)) {
+        if (module == null) {
             // This can happen during initialization, before java.base is defined
             // This can be concurrent so we check whether java base is indeed defined or not
             // We use the bootloader's package table lock to deal with races between this code and
@@ -435,6 +435,7 @@ public final class GuestAllocator implements LanguageAccess {
             }
 
         } else {
+            assert StaticObject.notNull(module);
             klass.getContext().getMeta().java_lang_Class_module.setObject(obj, module);
         }
     }

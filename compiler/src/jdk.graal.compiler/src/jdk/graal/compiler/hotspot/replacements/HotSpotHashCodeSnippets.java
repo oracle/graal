@@ -40,14 +40,12 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.us
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import org.graalvm.word.WordFactory;
-
 import jdk.graal.compiler.lir.SyncPort;
 import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
 import jdk.graal.compiler.word.Word;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/cf158bc6cdadfdfa944b8ec1d3dc7069c8f055a9/src/hotspot/share/opto/library_call.cpp#L4659-L4793",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/22845a77a2175202876d0029f75fa32271e07b91/src/hotspot/share/opto/library_call.cpp#L4653-L4787",
           sha1 = "c212d1dbff26d02d4d749e085263d4104895f1ba")
 // @formatter:on
 public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
@@ -76,10 +74,10 @@ public class HotSpotHashCodeSnippets extends IdentityHashCodeSnippets {
         // unlocked, i.e., lock bits equals to 0b01.
         //
         // See src/hotspot/share/oops/markWord.hpp for more details.
-        final Word lockBits = mark.and(WordFactory.unsigned(markWordLockMaskInPlace(INJECTED_VMCONFIG)));
+        final Word lockBits = mark.and(Word.unsigned(markWordLockMaskInPlace(INJECTED_VMCONFIG)));
         if (useObjectMonitorTable(INJECTED_VMCONFIG) || probability(FAST_PATH_PROBABILITY,
-                        useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(WordFactory.unsigned(monitorValue(INJECTED_VMCONFIG)))
-                                        : lockBits.equal(WordFactory.unsigned(unlockedValue(INJECTED_VMCONFIG))))) {
+                        useLightweightLocking(INJECTED_VMCONFIG) ? lockBits.notEqual(Word.unsigned(monitorValue(INJECTED_VMCONFIG)))
+                                        : lockBits.equal(Word.unsigned(unlockedValue(INJECTED_VMCONFIG))))) {
             // `& markWord::hash_mask' is essential with -XX:+UseCompactObjectHeaders, because bit
             // 42 might be set.
             int hash = (int) mark.unsignedShiftRight(markWordHashCodeShift(INJECTED_VMCONFIG)).and((int) markWordHashMark(INJECTED_VMCONFIG)).rawValue();

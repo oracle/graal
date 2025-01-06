@@ -26,10 +26,10 @@ package com.oracle.svm.core.posix.amd64;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.Uninterruptible;
@@ -79,27 +79,27 @@ class AMD64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getHeapBase(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_linux_amd64_gregs();
-        return WordFactory.pointer(gregs.read(GregEnumLinuxAMD64.REG_R14()));
+        return Word.pointer(gregs.read(GregEnumLinuxAMD64.REG_R14()));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getThreadPointer(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_linux_amd64_gregs();
-        return WordFactory.pointer(gregs.read(GregEnumLinuxAMD64.REG_R15()));
+        return Word.pointer(gregs.read(GregEnumLinuxAMD64.REG_R15()));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_linux_amd64_gregs();
-        return WordFactory.pointer(gregs.read(GregEnumLinuxAMD64.REG_RSP()));
+        return Word.pointer(gregs.read(GregEnumLinuxAMD64.REG_RSP()));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(ucontext_t uContext) {
         GregsPointer gregs = uContext.uc_mcontext_linux_amd64_gregs();
-        return WordFactory.pointer(gregs.read(GregEnumLinuxAMD64.REG_RIP()));
+        return Word.pointer(gregs.read(GregEnumLinuxAMD64.REG_RIP()));
     }
 }

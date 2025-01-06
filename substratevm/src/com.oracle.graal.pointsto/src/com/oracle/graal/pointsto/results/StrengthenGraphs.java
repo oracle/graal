@@ -234,13 +234,21 @@ public abstract class StrengthenGraphs {
                         ? ptaMethod.getTypeFlow().getMethodFlowsGraph().getNodeFlows().getKeys()
                         : null;
         var debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
-        var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
-        if (graph == null) {
+
+        if (method.analyzedInPriorLayer()) {
+            /*
+             * The method was already strengthened in a prior layer. If the graph was persisted, it
+             * will be loaded on demand during compilation, so there is no need to strengthen it in
+             * this layer.
+             *
+             * GR-59646: The graphs from the base layer could be strengthened again in the
+             * application layer using closed world assumptions.
+             */
             return;
         }
 
-        if (method.analyzedInPriorLayer()) {
-            useSharedLayerGraph(method);
+        var graph = method.decodeAnalyzedGraph(debug, nodeReferences);
+        if (graph == null) {
             return;
         }
 
@@ -272,8 +280,6 @@ public abstract class StrengthenGraphs {
     }
 
     protected abstract void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
-
-    protected abstract void useSharedLayerGraph(AnalysisMethod method);
 
     protected abstract void persistStrengthenGraph(AnalysisMethod method);
 
@@ -502,24 +508,37 @@ public abstract class StrengthenGraphs {
                 Stamp newStamp = strengthenStamp(oldStamp);
                 if (newStamp != null) {
                     LogicNode replacement = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) oldStamp.improveWith(newStamp), node.getValue(), node.profile(), node.getAnchor()));
+                    /*
+                     * GR-59681: Once isAssignable is implemented for BaseLayerType, this check can
+                     * be removed
+                     */
+                    AnalysisError.guarantee(node != replacement, "The new stamp needs to be different from the old stamp");
                     node.replaceAndDelete(replacement);
                     tool.addToWorkList(replacement);
                 }
 
-            } else if (n instanceof ClassIsAssignableFromNode) {
-                ClassIsAssignableFromNode node = (ClassIsAssignableFromNode) n;
-                AnalysisType nonReachableType = asConstantNonReachableType(node.getThisClass(), tool);
-                if (nonReachableType != null) {
-                    node.replaceAndDelete(LogicConstantNode.contradiction(graph));
+            } else if (n instanceof ClassIsAssignableFromNode node) {
+                if (isClosedTypeWorld) {
+                    /*
+                     * If the constant receiver of a Class#isAssignableFrom is an unreachable type
+                     * we can constant-fold the ClassIsAssignableFromNode to false. See also
+                     * MethodTypeFlowBuilder#ignoreConstant where we avoid marking the corresponding
+                     * type as reachable just because it is used by the ClassIsAssignableFromNode.
+                     * We only apply this optimization if it's a closed type world, for open world
+                     * we cannot fold the type check since the type may be used later.
+                     */
+                    AnalysisType nonReachableType = asConstantNonReachableType(node.getThisClass(), tool);
+                    if (nonReachableType != null) {
+                        node.replaceAndDelete(LogicConstantNode.contradiction(graph));
+                    }
                 }
-
-            } else if (n instanceof BytecodeExceptionNode) {
+            } else if (n instanceof BytecodeExceptionNode node) {
                 /*
                  * We do not want a type to be reachable only to be used for the error message of a
                  * ClassCastException. Therefore, in that case we replace the java.lang.Class with a
-                 * java.lang.String that is then used directly in the error message.
+                 * java.lang.String that is then used directly in the error message. We can apply
+                 * this optimization optimistically for both closed and open type world.
                  */
-                BytecodeExceptionNode node = (BytecodeExceptionNode) n;
                 if (node.getExceptionKind() == BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST) {
                     AnalysisType nonReachableType = asConstantNonReachableType(node.getArguments().get(1), tool);
                     if (nonReachableType != null) {
@@ -551,7 +570,13 @@ public abstract class StrengthenGraphs {
                 Stamp oldStamp = node.piStamp();
                 Stamp newStamp = strengthenStamp(oldStamp);
                 if (newStamp != null) {
-                    node.strengthenPiStamp(oldStamp.improveWith(newStamp));
+                    Stamp newPiStamp = oldStamp.improveWith(newStamp);
+                    /*
+                     * GR-59681: Once isAssignable is implemented for BaseLayerType, this check can
+                     * be removed
+                     */
+                    AnalysisError.guarantee(!newPiStamp.equals(oldStamp), "The new stamp needs to be different from the old stamp");
+                    node.strengthenPiStamp(newPiStamp);
                     tool.addToWorkList(node);
                 }
             }
@@ -1085,7 +1110,8 @@ public abstract class StrengthenGraphs {
                 return null;
             }
 
-            if (!originalType.isReachable()) {
+            /* In open world the type may become reachable later. */
+            if (isClosedTypeWorld && !originalType.isReachable()) {
                 /* We must be in dead code. */
                 if (stamp.nonNull()) {
                     /* We must be in dead code. */

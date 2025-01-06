@@ -294,7 +294,7 @@ public class MethodTypeFlowBuilder {
                     type.registerAsInstantiated(AbstractAnalysisEngine.sourcePosition(node));
                     for (var f : type.getInstanceFields(true)) {
                         var field = (AnalysisField) f;
-                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
                     }
                 }
 
@@ -354,7 +354,7 @@ public class MethodTypeFlowBuilder {
                 JavaConstant root = cn.asJavaConstant();
                 if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
                     assert StampTool.isExactType(cn) : cn;
-                    if (!ignoreConstant(cn)) {
+                    if (!ignoreConstant(bb, cn)) {
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
                         type.registerAsInstantiated(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
                         registerEmbeddedRoot(bb, cn);
@@ -402,20 +402,23 @@ public class MethodTypeFlowBuilder {
      * do not want to make the receiver class reachable, because as long as the receiver class is
      * not reachable for any other "real" reason we know that isAssignableFrom will always return
      * false. So in {@link StrengthenGraphs} we can then constant-fold the
-     * {@link ClassIsAssignableFromNode} to false.
+     * {@link ClassIsAssignableFromNode} to false. We only apply this optimization for
+     * {@link ClassIsAssignableFromNode} if it's a closed type world, for open world we cannot fold
+     * the type check since the type may be used later.
      *
      * Similarly, a class should not be marked as reachable only so that we can add the class name
      * to the error message of a {@link ClassCastException}. In {@link StrengthenGraphs} we can
      * re-write the Class constant to a String constant, i.e., only embed the class name and not the
-     * full java.lang.Class object in the image.
+     * full java.lang.Class object in the image. We can apply this optimization optimistically for
+     * both closed and open type world.
      *
      * {@link FrameState} are only used for debugging. We do not want to have larger images just so
      * that users can see a constant value in the debugger.
      */
-    protected static boolean ignoreConstant(ConstantNode node) {
+    protected static boolean ignoreConstant(PointsToAnalysis bb, ConstantNode node) {
         for (var u : node.usages()) {
             if (u instanceof ClassIsAssignableFromNode usage) {
-                if (usage.getOtherClass() == node || usage.getThisClass() != node) {
+                if (!bb.getHostVM().isClosedTypeWorld() || usage.getOtherClass() == node || usage.getThisClass() != node) {
                     return false;
                 }
             } else if (u instanceof BytecodeExceptionNode usage) {
@@ -458,8 +461,21 @@ public class MethodTypeFlowBuilder {
         return false;
     }
 
+    /**
+     * In closed type world, just using a type in an instanceof type check doesn't mark the type as
+     * reachable. Assuming the type is not otherwise made reachable, this allows the graph
+     * strengthening to eliminate the type check completely by replacing a stamp with an unreachable
+     * type with an empty stamp (see StrengthenSimplifier#strengthenStamp).
+     * <p>
+     * However, in open world we cannot make assumptions about types that may become reachable
+     * later. Therefore, we must mark the instanceof checked type as reachable. Moreover, stamp
+     * strengthening based on reachability status of types must be disabled.
+     */
     protected static boolean ignoreInstanceOfType(PointsToAnalysis bb, AnalysisType type) {
         if (bb.getHostVM().ignoreInstanceOfTypeDisallowed()) {
+            return false;
+        }
+        if (!bb.getHostVM().isClosedTypeWorld()) {
             return false;
         }
         if (type == null) {
@@ -682,6 +698,8 @@ public class MethodTypeFlowBuilder {
         assert !processed : "can only call apply once per MethodTypeFlowBuilder";
         processed = true;
 
+        method.setReachableInCurrentLayer();
+
         if (method.analyzedInPriorLayer()) {
             /*
              * We don't need to analyze this method. We already know its return type state from the
@@ -829,7 +847,7 @@ public class MethodTypeFlowBuilder {
             long hi = stamp.upperBound();
             if (lo == hi) {
                 return TypeFlowBuilder.create(bb, method, getPredicate(), node, ConstantPrimitiveSourceTypeFlow.class, () -> {
-                    var flow = new ConstantPrimitiveSourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, lo);
+                    var flow = new ConstantPrimitiveSourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, TypeState.forPrimitiveConstant(bb, lo));
                     flowsGraph.addMiscEntryFlow(flow);
                     return flow;
                 });
@@ -1947,7 +1965,7 @@ public class MethodTypeFlowBuilder {
                 } else {
                     if (!type.isArray()) {
                         AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
-                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(field.getStorageKind()));
+                        field.getInitialFlow().addState(bb, TypeState.defaultValueForKind(bb, field.getStorageKind()));
                     }
                 }
             }

@@ -19,7 +19,7 @@ The Native Image Inspect Tool can extract the compressed SBOM using the optional
 
 ## Extracting Class-Level Metadata (Deprecated)
 
-> The extraction of class-level metadata using `native-image-inspect` is deprecated. In GraalVM for JDK 24, a deprecation warning is printed to `stderr`, and this functionality will be removed in GraalVM for JDK 25. Please migrate to using [class-level SBOMs](../../security/native-image.md#including-class-level-metadata-in-the-sbom) instead by passing `--enable-sbom=class-level,export` to the `native-image` builder, which generates an SBOM containing the same kind of class-level metadata information.
+> The extraction of class-level metadata using `native-image-inspect` is deprecated. In GraalVM for JDK 24, a deprecation warning is printed to `stderr`, and this functionality will be removed in GraalVM for JDK 25. Please migrate to using [class-level SBOMs](../../security/SBOM.md#including-class-level-metadata-in-the-sbom) instead by passing `--enable-sbom=class-level,export` to the `native-image` builder, which generates an SBOM containing the same kind of class-level metadata information.
 
 Native Image provides the Inspect Tool to list all classes, fields, and methods included in a native executable or a native shared library. 
 Run the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>` to list classes, methods, fields, and constructors in the JSON format that validates against the JSON schema defined in [`native-image-inspect-schema-v0.2.0.json`](assets/native-image-inspect-schema-v0.2.0.json) (only available in Oracle GraalVM).

@@ -32,7 +32,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -127,7 +126,7 @@ public final class StoredContinuationAccess {
 
     @Uninterruptible(reason = "Prevent modifications to the stack while initializing instance and copying frames.")
     private static void fillUninterruptibly(StoredContinuation stored, CodePointer ip, Pointer sp, int size) {
-        UnmanagedMemoryUtil.copyWordsForward(sp, getFramesStart(stored), WordFactory.unsigned(size));
+        UnmanagedMemoryUtil.copyWordsForward(sp, getFramesStart(stored), Word.unsigned(size));
         setIP(stored, ip);
         afterFill(stored);
     }

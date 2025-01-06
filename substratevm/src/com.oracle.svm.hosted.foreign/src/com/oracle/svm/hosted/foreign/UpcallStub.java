@@ -46,6 +46,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.foreign.AbiUtils;
+import com.oracle.svm.core.foreign.AbiUtils.Adapter.Result.TypeAdaptation;
 import com.oracle.svm.core.foreign.JavaEntryPointInfo;
 import com.oracle.svm.core.foreign.UpcallStubsHolder;
 import com.oracle.svm.core.graal.code.AssignedLocation;
@@ -73,6 +74,7 @@ import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.java.FrameStateBuilder;
 import jdk.graal.compiler.nodes.CallTargetNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.FrameState;
@@ -89,18 +91,19 @@ import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterArray;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+22/src/hotspot/share/prims/upcallLinker.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/cpu/x86/upcallLinker_x86_64.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+19/src/hotspot/cpu/aarch64/upcallLinker_aarch64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/prims/upcallLinker.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/cpu/x86/upcallLinker_x86_64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/cpu/aarch64/upcallLinker_aarch64.cpp")
 public abstract class UpcallStub extends NonBytecodeMethod {
     protected final JavaEntryPointInfo jep;
 
-    protected UpcallStub(JavaEntryPointInfo jep, MethodType methodType, MetaAccessProvider metaAccess, boolean highLevel) {
-        super(UpcallStubsHolder.stubName(jep, highLevel),
+    protected UpcallStub(JavaEntryPointInfo jep, MethodType methodType, MetaAccessProvider metaAccess, boolean highLevel, boolean direct) {
+        super(UpcallStubsHolder.stubName(jep, highLevel, direct),
                         true,
                         metaAccess.lookupJavaType(UpcallStubsHolder.class),
                         fromMethodType(methodType, metaAccess),
@@ -139,12 +142,20 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
     private final AssignedLocation[] parametersAssignment;
 
     static LowLevelUpcallStub make(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
-        return new LowLevelUpcallStub(jep, AbiUtils.singleton().adapt(jep), universe, metaAccess);
+        TypeAdaptation adapted = AbiUtils.singleton().adapt(jep);
+        AnalysisMethod highLevelStubMethod = universe.lookup(new HighLevelUpcallStub(jep, adapted, metaAccess));
+        return new LowLevelUpcallStub(highLevelStubMethod, jep, adapted, metaAccess, false);
     }
 
-    private LowLevelUpcallStub(JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
-        super(jep, adapted.callType(), metaAccess, false);
-        this.highLevelStub = universe.lookup(new HighLevelUpcallStub(jep, adapted, metaAccess));
+    static LowLevelUpcallStub makeDirect(MethodHandle target, JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
+        TypeAdaptation adapted = AbiUtils.singleton().adapt(jep);
+        AnalysisMethod highLevelStubMethod = universe.lookup(new HighLevelDirectUpcallStub(target, jep, adapted, metaAccess));
+        return new LowLevelUpcallStub(highLevelStubMethod, jep, adapted, metaAccess, true);
+    }
+
+    private LowLevelUpcallStub(AnalysisMethod highLevelStubMethod, JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess, boolean direct) {
+        super(jep, adapted.callType(), metaAccess, false, direct);
+        this.highLevelStub = highLevelStubMethod;
         this.savedRegisters = ImageSingletons.lookup(SubstrateRegisterConfigFactory.class)
                         .newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NATIVE_TO_JAVA, null, ConfigurationValues.getTarget(), SubstrateOptions.PreserveFramePointer.getValue())
                         .getCalleeSaveRegisters();
@@ -270,7 +281,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
 
 /** In charge of high-level stuff, mainly invoking the method handle. */
 class HighLevelUpcallStub extends UpcallStub {
-    private static final Method INVOKE = ReflectionUtil.lookupMethod(
+    static final Method INVOKE = ReflectionUtil.lookupMethod(
                     MethodHandle.class,
                     "invokeWithArguments",
                     Object[].class);
@@ -285,7 +296,7 @@ class HighLevelUpcallStub extends UpcallStub {
     }
 
     HighLevelUpcallStub(JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess) {
-        super(jep, computeType(jep, adapted.callType()), metaAccess, true);
+        super(jep, computeType(jep, adapted.callType()), metaAccess, true, false);
     }
 
     @Override
@@ -313,6 +324,98 @@ class HighLevelUpcallStub extends UpcallStub {
         kit.endInvokeWithException();
 
         var unboxedReturn = kit.unbox(returnValue, jep.cMethodType());
+        kit.createReturn(unboxedReturn, jep.cMethodType());
+
+        return kit.finalizeGraph();
+    }
+}
+
+/**
+ * Similar to HighLevelUpcallStub but is bound to a constant method handle. This method then acts as
+ * an intrinsification enabler
+ */
+class HighLevelDirectUpcallStub extends UpcallStub {
+
+    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowType) {
+        /* Inject return buffer */
+        if (jep.buffersReturn()) {
+            lowType = lowType.insertParameterTypes(0, long.class);
+        }
+        /* Inject method handle */
+        return lowType.insertParameterTypes(0, MethodHandle.class);
+    }
+
+    private final MethodHandle target;
+
+    HighLevelDirectUpcallStub(MethodHandle handle, JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess) {
+        super(jep, computeType(jep, adapted.callType()), metaAccess, true, true);
+        this.target = handle;
+        VMError.guarantee(handle.type().equals(jep.handleType()));
+    }
+
+    @Override
+    public StructuredGraph buildGraph(DebugContext debug, AnalysisMethod method, HostedProviders providers, Purpose purpose) {
+        ForeignGraphKit kit = new ForeignGraphKit(debug, providers, method, purpose);
+        FrameStateBuilder frame = kit.getFrameState();
+
+        List<ValueNode> allArguments = new ArrayList<>(kit.getInitialArguments());
+
+        JavaConstant targetMethodHandle = kit.getSnippetReflection().forObject(target);
+        ConstantNode constMH = kit.createConstant(targetMethodHandle, JavaKind.Object);
+
+        InvokeWithExceptionNode returnValue;
+        /*
+         * Attempt to resolve the target of 'invokeBasic'. This should resolve the call of the
+         * polymorphic signature method 'invokeExact' to the actually implementing method (i.e. the
+         * one generated by the lambda form; usually named 'invokeExact_MT'). The resolved target
+         * has a specialized signature (i.e. no longer takes 'Object[]') and so we omit boxing.
+         * Further, this method is annotated with 'LambdaForm.Compiled' and recognized by
+         * InlineBeforeAnalysis as method handle intrinsification root.
+         * 
+         * If resolving does not work, a call to a generic invocation method will be emitted (same
+         * as in 'UpcallStub'). We will still use the constant method handle as receiver to enable
+         * some optimizations but the method handle will most certainly still be interpreted.
+         */
+        ResolvedJavaMethod resolvedJavaMethod = providers.getConstantReflection().getMethodHandleAccess().resolveInvokeBasicTarget(targetMethodHandle, true);
+        if (resolvedJavaMethod != null) {
+            /*
+             * Replace the dynamically passed receiver handle by the constant handle this stub was
+             * created with. This is necessary to enable the method handle intrinsification.
+             */
+            allArguments.set(0, constMH);
+            frame.clearLocals();
+            InvokeKind invokeKind = resolvedJavaMethod.isStatic() ? InvokeKind.Static : InvokeKind.Virtual;
+            returnValue = kit.createJavaCallWithException(invokeKind, resolvedJavaMethod, allArguments.toArray(ValueNode.EMPTY_ARRAY));
+        } else {
+            // we don't use the argument that is passed from the trampoline to the stubs right now
+            allArguments.removeFirst();
+
+            /*
+             * If adaptations are ever needed for upcalls, they should most likely be applied here
+             */
+            allArguments = kit.boxArguments(allArguments, jep.handleType());
+            ValueNode arguments = kit.packArguments(allArguments);
+            frame.clearLocals();
+            MetaAccessProvider metaAccess = kit.getMetaAccess();
+            returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Virtual, metaAccess.lookupJavaMethod(HighLevelUpcallStub.INVOKE), constMH, arguments);
+        }
+
+        kit.exceptionPart();
+        /*
+         * Per documentation, it is the user's responsibility to not throw exceptions from upcalls
+         * (e.g. by using MethodHandles#catchException).
+         */
+        kit.append(new CEntryPointLeaveNode(CEntryPointLeaveNode.LeaveAction.ExceptionAbort, kit.exceptionObject()));
+        kit.append(new LoweredDeadEndNode());
+        kit.endInvokeWithException();
+
+        ValueNode unboxedReturn;
+        if (resolvedJavaMethod != null) {
+            unboxedReturn = returnValue;
+        } else {
+            unboxedReturn = kit.unbox(returnValue, jep.cMethodType());
+        }
+        assert JavaKind.fromJavaClass(jep.cMethodType().returnType()) == unboxedReturn.getStackKind();
         kit.createReturn(unboxedReturn, jep.cMethodType());
 
         return kit.finalizeGraph();

@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -34,12 +35,13 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -81,11 +83,15 @@ public final class DebuggerController implements ContextsListener {
     private final Map<Object, MethodBreakpointEvent> methodBreakpointExpected = new HashMap<>();
     private final Map<Breakpoint, BreakpointInfo> breakpointInfos = new HashMap<>();
 
+    private JDWPContext context;
+    private Thread senderThread;
+    private Thread receiverThread;
+    private volatile HandshakeController hsController = null;
+    private final Lock resetting = new ReentrantLock();
+    private volatile boolean isClosing;
     private JDWPOptions options;
     private DebuggerSession debuggerSession;
-    private final JDWPInstrument instrument;
     private Ids<Object> ids;
-    private JDWPContext context;
     private final VirtualMachine vm;
     private Debugger debugger;
     private final GCPrevention gcPrevention;
@@ -103,8 +109,7 @@ public final class DebuggerController implements ContextsListener {
     // itself, it must check this field and exit the context if set.
     private volatile Throwable lateStartupError;
 
-    public DebuggerController(JDWPInstrument instrument, TruffleLogger logger) {
-        this.instrument = instrument;
+    public DebuggerController(TruffleLogger logger) {
         this.vm = new VirtualMachineImpl();
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
@@ -120,25 +125,130 @@ public final class DebuggerController implements ContextsListener {
         this.eventListener = vmEventListener;
         this.initialThread = thread;
 
+        ids.injectLogger(jdwpLogger);
+
         // set up the debug session object early to make sure instrumentable nodes are materialized
         debuggerSession = debug.startSession(new SuspendedCallbackImpl(), SourceElement.ROOT, SourceElement.STATEMENT);
         debuggerSession.setSteppingFilter(SuspensionFilter.newBuilder().ignoreLanguageContextInitialization(true).build());
 
-        instrument.init(jdwpContext);
+        init(jdwpContext);
+    }
+
+    @TruffleBoundary
+    public void init(JDWPContext jdwpContext) {
+        this.context = jdwpContext;
+
+        // Do all the non-blocking connection setup on the main thread.
+        // If we need to suspend on startup, or we need to exit the context due to fatal connection
+        // errors, we do this later when the context initialization is finalizing.
+        try {
+            hsController = new HandshakeController();
+            hsController.setupInitialConnection(this);
+        } catch (IOException e) {
+            System.err.println("ERROR: transport error 202: connect failed: " + e.getMessage());
+            System.err.println("ERROR: JDWP Transport dt_socket failed to initialize, TRANSPORT_INIT(510)");
+
+            setSetupState(new DebuggerController.SetupState(null, null, true));
+        }
     }
 
     public void reInitialize() {
-        initialize(debugger, options, context, initialThread, eventListener);
-        assert setupState != null;
+        // create a new DebuggerController instance
+        DebuggerController newController = new DebuggerController(jdwpLogger);
+        newController.truffleContext = truffleContext;
+        newController.initialize(debugger, options, context, initialThread, eventListener);
+        assert newController.setupState != null;
 
-        if (setupState.fatalConnectionError) {
+        if (newController.setupState.fatalConnectionError) {
             fine(() -> "Failed debugger setup due to initial connection issue.");
             // OK, give up on trying to reconnect
             return;
         }
         // On reconnect, we just pass a placeholder CountDownLatch object which we don't ever wait
         // for. This avoids tedious null checks in the connection method.
-        DebuggerConnection.establishDebuggerConnection(this, setupState, true, new CountDownLatch(1));
+        DebuggerConnection.establishDebuggerConnection(newController, newController.setupState, true, new CountDownLatch(1));
+    }
+
+    public void reset(boolean prepareForReconnect) {
+        if (isClosing) {
+            // already done closing, so don't attempt anything further
+            return;
+        }
+        if (!prepareForReconnect) {
+            // mark that we're closing down the whole context
+            isClosing = true;
+        }
+        Thread currentReceiverThread = null;
+        try {
+            // begin section that needs to be synchronized with establishing a new connection and
+            // starting the threads. The logic within the locked part, must be written in a way that
+            // it can run on any current state in the debugger connection and in any debugger thread
+            // existence state.
+            resetting.lockInterruptibly();
+
+            currentReceiverThread = receiverThread;
+
+            // Close the server socket used to listen for transport dt_socket.
+            // This will unblock the accept call on a server socket.
+            HandshakeController hsc = hsController;
+            if (hsc != null) {
+                hsc.close();
+            }
+            // Tell the controller to dispose the underlying connection by adding a special dispose
+            // packet to the sender thread queue. This will force the sender to complete work.
+            dispose();
+
+            // we know the sender can finish work, so wait for it to complete
+            joinThread(senderThread);
+
+            // clear our current state of the threads
+            senderThread = null;
+
+            // re-enable GC for all objects
+            getGCPrevention().clearAll();
+
+            // end the current debugger session to avoid hitting any further breakpoints
+            // when resuming all threads
+            endSession();
+
+            // resume all threads
+            forceResumeAll();
+
+            // Now, close the socket, which will force the receiver thread to complete eventually.
+            // Note that we might run this code in the receiver thread, so we can't simply join.
+            closeSocket();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            resetting.unlock();
+        }
+
+        // If we're not running in the receiver thread we should join
+        if (Thread.currentThread() != currentReceiverThread) {
+            joinThread(currentReceiverThread);
+        }
+
+        if (prepareForReconnect && !isClosing && isServer()) {
+            reInitialize();
+        }
+        // At this point the receiver thread field has either been replaced with a fresh thread from
+        // the above reInitialize call, or we're closing down. Either way, we don't need to worry
+        // about leaking the receiverThread field.
+    }
+
+    public int identity() {
+        return System.identityHashCode(this);
+    }
+
+    private void joinThread(Thread thread) {
+        if (thread != null) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                warning(() -> "jdwp thread " + thread.getName() + " didn't finish naturally");
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     void setDebuggerConnection(DebuggerConnection connection) {
@@ -162,11 +272,16 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void addDebuggerReceiverThread(Thread thread) {
-        instrument.addDebuggerReceiverThread(thread);
+        receiverThread = thread;
     }
 
     public void addDebuggerSenderThread(Thread thread) {
-        instrument.addDebuggerSenderThread(thread);
+        senderThread = thread;
+    }
+
+    public boolean isDebuggerThread(Thread hostThread) {
+        // only the receiver thread enters the context
+        return hostThread == receiverThread;
     }
 
     public void markLateStartupError(Throwable t) {
@@ -174,11 +289,11 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public boolean isClosing() {
-        return instrument.isClosing();
+        return isClosing;
     }
 
     public Lock getResettingLock() {
-        return instrument.getResettingLock();
+        return resetting;
     }
 
     static final class SetupState {
@@ -266,7 +381,7 @@ public final class DebuggerController implements ContextsListener {
         fine(() -> "exception breakpoint submitted");
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private void mapBreakpoint(Breakpoint bp, BreakpointInfo info) {
         breakpointInfos.put(bp, info);
         info.addBreakpoint(bp);
@@ -404,7 +519,7 @@ public final class DebuggerController implements ContextsListener {
         Object[] allThreads = context.getAllGuestThreads();
         ArrayList<Object> visibleThreads = new ArrayList<>(allThreads.length);
         for (Object thread : allThreads) {
-            if (!instrument.isDebuggerThread(context.asHostThread(thread))) {
+            if (!isDebuggerThread(context.asHostThread(thread))) {
                 visibleThreads.add(thread);
             }
         }
@@ -526,7 +641,7 @@ public final class DebuggerController implements ContextsListener {
                 suspend(context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), true);
             }
         }
-        instrument.reset(prepareReconnect);
+        reset(prepareReconnect);
     }
 
     public void endSession() {
@@ -585,6 +700,9 @@ public final class DebuggerController implements ContextsListener {
 
     @Override
     public void onLanguageContextInitialized(TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
+        if (!"java".equals(language.getId())) {
+            return;
+        }
         truffleContext = con;
 
         // With the Espresso context initialized, we can now complete the JDWP setup and establish
@@ -792,8 +910,7 @@ public final class DebuggerController implements ContextsListener {
             if (currentNode instanceof RootNode) {
                 currentNode = context.getInstrumentableNode((RootNode) currentNode);
             }
-            callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context,
-                            DebuggerController.this));
+            callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context, jdwpLogger));
             return null;
         });
         return callFrames.toArray(new CallFrame[0]);
@@ -823,7 +940,7 @@ public final class DebuggerController implements ContextsListener {
         @Override
         public void onSuspend(SuspendedEvent event) {
             Thread hostThread = Thread.currentThread();
-            if (instrument.isDebuggerThread(hostThread)) {
+            if (isDebuggerThread(hostThread)) {
                 // always allow VM threads to run guest code without
                 // the risk of being suspended
                 return;
@@ -1120,7 +1237,7 @@ public final class DebuggerController implements ContextsListener {
                     codeIndex = context.getBCI(rawNode, rawFrame);
                 }
 
-                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, rawNode, root, frame, context, DebuggerController.this));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, rawNode, root, frame, context, jdwpLogger));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[0]);

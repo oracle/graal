@@ -34,7 +34,7 @@ import com.oracle.svm.core.util.BasedOnJDKFile;
 
 import jdk.internal.vm.ThreadDumper;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L934-L958")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L757-L777")
 public class ThreadDumpToFileDCmd extends AbstractDCmd {
     private static final DCmdOption<String> FILEPATH = new DCmdOption<>(String.class, "filepath", "The file path to the output file", true, null);
     private static final DCmdOption<Boolean> OVERWRITE = new DCmdOption<>(Boolean.class, "-overwrite", "May overwrite existing file", false, false);
@@ -52,7 +52,7 @@ public class ThreadDumpToFileDCmd extends AbstractDCmd {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.cpp#L1110-L1161")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.cpp#L1062-L1106")
     public String execute(DCmdArguments args) throws Throwable {
         String path = args.get(FILEPATH);
         boolean overwrite = args.get(OVERWRITE);

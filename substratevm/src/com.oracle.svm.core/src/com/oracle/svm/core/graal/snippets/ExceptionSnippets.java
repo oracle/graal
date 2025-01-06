@@ -44,9 +44,9 @@ import com.oracle.svm.core.snippets.ExceptionUnwind;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
-import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.UnwindNode;
 import jdk.graal.compiler.nodes.java.LoadExceptionObjectNode;
@@ -111,7 +111,7 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
         @Override
         public void lower(LoadExceptionObjectNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
-            FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
+            FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(node.stamp(NodeView.DEFAULT)));
             graph.replaceFixedWithFixed(node, readRegNode);
         }
     }

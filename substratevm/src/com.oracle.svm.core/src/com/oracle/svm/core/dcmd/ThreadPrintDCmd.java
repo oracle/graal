@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.DumpThreadStacksSupport;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/share/services/diagnosticCommand.hpp#L425-L445")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/hotspot/share/services/diagnosticCommand.hpp#L350-L365")
 public class ThreadPrintDCmd extends AbstractDCmd {
     @Platforms(Platform.HOSTED_ONLY.class)
     public ThreadPrintDCmd() {

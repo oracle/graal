@@ -141,6 +141,7 @@ final class EngineAccessor extends Accessor {
     static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
     static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
+    static final StringsSupport STRINGS = ACCESSOR.stringsSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
@@ -1041,7 +1042,7 @@ final class EngineAccessor extends Accessor {
             if (inheritAccess(inheritAccess, allowIO, true)) {
                 fileSystemConfig = creatorConfig.fileSystemConfig;
             } else {
-                FileSystem publicFileSystem = FileSystems.newNoIOFileSystem();
+                FileSystem publicFileSystem = FileSystems.newDenyIOFileSystem();
                 FileSystem internalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newResourcesFileSystem(engine) : publicFileSystem;
                 fileSystemConfig = new FileSystemConfig(api.getIOAccessNone(), publicFileSystem, internalFileSystem);
             }
@@ -1323,7 +1324,7 @@ final class EngineAccessor extends Accessor {
             } else {
                 throw new AssertionError("Unsupported engine object " + engineObject);
             }
-            return polyglot.getRootImpl().isInternalFileSystem(fs);
+            return polyglot.isInternalFileSystem(fs);
         }
 
         @Override

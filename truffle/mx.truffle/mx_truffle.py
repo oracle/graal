@@ -215,6 +215,17 @@ def enable_truffle_native_access(vmArgs):
     vmArgs.extend([f'--enable-native-access={native_access_target_module}'])
     return vmArgs
 
+def enable_sun_misc_unsafe(vmArgs):
+    """
+    Enables `sun.misc.Unsafe` access.
+    This function appends the `--sun-misc-unsafe-memory-access=allow` option to the
+    list of JVM arguments if the JDK version is 23 or higher. It then returns the
+    updated list of arguments.
+    """
+    if mx.VersionSpec("23.0.0") <= mx.get_jdk(tag="default").version:
+        vmArgs.extend(['--sun-misc-unsafe-memory-access=allow'])
+    return vmArgs
+
 class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
     _use_enterprise_polyglot = True
@@ -247,6 +258,7 @@ class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
         # Disable VirtualThread warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnVirtualThreadSupport=false']
         enable_truffle_native_access(vmArgs)
+        enable_sun_misc_unsafe(vmArgs)
         return (vmArgs, mainClass, mainClassArgs)
 
 
@@ -389,6 +401,7 @@ def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterpris
         vm_args += ["--enable-native-access=ALL-UNNAMED"]
     else:
         vm_args += ["--enable-native-access=org.graalvm.truffle"]
+    enable_sun_misc_unsafe(vm_args)
 
     return [jdk.java] + jdk.processArgs(vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args)
 
@@ -1470,7 +1483,10 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
                 deps=[],
                 layout={
                     f'{resource_base_folder}/': f'dependency:{build_library.name}',
-                    f'{resource_base_folder}/resources': f'dependency:{build_library.name}/resources',
+                    f'{resource_base_folder}/resources': {"source_type": "dependency",
+                                                          "dependency": f'{build_library.name}',
+                                                          "path": 'resources',
+                                                          "optional": True},
                 },
                 path=None,
                 platformDependent=True,

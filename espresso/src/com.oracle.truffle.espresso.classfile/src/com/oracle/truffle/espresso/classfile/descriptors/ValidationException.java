@@ -22,9 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile.descriptors;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.io.Serial;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class ValidationException extends Exception {
 

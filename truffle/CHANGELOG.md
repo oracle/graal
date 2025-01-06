@@ -3,6 +3,9 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 24.2.0
+* GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
+
+## Version 24.2.0
 * GR-57658 Added `TruffleLanguage.Env.getLanguageInfo(Class<? extends TruffleLanguage>)` to lookup a `LanguageInfo` instance for a language class returned by `InteropLibrary.getLanguage(Object)`.
 * GR-57164 Added support for reading unaligned ints, shorts and long to `ByteArraySupport`.
 * GR-57164 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, the name of the declared meta-object to build `StackTraceElement` instances.
@@ -18,8 +21,18 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added `ThreadLocalAction#notifyBlocked(Access)` and `ThreadLocalAction#notifyUnblocked(Access)` to notify thread local actions that their processing has been blocked/unblocked due to a blocked call (see `ThreadLocalAction` documentation).
     * `TruffleSafepoint#poll(Node)` does not require a non-null location anymore. However, it is still recommended to always pass a location node, if available.  
 * GR-59565 Added `RootNode.prepareForCompilation` which allows root nodes to offload expensive computation to the compiler thread and to delay compilation if they are not yet fully profiled.
+* GR-55296 Added support for creation of strings from raw byte arrays and native memory using 
+`Value.fromByteBasedString(...)` `Value.fromNativeString(...)`. A `Value.StringEncoding` must be provided.
+* GR-55296 Added support to convert any string to a `byte[]` with a given `Value.StringEncoding` using `Value.asStringBytes(...)`. 
+* GR-40323 Deprecated `Shape.Builder.layout(Class)` for removal and added replacement API [`Shape.Builder.layout(Class, MethodHandles.Lookup)`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/Shape.Builder.html#layout(java.lang.Class,java.lang.MethodHandles.Lookup)). Replace usages with the new method, additionally providing a `Lookup` that has full privilege access to the layout class or the module in which it is declared, as obtained by `MethodHandles.lookup()`. See javadoc for the updated usage.
+* GR-55296 Added support for UTF-16 and UTF-32 in non-system-endianness without dependency on the JCodings library in TruffleString.
 
 
+* GR-58550 Added `FrameDescriptor.Builder.illegalDefaultValue()` which initializes all frame slots as `FrameSlotKind.Illegal` for newly created frames. This is different from the default behavior, which initializes all frame slot kinds as `FrameSlotKind.Object`. This means that frame slots, when they are read before they were written, throw a `FrameSlotTypeException`, consistent with the behavior after clearing a frame slot.
+* GR-58550 Deprecated the default constructor for `FrameSlotTypeException` and replaced it with `FrameSlotTypeException.create(...)`. Exceptions of this kind thrown by the `Frame` now contain the slot index and the expected and the actual frame slot kind which are accessible with the respective instance methods.
+* GR-58550 Fixed invalid `PolyglotException.getMessage()` javadoc. A polyglot exception may in fact return a `null` message.
+* GR-58550 Added `FrameDescriptor.Builder.addSlots(int)` which adds slots with the default Illegal tag.
+* GR-58550 Added `FrameDescriptor.Builder.useSlotKinds(boolean)` which allows if disabled to not reserve space for tags in the frame descriptor. Disabling slot kinds is useful if a language manages its own cached tags, so no tag space is wasted.
 * GR-54760 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, and the name of the declared meta-object to build `StackTraceElement` instances.
 * GR-32682 Added the [Bytecode DSL](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html), a new framework for implementing bytecode interpreters. The Bytecode DSL is considered experimental and we are actively working on stabilizing it. The Bytecode DSL automatically generates a complete bytecode interpreter from a set of user-specified operations. The generated interpreter defines all the necessary components of a bytecode interpreter, including an instruction set, a bytecode generator, and an optimizing interpreter. Bytecode DSL interpreters are designed to improve footprint and interpreter speed over AST interpreters without compromising peak performance. Bytecode DSL interpreters support a variety of features, including tiered interpretation, bytecode quickening and boxing elimination, continuations, and serialization. They also integrate with existing Truffle tooling for instrumentation and debugging. Please see the [Introduction to Bytecode DSL](docs/bytecode_dsl/BytecodeDSL.md) to get started, or consult the [User guide](docs/bytecode_dsl/UserGuide.md) for more information.
 * GR-32682 Added `@Bind.DefaultExpression` annotation. Default expressions allow you to omit an explicit expression when declaring a `@Bind` parameter (the default expression for the parameter's type is used).
@@ -32,6 +45,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-32682 Added `InstrumentableNode.findProbe()` to specify how an instrumentable node finds its associated probe. This is useful for bytecode interpreters to store the probe nodes in a separate data structure without associated wrapper nodes.
 * GR-32682 Added `InstrumentableNode.createProbe(SourceSection)` method, which allows to create eager probe nodes for an instrumentable node. Eager probes do not wait for a probe to be inserted and for example all probes for statements can be inserted in a batch. Eager probes are typically used in combination with overriding the `InstrumentableNode.findProbe()` method.
 * GR-32682 Added detection of boxing overloads to support state sharing and better boxing elimination. See `Specialization#rewriteOn` for details. 
+    * `TruffleSafepoint#poll(Node)` does not require a non-null location anymore. However, it is still recommended to always pass a location node, if available. 
+* GR-57838 Added `InternalResource#unpackResourceFiles(Path, Path, Path, Predicate)` to allow filtering of resources to unpack. 
 
 ## Version 24.1.0
 * GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.

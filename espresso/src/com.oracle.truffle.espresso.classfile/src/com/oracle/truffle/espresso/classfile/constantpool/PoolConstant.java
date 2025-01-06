@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
-
-import java.nio.ByteBuffer;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 /**
  * Base interface for entries in a constant pool.

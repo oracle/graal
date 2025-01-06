@@ -27,8 +27,8 @@ package com.oracle.svm.core;
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -44,8 +44,12 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
+import com.oracle.svm.core.SubstrateDiagnostics.DumpCodeCacheHistory;
+import com.oracle.svm.core.SubstrateDiagnostics.DumpDeoptStubPointer;
+import com.oracle.svm.core.SubstrateDiagnostics.DumpRecentDeoptimizations;
+import com.oracle.svm.core.SubstrateDiagnostics.DumpRuntimeCodeInfoMemory;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -59,7 +63,9 @@ import com.oracle.svm.core.container.Container;
 import com.oracle.svm.core.container.OperatingSystem;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
@@ -88,6 +94,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.CounterSupport;
+import com.oracle.svm.core.util.ImageHeapList;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -190,8 +197,8 @@ public class SubstrateDiagnostics {
         int maxPrintedBytes = elementSize == 1 ? 8 : 16;
         int printedElements = UninterruptibleUtils.Math.min(length, maxPrintedBytes / elementSize);
 
-        UnsignedWord curOffset = WordFactory.unsigned(arrayBaseOffset);
-        UnsignedWord endOffset = curOffset.add(WordFactory.unsigned(printedElements).multiply(elementSize));
+        UnsignedWord curOffset = Word.unsigned(arrayBaseOffset);
+        UnsignedWord endOffset = curOffset.add(Word.unsigned(printedElements).multiply(elementSize));
         while (curOffset.belowThan(endOffset)) {
             switch (elementSize) {
                 case 1 -> log.zhex(ObjectAccess.readByte(obj, curOffset));
@@ -213,7 +220,7 @@ public class SubstrateDiagnostics {
      * See {@link #printInformation(Log, Pointer, CodePointer, RegisterDumper.Context, boolean)}.
      */
     public static void printInformation(Log log, Pointer sp, CodePointer ip) {
-        printInformation(log, sp, ip, WordFactory.nullPointer(), false);
+        printInformation(log, sp, ip, Word.nullPointer(), false);
     }
 
     /**
@@ -246,7 +253,7 @@ public class SubstrateDiagnostics {
      * See {@link #printFatalError(Log, Pointer, CodePointer, RegisterDumper.Context, boolean)}.
      */
     public static boolean printFatalError(Log log, Pointer sp, CodePointer ip) {
-        return printFatalError(log, sp, ip, WordFactory.nullPointer(), false);
+        return printFatalError(log, sp, ip, Word.nullPointer(), false);
     }
 
     /**
@@ -498,7 +505,7 @@ public class SubstrateDiagnostics {
             }
             pos = pos.add(wordSize);
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.")
@@ -530,7 +537,7 @@ public class SubstrateDiagnostics {
 
         @SuppressWarnings("hiding")
         public boolean trySet(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
-            if (diagnosticThread.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread())) {
+            if (diagnosticThread.compareAndSet(Word.nullPointer(), CurrentIsolate.getCurrentThread())) {
                 assert diagnosticThunkIndex == -1;
                 assert invocationCount == 0;
                 this.log = log;
@@ -549,15 +556,15 @@ public class SubstrateDiagnostics {
             log = null;
 
             ErrorContext errorContext = getErrorContext();
-            errorContext.setStackPointer(WordFactory.nullPointer());
-            errorContext.setInstructionPointer(WordFactory.nullPointer());
-            errorContext.setRegisterContext(WordFactory.nullPointer());
+            errorContext.setStackPointer(Word.nullPointer());
+            errorContext.setInstructionPointer(Word.nullPointer());
+            errorContext.setRegisterContext(Word.nullPointer());
             errorContext.setFrameHasCalleeSavedRegisters(false);
 
             diagnosticThunkIndex = -1;
             invocationCount = 0;
 
-            diagnosticThread.set(WordFactory.nullPointer());
+            diagnosticThread.set(Word.nullPointer());
         }
     }
 
@@ -679,7 +686,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpDeoptStubPointer extends DiagnosticThunk {
+    static class DumpDeoptStubPointer extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -796,7 +803,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpCodeCacheHistory extends DiagnosticThunk {
+    static class DumpCodeCacheHistory extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 2;
@@ -810,7 +817,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpRuntimeCodeInfoMemory extends DiagnosticThunk {
+    static class DumpRuntimeCodeInfoMemory extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 3;
@@ -825,7 +832,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpRecentDeoptimizations extends DiagnosticThunk {
+    static class DumpRecentDeoptimizations extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -1239,11 +1246,15 @@ public class SubstrateDiagnostics {
     }
 
     public static class DiagnosticThunkRegistry {
-        private DiagnosticThunk[] diagnosticThunks;
+        @Platforms(Platform.HOSTED_ONLY.class) //
+        final int runtimeCompilationPosition;
+
+        private final List<DiagnosticThunk> thunks = ImageHeapList.create(DiagnosticThunk.class);
         private int[] initialInvocationCount;
 
         @Fold
         public static synchronized DiagnosticThunkRegistry singleton() {
+            /* The registry is already used very early during the image build. */
             if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
                 ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
@@ -1252,7 +1263,6 @@ public class SubstrateDiagnostics {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         DiagnosticThunkRegistry() {
-            ArrayList<DiagnosticThunk> thunks = new ArrayList<>();
             thunks.add(new DumpRegisters());
             thunks.add(new DumpInstructions());
             thunks.add(new DumpTopOfCurrentThreadStack());
@@ -1272,45 +1282,43 @@ public class SubstrateDiagnostics {
             if (CounterSupport.isEnabled()) {
                 thunks.add(new DumpCounters());
             }
-            if (RuntimeCompilation.isEnabled()) {
-                thunks.add(new DumpCodeCacheHistory());
-                thunks.add(new DumpRuntimeCodeInfoMemory());
-                thunks.add(new DumpDeoptStubPointer());
-                thunks.add(new DumpRecentDeoptimizations());
-            }
 
-            this.diagnosticThunks = thunks.toArray(new DiagnosticThunk[0]);
-            this.initialInvocationCount = new int[diagnosticThunks.length];
-            Arrays.fill(initialInvocationCount, 1);
+            resizeInitialInvocationCount();
+            this.runtimeCompilationPosition = thunks.size();
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void add(DiagnosticThunk thunk) {
-            diagnosticThunks = Arrays.copyOf(diagnosticThunks, diagnosticThunks.length + 1);
-            diagnosticThunks[diagnosticThunks.length - 1] = thunk;
+            thunks.add(thunk);
+            resizeInitialInvocationCount();
+        }
 
-            initialInvocationCount = Arrays.copyOf(initialInvocationCount, initialInvocationCount.length + 1);
-            initialInvocationCount[initialInvocationCount.length - 1] = 1;
+        @Platforms(Platform.HOSTED_ONLY.class)
+        public synchronized void add(int insertPos, DiagnosticThunk... extraThunks) {
+            for (int i = 0; i < extraThunks.length; i++) {
+                thunks.add(insertPos + i, extraThunks[i]);
+            }
+            resizeInitialInvocationCount();
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public synchronized void addAfter(DiagnosticThunk thunk, Class<? extends DiagnosticThunk> before) {
             int insertPos = indexOf(before) + 1;
+            assert insertPos > 0;
+            thunks.add(insertPos, thunk);
+            resizeInitialInvocationCount();
+        }
 
-            DiagnosticThunk[] newThunks = new DiagnosticThunk[diagnosticThunks.length + 1];
-            System.arraycopy(diagnosticThunks, 0, newThunks, 0, insertPos);
-            newThunks[insertPos] = thunk;
-            System.arraycopy(diagnosticThunks, insertPos, newThunks, insertPos + 1, diagnosticThunks.length - insertPos);
-            diagnosticThunks = newThunks;
-
-            initialInvocationCount = Arrays.copyOf(initialInvocationCount, initialInvocationCount.length + 1);
-            initialInvocationCount[initialInvocationCount.length - 1] = 1;
+        @Platforms(Platform.HOSTED_ONLY.class)
+        private void resizeInitialInvocationCount() {
+            initialInvocationCount = new int[thunks.size()];
+            Arrays.fill(initialInvocationCount, 1);
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private int indexOf(Class<? extends DiagnosticThunk> clazz) {
-            for (int i = 0; i < diagnosticThunks.length; i++) {
-                if (diagnosticThunks[i].getClass() == clazz) {
+            for (int i = 0; i < thunks.size(); i++) {
+                if (thunks.get(i).getClass() == clazz) {
                     return i;
                 }
             }
@@ -1319,11 +1327,11 @@ public class SubstrateDiagnostics {
 
         @Fold
         int size() {
-            return diagnosticThunks.length;
+            return thunks.size();
         }
 
         DiagnosticThunk getThunk(int index) {
-            return diagnosticThunks[index];
+            return thunks.get(index);
         }
 
         int getInitialInvocationCount(int index) {
@@ -1391,6 +1399,24 @@ public class SubstrateDiagnostics {
         @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
         public static boolean implicitExceptionWithoutStacktraceIsFatal() {
             return singleton().implicitExceptionWithoutStacktraceIsFatal;
+        }
+    }
+}
+
+@AutomaticallyRegisteredFeature
+class SubstrateDiagnosticsFeature implements InternalFeature {
+    /**
+     * {@link RuntimeCompilation#isEnabled()} can't be executed in the
+     * {@link DiagnosticThunkRegistry} constructor because the feature registration is not
+     * necessarily finished. So, we need to do it at a later point in time.
+     */
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        DiagnosticThunkRegistry registry = DiagnosticThunkRegistry.singleton();
+        if (RuntimeCompilation.isEnabled()) {
+            int pos = registry.runtimeCompilationPosition;
+            SubstrateDiagnostics.DiagnosticThunk[] thunks = {new DumpCodeCacheHistory(), new DumpRuntimeCodeInfoMemory(), new DumpDeoptStubPointer(), new DumpRecentDeoptimizations()};
+            registry.add(pos, thunks);
         }
     }
 }

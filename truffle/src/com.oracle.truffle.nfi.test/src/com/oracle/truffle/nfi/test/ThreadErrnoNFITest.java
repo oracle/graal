@@ -97,6 +97,8 @@ public class ThreadErrnoNFITest {
         }
     }
 
+    private static final int TIMEOUT_MILLIS = 10000;
+
     final class TestThreadRunnable implements Runnable {
 
         private final int errno;
@@ -120,8 +122,8 @@ public class ThreadErrnoNFITest {
                 Throwable err = TruffleSafepoint.setBlockedThreadInterruptibleFunction(null, lockObject -> {
                     assert Thread.holdsLock(lockObject);
                     long currentTime;
-                    while (error == null && !waiting && ((currentTime = System.currentTimeMillis()) - waitStart) < 1000) {
-                        lockObject.wait(1000 - (currentTime - waitStart));
+                    while (error == null && !waiting && ((currentTime = System.currentTimeMillis()) - waitStart) < TIMEOUT_MILLIS) {
+                        lockObject.wait(TIMEOUT_MILLIS - (currentTime - waitStart));
                     }
                     return error;
                 }, lock);
@@ -161,8 +163,8 @@ public class ThreadErrnoNFITest {
                 TruffleSafepoint.setBlockedThreadInterruptible(null, lockObject -> {
                     assert Thread.holdsLock(lockObject);
                     long currentTime;
-                    while (waiting && ((currentTime = System.currentTimeMillis()) - waitStart) < 1000) {
-                        lockObject.wait(1000 - (currentTime - waitStart));
+                    while (waiting && ((currentTime = System.currentTimeMillis()) - waitStart) < TIMEOUT_MILLIS) {
+                        lockObject.wait(TIMEOUT_MILLIS - (currentTime - waitStart));
                     }
                     if (!waiting && extraRunnable != null) {
                         extraRunnable.run();

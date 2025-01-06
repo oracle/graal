@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +63,7 @@ public class RemoveKeyTest extends AbstractParametrizedLibraryTest {
         return Arrays.asList(TestRun.values());
     }
 
-    final Shape rootShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).layout(TestDynamicObjectDefault.class).build();
+    final Shape rootShape = Shape.newBuilder().allowImplicitCastIntToDouble(true).layout(TestDynamicObjectDefault.class, MethodHandles.lookup()).build();
 
     @Test
     public void testRemoveAfterReplace() {

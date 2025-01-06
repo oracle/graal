@@ -26,10 +26,13 @@ package com.oracle.svm.core.foreign;
 
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
+import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.invoke.MethodHandle;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -38,7 +41,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.OS;
@@ -61,10 +63,14 @@ public class ForeignFunctionsRuntime {
 
     private final AbiUtils.TrampolineTemplate trampolineTemplate = AbiUtils.singleton().generateTrampolineTemplate();
     private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> downcallStubs = EconomicMap.create();
+    private final EconomicMap<DirectMethodHandleDesc, FunctionPointerHolder> directUpcallStubs = EconomicMap.create();
     private final EconomicMap<JavaEntryPointInfo, FunctionPointerHolder> upcallStubs = EconomicMap.create();
 
     private final Map<Long, TrampolineSet> trampolines = new HashMap<>();
     private TrampolineSet currentTrampolineSet;
+
+    // for testing: callback if direct upcall lookup succeeded
+    private BiConsumer<Long, DirectMethodHandleDesc> usingSpecializedUpcallListener;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ForeignFunctionsRuntime() {
@@ -80,6 +86,12 @@ public class ForeignFunctionsRuntime {
     public void addUpcallStubPointer(JavaEntryPointInfo jep, CFunctionPointer ptr) {
         VMError.guarantee(!upcallStubs.containsKey(jep), "Seems like multiple stubs were generated for " + jep);
         VMError.guarantee(upcallStubs.put(jep, new FunctionPointerHolder(ptr)) == null);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addDirectUpcallStubPointer(DirectMethodHandleDesc desc, CFunctionPointer ptr) {
+        VMError.guarantee(!directUpcallStubs.containsKey(desc), "Seems like multiple stubs were generated for " + desc);
+        VMError.guarantee(directUpcallStubs.put(desc, new FunctionPointerHolder(ptr)) == null);
     }
 
     /**
@@ -105,18 +117,64 @@ public class ForeignFunctionsRuntime {
     }
 
     Pointer registerForUpcall(MethodHandle methodHandle, JavaEntryPointInfo jep) {
+        /*
+         * Look up the upcall stub pointer first to avoid unnecessary allocation and synchronization
+         * if it doesn't exist.
+         */
+        CFunctionPointer upcallStubPointer = getUpcallStubPointer(jep);
         synchronized (trampolines) {
             if (currentTrampolineSet == null || !currentTrampolineSet.hasFreeTrampolines()) {
                 currentTrampolineSet = new TrampolineSet(trampolineTemplate);
                 trampolines.put(currentTrampolineSet.base().rawValue(), currentTrampolineSet);
             }
-            return currentTrampolineSet.assignTrampoline(methodHandle, getUpcallStubPointer(jep));
+            return currentTrampolineSet.assignTrampoline(methodHandle, upcallStubPointer);
         }
+    }
+
+    /**
+     * Updates the stub address in the upcall trampoline with the address of a direct upcall stub.
+     * The trampoline is identified by the given native address and the direct upcall stub is
+     * identified by the method handle descriptor.
+     *
+     * @param trampolineAddress The address of the upcall trampoline.
+     * @param desc A direct method handle descriptor used to lookup the direct upcall stub.
+     */
+    void patchForDirectUpcall(long trampolineAddress, DirectMethodHandleDesc desc) {
+        FunctionPointerHolder functionPointerHolder = directUpcallStubs.get(desc);
+        if (functionPointerHolder == null) {
+            return;
+        }
+
+        Pointer trampolinePointer = Word.pointer(trampolineAddress);
+        Pointer trampolineSetBase = TrampolineSet.getAllocationBase(trampolinePointer);
+        TrampolineSet trampolineSet = trampolines.get(trampolineSetBase.rawValue());
+        if (trampolineSet == null) {
+            return;
+        }
+        /*
+         * Synchronizing on 'trampolineSet' is not necessary at this point since we are still in the
+         * call context of 'Linker.upcallStub' and the allocated trampoline is owned by the
+         * allocating thread until it returns from the call. Also, the trampoline cannot be free'd
+         * between allocation and patching because the associated arena is still on the stack.
+         */
+        trampolineSet.patchTrampolineForDirectUpcall(trampolinePointer, functionPointerHolder.functionPointer);
+        /*
+         * If we reach this point, everything went fine and the trampoline was patched with the
+         * specialized upcall stub's address. For testing, now report that the lookup and patching
+         * succeeded.
+         */
+        if (usingSpecializedUpcallListener != null) {
+            usingSpecializedUpcallListener.accept(trampolineAddress, desc);
+        }
+    }
+
+    public void setUsingSpecializedUpcallListener(BiConsumer<Long, DirectMethodHandleDesc> listener) {
+        usingSpecializedUpcallListener = listener;
     }
 
     void freeTrampoline(long addr) {
         synchronized (trampolines) {
-            long base = TrampolineSet.getAllocationBase(WordFactory.pointer(addr)).rawValue();
+            long base = TrampolineSet.getAllocationBase(Word.pointer(addr)).rawValue();
             TrampolineSet trampolineSet = trampolines.get(base);
             if (trampolineSet.tryFree()) {
                 trampolines.remove(base);

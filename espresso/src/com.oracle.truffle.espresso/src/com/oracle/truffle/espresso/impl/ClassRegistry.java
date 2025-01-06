@@ -32,20 +32,20 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.constantpool.Resolution;
-import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
+import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -123,7 +123,6 @@ public abstract class ClassRegistry {
         public final boolean isHidden;
         public final boolean isStrongHidden;
         public final boolean forceAllowVMAnnotations;
-        public long klassID = -1;
 
         public boolean addedToRegistry() {
             return !isAnonymousClass() && !isHidden();
@@ -276,7 +275,7 @@ public abstract class ClassRegistry {
     }
 
     public void initUnnamedModule(StaticObject unnamedModule) {
-        this.unnamed = ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
+        this.unnamed = modules.createUnnamedModuleEntry(unnamedModule);
     }
 
     /**
@@ -619,7 +618,7 @@ public abstract class ClassRegistry {
         return dynamicModuleWrapper;
     }
 
-    public final class DynamicModuleWrapper {
+    public static final class DynamicModuleWrapper {
         private ModuleEntry dynamicProxyModule;
 
         public ModuleEntry getDynamicProxyModule() {

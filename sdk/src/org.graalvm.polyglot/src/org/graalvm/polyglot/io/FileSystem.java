@@ -66,6 +66,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -577,5 +578,120 @@ public interface FileSystem {
      */
     static FileSystem newFileSystem(java.nio.file.FileSystem fileSystem) {
         return IOHelper.ImplHolder.IMPL.newNIOFileSystem(fileSystem);
+    }
+
+    /**
+     * Creates a {@link FileSystem} that denies all file operations except for path parsing. Any
+     * attempt to perform file operations such as reading, writing, or deletion will result in a
+     * {@link SecurityException} being thrown.
+     * <p>
+     * Typically, this file system does not need to be explicitly installed to restrict access to
+     * host file systems. Instead, use {@code Context.newBuilder().allowIO(IOAccess.NONE)}. This
+     * method is intended primarily for use as a fallback file system in a
+     * {@link #newCompositeFileSystem(FileSystem, Selector...) composite file system}.
+     *
+     * @since 24.2
+     */
+    static FileSystem newDenyIOFileSystem() {
+        return IOHelper.ImplHolder.IMPL.newDenyIOFileSystem();
+    }
+
+    /**
+     * Creates a composite {@link FileSystem} that delegates operations to the provided
+     * {@code delegates}. The {@link FileSystem} of the first {@code delegate} whose
+     * {@link Selector#test(Path)} method accepts the path is used for the file system operation. If
+     * no {@code delegate} accepts the path, the {@code fallbackFileSystem} is used.
+     * <p>
+     * The {@code fallbackFileSystem} is responsible for parsing {@link Path} objects. All provided
+     * file systems must use the same {@link Path} type, {@link #getSeparator() separator}, and
+     * {@link #getPathSeparator() path separator}. If any file system does not meet this
+     * requirement, an {@link IllegalArgumentException} is thrown.
+     * <p>
+     * The composite file system maintains its own notion of the current working directory and
+     * ensures that the {@link #setCurrentWorkingDirectory(Path)} method is not invoked on any of
+     * the delegates. When a request to set the current working directory is received, the composite
+     * file system verifies that the specified path corresponds to an existing directory by
+     * consulting either the appropriate delegate or the {@code fallbackFileSystem}. If an explicit
+     * current working directory has been set, the composite file system normalizes and resolves all
+     * relative paths to absolute paths prior to delegating operations. Conversely, if no explicit
+     * current working directory is set, the composite file system directly forwards the incoming
+     * path, whether relative or absolute, to the appropriate delegate. Furthermore, when an
+     * explicit current working directory is set, the composite file system does not delegate
+     * {@code toAbsolutePath} operations, as delegates do not maintain an independent notion of the
+     * current working directory. If the current working directory is unset, {@code toAbsolutePath}
+     * operations are delegated to the {@code fallbackFileSystem}.
+     * <p>
+     * Operations that are independent of path context, including {@code getTempDirectory},
+     * {@code getSeparator}, and {@code getPathSeparator}, are handled exclusively by the
+     * {@code fallbackFileSystem}.
+     *
+     * @throws IllegalArgumentException if the file systems do not use the same {@link Path} type,
+     *             {@link #getSeparator() separator}, or {@link #getPathSeparator() path separator}
+     * @since 24.2
+     */
+    static FileSystem newCompositeFileSystem(FileSystem fallbackFileSystem, Selector... delegates) {
+        return IOHelper.ImplHolder.IMPL.newCompositeFileSystem(fallbackFileSystem, delegates);
+    }
+
+    /**
+     * A selector for determining which {@link FileSystem} should handle operations on a given
+     * {@link Path}. This class encapsulates a {@link FileSystem} and defines a condition for
+     * selecting it.
+     *
+     * @since 24.2
+     */
+    abstract class Selector implements Predicate<Path> {
+
+        private final FileSystem fileSystem;
+
+        /**
+         * Creates a {@link Selector} for the specified {@link FileSystem}.
+         *
+         * @since 24.2
+         */
+        protected Selector(FileSystem fileSystem) {
+            this.fileSystem = Objects.requireNonNull(fileSystem, "FileSystem must be non-null");
+        }
+
+        /**
+         * Returns the {@link FileSystem} associated with this selector.
+         *
+         * @since 24.2
+         */
+        public final FileSystem getFileSystem() {
+            return fileSystem;
+        }
+
+        /**
+         * Tests whether the {@link FileSystem} associated with this selector can handle operations
+         * on the specified {@link Path}.
+         *
+         * @param path the path to test, provided as a normalized absolute path. The given
+         *            {@code path} has no path components equal to {@code "."} or {@code ".."}.
+         * @return {@code true} if the associated {@link FileSystem} can handle the {@code path};
+         *         {@code false} otherwise
+         * @since 24.2
+         */
+        public abstract boolean test(Path path);
+
+        /**
+         * Creates a {@link Selector} for the specified {@link FileSystem} using the provided
+         * {@link Predicate}.
+         *
+         * @param fileSystem the {@link FileSystem} to associate with the selector
+         * @param predicate the condition to determine if the {@link FileSystem} can handle a given
+         *            path
+         * @return a new {@link Selector} that delegates path testing to the {@code predicate}
+         * @since 24.2
+         */
+        public static Selector of(FileSystem fileSystem, Predicate<Path> predicate) {
+            Objects.requireNonNull(predicate, "Predicate must be non-null");
+            return new Selector(fileSystem) {
+                @Override
+                public boolean test(Path path) {
+                    return predicate.test(path);
+                }
+            };
+        }
     }
 }

@@ -1681,6 +1681,7 @@ public class LanguageSPITest {
         static class Context {
             private final Env env;
             private int disposeCalled;
+            private TruffleContext innerCreatorTruffleContext;
             private static int disposeCalledStatic;
 
             Context(Env env) {
@@ -1703,11 +1704,11 @@ public class LanguageSPITest {
 
                 @TruffleBoundary
                 private Object executeBoundary() {
-                    Env env = CONTEXT_REF.get(null).env;
-                    TruffleContext innerContext = env.newInnerContextBuilder().initializeCreatorContext(true).build();
-                    Object p = innerContext.enter(null);
+                    Context outerLangContext = CONTEXT_REF.get(null);
+                    outerLangContext.innerCreatorTruffleContext = outerLangContext.env.newInnerContextBuilder().initializeCreatorContext(true).build();
+                    Object p = outerLangContext.innerCreatorTruffleContext.enter(null);
                     Context innerLangContext = CONTEXT_REF.get(null);
-                    innerContext.leave(null, p);
+                    outerLangContext.innerCreatorTruffleContext.leave(null, p);
                     return innerLangContext.disposeCalled;
                 }
             }.getCallTarget();

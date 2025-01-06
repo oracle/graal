@@ -43,7 +43,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "24.2.0",
+  "version" : "25.0.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -92,9 +92,6 @@ suite = {
         "jdk.unsupported", # sun.misc.Unsafe
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
-      "exports" : [
-        "com.oracle.truffle.regex.chardata",
-      ],
       "checkstyleVersion" : "10.7.0",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,Regex",
@@ -137,6 +134,9 @@ suite = {
     "TREGEX" : {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.regex",
+        "exports": [
+            "com.oracle.truffle.regex.chardata",
+        ],
         "requires" : [
           "java.logging",
           "jdk.unsupported", # sun.misc.Unsafe

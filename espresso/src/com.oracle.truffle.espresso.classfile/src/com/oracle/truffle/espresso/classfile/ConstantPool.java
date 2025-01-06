@@ -22,9 +22,23 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.DOUBLE;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.FIELD_REF;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.FLOAT;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTEGER;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTERFACE_METHOD_REF;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INVOKEDYNAMIC;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.LONG;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.METHOD_REF;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.STRING;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
+
+import java.util.Arrays;
+import java.util.Formatter;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
@@ -40,22 +54,8 @@ import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
-
-import java.util.Arrays;
-import java.util.Formatter;
-
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.CLASS;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.DOUBLE;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.FIELD_REF;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.FLOAT;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTEGER;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INTERFACE_METHOD_REF;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.INVOKEDYNAMIC;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.LONG;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.METHOD_REF;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.NAME_AND_TYPE;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.STRING;
-import static com.oracle.truffle.espresso.classfile.ConstantPool.Tag.UTF8;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
 
 /**
  * Immutable, shareable constant-pool representation.

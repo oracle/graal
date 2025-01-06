@@ -43,7 +43,6 @@ package com.oracle.truffle.api.impl;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -113,7 +112,6 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     private static final byte[] EMPTY_BYTE_ARRAY = {};
 
     private static final Unsafe UNSAFE = initUnsafe();
-
     static {
         assert OBJECT_TAG == FrameSlotKind.Object.tag;
         assert ILLEGAL_TAG == FrameSlotKind.Illegal.tag;
@@ -127,6 +125,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
         ASSERTIONS_ENABLED = areAssertionsEnabled();
     }
+
+    private static final Object ILLEGAL_DEFAULT = ImplAccessor.frameSupportAccessor().getIllegalDefault();
 
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
@@ -174,13 +174,15 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             indexedTagsArray = EMPTY_BYTE_ARRAY;
         } else {
             indexedLocalsArray = new Object[indexedSize];
-            if (defaultValue != null) {
-                Arrays.fill(indexedLocalsArray, defaultValue);
-            }
             indexedPrimitiveLocalsArray = new long[indexedSize];
             // Do not initialize tags, even for static slots. In practice, this means that it is
             // possible to statically access uninitialized slots.
             indexedTagsArray = new byte[indexedSize];
+            if (defaultValue == ILLEGAL_DEFAULT) {
+                Arrays.fill(indexedTagsArray, ILLEGAL_TAG);
+            } else if (defaultValue != null) {
+                Arrays.fill(indexedLocalsArray, defaultValue);
+            }
         }
         if (auxiliarySize == 0) {
             auxiliarySlotsArray = EMPTY_OBJECT_ARRAY;
@@ -197,9 +199,17 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
 
     /* Currently only used by the debugger to drop a frame. */
     void reset() {
-        Arrays.fill(this.indexedLocals, descriptor.getDefaultValue());
+        Object defaultValue = descriptor.getDefaultValue();
+        byte defaultTag;
+        if (defaultValue == ILLEGAL_DEFAULT) {
+            defaultTag = ILLEGAL_TAG;
+            defaultValue = null; // ILLEGAL_DEFAULT must never be written as default
+        } else {
+            defaultTag = OBJECT_TAG;
+        }
+        Arrays.fill(this.indexedTags, defaultTag);
+        Arrays.fill(this.indexedLocals, defaultValue);
         Arrays.fill(this.indexedPrimitiveLocals, 0L);
-        Arrays.fill(this.indexedTags, (byte) 0);
         Arrays.fill(this.auxiliarySlots, null);
     }
 
@@ -229,9 +239,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         return unsafeCast(descriptor, FrameDescriptor.class, true, true, false);
     }
 
-    private static FrameSlotTypeException frameSlotTypeException() throws FrameSlotTypeException {
-        CompilerAsserts.neverPartOfCompilation();
-        throw new FrameSlotTypeException();
+    private static FrameSlotTypeException frameSlotTypeException(int slot, byte expectedTag, byte actualTag) throws FrameSlotTypeException {
+        throw FrameSlotTypeException.create(slot, FrameSlotKind.fromTag(expectedTag), FrameSlotKind.fromTag(actualTag));
     }
 
     private static long getObjectOffset(int slotIndex) {
@@ -352,7 +361,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
                 return getObject(slot);
             case ILLEGAL_TAG:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw frameSlotTypeException();
+                throw frameSlotTypeException(slot, OBJECT_TAG, tag);
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
@@ -679,7 +688,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         boolean condition = actualTag == expectedTag;
         if (!condition) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw frameSlotTypeException();
+            throw frameSlotTypeException(slot, expectedTag, actualTag);
         }
         return condition;
     }
@@ -689,7 +698,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         boolean condition = actualTag == expectedTag;
         if (!condition) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw frameSlotTypeException();
+            throw frameSlotTypeException(slot, expectedTag, actualTag);
         }
         return condition;
     }
@@ -1040,19 +1049,28 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     }
 
     @Override
-    public void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
-        FrameWithoutBoxing o = (FrameWithoutBoxing) dst;
-        if (o.descriptor != descriptor //
-                        || length < 0 //
-                        || srcOffset < 0 //
-                        || srcOffset + length > getIndexedTags().length //
-                        || dstOffset < 0 //
-                        || dstOffset + length > o.getIndexedTags().length) {
+    public void copyTo(int sourceOffset, Frame destination, int destinationOffset, int length) {
+        FrameWithoutBoxing o = (FrameWithoutBoxing) destination;
+        if (o.descriptor != descriptor) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw frameSlotTypeException();
+            throw new IllegalArgumentException("Invalid frame with wrong frame descriptor passed.");
+        } else if (length < 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IndexOutOfBoundsException("Illegal length passed.");
+        } else if (sourceOffset < 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IndexOutOfBoundsException("Illegal sourceOffset passed.");
+        } else if (sourceOffset + length > getIndexedTags().length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IndexOutOfBoundsException("Illegal sourceOffset or length passed.");
+        } else if (destinationOffset < 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IndexOutOfBoundsException("Illegal destinationOffset passed.");
+        } else if (destinationOffset + length > o.getIndexedTags().length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IndexOutOfBoundsException("Illegal destinationOffset or length passed.");
         }
-
-        unsafeCopyTo(srcOffset, o, dstOffset, length);
+        unsafeCopyTo(sourceOffset, o, destinationOffset, length);
     }
 
     void unsafeCopyTo(int srcOffset, FrameWithoutBoxing o, int dstOffset, int length) {

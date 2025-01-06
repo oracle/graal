@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.heap;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -52,7 +52,7 @@ public class InstanceReferenceMapDecoder {
         boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
 
         assert entryCount >= 0;
-        UnsignedWord sizeOfEntries = WordFactory.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
+        UnsignedWord sizeOfEntries = Word.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
         Pointer end = position.add(sizeOfEntries);
         while (position.belowThan(end)) {
             int offset = position.readInt(0);

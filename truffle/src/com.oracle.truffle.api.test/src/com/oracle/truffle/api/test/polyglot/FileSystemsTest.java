@@ -104,6 +104,7 @@ import org.graalvm.home.Version;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.FileSystem.Selector;
 import org.graalvm.polyglot.io.IOAccess;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -145,7 +146,7 @@ public class FileSystemsTest {
     private static final String FILE_TMP_DIR = "tmpfolder";
     private static final String FULL_IO_DEPRECATED = "Full IO - Deprecated";
     private static final String NO_IO_DEPRECATED = "No IO - Deprecated";
-    private static final String CUSTOM_FS_DEPRECATED = "Custom File System - Deprecated";
+    private static final String CUSTOM_FS_DEPRECATED = "Custom file system - Deprecated";
     private static final String FULL_IO = "Full IO";
     private static final String NO_IO = "No IO";
     private static final String NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE = "No IO under language home - public file";
@@ -154,11 +155,14 @@ public class FileSystemsTest {
     private static final String CONDITIONAL_IO_READ_WRITE_PART = "Conditional IO - read/write part";
     private static final String CONDITIONAL_IO_READ_ONLY_PART = "Conditional IO - read only part";
     private static final String CONDITIONAL_IO_PRIVATE_PART = "Conditional IO - private part";
-    private static final String MEMORY_FILE_SYSTEM = "Memory FileSystem";
-    private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES = "Memory FileSystem With Language Homes";
-    private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE = "Memory FileSystem With Language Homes - internal file";
-    private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME = "Context pre-initialization filesystem build time";
-    private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME = "Context pre-initialization filesystem execution time";
+    private static final String MEMORY_FILE_SYSTEM = "Memory file system";
+    private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES = "Memory file system with language homes";
+    private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE = "Memory file system with language homes - internal file";
+    private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME = "Context pre-initialization file system build time";
+    private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME = "Context pre-initialization files ystem execution time";
+    private static final String COMPOSITE_FILE_SYSTEM_DELEGATE = "Composite file system read write delegate";
+    private static final String COMPOSITE_FILE_SYSTEM_FALLBACK = "Composite file system read only fallback";
+    private static final String DENY_IO = "Deny IO file system";
 
     private static final Map<String, Configuration> cfgs = new HashMap<>();
 
@@ -183,7 +187,10 @@ public class FileSystemsTest {
                         MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES,
                         MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE,
                         CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME,
-                        CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME);
+                        CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME,
+                        COMPOSITE_FILE_SYSTEM_DELEGATE,
+                        COMPOSITE_FILE_SYSTEM_FALLBACK,
+                        DENY_IO);
     }
 
     @BeforeClass
@@ -318,6 +325,35 @@ public class FileSystemsTest {
         ctx = Context.newBuilder().allowIO(ioAccess).build();
         cfgs.put(CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME, new Configuration(CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME, ctx, workDir, fileSystem, true, true, true, true));
 
+        // Composite file system with read-only fallback and read write delegate.
+        FileSystem readWriteFs = FileSystem.newDefaultFileSystem();
+        Path tmp = Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath();
+        Path readOnlyFolder = Files.createDirectories(tmp.resolve("readOnly"));
+        Path readWriteFolder = Files.createDirectories(tmp.resolve("readWrite"));
+        createContent(readOnlyFolder, readWriteFs);
+        createContent(readWriteFolder, readWriteFs);
+        FileSystem readOnlyFallBack = FileSystem.newReadOnlyFileSystem(readWriteFs);
+        Selector readWriteDelegate = Selector.of(readWriteFs, (p) -> p.startsWith(readWriteFolder));
+
+        // Read write delegate
+        fileSystem = FileSystem.newCompositeFileSystem(readOnlyFallBack, readWriteDelegate);
+        fileSystem.setCurrentWorkingDirectory(readWriteFolder);
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder().allowIO(ioAccess).build();
+        cfgs.put(COMPOSITE_FILE_SYSTEM_DELEGATE, new Configuration(COMPOSITE_FILE_SYSTEM_DELEGATE, ctx, readWriteFolder, readWriteFs, true, true, true, true));
+        // Read only fallback
+        fileSystem = FileSystem.newCompositeFileSystem(readOnlyFallBack, readWriteDelegate);
+        fileSystem.setCurrentWorkingDirectory(readOnlyFolder);
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder().allowIO(ioAccess).build();
+        cfgs.put(COMPOSITE_FILE_SYSTEM_FALLBACK, new Configuration(COMPOSITE_FILE_SYSTEM_FALLBACK, ctx, readOnlyFolder, readWriteFs, true, true, false, true));
+
+        // Deny IO file system
+        fileSystem = FileSystem.newDenyIOFileSystem();
+        ioAccess = IOAccess.newBuilder().fileSystem(fileSystem).build();
+        ctx = Context.newBuilder().allowIO(ioAccess).build();
+        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()), fullIO);
+        cfgs.put(DENY_IO, new Configuration(DENY_IO, ctx, privateDir, Paths.get("").toAbsolutePath(), fullIO, true, false, false, false));
     }
 
     @SuppressWarnings("deprecation")

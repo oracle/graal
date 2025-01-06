@@ -54,13 +54,25 @@ final class ForeignDisabled implements BooleanSupplier {
 final class Target_jdk_internal_foreign_MemorySessionImpl {
     @Substitute
     @SuppressWarnings("static-method")
-    Target_java_lang_foreign_Arena asArena() {
+    @TargetElement(name = "asArena", onlyWith = JDK21OrEarlier.class)
+    Target_java_lang_foreign_Arena asArenaJDK21() {
+        throw ForeignDisabledSubstitutions.fail();
+    }
+
+    @Substitute
+    @SuppressWarnings("static-method")
+    @TargetElement(onlyWith = JDKLatest.class)
+    Target_jdk_internal_foreign_ArenaImpl asArena() {
         throw ForeignDisabledSubstitutions.fail();
     }
 }
 
 @TargetClass(className = "java.lang.foreign.Arena", onlyWith = ForeignDisabled.class)
 final class Target_java_lang_foreign_Arena {
+}
+
+@TargetClass(className = "jdk.internal.foreign.ArenaImpl", onlyWith = {ForeignDisabled.class, JDKLatest.class})
+final class Target_jdk_internal_foreign_ArenaImpl {
 }
 
 @TargetClass(className = "java.lang.foreign.Linker", onlyWith = ForeignDisabled.class)

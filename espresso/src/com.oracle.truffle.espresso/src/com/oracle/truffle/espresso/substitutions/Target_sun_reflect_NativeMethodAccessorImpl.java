@@ -30,21 +30,22 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
-import com.oracle.truffle.espresso.resolver.CallKind;
-import com.oracle.truffle.espresso.resolver.CallSiteType;
-import com.oracle.truffle.espresso.resolver.LinkResolver;
-import com.oracle.truffle.espresso.resolver.ResolvedCall;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoLinkResolver;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.resolver.CallKind;
+import com.oracle.truffle.espresso.shared.resolver.CallSiteType;
+import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 
 /**
  * This substitution is merely for performance reasons, to avoid the deep-dive to native. libjava
@@ -306,8 +307,8 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         } else {
             callSiteType = CallSiteType.Virtual;
         }
-        ResolvedCall resolvedCall = LinkResolver.resolveCallSite(
-                        meta,
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(
+                        meta.getContext(),
                         null, // No current class.
                         reflectedMethod, callSiteType, klass);
 
@@ -326,7 +327,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         Object result;
         try {
-            result = resolvedCall.call(adjustedArgs);
+            result = Method.call(resolvedCall, adjustedArgs);
         } catch (EspressoException e) {
             throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getGuestException());
         }
@@ -342,7 +343,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         return (StaticObject) result;
     }
 
-    private static Object[] makeArgs(ResolvedCall resolvedCall, StaticObject parameterTypes,
+    private static Object[] makeArgs(ResolvedCall<Klass, Method, Field> resolvedCall, StaticObject parameterTypes,
                     StaticObject receiver, StaticObject args,
                     EspressoLanguage language, Meta meta, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         boolean isForeignArray = args.isForeignObject();

@@ -109,12 +109,27 @@ public class SubstrateOptions {
     @Option(help = "Build shared library")//
     public static final HostedOptionKey<Boolean> SharedLibrary = new HostedOptionKey<>(false);
 
-    @Option(help = "Persist and reload graphs across layers. If false, graphs defined in the base layer can be reparsed by the current layer and inlined before analysis, " +
+    @Option(help = "Persist and reload all graphs across layers. If false, graphs defined in the base layer can be reparsed by the current layer and inlined before analysis, " +
                     "but will not be inlined after analysis has completed via our other inlining infrastructure")//
     public static final HostedOptionKey<Boolean> UseSharedLayerGraphs = new HostedOptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            NeverInline.update(values, "SubstrateStringConcatHelper.simpleConcat");
+            if (!newValue) {
+                UseSharedLayerStrengthenedGraphs.update(values, false);
+            }
+        }
+    };
+
+    @Option(help = "Persist and reload strengthened graphs across layers. If false, inlining after analysis will be disabled")//
+    public static final HostedOptionKey<Boolean> UseSharedLayerStrengthenedGraphs = new HostedOptionKey<>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                UserError.guarantee(UseSharedLayerStrengthenedGraphs.getValueOrDefault(values),
+                                "UseSharedLayerStrengthenedGraph is a subset of UseSharedLayerGraphs, so the former cannot be enabled alone.");
+            } else {
+                NeverInline.update(values, "SubstrateStringConcatHelper.simpleConcat");
+            }
         }
     };
 
@@ -130,11 +145,14 @@ public class SubstrateOptions {
         }
     });
 
-    // @APIOption(name = "layer-create")//
+    public static final String LAYER_OPTION_PREFIX = "-H:Layer"; // "--layer"
+    public static final String LAYER_CREATE_OPTION = LAYER_OPTION_PREFIX + "Create"; // "-create"
+    // @APIOption(name = LAYER_CREATE_OPTION) // use when non-experimental
     @Option(help = "Experimental: Build a Native Image layer.")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LayerCreate = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
-    // @APIOption(name = "layer-use")//
+    // public static final String LAYER_USE_OPTION = LAYER_OPTION_PREFIX + "-use";
+    // @APIOption(name = LAYER_USE_OPTION) // use when non-experimental
     @Option(help = "Experimental: Build an image based on a Native Image layer.")//
     @BundleMember(role = Role.Input) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Paths> LayerUse = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Paths.build());
@@ -1286,11 +1304,15 @@ public class SubstrateOptions {
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
+    @Option(help = "Include all classes, methods and fields from the given packages", type = OptionType.Debug) //
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPackage = new HostedOptionKey<>(
+                    AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
     @Option(help = "Include all classes, methods, fields, and resources from the class path", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeAllFromClassPath = new HostedOptionKey<>(false);
 
     public static boolean includeAll() {
-        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet() || IncludeAllFromClassPath.hasBeenSet();
+        return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet() || IncludeAllFromPackage.hasBeenSet() || IncludeAllFromClassPath.hasBeenSet();
     }
 
     @Option(help = "Force include include all public types and methods that can be reached using normal Java access rules.")//
@@ -1331,10 +1353,11 @@ public class SubstrateOptions {
 
     public static class TruffleStableOptions {
 
-        @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
-                        "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
-                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
-        public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
+        @Option(help = "Automatically copy the necessary language resources to the resources directory next to the produced image.", type = User, stability = OptionStability.STABLE)//
+        public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(false);
+
+        @Option(help = "Automatically include the necessary language internal resources in the produced image.", type = User, stability = OptionStability.STABLE)//
+        public static final HostedOptionKey<Boolean> IncludeLanguageResources = new HostedOptionKey<>(true);
     }
 
     @Option(help = "Reduce the amount of metadata in the image for implicit exceptions by removing inlining information from the stack trace. " +

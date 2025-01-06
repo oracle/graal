@@ -23,13 +23,13 @@
 
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ByteBufferInterop;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ByteBufferInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ForeignExceptionInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InterruptedExceptionInterop;

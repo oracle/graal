@@ -209,6 +209,23 @@ static std::string exe_path() {
     #elif defined (_WIN32)
         char *realPath = (char *)malloc(_MAX_PATH);
         GetModuleFileNameA(NULL, realPath, _MAX_PATH);
+        /* try to do a realpath equivalent */
+        HANDLE handle = CreateFile(realPath, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (handle != INVALID_HANDLE_VALUE) {
+            const size_t size = _MAX_PATH + 4;
+            char *resolvedPath = (char *)malloc(size);
+            DWORD ret = GetFinalPathNameByHandleA(handle, resolvedPath, size, 0);
+            /*
+             * The path returned from GetFinalPathNameByHandleA should always
+             * use "\\?\" path syntax. We strip the prefix.
+             * See: https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+             */
+            if (ret < size && resolvedPath[0] == '\\' && resolvedPath[1] == '\\' && resolvedPath[2] == '?' && resolvedPath[3] == '\\') {
+                strcpy_s(realPath, _MAX_PATH, resolvedPath + 4);
+            }
+            free(resolvedPath);
+            CloseHandle(handle);
+        }
     #endif
     std::string p(realPath);
     free(realPath);
@@ -558,6 +575,10 @@ static void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMIn
 
         /* Allow Truffle NFI Panama to use Linker#{downcallHandle,upcallStub} without warnings. */
         vmArgs.push_back("--enable-native-access=org.graalvm.truffle");
+// GR-59703: Migrate sun.misc.* usages.
+#if LAUNCHER_JDK_VERSION >= 23
+        vmArgs.push_back("--sun-misc-unsafe-memory-access=allow");
+#endif
     }
 
     jint nOptions = jvmMode ? vmArgs.size() : 1 + vmArgs.size();

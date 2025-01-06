@@ -671,7 +671,7 @@ public class HostedUniverse implements Universe {
 
             ClassLoader l1 = Optional.ofNullable(o1.getJavaClass()).map(Class::getClassLoader).orElse(null);
             ClassLoader l2 = Optional.ofNullable(o2.getJavaClass()).map(Class::getClassLoader).orElse(null);
-            result = SubstrateUtil.classLoaderNameAndId(l1).compareTo(SubstrateUtil.classLoaderNameAndId(l2));
+            result = SubstrateUtil.runtimeClassLoaderNameAndId(l1).compareTo(SubstrateUtil.runtimeClassLoaderNameAndId(l2));
             VMError.guarantee(result != 0, "HostedType objects not distinguishable by name and classloader: %s, %s", o1, o2);
             return result;
         }

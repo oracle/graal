@@ -31,6 +31,7 @@ import java.util.EnumSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -38,7 +39,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
@@ -249,7 +249,7 @@ public final class JavaThreads {
         if (carrier == null) {
             return null;
         }
-        Pointer endSP = PlatformThreads.getCarrierSPOrElse(carrier, WordFactory.nullPointer());
+        Pointer endSP = PlatformThreads.getCarrierSPOrElse(carrier, Word.nullPointer());
         if (endSP.isNull()) {
             return null;
         }
@@ -303,7 +303,7 @@ public final class JavaThreads {
     private static void visitCurrentVirtualThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
         Thread carrier = toVirtualTarget(Thread.currentThread()).carrierThread;
         if (carrier != null) {
-            Pointer endSP = PlatformThreads.getCarrierSPOrElse(carrier, WordFactory.nullPointer());
+            Pointer endSP = PlatformThreads.getCarrierSPOrElse(carrier, Word.nullPointer());
             if (endSP.isNonNull()) {
                 StackTraceUtils.visitCurrentThreadStackFrames(callerSP, endSP, visitor);
             }

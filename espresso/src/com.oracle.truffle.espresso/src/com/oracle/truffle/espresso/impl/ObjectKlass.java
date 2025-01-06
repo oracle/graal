@@ -58,10 +58,11 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
-import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.classfile.ParserField;
+import com.oracle.truffle.espresso.classfile.ParserKlass;
+import com.oracle.truffle.espresso.classfile.ParserMethod;
+import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
@@ -72,25 +73,24 @@ import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
+import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.Names;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.classfile.ParserField;
-import com.oracle.truffle.espresso.classfile.ParserKlass;
-import com.oracle.truffle.espresso.classfile.ParserMethod;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.DetectedChange;
-import com.oracle.truffle.espresso.classfile.attributes.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -133,6 +133,9 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private volatile int initState = LOADED;
 
+    @CompilationFinal //
+    private EspressoException linkError;
+
     @CompilationFinal volatile KlassVersion klassVersion;
 
     // instance and hidden fields declared in this class and in its super classes
@@ -156,12 +159,15 @@ public final class ObjectKlass extends Klass {
 
     public static final int LOADED = 0;
     public static final int LINKING = 1;
-    public static final int PREPARED = 2;
-    public static final int LINKED = 3;
+    public static final int VERIFYING = 2;
+    public static final int FAILED_LINK = 3;
+    public static final int VERIFIED = 4;
+    public static final int PREPARED = 5;
+    public static final int LINKED = 6;
+    public static final int INITIALIZING = 7;
     // Can be erroneous only if initialization triggered !
-    public static final int ERRONEOUS = 4;
-    public static final int INITIALIZING = 5;
-    public static final int INITIALIZED = 6;
+    public static final int ERRONEOUS = 8;
+    public static final int INITIALIZED = 9;
 
     private final StaticObject definingClassLoader;
 
@@ -187,7 +193,7 @@ public final class ObjectKlass extends Klass {
         this.enclosingMethod = (EnclosingMethodAttribute) linkedKlass.getAttribute(EnclosingMethodAttribute.NAME);
         this.klassVersion = new KlassVersion(pool, linkedKlass, superKlass, superInterfaces);
 
-        Field[] skFieldTable = superKlass != null ? superKlass.getInitialFieldTable() : new Field[0];
+        Field[] skFieldTable = superKlass != null ? superKlass.getInitialFieldTable() : Field.EMPTY_ARRAY;
         LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
         LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
 
@@ -378,7 +384,7 @@ public final class ObjectKlass extends Klass {
          * case, if the state is INITIALIZING we cannot really check the lock because an object
          * might have been leaked to another thread by the clinit.
          */
-        return initState >= ERRONEOUS;
+        return initState >= INITIALIZING;
     }
 
     boolean isInitializedImpl() {
@@ -417,6 +423,12 @@ public final class ObjectKlass extends Klass {
             }
             initState = INITIALIZING;
             getContext().getLogger().log(Level.FINEST, "Initializing: {0}", this.getNameAsString());
+
+            for (Field f : getInitialStaticFields()) {
+                if (!f.isRemoved()) {
+                    initField(f);
+                }
+            }
 
             var tls = getContext().getLanguage().getThreadLocalState();
             tls.blockContinuationSuspension();
@@ -477,11 +489,6 @@ public final class ObjectKlass extends Klass {
         try {
             if (!isPrepared()) {
                 checkLoadingConstraints();
-                for (Field f : getInitialStaticFields()) {
-                    if (!f.isRemoved()) {
-                        initField(f);
-                    }
-                }
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
@@ -593,7 +600,7 @@ public final class ObjectKlass extends Klass {
     @Override
     public void ensureLinked() {
         if (!isLinked()) {
-            checkErroneousVerification();
+            checkErroneousLink();
             if (CompilerDirectives.isCompilationConstant(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
@@ -607,20 +614,30 @@ public final class ObjectKlass extends Klass {
         try {
             if (!isLinkingOrLinked()) {
                 initState = LINKING;
-                if (getSuperKlass() != null) {
-                    getSuperKlass().ensureLinked();
+                try {
+                    if (getSuperKlass() != null) {
+                        getSuperKlass().ensureLinked();
+                    }
+                    for (ObjectKlass interf : getSuperInterfaces()) {
+                        interf.ensureLinked();
+                    }
+                } catch (EspressoException e) {
+                    setErroneousLink(e);
+                    throw e;
                 }
-                for (ObjectKlass interf : getSuperInterfaces()) {
-                    interf.ensureLinked();
-                }
-                prepare();
                 verify();
+                try {
+                    prepare();
+                } catch (EspressoException e) {
+                    setErroneousLink(e);
+                    throw e;
+                }
                 initState = LINKED;
             }
         } finally {
             getInitLock().unlock();
         }
-        checkErroneousVerification();
+        checkErroneousLink();
     }
 
     void initializeImpl() {
@@ -632,7 +649,7 @@ public final class ObjectKlass extends Klass {
 
     @HostCompilerDirectives.InliningCutoff
     private void doInitialize() {
-        checkErroneousVerification();
+        checkErroneousLink();
         checkErroneousInitialization();
         if (CompilerDirectives.isCompilationConstant(this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -656,60 +673,45 @@ public final class ObjectKlass extends Klass {
 
     // region Verification
 
-    @CompilationFinal //
-    private volatile int verificationStatus = UNVERIFIED;
-
-    @CompilationFinal //
-    private EspressoException verificationError = null;
-
-    private static final int FAILED_VERIFICATION = -1;
-    private static final int UNVERIFIED = 0;
-    private static final int VERIFYING = 1;
-    private static final int VERIFIED = 2;
-
-    private void setVerificationStatus(int status) {
-        verificationStatus = status;
-    }
-
     private boolean isVerifyingOrVerified() {
-        return verificationStatus >= VERIFYING;
+        return initState >= VERIFYING;
     }
 
     boolean isVerified() {
-        return verificationStatus >= VERIFIED;
+        return initState >= VERIFIED;
     }
 
-    private void checkErroneousVerification() {
-        if (verificationStatus == FAILED_VERIFICATION) {
-            throw verificationError;
+    private void checkErroneousLink() {
+        if (initState == FAILED_LINK) {
+            throw linkError;
         }
     }
 
-    private void setErroneousVerification(EspressoException e) {
-        verificationStatus = FAILED_VERIFICATION;
-        verificationError = e;
+    private void setErroneousLink(EspressoException e) {
+        initState = FAILED_LINK;
+        linkError = e;
     }
 
     private void verify() {
         if (!isVerified()) {
-            checkErroneousVerification();
+            checkErroneousLink();
             getInitLock().lock();
             try {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    setVerificationStatus(VERIFYING);
+                    initState = VERIFYING;
                     try {
                         verifyImpl();
                     } catch (EspressoException e) {
-                        setErroneousVerification(e);
+                        setErroneousLink(e);
                         throw e;
                     }
-                    setVerificationStatus(VERIFIED);
+                    initState = VERIFIED;
                 }
             } finally {
                 getInitLock().unlock();
             }
-            checkErroneousVerification();
+            checkErroneousLink();
         }
     }
 
@@ -1090,7 +1092,7 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    public void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
+    void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
         Symbol<Name> methodName = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
         for (Method.MethodVersion m : getVTable()) {
@@ -1120,6 +1122,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
+    @TruffleBoundary
     public Method resolveInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         assert isInterface();
         /*
@@ -1302,19 +1305,20 @@ public final class ObjectKlass extends Klass {
     private void initPackage(@JavaType(ClassLoader.class) StaticObject classLoader) {
         if (!Names.isUnnamedPackage(getRuntimePackage())) {
             ClassRegistry registry = getRegistries().getClassRegistry(classLoader);
-            packageEntry = registry.packages().lookup(getRuntimePackage());
+            PackageEntry entry = registry.packages().lookup(getRuntimePackage());
             // If the package name is not found in the loader's package
             // entry table, it is an indication that the package has not
             // been defined. Consider it defined within the unnamed module.
-            if (packageEntry == null) {
+            if (entry == null) {
                 if (!getRegistries().javaBaseDefined()) {
                     // Before java.base is defined during bootstrapping, define all packages in
                     // the java.base module.
-                    packageEntry = registry.packages().lookupOrCreate(getRuntimePackage(), getRegistries().getJavaBaseModule());
+                    entry = registry.packages().lookupOrCreate(getRuntimePackage(), getRegistries().getJavaBaseModule());
                 } else {
-                    packageEntry = registry.packages().lookupOrCreate(getRuntimePackage(), registry.getUnnamedModule());
+                    entry = registry.packages().lookupOrCreate(getRuntimePackage(), registry.getUnnamedModule());
                 }
             }
+            packageEntry = entry;
         }
     }
 
@@ -1323,10 +1327,13 @@ public final class ObjectKlass extends Klass {
         if (!inUnnamedPackage()) {
             return packageEntry.module();
         }
+        StaticObject classLoader;
         if (getHostClass() != null) {
-            return getRegistries().getClassRegistry(getHostClass().getDefiningClassLoader()).getUnnamedModule();
+            classLoader = getHostClass().getDefiningClassLoader();
+        } else {
+            classLoader = getDefiningClassLoader();
         }
-        return getRegistries().getClassRegistry(getDefiningClassLoader()).getUnnamedModule();
+        return getRegistries().getClassRegistry(classLoader).getUnnamedModule();
     }
 
     @Override
@@ -1770,7 +1777,7 @@ public final class ObjectKlass extends Klass {
                 ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
                 checkSuperMethods(superKlass, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
                 removedMethod.getMethod().removedByRedefinition();
-                getContext().getClassRedefinition().getController().fine(
+                ClassRedefinition.LOGGER.fine(
                                 () -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
             }
 
@@ -1780,7 +1787,7 @@ public final class ObjectKlass extends Klass {
                 newDeclaredMethods.addLast(added);
                 virtualMethodsModified |= isVirtual(addedMethod);
                 checkSuperMethods(superKlass, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature(), invalidatedClasses);
-                getContext().getClassRedefinition().getController().fine(() -> "Added method " + added.getMethod().getDeclaringKlass().getName() + "." + added.getName());
+                ClassRedefinition.LOGGER.fine(() -> "Added method " + added.getMethod().getDeclaringKlass().getName() + "." + added.getName());
             }
 
             if (virtualMethodsModified) {
@@ -1797,7 +1804,7 @@ public final class ObjectKlass extends Klass {
                 if (changedMethodBodies.containsKey(declMethod)) {
                     ParserMethod newMethod = changedMethodBodies.get(declMethod);
                     Method.SharedRedefinitionContent redefineContent = declMethod.redefine(this, newMethod, packet.parserKlass, ids);
-                    getContext().getClassRedefinition().getController().fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
+                    ClassRedefinition.LOGGER.fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
                     methods[i] = redefineContent.getMethodVersion();
 
                     int flags = newMethod.getFlags();

@@ -105,6 +105,7 @@ public class ConfigurationType implements JsonPrintable {
     private ConfigurationMemberAccessibility allPublicMethodsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allDeclaredConstructorsAccess = ConfigurationMemberAccessibility.NONE;
     private ConfigurationMemberAccessibility allPublicConstructorsAccess = ConfigurationMemberAccessibility.NONE;
+    private boolean serializable = false;
 
     public ConfigurationType(UnresolvedConfigurationCondition condition, ConfigurationTypeDescriptor typeDescriptor, boolean includeAllElements) {
         this.condition = condition;
@@ -264,7 +265,15 @@ public class ConfigurationType implements JsonPrintable {
         maybeRemoveMethods(allDeclaredMethodsAccess.combine(other.allDeclaredMethodsAccess), allPublicMethodsAccess.combine(other.allPublicMethodsAccess),
                         allDeclaredConstructorsAccess.combine(other.allDeclaredConstructorsAccess), allPublicConstructorsAccess.combine(other.allPublicConstructorsAccess));
         if (methods != null && other.methods != null) {
-            methods.entrySet().removeAll(other.methods.entrySet());
+            for (Map.Entry<ConfigurationMethod, ConfigurationMemberInfo> entry : other.methods.entrySet()) {
+                ConfigurationMemberInfo otherMethodInfo = entry.getValue();
+                methods.computeIfPresent(entry.getKey(), (method, methodInfo) -> {
+                    if (otherMethodInfo.includes(methodInfo)) {
+                        return null; // remove
+                    }
+                    return methodInfo;
+                });
+            }
             if (methods.isEmpty()) {
                 methods = null;
             }
@@ -286,6 +295,7 @@ public class ConfigurationType implements JsonPrintable {
         allPublicMethodsAccess = accessCombiner.apply(allPublicMethodsAccess, other.allPublicMethodsAccess);
         allDeclaredConstructorsAccess = accessCombiner.apply(allDeclaredConstructorsAccess, other.allDeclaredConstructorsAccess);
         allPublicConstructorsAccess = accessCombiner.apply(allPublicConstructorsAccess, other.allPublicConstructorsAccess);
+        serializable = flagPredicate.test(serializable, other.serializable);
     }
 
     private boolean isEmpty() {
@@ -293,7 +303,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private boolean allFlagsFalse() {
-        return !(allDeclaredClasses || allRecordComponents || allPermittedSubclasses || allNestMembers || allSigners || allPublicClasses ||
+        return !(allDeclaredClasses || allRecordComponents || allPermittedSubclasses || allNestMembers || allSigners || allPublicClasses || serializable ||
                         allDeclaredFieldsAccess != ConfigurationMemberAccessibility.NONE || allPublicFieldsAccess != ConfigurationMemberAccessibility.NONE ||
                         allDeclaredMethodsAccess != ConfigurationMemberAccessibility.NONE || allPublicMethodsAccess != ConfigurationMemberAccessibility.NONE ||
                         allDeclaredConstructorsAccess != ConfigurationMemberAccessibility.NONE || allPublicConstructorsAccess != ConfigurationMemberAccessibility.NONE);
@@ -457,6 +467,10 @@ public class ConfigurationType implements JsonPrintable {
         }
     }
 
+    public synchronized void setSerializable() {
+        serializable = true;
+    }
+
     @Override
     public synchronized void printJson(JsonWriter writer) throws IOException {
         writer.appendObjectStart();
@@ -471,6 +485,7 @@ public class ConfigurationType implements JsonPrintable {
         printJsonBooleanIfSet(writer, allDeclaredConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allDeclaredConstructors");
         printJsonBooleanIfSet(writer, allPublicConstructorsAccess == ConfigurationMemberAccessibility.ACCESSED, "allPublicConstructors");
         printJsonBooleanIfSet(writer, unsafeAllocated, "unsafeAllocated");
+        printJsonBooleanIfSet(writer, serializable, "serializable");
 
         if (fields != null) {
             writer.appendSeparator().quote("fields").appendFieldSeparator();

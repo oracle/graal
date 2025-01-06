@@ -41,7 +41,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Isolates;
@@ -305,7 +304,7 @@ public final class Deoptimizer {
 
         @Override
         protected void operate() {
-            deoptimizeInRange(WordFactory.zero(), WordFactory.zero(), true);
+            deoptimizeInRange(Word.zero(), Word.zero(), true);
         }
     }
 
@@ -545,7 +544,11 @@ public final class Deoptimizer {
          * <p>
          * Custom epilogue: prepare stack layout and ABI registers for outgoing call.
          */
-        InterpreterLeaveStub
+        InterpreterLeaveStub;
+
+        public boolean isInterpreterStub() {
+            return equals(InterpreterEnterStub) || equals(InterpreterLeaveStub);
+        }
     }
 
     @Retention(RetentionPolicy.RUNTIME)
@@ -593,7 +596,7 @@ public final class Deoptimizer {
     @DeoptStub(stubType = StubType.EntryStub)
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
     public static UnsignedWord deoptStub(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
-        assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), WordFactory.unsigned(ConfigurationValues.getTarget().stackAlignment));
+        assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
         VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Deopt stub execution must not be visible to other threads.");
         DeoptimizedFrame frame = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(framePointer, true);
 
@@ -605,7 +608,7 @@ public final class Deoptimizer {
         /* Computation of the new stack pointer: we start with the stack pointer of this frame. */
         final Pointer newSp = framePointer
                         /* Remove the size of the frame that gets deoptimized. */
-                        .add(WordFactory.unsigned(frame.getSourceTotalFrameSize()))
+                        .add(Word.unsigned(frame.getSourceTotalFrameSize()))
                         /* Add the size of the deoptimization target frames. */
                         .subtract(frame.getTargetContent().getSize());
 

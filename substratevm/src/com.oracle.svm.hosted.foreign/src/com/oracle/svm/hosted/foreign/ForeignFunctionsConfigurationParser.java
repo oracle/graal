@@ -27,6 +27,9 @@ package com.oracle.svm.hosted.foreign;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.Linker.Option;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,10 +44,12 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.ImageClassLoader;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+23/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+27/src/java.base/share/classes/jdk/internal/foreign/abi/LinkerOptions.java")
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";
@@ -52,26 +57,33 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     private static final String DOWNCALL_OPTION_CRITICAL = "critical";
     private static final String DOWNCALL_OPTION_ALLOW_HEAP_ACCESS = "allowHeapAccess";
 
+    private final ImageClassLoader imageClassLoader;
     private final RuntimeForeignAccessSupport accessSupport;
 
-    public ForeignFunctionsConfigurationParser(RuntimeForeignAccessSupport access) {
+    public ForeignFunctionsConfigurationParser(ImageClassLoader imageClassLoader, RuntimeForeignAccessSupport access) {
         super(true);
+        this.imageClassLoader = imageClassLoader;
         this.accessSupport = access;
     }
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
         var topLevel = asMap(json, "first level of document must be a map");
-        checkAttributes(topLevel, "foreign methods categories", List.of(), List.of("downcalls", "upcalls"));
+        checkAttributes(topLevel, "foreign methods categories", List.of(), List.of("downcalls", "upcalls", "directUpcalls"));
 
-        var downcalls = asList(topLevel.get("downcalls", List.of()), "downcalls must be an array of method signatures");
+        var downcalls = asList(topLevel.get("downcalls", List.of()), "downcalls must be an array of function descriptor and linker options");
         for (Object downcall : downcalls) {
             parseAndRegisterForeignCall(downcall, this::parseDowncallOptions, (descriptor, options) -> accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options));
         }
 
-        var upcalls = asList(topLevel.get("upcalls", List.of()), "upcalls must be an array of method signatures");
+        var upcalls = asList(topLevel.get("upcalls", List.of()), "upcalls must be an array of function descriptor and linker options");
         for (Object upcall : upcalls) {
             parseAndRegisterForeignCall(upcall, this::parseUpcallOptions, (descriptor, options) -> accessSupport.registerForUpcall(ConfigurationCondition.alwaysTrue(), descriptor, options));
+        }
+
+        var directUpcalls = asList(topLevel.get("directUpcalls", List.of()), "direct upcalls must be an array of method references, function descriptors, and linker options");
+        for (Object upcall : directUpcalls) {
+            parseAndRegisterDirectUpcall(upcall);
         }
     }
 
@@ -79,9 +91,32 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
         var map = asMap(call, "a foreign call must be a map");
         checkAttributes(map, "foreign call", List.of("descriptor"), List.of("options"));
         var descriptor = parseDescriptor(map.get("descriptor"));
-        var options = map.get("options", EconomicMap.create());
+        var options = map.get("options", EconomicMap.emptyMap());
         List<Option> parsedOptions = optionsParser.apply(asMap(options, "options must be a map"));
         register.accept(descriptor, parsedOptions.toArray());
+    }
+
+    private void parseAndRegisterDirectUpcall(Object call) {
+        var map = asMap(call, "a foreign call must be a map");
+        checkAttributes(map, "foreign call", List.of("class", "method", "descriptor"), List.of("options"));
+        String className = asString(map.get("class"));
+        String methodName = asString(map.get("method"));
+        FunctionDescriptor descriptor = parseDescriptor(map.get("descriptor"));
+        var options = parseUpcallOptions(asMap(map.get("options", EconomicMap.emptyMap()), "options must be a map"));
+
+        MethodType methodType = descriptor.toMethodType();
+        try {
+            Class<?> aClass = imageClassLoader.forName(className);
+            MethodHandle methodHandle = MethodHandles.publicLookup().findStatic(aClass, methodName, methodType);
+            accessSupport.registerForDirectUpcall(ConfigurationCondition.alwaysTrue(), methodHandle, descriptor, options.toArray());
+        } catch (ClassNotFoundException e) {
+            throw UserError.abort(e, "Cannot find class '%s' used to register method '%s' for a direct upcall. ",
+                            className, methodName);
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            throw UserError.abort(e, "Method '%s.%s(%s)' could not be registered as an upcall target method. " +
+                            "Please verify that the method is public, static and that the parameter types match.",
+                            className, methodName, methodType);
+        }
     }
 
     private FunctionDescriptor parseDescriptor(Object signature) {

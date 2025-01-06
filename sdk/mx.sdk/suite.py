@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "7.33.1",
+  "mxversion": "7.36.0",
   "name" : "sdk",
-  "version" : "24.2.0",
+  "version" : "25.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -411,6 +411,19 @@ suite = {
       "javaCompliance" : "11+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,SDK",
+    },
+
+    "org.graalvm.word.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "org.graalvm.word"
+      ],
+      "javaCompliance" : "21+",
+      "workingSets" : "SDK",
+      "checkstyle" : "org.graalvm.word",
+      "graalCompilerSourceEdition": "ignore",
     },
 
     "org.graalvm.nativeimage" : {
@@ -947,6 +960,7 @@ suite = {
     "SDK_TEST" : {
       "subDir" : "src",
       "dependencies" : [
+        "org.graalvm.word.test",
         "org.graalvm.collections.test",
         "org.graalvm.nativeimage.test",
         "org.graalvm.launcher.test",
@@ -957,6 +971,7 @@ suite = {
         "sdk:POLYGLOT",
         "sdk:NATIVEIMAGE",
         "sdk:COLLECTIONS",
+        "sdk:WORD",
         "sdk:LAUNCHER_COMMON"
       ],
       "maven" : False,

@@ -87,17 +87,16 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private void throwSealedError() {
         assert sealedFlowsGraph != null;
         StringBuilder sb = new StringBuilder();
-        sb.append("Sealed problem:\n");
-        if (sealedFlowsGraph instanceof StackTraceElement[]) {
-            StackTraceElement[] trace = (StackTraceElement[]) sealedFlowsGraph;
+        sb.append("Sealed problem:").append(System.lineSeparator());
+        if (sealedFlowsGraph instanceof StackTraceElement[] trace) {
             sb = new StringBuilder();
-            sb.append("stack trace:\n");
+            sb.append("stack trace:").append(System.lineSeparator());
             for (StackTraceElement elem : trace) {
-                sb.append(elem.toString()).append("\n");
+                sb.append(elem.toString()).append(System.lineSeparator());
             }
-            sb.append("end trace:\n");
+            sb.append("end trace:").append(System.lineSeparator());
         } else {
-            sb.append("stack trace is unknown\n");
+            sb.append("stack trace is unknown").append(System.lineSeparator());
         }
         throw AnalysisError.shouldNotReachHere(sb.toString());
     }

@@ -46,6 +46,8 @@ import static com.oracle.truffle.api.strings.TStringGuards.is7BitCompatible;
 import static com.oracle.truffle.api.strings.TStringGuards.isAsciiBytesOrLatin1;
 import static com.oracle.truffle.api.strings.TStringGuards.isBroken;
 import static com.oracle.truffle.api.strings.TStringGuards.isFixedWidth;
+import static com.oracle.truffle.api.strings.TStringGuards.isUTF16FE;
+import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding;
 
 import java.util.Arrays;
@@ -574,6 +576,8 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         static void generic(Node node, TruffleStringBuilderGeneric sb, int codepoint, int repeat, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
                         @Cached @Exclusive InlinedConditionProfile supportedProfile,
+                        @Cached InlinedConditionProfile utf16FEProfile,
+                        @Cached InlinedConditionProfile utf32FEProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
             if (supportedProfile.profile(node, isAsciiBytesOrLatin1(sb.encoding))) {
@@ -586,6 +590,34 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 }
                 Arrays.fill(sb.buf, sb.length, sb.length + repeat, (byte) codepoint);
                 sb.length += repeat;
+            } else if (utf16FEProfile.profile(node, isUTF16FE(sb.encoding))) {
+                if (!Encodings.isValidUnicodeCodepoint(codepoint)) {
+                    throw InternalErrors.invalidCodePoint(codepoint);
+                }
+                int length = codepoint <= 0xffff ? 2 : 4;
+                sb.ensureCapacityWithStride(node, length * repeat, bufferGrowProfile, errorProfile);
+                if (codepoint <= 0xffff) {
+                    for (int i = 0; i < repeat; i++) {
+                        TStringOps.writeToByteArray(sb.buf, 1, sb.length >> 1, Character.reverseBytes((char) codepoint));
+                        sb.length += 2;
+                    }
+                } else {
+                    for (int i = 0; i < repeat; i++) {
+                        Encodings.utf16FEEncodeSurrogatePair(codepoint, sb.buf, sb.length >> 1);
+                        sb.length += 4;
+                    }
+                }
+                sb.updateCodeRange(TSCodeRange.getValidMultiByte());
+            } else if (utf32FEProfile.profile(node, isUTF32FE(sb.encoding))) {
+                if (!Encodings.isValidUnicodeCodepoint(codepoint)) {
+                    throw InternalErrors.invalidCodePoint(codepoint);
+                }
+                sb.ensureCapacityWithStride(node, 4 * repeat, bufferGrowProfile, errorProfile);
+                for (int i = 0; i < repeat; i++) {
+                    TStringOps.writeToByteArray(sb.buf, 2, sb.length >> 2, Integer.reverseBytes(codepoint));
+                    sb.length += 4;
+                }
+                sb.updateCodeRange(TSCodeRange.getValidMultiByte());
             } else {
                 assert isUnsupportedEncoding(sb.encoding);
                 JCodings jcodings = JCodings.getInstance();
@@ -940,7 +972,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                         @Cached @Shared TruffleString.ToIndexableNode toIndexableNode,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
-            if (a.length() == 0) {
+            if (a.isEmpty()) {
                 return;
             }
             a.checkEncoding(Encoding.UTF_8);
@@ -963,7 +995,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                         @Cached @Shared InlinedBranchProfile inflateProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
-            if (a.length() == 0) {
+            if (a.isEmpty()) {
                 return;
             }
             a.checkEncoding(Encoding.UTF_16);
@@ -996,7 +1028,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                         @Cached @Shared InlinedBranchProfile inflateProfile,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
                         @Cached @Shared InlinedBranchProfile errorProfile) {
-            if (a.length() == 0) {
+            if (a.isEmpty()) {
                 return;
             }
             a.checkEncoding(Encoding.UTF_32);
@@ -1026,7 +1058,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                         @Cached @Exclusive TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached @Exclusive InlinedBranchProfile bufferGrowProfile,
                         @Cached @Exclusive InlinedBranchProfile errorProfile) {
-            if (a.length() == 0) {
+            if (a.isEmpty()) {
                 return;
             }
             a.checkEncoding(sb.encoding);

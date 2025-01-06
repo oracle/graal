@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
@@ -44,7 +44,7 @@ public interface RegisterDumper {
         log.string(label).zhex(value);
         if (printLocationInfo) {
             log.spaces(1);
-            SubstrateDiagnostics.printLocationInfo(log, WordFactory.unsigned(value), allowJavaHeapAccess, allowUnsafeOperations);
+            SubstrateDiagnostics.printLocationInfo(log, Word.unsigned(value), allowJavaHeapAccess, allowUnsafeOperations);
         }
         log.newline();
     }

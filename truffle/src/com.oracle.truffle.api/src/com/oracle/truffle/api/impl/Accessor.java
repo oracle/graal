@@ -337,6 +337,17 @@ public abstract class Accessor {
         public abstract Type findActualTypeArgument(Type typeOrTypeVar, Type genericTargetType);
     }
 
+    public abstract static class StringsSupport extends Support {
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.strings.TStringAccessor$StringImpl";
+
+        protected StringsSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract Object fromNativePointerEmbedder(long address, int byteOffset, int byteLength, Object encoding, boolean copy);
+
+    }
+
     public abstract static class EngineSupport extends Support {
 
         static final String IMPL_CLASS_NAME = "com.oracle.truffle.polyglot.EngineAccessor$EngineImpl";
@@ -484,7 +495,8 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object polyglotLanguageContext);
 
-        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave,
+        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter,
+                        Runnable afterLeave,
                         boolean virtual);
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
@@ -931,7 +943,6 @@ public abstract class Accessor {
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
 
         public abstract InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck);
-
     }
 
     public abstract static class InstrumentSupport extends Support {
@@ -1052,6 +1063,8 @@ public abstract class Accessor {
         public abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
         public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
+
+        public abstract Object getIllegalDefault();
     }
 
     public abstract static class ExceptionSupport extends Support {
@@ -1460,6 +1473,7 @@ public abstract class Accessor {
         private static final Accessor.IOSupport IO;
         private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
+        private static final Accessor.StringsSupport STRINGS;
         private static final Accessor.HostSupport HOST;
         private static final Accessor.RuntimeSupport RUNTIME;
         private static final Accessor.LanguageProviderSupport LANGUAGE_PROVIDER;
@@ -1485,6 +1499,7 @@ public abstract class Accessor {
             INSTRUMENT_PROVIDER = loadSupport(InstrumentProviderSupport.IMPL_CLASS_NAME);
             DYNAMIC_OBJECT = loadSupport(DynamicObjectSupport.IMPL_CLASS_NAME);
             MEMORY_SUPPORT = loadSupport(MemorySupport.IMPL_CLASS_NAME);
+            STRINGS = loadSupport(StringsSupport.IMPL_CLASS_NAME);
         }
 
         @SuppressWarnings("unchecked")
@@ -1551,6 +1566,10 @@ public abstract class Accessor {
 
     public final InstrumentSupport instrumentSupport() {
         return Constants.INSTRUMENT;
+    }
+
+    public final StringsSupport stringsSupport() {
+        return Constants.STRINGS;
     }
 
     public final InteropSupport interopSupport() {

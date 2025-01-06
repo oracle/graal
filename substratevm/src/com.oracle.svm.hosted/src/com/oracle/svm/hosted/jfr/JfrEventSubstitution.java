@@ -33,8 +33,10 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.jfr.JfrJdkCompatibility;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
@@ -57,6 +59,8 @@ import jdk.vm.ci.meta.Signature;
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrEventSubstitution extends SubstitutionProcessor {
 
+    private final ImageHeapScanner heapScanner;
+
     private final ResolvedJavaType baseEventType;
     private final ConcurrentHashMap<ResolvedJavaType, Boolean> typeSubstitution;
     private final ConcurrentHashMap<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
@@ -64,8 +68,10 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private final Map<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
 
     private static final Method registerMirror = JavaVersionUtil.JAVA_SPEC < 22 ? ReflectionUtil.lookupMethod(SecuritySupport.class, "registerMirror", Class.class) : null;
+    private static final Method getConfiguration = ReflectionUtil.lookupMethod(JVM.class, "getConfiguration", Class.class);
 
-    JfrEventSubstitution(MetaAccessProvider metaAccess) {
+    JfrEventSubstitution(MetaAccessProvider metaAccess, ImageHeapScanner heapScanner) {
+        this.heapScanner = heapScanner;
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
         typeSubstitution = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
@@ -147,6 +153,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     }
 
     private Boolean initEventClass(ResolvedJavaType eventType) throws RuntimeException {
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished());
         try {
             Class<? extends jdk.internal.event.Event> newEventClass = OriginalClassProvider.getJavaClass(eventType).asSubclass(jdk.internal.event.Event.class);
             eventType.initialize();
@@ -170,6 +177,10 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             // the reflection registration for the event handler field is delayed to the JfrFeature
             // duringAnalysis callback so it does not race/interfere with other retransforms
             JfrJdkCompatibility.retransformClasses(new Class<?>[]{newEventClass});
+
+            // make sure the EventConfiguration object is fully scanned
+            heapScanner.rescanObject(getConfiguration.invoke(JfrJdkCompatibility.getJVMOrNull(), newEventClass));
+
             return Boolean.TRUE;
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);

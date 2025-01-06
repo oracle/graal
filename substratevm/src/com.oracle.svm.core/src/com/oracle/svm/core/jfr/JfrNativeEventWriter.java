@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.jfr;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
@@ -234,7 +234,7 @@ public final class JfrNativeEventWriter {
             putByte(data, JfrChunkFileWriter.StringEncoding.UTF8_BYTE_ARRAY.getValue());
             putInt(data, numBytes);
             if (ensureSize(data, numBytes)) {
-                UnmanagedMemoryUtil.copy(utf8Buffer, data.getCurrentPos(), WordFactory.unsigned(numBytes));
+                UnmanagedMemoryUtil.copy(utf8Buffer, data.getCurrentPos(), Word.unsigned(numBytes));
                 data.setCurrentPos(data.getCurrentPos().add(numBytes));
             }
         }
@@ -308,7 +308,7 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void cancel(JfrNativeEventWriterData data) {
-        data.setEndPos(WordFactory.nullPointer());
+        data.setEndPos(Word.nullPointer());
     }
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
@@ -353,7 +353,7 @@ public final class JfrNativeEventWriter {
 
             JfrBuffer result = JfrBufferAccess.allocate(newSize, oldBuffer.getBufferType());
             if (result.isNull()) {
-                return WordFactory.nullPointer();
+                return Word.nullPointer();
             }
 
             // Copy all unflushed data (no matter if committed or uncommitted) from the old buffer
