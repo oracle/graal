@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPERMT2B;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPSHUFB;
-import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXOR;
+import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.EVPXORD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMOVHPD;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMOVLHPS;
 import static jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VMOVLPD;
@@ -446,7 +446,7 @@ public class AMD64VectorShuffle {
             int alignment = crb.dataBuilder.ensureValidDataAlignment(selectorData.length);
             AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(selectorData, alignment);
             EVMOVDQU64.emit(masm, AVXKind.getRegisterSize(kind), asRegister(selector), address);
-            EVPXOR.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(result), asRegister(result));
+            EVPXORD.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(result), asRegister(result));
             if (isRegister(source)) {
                 EVPERMT2B.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(selector), asRegister(source), mask != null ? asRegister(mask) : Register.None,
                                 mask != null ? AMD64BaseAssembler.EVEXPrefixConfig.Z1 : AMD64BaseAssembler.EVEXPrefixConfig.Z0,
