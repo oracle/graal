@@ -1007,7 +1007,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             }
             String key = singletonInfo.getKey().getName();
             if (!singletonInfoMap.containsKey(singleton)) {
-                var writer = new ImageSingletonWriterImpl();
+                var writer = new ImageSingletonWriterImpl(snapshotBuilder);
                 var flags = singleton.preparePersist(writer);
                 boolean persistData = flags == LayeredImageSingleton.PersistFlags.CREATE;
                 var info = new SingletonPersistInfo(flags, persistData ? nextID++ : -1, persistData ? writer.getKeyValueStore() : null);
@@ -1069,59 +1069,68 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             }
         }
     }
-}
 
-class ImageSingletonWriterImpl implements ImageSingletonWriter {
-    private final EconomicMap<String, Object> keyValueStore = EconomicMap.create();
+    public static class ImageSingletonWriterImpl implements ImageSingletonWriter {
+        private final EconomicMap<String, Object> keyValueStore = EconomicMap.create();
+        private final SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Builder snapshotBuilder;
 
-    EconomicMap<String, Object> getKeyValueStore() {
-        return keyValueStore;
-    }
-
-    private static boolean nonNullEntries(List<?> list) {
-        return list.stream().filter(Objects::isNull).findAny().isEmpty();
-    }
-
-    @Override
-    public void writeBoolList(String keyName, List<Boolean> value) {
-        assert nonNullEntries(value);
-        boolean[] b = new boolean[value.size()];
-        for (int i = 0; i < value.size(); i++) {
-            b[i] = value.get(i);
+        ImageSingletonWriterImpl(SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Builder snapshotBuilder) {
+            this.snapshotBuilder = snapshotBuilder;
         }
-        var previous = keyValueStore.put(keyName, b);
-        assert previous == null : Assertions.errorMessage(keyName, previous);
-    }
 
-    @Override
-    public void writeInt(String keyName, int value) {
-        var previous = keyValueStore.put(keyName, value);
-        assert previous == null : previous;
-    }
+        EconomicMap<String, Object> getKeyValueStore() {
+            return keyValueStore;
+        }
 
-    @Override
-    public void writeIntList(String keyName, List<Integer> value) {
-        assert nonNullEntries(value);
-        var previous = keyValueStore.put(keyName, value.stream().mapToInt(i -> i).toArray());
-        assert previous == null : Assertions.errorMessage(keyName, previous);
-    }
+        private static boolean nonNullEntries(List<?> list) {
+            return list.stream().filter(Objects::isNull).findAny().isEmpty();
+        }
 
-    @Override
-    public void writeLong(String keyName, long value) {
-        var previous = keyValueStore.put(keyName, value);
-        assert previous == null : Assertions.errorMessage(keyName, previous);
-    }
+        @Override
+        public void writeBoolList(String keyName, List<Boolean> value) {
+            assert nonNullEntries(value);
+            boolean[] b = new boolean[value.size()];
+            for (int i = 0; i < value.size(); i++) {
+                b[i] = value.get(i);
+            }
+            var previous = keyValueStore.put(keyName, b);
+            assert previous == null : Assertions.errorMessage(keyName, previous);
+        }
 
-    @Override
-    public void writeString(String keyName, String value) {
-        var previous = keyValueStore.put(keyName, value);
-        assert previous == null : Assertions.errorMessage(keyName, previous);
-    }
+        @Override
+        public void writeInt(String keyName, int value) {
+            var previous = keyValueStore.put(keyName, value);
+            assert previous == null : previous;
+        }
 
-    @Override
-    public void writeStringList(String keyName, List<String> value) {
-        assert nonNullEntries(value);
-        var previous = keyValueStore.put(keyName, value.toArray(String[]::new));
-        assert previous == null : Assertions.errorMessage(keyName, previous);
+        @Override
+        public void writeIntList(String keyName, List<Integer> value) {
+            assert nonNullEntries(value);
+            var previous = keyValueStore.put(keyName, value.stream().mapToInt(i -> i).toArray());
+            assert previous == null : Assertions.errorMessage(keyName, previous);
+        }
+
+        @Override
+        public void writeLong(String keyName, long value) {
+            var previous = keyValueStore.put(keyName, value);
+            assert previous == null : Assertions.errorMessage(keyName, previous);
+        }
+
+        @Override
+        public void writeString(String keyName, String value) {
+            var previous = keyValueStore.put(keyName, value);
+            assert previous == null : Assertions.errorMessage(keyName, previous);
+        }
+
+        @Override
+        public void writeStringList(String keyName, List<String> value) {
+            assert nonNullEntries(value);
+            var previous = keyValueStore.put(keyName, value.toArray(String[]::new));
+            assert previous == null : Assertions.errorMessage(keyName, previous);
+        }
+
+        public SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Builder getSnapshotBuilder() {
+            return snapshotBuilder;
+        }
     }
 }
