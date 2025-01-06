@@ -51,7 +51,6 @@ import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.VMInspectionOptions;
 
-
 /**
  * A concrete implementation of {@link SamplerStackTraceSerializer} designed for JFR stack trace
  * serialization.
