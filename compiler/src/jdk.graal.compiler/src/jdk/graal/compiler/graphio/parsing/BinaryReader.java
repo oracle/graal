@@ -103,7 +103,7 @@ public class BinaryReader implements GraphParser, ModelControl {
 
     private final Builder builder;
 
-    private static class ErrorReporter {
+    private static final class ErrorReporter {
         /**
          * Accumulates names of objects as they are parsed out of stream Used to report context for
          * irrecoverable errors which happen during reading BGV stream.
@@ -184,7 +184,7 @@ public class BinaryReader implements GraphParser, ModelControl {
         }
     }
 
-    private static class ContextStrings {
+    private static final class ContextStrings {
         private static String propertyGraph(Object s) {
             return String.format("Property %s graph", s);
         }

@@ -406,7 +406,7 @@ public abstract class AbiUtils {
             }
         }
 
-        private final static class ExtractSingle extends Extract {
+        private static final class ExtractSingle extends Extract {
             private final Class<?> type;
 
             private ExtractSingle(Extracted as, Class<?> type) {

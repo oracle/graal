@@ -347,7 +347,7 @@ suite = {
                 ],
             },
             "javaCompliance" : "21+",
-            "checkstyleVersion" : "10.7.0",
+            "checkstyleVersion" : "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -709,7 +709,7 @@ suite = {
                 ],
             },
             "javaCompliance" : "21+",
-            "checkstyleVersion": "10.7.0",
+            "checkstyleVersion": "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1047,7 +1047,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.test",
-            "checkstyleVersion" : "10.7.0",
+            "checkstyleVersion" : "10.21.0",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",

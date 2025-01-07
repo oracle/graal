@@ -290,7 +290,7 @@ public abstract class Stub {
         assert !(data.reference instanceof ConstantReference) : this + " cannot have embedded object or metadata constant: " + data.reference;
     }
 
-    private static class EmptyHighTier extends BasePhase<HighTierContext> {
+    private static final class EmptyHighTier extends BasePhase<HighTierContext> {
         @Override
         public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
             return ALWAYS_APPLICABLE;

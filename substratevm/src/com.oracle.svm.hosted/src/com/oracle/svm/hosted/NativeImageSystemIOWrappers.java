@@ -109,7 +109,7 @@ public class NativeImageSystemIOWrappers {
         }
     }
 
-    private static class NativeImageSystemIOWrappersDisabled extends NativeImageSystemIOWrappers {
+    private static final class NativeImageSystemIOWrappersDisabled extends NativeImageSystemIOWrappers {
         private static final PrintStream NULL_PRINT_STREAM = new PrintStream(OutputStream.nullOutputStream());
 
         @Override

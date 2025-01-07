@@ -733,9 +733,9 @@ public class RealLog extends Log {
         }
     }
 
-    private class BacktracePrinter extends BacktraceDecoder {
+    private final class BacktracePrinter extends BacktraceDecoder {
 
-        protected final int printBacktrace(long[] backtrace, int maxFramesProcessed) {
+        protected int printBacktrace(long[] backtrace, int maxFramesProcessed) {
             return visitBacktrace(backtrace, maxFramesProcessed, SubstrateOptions.maxJavaStackTraceDepth());
         }
 

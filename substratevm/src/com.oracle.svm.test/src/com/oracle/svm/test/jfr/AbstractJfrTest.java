@@ -157,7 +157,7 @@ public abstract class AbstractJfrTest {
         return debugRecording != null && !"false".equals(debugRecording);
     }
 
-    private static class ChronologicalComparator implements Comparator<RecordedEvent> {
+    private static final class ChronologicalComparator implements Comparator<RecordedEvent> {
         @Override
         public int compare(RecordedEvent e1, RecordedEvent e2) {
             return e1.getEndTime().compareTo(e2.getEndTime());

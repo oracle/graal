@@ -103,7 +103,7 @@ public class BlackholeDirectiveTest extends GraalCompilerTest {
         test("blackholeIntSnippet", 17);
     }
 
-    private static class Dummy {
+    private static final class Dummy {
         private int x = 42;
     }
 

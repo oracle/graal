@@ -387,6 +387,7 @@ public enum Condition {
      *         false
      */
     public boolean foldCondition(PrimitiveConstant lp, PrimitiveConstant rp, boolean unorderedIsTrue) {
+        // Checkstyle: stop FallThrough
         switch (lp.getJavaKind()) {
             case Boolean:
             case Byte:
@@ -497,6 +498,7 @@ public enum Condition {
             default:
                 throw new GraalError("expected value kind %s while folding condition: %s", lp.getJavaKind(), this); // ExcludeFromJacocoGeneratedReport
         }
+        // Checkstyle: resume FallThrough
     }
 
     private static boolean in(Condition needle, Condition... haystack) {

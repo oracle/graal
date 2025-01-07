@@ -660,7 +660,7 @@ public class SLInstrumentTest extends AbstractSLTest {
         assertFalse(redoIO.beforePop);
     }
 
-    private static class RuntimeInterruptedException extends AbstractTruffleException {
+    private static final class RuntimeInterruptedException extends AbstractTruffleException {
         private static final long serialVersionUID = -4735601164894088571L;
     }
 

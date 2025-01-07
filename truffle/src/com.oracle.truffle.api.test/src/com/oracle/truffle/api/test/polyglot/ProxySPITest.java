@@ -820,7 +820,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings("deprecation")
-    private static class AllProxy implements ProxyArray, ProxyObject, ProxyNativeObject, ProxyExecutable, ProxyInstantiable {
+    private static final class AllProxy implements ProxyArray, ProxyObject, ProxyNativeObject, ProxyExecutable, ProxyInstantiable {
 
         public Object execute(Value... t) {
             throw new TestError();

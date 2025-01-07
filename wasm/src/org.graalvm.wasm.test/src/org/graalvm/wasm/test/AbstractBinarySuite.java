@@ -99,7 +99,7 @@ public abstract class AbstractBinarySuite {
         return Byte.parseByte(hexString, 16);
     }
 
-    private static class BinaryTypes {
+    private static final class BinaryTypes {
 
         private final List<byte[]> paramEntries = new ArrayList<>();
         private final List<byte[]> resultEntries = new ArrayList<>();
@@ -132,7 +132,7 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    private static class BinaryTables {
+    private static final class BinaryTables {
         private final ByteArrayList tables = new ByteArrayList();
 
         private void add(byte initSize, byte maxSize, byte elemType) {
@@ -158,7 +158,7 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    private static class BinaryMemories {
+    private static final class BinaryMemories {
         private final ByteArrayList memories = new ByteArrayList();
 
         private void add(byte initSize, byte maxSize) {
@@ -182,7 +182,7 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    private static class BinaryFunctions {
+    private static final class BinaryFunctions {
         private final ByteArrayList types = new ByteArrayList();
         private final List<byte[]> localEntries = new ArrayList<>();
         private final List<byte[]> codeEntries = new ArrayList<>();
@@ -230,7 +230,7 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    private static class BinaryExports {
+    private static final class BinaryExports {
         private final ByteArrayList types = new ByteArrayList();
         private final ByteArrayList indices = new ByteArrayList();
         private final List<byte[]> names = new ArrayList<>();
@@ -260,7 +260,7 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    private static class BinaryElements {
+    private static final class BinaryElements {
         private final List<byte[]> elementEntries = new ArrayList<>();
 
         private void add(byte[] elements) {
@@ -282,7 +282,7 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    private static class BinaryDatas {
+    private static final class BinaryDatas {
         private final List<byte[]> dataEntries = new ArrayList<>();
 
         private void add(byte[] data) {
@@ -312,7 +312,7 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    private static class BinaryGlobals {
+    private static final class BinaryGlobals {
         private final ByteArrayList mutabilities = new ByteArrayList();
         private final ByteArrayList valueTypes = new ByteArrayList();
         private final List<byte[]> expressions = new ArrayList<>();
@@ -340,7 +340,7 @@ public abstract class AbstractBinarySuite {
         }
     }
 
-    private static class BinaryCustomSections {
+    private static final class BinaryCustomSections {
         private final List<byte[]> names = new ArrayList<>();
         private final List<byte[]> sections = new ArrayList<>();
 

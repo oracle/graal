@@ -127,6 +127,6 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
      * This class is only needed to provide a unique name in the event's "objectClass" field that we
      * check.
      */
-    private static class Helper {
+    private static final class Helper {
     }
 }

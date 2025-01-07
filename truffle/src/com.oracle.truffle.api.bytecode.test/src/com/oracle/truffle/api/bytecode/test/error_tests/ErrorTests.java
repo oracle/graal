@@ -924,10 +924,12 @@ public class ErrorTests {
         }
     }
 
+    // Checkstyle: stop
     @ExpectError("%")
     @TypeSystem
     private class ErroredTypeSystem {
     }
+    // Checkstyle: resume
 
     @ProvidedTags({RootTag.class, RootBodyTag.class})
     public class ErrorLanguage extends TruffleLanguage<Object> {

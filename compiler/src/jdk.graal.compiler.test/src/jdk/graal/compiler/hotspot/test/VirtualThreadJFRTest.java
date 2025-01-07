@@ -50,7 +50,7 @@ public class VirtualThreadJFRTest extends SubprocessTest {
     private static final int STARTER_THREADS = 10;
 
     @Name("test.Tester")
-    private static class TestEvent extends Event {
+    private static final class TestEvent extends Event {
     }
 
     private static boolean isJFRAvailable() {

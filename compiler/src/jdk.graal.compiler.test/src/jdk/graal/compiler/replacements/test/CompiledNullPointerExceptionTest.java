@@ -73,7 +73,7 @@ public class CompiledNullPointerExceptionTest extends GraalCompilerTest {
         return graph;
     }
 
-    private class TestClass {
+    private final class TestClass {
 
         @Override
         public String toString() {

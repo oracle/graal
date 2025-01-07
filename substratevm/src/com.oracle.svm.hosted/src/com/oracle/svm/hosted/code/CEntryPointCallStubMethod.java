@@ -446,7 +446,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         return invoke;
     }
 
-    private static class ExecutionContextParameters {
+    private static final class ExecutionContextParameters {
         int isolateCount = 0;
         int lastIsolateIndex = -1;
         int designatedIsolateIndex = -1;

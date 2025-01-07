@@ -288,7 +288,7 @@ public class PrimitiveRawArrayInteropTest extends ProxyLanguageEnvTest {
         assertEquals(msg, expected, v, 0.05);
     }
 
-    private static class SimulatedDeath extends ThreadDeath {
+    private static final class SimulatedDeath extends ThreadDeath {
         private static final long serialVersionUID = 1L;
 
         @Override

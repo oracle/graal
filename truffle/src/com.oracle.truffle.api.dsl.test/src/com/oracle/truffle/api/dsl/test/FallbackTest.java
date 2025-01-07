@@ -263,7 +263,7 @@ public class FallbackTest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings("serial")
-    private static class FallbackException extends RuntimeException {
+    private static final class FallbackException extends RuntimeException {
     }
 
     @NodeChild("a")
