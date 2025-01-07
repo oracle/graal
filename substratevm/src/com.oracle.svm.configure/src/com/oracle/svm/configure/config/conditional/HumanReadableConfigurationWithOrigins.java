@@ -29,6 +29,7 @@ import java.io.StringWriter;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.core.configure.ConfigurationFile;
 
 import jdk.graal.compiler.util.json.JsonPrintable;
@@ -65,8 +66,14 @@ public class HumanReadableConfigurationWithOrigins implements JsonPrintable {
         writer.append(prefix).append(node.methodInfo.toString());
         if (node.hasConfig(configFile)) {
             writer.append(" - ");
+            ConfigurationBase<?, ?> config = node.configuration.getConfiguration(configFile);
             StringWriter sw = new StringWriter();
-            node.configuration.getConfiguration(configFile).printJson(new JsonWriter(sw));
+            JsonWriter jw = new JsonWriter(sw);
+            if (config.supportsCombinedFile()) {
+                config.printJson(jw);
+            } else {
+                config.printLegacyJson(jw);
+            }
             writer.append(sw.toString().replace("\n", " "));
         }
         writer.newline();
