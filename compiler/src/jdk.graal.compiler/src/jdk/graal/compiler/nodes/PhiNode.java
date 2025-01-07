@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,7 +77,22 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     public boolean verifyNode() {
         assertTrue(merge() != null, "missing merge");
         assertTrue(merge().phiPredecessorCount() == valueCount(), "mismatch between merge predecessor count and phi value count: %d != %d", merge().phiPredecessorCount(), valueCount());
+        verifyNoIllegalSelfLoops();
         return super.verifyNode();
+    }
+
+    private void verifyNoIllegalSelfLoops() {
+        if (!(merge instanceof LoopBeginNode)) {
+            for (int i = 0; i < valueCount(); i++) {
+                GraalError.guarantee(valueAt(i) != this, "non-loop phi at merge %s must not have a cycle, but value at index %s is itself: %s", merge(), i, valueAt(i));
+            }
+        }
+    }
+
+    private void verifyNoIllegalSelfLoop(ValueNode value) {
+        if (!(merge instanceof LoopBeginNode)) {
+            GraalError.guarantee(value != this, "non-loop phi at merge %s must not have a cycle, but value to be added is itself: %s", merge(), value);
+        }
     }
 
     /**
@@ -98,6 +113,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
      * @param x the new phi input value for the given location
      */
     public void initializeValueAt(int i, ValueNode x) {
+        verifyNoIllegalSelfLoop(x);
         while (values().size() <= i) {
             values().add(null);
         }
@@ -105,6 +121,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     }
 
     public void setValueAt(int i, ValueNode x) {
+        verifyNoIllegalSelfLoop(x);
         values().set(i, x);
     }
 
@@ -158,6 +175,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                         "x",
                         x);
         assert !(this instanceof ValuePhiNode) || x.stamp(NodeView.DEFAULT).isCompatible(stamp(NodeView.DEFAULT)) : Assertions.errorMessageContext("this", this, "x", x);
+        verifyNoIllegalSelfLoop(x);
         values().add(x);
     }
 
