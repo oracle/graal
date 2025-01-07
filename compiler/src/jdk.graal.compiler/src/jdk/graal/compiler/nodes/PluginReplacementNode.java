@@ -34,12 +34,15 @@ import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.NodeSize;
 import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvider;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Replacements;
-import jdk.graal.nativeimage.FoldNodePlugin;
 
 /**
- * Used to defer the execution of a {@link GeneratedInvocationPlugin} until libgraal runtime.
+ * This node represents a {@link jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin
+ * plugin} which was deferred by
+ * {@link jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool#shouldDeferPlugin(GeneratedInvocationPlugin)}
+ * during graph encoding that must be replaced when the graph is decoded.
  */
 @NodeInfo(nameTemplate = "PluginReplacement/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class PluginReplacementNode extends FixedWithNextNode implements PluginReplacementInterface {
@@ -58,14 +61,16 @@ public final class PluginReplacementNode extends FixedWithNextNode implements Pl
 
     @Override
     public boolean replace(GraphBuilderContext b, Replacements injection) {
-        return function.replace(b, injection, stamp, args);
+        return function.replace(b, injection, args.toArray(ValueNode.EMPTY_ARRAY));
     }
 
     /**
-     * Functional interface for generated code that executes the plugin at libgraal runtime.
+     * This is the work of the original
+     * {@link jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderPlugin} decoupled from the
+     * plugin.
      */
-    public interface ReplacementFunction extends FoldNodePlugin {
-        boolean replace(GraphBuilderContext b, Replacements injection, Stamp stamp, NodeInputList<ValueNode> args);
+    public interface ReplacementFunction {
+        boolean replace(GraphBuilderContext b, GeneratedPluginInjectionProvider injection, ValueNode[] args);
     }
 
     @Override
