@@ -193,7 +193,7 @@ public class GDBJITInterface {
         }
 
         /* Notify GDB. */
-        jitDebugDescriptor.get().setActionFlag(JITActions.JIT_REGISTER.getCValue());
+        jitDebugDescriptor.get().setActionFlag(JITActions.JIT_UNREGISTER.getCValue());
         jitDebugDescriptor.get().setRelevantEntry(entry);
         jitDebugRegisterCode(CurrentIsolate.getCurrentThread());
     }

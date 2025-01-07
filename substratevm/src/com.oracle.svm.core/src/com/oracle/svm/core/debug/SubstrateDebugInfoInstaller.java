@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 
 import com.oracle.objectfile.BasicNobitsSectionImpl;
@@ -48,7 +49,6 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -170,16 +170,17 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void release(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
-            VMOperation.guaranteeInProgress("SubstrateDebugInfoInstaller.Accessor.release must run in a VMOperation");
+            // VMOperation.guaranteeInProgress("SubstrateDebugInfoInstaller.Accessor.release must
+            // run in a VMOperation");
             GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
             // Handle may still be just initialized here, so it never got registered in GDB.
             if (handle.getState() == Handle.ACTIVATED) {
                 GDBJITInterface.unregisterJITCode(entry);
                 handle.setState(Handle.RELEASED);
             }
-            NativeMemory.free(entry);
+            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(entry);
             NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
-            NativeMemory.free(handle);
+            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(handle);
         }
 
         @Override
