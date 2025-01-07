@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class DynamicNewArrayTest extends GraalCompilerTest {
 
-    private class Element {
+    private final class Element {
     }
 
     @Test

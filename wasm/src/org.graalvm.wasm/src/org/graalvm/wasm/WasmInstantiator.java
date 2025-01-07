@@ -77,7 +77,7 @@ public class WasmInstantiator {
     private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
     private static final int MAX_DEFAULT_ASYNC_STACK_SIZE = 10_000_000;
 
-    private static class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
+    private static final class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
         private Throwable parsingException = null;
 
         @Override

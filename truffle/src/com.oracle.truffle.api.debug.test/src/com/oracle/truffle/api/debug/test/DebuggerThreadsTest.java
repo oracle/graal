@@ -211,7 +211,7 @@ public class DebuggerThreadsTest extends AbstractDebugTest {
         }
     }
 
-    private static class TestThreadsListener implements DebugThreadsListener {
+    private static final class TestThreadsListener implements DebugThreadsListener {
 
         final List<ThreadEvent> events = Collections.synchronizedList(new ArrayList<>());
 

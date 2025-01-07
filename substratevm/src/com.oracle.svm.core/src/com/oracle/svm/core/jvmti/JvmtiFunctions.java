@@ -1386,7 +1386,7 @@ public final class JvmtiFunctions {
 
     // Checkstyle: resume
 
-    private static class JvmtiEnvEnterPrologue implements CEntryPointOptions.Prologue {
+    private static final class JvmtiEnvEnterPrologue implements CEntryPointOptions.Prologue {
         /**
          * In the prologue, we need to be careful that we don't access any image heap data before
          * the heap base is set up, so we use @CConstant instead of @CEnum.

@@ -235,7 +235,7 @@ public abstract class NonSnippetLowerings {
         return descriptor;
     }
 
-    private class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
+    private final class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
         @Override
         public void lower(BytecodeExceptionNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
@@ -256,7 +256,7 @@ public abstract class NonSnippetLowerings {
         }
     }
 
-    private class ThrowBytecodeExceptionLowering implements NodeLoweringProvider<ThrowBytecodeExceptionNode> {
+    private final class ThrowBytecodeExceptionLowering implements NodeLoweringProvider<ThrowBytecodeExceptionNode> {
         @Override
         public void lower(ThrowBytecodeExceptionNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
@@ -279,7 +279,7 @@ public abstract class NonSnippetLowerings {
         }
     }
 
-    private static class GetClassLowering implements NodeLoweringProvider<GetClassNode> {
+    private static final class GetClassLowering implements NodeLoweringProvider<GetClassNode> {
         @Override
         public void lower(GetClassNode node, LoweringTool tool) {
             StampProvider stampProvider = tool.getStampProvider();

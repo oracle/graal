@@ -584,7 +584,7 @@ public class Breakpoint {
 
     // We resolve breakpoints only in sources that are executed.
     // This prevents from premature breakpoint resolution to too distant locations.
-    private class LocationsInExecutedSources implements LoadSourceSectionListener, ExecuteSourceListener {
+    private final class LocationsInExecutedSources implements LoadSourceSectionListener, ExecuteSourceListener {
 
         private final EconomicMap<Source, SourceSection> loadedSections = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
         private final EconomicSet<Source> executedSources = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
@@ -1248,7 +1248,7 @@ public class Breakpoint {
         void breakpointResolved(Breakpoint breakpoint, SourceSection section);
     }
 
-    private class BreakpointNodeFactory implements ExecutionEventNodeFactory {
+    private final class BreakpointNodeFactory implements ExecutionEventNodeFactory {
 
         @Override
         public ExecutionEventNode create(EventContext context) {

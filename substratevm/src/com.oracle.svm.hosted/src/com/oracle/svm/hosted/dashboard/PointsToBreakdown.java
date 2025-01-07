@@ -233,7 +233,7 @@ class PointsToBreakdown {
         }
     }
 
-    private static class PointToStructure implements GraphStructure<PointsToBreakdown, AnalysisWrapper, WrapperClazz, Port> {
+    private static final class PointToStructure implements GraphStructure<PointsToBreakdown, AnalysisWrapper, WrapperClazz, Port> {
         enum EMPT {
             EDGE
         }

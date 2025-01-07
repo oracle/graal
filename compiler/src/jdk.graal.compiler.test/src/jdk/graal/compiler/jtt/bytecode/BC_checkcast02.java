@@ -31,7 +31,7 @@ import org.junit.Test;
  */
 public class BC_checkcast02 extends JTTTest {
 
-    private static class TestClass {
+    private static final class TestClass {
     }
 
     static Object[] o1 = {new Object()};

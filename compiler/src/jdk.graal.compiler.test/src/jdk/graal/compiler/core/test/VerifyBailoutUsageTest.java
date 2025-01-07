@@ -53,35 +53,35 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class VerifyBailoutUsageTest {
 
-    private static class InvalidBailoutUsagePhase1 extends TestPhase {
+    private static final class InvalidBailoutUsagePhase1 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new BailoutException("Bailout in graph %s", graph);
         }
     }
 
-    private static class InvalidBailoutUsagePhase2 extends TestPhase {
+    private static final class InvalidBailoutUsagePhase2 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new BailoutException(new GraalError("other cause"), "Bailout in graph %s", graph);
         }
     }
 
-    private static class InvalidBailoutUsagePhase3 extends TestPhase {
+    private static final class InvalidBailoutUsagePhase3 extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new BailoutException(true/* permanent */, "Bailout in graph %s", graph);
         }
     }
 
-    private static class ValidPermanentBailoutUsage extends TestPhase {
+    private static final class ValidPermanentBailoutUsage extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new PermanentBailoutException("Valid permanent bailout %s", graph);
         }
     }
 
-    private static class ValidRetryableBailoutUsage extends TestPhase {
+    private static final class ValidRetryableBailoutUsage extends TestPhase {
         @Override
         protected void run(StructuredGraph graph) {
             throw new RetryableBailoutException("Valid retryable bailout %s", graph);

@@ -152,7 +152,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
         }
     }
 
-    private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
+    private final class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
         @Override
         public void add(String nameInfo, String providedHash, URI baseUri) {
             if (!PredefinedClassesSupport.supportsBytecodes()) {

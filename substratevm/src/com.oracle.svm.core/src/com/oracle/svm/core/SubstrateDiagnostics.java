@@ -568,7 +568,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpRegisters extends DiagnosticThunk {
+    private static final class DumpRegisters extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 4;
@@ -590,7 +590,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpInstructions extends DiagnosticThunk {
+    private static final class DumpInstructions extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 4;
@@ -638,7 +638,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpTopOfCurrentThreadStack extends DiagnosticThunk {
+    private static final class DumpTopOfCurrentThreadStack extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -699,7 +699,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpThreads extends DiagnosticThunk {
+    private static final class DumpThreads extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 3;
@@ -750,7 +750,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpCurrentThreadLocals extends DiagnosticThunk {
+    private static final class DumpCurrentThreadLocals extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 2;
@@ -774,7 +774,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpCurrentVMOperation extends DiagnosticThunk {
+    private static final class DumpCurrentVMOperation extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 2;
@@ -789,7 +789,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpVMOperationHistory extends DiagnosticThunk {
+    private static final class DumpVMOperationHistory extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 2;
@@ -973,7 +973,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpCounters extends DiagnosticThunk {
+    private static final class DumpCounters extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -991,7 +991,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpCurrentThreadFrameAnchors extends DiagnosticThunk {
+    private static final class DumpCurrentThreadFrameAnchors extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -1007,7 +1007,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpCurrentThreadDecodedStackTrace extends DiagnosticThunk {
+    private static final class DumpCurrentThreadDecodedStackTrace extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 3;
@@ -1055,7 +1055,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpOtherStackTraces extends DiagnosticThunk {
+    private static final class DumpOtherStackTraces extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 3;
@@ -1103,7 +1103,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpCommandLine extends DiagnosticThunk {
+    private static final class DumpCommandLine extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -1123,7 +1123,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class ImageCodeLocationInfoPrinter {
+    private static final class ImageCodeLocationInfoPrinter {
         private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
 
         /**

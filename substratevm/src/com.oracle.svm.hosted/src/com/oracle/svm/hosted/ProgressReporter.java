@@ -886,7 +886,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         return (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
     }
 
-    private static class Utils {
+    private static final class Utils {
         private static final double MILLIS_TO_SECONDS = 1000d;
         private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
 

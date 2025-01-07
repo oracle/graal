@@ -1462,7 +1462,7 @@ public abstract class Accessor {
 
 // A separate class to break the cycle such that Accessor can fully initialize
 // before ...Accessor classes static initializers run, which call methods from Accessor.
-    private static class Constants {
+    private static final class Constants {
 
         private static final Accessor.LanguageSupport LANGUAGE;
         private static final Accessor.NodeSupport NODES;

@@ -551,7 +551,7 @@ public class ExportNodeTest extends AbstractLibraryTest {
 
         @ExportMessage
         @ExpectError("Exported message node class must not be private.")
-        private static class Foo {
+        private static final class Foo {
 
             static Foo create() {
                 return null;

@@ -73,7 +73,7 @@ public final class SeparateClassloaderTestRunner extends BlockJUnit4ClassRunner 
      * As of JDK9, Truffle API is deployed in a module (possibly the unnamed module) so to retrieve
      * the class file bytes for separate class loading requires using module API.
      */
-    private static class JDK9TestClassLoader extends ClassLoader {
+    private static final class JDK9TestClassLoader extends ClassLoader {
 
         @Override
         public Class<?> loadClass(String name) throws ClassNotFoundException {

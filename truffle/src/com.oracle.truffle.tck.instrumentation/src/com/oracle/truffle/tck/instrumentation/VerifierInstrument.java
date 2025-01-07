@@ -232,7 +232,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         }
     }
 
-    private static class NodePropertyChecker implements ExecutionEventListener {
+    private static final class NodePropertyChecker implements ExecutionEventListener {
 
         public void onEnter(EventContext context, VirtualFrame frame) {
             Node instrumentedNode = context.getInstrumentedNode();
@@ -254,7 +254,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         }
     }
 
-    private static class RootFrameChecker implements ExecutionEventListener {
+    private static final class RootFrameChecker implements ExecutionEventListener {
 
         @Override
         public void onEnter(EventContext context, VirtualFrame frame) {
@@ -298,7 +298,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         }
     }
 
-    private static class LibraryChecker implements ExecutionEventNodeFactory {
+    private static final class LibraryChecker implements ExecutionEventNodeFactory {
 
         @Override
         public ExecutionEventNode create(EventContext context) {
