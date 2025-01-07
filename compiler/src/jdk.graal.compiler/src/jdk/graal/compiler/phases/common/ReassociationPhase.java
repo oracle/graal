@@ -79,17 +79,25 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
         canonicalizer.applyIncremental(graph, context, changedNodes.getNodes());
     }
 
-    //@formatter:off
     /**
-     * Re-associate loop invariant so that invariant parts of the expression can move outside of the
-     * loop.
+     * Re-associate loop invariant so that invariant parts of the expression can move out of the
+     * loop. For example:
      *
-     * For example:
-     *     for (int i = 0; i < LENGTH; i++) {         for (int i = 0; i < LENGTH; i++) {
-     *         arr[i] = (i * inv1) * inv2;       =>       arr[i] = i * (inv1 * inv2);
-     *     }                                          }
+     * <pre>
+     * for (int i = 0; i < LENGTH; i++) {
+     *     arr[i] = (i * inv1) * inv2;
+     * }
+     * </pre>
+     *
+     * is transformed to
+     *
+     * <pre>
+     *
+     * for (int i = 0; i < LENGTH; i++) {
+     *     arr[i] = i * (inv1 * inv2);
+     * }
+     * </pre>
      */
-    //@formatter:on
     @SuppressWarnings("try")
     private static void reassociateInvariants(StructuredGraph graph, CoreProviders context) {
         DebugContext debug = graph.getDebug();
@@ -101,7 +109,11 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
             // bound.
             while (changed && iterations < 32) {
                 changed = false;
-                for (Loop loop : loopsData.loops()) {
+                /*
+                 * Process inner loops last to ensure loop phis are used as late as possible. This
+                 * minimizes dependency chains in the backedge value calculation on register level.
+                 */
+                for (Loop loop : loopsData.outerFirst()) {
                     changed |= loop.reassociateInvariants();
                 }
                 loopsData.deleteUnusedNodes();
