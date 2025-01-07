@@ -1120,6 +1120,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
+    public synchronized void disposeHooks() {
+        hasActiveHook.set(false);
+        hooks = MethodHook.EMPTY;
+    }
+
     public SharedRedefinitionContent redefine(ObjectKlass.KlassVersion klassVersion, ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
@@ -1888,6 +1893,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public void removedMethodHook(MethodHook hook) {
             getMethod().removeActiveHook(hook);
+        }
+
+        @Override
+        public void disposeHooks() {
+            getMethod().disposeHooks();
         }
 
         @Override

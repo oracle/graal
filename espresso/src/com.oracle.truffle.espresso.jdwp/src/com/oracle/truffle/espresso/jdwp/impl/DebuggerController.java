@@ -157,6 +157,7 @@ public final class DebuggerController implements ContextsListener {
         DebuggerController newController = new DebuggerController(jdwpLogger);
         newController.truffleContext = truffleContext;
         newController.initialize(debugger, options, context, initialThread, eventListener);
+        context.replaceController(newController);
         assert newController.setupState != null;
 
         if (newController.setupState.fatalConnectionError) {
@@ -186,6 +187,10 @@ public final class DebuggerController implements ContextsListener {
             // existence state.
             resetting.lockInterruptibly();
 
+            // end the current debugger session to avoid hitting any further breakpoints
+            // when resuming all threads
+            endSession();
+
             currentReceiverThread = receiverThread;
 
             // Close the server socket used to listen for transport dt_socket.
@@ -207,16 +212,14 @@ public final class DebuggerController implements ContextsListener {
             // re-enable GC for all objects
             getGCPrevention().clearAll();
 
-            // end the current debugger session to avoid hitting any further breakpoints
-            // when resuming all threads
-            endSession();
-
-            // resume all threads
-            forceResumeAll();
+            eventFilters.clearAll();
 
             // Now, close the socket, which will force the receiver thread to complete eventually.
             // Note that we might run this code in the receiver thread, so we can't simply join.
             closeSocket();
+
+            // resume all threads
+            forceResumeAll();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } finally {
@@ -822,8 +825,8 @@ public final class DebuggerController implements ContextsListener {
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 synchronized (lock) {
-                    if (!lock.isLocked()) {
-                        // released from other thread, so break loop
+                    if (!lock.isLocked() || !connection.isOpen()) {
+                        // released from other thread or session ended, so break loop
                         break;
                     }
                     // no reason to hold a hard suspension status, since now
