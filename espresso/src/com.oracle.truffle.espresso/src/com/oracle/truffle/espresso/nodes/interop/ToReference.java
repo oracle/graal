@@ -485,7 +485,8 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached @Exclusive ProxyInstantiateNode proxyInstantiatorNode,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
                         @Cached InstanceOf.Dynamic instanceOf,
-                        @Cached @Shared InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
+                        @Cached InlinedBranchProfile noConverterProfile,
+                        @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
                 String metaName = getMetaName(metaObject, interop);
@@ -493,6 +494,7 @@ public abstract class ToReference extends ToEspressoNode {
                 // first check if there's a user-defined custom type converter defined
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
                 if (converter != null) {
+                    noConverterProfile.enter(node);
                     EspressoContext context = EspressoContext.get(node);
                     StaticObject foreignWrapper = StaticObject.createForeign(context.getLanguage(), context.getMeta().java_lang_Object, value, interop);
                     StaticObject result = (StaticObject) converter.convert(foreignWrapper);
@@ -579,7 +581,9 @@ public abstract class ToReference extends ToEspressoNode {
                         "interop.hasMetaObject(value)",
                         "!isStaticObject(value)"
         })
+        @SuppressWarnings("truffle-static-method")
         public StaticObject doMappedList(Object value,
+                        @Bind Node node,
                         @Bind("getContext()") EspressoContext context,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
@@ -608,7 +612,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException ex) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_List.getTypeAsString());
         }
 
@@ -653,7 +657,9 @@ public abstract class ToReference extends ToEspressoNode {
                         "isHostObject(getContext(), value)",
                         "!isStaticObject(value)"
         })
+        @SuppressWarnings("truffle-static-method")
         public StaticObject doMappedCollection(Object value,
+                        @Bind Node node,
                         @Bind("getMeta()") Meta meta,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
@@ -682,7 +688,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException ex) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Collection.getTypeAsString());
         }
 
@@ -727,7 +733,9 @@ public abstract class ToReference extends ToEspressoNode {
                         "isHostObject(getContext(), value)",
                         "!isStaticObject(value)"
         })
+        @SuppressWarnings("truffle-static-method")
         public StaticObject doMappedIterable(Object value,
+                        @Bind Node node,
                         @Bind("getMeta()") Meta meta,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
@@ -756,7 +764,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException ex) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_lang_Iterable.getTypeAsString());
         }
 
@@ -801,7 +809,9 @@ public abstract class ToReference extends ToEspressoNode {
                         "isHostObject(getContext(), value)",
                         "!isStaticObject(value)"
         })
+        @SuppressWarnings("truffle-static-method")
         public StaticObject doMappedIterator(Object value,
+                        @Bind Node node,
                         @Bind("getMeta()") Meta meta,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
@@ -830,7 +840,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException ex) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Iterator.getTypeAsString());
         }
 
@@ -875,7 +885,9 @@ public abstract class ToReference extends ToEspressoNode {
                         "isHostObject(getContext(), value)",
                         "!isStaticObject(value)"
         })
+        @SuppressWarnings("truffle-static-method")
         public StaticObject doMappedMap(Object value,
+                        @Bind Node node,
                         @Bind("getMeta()") Meta meta,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
@@ -903,7 +915,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException ex) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Map.getTypeAsString());
         }
 
@@ -947,7 +959,9 @@ public abstract class ToReference extends ToEspressoNode {
                         "isHostObject(getContext(), value)",
                         "!isStaticObject(value)"
         })
+        @SuppressWarnings("truffle-static-method")
         public StaticObject doMappedSet(Object value,
+                        @Bind Node node,
                         @Bind("getMeta()") Meta meta,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
@@ -976,7 +990,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException ex) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Set.getTypeAsString());
         }
 
@@ -1692,6 +1706,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "isHostObject(getContext(), value)"
         })
         StaticObject doForeignInterface(Object value,
+                        @Bind Node node,
                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
@@ -1706,7 +1721,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException e) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw unsupportedType(value, targetType.getRawType());
         }
     }
@@ -1756,6 +1771,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "isHostObject(getContext(), value)"
         })
         StaticObject doForeignConverter(Object value,
+                        @Bind Node node,
                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached InstanceOf.Dynamic instanceOf,
@@ -1785,7 +1801,7 @@ public abstract class ToReference extends ToEspressoNode {
             } catch (UnsupportedMessageException e) {
                 // no meta object, fall through to throw unsupported type
             }
-            errorProfile.enter(this);
+            errorProfile.enter(node);
             throw ToEspressoNode.unsupportedType(value, targetType.getRawType());
         }
     }
