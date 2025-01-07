@@ -63,4 +63,11 @@ public final class MethodBreakpointInfo extends AbstractBreakpointInfo implement
     public boolean onMethodExit(@SuppressWarnings("unused") MethodRef method, @SuppressWarnings("unused") Object returnValue) {
         return isMethodExit;
     }
+
+    @Override
+    public void dispose() {
+        for (MethodRef method : methods) {
+            method.disposeHooks();
+        }
+    }
 }
