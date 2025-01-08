@@ -13,7 +13,7 @@ import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLessThanNode;
 
-public class IntIntervalNodeInterpreter implements NodeInterpreter<IntInterval> {
+public class DataFlowIntIntervalNodeInterpreter implements NodeInterpreter<IntInterval> {
 
     @Override
     public void execEdge(Node source, Node destination, AbstractStateMap<IntInterval> abstractStateMap) {
@@ -37,7 +37,6 @@ public class IntIntervalNodeInterpreter implements NodeInterpreter<IntInterval> 
 
     @Override
     public void execNode(Node node, AbstractStateMap<IntInterval> abstractStateMap) {
-        System.out.println("execNode: " + node);
         abstractStateMap.getPostCondition(node).joinWith(abstractStateMap.getPreCondition(node));
         if (node instanceof ConstantNode constantNode) {
             assert constantNode.asJavaConstant() != null;
