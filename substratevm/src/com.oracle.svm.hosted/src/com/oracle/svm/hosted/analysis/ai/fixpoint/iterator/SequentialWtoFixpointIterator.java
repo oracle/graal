@@ -1,23 +1,20 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
+import com.oracle.svm.hosted.analysis.ai.analyzer.context.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoComponent;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoCycle;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
  * Represents a fixpoint iterator that iterates over {@link HIRBlock}s
- * according to the Weak Topological Ordering (WTO).<p>
- * Implementation based on:
+ * according to the Weak Topological Ordering (WTO).
+ * Implemented based on:
  * F. Bourdoncle. Efficient chaotic iteration strategies with widenings.
  * In Formal Methods in Programming and Their Applications, pp 128-141.
  *
@@ -25,22 +22,8 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  */
 public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<Domain>> extends FixpointIteratorBase<Domain> {
 
-    public SequentialWtoFixpointIterator(ControlFlowGraph cfgGraph,
-                                         com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy policy,
-                                         TransferFunction<Domain> transferFunction,
-                                         Domain initialDomain,
-                                         DebugContext debug) {
-        super(cfgGraph, policy, transferFunction, initialDomain, debug);
-    }
-
-    public SequentialWtoFixpointIterator(ControlFlowGraph cfgGraph,
-                                         IteratorPolicy policy,
-                                         TransferFunction<Domain> transferFunction,
-                                         Domain initialDomain,
-                                         AbstractStateMap<Domain> abstractStateMap,
-                                         SummaryCache<Domain> summaryCache,
-                                         DebugContext debug) {
-        super(cfgGraph, policy, transferFunction, initialDomain, abstractStateMap, summaryCache, debug);
+    public SequentialWtoFixpointIterator(AnalysisContext<Domain> context, TransferFunction<Domain> transferFunction) {
+        super(context, transferFunction);
     }
 
     @Override
@@ -72,7 +55,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
             abstractStateMap.setPrecondition(node, initialDomain);
         }
 
-        transferFunction.analyzeBlock(vertex.block(), abstractStateMap, summaryCache);
+        transferFunction.analyzeBlock(vertex.block(), abstractStateMap);
     }
 
     private void analyzeCycle(WtoCycle cycle) {
@@ -81,7 +64,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
 
         while (iterate) {
             /* Analyze the nodes inside outermost block */
-            transferFunction.analyzeBlock(cycle.block(), abstractStateMap, summaryCache);
+            transferFunction.analyzeBlock(cycle.block(), abstractStateMap);
 
             /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {
