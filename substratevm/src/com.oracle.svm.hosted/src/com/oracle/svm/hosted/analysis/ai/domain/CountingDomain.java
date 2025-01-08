@@ -22,6 +22,14 @@ public final class CountingDomain extends AbstractDomain<CountingDomain> {
         value--;
     }
 
+    public CountingDomain getIncremented() {
+        return new CountingDomain(value + 1);
+    }
+
+    public CountingDomain getDecremented() {
+        return new CountingDomain(value - 1);
+    }
+
     @Override
     public boolean isBot() {
         return false;
