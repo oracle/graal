@@ -161,7 +161,6 @@ import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.spi.IdentityHashCodeProvider;
 import jdk.graal.compiler.util.ObjectCopier;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
@@ -184,13 +183,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
     private final boolean useSharedLayerStrengthenedGraphs;
-
-    private final Set<ImageHeapConstant> constantsToPersist = ConcurrentHashMap.newKeySet();
-
-    public void ensureConstantPersisted(ImageHeapConstant constant) {
-        constantsToPersist.add(constant);
-        afterConstantAdded(constant);
-    }
 
     private NativeImageHeap nativeImageHeap;
     private HostedUniverse hUniverse;
@@ -326,10 +318,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         snapshotBuilder.setStaticObjectFieldsConstantId(ImageHeapConstant.getConstantID(staticObjectFields));
 
         // Late constant scan so all of them are known with values available (readers installed)
-        List<ImageHeapConstant> constantsToScan = new ArrayList<>(constantsToPersist);
+        List<ImageHeapConstant> constantsToScan = new ArrayList<>();
         imageHeap.getReachableObjects().values().forEach(constantsToScan::addAll);
         constantsMap = HashMap.newHashMap(constantsToScan.size());
         constantsToScan.forEach(c -> constantsMap.put(c, ConstantParent.NONE));
+        /*
+         * Some child constants of reachable constants are not reachable because they are only used
+         * in snippets, but still need to be persisted.
+         */
         while (!constantsToScan.isEmpty()) {
             List<ImageHeapConstant> discoveredConstants = new ArrayList<>();
             constantsToScan.forEach(con -> scanConstantReferencedObjects(con, discoveredConstants));
@@ -869,16 +865,6 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         return false;
     }
 
-    private void afterConstantAdded(ImageHeapConstant constant) {
-        constant.getType().registerAsTrackedAcrossLayers(constant);
-        /* If this is a Class constant persist the corresponding type. */
-        ConstantReflectionProvider constantReflection = aUniverse.getBigbang().getConstantReflectionProvider();
-        AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
-        if (typeFromClassConstant != null) {
-            typeFromClassConstant.registerAsTrackedAcrossLayers(constant);
-        }
-    }
-
     private void scanConstantReferencedObjects(ImageHeapConstant constant, Collection<ImageHeapConstant> discoveredConstants) {
         if (Objects.requireNonNull(constant) instanceof ImageHeapInstance instance) {
             scanConstantReferencedObjects(constant, instance::getFieldValue, instance.getFieldValuesSize(), discoveredConstants);
@@ -917,38 +903,20 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
     }
 
-    public void persistAnalysisParsedGraphs() {
-        // Persisting graphs discovers additional types, members and constants that need persisting
-        Set<AnalysisMethod> persistedGraphMethods = new HashSet<>();
-        boolean modified;
-        do {
-            modified = false;
+    @Override
+    public void persistAnalysisParsedGraph(AnalysisMethod method) {
+        AnalysisParsedGraph analysisParsedGraph = (AnalysisParsedGraph) method.getParsedGraphCacheStateObject();
+        String name = imageLayerSnapshotUtil.getMethodDescriptor(method);
+        MethodGraphsInfo graphsInfo = methodsMap.get(name);
+        if (graphsInfo == null || graphsInfo.analysisGraphLocation == null) {
             /*
-             * GR-60503: It would be better to mark all the elements as trackedAcrossLayers before
-             * the end of the analysis and only iterate only once over all methods.
+             * A copy of the encoded graph is needed here because the nodeStartOffsets can be
+             * concurrently updated otherwise, which causes the ObjectCopier to fail.
              */
-            for (AnalysisMethod method : aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).toList()) {
-                if (persistedGraphMethods.add(method)) {
-                    modified = true;
-                    persistAnalysisParsedGraph(method);
-                }
-            }
-        } while (modified);
-
-        // Note that constants are scanned late so all values are available.
-    }
-
-    private void persistAnalysisParsedGraph(AnalysisMethod method) {
-        Object analyzedGraph = method.getParsedGraphCacheStateObject();
-        if (analyzedGraph instanceof AnalysisParsedGraph analysisParsedGraph) {
-            String name = imageLayerSnapshotUtil.getMethodDescriptor(method);
-            MethodGraphsInfo graphsInfo = methodsMap.get(name);
-            if (graphsInfo == null || graphsInfo.analysisGraphLocation == null) {
-                String location = persistGraph(method, analysisParsedGraph.getEncodedGraph());
-                if (location != null) {
-                    methodsMap.compute(name, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS)
-                                    .withAnalysisGraph(location, analysisParsedGraph.isIntrinsic()));
-                }
+            String location = persistGraph(method, new EncodedGraph(analysisParsedGraph.getEncodedGraph()));
+            if (location != null) {
+                methodsMap.compute(name, (n, mgi) -> (mgi != null ? mgi : MethodGraphsInfo.NO_GRAPHS)
+                                .withAnalysisGraph(location, analysisParsedGraph.isIntrinsic()));
             }
         }
     }
@@ -972,7 +940,14 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         if (!useSharedLayerGraphs) {
             return null;
         }
-        byte[] encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(this), analyzedGraph);
+        if (Arrays.stream(analyzedGraph.getObjects()).anyMatch(o -> o instanceof AnalysisFuture<?>)) {
+            /*
+             * GR-61103: After the AnalysisFuture in this node is handled, this check can be
+             * removed.
+             */
+            return null;
+        }
+        byte[] encodedGraph = ObjectCopier.encode(imageLayerSnapshotUtil.getGraphEncoder(), analyzedGraph);
         if (contains(encodedGraph, LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING.getBytes(StandardCharsets.UTF_8))) {
             throw AnalysisError.shouldNotReachHere("The graph for the method %s contains a reference to a lambda type, which cannot be decoded: %s".formatted(method, encodedGraph));
         }

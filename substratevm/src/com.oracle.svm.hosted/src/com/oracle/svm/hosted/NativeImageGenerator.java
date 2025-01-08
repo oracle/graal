@@ -569,11 +569,6 @@ public class NativeImageGenerator {
                 return;
             }
 
-            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
-                HostedImageLayerBuildingSupport.singleton().getWriter().persistAnalysisParsedGraphs();
-            }
-
             NativeImageHeap heap;
             HostedMetaAccess hMetaAccess;
             RuntimeConfiguration runtimeConfiguration;
@@ -807,6 +802,9 @@ public class NativeImageGenerator {
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
                     ImageSingletons.lookup(LoadImageSingletonFeature.class).processRegisteredSingletons(aUniverse);
+                }
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
                 }
             }
 

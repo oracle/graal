@@ -33,4 +33,9 @@ public class ImageLayerWriter {
     public void onTrackedAcrossLayer(AnalysisMethod method, Object reason) {
         throw AnalysisError.shouldNotReachHere("This method should not be called");
     }
+
+    @SuppressWarnings("unused")
+    public void persistAnalysisParsedGraph(AnalysisMethod method) {
+        throw AnalysisError.shouldNotReachHere("This method should not be called");
+    }
 }

@@ -91,7 +91,6 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -824,7 +823,8 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     /**
-     * See {@link SVMImageLayerWriter#persistAnalysisParsedGraphs()} for implementation.
+     * See {@link SVMImageLayerWriter#persistAnalysisParsedGraph(AnalysisMethod)} for
+     * implementation.
      */
     @Override
     public boolean hasAnalysisParsedGraph(AnalysisMethod analysisMethod) {

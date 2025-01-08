@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
+import com.oracle.graal.pointsto.api.ImageLayerWriter;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -60,6 +61,7 @@ import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -140,6 +142,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final int parsingContextMaxDepth;
 
     private final MultiMethodKey multiMethodKey;
+
+    private AnalysisFuture<Void> parsedCallBack;
 
     /**
      * Map from a key to the corresponding implementation. All multi-method implementations for a
@@ -547,6 +551,20 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         ConcurrentLightHashSet.removeElementIf(this, implementationInvokedNotificationsUpdater, ElementNotification::isNotified);
     }
 
+    public void registerParsedGraphCallback(AnalysisFuture<Void> parsingCallBack) {
+        this.parsedCallBack = parsingCallBack;
+        if (getParsedGraphCacheStateObject() instanceof AnalysisParsedGraph) {
+            notifyParsedCallback();
+        }
+    }
+
+    private void notifyParsedCallback() {
+        if (parsedCallBack != null) {
+            parsedCallBack.ensureDone();
+            parsedCallBack = null;
+        }
+    }
+
     /** Get the set of all callers for this method, as inferred by the static analysis. */
     public Set<AnalysisMethod> getCallers() {
         return getInvokeLocations().stream().map(location -> (AnalysisMethod) location.getMethod()).collect(Collectors.toSet());
@@ -678,12 +696,15 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @Override
     protected void onTrackedAcrossLayers(Object reason) {
         AnalysisError.guarantee(!getUniverse().sealed(), "Method %s was marked as tracked after the universe was sealed", this);
-        getUniverse().getImageLayerWriter().onTrackedAcrossLayer(this, reason);
+        ImageLayerWriter imageLayerWriter = getUniverse().getImageLayerWriter();
+        imageLayerWriter.onTrackedAcrossLayer(this, reason);
         declaringClass.registerAsTrackedAcrossLayers(reason);
         for (AnalysisType parameter : toParameterList()) {
             parameter.registerAsTrackedAcrossLayers(reason);
         }
         signature.getReturnType().registerAsTrackedAcrossLayers(reason);
+
+        registerParsedGraphCallback(new AnalysisFuture<>(() -> imageLayerWriter.persistAnalysisParsedGraph(this)));
     }
 
     public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {
@@ -1232,6 +1253,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
              */
             boolean result = parsedGraphCacheState.compareAndSet(lockState, newEntry);
             AnalysisError.guarantee(result, "State transition failed");
+
+            notifyParsedCallback();
 
             return (AnalysisParsedGraph) newEntry.get(stage);
 

@@ -546,6 +546,7 @@ public class ObjectScanner {
         public static final ScanReason UNKNOWN = new OtherReason("manually created constant");
         public static final ScanReason RESCAN = new OtherReason("manually triggered rescan");
         public static final ScanReason HUB = new OtherReason("scanning a class constant");
+        public static final ScanReason PERSISTED = new OtherReason("persisted");
 
         final String reason;
 

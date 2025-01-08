@@ -497,7 +497,7 @@ public abstract class ImageHeapScanner {
     }
 
     private void notifyAnalysis(AnalysisField field, ImageHeapInstance receiver, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        if (scanningObserver != null) {
+        if (!universe.sealed()) {
             /* Notify the points-to analysis of the scan. */
             boolean analysisModified = doNotifyAnalysis(field, receiver, fieldValue, reason);
             if (analysisModified && onAnalysisModified != null) {
@@ -563,11 +563,7 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
-    protected JavaConstant markReachable(JavaConstant constant, String reason) {
-        return markReachable(constant, new OtherReason(reason));
-    }
-
-    protected JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
+    public JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
         return markReachable(constant, reason, null);
     }
 
