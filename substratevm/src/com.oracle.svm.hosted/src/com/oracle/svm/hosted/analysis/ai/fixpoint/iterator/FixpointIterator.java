@@ -3,7 +3,6 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import jdk.graal.compiler.graph.Node;
 
 /**
@@ -41,18 +40,11 @@ public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
     Domain getPostCondition(Node node);
 
     /**
-     * Returns the policy of the iterator.
+     * Returns the iteratorPolicy of the iterator.
      *
-     * @return the policy of the iterator
+     * @return the iteratorPolicy of the iterator
      */
     IteratorPolicy getPolicy();
-
-    /**
-     * Returns the fixpoint cache of the iterator.
-     *
-     * @return the fixpoint cache of the iterator
-     */
-    SummaryCache<Domain> getFixpointCache();
 
     /**
      * Returns the abstract state map of the iterator.
