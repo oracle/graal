@@ -291,8 +291,8 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private void addStaticFields() {
-        addObject(StaticFieldsSupport.getStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
-        addObject(StaticFieldsSupport.getStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
+        addObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields(), false, HeapInclusionReason.StaticObjectFields);
+        addObject(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields(), false, HeapInclusionReason.StaticPrimitiveFields);
 
         /*
          * We only have empty holder arrays for the static fields, so we need to add static object

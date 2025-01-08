@@ -103,8 +103,8 @@ public abstract class NativeImageDebugInfoProviderBase {
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.pointerSize = ConfigurationValues.getTarget().wordSize;
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
-        NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
-        NativeImageHeap.ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
+        NativeImageHeap.ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        NativeImageHeap.ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
         this.reservedBitsMask = objectHeader.getReservedBitsMask();
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);

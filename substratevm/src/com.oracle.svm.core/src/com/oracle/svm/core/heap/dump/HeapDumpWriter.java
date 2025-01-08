@@ -71,6 +71,7 @@ import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldName;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata.FieldNameAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.BufferedFileOperationSupport;
@@ -686,9 +687,9 @@ public class HeapDumpWriter {
 
     private static Object getStaticFieldDataHolder(HProfType type) {
         if (type == HProfType.NORMAL_OBJECT) {
-            return StaticFieldsSupport.getStaticObjectFields();
+            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         } else {
-            return StaticFieldsSupport.getStaticPrimitiveFields();
+            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER);
         }
     }
 

@@ -134,8 +134,8 @@ public final class NativeImageHeapWriter {
          * Features registered that change the value of static fields late in the native image
          * generation process.
          */
-        ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
-        ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
+        ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+        ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
         for (HostedField field : heap.hUniverse.getFields()) {
             if (field.wrapped.isInBaseLayer()) {
                 /* Base layer static field values are accessed via the base layer arrays. */
