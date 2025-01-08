@@ -92,7 +92,7 @@ suite = {
             ],
             "javaCompliance" : "8+",
             "checkstyle": "com.oracle.truffle.espresso.polyglot",
-            "checkstyleVersion": "10.7.0",
+            "checkstyleVersion": "10.21.0",
             "license": "UPL",
         },
 
@@ -164,7 +164,7 @@ suite = {
             "jacoco" : "include",
             "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
-            "checkstyleVersion": "10.7.0",
+            "checkstyleVersion": "10.21.0",
         },
 
         "com.oracle.truffle.espresso.resources.libs": {

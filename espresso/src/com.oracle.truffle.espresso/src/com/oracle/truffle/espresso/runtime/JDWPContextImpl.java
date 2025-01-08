@@ -943,7 +943,7 @@ public final class JDWPContextImpl implements JDWPContext {
         redefinitionPluginHandler.registerExternalHotSwapHandler(handler);
     }
 
-    private static class HierarchyComparator implements Comparator<ChangePacket> {
+    private static final class HierarchyComparator implements Comparator<ChangePacket> {
         public int compare(ChangePacket packet1, ChangePacket packet2) {
             Klass k1 = packet1.info.getKlass();
             Klass k2 = packet2.info.getKlass();
@@ -972,7 +972,7 @@ public final class JDWPContextImpl implements JDWPContext {
         }
     }
 
-    private static class SubClassHierarchyComparator implements Comparator<ObjectKlass> {
+    private static final class SubClassHierarchyComparator implements Comparator<ObjectKlass> {
         public int compare(ObjectKlass k1, ObjectKlass k2) {
             // we need to do this check because isAssignableFrom is true in this case
             // and we would get an order that doesn't exist
