@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -240,7 +240,7 @@ public class MonitorSnippets implements Snippets {
         incCounter();
 
         if (diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
-            int flags = shouldUseKlassMiscFlags() ? hub.readInt(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION)
+            int flags = shouldUseKlassMiscFlags() ? hub.readByte(klassMiscFlagsOffset(INJECTED_VMCONFIG), KLASS_MISC_FLAGS_LOCATION)
                             : hub.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
             if (probability(SLOW_PATH_PROBABILITY, (flags & jvmAccIsValueBasedClass(INJECTED_VMCONFIG)) != 0)) {
                 monitorenterStubC(MONITORENTER, object, lock);
