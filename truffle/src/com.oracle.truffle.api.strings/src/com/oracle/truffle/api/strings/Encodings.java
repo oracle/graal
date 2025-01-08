@@ -256,7 +256,7 @@ final class Encodings {
         assert 2 <= encodedLength && encodedLength <= 4;
         int i = index + encodedLength;
         int c = codepoint;
-        // Checkstyle: stop
+        // Checkstyle: stop FallThrough
         switch (encodedLength) {
             case 4:
                 buffer[--i] = (byte) (0x80 | (c & 0x3f));
@@ -269,7 +269,7 @@ final class Encodings {
                 c >>>= 6;
                 buffer[--i] = (byte) ((0xf00 >>> encodedLength) | c);
         }
-        // Checkstyle: resume
+        // Checkstyle: resume FallThrough
     }
 
     static int utf8CodePointToByteIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
@@ -306,7 +306,7 @@ final class Encodings {
         assert 1 < nBytes && nBytes < 5 : nBytes;
         assert i + nBytes <= lengthA;
         int j = i + 1;
-        // Checkstyle: stop
+        // Checkstyle: stop FallThrough
         switch (nBytes) {
             case 4:
                 assert isUTF8ContinuationByte(arrayA, offsetA, lengthA, j);
@@ -318,7 +318,7 @@ final class Encodings {
                 assert isUTF8ContinuationByte(arrayA, offsetA, lengthA, j);
                 codepoint = codepoint << 6 | (readS0(arrayA, offsetA, lengthA, j) & 0x3f);
         }
-        // Checkstyle: resume
+        // Checkstyle: resume FallThrough
         return codepoint;
     }
 
@@ -335,7 +335,7 @@ final class Encodings {
         int nBytes = utf8CodePointLength(b);
         int codepoint = b & (0xff >>> nBytes);
         int j = i + 1;
-        // Checkstyle: stop
+        // Checkstyle: stop FallThrough
         switch (nBytes) {
             case 4:
                 if (j >= lengthA || !isUTF8ContinuationByte(arrayA, offsetA, lengthA, j)) {
@@ -356,7 +356,7 @@ final class Encodings {
             default:
                 return invalidCodepointReturnValue(errorHandling);
         }
-        // Checkstyle: resume
+        // Checkstyle: resume FallThrough
         if (utf8IsInvalidCodePoint(codepoint, nBytes)) {
             return invalidCodepointReturnValue(errorHandling);
         }
