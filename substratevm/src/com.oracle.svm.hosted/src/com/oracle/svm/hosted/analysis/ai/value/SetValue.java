@@ -9,6 +9,7 @@ import java.util.function.Predicate;
  */
 public final class SetValue<Element>
         implements AbstractValue<SetValue<Element>> {
+
     private final HashSet<Element> set;
 
     public SetValue() {
