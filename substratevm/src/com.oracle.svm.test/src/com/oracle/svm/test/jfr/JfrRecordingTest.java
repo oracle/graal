@@ -31,13 +31,18 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedFrame;
 import org.junit.After;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
+
+import static org.junit.Assert.assertTrue;
 
 /** Base class for JFR unit tests. */
 public abstract class JfrRecordingTest extends AbstractJfrTest {
@@ -81,6 +86,12 @@ public abstract class JfrRecordingTest extends AbstractJfrTest {
         }
         enableEvents(recording, events);
         return recording;
+    }
+
+    protected static void checkStackTraceTrimming(RecordedEvent event, String methodName) {
+        List<RecordedFrame> frames = event.getStackTrace().getFrames();
+        assertTrue(frames.size() > 0);
+        assertTrue(frames.getFirst().getMethod().getName().equals(methodName));
     }
 
     private static Recording createRecording(Configuration config) {

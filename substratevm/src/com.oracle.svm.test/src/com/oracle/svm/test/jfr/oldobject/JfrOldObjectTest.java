@@ -115,6 +115,8 @@ public abstract class JfrOldObjectTest extends JfrRecordingTest {
                 assertTrue(frames.size() > 0);
                 assertTrue(frames.stream().anyMatch(e -> testName.getMethodName().equals(e.getMethod().getName())));
 
+                checkStackTraceTrimming(event, "sample");
+
                 long allocationTime = event.getLong("allocationTime");
                 assertTrue(allocationTime > 0);
                 assertTrue(allocationTime <= startTime);

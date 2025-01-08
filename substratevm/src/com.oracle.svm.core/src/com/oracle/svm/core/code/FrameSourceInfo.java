@@ -68,7 +68,6 @@ public abstract class FrameSourceInfo {
         return sourceClass;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getSourceClassName() {
         Class<?> clazz = getSourceClass();
         return (clazz != null) ? clazz.getName() : "";

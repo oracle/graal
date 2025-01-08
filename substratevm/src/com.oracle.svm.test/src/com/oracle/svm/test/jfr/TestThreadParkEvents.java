@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
 
+import jdk.jfr.consumer.RecordedFrame;
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -79,6 +80,11 @@ public class TestThreadParkEvents extends JfrRecordingTest {
         boolean parkUnparkFound = false;
 
         for (RecordedEvent event : events) {
+            List<RecordedFrame> frames = event.getStackTrace().getFrames();
+            assertTrue(frames.size() > 0);
+            System.out.println(frames.getFirst().getMethod().getName());
+            assertTrue(frames.getFirst().getMethod().getName().equals("emit"));
+
             long timeout = event.<Long> getValue("timeout");
             long until = event.<Long> getValue("until");
 

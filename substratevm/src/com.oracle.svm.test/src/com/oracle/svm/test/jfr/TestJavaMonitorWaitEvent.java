@@ -113,6 +113,8 @@ public class TestJavaMonitorWaitEvent extends JfrRecordingTest {
                 assertEquals("Wrong notifier", notifThread, producerName);
             }
             lastEventThreadName = eventThread;
+
+            checkStackTraceTrimming(event, "emit");
         }
         assertFalse("Wrong number of events: " + prodCount + " " + consCount,
                         abs(prodCount - consCount) > 1 || abs(consCount - COUNT) > 1);

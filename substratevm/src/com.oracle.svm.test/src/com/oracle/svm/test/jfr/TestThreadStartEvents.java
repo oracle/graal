@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,41 +26,44 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertTrue;
-
-import java.util.List;
-
-import org.junit.Test;
-
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.jfr.JfrEvent;
-
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedThread;
+import org.junit.Test;
 
-public class TestAllocationRequiringGCEvent extends JfrRecordingTest {
+import java.util.List;
+import java.util.concurrent.locks.LockSupport;
+
+import static org.junit.Assert.assertTrue;
+
+public class TestThreadStartEvents extends JfrRecordingTest {
+
+    private static final String NAME = "worker-name";
+
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{JfrEvent.AllocationRequiringGC.getName()};
+        String[] events = new String[]{JfrEvent.ThreadStart.getName()};
         Recording recording = startRecording(events);
 
-        /* Allocate 256 arrays with 1 MB each. */
-        for (int i = 0; i < 256; i++) {
-            allocateByteArray(1024 * 1024);
-        }
-
-        stopRecording(recording, TestAllocationRequiringGCEvent::validateEvents);
+        Runnable work = () -> LockSupport.parkNanos(1);
+        Thread worker = new Thread(work);
+        worker.setName(NAME);
+        worker.start();
+        worker.join();
+        stopRecording(recording, TestThreadStartEvents::validateEvents);
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertTrue(events.size() > 0);
+        boolean foundEvent = false;
         for (RecordedEvent event : events) {
-            checkStackTraceTrimming(event, "emit");
-        }
-    }
+            RecordedThread eventThread = event.getThread("eventThread");
+            if (eventThread.getJavaName().equals(NAME)) {
+                foundEvent = true;
+            }
 
-    @NeverInline("Prevent escape analysis.")
-    private static byte[] allocateByteArray(int length) {
-        return new byte[length];
+            checkStackTraceTrimming(event, "beforeThreadStart");
+        }
+        assertTrue(foundEvent);
     }
 }

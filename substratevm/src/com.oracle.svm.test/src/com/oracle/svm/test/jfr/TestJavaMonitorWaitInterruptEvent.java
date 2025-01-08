@@ -139,6 +139,8 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrRecordingTest {
                 assertEquals("Notifier of simple wait is incorrect: " + notifThread + " " + simpleNotifyThread.getName(), notifThread, simpleNotifyThread.getName());
                 simpleWaitFound = true;
             }
+
+            checkStackTraceTrimming(event, "emit");
         }
         assertTrue("Couldn't find expected wait events. SimpleWaiter: " + simpleWaitFound + " interrupted: " + interruptedFound,
                         simpleWaitFound && interruptedFound);

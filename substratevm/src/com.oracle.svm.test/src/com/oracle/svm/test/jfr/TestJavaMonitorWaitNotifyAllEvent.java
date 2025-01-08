@@ -108,6 +108,7 @@ public class TestJavaMonitorWaitNotifyAllEvent extends JfrRecordingTest {
                 waitersFound++;
             }
 
+            checkStackTraceTrimming(event, "emit");
         }
         assertTrue("Couldn't find expected wait events. NotifierFound: " + notifierFound + " waitersFound: " + waitersFound,
                         notifierFound && waitersFound == 2);

@@ -38,7 +38,6 @@ import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrBuffer;
 import com.oracle.svm.core.jfr.JfrFrameType;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
@@ -49,7 +48,6 @@ import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.VMInspectionOptions;
 
 /**
  * A concrete implementation of {@link SamplerStackTraceSerializer} designed for JFR stack trace
@@ -58,7 +56,6 @@ import com.oracle.svm.core.VMInspectionOptions;
 public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSerializer {
     /** This value is used by multiple threads but only by a single thread at a time. */
     private static final CodeInfoDecoder.FrameInfoCursor FRAME_INFO_CURSOR = new CodeInfoDecoder.FrameInfoCursor();
-    private static final String SUBSTRATEVM_PREFIX = "com.oracle.svm";
 
     @Override
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
@@ -170,12 +167,8 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
         int numStackTraceElements = 0;
         FRAME_INFO_CURSOR.initialize(codeInfo, ip, false);
         while (FRAME_INFO_CURSOR.advance()) {
-            FrameInfoQueryResult frame = FRAME_INFO_CURSOR.get();
-            if (VMInspectionOptions.JfrTrimInternalStackTraces.getValue() &&
-                            UninterruptibleUtils.String.startsWith(frame.getSourceClassName(), SUBSTRATEVM_PREFIX)) {
-                continue;
-            }
             if (data.isNonNull()) {
+                FrameInfoQueryResult frame = FRAME_INFO_CURSOR.get();
                 serializeStackTraceElement(data, frame);
             }
             numStackTraceElements++;

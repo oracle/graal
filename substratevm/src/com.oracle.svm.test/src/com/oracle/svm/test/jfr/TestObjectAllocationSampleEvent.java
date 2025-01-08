@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,28 +26,25 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertTrue;
-
-import java.util.List;
-
-import org.junit.Test;
-
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.util.UnsignedUtils;
-
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
+import org.junit.Test;
 
-public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
-    private static final int K = 1024;
+import java.util.List;
+
+import static org.junit.Assert.assertTrue;
+
+public class TestObjectAllocationSampleEvent extends JfrRecordingTest {
 
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{JfrEvent.ObjectAllocationInNewTLAB.getName()};
+        String[] events = new String[]{JfrEvent.ObjectAllocationSample.getName()};
         Recording recording = startRecording(events);
 
         final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
@@ -56,26 +53,14 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
         allocateByteArray(2 * alignedHeapChunkSize);
         allocateCharArray(alignedHeapChunkSize);
 
-        // Exhaust TLAB with small arrays.
-        for (int i = 0; i < alignedHeapChunkSize / K; i++) {
-            allocateByteArray(K);
-        }
-
-        // Exhaust TLAB with instances.
-        for (int i = 0; i < alignedHeapChunkSize; i++) {
-            allocateInstance();
-        }
-
-        stopRecording(recording, TestObjectAllocationInNewTLABEvent::validateEvents);
+        stopRecording(recording, TestObjectAllocationSampleEvent::validateEvents);
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
         long alignedHeapChunkSize = HeapParameters.getAlignedHeapChunkSize().rawValue();
 
-        boolean foundBigByteArray = false;
-        boolean foundSmallByteArray = false;
-        boolean foundBigCharArray = false;
-        boolean foundInstance = false;
+        boolean foundByteArray = false;
+        boolean foundCharArray = false;
 
         for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
@@ -83,31 +68,24 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
                 continue;
             }
 
-            long allocationSize = event.<Long> getValue("allocationSize");
-            long tlabSize = event.<Long> getValue("tlabSize");
+            long allocationSize = event.<Long> getValue("weight");
             String className = event.<RecordedClass> getValue("objectClass").getName();
 
             // >= To account for size of reference
-            if (allocationSize >= 2 * alignedHeapChunkSize && tlabSize >= 2 * alignedHeapChunkSize) {
+            if (allocationSize >= 2 * alignedHeapChunkSize) {
                 // verify previous owner
                 if (className.equals(char[].class.getName())) {
-                    foundBigCharArray = true;
+                    foundCharArray = true;
                 } else if (className.equals(byte[].class.getName())) {
-                    foundBigByteArray = true;
+                    foundByteArray = true;
                 }
-            } else if (allocationSize >= K && tlabSize == alignedHeapChunkSize && className.equals(byte[].class.getName())) {
-                foundSmallByteArray = true;
-            } else if (tlabSize == alignedHeapChunkSize && className.equals(Helper.class.getName())) {
-                foundInstance = true;
             }
 
             checkStackTraceTrimming(event, "emit");
         }
 
-        assertTrue(foundBigCharArray);
-        assertTrue(foundBigByteArray);
-        assertTrue(foundSmallByteArray);
-        assertTrue(foundInstance);
+        assertTrue(foundCharArray);
+        assertTrue(foundByteArray);
     }
 
     @NeverInline("Prevent escape analysis.")
@@ -118,17 +96,5 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
     @NeverInline("Prevent escape analysis.")
     private static char[] allocateCharArray(int length) {
         return new char[length];
-    }
-
-    @NeverInline("Prevent escape analysis.")
-    private static Helper allocateInstance() {
-        return new Helper();
-    }
-
-    /**
-     * This class is only needed to provide a unique name in the event's "objectClass" field that we
-     * check.
-     */
-    private static class Helper {
     }
 }
