@@ -1,14 +1,13 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.interpreter.call.CallInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
-import jdk.graal.compiler.debug.DebugContext;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ControlSplitNode;
+import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
@@ -23,16 +22,14 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
 
     private final NodeInterpreter<Domain> nodeInterpreter;
     private final CallInterpreter<Domain> callInterpreter;
-    private final Domain initialDomain;
-    private final IteratorPolicy policy;
-    private final DebugContext debug;
+    private final AbstractInterpretationLogger logger;
 
-    public TransferFunction(NodeInterpreter<Domain> nodeInterpreter, CallInterpreter<Domain> callInterpreter, Domain initialDomain, IteratorPolicy policy, DebugContext debug) {
+    public TransferFunction(NodeInterpreter<Domain> nodeInterpreter,
+                            CallInterpreter<Domain> callInterpreter,
+                            AbstractInterpretationLogger logger) {
         this.nodeInterpreter = nodeInterpreter;
         this.callInterpreter = callInterpreter;
-        this.initialDomain = initialDomain;
-        this.policy = policy;
-        this.debug = debug;
+        this.logger = logger;
     }
 
     /**
@@ -42,13 +39,13 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
      * @param node             to analyze
      * @param abstractStateMap current state of the analysis
      */
-    public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap, SummaryCache<Domain> summaryCache) {
-        debug.log("Analyzing node: " + node);
+    public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap) {
+        logger.logToFile("Analyzing node: " + node);
         collectInvariantsFromCfgPredecessors(node, abstractStateMap);
-        if (node instanceof InvokeNode invokeNode) {
-            callInterpreter.execInvoke(invokeNode, abstractStateMap, summaryCache, this, initialDomain, policy, debug);
-        } else {
-            nodeInterpreter.execNode(node, abstractStateMap);
+        nodeInterpreter.execNode(node, abstractStateMap);
+        if (node instanceof Invoke invoke) {
+            logger.logToFile("Encountered invoke: " + invoke);
+            callInterpreter.execInvoke(invoke, node, abstractStateMap);
         }
         abstractStateMap.incrementVisitCount(node);
     }
@@ -64,7 +61,7 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
      * @param abstractStateMap current state of the analysis
      */
     public void analyzeEdge(Node sourceNode, Node destinationNode, AbstractStateMap<Domain> abstractStateMap) {
-        debug.log("Analyzing edge: " + sourceNode + " -> " + destinationNode);
+        logger.logToFile("Analyzing edge: " + sourceNode + " -> " + destinationNode);
         nodeInterpreter.execEdge(sourceNode, destinationNode, abstractStateMap);
     }
 
@@ -89,9 +86,10 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
         }
     }
 
-    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap, SummaryCache<Domain> summaryCache) {
+    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap) {
+        logger.logToFile("Analyzing block: " + block);
         for (Node node : block.getNodes()) {
-            analyzeNode(node, abstractStateMap, summaryCache);
+            analyzeNode(node, abstractStateMap);
         }
     }
 }
