@@ -1,11 +1,13 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.hosted.analysis.ai.analyzer.context.AnalysisContext;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
@@ -16,46 +18,27 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
  *
  * @param <Domain> type of the derived {@link AbstractDomain}
  */
-public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>> implements FixpointIterator<Domain> {
+public abstract class FixpointIteratorBase<
+        Domain extends AbstractDomain<Domain>>
+        implements FixpointIterator<Domain> {
 
     protected final ControlFlowGraph cfgGraph;
-    protected final com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy policy;
-    protected final TransferFunction<Domain> transferFunction;
+    protected final IteratorPolicy policy;
     protected final Domain initialDomain;
-    protected final AbstractStateMap<Domain> abstractStateMap;
-    protected final SummaryCache<Domain> summaryCache;
     protected final DebugContext debug;
+    protected final AbstractInterpretationLogger logger;
+    protected final AbstractStateMap<Domain> abstractStateMap;
+    protected final TransferFunction<Domain> transferFunction;
 
-    protected FixpointIteratorBase(ControlFlowGraph cfgGraph,
-                                   com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy policy,
-                                   TransferFunction<Domain> transferFunction,
-                                   Domain initialDomain,
-                                   DebugContext debug) {
-        this.cfgGraph = cfgGraph;
-        this.policy = policy;
-        this.transferFunction = transferFunction;
-        this.initialDomain = initialDomain;
+    protected FixpointIteratorBase(AnalysisContext<Domain> payload, TransferFunction<Domain> transferFunction) {
+        this.debug = payload.getDebugContext();
+        this.cfgGraph = GraphUtils.getGraph(payload.getRoot(), debug);
+        this.policy = payload.getIteratorPolicy();
+        this.initialDomain = payload.getInitialDomain();
+        this.logger = payload.getLogger();
         this.abstractStateMap = new AbstractStateMap<>(initialDomain);
-        this.summaryCache = new SummaryCache<>();
-        this.debug = debug;
-    }
-
-    protected FixpointIteratorBase(ControlFlowGraph cfgGraph,
-                                   com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy policy,
-                                   TransferFunction<Domain> transferFunction,
-                                   Domain initialDomain,
-                                   AbstractStateMap<Domain> abstractStateMap,
-                                   SummaryCache<Domain> summaryCache,
-                                   DebugContext debug) {
-        this.cfgGraph = cfgGraph;
-        this.policy = policy;
         this.transferFunction = transferFunction;
-        this.initialDomain = initialDomain;
-        this.abstractStateMap = abstractStateMap;
-        this.summaryCache = summaryCache;
-        this.debug = debug;
     }
-
 
     @Override
     public void clear() {
@@ -75,13 +58,8 @@ public abstract class FixpointIteratorBase<Domain extends AbstractDomain<Domain>
     }
 
     @Override
-    public com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy getPolicy() {
+    public IteratorPolicy getPolicy() {
         return policy;
-    }
-
-    @Override
-    public SummaryCache<Domain> getFixpointCache() {
-        return summaryCache;
     }
 
     @Override
