@@ -3,7 +3,12 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.wto;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Stack;
 
 public final class WeakTopologicalOrdering {
     private final List<WtoComponent> components;

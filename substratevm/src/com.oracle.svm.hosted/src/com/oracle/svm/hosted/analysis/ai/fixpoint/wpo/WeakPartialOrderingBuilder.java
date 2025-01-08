@@ -14,7 +14,6 @@ import java.util.Set;
 
 /*
  * WeakPartialOrderingBuilder constructs a weak partial ordering of a control flow graph
- * by modifying the {@code wpoNodes} list and {@code backPredecessors} map.
  */
 public final class WeakPartialOrderingBuilder {
 

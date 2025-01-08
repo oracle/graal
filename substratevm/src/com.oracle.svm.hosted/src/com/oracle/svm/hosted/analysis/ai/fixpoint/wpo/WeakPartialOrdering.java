@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.wpo;
 
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 import java.util.ArrayList;
 import java.util.HashMap;
