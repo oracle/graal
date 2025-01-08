@@ -2,12 +2,14 @@ package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.ProgressReporter;
-
+import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.inter.InterProceduralSequentialAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
+import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.node.example.LeaksCountingDomainNodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.summary.example.LeakCountingSummaryProvider;
+import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
 import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 
 public class AbstractInterpretationDriver {
 
@@ -32,39 +34,10 @@ public class AbstractInterpretationDriver {
     }
 
     private void doRun() {
-        var cfgGraph = getGraph(root);
-        printGraph(cfgGraph);
-    }
-
-    private void printGraph(ControlFlowGraph cfg) {
-        debug.log("Printing ControlFlowGraph");
-        for (var block : cfg.getBlocks()) {
-            debug.log("\t" + block);
-            for (var node : block.getNodes()) {
-                debug.log("\t\t" + node);
-                /* Warning, this won't work with call graph cycles, fix this using summaries */
-                if (node instanceof Invoke invokeNode) {
-                    debug.log("\t\t\t" + invokeNode);
-                    debug.log("\t\t\t" + invokeNode.callTarget().targetName());
-                    var callTargetCfg = new ControlFlowGraphBuilder(invokeNode.callTarget().graph()).build();
-                    printGraph(callTargetCfg);
-                } else {
-                    for (var succ : node.cfgSuccessors()) {
-                        debug.log("\t\t\t" + succ);
-                    }
-                    for (var input : node.inputs()) {
-                        debug.log("\t\t\t" + input);
-                    }
-                }
-            }
-        }
-    }
-
-    private ControlFlowGraph getGraph(AnalysisMethod method) {
-        StructuredGraph structuredGraph = method.decodeAnalyzedGraph(debug, null);
-        for (var node : structuredGraph.getNodes()) {
-            debug.log("\t" + node);
-        }
-        return new ControlFlowGraphBuilder(structuredGraph).build();
+        GraphUtils.printGraph(root, debug);
+        NodeInterpreter<CountingDomain> nodeInterpreter = new LeaksCountingDomainNodeInterpreter();
+        LeakCountingSummaryProvider summaryProvider = new LeakCountingSummaryProvider();
+        Analyzer<CountingDomain> analyzer = new InterProceduralSequentialAnalyzer<>(root, debug, summaryProvider);
+        analyzer.run(new CountingDomain(), nodeInterpreter);
     }
 }
