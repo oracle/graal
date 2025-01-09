@@ -125,15 +125,15 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         Registration r = new Registration(plugins, declaringClass, replacements);
         r.register(new InvocationPlugin("numberOfLeadingZeros", type) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                b.addPush(JavaKind.Int, CountLeadingZerosNode.create(arg));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Int, CountLeadingZerosNode.create(value));
                 return true;
             }
         });
         r.register(new InvocationPlugin("numberOfTrailingZeros", type) {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                b.addPush(JavaKind.Int, CountTrailingZerosNode.create(arg));
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Int, CountTrailingZerosNode.create(value));
                 return true;
             }
         });

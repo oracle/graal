@@ -153,7 +153,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final boolean useTLAB = getFlag("UseTLAB", Boolean.class);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
-    public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class);
+    public final boolean useCountLeadingZerosInstruction = getFlag("UseCountLeadingZerosInstruction", Boolean.class, false, osArch.equals("amd64"));
+    public final boolean useCountTrailingZerosInstruction = getFlag("UseCountTrailingZerosInstruction", Boolean.class, false, osArch.equals("amd64"));
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
     public final boolean useCharacterCompareIntrinsics = getFlag("UseCharacterCompareIntrinsics", Boolean.class);

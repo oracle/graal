@@ -124,7 +124,7 @@ public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
         architecture.getFeatures().addAll(features);
 
         // update largest storable kind
-        AMD64Kind largestStorableKind = (new AMD64(features, architecture.getFlags())).getLargestStorableKind(AMD64.XMM);
+        AMD64Kind largestStorableKind = (new AMD64(features, EnumSet.noneOf(AMD64.Flag.class))).getLargestStorableKind(AMD64.XMM);
         JVMCISubstitutions.updateLargestStorableKind(architecture, largestStorableKind);
     }
 }
