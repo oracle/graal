@@ -373,19 +373,21 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins.getInvocationPlugins(), Class.class, replacements);
 
-        r.register(new InvocationPlugin("getModifiers", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                    ValueNode klass = helper.readKlassFromClass(receiver.get(true));
-                    // Primitive Class case
-                    ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forInt(Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC), GraalDirectives.UNLIKELY_PROBABILITY);
-                    // other return Klass::_modifier_flags
-                    helper.emitFinalReturn(JavaKind.Int, helper.readKlassModifierFlags(nonNullKlass));
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            r.register(new InvocationPlugin("getModifiers", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                        ValueNode klass = helper.readKlassFromClass(receiver.get(true));
+                        // Primitive Class case
+                        ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forInt(Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC), GraalDirectives.UNLIKELY_PROBABILITY);
+                        // other return Klass::_modifier_flags
+                        helper.emitFinalReturn(JavaKind.Int, helper.readKlassModifierFlags(nonNullKlass));
+                    }
+                    return true;
                 }
-                return true;
-            }
-        });
+            });
+        }
         r.register(new InvocationPlugin("isInterface", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
