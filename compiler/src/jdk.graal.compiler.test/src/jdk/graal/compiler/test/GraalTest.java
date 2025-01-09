@@ -47,9 +47,11 @@ import java.util.concurrent.TimeUnit;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.AssumptionViolatedException;
+import org.junit.Rule;
 import org.junit.internal.ComparisonCriteria;
 import org.junit.internal.ExactComparisonCriteria;
 import org.junit.rules.DisableOnDebug;
+import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 
@@ -71,6 +73,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class GraalTest {
 
     public static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
+    @Rule public TestName currentUnitTestName = new TestName();
+
+    /**
+     * Returns the name of the current unit test being run.
+     */
+    public String currentUnitTestName() {
+        return currentUnitTestName.getMethodName();
+    }
 
     protected Method getMethod(String methodName) {
         return getMethod(getClass(), methodName);

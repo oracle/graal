@@ -92,7 +92,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void fieldReadBarrier() {
-        runTest("fieldReadBarrier", new TestObject());
+        runTest(new TestObject());
     }
 
     public static void fieldWriteBarrierSnippet(TestObject t, Object value) {
@@ -101,7 +101,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void fieldWriteBarrier() {
-        runTest("fieldWriteBarrier", new TestObject(), "string");
+        runTest(new TestObject(), "string");
     }
 
     public static void volatileFieldWriteBarrierSnippet(TestObject t, Object value) {
@@ -110,7 +110,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void volatileFieldWriteBarrier() {
-        runTest("volatileFieldWriteBarrier", new TestObject(), "string");
+        runTest(new TestObject(), "string");
     }
 
     public static void arrayWriteBarrierSnippet(Object[] t, Object value) {
@@ -119,7 +119,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void arrayWriteBarrier() {
-        runTest("arrayWriteBarrier", new Object[1], "string");
+        runTest(new Object[1], "string");
     }
 
     public static void volatileArrayWriteBarrierSnippet(Object[] t, Object value) {
@@ -131,7 +131,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void volatileArrayWriteBarrier() {
-        runTest("volatileArrayWriteBarrier", new Object[1], "string");
+        runTest(new Object[1], "string");
     }
 
     public static void fieldWriteNullBarrierSnippet(TestObject t) {
@@ -140,7 +140,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void fieldWriteNullBarrier() {
-        runTest("fieldWriteNullBarrier", new TestObject());
+        runTest(new TestObject());
     }
 
     public static void volatileFieldWriteNullBarrierSnippet(TestObject t) {
@@ -149,7 +149,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void volatileFieldWriteNullBarrier() {
-        runTest("volatileFieldWriteNullBarrier", new TestObject());
+        runTest(new TestObject());
     }
 
     public static void arrayWriteNullBarrierSnippet(Object[] t) {
@@ -158,7 +158,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void arrayWriteNullBarrier() {
-        runTest("arrayWriteNullBarrier", new Object[]{new Object[1]});
+        runTest(new Object[]{new Object[1]});
     }
 
     public static Object valueCompareAndSwapBarrierSnippet(TestObject t1, Object value) {
@@ -174,7 +174,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
             assertTrue(graph.getNodes().filter(ValueCompareAndSwapNode.class).isNotEmpty(), "expected ValueCompareAndSwapNode");
             return true;
         };
-        runTest("valueCompareAndSwapBarrier", nodePredicate, supply(TestObject::new), "string");
+        runTest(nodePredicate, supply(TestObject::new), "string");
     }
 
     public static boolean logicCompareAndSwapBarrierSnippet(TestObject t1, Object value) {
@@ -190,7 +190,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
             assertTrue(graph.getNodes().filter(LogicCompareAndSwapNode.class).isNotEmpty(), "expected LogicCompareAndSwapNode");
             return true;
         };
-        runTest("logicCompareAndSwapBarrier", nodePredicate, supply(TestObject::new), "string");
+        runTest(nodePredicate, supply(TestObject::new), "string");
     }
 
     public static Object getAndSetBarrierSnippet(TestObject t1, Object value) {
@@ -206,7 +206,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
             assertTrue(graph.getNodes().filter(LoweredAtomicReadAndWriteNode.class).isNotEmpty(), "expected LoweredAtomicReadAndWriteNode");
             return true;
         };
-        runTest("getAndSetBarrier", nodePredicate, supply(TestObject::new), "string");
+        runTest(nodePredicate, supply(TestObject::new), "string");
     }
 
     public static boolean phantomRefersToBarrierSnippet(PhantomReference<Object> phantom, Object value) {
@@ -216,7 +216,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
     @Test
     public void phantomRefersToBarrier() {
         ReferenceQueue<Object> queue = new ReferenceQueue<>();
-        runTest("phantomRefersToBarrier", new PhantomReference<>("string", queue), "string");
+        runTest(new PhantomReference<>("string", queue), "string");
     }
 
     public static boolean weakRefersToBarrierSnippet(WeakReference<Object> weak, Object value) {
@@ -225,7 +225,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void weakRefersToBarrier() {
-        runTest("weakRefersToBarrier", new WeakReference<>("string"), "string");
+        runTest(new WeakReference<>("string"), "string");
     }
 
     public static Object referenceGetBarrierSnippet(WeakReference<Object> weak) {
@@ -234,7 +234,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void referenceGetBarrier() {
-        runTest("referenceGetBarrier", new WeakReference<>("string"));
+        runTest(new WeakReference<>("string"));
     }
 
     public static TestObject objectAllocationBarrierSnippet() {
@@ -243,7 +243,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void objectAllocationBarrier() {
-        runTest("objectAllocationBarrier");
+        runTest();
     }
 
     public static String stringAllocationBarrierSnippet() {
@@ -252,7 +252,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void stringAllocationBarrier() {
-        runTest("stringAllocationBarrier");
+        runTest();
     }
 
     private static TestObject obj6 = new TestObject(6);
@@ -265,7 +265,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void testuuvCAE() {
-        runTest("testuuvCAE");
+        runTest();
     }
 
     public static Object threadHandleBarrierSnippet() {
@@ -274,7 +274,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     @Test
     public void threadHandleBarrier() {
-        runTest("threadHandleBarrier");
+        runTest();
     }
 
     @Override
@@ -286,11 +286,12 @@ public class GCBarrierEmissionTest extends SubprocessTest {
 
     Predicate<StructuredGraph> graphPredicate;
 
-    public void runTest(String baseName, Object... args) {
-        runTest(baseName, null, args);
+    public void runTest(Object... args) {
+        runTest(null, args);
     }
 
-    public void runTest(String baseName, Predicate<StructuredGraph> predicate, Object... args) {
+    public void runTest(Predicate<StructuredGraph> predicate, Object... args) {
+        String baseName = currentUnitTestName();
         String snippetName = baseName + "Snippet";
         String methodSpec = getClass().getName() + "::" + snippetName;
         Method m = getMethod(snippetName);
@@ -350,7 +351,7 @@ public class GCBarrierEmissionTest extends SubprocessTest {
                             "-XX:LogFile=" + logName};
         }
         try {
-            subprocess = launchSubprocess(baseName, run, vmArgs);
+            subprocess = launchSubprocess(run, vmArgs);
         } catch (InterruptedException | IOException e) {
             throw new RuntimeException(e);
         }
