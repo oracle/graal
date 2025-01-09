@@ -29,9 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TestName;
 
 import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.internal.vm.annotation.Contended;
@@ -53,8 +51,6 @@ public class HumongousReferenceObjectTest extends SubprocessTest {
         }
     }
 
-    @Rule public TestName currentTest = new TestName();
-
     public void runSubprocessTest(String... args) throws IOException, InterruptedException {
         List<String> newArgs = new ArrayList<>();
         Collections.addAll(newArgs, args);
@@ -63,13 +59,13 @@ public class HumongousReferenceObjectTest extends SubprocessTest {
         newArgs.remove("-XX:+UseG1GC");
         newArgs.remove("-XX:+UseParallelGC");
 
-        launchSubprocess(currentTest.getMethodName(), () -> {
+        launchSubprocess(() -> {
             test("testSnippet");
         }, newArgs.toArray(new String[0]));
 
         // Test without assertions as well
         newArgs.add("-da");
-        launchSubprocess(currentTest.getMethodName(), () -> {
+        launchSubprocess(() -> {
             test("testSnippet");
         }, newArgs.toArray(new String[0]));
     }

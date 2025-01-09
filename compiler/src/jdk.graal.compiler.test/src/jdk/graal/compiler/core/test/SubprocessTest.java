@@ -67,29 +67,20 @@ public abstract class SubprocessTest extends GraalCompilerTest {
      *         {@link Subprocess} instance describing the process after its successful termination.
      */
     public SubprocessUtil.Subprocess launchSubprocess(Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, null, true, getClass(), null, runnable, args);
-    }
-
-    /**
-     * Like {@link #launchSubprocess(Runnable, String...)}, but with an extra {@code testSelector}
-     * to specify a specific test method to execute in the test class.
-     */
-    public SubprocessUtil.Subprocess launchSubprocess(String testSelector, Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, null, true, getClass(), testSelector, runnable, args);
+        return launchSubprocess(null, null, true, getClass(), currentUnitTestName(), runnable, args);
     }
 
     public SubprocessUtil.Subprocess launchSubprocess(Predicate<String> vmArgsFilter, Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, vmArgsFilter, true, getClass(), null, runnable, args);
+        return launchSubprocess(null, vmArgsFilter, true, getClass(), currentUnitTestName(), runnable, args);
     }
 
-    public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, null, true, testClass, null, runnable, args);
+    public SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
+        return launchSubprocess(null, null, true, testClass, currentUnitTestName(), runnable, args);
     }
 
-    public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, Predicate<String> vmArgsFilter, boolean expectNormalExit,
-                    Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args)
+    public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, String testSelector, Runnable runnable, String... args)
                     throws InterruptedException, IOException {
-        return launchSubprocess(testPredicate, vmArgsFilter, expectNormalExit, testClass, null, runnable, args);
+        return launchSubprocess(null, null, true, testClass, testSelector, runnable, args);
     }
 
     private static List<String> filter(List<String> args, Predicate<String> vmArgsFilter) {
@@ -131,10 +122,8 @@ public abstract class SubprocessTest extends GraalCompilerTest {
 
             List<String> mainClassAndArgs = new LinkedList<>();
             mainClassAndArgs.add("com.oracle.mxtool.junit.MxJUnitWrapper");
-            String testName = testClass.getName();
-            if (testSelector != null) {
-                testName += "#" + testSelector;
-            }
+            assert testSelector != null : "must pass the name of the current unit test";
+            String testName = testClass.getName() + "#" + testSelector;
             mainClassAndArgs.add(testName);
             boolean junitVerbose = getProcessCommandLine().contains("-JUnitVerbose");
             if (junitVerbose) {
