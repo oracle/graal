@@ -590,6 +590,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
+                        @Cached InlinedBranchProfile converterProfile,
                         @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
@@ -598,6 +599,7 @@ public abstract class ToReference extends ToEspressoNode {
                 // first check if there's a user-defined custom type converter defined
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
                 if (converter != null) {
+                    converterProfile.enter(node);
                     StaticObject foreignWrapper = StaticObject.createForeign(context.getLanguage(), context.getMeta().java_lang_Object, value, interop);
                     StaticObject result = (StaticObject) converter.convert(foreignWrapper);
                     if (instanceOf.execute(result.getKlass(), context.getMeta().java_util_List)) {
@@ -666,6 +668,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
+                        @Cached InlinedBranchProfile converterProfile,
                         @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
@@ -674,6 +677,7 @@ public abstract class ToReference extends ToEspressoNode {
                 // first check if there's a user-defined custom type converter defined
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
                 if (converter != null) {
+                    converterProfile.enter(node);
                     StaticObject foreignWrapper = StaticObject.createForeign(meta.getLanguage(), meta.java_lang_Object, value, interop);
                     StaticObject result = (StaticObject) converter.convert(foreignWrapper);
                     if (instanceOf.execute(result.getKlass(), meta.java_util_Collection)) {
@@ -742,6 +746,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
+                        @Cached InlinedBranchProfile converterProfile,
                         @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
@@ -750,6 +755,7 @@ public abstract class ToReference extends ToEspressoNode {
                 // first check if there's a user-defined custom type converter defined
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
                 if (converter != null) {
+                    converterProfile.enter(node);
                     StaticObject foreignWrapper = StaticObject.createForeign(meta.getLanguage(), meta.java_lang_Object, value, interop);
                     StaticObject result = (StaticObject) converter.convert(foreignWrapper);
                     if (instanceOf.execute(result.getKlass(), meta.java_lang_Iterable)) {
@@ -818,6 +824,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
+                        @Cached InlinedBranchProfile converterProfile,
                         @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
@@ -826,6 +833,7 @@ public abstract class ToReference extends ToEspressoNode {
                 // first check if there's a user-defined custom type converter defined
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
                 if (converter != null) {
+                    converterProfile.enter(node);
                     StaticObject foreignWrapper = StaticObject.createForeign(meta.getLanguage(), meta.java_lang_Object, value, interop);
                     StaticObject result = (StaticObject) converter.convert(foreignWrapper);
                     if (instanceOf.execute(result.getKlass(), meta.java_util_Iterator)) {
@@ -894,6 +902,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
+                        @Cached InlinedBranchProfile converterProfile,
                         @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
@@ -901,6 +910,7 @@ public abstract class ToReference extends ToEspressoNode {
                 // first check if there's a user-defined custom type converter defined
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
                 if (converter != null) {
+                    converterProfile.enter(node);
                     StaticObject foreignWrapper = StaticObject.createForeign(meta.getLanguage(), meta.java_lang_Object, value, interop);
                     StaticObject result = (StaticObject) converter.convert(foreignWrapper);
                     if (instanceOf.execute(result.getKlass(), meta.java_util_Map)) {
@@ -968,6 +978,7 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
                         @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") @Exclusive InteropLibrary interop,
+                        @Cached InlinedBranchProfile converterProfile,
                         @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
@@ -976,6 +987,7 @@ public abstract class ToReference extends ToEspressoNode {
                 // first check if there's a user-defined custom type converter defined
                 PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
                 if (converter != null) {
+                    converterProfile.enter(node);
                     StaticObject foreignWrapper = StaticObject.createForeign(meta.getLanguage(), meta.java_lang_Object, value, interop);
                     StaticObject result = (StaticObject) converter.convert(foreignWrapper);
                     if (instanceOf.execute(result.getKlass(), meta.java_util_Set)) {
