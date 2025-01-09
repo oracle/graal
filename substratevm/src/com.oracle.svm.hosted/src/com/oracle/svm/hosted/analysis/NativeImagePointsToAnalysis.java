@@ -53,6 +53,7 @@ import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -181,6 +182,15 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
             return ((HostedType) type).getWrapped().getWrapped();
         } else {
             return type;
+        }
+    }
+
+    @Override
+    protected void validateRootMethodRegistration(AnalysisMethod aMethod, boolean invokeSpecial) {
+        super.validateRootMethodRegistration(aMethod, invokeSpecial);
+
+        if (!invokeSpecial && aMethod.isConstructor()) {
+            LogUtils.warning("Constructors should be registered as special invoke entry points: %s", aMethod);
         }
     }
 

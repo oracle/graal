@@ -185,10 +185,15 @@ public final class VTableBuilder {
         Predicate<HostedMethod> includeMethod;
         if (openHubUtils.filterVTableMethods) {
             // include only methods which will be indirect calls
-            includeMethod = m -> m.implementations.length > 1 || m.wrapped.isVirtualRootMethod();
+            includeMethod = m -> {
+                assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
+                return m.implementations.length > 1 || m.wrapped.isVirtualRootMethod();
+            };
         } else {
-            // include all methods
-            includeMethod = m -> true;
+            includeMethod = m -> {
+                assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
+                return true;
+            };
         }
         var table = type.getWrapped().getOpenTypeWorldDispatchTableMethods().stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR).toList();
 
@@ -465,14 +470,15 @@ public final class VTableBuilder {
             /* We only need to look at methods that the static analysis registered as invoked. */
             if (method.wrapped.isInvoked() || method.wrapped.isImplementationInvoked()) {
                 /*
-                 * Methods with 1 implementations do not need a vtable because invokes can be done
-                 * as direct calls without the need for a vtable. Methods with 0 implementations are
+                 * Methods with 1 implementation do not need a vtable because invokes can be done as
+                 * direct calls without the need for a vtable. Methods with 0 implementations are
                  * unreachable.
                  *
                  * Methods manually registered as virtual root methods always need a vtable slot,
                  * even if there are 0 or 1 implementations.
                  */
                 if (method.implementations.length > 1 || method.wrapped.isVirtualRootMethod()) {
+                    assert !method.isConstructor() : Assertions.errorMessage("Constructors should never be in vtables", method);
                     /*
                      * Find a suitable vtable slot for the method, taking the existing vtable
                      * assignments into account.
