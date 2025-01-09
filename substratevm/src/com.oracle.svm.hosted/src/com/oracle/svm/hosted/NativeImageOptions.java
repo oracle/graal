@@ -186,7 +186,7 @@ public class NativeImageOptions {
     }
 
     /**
-     * Configures the number of threads of the common pool (see driver).
+     * Configures the number of threads of the common pool.
      */
     private static final String PARALLELISM_OPTION_NAME = "parallelism";
     @APIOption(name = PARALLELISM_OPTION_NAME)//

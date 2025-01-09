@@ -38,7 +38,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -60,6 +59,7 @@ import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.util.Digest;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -112,7 +112,11 @@ public class SubstrateUtil {
     }
 
     public static boolean isRunningInCI() {
-        return !isTTY() || System.getenv("CI") != null;
+        return !isTTY() || isCISet();
+    }
+
+    public static boolean isCISet() {
+        return "true".equals(System.getenv("CI"));
     }
 
     /**
