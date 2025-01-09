@@ -57,6 +57,9 @@ from mx_unittest import _run_tests, _VMLauncher
 
 import sys
 
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
+
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
