@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -31,6 +31,8 @@ import static com.oracle.svm.core.jfr.JfrArgumentParser.parseInteger;
 import static com.oracle.svm.core.jfr.JfrArgumentParser.parseJfrOptions;
 import static com.oracle.svm.core.jfr.JfrArgumentParser.parseMaxSize;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -45,15 +47,16 @@ import com.oracle.svm.core.jfr.JfrArgumentParser.JfrArgument;
 import com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents;
 import com.oracle.svm.core.jfr.events.EveryChunkNativePeriodicEvents;
 import com.oracle.svm.core.util.BasedOnJDKFile;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.Logger;
 import jdk.jfr.internal.Options;
 import jdk.jfr.internal.Repository;
-import jdk.jfr.internal.SecuritySupport;
 
 /**
  * Called during VM startup and teardown. Also triggers the JFR argument parsing.
@@ -125,8 +128,14 @@ public class JfrManager {
 
         if (repositoryPath != null) {
             try {
-                SecuritySupport.SafePath repositorySafePath = new SecuritySupport.SafePath(repositoryPath);
-                Repository.getRepository().setBasePath(repositorySafePath);
+                if (JavaVersionUtil.JAVA_SPEC == 21) {
+                    Class<?> klassSafePath = ReflectionUtil.lookupClass("jdk.jfr.internal.SecuritySupport$SafePath");
+                    Object safePath = ReflectionUtil.lookupConstructor(klassSafePath, String.class).newInstance(repositoryPath);
+                    ReflectionUtil.lookupMethod(Repository.class, "setBasePath", klassSafePath).invoke(Repository.getRepository(), safePath);
+                } else {
+                    Path path = Paths.get(repositoryPath);
+                    ReflectionUtil.lookupMethod(Repository.class, "setBasePath", Path.class).invoke(Repository.getRepository(), path);
+                }
             } catch (Throwable e) {
                 throw new JfrArgumentParsingFailed("Could not use " + repositoryPath + " as repository. " + e.getMessage(), e);
             }
