@@ -39,9 +39,7 @@ import com.oracle.svm.core.VMInspectionOptions;
  * IDs depend on the JDK version (see metadata.xml file) and are computed at image build time.
  */
 public final class JfrEvent {
-    private static final int defaultInternalSkipCount = VMInspectionOptions.JfrTrimInternalStackTraces.getValue() ? 3 : 0;
-
-    public static final JfrEvent ThreadStart = create("jdk.ThreadStart", defaultInternalSkipCount);
+    public static final JfrEvent ThreadStart = create("jdk.ThreadStart");
     public static final JfrEvent ThreadEnd = create("jdk.ThreadEnd");
     public static final JfrEvent ThreadCPULoad = create("jdk.ThreadCPULoad");
     public static final JfrEvent DataLoss = create("jdk.DataLoss");
@@ -63,41 +61,34 @@ public final class JfrEvent {
     public static final JfrEvent SafepointBegin = create("jdk.SafepointBegin", JfrEventFlags.HasDuration);
     public static final JfrEvent SafepointEnd = create("jdk.SafepointEnd", JfrEventFlags.HasDuration);
     public static final JfrEvent ExecuteVMOperation = create("jdk.ExecuteVMOperation", JfrEventFlags.HasDuration);
-    public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter", defaultInternalSkipCount, JfrEventFlags.HasDuration);
-    public static final JfrEvent ThreadPark = create("jdk.ThreadPark", defaultInternalSkipCount, JfrEventFlags.HasDuration);
-    public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait", defaultInternalSkipCount, JfrEventFlags.HasDuration);
-    public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate", defaultInternalSkipCount, JfrEventFlags.HasDuration);
-    public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB", defaultInternalSkipCount);
+    public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter", JfrEventFlags.HasDuration);
+    public static final JfrEvent ThreadPark = create("jdk.ThreadPark", JfrEventFlags.HasDuration);
+    public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait", JfrEventFlags.HasDuration);
+    public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate", JfrEventFlags.HasDuration);
+    public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB");
     public static final JfrEvent GCHeapSummary = create("jdk.GCHeapSummary");
     public static final JfrEvent ThreadAllocationStatistics = create("jdk.ThreadAllocationStatistics");
-    public static final JfrEvent SystemGC = create("jdk.SystemGC", defaultInternalSkipCount, JfrEventFlags.HasDuration);
-    public static final JfrEvent AllocationRequiringGC = create("jdk.AllocationRequiringGC", defaultInternalSkipCount);
-    public static final JfrEvent OldObjectSample = create("jdk.OldObjectSample", defaultInternalSkipCount);
-    public static final JfrEvent ObjectAllocationSample = create("jdk.ObjectAllocationSample", defaultInternalSkipCount, JfrEventFlags.SupportsThrottling);
+    public static final JfrEvent SystemGC = create("jdk.SystemGC", JfrEventFlags.HasDuration);
+    public static final JfrEvent AllocationRequiringGC = create("jdk.AllocationRequiringGC");
+    public static final JfrEvent OldObjectSample = create("jdk.OldObjectSample");
+    public static final JfrEvent ObjectAllocationSample = create("jdk.ObjectAllocationSample", JfrEventFlags.SupportsThrottling);
     public static final JfrEvent NativeMemoryUsage = create("jdk.NativeMemoryUsage");
     public static final JfrEvent NativeMemoryUsageTotal = create("jdk.NativeMemoryUsageTotal");
 
     private final long id;
     private final String name;
     private final int flags;
-    private final int skipCount;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static JfrEvent create(String name, JfrEventFlags... flags) {
-        return new JfrEvent(name, 0, flags);
+        return new JfrEvent(name, flags);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static JfrEvent create(String name, int skipCount, JfrEventFlags... flags) {
-        return new JfrEvent(name, skipCount, flags);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private JfrEvent(String name, int skipCount, JfrEventFlags... flags) {
+    private JfrEvent(String name, JfrEventFlags... flags) {
         this.id = JfrMetadataTypeLibrary.lookupPlatformEvent(name);
         this.name = name;
         this.flags = EnumBitmask.computeBitmask(flags);
-        this.skipCount = skipCount;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -107,7 +98,7 @@ public final class JfrEvent {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public int getSkipCount() {
-        return skipCount;
+        return VMInspectionOptions.JfrTrimInternalStackTraces.getValue() ? 3 : 0;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
