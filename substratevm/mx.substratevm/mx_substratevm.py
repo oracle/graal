@@ -1188,14 +1188,14 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
                 mx.run(c_command, cwd=build_dir)
         if mx.get_os() == 'linux':
             logfile = join(path, pathlib.Path(testfile).stem + ('' if with_isolates else '_no_isolates') + '.log')
-            os.environ.update({'gdbdebughelperstest_logfile': logfile})
+            os.environ.update({'gdb_logfile': logfile})
             gdb_command = gdb_args + [
                 '-iex', f"set logging file {logfile}",
                 '-iex', 'set logging enabled on',
                 '-iex', f"set auto-load safe-path {join(build_dir, 'gdb-debughelpers.py')}",
                 '-x', testfile, join(build_dir, image_name)
             ]
-            mx.log(' '.join(gdb_command))
+            mx.log(' '.join([(f"'{c}'" if ' ' in c else c) for c in gdb_command]))
             # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
             return mx.run(gdb_command, cwd=build_dir, nonZeroIsFatal=False)
         return 0
