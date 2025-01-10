@@ -550,6 +550,9 @@ public final class VM extends NativeEnv {
         }
         BootClassRegistry bootClassRegistry = getRegistries().getBootClassRegistry();
         PackageEntry packageEntry = bootClassRegistry.packages().lookup(pkgName);
+        if (packageEntry == null) {
+            return StaticObject.NULL;
+        }
         ModuleEntry moduleEntry = packageEntry.module();
         if (moduleEntry != null) {
             String location = moduleEntry.location();
@@ -562,12 +565,13 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public @JavaType(String[].class) StaticObject JVM_GetSystemPackages(@Inject Meta meta) {
-        Symbol<Name>[] packageSymbols = getRegistries().getBootClassRegistry().getPackages();
-        StaticObject[] array = new StaticObject[packageSymbols.length];
-        for (int i = 0; i < packageSymbols.length; i++) {
-            array[i] = meta.toGuestString(packageSymbols[i]);
-        }
-        return StaticObject.createArray(meta.java_lang_String.getArrayClass(), array, getContext());
+        List<StaticObject> packageNames = new ArrayList<>();
+        getRegistries().getBootClassRegistry().packages().collectEntries((s, p) -> {
+            if (p.getBootClasspathLocation() != null) {
+                packageNames.add(meta.toGuestString(s));
+            }
+        });
+        return StaticObject.createArray(meta.java_lang_String.getArrayClass(), packageNames.toArray(StaticObject.EMPTY_ARRAY), getContext());
     }
 
     @VmImpl
