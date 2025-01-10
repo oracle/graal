@@ -44,6 +44,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -51,6 +52,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.code.FactoryMethod;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -140,7 +142,9 @@ public class PermissionsFeature implements Feature {
     private static final Set<String> safePackages;
     static {
         safePackages = new HashSet<>();
-        safePackages.add("org.graalvm.");
+        safePackages.add("org.graalvm.polyglot.");
+        safePackages.add("org.graalvm.home.");
+        safePackages.add("jdk.graal.compiler.");
         safePackages.add("com.oracle.graalvm.");
         safePackages.add("com.oracle.svm.core.");
         safePackages.add("com.oracle.truffle.api.");
@@ -158,6 +162,7 @@ public class PermissionsFeature implements Feature {
         safePackages.add("com.oracle.truffle.sandbox.enterprise.");
         safePackages.add("com.oracle.truffle.polyglot.enterprise.");
         safePackages.add("com.oracle.truffle.object.enterprise.");
+        safePackages.add("com.oracle.svm.truffle.api.");
         safePackages.add("com.oracle.svm.truffle.isolated.");
         safePackages.add("com.oracle.svm.enterprise.truffle.");
     }
@@ -414,7 +419,7 @@ public class PermissionsFeature implements Feature {
             for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getOriginalCallees()) {
                     AnalysisMethodNode calleeNode = new AnalysisMethodNode(callee);
-                    if (callee.isInvoked() || !isSystemOrSafeClass(calleeNode)) {
+                    if (callee.isImplementationInvoked()) {
                         Set<BaseMethodNode> parents = visited.get(calleeNode);
                         String calleeName = getMethodName(callee);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
@@ -779,12 +784,21 @@ public class PermissionsFeature implements Feature {
                         return false;
                     }
                     ValueNode arg0 = args.get(0);
-                    if (!(arg0 instanceof NewInstanceNode)) {
+                    ResolvedJavaType newType = null;
+                    if (arg0 instanceof NewInstanceNode) {
+                        newType = ((NewInstanceNode) arg0).instanceClass();
+                    } else if (arg0 instanceof Invoke) {
+                        // Constructor replaced by SVM FactoryMethod
+                        AnalysisMethod targetMethod = (AnalysisMethod) ((Invoke) arg0).getTargetMethod();
+                        if (targetMethod.wrapped instanceof FactoryMethod factoryMethod) {
+                            newType = method.getUniverse().lookup(factoryMethod.getTargetConstructor().getDeclaringClass());
+                        }
+                    }
+                    if (newType == null) {
                         return false;
                     }
-                    ResolvedJavaType newType = ((NewInstanceNode) arg0).instanceClass();
                     ResolvedJavaMethod methodCalledByAccessController = findPrivilegedEntryPoint(method, trace);
-                    if (newType == null || methodCalledByAccessController == null) {
+                    if (methodCalledByAccessController == null) {
                         return false;
                     }
                     if (newType.equals(methodCalledByAccessController.getDeclaringClass())) {
@@ -796,16 +810,24 @@ public class PermissionsFeature implements Feature {
         }
 
         /**
-         * Finds an entry point to {@code PrivilegedAction} called by {@code doPrivilegedMethod}.
+         * Identifies the entry point to a {@code PrivilegedAction} invoked by
+         * {@code doPrivilegedMethod}. Iterates through the inverted call stack, starting from the
+         * current frame, up to the privileged call. Returns the first method that is not part of
+         * {@code AccessController}.
          */
         private static ResolvedJavaMethod findPrivilegedEntryPoint(ResolvedJavaMethod doPrivilegedMethod, List<BaseMethodNode> trace) {
-            ResolvedJavaMethod ep = null;
-            for (BaseMethodNode mNode : trace) {
-                AnalysisMethod m = mNode.getMethod();
-                if (doPrivilegedMethod.equals(m)) {
-                    return ep;
+            ResolvedJavaType accessController = doPrivilegedMethod.getDeclaringClass();
+            ListIterator<BaseMethodNode> it = trace.listIterator(trace.size());
+            assert doPrivilegedMethod.equals(it.previous().getMethod()) : String.format("%s must be current stack frame.", trace);
+            while (it.hasPrevious()) {
+                BaseMethodNode mNode = it.previous();
+                ResolvedJavaMethod method = mNode.getMethod();
+                /*
+                 * Ignore AccessController internal methods.
+                 */
+                if (!method.getDeclaringClass().equals(accessController)) {
+                    return method;
                 }
-                ep = m;
             }
             return null;
         }
