@@ -885,13 +885,29 @@ def _runtimedebuginfotest(native_image, args=None):
     args = [] if args is None else args
     build_dir = join(svmbuild_dir(), 'runtimedebuginfotest')
 
+    test_proj = mx.dependency('com.oracle.svm.test')
+    test_source_path = test_proj.source_dirs()[0]
+
+    test_python_source_dir = join(test_source_path, 'com', 'oracle', 'svm', 'test', 'debug', 'helper')
+    test_runtime_compilation_py = join(test_python_source_dir, 'test_runtime_compilation.py')
+    test_runtime_deopt_py = join(test_python_source_dir, 'test_runtime_deopt.py')
+
+    gdb_args = [
+        os.environ.get('GDB_BIN', 'gdb'),
+        '--nx',
+        '-q',  # do not print the introductory and copyright messages
+        '-iex', "set pagination off",  # messages from enabling logging could already cause pagination, so this must be done first
+        '-iex', "set logging redirect on",
+        '-iex', "set logging overwrite off",
+    ]
+
     # clean / create output directory
     if exists(build_dir):
         mx.rmtree(build_dir)
     mx_util.ensure_dir_exists(build_dir)
 
     # Build the native image from Java code
-    native_image([
+    runtime_compile_binary = native_image([
                      '-g', '-O0', '--no-fallback',
                      '-o', join(build_dir, 'runtimedebuginfotest'),
                      '-cp', classpath('com.oracle.svm.test'),
@@ -901,8 +917,39 @@ def _runtimedebuginfotest(native_image, args=None):
         '-H:DebugInfoSourceSearchPath=' + mx.project('com.oracle.svm.test').source_dirs()[0],
         ]) + args)
 
+    logfile = join(build_dir, 'test_runtime_compilation.log')
+    os.environ.update({'gdb_logfile': logfile})
+    gdb_command = gdb_args + [
+        '-iex', f"set logging file {logfile}",
+        '-iex', "set logging enabled on",
+        '-iex', f"set auto-load safe-path {join(build_dir, 'gdb-debughelpers.py')}",
+        '-x', test_runtime_compilation_py, runtime_compile_binary
+    ]
+    mx.log(' '.join([(f"'{c}'" if ' ' in c else c) for c in gdb_command]))
+    # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
+    status = mx.run(gdb_command, cwd=build_dir, nonZeroIsFatal=False)
+
     # Start the native image
-    mx.run([join(build_dir, 'runtimedebuginfotest')])
+    # mx.run([join(build_dir, 'runtimedebuginfotest')])
+
+    jslib = mx.add_lib_suffix(native_image(['-g', '-O0', '-J-Xmx16g', '--macro:jsvm-library']))
+    js_launcher = get_js_launcher(jslib)
+
+    testdeopt_js = join(suite.dir, 'mx.substratevm', 'testdeopt.js')
+
+    logfile = join(build_dir, 'test_runtime_deopt.log')
+    os.environ.update({'gdb_logfile': logfile})
+    gdb_command = gdb_args + [
+        '-iex', f"set logging file {logfile}",
+        '-iex', "set logging enabled on",
+        '-iex', f"set auto-load safe-path {join(build_dir, 'gdb-debughelpers.py')}",
+        '-x', test_runtime_deopt_py, '--args', js_launcher, testdeopt_js
+    ]
+    mx.log(' '.join([(f"'{c}'" if ' ' in c else c) for c in gdb_command]))
+    # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
+    status |= mx.run(gdb_command, cwd=build_dir, nonZeroIsFatal=False)
+
+    return status
 
 
 _helloworld_variants = {

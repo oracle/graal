@@ -62,6 +62,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver {
 
+    private final DebugContext debug;
     private final SubstrateDebugInfoProvider substrateDebugInfoProvider;
     private final ObjectFile objectFile;
     private final ArrayList<ObjectFile.Element> sortedObjectFileElements;
@@ -89,6 +90,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
 
     private SubstrateDebugInfoInstaller(DebugContext debugContext, SharedMethod method, CompilationResult compilation, MetaAccessProvider metaAccess, RuntimeConfiguration runtimeConfiguration,
                     Pointer code, int codeSize) {
+        debug = debugContext;
         substrateDebugInfoProvider = new SubstrateDebugInfoProvider(debugContext, method, compilation, runtimeConfiguration, metaAccess, code.rawValue());
 
         int pageSize = NumUtil.safeToInt(ImageSingletons.lookup(VirtualMemoryProvider.class).getGranularity().rawValue());
@@ -99,11 +101,11 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         debugInfoSize = objectFile.bake(sortedObjectFileElements);
 
         if (debugContext.isLogEnabled()) {
-            dumpObjectFile(debugContext);
+            dumpObjectFile();
         }
     }
 
-    private void dumpObjectFile(DebugContext debugContext) {
+    private void dumpObjectFile() {
         StringBuilder sb = new StringBuilder(substrateDebugInfoProvider.getCompilationName()).append(".debug");
         try (FileChannel dumpFile = FileChannel.open(Paths.get(sb.toString()),
                         StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING,
@@ -111,7 +113,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
             ByteBuffer buffer = dumpFile.map(FileChannel.MapMode.READ_WRITE, 0, debugInfoSize);
             objectFile.writeBuffer(sortedObjectFileElements, buffer);
         } catch (IOException e) {
-            debugContext.log("Failed to dump %s", sb);
+            debug.log("Failed to dump %s", sb);
         }
     }
 
@@ -170,8 +172,6 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void release(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
-            // VMOperation.guaranteeInProgress("SubstrateDebugInfoInstaller.Accessor.release must
-            // run in a VMOperation");
             GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
             // Handle may still be just initialized here, so it never got registered in GDB.
             if (handle.getState() == Handle.ACTIVATED) {
@@ -206,7 +206,9 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
     public InstalledCodeObserverHandle install() {
         NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
         Handle handle = GDBJITAccessor.createHandle(debugInfoData);
-        System.out.println(toString(handle));
+        try (DebugContext.Scope s = debug.scope("RuntimeCompilation")) {
+            debug.log(toString(handle));
+        }
         return handle;
     }
 
