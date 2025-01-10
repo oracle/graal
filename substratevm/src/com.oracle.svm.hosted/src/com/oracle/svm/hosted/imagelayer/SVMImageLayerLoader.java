@@ -823,8 +823,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     /**
-     * See {@link SVMImageLayerWriter#persistAnalysisParsedGraph(AnalysisMethod)} for
-     * implementation.
+     * See
+     * {@link SVMImageLayerWriter#persistAnalysisParsedGraph(AnalysisMethod, AnalysisParsedGraph)}
+     * for implementation.
      */
     @Override
     public boolean hasAnalysisParsedGraph(AnalysisMethod analysisMethod) {

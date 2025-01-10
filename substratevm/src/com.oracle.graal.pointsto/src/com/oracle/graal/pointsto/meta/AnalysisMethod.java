@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
@@ -61,7 +62,6 @@ import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -143,8 +143,6 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     private final MultiMethodKey multiMethodKey;
 
-    private AnalysisFuture<Void> parsedCallBack;
-
     /**
      * Map from a key to the corresponding implementation. All multi-method implementations for a
      * given Java method share the same map. This allows one to easily switch between different
@@ -178,6 +176,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final boolean enableReachableInCurrentLayer;
 
     private final AtomicReference<GraphCacheEntry> parsedGraphCacheState = new AtomicReference<>(GraphCacheEntry.UNPARSED);
+    private final AtomicBoolean trackedGraphPersisted = new AtomicBoolean(false);
 
     private EncodedGraph analyzedGraph;
 
@@ -551,17 +550,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         ConcurrentLightHashSet.removeElementIf(this, implementationInvokedNotificationsUpdater, ElementNotification::isNotified);
     }
 
-    public void registerParsedGraphCallback(AnalysisFuture<Void> parsingCallBack) {
-        this.parsedCallBack = parsingCallBack;
-        if (getParsedGraphCacheStateObject() instanceof AnalysisParsedGraph) {
-            notifyParsedCallback();
-        }
-    }
-
-    private void notifyParsedCallback() {
-        if (parsedCallBack != null) {
-            parsedCallBack.ensureDone();
-            parsedCallBack = null;
+    private void persistTrackedGraph(AnalysisParsedGraph graph) {
+        if (isTrackedAcrossLayers() && trackedGraphPersisted.compareAndSet(false, true)) {
+            ImageLayerWriter imageLayerWriter = getUniverse().getImageLayerWriter();
+            imageLayerWriter.persistAnalysisParsedGraph(this, graph);
         }
     }
 
@@ -696,15 +688,16 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @Override
     protected void onTrackedAcrossLayers(Object reason) {
         AnalysisError.guarantee(!getUniverse().sealed(), "Method %s was marked as tracked after the universe was sealed", this);
-        ImageLayerWriter imageLayerWriter = getUniverse().getImageLayerWriter();
-        imageLayerWriter.onTrackedAcrossLayer(this, reason);
+        getUniverse().getImageLayerWriter().onTrackedAcrossLayer(this, reason);
         declaringClass.registerAsTrackedAcrossLayers(reason);
         for (AnalysisType parameter : toParameterList()) {
             parameter.registerAsTrackedAcrossLayers(reason);
         }
         signature.getReturnType().registerAsTrackedAcrossLayers(reason);
 
-        registerParsedGraphCallback(new AnalysisFuture<>(() -> imageLayerWriter.persistAnalysisParsedGraph(this)));
+        if (getParsedGraphCacheStateObject() instanceof AnalysisParsedGraph analysisParsedGraph) {
+            persistTrackedGraph(analysisParsedGraph);
+        }
     }
 
     public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {
@@ -1254,9 +1247,13 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             boolean result = parsedGraphCacheState.compareAndSet(lockState, newEntry);
             AnalysisError.guarantee(result, "State transition failed");
 
-            notifyParsedCallback();
+            AnalysisParsedGraph analysisParsedGraph = (AnalysisParsedGraph) newEntry.get(stage);
 
-            return (AnalysisParsedGraph) newEntry.get(stage);
+            if (stage == Stage.finalStage()) {
+                persistTrackedGraph(analysisParsedGraph);
+            }
+
+            return analysisParsedGraph;
 
         } catch (Throwable ex) {
             parsedGraphCacheState.set(GraphCacheEntry.createParsingError(stage, expectedValue, ex));
