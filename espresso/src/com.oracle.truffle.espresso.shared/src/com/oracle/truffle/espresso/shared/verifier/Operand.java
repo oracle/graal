@@ -20,25 +20,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.verifier;
+package com.oracle.truffle.espresso.shared.verifier;
 
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.Invalid;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failNoClassDefFound;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failVerify;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.isType2;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.jlObject;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failNoClassDefFound;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failVerify;
+import static com.oracle.truffle.espresso.shared.verifier.VerifierError.fatal;
 
 import java.util.ArrayList;
 
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.shared.meta.ClassLoadingException;
+import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
+import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
-abstract class Operand {
-    public static final Operand[] EMPTY_ARRAY = new Operand[0];
+@SuppressWarnings({"unchecked", "rawtypes"})
+abstract class Operand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
+    private static final Operand[] EMPTY_ARRAY = new Operand[0];
+
+    public static <R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> Operand<R, C, M, F>[] emptyArray() {
+        return EMPTY_ARRAY;
+    }
 
     protected final JavaKind kind;
 
@@ -47,7 +52,7 @@ abstract class Operand {
     }
 
     final boolean isTopOperand() {
-        return this == Invalid;
+        return kind == JavaKind.Illegal;
     }
 
     final JavaKind getKind() {
@@ -55,7 +60,11 @@ abstract class Operand {
     }
 
     final int slots() {
-        return isType2(this) ? 2 : 1;
+        return isType2() ? 2 : 1;
+    }
+
+    final boolean isType2() {
+        return (kind == JavaKind.Long || kind == JavaKind.Double);
     }
 
     boolean isArrayType() {
@@ -74,23 +83,24 @@ abstract class Operand {
         return false;
     }
 
-    Operand getComponent() {
-        throw EspressoError.shouldNotReachHere("Calling getComponent of a non-array Operand");
+    Operand<R, C, M, F> getComponent() {
+        throw fatal("Calling getComponent of a non-array Operand");
     }
 
-    Operand getElemental() {
-        throw EspressoError.shouldNotReachHere("Calling getElemental of a non-array Operand");
+    Operand<R, C, M, F> getElemental() {
+        throw fatal("Calling getElemental of a non-array Operand");
     }
 
     int getDimensions() {
-        throw EspressoError.shouldNotReachHere("Calling getDimensions of a non-array Operand");
+        throw fatal("Calling getDimensions of a non-array Operand");
     }
 
     Symbol<Type> getType() {
         return null;
     }
 
-    Klass getKlass() {
+    @SuppressWarnings("unused")
+    C getKlass(MethodVerifier<R, C, M, F> methodVerifier) {
         return null;
     }
 
@@ -106,17 +116,17 @@ abstract class Operand {
         return false;
     }
 
-    abstract boolean compliesWith(Operand other);
+    abstract boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier);
 
-    boolean compliesWithInMerge(Operand other) {
-        return compliesWith(other);
+    boolean compliesWithInMerge(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        return compliesWith(other, methodVerifier);
     }
 
     // Called only after compliesWith returned false, as finding common superType is expensive.
-    abstract Operand mergeWith(Operand other);
+    abstract Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier);
 }
 
-class PrimitiveOperand extends Operand {
+class PrimitiveOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Operand<R, C, M, F> {
     PrimitiveOperand(JavaKind kind) {
         super(kind);
     }
@@ -127,12 +137,13 @@ class PrimitiveOperand extends Operand {
     }
 
     @Override
-    boolean compliesWith(Operand other) {
+    boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
         return (other.isTopOperand()) || other == this;
     }
 
     @Override
-    Operand mergeWith(Operand other) {
+    Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         return this == other ? this : null;
     }
 
@@ -141,12 +152,13 @@ class PrimitiveOperand extends Operand {
         return kind.toString();
     }
 
-    public PrimitiveOperand toStack() {
+    public PrimitiveOperand<R, C, M, F> toStack() {
         return this;
     }
 }
 
-final class ReturnAddressOperand extends PrimitiveOperand {
+final class ReturnAddressOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>>
+                extends PrimitiveOperand<R, C, M, F> {
     final ArrayList<Integer> targetBCIs = new ArrayList<>();
     final int subroutineBCI;
 
@@ -168,12 +180,12 @@ final class ReturnAddressOperand extends PrimitiveOperand {
     }
 
     @Override
-    boolean compliesWith(Operand other) {
+    boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
         if (other.isTopOperand()) {
             return true;
         }
         if (other.isReturnAddress()) {
-            ReturnAddressOperand ra = (ReturnAddressOperand) other;
+            ReturnAddressOperand<R, C, M, F> ra = (ReturnAddressOperand<R, C, M, F>) other;
             if (ra.subroutineBCI != subroutineBCI) {
                 return false;
             }
@@ -188,15 +200,16 @@ final class ReturnAddressOperand extends PrimitiveOperand {
     }
 
     @Override
-    Operand mergeWith(Operand other) {
+    Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReturnAddress()) {
             return null;
         }
-        ReturnAddressOperand otherRA = (ReturnAddressOperand) other;
+        ReturnAddressOperand<R, C, M, F> otherRA = (ReturnAddressOperand<R, C, M, F>) other;
         if (otherRA.subroutineBCI != subroutineBCI) {
             return null;
         }
-        ReturnAddressOperand ra = new ReturnAddressOperand(otherRA.targetBCIs, subroutineBCI);
+        ReturnAddressOperand<R, C, M, F> ra = new ReturnAddressOperand<>(otherRA.targetBCIs, subroutineBCI);
         for (Integer target : targetBCIs) {
             if (!ra.targetBCIs.contains(target)) {
                 ra.targetBCIs.add(target);
@@ -206,24 +219,28 @@ final class ReturnAddressOperand extends PrimitiveOperand {
     }
 }
 
-class ReferenceOperand extends Operand {
+class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Operand<R, C, M, F> {
     protected final Symbol<Type> type;
-    final Klass thisKlass;
-
+    static final int CPI_UNKNOWN = -1;
     // Load if needed.
-    protected Klass klass = null;
+    protected C klass = null;
+    final int cpi;
 
-    ReferenceOperand(Symbol<Type> type, Klass thisKlass) {
-        super(JavaKind.Object);
-        this.type = type;
-        this.thisKlass = thisKlass;
+    ReferenceOperand(Symbol<Type> type) {
+        this(type, CPI_UNKNOWN);
     }
 
-    ReferenceOperand(Klass klass, Klass thisKlass) {
+    ReferenceOperand(Symbol<Type> type, int cpi) {
         super(JavaKind.Object);
-        this.type = klass.getType();
+        this.type = type;
+        this.cpi = cpi;
+    }
+
+    ReferenceOperand(C klass) {
+        super(JavaKind.Object);
+        this.type = klass.getSymbolicType();
         this.klass = klass;
-        this.thisKlass = thisKlass;
+        this.cpi = CPI_UNKNOWN;
     }
 
     @Override
@@ -237,20 +254,21 @@ class ReferenceOperand extends Operand {
     }
 
     @Override
-    Klass getKlass() {
+    C getKlass(MethodVerifier<R, C, M, F> methodVerifier) {
         if (klass == null) {
             try {
-                if (getType() == thisKlass.getType()) {
-                    klass = thisKlass;
+                if (getType() == methodVerifier.getThisKlass().getSymbolicType()) {
+                    klass = methodVerifier.getThisKlass();
+                } else if (cpi != CPI_UNKNOWN) {
+                    klass = methodVerifier.getThisKlass().resolveClassConstantInPool(cpi);
                 } else {
-                    klass = thisKlass.getMeta().resolveSymbolOrNull(type, thisKlass.getDefiningClassLoader(), thisKlass.protectionDomain());
+                    klass = methodVerifier.runtime.lookupOrLoadType(type, methodVerifier.getThisKlass());
                 }
-            } catch (EspressoException e) {
-                // TODO(garcia) fine grain this catch
-                if (thisKlass.getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
+            } catch (ClassLoadingException e) {
+                if (e.isClassNotFoundException()) {
                     throw failNoClassDefFound(type.toString());
                 }
-                throw e;
+                throw e.getException();
             }
             if (klass == null) {
                 throw failNoClassDefFound(type.toString());
@@ -260,7 +278,7 @@ class ReferenceOperand extends Operand {
     }
 
     @Override
-    boolean compliesWith(Operand other) {
+    boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
         if (other.isReference()) {
             if (type == null || other.getType() == Type.java_lang_Object) {
                 return true;
@@ -276,38 +294,39 @@ class ReferenceOperand extends Operand {
                  * 
                  * - Only one of the two is loaded and in same CL as thisKlass.
                  */
-                Klass otherKlass = ((ReferenceOperand) other).klass;
+                C otherKlass = ((ReferenceOperand<R, C, M, F>) other).klass;
                 if (otherKlass == null || klass == null) {
-                    Klass k = klass == null ? otherKlass : klass;
-                    if (k == null || k.getDefiningClassLoader() == thisKlass.getDefiningClassLoader()) {
+                    C k = klass == null ? otherKlass : klass;
+                    if (k == null || k.hasSameDefiningClassLoader(methodVerifier.getThisKlass())) {
                         return true;
                     }
                 }
 
             }
-            Klass otherKlass = other.getKlass();
+            C otherKlass = other.getKlass(methodVerifier);
             if (otherKlass.isInterface()) {
                 /*
                  * 4.10.1.2. For assignments, interfaces are treated like Object.
                  */
                 return true;
             }
-            return otherKlass.isAssignableFrom(getKlass());
+            return otherKlass.isAssignableFrom(getKlass(methodVerifier));
         }
         return other.isTopOperand();
 
     }
 
     @Override
-    boolean compliesWithInMerge(Operand other) {
+    boolean compliesWithInMerge(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
         if (other.isUninit()) {
             return false;
         }
-        return compliesWith(other);
+        return compliesWith(other, methodVerifier);
     }
 
     @Override
-    Operand mergeWith(Operand other) {
+    Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReference()) {
             return null;
         }
@@ -315,13 +334,13 @@ class ReferenceOperand extends Operand {
             return null;
         }
         if (other.isArrayType()) {
-            return jlObject;
+            return methodVerifier.jlObject;
         }
         if (other.isNull()) {
             return this;
         }
-        Klass result = getKlass().findLeastCommonAncestor(other.getKlass());
-        return result == null ? null : new ReferenceOperand(result, thisKlass);
+        C result = getKlass(methodVerifier).findLeastCommonAncestor(other.getKlass(methodVerifier));
+        return result == null ? null : new ReferenceOperand<>(result);
     }
 
     @Override
@@ -330,12 +349,12 @@ class ReferenceOperand extends Operand {
     }
 }
 
-final class ArrayOperand extends Operand {
+final class ArrayOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Operand<R, C, M, F> {
     private final int dimensions;
-    private final Operand elemental;
-    private Operand component = null;
+    private final Operand<R, C, M, F> elemental;
+    private Operand<R, C, M, F> component = null;
 
-    ArrayOperand(Operand elemental, int dimensions) {
+    ArrayOperand(Operand<R, C, M, F> elemental, int dimensions) {
         super(JavaKind.Object);
         assert !elemental.isArrayType();
         if (dimensions > 255) {
@@ -345,19 +364,19 @@ final class ArrayOperand extends Operand {
         this.elemental = elemental;
     }
 
-    ArrayOperand(Operand elemental) {
+    ArrayOperand(Operand<R, C, M, F> elemental) {
         this(elemental, 1);
     }
 
     @Override
-    boolean compliesWith(Operand other) {
+    boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
         if (other.isArrayType()) {
             if (other.getDimensions() < getDimensions()) {
                 return other.getElemental().isReference() && (other.getElemental().getType() == Type.java_lang_Object ||
                                 other.getElemental().getType() == Type.java_lang_Cloneable ||
                                 other.getElemental().getType() == Type.java_io_Serializable);
             } else if (other.getDimensions() == getDimensions()) {
-                return elemental.compliesWith(other.getElemental());
+                return elemental.compliesWith(other.getElemental(), methodVerifier);
             }
             return false;
         }
@@ -367,7 +386,8 @@ final class ArrayOperand extends Operand {
     }
 
     @Override
-    Operand mergeWith(Operand other) {
+    Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (!other.isReference()) {
             return null;
         }
@@ -375,31 +395,48 @@ final class ArrayOperand extends Operand {
             return this;
         }
         if (!other.isArrayType()) {
-            return jlObject;
+            return methodVerifier.jlObject;
         }
-        Operand thisElemental = getElemental();
-        Operand otherElemental = other.getElemental();
+        Operand<R, C, M, F> thisElemental = getElemental();
+        Operand<R, C, M, F> otherElemental = other.getElemental();
         int otherDim = other.getDimensions();
         int thisDim = getDimensions();
         if (otherDim == thisDim) {
             if (thisElemental.isPrimitive() || otherElemental.isPrimitive()) {
-                return new ArrayOperand(jlObject, thisDim);
+                // We already know they are both different primitives, as this was called because
+                // this and other are not compatible.
+                assert !compliesWithInMerge(other, methodVerifier);
+                if (thisDim == 1) {
+                    // example: (byte[] U int[]) -> Object
+                    return methodVerifier.jlObject;
+                }
+                // example: (byte[][] U int[][]) -> Object[]
+                return new ArrayOperand<>(methodVerifier.jlObject, thisDim - 1);
             }
-            return new ArrayOperand(thisElemental.mergeWith(otherElemental), thisDim);
+            // example: (A[][] U B[][]) -> (A U B)[][]
+            return new ArrayOperand<>(thisElemental.mergeWith(otherElemental, methodVerifier), thisDim);
         }
-        Operand smallestElemental;
+        Operand<R, C, M, F> smallestElemental;
         if (thisDim < otherDim) {
             smallestElemental = thisElemental;
         } else {
             smallestElemental = otherElemental;
         }
+        int newDim = Math.min(thisDim, otherDim);
         if (smallestElemental.isPrimitive()) {
-            return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
+            if (newDim == 1) {
+                // example: (byte[] U _[][]) -> Object
+                return methodVerifier.jlObject;
+            }
+            // example: (byte[][] U _[][][]) -> Object[]
+            return new ArrayOperand<>(methodVerifier.jlObject, newDim - 1);
         }
         if (smallestElemental.getType() == Type.java_lang_Cloneable || smallestElemental.getType() == Type.java_io_Serializable) {
-            return new ArrayOperand(smallestElemental, Math.min(thisDim, otherDim));
+            // example: (Cloneable[][] U _[][][]) -> Cloneable[][]
+            return new ArrayOperand<>(smallestElemental, newDim);
         }
-        return new ArrayOperand(jlObject, Math.min(thisDim, otherDim));
+        // example: (Object[][] U _[][][]) -> Object[][]
+        return new ArrayOperand<>(methodVerifier.jlObject, newDim);
     }
 
     @Override
@@ -413,19 +450,19 @@ final class ArrayOperand extends Operand {
     }
 
     @Override
-    Operand getComponent() {
+    Operand<R, C, M, F> getComponent() {
         if (component == null) {
             if (dimensions == 1) {
                 component = elemental;
             } else {
-                component = new ArrayOperand(elemental, dimensions - 1);
+                component = new ArrayOperand<>(elemental, dimensions - 1);
             }
         }
         return component;
     }
 
     @Override
-    Operand getElemental() {
+    Operand<R, C, M, F> getElemental() {
         return elemental;
     }
 
@@ -443,21 +480,22 @@ final class ArrayOperand extends Operand {
     }
 }
 
-final class UninitReferenceOperand extends ReferenceOperand {
+final class UninitReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>>
+                extends ReferenceOperand<R, C, M, F> {
     final int newBCI;
 
-    UninitReferenceOperand(Symbol<Type> type, Klass thisKlass) {
-        super(type, thisKlass);
+    UninitReferenceOperand(Symbol<Type> type) {
+        super(type);
         this.newBCI = -1;
     }
 
-    UninitReferenceOperand(Symbol<Type> type, Klass thisKlass, int newBCI) {
-        super(type, thisKlass);
+    UninitReferenceOperand(Symbol<Type> type, int newBCI) {
+        super(type);
         this.newBCI = newBCI;
     }
 
-    UninitReferenceOperand(Klass klass, Klass thisKlass) {
-        super(klass, thisKlass);
+    UninitReferenceOperand(C klass) {
+        super(klass);
         this.newBCI = -1;
     }
 
@@ -467,26 +505,27 @@ final class UninitReferenceOperand extends ReferenceOperand {
     }
 
     @Override
-    boolean compliesWithInMerge(Operand other) {
+    boolean compliesWithInMerge(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
         if (other.isUninit()) {
-            return compliesWith(other);
+            return compliesWith(other, methodVerifier);
         }
         return other.isTopOperand();
     }
 
     @Override
-    Operand mergeWith(Operand other) {
+    Operand<R, C, M, F> mergeWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
+        assert !compliesWithInMerge(other, methodVerifier) : "mergeWith method should only be called for non-compatible operands.";
         if (other.isUninit()) {
-            return super.mergeWith(other);
+            return super.mergeWith(other, methodVerifier);
         }
         return null;
     }
 
-    ReferenceOperand init() {
+    ReferenceOperand<R, C, M, F> init() {
         if (klass == null) {
-            return new ReferenceOperand(type, thisKlass);
+            return new ReferenceOperand<>(type);
         } else {
-            return new ReferenceOperand(klass, thisKlass);
+            return new ReferenceOperand<>(klass);
         }
     }
 

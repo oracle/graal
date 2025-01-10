@@ -24,6 +24,8 @@
 package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 
 /**
  * Provides access to some VM-specific capabilities, such as throwing exceptions, or obtaining the
@@ -47,6 +49,31 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
      */
     RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
+
+    /**
+     * Performs class loading on behalf of the given accessing class.
+     * <p>
+     * Its defining class loader is the one to be used for loading.
+     * <p>
+     * Any exception that arises during class loading must be wrapped into a
+     * {@link ClassLoadingException}, correctly specifying if the original exception is this
+     * runtime's equivalent of {@link ClassNotFoundException}.
+     *
+     * @return The loaded class.
+     *
+     * @throws ClassLoadingException If any exception is thrown during loading
+     */
+    C lookupOrLoadType(Symbol<Type> type, C accessingClass) throws ClassLoadingException;
+
+    /**
+     * Obtains and returns an object containing certain VM-known classes.
+     */
+    KnownTypes<C, M, F> getKnownTypes();
+
+    /**
+     * Obtains and returns an object containing the various symbol pools for this runtime.
+     */
+    SymbolPool getSymbolPool();
 
     /**
      * Signals that an unexpected state has been reached and that the current operation must be

@@ -64,6 +64,7 @@ import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.KnownTypes;
 import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -72,7 +73,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
-public final class Meta extends ContextAccessImpl {
+public final class Meta extends ContextAccessImpl
+                implements KnownTypes<Klass, Method, Field> {
 
     private final ExceptionDispatch dispatch;
     private final StringConversion stringConversion;
@@ -2979,4 +2981,38 @@ public final class Meta extends ContextAccessImpl {
     }
 
     // endregion Type conversions
+
+    // region KnownTypes impl
+
+    @Override
+    public Klass java_lang_Object() {
+        return java_lang_Object;
+    }
+
+    @Override
+    public Klass java_lang_Throwable() {
+        return java_lang_Throwable;
+    }
+
+    @Override
+    public Klass java_lang_Class() {
+        return java_lang_Class;
+    }
+
+    @Override
+    public Klass java_lang_String() {
+        return java_lang_String;
+    }
+
+    @Override
+    public Klass java_lang_invoke_MethodType() {
+        return java_lang_invoke_MethodType;
+    }
+
+    @Override
+    public Klass java_lang_invoke_MethodHandle() {
+        return java_lang_invoke_MethodHandle;
+    }
+
+    // endregion KnownTypes impl
 }

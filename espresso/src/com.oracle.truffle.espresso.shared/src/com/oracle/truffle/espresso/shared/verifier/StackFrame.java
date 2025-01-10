@@ -20,30 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.verifier;
+package com.oracle.truffle.espresso.shared.verifier;
 
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.Double;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.Float;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.Int;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.Invalid;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.Long;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.Null;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failVerify;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.formatGuarantee;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.isType2;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.verifyGuarantee;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failVerify;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.formatGuarantee;
+import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.verifyGuarantee;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
+import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
-class StackFrame implements StackMapFrameParser.FrameState {
-    final Operand[] stack;
+class StackFrame<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>>
+                implements StackMapFrameParser.FrameState<StackFrame<R, C, M, F>, MethodVerifier<R, C, M, F>> {
+    final MethodVerifier<R, C, M, F> mv;
+    final Operand<R, C, M, F>[] stack;
     final int stackSize;
     final int top;
-    final Operand[] locals;
+    final Operand<R, C, M, F>[] locals;
     final SubroutineModificationStack subroutineModificationStack;
 
-    StackFrame(OperandStack stack, Locals locals) {
+    StackFrame(MethodVerifier<R, C, M, F> mv, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
+        this.mv = mv;
         this.stack = stack.extract();
         this.stackSize = stack.size;
         this.top = stack.top;
@@ -51,11 +50,12 @@ class StackFrame implements StackMapFrameParser.FrameState {
         this.subroutineModificationStack = locals.subRoutineModifications;
     }
 
-    StackFrame(OperandStack stack, Operand[] locals) {
-        this(stack, locals, null);
+    StackFrame(MethodVerifier<R, C, M, F> mv, OperandStack<R, C, M, F> stack, Operand<R, C, M, F>[] locals) {
+        this(mv, stack, locals, null);
     }
 
-    StackFrame(OperandStack stack, Operand[] locals, SubroutineModificationStack sms) {
+    StackFrame(MethodVerifier<R, C, M, F> mv, OperandStack<R, C, M, F> stack, Operand<R, C, M, F>[] locals, SubroutineModificationStack sms) {
+        this.mv = mv;
         this.stack = stack.extract();
         this.stackSize = stack.size;
         this.top = stack.top;
@@ -63,11 +63,12 @@ class StackFrame implements StackMapFrameParser.FrameState {
         this.subroutineModificationStack = sms;
     }
 
-    StackFrame(MethodVerifier mv) {
-        this(new OperandStack(mv.getMaxStack()), new Locals(mv));
+    StackFrame(MethodVerifier<R, C, M, F> mv) {
+        this(mv, new OperandStack<>(mv, mv.getMaxStack()), new Locals<>(mv));
     }
 
-    StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals) {
+    StackFrame(MethodVerifier<R, C, M, F> mv, Operand<R, C, M, F>[] stack, int stackSize, int top, Operand<R, C, M, F>[] locals) {
+        this.mv = mv;
         this.stack = stack;
         this.stackSize = stackSize;
         this.top = top;
@@ -75,7 +76,8 @@ class StackFrame implements StackMapFrameParser.FrameState {
         this.subroutineModificationStack = null;
     }
 
-    StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals, SubroutineModificationStack sms) {
+    StackFrame(MethodVerifier<R, C, M, F> mv, Operand<R, C, M, F>[] stack, int stackSize, int top, Operand<R, C, M, F>[] locals, SubroutineModificationStack sms) {
+        this.mv = mv;
         this.stack = stack;
         this.stackSize = stackSize;
         this.top = top;
@@ -83,16 +85,16 @@ class StackFrame implements StackMapFrameParser.FrameState {
         this.subroutineModificationStack = sms;
     }
 
-    OperandStack extractStack(int maxStack) {
-        OperandStack res = new OperandStack(maxStack);
+    OperandStack<R, C, M, F> extractStack(int maxStack) {
+        OperandStack<R, C, M, F> res = new OperandStack<>(this.mv, maxStack);
         System.arraycopy(stack, 0, res.stack, 0, top);
         res.size = stackSize;
         res.top = top;
         return res;
     }
 
-    Locals extractLocals() {
-        Locals newLocals = new Locals(locals.clone());
+    Locals<R, C, M, F> extractLocals() {
+        Locals<R, C, M, F> newLocals = new Locals<>(mv, locals.clone());
         newLocals.subRoutineModifications = subroutineModificationStack;
         return newLocals;
     }
@@ -108,73 +110,71 @@ class StackFrame implements StackMapFrameParser.FrameState {
     }
 
     @Override
-    public StackFrame sameNoStack() {
-        return new StackFrame(Operand.EMPTY_ARRAY, 0, 0, locals);
+    public StackFrame<R, C, M, F> sameNoStack() {
+        return new StackFrame<>(mv, Operand.emptyArray(), 0, 0, locals);
     }
 
     @Override
-    public StackFrame sameLocalsWith1Stack(VerificationTypeInfo vfi, StackMapFrameParser.FrameBuilder<?> builder) {
-        if (builder instanceof MethodVerifier verifier) {
-            Operand op = verifier.getOperandFromVerificationType(vfi);
-            formatGuarantee(op.slots() <= verifier.getMaxStack(), "Stack map entry requires more stack than allowed by maxStack.");
-            OperandStack newStack = new OperandStack(2);
-            newStack.push(op);
-            return new StackFrame(newStack, locals);
-        }
-        throw EspressoError.shouldNotReachHere();
+    public StackFrame<R, C, M, F> sameLocalsWith1Stack(VerificationTypeInfo vfi, MethodVerifier<R, C, M, F> verifier) {
+        Operand<R, C, M, F> op = verifier.getOperandFromVerificationType(vfi);
+        formatGuarantee(op.slots() <= verifier.getMaxStack(), "Stack map entry requires more stack than allowed by maxStack.");
+        OperandStack<R, C, M, F> newStack = new OperandStack<>(verifier, 2);
+        newStack.push(op);
+        return new StackFrame<>(mv, newStack, locals);
     }
 
     @Override
-    public StackMapFrameParser.FrameAndLocalEffect chop(int chop, int lastLocal) {
-        Operand[] newLocals = locals.clone();
+    public StackMapFrameParser.FrameAndLocalEffect<StackFrame<R, C, M, F>, MethodVerifier<R, C, M, F>> chop(int chop, int lastLocal, MethodVerifier<R, C, M, F> verifier) {
+        Operand<R, C, M, F>[] newLocals = locals.clone();
         int pos = lastLocal;
         for (int i = 0; i < chop; i++) {
             formatGuarantee(pos >= 0, "Chop frame entry chops more locals than existing.");
-            Operand op = newLocals[pos];
+            Operand<R, C, M, F> op = newLocals[pos];
             if (op.isTopOperand() && (pos > 0)) {
-                if (isType2(newLocals[pos - 1])) {
+                if (newLocals[pos - 1].isType2()) {
                     pos--;
                 }
             }
-            newLocals[pos] = Invalid;
+            newLocals[pos] = verifier.invalidOp;
             pos--;
         }
-        return new StackMapFrameParser.FrameAndLocalEffect(new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals), pos - lastLocal);
+        return new StackMapFrameParser.FrameAndLocalEffect<>(new StackFrame<>(mv, Operand.emptyArray(), 0, 0, newLocals), pos - lastLocal);
     }
 
     @Override
-    public StackMapFrameParser.FrameAndLocalEffect append(VerificationTypeInfo[] vfis, StackMapFrameParser.FrameBuilder<?> builder, int lastLocal) {
-        if (builder instanceof MethodVerifier verifier) {
-            verifyGuarantee(vfis.length > 0, "Empty Append Frame in the StackmapTable");
-            Operand[] newLocals = locals.clone();
-            int pos = lastLocal;
-            for (VerificationTypeInfo vti : vfis) {
-                Operand op = verifier.getOperandFromVerificationType(vti);
-                MethodVerifier.setLocal(newLocals, op, ++pos, "Append frame entry in stack map appends more locals than allowed.");
-                if (isType2(op)) {
-                    MethodVerifier.setLocal(newLocals, Invalid, ++pos, "Append frame entry in stack map appends more locals than allowed.");
-                }
+    public StackMapFrameParser.FrameAndLocalEffect<StackFrame<R, C, M, F>, MethodVerifier<R, C, M, F>> append(VerificationTypeInfo[] vfis, MethodVerifier<R, C, M, F> verifier, int lastLocal) {
+        verifyGuarantee(vfis.length > 0, "Empty Append Frame in the StackmapTable");
+        Operand<R, C, M, F>[] newLocals = locals.clone();
+        int pos = lastLocal;
+        for (VerificationTypeInfo vti : vfis) {
+            Operand<R, C, M, F> op = verifier.getOperandFromVerificationType(vti);
+            verifier.setLocal(newLocals, op, ++pos, "Append frame entry in stack map appends more locals than allowed.");
+            if (op.isType2()) {
+                verifier.setLocal(newLocals, verifier.invalidOp, ++pos, "Append frame entry in stack map appends more locals than allowed.");
             }
-            return new StackMapFrameParser.FrameAndLocalEffect(new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals), pos - lastLocal);
         }
-        throw EspressoError.shouldNotReachHere();
+        return new StackMapFrameParser.FrameAndLocalEffect<>(new StackFrame<>(mv, Operand.emptyArray(), 0, 0, newLocals), pos - lastLocal);
     }
 }
 
-final class OperandStack {
-    final Operand[] stack;
+final class OperandStack<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
+    final MethodVerifier<R, C, M, F> mv;
+    final Operand<R, C, M, F>[] stack;
 
     int top;
     int size;
 
-    OperandStack(int maxStack) {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    OperandStack(MethodVerifier<R, C, M, F> mv, int maxStack) {
+        this.mv = mv;
         this.stack = new Operand[maxStack];
         this.top = 0;
         this.size = 0;
     }
 
-    public Operand[] extract() {
-        Operand[] result = new Operand[top];
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public Operand<R, C, M, F>[] extract() {
+        Operand<R, C, M, F>[] result = new Operand[top];
         System.arraycopy(stack, 0, result, 0, top);
         return result;
     }
@@ -186,97 +186,97 @@ final class OperandStack {
     }
 
     void pushInt() {
-        push(Int);
+        push(mv.intOp);
     }
 
     void pushFloat() {
-        push(Float);
+        push(mv.floatOp);
     }
 
     void pushDouble() {
-        push(Double);
+        push(mv.doubleOp);
     }
 
     void pushLong() {
-        push(Long);
+        push(mv.longOp);
     }
 
-    void push(Operand kind) {
+    void push(Operand<R, C, M, F> kind) {
         procSize(kind.slots());
         if (kind.getKind().isStackInt()) {
-            stack[top++] = Int;
+            stack[top++] = mv.intOp;
         } else {
             stack[top++] = kind;
         }
     }
 
-    private Operand popAny() {
+    private Operand<R, C, M, F> popAny() {
         verifyGuarantee(top > 0, "Popping an empty stack");
-        Operand op = stack[--top];
+        Operand<R, C, M, F> op = stack[--top];
         procSize(-op.slots());
         return op;
     }
 
-    Operand popRef() {
-        Operand op = popAny();
+    Operand<R, C, M, F> popRef() {
+        Operand<R, C, M, F> op = popAny();
         verifyGuarantee(op.isReference(), "Invalid operand. Expected a reference, found: " + op);
         return op;
     }
 
-    Operand popRef(Operand kind) {
-        Operand op = popRef();
-        verifyGuarantee(op.compliesWith(kind), "Type check error: " + op + " cannot be merged into " + kind);
+    Operand<R, C, M, F> popRef(Operand<R, C, M, F> kind) {
+        Operand<R, C, M, F> op = popRef();
+        verifyGuarantee(op.compliesWith(kind, mv), "Type check error: " + op + " cannot be merged into " + kind);
         return op;
     }
 
-    public Operand popUninitRef(Operand kind) {
-        Operand op = popRef(kind);
+    public Operand<R, C, M, F> popUninitRef(Operand<R, C, M, F> kind) {
+        Operand<R, C, M, F> op = popRef(kind);
         verifyGuarantee(op.isUninit(), "Calling initialization method on already initialized reference.");
         return op;
     }
 
-    Operand popArray() {
-        Operand op = popRef();
-        verifyGuarantee(op == Null || op.isArrayType(), "Invalid operand. Expected array, found: " + op);
+    Operand<R, C, M, F> popArray() {
+        Operand<R, C, M, F> op = popRef();
+        verifyGuarantee(op == mv.nullOp || op.isArrayType(), "Invalid operand. Expected array, found: " + op);
         return op;
     }
 
     void popInt() {
-        pop(Int);
+        pop(mv.intOp);
     }
 
     void popFloat() {
-        pop(Float);
+        pop(mv.floatOp);
     }
 
     void popDouble() {
-        pop(Double);
+        pop(mv.doubleOp);
     }
 
     void popLong() {
-        pop(Long);
+        pop(mv.longOp);
     }
 
-    Operand popObjOrRA() {
-        Operand op = popAny();
+    Operand<R, C, M, F> popObjOrRA() {
+        Operand<R, C, M, F> op = popAny();
         verifyGuarantee(op.isReference() || op.isReturnAddress(), op + " on stack, required: Reference or ReturnAddress");
         return op;
     }
 
-    Operand pop(Operand k) {
-        if (!k.getKind().isStackInt() || k == Int) {
-            Operand op = popAny();
-            verifyGuarantee(op.compliesWith(k), op + " on stack, required: " + k);
+    Operand<R, C, M, F> pop(Operand<R, C, M, F> k) {
+        if (!k.getKind().isStackInt() || k == mv.intOp) {
+            Operand<R, C, M, F> op = popAny();
+            verifyGuarantee(op.compliesWith(k, mv), op + " on stack, required: " + k);
             return op;
         } else {
-            return pop(Int);
+            return pop(mv.intOp);
         }
     }
 
     void dup() {
         procSize(1);
-        Operand v = stack[top - 1];
-        verifyGuarantee(!isType2(v), "type 2 operand for dup.");
+        Operand<R, C, M, F> v = stack[top - 1];
+        verifyGuarantee(!v.isType2(), "type 2 operand for dup.");
         verifyGuarantee(!v.isTopOperand(), "dup of Top type.");
         stack[top] = v;
         top++;
@@ -284,31 +284,31 @@ final class OperandStack {
 
     void pop() {
         procSize(-1);
-        Operand v = stack[top - 1];
-        verifyGuarantee(!isType2(v), "type 2 operand for pop.");
+        Operand<R, C, M, F> v = stack[top - 1];
+        verifyGuarantee(!v.isType2(), "type 2 operand for pop.");
         verifyGuarantee(!v.isTopOperand(), "dup2x2 of Top type.");
         top--;
     }
 
     void pop2() {
         procSize(-2);
-        Operand v1 = stack[top - 1];
+        Operand<R, C, M, F> v1 = stack[top - 1];
         verifyGuarantee(!v1.isTopOperand(), "dup2x2 of Top type.");
-        if (isType2(v1)) {
+        if (v1.isType2()) {
             top--;
             return;
         }
-        Operand v2 = stack[top - 2];
+        Operand<R, C, M, F> v2 = stack[top - 2];
         verifyGuarantee(!v2.isTopOperand(), "dup2x2 of Top type.");
-        verifyGuarantee(!isType2(v2), "type 2 second operand for pop2.");
+        verifyGuarantee(!v2.isType2(), "type 2 second operand for pop2.");
         top = top - 2;
     }
 
     void dupx1() {
         procSize(1);
-        Operand v1 = stack[top - 1];
-        Operand v2 = stack[top - 2];
-        verifyGuarantee(!isType2(v1) && !isType2(v2), "type 2 operand for dupx1.");
+        Operand<R, C, M, F> v1 = stack[top - 1];
+        Operand<R, C, M, F> v2 = stack[top - 2];
+        verifyGuarantee(!v1.isType2() && !v2.isType2(), "type 2 operand for dupx1.");
         verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "dupx1 of Top type.");
         System.arraycopy(stack, top - 2, stack, top - 1, 2);
         top++;
@@ -317,17 +317,17 @@ final class OperandStack {
 
     void dupx2() {
         procSize(1);
-        Operand v1 = stack[top - 1];
-        Operand v2 = stack[top - 2];
-        verifyGuarantee(!isType2(v1), "type 2 first operand for dupx2.");
+        Operand<R, C, M, F> v1 = stack[top - 1];
+        Operand<R, C, M, F> v2 = stack[top - 2];
+        verifyGuarantee(!v1.isType2(), "type 2 first operand for dupx2.");
         verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "dupx2 of Top type.");
-        if (isType2(v2)) {
+        if (v2.isType2()) {
             System.arraycopy(stack, top - 2, stack, top - 1, 2);
             top++;
             stack[top - 3] = v1;
         } else {
-            Operand v3 = stack[top - 3];
-            verifyGuarantee(!isType2(v3), "type 2 third operand for dupx2.");
+            Operand<R, C, M, F> v3 = stack[top - 3];
+            verifyGuarantee(!v3.isType2(), "type 2 third operand for dupx2.");
             verifyGuarantee(!v3.isTopOperand(), "dupx2 of Top type.");
             System.arraycopy(stack, top - 3, stack, top - 2, 3);
             top++;
@@ -337,13 +337,13 @@ final class OperandStack {
 
     void dup2() {
         procSize(2);
-        Operand v1 = stack[top - 1];
-        if (isType2(v1)) {
+        Operand<R, C, M, F> v1 = stack[top - 1];
+        if (v1.isType2()) {
             stack[top] = v1;
             top++;
         } else {
-            Operand v2 = stack[top - 2];
-            verifyGuarantee(!isType2(v2), "type 2 second operand for dup2.");
+            Operand<R, C, M, F> v2 = stack[top - 2];
+            verifyGuarantee(!v2.isType2(), "type 2 second operand for dup2.");
             verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "dup2 of Top type.");
             System.arraycopy(stack, top - 2, stack, top, 2);
             top = top + 2;
@@ -352,18 +352,18 @@ final class OperandStack {
 
     void dup2x1() {
         procSize(2);
-        Operand v1 = stack[top - 1];
-        Operand v2 = stack[top - 2];
-        verifyGuarantee(!isType2(v2), "type 2 second operand for dup2x1");
+        Operand<R, C, M, F> v1 = stack[top - 1];
+        Operand<R, C, M, F> v2 = stack[top - 2];
+        verifyGuarantee(!v2.isType2(), "type 2 second operand for dup2x1");
         verifyGuarantee(!v2.isTopOperand() && !v1.isTopOperand(), "dup2x1 of Top type.");
-        if (isType2(v1)) {
+        if (v1.isType2()) {
             System.arraycopy(stack, top - 2, stack, top - 1, 2);
             top++;
             stack[top - 3] = v1;
             return;
         }
-        Operand v3 = stack[top - 3];
-        verifyGuarantee(!isType2(v3), "type 2 third operand for dup2x1.");
+        Operand<R, C, M, F> v3 = stack[top - 3];
+        verifyGuarantee(!v3.isType2(), "type 2 third operand for dup2x1.");
         verifyGuarantee(!v3.isTopOperand(), "dup2x1 of Top type.");
         System.arraycopy(stack, top - 3, stack, top - 1, 3);
         top = top + 2;
@@ -373,10 +373,10 @@ final class OperandStack {
 
     void dup2x2() {
         procSize(2);
-        Operand v1 = stack[top - 1];
-        Operand v2 = stack[top - 2];
-        boolean b1 = isType2(v1);
-        boolean b2 = isType2(v2);
+        Operand<R, C, M, F> v1 = stack[top - 1];
+        Operand<R, C, M, F> v2 = stack[top - 2];
+        boolean b1 = v1.isType2();
+        boolean b2 = v2.isType2();
 
         verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "dup2x2 of Top type.");
 
@@ -386,8 +386,8 @@ final class OperandStack {
             top++;
             return;
         }
-        Operand v3 = stack[top - 3];
-        boolean b3 = isType2(v3);
+        Operand<R, C, M, F> v3 = stack[top - 3];
+        boolean b3 = v3.isType2();
         verifyGuarantee(!v3.isTopOperand(), "dup2x2 of Top type.");
         if (!b1 && !b2 && b3) {
             System.arraycopy(stack, top - 3, stack, top - 1, 3);
@@ -402,9 +402,9 @@ final class OperandStack {
             top++;
             return;
         }
-        Operand v4 = stack[top - 4];
+        Operand<R, C, M, F> v4 = stack[top - 4];
         verifyGuarantee(!v4.isTopOperand(), "dup2x2 of Top type.");
-        boolean b4 = isType2(v4);
+        boolean b4 = v4.isType2();
         if (!b1 && !b2 && !b3 && !b4) {
             System.arraycopy(stack, top - 4, stack, top - 2, 4);
             stack[top - 4] = v2;
@@ -417,24 +417,24 @@ final class OperandStack {
     }
 
     void swap() {
-        Operand v1 = stack[top - 1];
-        Operand v2 = stack[top - 2];
-        verifyGuarantee(!isType2(v1) && !isType2(v2), "Type 2 operand for SWAP");
+        Operand<R, C, M, F> v1 = stack[top - 1];
+        Operand<R, C, M, F> v2 = stack[top - 2];
+        verifyGuarantee(!v1.isType2() && !v2.isType2(), "Type 2 operand for SWAP");
         verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "swap of Top type.");
         stack[top - 1] = v2;
         stack[top - 2] = v1;
     }
 
-    int mergeInto(StackFrame stackFrame) {
+    int mergeInto(StackFrame<R, C, M, F> stackFrame) {
         verifyGuarantee(size == stackFrame.stackSize, "Inconsistent stack height: " + size + " != " + stackFrame.stackSize);
         int secondIndex = 0;
         for (int index = 0; index < top; index++) {
-            Operand op1 = stack[index];
-            Operand op2 = stackFrame.stack[secondIndex++];
-            if (!op1.compliesWithInMerge(op2)) {
+            Operand<R, C, M, F> op1 = stack[index];
+            Operand<R, C, M, F> op2 = stackFrame.stack[secondIndex++];
+            if (!op1.compliesWithInMerge(op2, mv)) {
                 return index;
             }
-            if (isType2(op1) && op2.isTopOperand()) {
+            if (op1.isType2() && op2.isTopOperand()) {
                 verifyGuarantee(stackFrame.stack[secondIndex++].isTopOperand(), "Inconsistent stack Map: " + op1 + " vs. " + op2 + " and " + stackFrame.stack[secondIndex - 1]);
             }
 
@@ -442,10 +442,10 @@ final class OperandStack {
         return -1;
     }
 
-    Operand initUninit(UninitReferenceOperand toInit) {
-        Operand init = toInit.init();
+    Operand<R, C, M, F> initUninit(UninitReferenceOperand<R, C, M, F> toInit) {
+        Operand<R, C, M, F> init = toInit.init();
         for (int i = 0; i < top; i++) {
-            if (stack[i].isUninit() && ((UninitReferenceOperand) stack[i]).newBCI == toInit.newBCI) {
+            if (stack[i].isUninit() && ((UninitReferenceOperand<R, C, M, F>) stack[i]).newBCI == toInit.newBCI) {
                 stack[i] = init;
             }
         }
@@ -453,110 +453,116 @@ final class OperandStack {
     }
 }
 
-final class Locals {
-    Operand[] registers;
+final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
+    final MethodVerifier<R, C, M, F> mv;
+    Operand<R, C, M, F>[] registers;
 
     // Created an inherited in the verifier.
     // Will stay null in most cases.
     SubroutineModificationStack subRoutineModifications;
 
-    Locals(MethodVerifier mv) {
-        Operand[] parsedSig = mv.getOperandSig(mv.getSig());
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    Locals(MethodVerifier<R, C, M, F> mv) {
+        this.mv = mv;
+        Operand<R, C, M, F>[] parsedSig = mv.getOperandSig(mv.getSig());
         int sigSize = mv.isStatic() ? 0 : 1;
         for (int i = 0; i < parsedSig.length - 1; i++) {
-            Operand op = parsedSig[i];
-            sigSize += isType2(op) ? 2 : 1;
+            Operand<R, C, M, F> op = parsedSig[i];
+            sigSize += op.isType2() ? 2 : 1;
         }
         formatGuarantee(sigSize <= mv.getMaxLocals(), "Too many method arguments for the number of locals !");
         this.registers = new Operand[mv.getMaxLocals()];
         int index = 0;
         if (!mv.isStatic()) {
             if (Name._init_.equals(mv.getMethodName())) {
-                registers[index++] = new UninitReferenceOperand(mv.getThisKlass(), mv.getThisKlass());
+                registers[index++] = new UninitReferenceOperand<>(mv.getThisKlass());
             } else {
-                registers[index++] = new ReferenceOperand(mv.getThisKlass(), mv.getThisKlass());
+                registers[index++] = new ReferenceOperand<>(mv.getThisKlass());
             }
         }
         for (int i = 0; i < parsedSig.length - 1; i++) {
-            Operand op = parsedSig[i];
+            Operand<R, C, M, F> op = parsedSig[i];
             if (op.getKind().isStackInt()) {
-                registers[index++] = Int;
+                registers[index++] = mv.intOp;
             } else {
                 registers[index++] = op;
             }
-            if (isType2(op)) {
-                registers[index++] = Invalid;
+            if (op.isType2()) {
+                registers[index++] = mv.invalidOp;
             }
         }
         for (; index < mv.getMaxLocals(); index++) {
-            registers[index] = Invalid;
+            registers[index] = mv.invalidOp;
         }
     }
 
-    Locals(Operand[] registers) {
+    Locals(MethodVerifier<R, C, M, F> mv, Operand<R, C, M, F>[] registers) {
+        this.mv = mv;
         this.registers = registers;
     }
 
-    Operand[] extract() {
+    Operand<R, C, M, F>[] extract() {
         return registers.clone();
     }
 
-    Operand load(int index, Operand expected) {
-        Operand op = registers[index];
-        verifyGuarantee(op.compliesWith(expected), "Incompatible register type. Expected: " + expected + ", found: " + op);
-        if (isType2(expected)) {
+    Operand<R, C, M, F> load(int index, Operand<R, C, M, F> expected) {
+        Operand<R, C, M, F> op = registers[index];
+        verifyGuarantee(op.compliesWith(expected, mv), "Incompatible register type. Expected: " + expected + ", found: " + op);
+        if (expected.isType2()) {
             verifyGuarantee(registers[index + 1].isTopOperand(), "Loading corrupted long primitive from locals!");
         }
         return op;
     }
 
-    Operand loadRef(int index) {
-        Operand op = registers[index];
+    Operand<R, C, M, F> loadRef(int index) {
+        Operand<R, C, M, F> op = registers[index];
         verifyGuarantee(op.isReference(), "Incompatible register type. Expected a reference, found: " + op);
         return op;
     }
 
-    ReturnAddressOperand loadReturnAddress(int index) {
-        Operand op = registers[index];
+    ReturnAddressOperand<R, C, M, F> loadReturnAddress(int index) {
+        Operand<R, C, M, F> op = registers[index];
         verifyGuarantee(op.isReturnAddress(), "Incompatible register type. Expected a ReturnAddress, found: " + op);
-        return (ReturnAddressOperand) op;
+        return (ReturnAddressOperand<R, C, M, F>) op;
     }
 
-    void store(int index, Operand op) {
+    void store(int index, Operand<R, C, M, F> op) {
         boolean subRoutine = subRoutineModifications != null;
         registers[index] = op;
         if (subRoutine) {
             subRoutineModifications.subRoutineModifications[index] = true;
         }
-        if (index >= 1 && isType2(registers[index - 1])) {
-            registers[index - 1] = Invalid;
-            if (subRoutine) {
-                subRoutineModifications.subRoutineModifications[index - 1] = true;
+        if (index >= 1) {
+            if (registers[index - 1].isType2()) {
+                registers[index - 1] = mv.invalidOp;
+                if (subRoutine) {
+                    subRoutineModifications.subRoutineModifications[index - 1] = true;
+                }
             }
         }
-        if (isType2(op)) {
-            registers[index + 1] = Invalid;
+        if (op.isType2()) {
+            registers[index + 1] = mv.invalidOp;
             if (subRoutine) {
                 subRoutineModifications.subRoutineModifications[index + 1] = true;
             }
         }
     }
 
-    int mergeInto(StackFrame frame) {
+    int mergeInto(StackFrame<R, C, M, F> frame) {
         assert registers.length == frame.locals.length;
-        Operand[] frameLocals = frame.locals;
+        Operand<R, C, M, F>[] frameLocals = frame.locals;
 
         for (int i = 0; i < registers.length; i++) {
-            if (!registers[i].compliesWithInMerge(frameLocals[i])) {
+            if (!registers[i].compliesWithInMerge(frameLocals[i], mv)) {
                 return i;
             }
         }
         return -1;
     }
 
-    void initUninit(UninitReferenceOperand toInit, Operand stackOp) {
+    void initUninit(UninitReferenceOperand<R, C, M, F> toInit, Operand<R, C, M, F> stackOp) {
         for (int i = 0; i < registers.length; i++) {
-            if ((registers[i].isUninit() && ((UninitReferenceOperand) registers[i]).newBCI == toInit.newBCI)) {
+            if ((registers[i].isUninit() && ((UninitReferenceOperand<R, C, M, F>) registers[i]).newBCI == toInit.newBCI)) {
                 registers[i] = stackOp;
             }
         }

@@ -253,14 +253,15 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
-import com.oracle.truffle.espresso.verifier.StackMapFrameParser;
-import com.oracle.truffle.espresso.verifier.VerificationTypeInfo;
+import com.oracle.truffle.espresso.shared.verifier.StackMapFrameParser;
+import com.oracle.truffle.espresso.shared.verifier.VerificationException;
+import com.oracle.truffle.espresso.shared.verifier.VerificationTypeInfo;
 
 /**
  * Statically analyses bytecodes to produce a {@link EspressoFrameDescriptor frame description} for
  * the given BCI.
  */
-public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Builder> {
+public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Builder, FrameAnalysis> {
     private final EspressoLanguage lang;
     private final Method.MethodVersion m;
     private final Function<Symbol<Type>, Klass> klassResolver;
@@ -413,7 +414,11 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
         withStackMaps = true;
         // localPos overshoots by 1
         int lastLocal = receiverShift + localPos - 1;
-        StackMapFrameParser.parse(this, stackMapFrame, frame, lastLocal);
+        try {
+            StackMapFrameParser.parse(this, stackMapFrame, frame, lastLocal);
+        } catch (VerificationException e) {
+            throw EspressoError.shouldNotReachHere("Class should have been verified!");
+        }
     }
 
     private void buildStates(int startBci) {
@@ -940,7 +945,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
     }
 
     @Override
-    public StackMapFrameParser.FrameAndLocalEffect newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal) {
+    public StackMapFrameParser.FrameAndLocalEffect<Builder, FrameAnalysis> newFullFrame(VerificationTypeInfo[] stack, VerificationTypeInfo[] locals, int lastLocal) {
         Builder fullFrame = new Builder(m.getMaxLocals(), m.getMaxStackSize());
         for (VerificationTypeInfo vti : stack) {
             FrameType k = EspressoFrameDescriptor.fromTypeInfo(vti, this);
@@ -956,7 +961,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
             }
             pos++;
         }
-        return new StackMapFrameParser.FrameAndLocalEffect(fullFrame,
+        return new StackMapFrameParser.FrameAndLocalEffect<>(fullFrame,
                         // pos overshoots the actual last local position by one.
                         (pos - 1) - lastLocal);
     }
