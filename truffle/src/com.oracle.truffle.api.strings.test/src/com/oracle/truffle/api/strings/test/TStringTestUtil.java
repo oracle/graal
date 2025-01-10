@@ -212,7 +212,7 @@ public final class TStringTestUtil {
         assert 1 < nBytes && nBytes < 5 : nBytes;
         assert index + nBytes <= lengthA;
         int j = i + 1;
-        // Checkstyle: stop
+        // Checkstyle: stop FallThrough
         switch (nBytes) {
             case 4:
                 assert isUTF8ContinuationByte(arrayA, j);
@@ -224,7 +224,7 @@ public final class TStringTestUtil {
                 assert isUTF8ContinuationByte(arrayA, j);
                 codepoint = codepoint << 6 | (readS0(arrayA, j) & 0x3f);
         }
-        // Checkstyle: resume
+        // Checkstyle: resume FallThrough
         return codepoint;
     }
 
