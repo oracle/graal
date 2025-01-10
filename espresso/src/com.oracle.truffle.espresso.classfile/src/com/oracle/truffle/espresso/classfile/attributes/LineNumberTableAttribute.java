@@ -128,7 +128,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
         }
     }
 
-    private class ListWrapper extends AbstractList<Entry> {
+    private final class ListWrapper extends AbstractList<Entry> {
         @Override
         public Entry get(int index) {
             if (index >= 0 && index < size()) {

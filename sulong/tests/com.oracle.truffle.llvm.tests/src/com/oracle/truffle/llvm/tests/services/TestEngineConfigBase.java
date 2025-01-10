@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 
 public abstract class TestEngineConfigBase implements TestEngineConfig {
 
-    private static class Instance {
+    private static final class Instance {
         private static final TestEngineConfig INSTANCE = getInstance();
 
         private static TestEngineConfig getInstance() {

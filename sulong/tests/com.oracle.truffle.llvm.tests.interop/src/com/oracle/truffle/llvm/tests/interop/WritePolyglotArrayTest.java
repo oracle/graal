@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -202,7 +202,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         return c;
     }
 
-    private static class WriteI8 {
+    private static final class WriteI8 {
 
         /**
          * Write an i8 to an untyped polyglot array without cast.
@@ -288,7 +288,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         }
     }
 
-    private static class WriteI16 {
+    private static final class WriteI16 {
 
         /**
          * Write an i16 to an untyped polyglot array without cast.
@@ -378,7 +378,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         }
     }
 
-    private static class WriteI32 {
+    private static final class WriteI32 {
 
         /**
          * Write an i32 to an untyped polyglot array without cast.
@@ -485,7 +485,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         }
     }
 
-    private static class WriteI64 {
+    private static final class WriteI64 {
 
         /**
          * Write an i64 to an untyped polyglot array without cast.
@@ -596,7 +596,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         }
     }
 
-    private static class WriteFloat {
+    private static final class WriteFloat {
 
         /**
          * Write a float to an untyped polyglot array without cast.
@@ -713,7 +713,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         }
     }
 
-    private static class WriteDouble {
+    private static final class WriteDouble {
 
         /**
          * Write a double to an untyped polyglot array without cast.
@@ -829,7 +829,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
         }
     }
 
-    private static class WritePointer {
+    private static final class WritePointer {
 
         /**
          * Write a pointer to an untyped polyglot array without cast.

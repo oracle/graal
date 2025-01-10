@@ -486,7 +486,7 @@ suite = {
         "jdk.unsupported", # sun.misc.Signal
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
-      "checkstyleVersion" : "10.7.0",
+      "checkstyleVersion" : "10.21.0",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "17+",
       "spotbugsIgnoresGenerated" : True,

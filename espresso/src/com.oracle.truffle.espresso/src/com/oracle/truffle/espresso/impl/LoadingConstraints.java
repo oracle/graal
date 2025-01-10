@@ -413,7 +413,7 @@ final class LoadingConstraints extends ContextAccessImpl {
         return klass != NULL_KLASS_ID;
     }
 
-    private static class PurgeInfo {
+    private static final class PurgeInfo {
         int reclaimedSlots = 0;
         int reclaimedConstraints = 0;
         int emptyBuckets = 0;

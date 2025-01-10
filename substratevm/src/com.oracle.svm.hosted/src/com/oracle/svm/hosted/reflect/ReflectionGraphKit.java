@@ -291,7 +291,7 @@ public class ReflectionGraphKit extends HostedGraphKit {
         if (fromStackKind == toStackKind) {
             return unboxedValue;
         }
-        // Checkstyle: stop
+        // Checkstyle: stop FallThrough
         switch (fromStackKind) {
             case Int:
                 switch (toStackKind) {
@@ -323,6 +323,6 @@ public class ReflectionGraphKit extends HostedGraphKit {
             default:
                 throw VMError.shouldNotReachHereUnexpectedInput(fromStackKind); // ExcludeFromJacocoGeneratedReport
         }
-        // Checkstyle: resume
+        // Checkstyle: resume FallThrough
     }
 }
