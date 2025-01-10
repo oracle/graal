@@ -65,7 +65,6 @@ import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
-import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.debug.SharedDebugInfoProvider;
@@ -346,15 +345,6 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     protected long getCodeOffset(SharedMethod method) {
         assert method instanceof HostedMethod;
         return ((HostedMethod) method).getCodeAddressOffset();
-    }
-
-    @Override
-    public MethodEntry lookupMethodEntry(SharedMethod method) {
-        SharedMethod targetMethod = method;
-        if (targetMethod instanceof HostedMethod hostedMethod && !hostedMethod.isOriginalMethod()) {
-            targetMethod = hostedMethod.getMultiMethod(MultiMethod.ORIGINAL_METHOD);
-        }
-        return super.lookupMethodEntry(targetMethod);
     }
 
     @Override
