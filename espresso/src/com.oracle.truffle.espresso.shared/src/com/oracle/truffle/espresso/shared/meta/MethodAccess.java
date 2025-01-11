@@ -23,8 +23,11 @@
 
 package com.oracle.truffle.espresso.shared.meta;
 
+import com.oracle.truffle.espresso.classfile.ExceptionHandler;
+import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 
 /**
  * Represents a {@link java.lang.reflect.Method}, and provides access to various runtime metadata.
@@ -38,6 +41,20 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
      * @return The symbolic signature of this method.
      */
     Symbol<Signature> getSymbolicSignature();
+
+    /**
+     * Obtains the parsed signature for this method.
+     * <p>
+     * A default implementation is provided, but it is encouraged to override this method if the
+     * representation of methods allows for a simpler computation (for example, if the method caches
+     * its parsed signature).
+     *
+     * @param symbolPool The symbol pool from which this method draws its symbols.
+     * @return The parsed signature of this method.
+     */
+    default Symbol<Type>[] getParsedSymbolicSignature(SymbolPool symbolPool) {
+        return symbolPool.getSignatures().parsed(getSymbolicSignature());
+    }
 
     /**
      * @return {@code true} if this method represents an instance initialization method (its
@@ -57,4 +74,14 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
      * which should skip loading constraints are the polymorphic signature methods.
      */
     boolean shouldSkipLoadingConstraints();
+
+    /**
+     * The {@link CodeAttribute} associated with this method.
+     */
+    CodeAttribute getCodeAttribute();
+
+    /**
+     * The {@link ExceptionHandler exception handlers} associated with this method.
+     */
+    ExceptionHandler[] getExceptionHandlers();
 }

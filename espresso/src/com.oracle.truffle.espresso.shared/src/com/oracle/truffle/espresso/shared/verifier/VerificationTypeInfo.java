@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.verifier;
+package com.oracle.truffle.espresso.shared.verifier;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Bogus;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Double;
@@ -32,15 +32,13 @@ import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Long;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Null;
 import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
+import static com.oracle.truffle.espresso.shared.verifier.VerifierError.fatal;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 
 public abstract class VerificationTypeInfo {
 
@@ -50,14 +48,14 @@ public abstract class VerificationTypeInfo {
     public abstract int getTag();
 
     public int getNewOffset() {
-        throw EspressoError.shouldNotReachHere("Asking for new offset of non Uninitialized variable verification_type_info");
+        throw fatal("Asking for new offset of non Uninitialized variable verification_type_info");
     }
 
     public int getConstantPoolOffset() {
-        throw EspressoError.shouldNotReachHere("Asking for CPI of non reference verification_type_info");
+        throw fatal("Asking for CPI of non reference verification_type_info");
     }
 
-    public String toString(Klass klass) {
+    public String toString(ConstantPool pool) {
         // Note: JSR/RET is mutually exclusive with stack maps.
         switch (getTag()) {
             case ITEM_Bogus:
@@ -73,11 +71,20 @@ public abstract class VerificationTypeInfo {
             case ITEM_Null:
                 return "null";
             default:
-                return fromCP(klass);
+                return fromCP(pool);
         }
     }
 
-    public abstract Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs);
+    /**
+     * Returns the type of this verification type info object. If called on a VFI without a type
+     * ({@code null}, {@code illegal} or {@code uninitializedThis}), this method will throw a
+     * {@link VerifierError}.
+     */
+    public abstract Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs);
+
+    public final boolean hasType() {
+        return !isNull() && !isIllegal() && !isUninitializedThis();
+    }
 
     public boolean isNull() {
         return false;
@@ -87,8 +94,12 @@ public abstract class VerificationTypeInfo {
         return false;
     }
 
-    @SuppressWarnings("unused")
-    protected String fromCP(Klass klass) {
+    public boolean isUninitializedThis() {
+        return false;
+    }
+
+    @SuppressWarnings("unused") // For debug purposes
+    protected String fromCP(ConstantPool pool) {
         return "";
     }
 }
@@ -104,6 +115,9 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
     private final int tag;
 
     private PrimitiveTypeInfo(int tag) {
+        if (tag < ITEM_Bogus || tag > ITEM_Null) {
+            fatal("Not a primitive verification type info tag: " + tag);
+        }
         this.tag = tag;
     }
 
@@ -127,12 +141,12 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
             case ITEM_Null:
                 return Null;
             default:
-                throw EspressoError.shouldNotReachHere();
+                throw fatal("Unrecognized VerificationTypeInfo tag: " + tag);
         }
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
+    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
         switch (tag) {
             case ITEM_Integer:
                 return Type._int;
@@ -145,7 +159,7 @@ final class PrimitiveTypeInfo extends VerificationTypeInfo {
             case ITEM_Null: // fall through
             case ITEM_Bogus: // fall through
             default:
-                throw EspressoError.shouldNotReachHere();
+                throw fatal("'getType' was called Null or Invalid type info.");
         }
 
     }
@@ -177,13 +191,18 @@ final class UninitializedThis extends VerificationTypeInfo {
     }
 
     @Override
-    protected String fromCP(Klass klass) {
+    protected String fromCP(ConstantPool pool) {
         return "newThis";
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
-        return thisKlass.getType();
+    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
+        throw fatal("newThis.getType() called.");
+    }
+
+    @Override
+    public boolean isUninitializedThis() {
+        return true;
     }
 }
 
@@ -205,13 +224,12 @@ final class UninitializedVariable extends VerificationTypeInfo {
     }
 
     @Override
-    protected String fromCP(Klass klass) {
-        return "new " + klass.getConstantPool().classAt(newOffset).getName(klass.getConstantPool());
+    protected String fromCP(ConstantPool pool) {
+        return "new " + pool.classAt(newOffset).getName(pool);
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
-        Types types = thisKlass.getMeta().getTypes();
+    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
         return types.fromName(pool.classAt(bs.readCPI(getNewOffset())).getName(pool));
     }
 }
@@ -235,13 +253,12 @@ final class ReferenceVariable extends VerificationTypeInfo {
     }
 
     @Override
-    protected String fromCP(Klass klass) {
-        return "" + klass.getConstantPool().classAt(constantPoolOffset).getName(klass.getConstantPool());
+    protected String fromCP(ConstantPool pool) {
+        return "" + pool.classAt(constantPoolOffset).getName(pool);
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool, ObjectKlass thisKlass, BytecodeStream bs) {
-        Types types = thisKlass.getMeta().getTypes();
+    public Symbol<Type> getType(ConstantPool pool, Types types, BytecodeStream bs) {
         return types.fromName(pool.classAt(getConstantPoolOffset()).getName(pool));
     }
 }

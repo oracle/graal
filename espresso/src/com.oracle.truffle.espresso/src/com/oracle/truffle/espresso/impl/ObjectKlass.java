@@ -93,9 +93,9 @@ import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.DetectedChange;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoVerifier;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -717,7 +717,7 @@ public final class ObjectKlass extends Klass {
 
     private void verifyImpl() {
         CompilerAsserts.neverPartOfCompilation();
-        if (MethodVerifier.needsVerify(getLanguage(), getDefiningClassLoader())) {
+        if (EspressoVerifier.needsVerify(getLanguage(), getDefiningClassLoader())) {
             Meta meta = getMeta();
             if (getSuperKlass() != null && getSuperKlass().isFinalFlagSet()) {
                 throw meta.throwException(meta.java_lang_VerifyError);
@@ -743,21 +743,9 @@ public final class ObjectKlass extends Klass {
                 return;
             }
             for (Method m : getDeclaredMethods()) {
-                try {
-                    MethodVerifier.verify(m);
-                    if (m.getCodeAttribute() != null && getLanguage().isEagerFrameAnalysisEnabled()) {
-                        eagerFrameAnalysis(m);
-                    }
-                } catch (MethodVerifier.VerifierError e) {
-                    String message = String.format("Verification for class `%s` failed for method `%s` with message `%s`", getExternalName(), m.getNameAsString(), e.getMessage());
-                    switch (e.kind()) {
-                        case Verify:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
-                        case ClassFormat:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
-                        case NoClassDefFound:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
-                    }
+                EspressoVerifier.verify(getContext(), m);
+                if (m.getCodeAttribute() != null && getLanguage().isEagerFrameAnalysisEnabled()) {
+                    eagerFrameAnalysis(m);
                 }
             }
         }
