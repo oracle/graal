@@ -1186,6 +1186,7 @@ mx_benchmark.add_bm_suite(SpecJbb2015BenchmarkSuite())
 
 _baristaConfig = {
     "benchmarks": {
+        "vanilla-hello-world": {},
         "micronaut-hello-world": {},
         "micronaut-shopcart": {},
         "micronaut-similarity": {},
@@ -1194,6 +1195,10 @@ _baristaConfig = {
         "quarkus-tika": {},
         "spring-hello-world": {},
         "spring-petclinic": {},
+        "helidon-hello-world": {},
+        "vertx-hello-world": {},
+        "ktor-hello-world": {},
+        "play-scala-hello-world": {},
     },
     "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 99.9, 99.99, 99.999, 100.0],
     "rss_percentiles": [100, 99, 98, 97, 96, 95, 90, 75, 50, 25],
