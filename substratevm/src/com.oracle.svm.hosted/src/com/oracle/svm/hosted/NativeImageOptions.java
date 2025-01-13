@@ -190,7 +190,7 @@ public class NativeImageOptions {
      */
     private static final String PARALLELISM_OPTION_NAME = "parallelism";
     @APIOption(name = PARALLELISM_OPTION_NAME)//
-    @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
+    @Option(help = "The maximum number of threads the build process is allowed to use.")//
     public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), 32)), key -> {
         int numberOfThreads = key.getValue();
         if (numberOfThreads < 1) {
