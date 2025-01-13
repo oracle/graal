@@ -107,7 +107,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.util.json.JsonWriter;
 
 public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
-    private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
     private static final int CHARACTERS_PER_LINE;
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
@@ -169,7 +168,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
     }
 
     static {
-        CHARACTERS_PER_LINE = IS_CI ? ProgressReporterCHelper.MAX_CHARACTERS_PER_LINE : ProgressReporterCHelper.getTerminalWindowColumnsClamped();
+        CHARACTERS_PER_LINE = SubstrateUtil.isNonInteractiveTerminal() ? ProgressReporterCHelper.MAX_CHARACTERS_PER_LINE : ProgressReporterCHelper.getTerminalWindowColumnsClamped();
         HEADLINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "=");
         LINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "-");
     }

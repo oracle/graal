@@ -128,7 +128,7 @@ class MemoryUtil {
 
         String memoryUsageReason = "unknown";
         final boolean isDedicatedMemoryUsage;
-        if (SubstrateUtil.isCISet()) {
+        if (SubstrateUtil.isCISetToTrue()) {
             isDedicatedMemoryUsage = true;
             memoryUsageReason = "$CI set to 'true'";
         } else if (isContainerized()) {

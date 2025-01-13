@@ -82,17 +82,17 @@ public class SubstrateUtil {
 
     public static String getArchitectureName() {
         String arch = System.getProperty("os.arch");
-        switch (arch) {
-            case "x86_64":
-                arch = "amd64";
-                break;
-            case "arm64":
-                arch = "aarch64";
-                break;
-        }
-        return arch;
+        return switch (arch) {
+            case "x86_64" -> "amd64";
+            case "arm64" -> "aarch64";
+            default -> arch;
+        };
     }
 
+    /*
+     * [GR-55515]: Accessing isTerminal() reflectively only for 21 JDK compatibility. After dropping
+     * JDK 21, use it directly.
+     */
     private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");
 
     private static boolean isTTY() {
@@ -111,12 +111,12 @@ public class SubstrateUtil {
         }
     }
 
-    public static boolean isRunningInCI() {
-        return !isTTY() || isCISet();
+    public static boolean isNonInteractiveTerminal() {
+        return isCISetToTrue() || !isTTY();
     }
 
-    public static boolean isCISet() {
-        return "true".equals(System.getenv("CI"));
+    public static boolean isCISetToTrue() {
+        return Boolean.parseBoolean(System.getenv("CI"));
     }
 
     /**
