@@ -131,7 +131,7 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
             doPrivilegedCall();
             doBehindBoundaryPrivilegedCall();
             doInterrupt();
-            doPolyMorphicCallToImplInJavaStdLib();
+            doPolymorphicCall();
         }
 
         @SuppressWarnings("deprecation" /* JEP-411 */)
@@ -153,7 +153,7 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
         }
 
         @TruffleBoundary
-        void doPolyMorphicCallToImplInJavaStdLib() {
+        void doPolymorphicCall() {
             try {
                 InputStream in = url.openStream();
                 in.close();

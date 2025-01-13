@@ -733,10 +733,10 @@ public class PermissionsFeature implements Feature {
                     if (threadInterrupt.getMethod().equals(invoke.callTarget().targetMethod())) {
                         boolean vote = false;
                         ValueNode node = invoke.getReceiver();
-                        if (node instanceof PiNode) {
-                            node = ((PiNode) node).getOriginalNode();
-                            if (node instanceof Invoke) {
-                                boolean isCurrentThread = threadCurrentThread.equals(((Invoke) node).callTarget().targetMethod());
+                        if (node instanceof PiNode piNode) {
+                            node = piNode.getOriginalNode();
+                            if (node instanceof Invoke invokeNode) {
+                                boolean isCurrentThread = threadCurrentThread.equals(invokeNode.callTarget().targetMethod());
                                 vote = res == null ? isCurrentThread : (res && isCurrentThread);
                             }
                         }
@@ -785,11 +785,11 @@ public class PermissionsFeature implements Feature {
                     }
                     ValueNode arg0 = args.get(0);
                     ResolvedJavaType newType = null;
-                    if (arg0 instanceof NewInstanceNode) {
-                        newType = ((NewInstanceNode) arg0).instanceClass();
-                    } else if (arg0 instanceof Invoke) {
+                    if (arg0 instanceof NewInstanceNode newInstanceNode) {
+                        newType = newInstanceNode.instanceClass();
+                    } else if (arg0 instanceof Invoke invokeNode) {
                         // Constructor replaced by SVM FactoryMethod
-                        AnalysisMethod targetMethod = (AnalysisMethod) ((Invoke) arg0).getTargetMethod();
+                        AnalysisMethod targetMethod = (AnalysisMethod) invokeNode.getTargetMethod();
                         if (targetMethod.wrapped instanceof FactoryMethod factoryMethod) {
                             newType = method.getUniverse().lookup(factoryMethod.getTargetConstructor().getDeclaringClass());
                         }
@@ -940,10 +940,10 @@ public class PermissionsFeature implements Feature {
                     NodeInputList<ValueNode> args = invoke.callTarget().arguments();
                     ValueNode arg0 = args.get(0);
                     boolean isTruffleThread = false;
-                    if (arg0 instanceof PiNode) {
-                        arg0 = ((PiNode) arg0).getOriginalNode();
-                        if (arg0 instanceof Invoke) {
-                            ResolvedJavaMethod target = ((Invoke) arg0).callTarget().targetMethod();
+                    if (arg0 instanceof PiNode piNode) {
+                        arg0 = piNode.getOriginalNode();
+                        if (arg0 instanceof Invoke invokeNode) {
+                            ResolvedJavaMethod target = invokeNode.callTarget().targetMethod();
                             isTruffleThread = envCreateThread.contains(target) || envCreateSystemThread.contains(target);
                         }
                     }
