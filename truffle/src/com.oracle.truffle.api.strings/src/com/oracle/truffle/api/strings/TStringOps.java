@@ -48,6 +48,7 @@ import java.lang.ref.Reference;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
@@ -1117,20 +1118,26 @@ final class TStringOps {
             if (assumeValid && !Encodings.isUTF8ContinuationByte(readS0(array, offset, length, 0)) && (isAtEnd || !Encodings.isUTF8ContinuationByte(readS0(array, offset, length + 1, length)))) {
                 return runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, true);
             } else {
-                long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
-                if (brokenProfile.profile(location, TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs)))) {
-                    int codePointLength = 0;
-                    for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, DecodingErrorHandler.DEFAULT)) {
-                        codePointLength++;
-                        TStringConstants.truffleSafePointPoll(location, codePointLength);
-                    }
-                    return StringAttributes.create(codePointLength, StringAttributes.getCodeRange(attrs));
-                }
-                return attrs;
+                return calcStringAttributesUTF8Invalid(location, array, offset, length, brokenProfile, stubArray, stubOffset, isNative);
             }
         } finally {
             Reference.reachabilityFence(array);
         }
+    }
+
+    @InliningCutoff
+    private static long calcStringAttributesUTF8Invalid(Node location, Object array, int offset, int length, InlinedConditionProfile brokenProfile,
+                    byte[] stubArray, long stubOffset, boolean isNative) {
+        long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
+        if (brokenProfile.profile(location, TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs)))) {
+            int codePointLength = 0;
+            for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i, DecodingErrorHandler.DEFAULT)) {
+                codePointLength++;
+                TStringConstants.truffleSafePointPoll(location, codePointLength);
+            }
+            return StringAttributes.create(codePointLength, StringAttributes.getCodeRange(attrs));
+        }
+        return attrs;
     }
 
     static long calcStringAttributesUTF16C(Node location, char[] array, int offset, int length) {

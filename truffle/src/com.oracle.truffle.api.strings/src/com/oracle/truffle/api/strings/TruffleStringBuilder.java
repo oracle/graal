@@ -52,7 +52,9 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUnsupportedEncoding
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -573,6 +575,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             }
         }
 
+        @InliningCutoff
         @Specialization
         static void generic(Node node, TruffleStringBuilderGeneric sb, int codepoint, int repeat, @SuppressWarnings("unused") boolean allowUTF16Surrogates,
                         @Cached @Exclusive InlinedConditionProfile supportedProfile,
@@ -620,6 +623,9 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                 sb.updateCodeRange(TSCodeRange.getValidMultiByte());
             } else {
                 assert isUnsupportedEncoding(sb.encoding);
+                if (!JCodings.JCODINGS_ENABLED) {
+                    throw CompilerDirectives.shouldNotReachHere();
+                }
                 JCodings jcodings = JCodings.getInstance();
                 if (Integer.compareUnsigned(codepoint, 0x10ffff) > 0) {
                     throw InternalErrors.invalidCodePoint(codepoint);
@@ -758,6 +764,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             sb.length += len;
         }
 
+        @InliningCutoff
         @Specialization
         void doAppend(TruffleStringBuilderGeneric sb, int value,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -877,6 +884,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             sb.length += len;
         }
 
+        @InliningCutoff
         @Specialization
         void doAppend(TruffleStringBuilderGeneric sb, long value,
                         @Cached @Shared InlinedBranchProfile bufferGrowProfile,
@@ -1051,6 +1059,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             sb.length += a.length();
         }
 
+        @InliningCutoff
         @Specialization
         static void append(Node node, TruffleStringBuilderGeneric sb, AbstractTruffleString a,
                         @Cached @Exclusive TruffleString.ToIndexableNode toIndexableNode,
@@ -1227,6 +1236,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             sb.length += length;
         }
 
+        @InliningCutoff
         @Specialization
         static void append(TruffleStringBuilderGeneric sb, AbstractTruffleString a, int fromIndex, int length,
                         @Bind Node node,
@@ -1527,6 +1537,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
             return TruffleString.createFromByteArray(bytes, sb.length, sb.stride, TruffleString.Encoding.UTF_32, sb.length, sb.codeRange);
         }
 
+        @InliningCutoff
         @Specialization
         static TruffleString createString(Node node, TruffleStringBuilderGeneric sb, boolean lazy,
                         @Cached @Shared InlinedConditionProfile calcAttributesProfile,
@@ -1563,16 +1574,21 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
                     InlinedBranchProfile errorProfile) {
         if (appendStride > stride) {
             inflateProfile.enter(node);
-            if (Integer.compareUnsigned(length + appendLength, TStringConstants.MAX_ARRAY_SIZE >> appendStride) > 0) {
-                errorProfile.enter(node);
-                throw InternalErrors.outOfMemory();
-            }
-            byte[] newBuf = new byte[(int) Math.min(((long) buf.length) << (appendStride - stride), TStringConstants.MAX_ARRAY_SIZE)];
-            TStringOps.arraycopyWithStride(node, buf, 0, stride, 0, newBuf, 0, appendStride, 0, length);
-            buf = newBuf;
-            stride = appendStride;
+            inflate(node, appendLength, appendStride, errorProfile);
         }
         ensureCapacityWithStride(node, appendLength, bufferGrowProfile, errorProfile);
+    }
+
+    @InliningCutoff
+    private void inflate(Node node, int appendLength, int appendStride, InlinedBranchProfile errorProfile) {
+        if (Integer.compareUnsigned(length + appendLength, TStringConstants.MAX_ARRAY_SIZE >> appendStride) > 0) {
+            errorProfile.enter(node);
+            throw InternalErrors.outOfMemory();
+        }
+        byte[] newBuf = new byte[(int) Math.min(((long) buf.length) << (appendStride - stride), TStringConstants.MAX_ARRAY_SIZE)];
+        TStringOps.arraycopyWithStride(node, buf, 0, stride, 0, newBuf, 0, appendStride, 0, length);
+        buf = newBuf;
+        stride = appendStride;
     }
 
     final void ensureCapacityWithStride(Node node, int appendLength, InlinedBranchProfile bufferGrowProfile, InlinedBranchProfile errorProfile) {
@@ -1580,8 +1596,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         int oldCapacity = buf.length >> stride;
         if (minimumCapacity - oldCapacity > 0) {
             bufferGrowProfile.enter(node);
-            buf = Arrays.copyOf(buf, newCapacityWithStride(node, minimumCapacity, errorProfile));
+            growWithStride(node, errorProfile, minimumCapacity);
         }
+    }
+
+    @InliningCutoff
+    private void growWithStride(Node node, InlinedBranchProfile errorProfile, int minimumCapacity) {
+        buf = Arrays.copyOf(buf, newCapacityWithStride(node, minimumCapacity, errorProfile));
     }
 
     final void ensureCapacityS0(Node node, int appendLength, InlinedBranchProfile bufferGrowProfile, InlinedBranchProfile errorProfile) {
@@ -1589,8 +1610,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         int oldCapacity = buf.length;
         if (minimumCapacity - oldCapacity > 0) {
             bufferGrowProfile.enter(node);
-            buf = Arrays.copyOf(buf, newCapacityS0(node, minimumCapacity, errorProfile));
+            growS0(node, errorProfile, minimumCapacity);
         }
+    }
+
+    @InliningCutoff
+    private void growS0(Node node, InlinedBranchProfile errorProfile, int minimumCapacity) {
+        buf = Arrays.copyOf(buf, newCapacityS0(node, minimumCapacity, errorProfile));
     }
 
     final int newCapacityS0(Node node, int minCapacity, InlinedBranchProfile errorProfile) {

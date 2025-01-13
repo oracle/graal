@@ -76,6 +76,10 @@ final class TStringGuards {
         return TSCodeRange.isValid(codeRange);
     }
 
+    static boolean isUpToValid(int codeRange) {
+        return TSCodeRange.isUpToValid(codeRange);
+    }
+
     static boolean isBroken(int codeRange) {
         return TSCodeRange.isBroken(codeRange);
     }

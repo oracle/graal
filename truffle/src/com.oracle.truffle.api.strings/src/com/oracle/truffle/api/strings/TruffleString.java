@@ -4381,7 +4381,7 @@ public final class TruffleString extends AbstractTruffleString {
             final int codeRangeB = getCodeRangeBNode.execute(this, b, encoding);
             a.looseCheckEncoding(encoding, codeRangeA);
             b.looseCheckEncoding(encoding, codeRangeB);
-            if (mask != null && isUnsupportedEncoding(encoding) && !isFixedWidth(codeRangeA)) {
+            if (JCodings.JCODINGS_ENABLED && mask != null && isUnsupportedEncoding(encoding) && !isFixedWidth(codeRangeA)) {
                 throw InternalErrors.unsupportedOperation();
             }
             if (b.isEmpty()) {
@@ -4542,7 +4542,7 @@ public final class TruffleString extends AbstractTruffleString {
             final int codeRangeB = getCodeRangeBNode.execute(this, b, encoding);
             a.looseCheckEncoding(encoding, codeRangeA);
             b.looseCheckEncoding(encoding, codeRangeB);
-            if (mask != null && isUnsupportedEncoding(encoding) && !isFixedWidth(codeRangeA)) {
+            if (JCodings.JCODINGS_ENABLED && mask != null && isUnsupportedEncoding(encoding) && !isFixedWidth(codeRangeA)) {
                 throw InternalErrors.unsupportedOperation();
             }
             if (b.isEmpty()) {
