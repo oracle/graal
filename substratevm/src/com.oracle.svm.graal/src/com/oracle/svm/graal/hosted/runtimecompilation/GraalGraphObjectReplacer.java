@@ -133,7 +133,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         this.aUniverse = aUniverse;
         this.sProviders = sProviders;
         this.universeFactory = universeFactory;
-        this.imageCodeInfo = CodeInfoTable.getImageCodeCache();
+        this.imageCodeInfo = CodeInfoTable.getCurrentLayerImageCodeCache();
         this.stringTable = HostedStringDeduplication.singleton();
     }
 

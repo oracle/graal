@@ -160,7 +160,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     ReflectionDataBuilder(SubstrateAnnotationExtractor annotationExtractor) {
         this.annotationExtractor = annotationExtractor;
         pendingRecordClasses = !throwMissingRegistrationErrors() ? new ConcurrentHashMap<>() : null;
-        classForNameSupport = ClassForNameSupport.singleton();
+        classForNameSupport = ClassForNameSupport.currentLayer();
     }
 
     public void duringSetup(AnalysisMetaAccess analysisMetaAccess, AnalysisUniverse analysisUniverse) {

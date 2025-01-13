@@ -207,7 +207,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
              * accessed via a multi-layer lookup in a subsequent layer, so they must be installed in
              * the heap.
              */
-            Object[] multiLayeredSingletons = LayeredImageSingletonSupport.singleton().getMultiLayeredImageSingletonKeys().stream().map(layeredImageSingletonSupport::runtimeLookup).toArray();
+            Object[] multiLayeredSingletons = layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys().stream().map(key -> layeredImageSingletonSupport.lookup(key, true, true)).toArray();
             if (multiLayeredSingletons.length != 0) {
                 multiLayerEmbeddedRootsRegistration.accept(multiLayeredSingletons);
             }
@@ -228,7 +228,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                          * ensure their types are part of the current analysis.
                          */
                         Class<?> key = slotInfo.keyClass();
-                        var singleton = layeredImageSingletonSupport.runtimeLookup(key);
+                        var singleton = layeredImageSingletonSupport.lookup(key, true, false);
                         assert singleton.getClass().equals(key) : String.format("We currently require %s to match their key. Key %s, Singleton: %s", ApplicationLayerOnlyImageSingleton.class, key,
                                         singleton);
                         applicationLayerEmbeddedRoots.add(singleton);
@@ -240,7 +240,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                          */
                         Class<?> key = slotInfo.keyClass();
                         if (ImageSingletons.contains(key)) {
-                            multiLayerEmbeddedRoots.add(layeredImageSingletonSupport.runtimeLookup(key));
+                            multiLayerEmbeddedRoots.add(layeredImageSingletonSupport.lookup(key, true, true));
                         } else {
                             checkAllowNullEntries(key);
                         }
@@ -308,7 +308,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
         // next install current singleton
         if (ImageSingletons.contains(key)) {
-            var singleton = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
+            var singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, true);
             JavaConstant singletonConstant = snippetReflectionProvider.forObject(singleton);
             installElement.accept(singletonConstant, layerInfo.layerNumber);
         }
@@ -356,7 +356,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
          */
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
         for (var keyClass : layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys()) {
-            var singleton = layeredImageSingletonSupport.runtimeLookup(keyClass);
+            var singleton = layeredImageSingletonSupport.lookup(keyClass, true, true);
             ImageHeapConstant singletonConstant = (ImageHeapConstant) hUniverse.getSnippetReflection().forObject(singleton);
             heap.addConstant(singletonConstant, false, addReason);
             int id = ImageHeapConstant.getConstantID(singletonConstant);
@@ -373,7 +373,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                         /*
                          * Need to install the singleton.
                          */
-                        var singleton = layeredImageSingletonSupport.runtimeLookup(slotInfo.keyClass());
+                        var singleton = layeredImageSingletonSupport.lookup(slotInfo.keyClass(), true, false);
                         JavaConstant singletonConstant = hUniverse.getSnippetReflection().forObject(singleton);
                         heap.addConstant(singletonConstant, false, addReason);
 

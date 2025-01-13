@@ -27,8 +27,9 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -57,12 +59,13 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
 
 /**
- * Provides the main entry points to look up metadata for code, either {@link #getImageCodeCache()
- * ahead-of-time compiled code in the native image} or {@link CodeInfoTable#getRuntimeCodeCache()
- * code compiled at runtime}.
+ * Provides the main entry points to look up metadata for code, either
+ * {@link #getImageCodeCacheForLayer(int) ahead-of-time compiled code in the native image} or
+ * {@link CodeInfoTable#getRuntimeCodeCache() code compiled at runtime}.
  * <p>
  * Users of this class must take special care because code can be invalidated at arbitrary times and
  * their metadata can be freed, see notes on {@link CodeInfoAccess}.
@@ -77,9 +80,14 @@ public class CodeInfoTable {
         public static final HostedOptionKey<Boolean> CodeCacheCounters = new HostedOptionKey<>(false);
     }
 
-    @Fold
-    public static ImageCodeInfo getImageCodeCache() {
-        return ImageSingletons.lookup(ImageCodeInfo.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static ImageCodeInfo getCurrentLayerImageCodeCache() {
+        return LayeredImageSingletonSupport.singleton().lookup(ImageCodeInfo.class, false, true);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static ImageCodeInfo getImageCodeCacheForLayer(int layerNumber) {
+        return MultiLayeredImageSingleton.getForLayer(ImageCodeInfo.class, layerNumber);
     }
 
     @Fold
@@ -90,7 +98,7 @@ public class CodeInfoTable {
     @Uninterruptible(reason = "Executes during isolate creation.")
     public static void prepareImageCodeInfo() {
         // Stored in this class because ImageCodeInfo is immutable
-        imageCodeInfo = getImageCodeCache().prepareCodeInfo();
+        imageCodeInfo = ImageCodeInfo.prepareCodeInfo();
         assert imageCodeInfo.notEqual(Word.zero());
     }
 
@@ -324,7 +332,7 @@ class CodeInfoFeature implements InternalFeature {
 
     @Override
     public void afterCompilation(AfterCompilationAccess config) {
-        ImageCodeInfo imageInfo = CodeInfoTable.getImageCodeCache();
+        ImageCodeInfo imageInfo = CodeInfoTable.getCurrentLayerImageCodeCache();
         config.registerAsImmutable(imageInfo);
         config.registerAsImmutable(imageInfo.codeInfoIndex);
         config.registerAsImmutable(imageInfo.codeInfoEncodings);

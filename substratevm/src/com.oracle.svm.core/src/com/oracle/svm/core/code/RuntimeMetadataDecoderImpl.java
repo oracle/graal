@@ -37,7 +37,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
@@ -279,7 +278,7 @@ public class RuntimeMetadataDecoderImpl implements RuntimeMetadataDecoder {
 
     @Override
     public int getMetadataByteLength() {
-        return ImageSingletons.lookup(RuntimeMetadataEncoding.class).getEncoding().length;
+        return RuntimeMetadataEncoding.currentLayer().getEncoding().length;
     }
 
     public static boolean isErrorIndex(int index) {

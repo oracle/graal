@@ -521,7 +521,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
                             .a(totalFormat, Utils.toPercentage(numRuntimeCompiledMethods, totalMethods), totalMethods).println();
         }
         String typesFieldsMethodFormat = "%,9d types, %,5d fields, and %,5d methods ";
-        int reflectClassesCount = ClassForNameSupport.singleton().count();
+        int reflectClassesCount = ClassForNameSupport.currentLayer().count();
         ReflectionHostedSupport rs = ImageSingletons.lookup(ReflectionHostedSupport.class);
         int reflectFieldsCount = rs.getReflectionFieldsCount();
         int reflectMethodsCount = rs.getReflectionMethodsCount();
@@ -592,7 +592,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), Utils.toPercentage(codeAreaSize, imageFileSize))
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
-        int numResources = Resources.singleton().count();
+        int numResources = Resources.currentLayer().count();
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), Utils.toPercentage(imageHeapSize, imageFileSize))
                         .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", heapObjectCount, numResources).println();

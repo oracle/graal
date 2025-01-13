@@ -61,6 +61,7 @@ import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.jvmstat.PerfDataFeature;
 import com.oracle.svm.core.jvmstat.PerfDataHolder;
 import com.oracle.svm.core.jvmstat.PerfManager;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.OSCommittedMemoryProvider;
 
@@ -132,19 +133,19 @@ class GenScavengeGCFeature implements InternalFeature {
         access.registerAsUsed(Object[].class);
     }
 
-    private static ImageHeapInfo getImageHeapInfo() {
-        return ImageSingletons.lookup(ImageHeapInfo.class);
+    private static ImageHeapInfo getCurrentLayerImageHeapInfo() {
+        return LayeredImageSingletonSupport.singleton().lookup(ImageHeapInfo.class, false, true);
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(getImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
+        ImageHeapLayouter heapLayouter = new ChunkedImageHeapLayouter(getCurrentLayerImageHeapInfo(), Heap.getHeap().getImageHeapOffsetInAddressSpace());
         ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        access.registerAsImmutable(getImageHeapInfo());
+        access.registerAsImmutable(getCurrentLayerImageHeapInfo());
     }
 
     @Override

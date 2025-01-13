@@ -393,7 +393,7 @@ public class JNIAccessFeature implements Feature {
         });
         newNegativeFieldLookups.clear();
 
-        JNIReflectionDictionary.singleton().addLinkages(newLinkages);
+        JNIReflectionDictionary.currentLayer().addLinkages(newLinkages);
         newLinkages.clear();
 
         access.requireAnalysisIteration();
@@ -406,7 +406,7 @@ public class JNIAccessFeature implements Feature {
         if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess(), access.getUniverse())) {
             return null;
         }
-        return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
+        return JNIReflectionDictionary.currentLayer().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
                 analysisClass.registerAsReachable("is accessed via JNI");
@@ -418,7 +418,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static void addNegativeClassLookup(String className) {
-        JNIReflectionDictionary.singleton().addNegativeClassLookupIfAbsent(className);
+        JNIReflectionDictionary.currentLayer().addNegativeClassLookupIfAbsent(className);
     }
 
     public void addMethod(Executable method, DuringAnalysisAccessImpl access) {
@@ -532,7 +532,7 @@ public class JNIAccessFeature implements Feature {
         int numClasses = 0;
         int numFields = 0;
         int numMethods = 0;
-        for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
+        for (JNIAccessibleClass clazz : JNIReflectionDictionary.currentLayer().getClasses()) {
             numClasses++;
             var fieldsCursor = clazz.getFields();
             while (fieldsCursor.advance()) {
@@ -561,7 +561,7 @@ public class JNIAccessFeature implements Feature {
 
         CompilationAccessImpl access = (CompilationAccessImpl) a;
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
-        for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
+        for (JNIAccessibleClass clazz : JNIReflectionDictionary.currentLayer().getClasses()) {
             UnmodifiableMapCursor<CharSequence, JNIAccessibleField> cursor = clazz.getFields();
             while (cursor.advance()) {
                 String name = (String) cursor.getKey();
