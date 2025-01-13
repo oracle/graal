@@ -2479,6 +2479,15 @@ public class FlatNodeGenFactory {
         return fallbackState;
     }
 
+    private List<TypeGuard> getFallbackImplicitCastGuards() {
+        List<TypeGuard> fallbackState = new ArrayList<>();
+        List<SpecializationData> specializations = getFallbackSpecializations();
+        for (SpecializationData specialization : specializations) {
+            fallbackState.addAll(specialization.getImplicitTypeGuards());
+        }
+        return fallbackState;
+    }
+
     private Element createFallbackGuard(boolean inlined) {
         boolean frameUsed = false;
 
@@ -2501,10 +2510,8 @@ public class FlatNodeGenFactory {
         fallbackNeedsState = false;
         fallbackNeedsFrame = frameUsed;
 
-        multiState.createLoad(frameState,
-                        StateQuery.create(SpecializationActive.class, getFallbackSpecializations()),
-                        StateQuery.create(GuardActive.class, getFallbackGuards())); // already
-                                                                                    // loaded
+        multiState.createLoad(frameState, collectFallbackState());
+
         multiState.addParametersTo(frameState, method);
         frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
 
@@ -4221,19 +4228,24 @@ public class FlatNodeGenFactory {
         }
     }
 
+    private StateQuery[] collectFallbackState() {
+        StateQuery fallbackActive = StateQuery.create(SpecializationActive.class, getFallbackSpecializations());
+        StateQuery fallbackGuardsActive = StateQuery.create(GuardActive.class, getFallbackGuards());
+        StateQuery fallbackImplicitCasts = StateQuery.create(ImplicitCastState.class, getFallbackImplicitCastGuards());
+        return new StateQuery[]{fallbackActive, fallbackGuardsActive, fallbackImplicitCasts};
+    }
+
     private CodeTree createFastPathExecute(CodeTreeBuilder parent, final ExecutableTypeData forType, SpecializationData specialization, FrameState frameState) {
         CodeTreeBuilder builder = parent.create();
         int ifCount = 0;
         if (specialization.isFallback()) {
-            StateQuery fallbackActive = StateQuery.create(SpecializationActive.class, getFallbackSpecializations());
-            StateQuery fallbackGuardsActive = StateQuery.create(GuardActive.class, getFallbackGuards());
 
             if (fallbackNeedsState) {
-                builder.tree(multiState.createLoad(frameState, fallbackActive, fallbackGuardsActive));
+                builder.tree(multiState.createLoad(frameState, collectFallbackState()));
             }
             builder.startIf().startCall(createFallbackName());
             if (fallbackNeedsState) {
-                multiState.addReferencesTo(frameState, builder, fallbackActive, fallbackGuardsActive);
+                multiState.addReferencesTo(frameState, builder, collectFallbackState());
             }
             if (fallbackNeedsFrame) {
                 if (frameState.get(FRAME_VALUE) != null) {
@@ -4582,14 +4594,12 @@ public class FlatNodeGenFactory {
 
         NodeExecutionMode mode = frameState.getMode();
         boolean hasFallthrough = false;
-        boolean hasImplicitCast = false;
         List<IfTriple> cachedTriples = new ArrayList<>();
         for (TypeGuard guard : group.getTypeGuards()) {
             IfTriple triple = createTypeCheckOrCast(frameState, group, guard, mode, false, true);
             if (triple != null) {
                 cachedTriples.add(triple);
             }
-            hasImplicitCast = hasImplicitCast || node.getTypeSystem().hasImplicitSourceTypes(guard.getType());
             if (!mode.isGuardFallback()) {
                 triple = createTypeCheckOrCast(frameState, group, guard, mode, true, true);
                 if (triple != null) {
@@ -4668,7 +4678,7 @@ public class FlatNodeGenFactory {
 
             cachedTriples = IfTriple.optimize(cachedTriples);
 
-            if (specialization != null && !hasImplicitCast) {
+            if (specialization != null) {
                 IfTriple singleCondition = null;
                 if (cachedTriples.size() == 1) {
                     singleCondition = cachedTriples.get(0);
@@ -4676,9 +4686,26 @@ public class FlatNodeGenFactory {
                 if (singleCondition != null) {
                     int index = cachedTriples.indexOf(singleCondition);
                     CodeTreeBuilder b = new CodeTreeBuilder(parent);
+
                     b.string("!(");
                     b.tree(createSpecializationActiveCheck(frameState, Arrays.asList(specialization)));
+
+                    /*
+                     * We can only optimize the fallback type check away if all implicit cast bits
+                     * were exercised. Otherwise we need to keep in all implicit cast checks.
+                     */
+                    List<TypeGuard> guards = specialization.getImplicitTypeGuards();
+                    if (!guards.isEmpty()) {
+                        StateQuery query = StateQuery.create(ImplicitCastState.class, guards);
+                        CodeTree stateCheck = multiState.createContainsAll(frameState, query);
+                        if (!stateCheck.isEmpty()) {
+                            b.newLine();
+                            b.string(" && ").tree(stateCheck);
+                        }
+                    }
+
                     b.string(")");
+
                     cachedTriples.set(index, new IfTriple(singleCondition.prepare, combineTrees(" && ", b.build(), singleCondition.condition), singleCondition.statements));
                     fallbackNeedsState = true;
                 }
@@ -7702,10 +7729,6 @@ public class FlatNodeGenFactory {
                 length += a.getBitCount();
             }
             return length;
-        }
-
-        CodeTree createContainsAll(FrameState frameState, StateQuery elements) {
-            return createContainsImpl(all, frameState, elements);
         }
 
         List<CodeVariableElement> createCachedFields() {
