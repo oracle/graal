@@ -77,7 +77,7 @@ public class RegisterFinalizerSnippets implements Snippets {
             super(options, providers);
 
             this.registerFinalizerSnippet = snippet(providers, RegisterFinalizerSnippets.class, "registerFinalizerSnippet",
-                    shouldUseKlassMiscFlags() ? KLASS_MISC_FLAGS_LOCATION : KLASS_ACCESS_FLAGS_LOCATION);
+                            shouldUseKlassMiscFlags() ? KLASS_MISC_FLAGS_LOCATION : KLASS_ACCESS_FLAGS_LOCATION);
         }
 
         public void lower(RegisterFinalizerNode node, LoweringTool tool) {
