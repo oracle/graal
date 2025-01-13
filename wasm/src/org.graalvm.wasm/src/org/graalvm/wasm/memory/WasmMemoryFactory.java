@@ -45,39 +45,32 @@ import org.graalvm.wasm.exception.Failure;
 import static org.graalvm.wasm.Assert.assertTrue;
 
 public class WasmMemoryFactory {
-    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared, boolean unsafeMemory) {
+    public static WasmMemory createMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared, boolean unsafeMemory, boolean directByteBufferMemoryAccess) {
+        if (directByteBufferMemoryAccess) {
+            assertTrue(unsafeMemory, "DirectByteBufferMemoryAccess is only supported when UseUnsafeMemory flag is set.", Failure.SHARED_MEMORY_WITHOUT_UNSAFE);
+        }
         if (shared) {
             assertTrue(unsafeMemory, "Shared memories are only supported when UseUnsafeMemory flag is set.", Failure.SHARED_MEMORY_WITHOUT_UNSAFE);
         }
 
         if (unsafeMemory) {
-            return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
-        } else {
-            if (declaredMaxSize > ByteArrayWasmMemory.MAX_ALLOWED_SIZE) {
+            if (directByteBufferMemoryAccess || shared) {
+                return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
+            } else if (declaredMaxSize > ByteArrayWasmMemory.MAX_ALLOWED_SIZE) {
                 return new NativeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
-            } else {
-                return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
             }
         }
+        return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
     }
 
-    public static Class<? extends WasmMemory> getMemoryImplementation(long declaredMaxSize, boolean unsafeMemory) {
+    public static long getMaximumAllowedSize(boolean shared, boolean unsafeMemory, boolean directByteBufferMemoryAccess) {
         if (unsafeMemory) {
-            return UnsafeWasmMemory.class;
-        } else {
-            if (declaredMaxSize > ByteArrayWasmMemory.MAX_ALLOWED_SIZE) {
-                return NativeWasmMemory.class;
+            if (directByteBufferMemoryAccess || shared) {
+                return UnsafeWasmMemory.MAX_ALLOWED_SIZE;
             } else {
-                return ByteArrayWasmMemory.class;
+                return NativeWasmMemory.MAX_ALLOWED_SIZE;
             }
         }
-    }
-
-    public static long getMaximumAllowedSize(boolean unsafeMemory) {
-        if (unsafeMemory) {
-            return UnsafeWasmMemory.MAX_ALLOWED_SIZE;
-        } else {
-            return NativeWasmMemory.MAX_ALLOWED_SIZE;
-        }
+        return ByteArrayWasmMemory.MAX_ALLOWED_SIZE;
     }
 }

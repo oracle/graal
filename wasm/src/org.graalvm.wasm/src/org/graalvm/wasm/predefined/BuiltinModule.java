@@ -139,9 +139,10 @@ public abstract class BuiltinModule {
 
     protected void defineMemory(WasmContext context, WasmModule module, String memoryName, int initSize, int maxSize, boolean is64Bit, boolean isShared) {
         final boolean useUnsafeMemory = context.getContextOptions().useUnsafeMemory();
+        final boolean directByteBufferMemoryAccess = context.getContextOptions().directByteBufferMemoryAccess();
         int index = module.symbolTable().memoryCount();
         // set multiMemory flag to true, since spectest module has multiple memories
-        module.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true, useUnsafeMemory);
+        module.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true, useUnsafeMemory, directByteBufferMemoryAccess);
         module.symbolTable().exportMemory(index, memoryName);
     }
 

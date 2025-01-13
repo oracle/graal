@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,6 +112,9 @@ public class WasmOptions {
 
     @Option(help = "Make WASI random_get always return the same random numbers. For testing purpose only.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WasiConstantRandomGet = new OptionKey<>(false);
+
+    @Option(help = "Allows the embedder to access memories as direct byte buffers.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> DirectByteBufferMemoryAccess = new OptionKey<>(false);
 
     @Option(help = "Test dir used for testing the debugger.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "<dir>") //
     public static final OptionKey<String> DebugCompDirectory = new OptionKey<>("");
