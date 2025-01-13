@@ -203,6 +203,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
     }
 
     @Override
+    @SuppressWarnings("try")
     public InstalledCodeObserverHandle install() {
         NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
         Handle handle = GDBJITAccessor.createHandle(debugInfoData);
