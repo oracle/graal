@@ -40,11 +40,11 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeInt;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeChar;
-import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeByte;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeChar;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeInt;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeObject;
+import static com.oracle.svm.core.graal.meta.DynamicHubOffsets.writeShort;
 import static com.oracle.svm.core.reflect.RuntimeMetadataDecoder.NO_DATA;
 
 import java.io.InputStream;
@@ -184,7 +184,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * The returned category does not necessarily match the {@link LayoutEncoding}, see
      * {@link Hybrid} objects for more details.
      */
-    private final int hubType;
+    private final byte hubType;
 
     /**
      * Used to quickly determine if this class is a subclass of {@link Reference}.
@@ -239,17 +239,20 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     // region open-world only fields
 
     /**
-     * This stores the depth of the type in the inheritance hierarchy. If the type is an interface
-     * then the typeIDDepth is -1.
+     * This stores the depth of the type in the inheritance hierarchy. If the type is an interface,
+     * then the value is negative.
+     *
+     * Could be adapted so that {@link #getNumClassTypes()} can compute its value from this field,
+     * at the cost of increased size of type checks in code.
      */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private int typeIDDepth;
+    private short typeIDDepth;
 
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private int numClassTypes;
+    private short numClassTypes;
 
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
-    private int numInterfaceTypes;
+    private short numInterfaceTypes;
 
     /**
      * Array containing this type's type check id information. During a type check, these slots are
@@ -452,7 +455,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private ReflectionMetadata reflectionMetadata;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType,
+    public DynamicHub(Class<?> hostedJavaClass, String name, byte hubType, ReferenceType referenceType, DynamicHub superType,
                     DynamicHub componentHub, String sourceFileName, int modifiers, short flags, ClassLoader classLoader,
                     Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, int layerId) {
         this.hostedJavaClass = hostedJavaClass;
@@ -500,7 +503,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         ReferenceType referenceType = ReferenceType.computeReferenceType(DynamicHub.toClass(superHub));
         // GR-59683: HubType.OBJECT_ARRAY?
-        int hubTybe = referenceType == ReferenceType.None ? HubType.INSTANCE : HubType.REFERENCE_INSTANCE;
+        byte hubType = (byte) ((referenceType == ReferenceType.None) ? HubType.INSTANCE : HubType.REFERENCE_INSTANCE);
 
         DynamicHubCompanion companion = new DynamicHubCompanion(classLoader);
         /* Always allow unsafe allocation for classes that were loaded at run-time. */
@@ -517,9 +520,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         // GR-59687: Determine typecheck related infos
         int typeID = 0;
-        int typeIDDepth = 0;
-        int numClassTypes = 2;
-        int numInterfacesTypes = 0;
+        short typeIDDepth = 0;
+        short numClassTypes = 2;
+        short numInterfacesTypes = 0;
         int[] openTypeWorldTypeCheckSlots = new int[numClassTypes + (numInterfacesTypes * 2)];
 
         byte additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, true));
@@ -552,17 +555,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         DynamicHubOffsets dynamicHubOffsets = DynamicHubOffsets.singleton();
         /* Write fields in defining order. */
         writeObject(hub, dynamicHubOffsets.getNameOffset(), name);
-        writeInt(hub, dynamicHubOffsets.getHubTypeOffset(), hubTybe);
+        writeByte(hub, dynamicHubOffsets.getHubTypeOffset(), hubType);
         writeByte(hub, dynamicHubOffsets.getReferenceTypeOffset(), referenceType.getValue());
 
         writeInt(hub, dynamicHubOffsets.getLayoutEncodingOffset(), layoutEncoding);
         writeInt(hub, dynamicHubOffsets.getTypeIDOffset(), typeID);
         // skip typeCheckStart, typeCheckRange, typeCheckSlot and
         // closedTypeWorldTypeCheckSlots (closed-world only)
-        writeInt(hub, dynamicHubOffsets.getTypeIDDepthOffset(), typeIDDepth);
-        writeInt(hub, dynamicHubOffsets.getNumClassTypesOffset(), numClassTypes);
+        writeShort(hub, dynamicHubOffsets.getTypeIDDepthOffset(), typeIDDepth);
+        writeShort(hub, dynamicHubOffsets.getNumClassTypesOffset(), numClassTypes);
 
-        writeInt(hub, dynamicHubOffsets.getNumInterfaceTypesOffset(), numInterfacesTypes);
+        writeShort(hub, dynamicHubOffsets.getNumInterfaceTypesOffset(), numInterfacesTypes);
         writeObject(hub, dynamicHubOffsets.getOpenTypeWorldTypeCheckSlotsOffset(), openTypeWorldTypeCheckSlots);
 
         writeChar(hub, dynamicHubOffsets.getMonitorOffsetOffset(), monitorOffset);
@@ -677,9 +680,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         assert this.vtable == null : "Initialization must be called only once";
 
         this.typeID = typeID;
-        this.typeIDDepth = typeCheckDepth;
-        this.numClassTypes = numClassTypes;
-        this.numInterfaceTypes = numInterfaceTypes;
+        this.typeIDDepth = NumUtil.safeToShortAE(typeCheckDepth);
+        this.numClassTypes = NumUtil.safeToShortAE(numClassTypes);
+        this.numInterfaceTypes = NumUtil.safeToShortAE(numInterfaceTypes);
         this.openTypeWorldTypeCheckSlots = typeCheckSlots;
         this.vtable = vtable;
     }

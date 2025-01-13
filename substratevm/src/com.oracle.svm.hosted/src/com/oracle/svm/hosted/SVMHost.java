@@ -610,7 +610,7 @@ public class SVMHost extends HostVM {
         return classInitializationSupport;
     }
 
-    private static int computeHubType(AnalysisType type) {
+    private static byte computeHubType(AnalysisType type) {
         if (type.isArray()) {
             if (type.getComponentType().isPrimitive() || type.getComponentType().isWordType()) {
                 return HubType.PRIMITIVE_ARRAY;
