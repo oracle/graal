@@ -140,7 +140,7 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrRecordingTest {
                 simpleWaitFound = true;
             }
 
-            checkStackTraceTrimming(event, "emit");
+            checkStackTraceTrimming(event, "await");
         }
         assertTrue("Couldn't find expected wait events. SimpleWaiter: " + simpleWaitFound + " interrupted: " + interruptedFound,
                         simpleWaitFound && interruptedFound);

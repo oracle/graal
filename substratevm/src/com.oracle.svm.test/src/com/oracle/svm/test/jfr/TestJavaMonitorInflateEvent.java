@@ -91,7 +91,7 @@ public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
                 foundCauseEnter = true;
             }
 
-            checkStackTraceTrimming(event, "emit");
+            checkStackTraceTrimming(event, "monitorEnter");
         }
         assertTrue("Expected monitor inflate event not found.", foundCauseEnter);
     }

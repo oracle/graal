@@ -272,9 +272,7 @@ public final class JfrStackWalker {
         /* Increment the number of seen frames. */
         data.setSeenFrames(data.getSeenFrames() + 1);
 
-        if (shouldSkipFrame(data)) {
-            return NO_ERROR;
-        } else if (shouldTruncate(data)) {
+        if (shouldTruncate(data)) {
             return TRUNCATED;
         }
 
@@ -289,14 +287,9 @@ public final class JfrStackWalker {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static boolean shouldSkipFrame(SamplerSampleWriterData data) {
-        return data.getSeenFrames() <= data.getSkipCount();
-    }
-
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean shouldTruncate(SamplerSampleWriterData data) {
-        int numFrames = data.getSeenFrames() - data.getSkipCount();
-        if (numFrames > data.getMaxDepth()) {
+        int maxFrames = data.getMaxDepth() + data.getSkipCount();
+        if (data.getSeenFrames() > maxFrames) {
             /* The stack size exceeds given depth. Stop walk! */
             data.setTruncated(true);
             return true;

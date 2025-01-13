@@ -76,12 +76,13 @@ public class TestObjectAllocationSampleEvent extends JfrRecordingTest {
                 // verify previous owner
                 if (className.equals(char[].class.getName())) {
                     foundCharArray = true;
+                    checkStackTraceTrimming(event, "slowPathNewArrayLikeObject0");
+
                 } else if (className.equals(byte[].class.getName())) {
                     foundByteArray = true;
+                    checkStackTraceTrimming(event, "slowPathNewArrayLikeObject0");
                 }
             }
-
-            checkStackTraceTrimming(event, "emit");
         }
 
         assertTrue(foundCharArray);

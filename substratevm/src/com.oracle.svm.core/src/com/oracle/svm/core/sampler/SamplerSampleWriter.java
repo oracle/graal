@@ -62,8 +62,8 @@ public final class SamplerSampleWriter {
         SamplerSampleWriter.putInt(data, 0);
         /* Sample size. (will be patched later) */
         SamplerSampleWriter.putInt(data, 0);
-        /* Padding so that the long values below are aligned. */
-        SamplerSampleWriter.putInt(data, 0);
+        /* Skipcount will be used later during serialization. */
+        SamplerSampleWriter.putInt(data, data.getSkipCount());
 
         SamplerSampleWriter.putLong(data, JfrTicks.elapsedTicks());
         SamplerSampleWriter.putLong(data, SubstrateJVM.getCurrentThreadId());

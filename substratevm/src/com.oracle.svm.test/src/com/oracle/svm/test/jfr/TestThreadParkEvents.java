@@ -96,7 +96,7 @@ public class TestThreadParkEvents extends JfrRecordingTest {
                     parkUntilFound = true;
                 }
             }
-            checkStackTraceTrimming(event, "emit");
+            checkStackTraceTrimming(event, "park");
         }
 
         assertTrue(parkNanosFound);

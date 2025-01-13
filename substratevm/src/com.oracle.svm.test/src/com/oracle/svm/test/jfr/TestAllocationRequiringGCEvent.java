@@ -55,7 +55,7 @@ public class TestAllocationRequiringGCEvent extends JfrRecordingTest {
     private static void validateEvents(List<RecordedEvent> events) {
         assertTrue(events.size() > 0);
         for (RecordedEvent event : events) {
-            checkStackTraceTrimming(event, "emit");
+            checkStackTraceTrimming(event, "maybeCollectOnAllocation");
         }
     }
 
