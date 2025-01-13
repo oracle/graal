@@ -29,24 +29,17 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
-    static InvokeDynamicConstant create(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
+    static Indexes create(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
         return new Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
     }
 
     @Override
     default Tag tag() {
         return Tag.INVOKEDYNAMIC;
-    }
-
-    Symbol<Signature> getSignature(ConstantPool pool);
-
-    default Symbol<Type>[] getParsedSignature() {
-        throw new IllegalStateException("Not resolved yet");
     }
 
     default boolean isResolved() {
@@ -58,6 +51,10 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
             super(bootstrapMethodAttrIndex, nameAndTypeIndex);
         }
 
+        public Symbol<Signature> getSignature(ConstantPool pool) {
+            return Signatures.check(getDescriptor(pool));
+        }
+
         @Override
         public void dump(ByteBuffer buf) {
             buf.putChar(bootstrapMethodAttrIndex);
@@ -66,12 +63,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
         @Override
         public void validate(ConstantPool pool) throws ValidationException {
-            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
-        }
-
-        @Override
-        public Symbol<Signature> getSignature(ConstantPool pool) {
-            return Signatures.check(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
+            getNameAndType(pool).validateMethod(pool, false);
         }
 
         @Override

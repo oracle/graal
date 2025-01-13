@@ -257,10 +257,10 @@ import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
@@ -1179,7 +1179,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         calledConstructor = constructorCalledStatus;
     }
 
-    static void validateOrFailVerification(PoolConstant poolConstant, ConstantPool pool) {
+    static void validateOrFailVerification(ImmutablePoolConstant poolConstant, ConstantPool pool) {
         try {
             poolConstant.validate(pool);
         } catch (ValidationException e) {
@@ -1222,7 +1222,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
-    private Operand<R, C, M, F> ldcFromTag(PoolConstant pc) {
+    private Operand<R, C, M, F> ldcFromTag(ImmutablePoolConstant pc) {
         // @formatter:off
         // checkstyle: stop
         switch (pc.tag()) {
@@ -1240,7 +1240,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 return jliMethodType;
             case DYNAMIC:
                 formatGuarantee(version55OrLater(), "LDC for Dynamic in classfile version < 55");
-                DynamicConstant constant = (DynamicConstant) pc;
+                DynamicConstant.Indexes constant = (DynamicConstant.Indexes) pc;
                 return kindToOperand(constant.getTypeSymbol(pool));
             default:
                 throw failVerify("invalid CP load: " + pc.tag());
@@ -1301,7 +1301,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
                 case LDC:
                 case LDC_W: {
-                    PoolConstant pc = poolAt(code.readCPI(bci));
+                    ImmutablePoolConstant pc = poolAt(code.readCPI(bci));
                     validateOrFailVerification(pc, pool);
                     Operand<R, C, M, F> op = ldcFromTag(pc);
                     verifyGuarantee(!op.isType2(), "Loading Long or Double with LDC or LDC_W, please use LDC2_W.");
@@ -1312,7 +1312,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                     break;
                 }
                 case LDC2_W: {
-                    PoolConstant pc = poolAt(code.readCPI(bci));
+                    ImmutablePoolConstant pc = poolAt(code.readCPI(bci));
                     validateOrFailVerification(pc, pool);
                     Operand<R, C, M, F> op = ldcFromTag(pc);
                     verifyGuarantee(op.isType2(), "Loading non-Long or Double with LDC2_W, please use LDC or LDC_W.");
@@ -1603,13 +1603,13 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void verifyInvokeDynamic(int bci, OperandStack<R, C, M, F> stack) {
         // Check padding
         verifyGuarantee(code.readByte(bci + 2) == 0 && code.readByte(bci + 3) == 0, "bytes 3 and 4 after invokedynamic must be 0.");
-        PoolConstant pc = poolAt(code.readCPI(bci));
+        ImmutablePoolConstant pc = poolAt(code.readCPI(bci));
 
         // Check CP validity
         verifyGuarantee(pc.tag() == ConstantPool.Tag.INVOKEDYNAMIC, "Invalid CP constant for INVOKEDYNAMIC: " + pc.toString());
         validateOrFailVerification(pc, pool);
 
-        InvokeDynamicConstant idc = (InvokeDynamicConstant) pc;
+        InvokeDynamicConstant.Indexes idc = (InvokeDynamicConstant.Indexes) pc;
         Symbol<Name> name = idc.getName(pool);
 
         // Check invokedynamic does not call initializers
@@ -1630,10 +1630,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private Symbol<Type> getTypeFromPool(int c, String s) {
-        PoolConstant pc = poolAt(c);
+        ImmutablePoolConstant pc = poolAt(c);
         verifyGuarantee(pc.tag() == CLASS, s + pc.toString());
         validateOrFailVerification(pc, pool);
-        ClassConstant cc = (ClassConstant) pc;
+        ClassConstant.ImmutableClassConstant cc = (ClassConstant.ImmutableClassConstant) pc;
         assert Validation.validClassNameEntry(cc.getName(pool));
         return runtime.getSymbolPool().getTypes().fromName(cc.getName(pool));
     }
@@ -1705,7 +1705,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
-    private PoolConstant poolAt(int cpi) {
+    private ImmutablePoolConstant poolAt(int cpi) {
         verifyGuarantee(cpi < pool.length() && cpi > 0, "Invalid constant pool access at " + cpi + ", pool length: " + pool.length());
         return pool.at(cpi);
     }
@@ -1729,12 +1729,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void verifyPutField(int bci, OperandStack<R, C, M, F> stack, int curOpcode) {
         // Check CP validity
-        PoolConstant pc = poolAt(code.readCPI(bci));
+        ImmutablePoolConstant pc = poolAt(code.readCPI(bci));
         verifyGuarantee(pc.tag() == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for PUTFIELD: " + pc.toString());
         validateOrFailVerification(pc, pool);
 
         // Obtain field info
-        FieldRefConstant frc = (FieldRefConstant) pc;
+        FieldRefConstant.Indexes frc = (FieldRefConstant.Indexes) pc;
         assert Validation.validFieldDescriptor(frc.getType(pool));
         Symbol<Type> fieldDesc = frc.getType(pool);
         Operand<R, C, M, F> toPut = stack.pop(kindToOperand(fieldDesc));
@@ -1755,12 +1755,12 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void verifyGetField(int bci, OperandStack<R, C, M, F> stack, int curOpcode) {
         // Check CP validity
-        PoolConstant pc = poolAt(code.readCPI(bci));
+        ImmutablePoolConstant pc = poolAt(code.readCPI(bci));
         verifyGuarantee(pc.tag() == ConstantPool.Tag.FIELD_REF, "Invalid CP constant for GETFIELD: " + pc.toString());
         validateOrFailVerification(pc, pool);
 
         // Obtain field info
-        FieldRefConstant frc = (FieldRefConstant) pc;
+        FieldRefConstant.Indexes frc = (FieldRefConstant.Indexes) pc;
         assert Validation.validFieldDescriptor(frc.getType(pool));
         Symbol<Type> type = frc.getType(pool);
         if (curOpcode == GETFIELD) {
@@ -1862,11 +1862,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         }
     }
 
-    private MethodRefConstant getMethodRefConstant(int bci) {
-        PoolConstant pc = poolAt(code.readCPI(bci));
+    private MethodRefConstant.Indexes getMethodRefConstant(int bci) {
+        ImmutablePoolConstant pc = poolAt(code.readCPI(bci));
         verifyGuarantee(pc instanceof MethodRefConstant, "Invalid CP constant for a MethodRef: " + pc.getClass().getName());
         validateOrFailVerification(pc, pool);
-        return (MethodRefConstant) pc;
+        return (MethodRefConstant.Indexes) pc;
     }
 
     private static boolean isClassInit(Symbol<Name> calledMethodName) {
@@ -1877,7 +1877,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         return Name._init_.equals(calledMethodName);
     }
 
-    private Operand<R, C, M, F> popSignatureGetReturnOp(OperandStack<R, C, M, F> stack, MethodRefConstant mrc) {
+    private Operand<R, C, M, F> popSignatureGetReturnOp(OperandStack<R, C, M, F> stack, MethodRefConstant.Indexes mrc) {
         Symbol<Signature> calledMethodSignature = mrc.getSignature(pool);
         Operand<R, C, M, F>[] parsedSig = getOperandSig(calledMethodSignature);
 
@@ -1895,7 +1895,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         verifyGuarantee(code.readUByte(bci + 4) == 0, "4th byte after INVOKEINTERFACE must be 0.");
 
         // Check CP validity
-        MethodRefConstant mrc = getMethodRefConstant(bci);
+        MethodRefConstant.Indexes mrc = getMethodRefConstant(bci);
 
         // Checks versioning
         Symbol<Name> calledMethodName = mrc.getName(pool);
@@ -1941,7 +1941,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void verifyInvokeStatic(int bci, OperandStack<R, C, M, F> stack) {
         // Check CP validity
-        MethodRefConstant mrc = getMethodRefConstant(bci);
+        MethodRefConstant.Indexes mrc = getMethodRefConstant(bci);
 
         // Checks versioning
         if (version51OrEarlier()) {
@@ -1965,7 +1965,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void verifyInvokeSpecial(int bci, OperandStack<R, C, M, F> stack, Locals<R, C, M, F> locals) {
         // Check CP validity
-        MethodRefConstant mrc = getMethodRefConstant(bci);
+        MethodRefConstant.Indexes mrc = getMethodRefConstant(bci);
 
         // Checks versioning
         if (version51OrEarlier()) {
@@ -2029,7 +2029,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     private void verifyInvokeVirtual(int bci, OperandStack<R, C, M, F> stack) {
         // Check CP validity
-        MethodRefConstant mrc = getMethodRefConstant(bci);
+        MethodRefConstant.Indexes mrc = getMethodRefConstant(bci);
 
         Symbol<Name> calledMethodName = mrc.getName(pool);
 
@@ -2173,7 +2173,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
     // Helper methods
 
-    private void checkProtectedMember(Operand<R, C, M, F> stackOp, Symbol<Type> holderType, MemberRefConstant mrc, boolean method) {
+    private void checkProtectedMember(Operand<R, C, M, F> stackOp, Symbol<Type> holderType, MemberRefConstant.Indexes mrc, boolean method) {
         /*
          * 4.10.1.8.
          *
@@ -2196,10 +2196,10 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 MemberAccess<C, M, F> member;
                 if (method) {
                     /* Non-failing method lookup. */
-                    member = holderOp.getKlass(this).lookupMethod(mrc.getName(pool), ((MethodRefConstant) mrc).getSignature(pool));
+                    member = holderOp.getKlass(this).lookupMethod(mrc.getName(pool), ((MethodRefConstant.Indexes) mrc).getSignature(pool));
                 } else {
                     /* Non-failing field lookup. */
-                    member = holderOp.getKlass(this).lookupField(mrc.getName(pool), ((FieldRefConstant) mrc).getType(pool));
+                    member = holderOp.getKlass(this).lookupField(mrc.getName(pool), ((FieldRefConstant.Indexes) mrc).getType(pool));
                 }
                 /*
                  * If there does exist a protected superclass member in a different run-time

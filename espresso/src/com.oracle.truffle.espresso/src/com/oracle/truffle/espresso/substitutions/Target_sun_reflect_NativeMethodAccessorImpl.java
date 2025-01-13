@@ -307,7 +307,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         } else {
             callSiteType = CallSiteType.Virtual;
         }
-        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrThrow(
                         meta.getContext(),
                         null, // No current class.
                         reflectedMethod, callSiteType, klass);

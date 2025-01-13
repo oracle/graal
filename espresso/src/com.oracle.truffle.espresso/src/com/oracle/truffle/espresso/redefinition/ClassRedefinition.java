@@ -54,7 +54,7 @@ import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -586,10 +586,10 @@ public final class ClassRedefinition {
                             opcode == Bytecodes.PUTSTATIC ||
                             Bytecodes.isInvoke(opcode)) {
                 int oldCPI = oldCode.readCPI(bci);
-                PoolConstant oldConstant = oldPool.at(oldCPI);
+                ImmutablePoolConstant oldConstant = oldPool.at(oldCPI);
                 int newCPI = newCode.readCPI(bci);
-                PoolConstant newConstant = newPool.at(newCPI);
-                if (!oldConstant.toString(oldPool).equals(newConstant.toString(newPool))) {
+                ImmutablePoolConstant newConstant = newPool.at(newCPI);
+                if (!newConstant.isSame(oldConstant, newPool, oldPool)) {
                     return false;
                 }
             }

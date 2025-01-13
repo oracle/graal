@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.logging.Level;
 
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -73,18 +74,18 @@ final class LoadingConstraints extends ContextAccessImpl {
      * Checks that loader1 and loader2 resolve type as the same Klass instance.
      */
     @SuppressWarnings("try")
-    void checkConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2) {
+    void checkConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
         try (DebugCloseable constraints = CONSTRAINTS.scope(getContext().getTimers())) {
             Klass k1 = getContext().getRegistries().findLoadedClass(type, loader1);
             Klass k2 = getContext().getRegistries().findLoadedClass(type, loader2);
-            checkOrAdd(type, getKlassID(k1), getKlassID(k2), getLoaderID(loader1, getMeta()), getLoaderID(loader2, getMeta()));
+            checkOrAdd(type, getKlassID(k1), getKlassID(k2), getLoaderID(loader1, getMeta()), getLoaderID(loader2, getMeta()), errorHandler);
         }
     }
 
     /**
      * Records that loader resolves type as klass.
      */
-    void recordConstraint(Symbol<Type> type, Klass k, StaticObject loader) {
+    void recordConstraint(Symbol<Type> type, Klass k, StaticObject loader, Function<String, RuntimeException> errorHandler) {
         long loaderID = getLoaderID(loader, getMeta());
         long klass = getKlassID(k);
         ConstraintBucket bucket = lookup(type);
@@ -107,7 +108,7 @@ final class LoadingConstraints extends ContextAccessImpl {
                     constraint.add(loaderID);
                 }
             } else {
-                checkConstraint(klass, constraint);
+                checkConstraint(klass, constraint, errorHandler);
             }
         }
     }
@@ -146,9 +147,9 @@ final class LoadingConstraints extends ContextAccessImpl {
                         "empty buckets: " + info.emptyBuckets);
     }
 
-    private void checkOrAdd(Symbol<Type> type, long k1, long k2, long loader1, long loader2) {
+    private void checkOrAdd(Symbol<Type> type, long k1, long k2, long loader1, long loader2, Function<String, RuntimeException> errorHandler) {
         if (exists(k1) && exists(k2) && k1 != k2) {
-            throw linkageError("Loading constraint violated !");
+            throw errorHandler.apply("Loading constraint violated !");
         }
         long klass = !exists(k1) ? k2 : k1;
         ConstraintBucket bucket = lookup(type);
@@ -162,9 +163,9 @@ final class LoadingConstraints extends ContextAccessImpl {
         }
         synchronized (bucket) {
             Constraint c1 = bucket.lookupLoader(loader1);
-            klass = checkConstraint(klass, c1);
+            klass = checkConstraint(klass, c1, errorHandler);
             Constraint c2 = bucket.lookupLoader(loader2);
-            klass = checkConstraint(klass, c2);
+            klass = checkConstraint(klass, c2, errorHandler);
             if (c1 == null && c2 == null) {
                 bucket.add(Constraint.create(klass, loader1, loader2));
             } else if (c1 == c2) {
@@ -358,12 +359,12 @@ final class LoadingConstraints extends ContextAccessImpl {
         return pairings.get(type);
     }
 
-    private long checkConstraint(long klass, Constraint c1) {
+    private static long checkConstraint(long klass, Constraint c1, Function<String, RuntimeException> errorHandler) {
         if (c1 != null) {
             if (exists(c1.klass)) {
                 if (exists(klass)) {
                     if (klass != c1.klass) {
-                        throw linkageError("New loading constraint violates an older one!");
+                        throw errorHandler.apply("New loading constraint violates an older one!");
                     }
                 } else {
                     return c1.klass;
@@ -387,11 +388,6 @@ final class LoadingConstraints extends ContextAccessImpl {
         }
         merge.merge(delete);
         bucket.remove(delete);
-    }
-
-    private LinkageError linkageError(String message) {
-        Meta meta = getMeta();
-        throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, message);
     }
 
     private static long getLoaderID(StaticObject loader, Meta meta) {

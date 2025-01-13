@@ -28,6 +28,7 @@ import java.lang.reflect.Modifier;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ImmutableConstantPool;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
@@ -100,8 +101,8 @@ public final class LinkedKlass {
         this.methods = linkedMethods;
     }
 
-    public static LinkedKlass create(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
-        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(description, parserKlass, superKlass);
+    public static LinkedKlass create(EspressoLanguage language, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(language, parserKlass, superKlass);
         return new LinkedKlass(
                         parserKlass,
                         superKlass,

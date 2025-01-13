@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
 
@@ -119,6 +120,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.shared.meta.ErrorType;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
@@ -791,8 +793,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // * It has a single formal parameter of type Object[].
         // * It has the ACC_VARARGS and ACC_NATIVE flags set.
         // * ONLY JAVA <= 8: It has a return type of Object.
-        if (!(Type.java_lang_invoke_MethodHandle.equals(getDeclaringKlass().getType()) ||
-                        Type.java_lang_invoke_VarHandle.equals(getDeclaringKlass().getType()))) {
+        if (!Meta.isSignaturePolymorphicHolderType(getDeclaringKlass().getType())) {
             return false;
         }
         Symbol<Type>[] signature = getParsedSignature();
@@ -940,9 +941,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     @TruffleBoundary
-    public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
+    @Override
+    public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
         for (Symbol<Type> type : getParsedSignature()) {
-            getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2);
+            getContext().getRegistries().checkLoadingConstraint(type, loader1, loader2, errorHandler);
         }
     }
 
@@ -1129,7 +1131,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public SharedRedefinitionContent redefine(ObjectKlass.KlassVersion klassVersion, ParserMethod newMethod, ParserKlass newKlass, Ids<Object> ids) {
         // install the new method version immediately
         LinkedMethod newLinkedMethod = new LinkedMethod(newMethod);
-        RuntimeConstantPool runtimePool = new RuntimeConstantPool(getContext(), newKlass.getConstantPool(), getDeclaringKlass().getDefiningClassLoader());
+        RuntimeConstantPool runtimePool = new RuntimeConstantPool(newKlass.getConstantPool(), klassVersion.getKlass());
         CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Name.Code);
         MethodVersion oldVersion = methodVersion;
         methodVersion = oldVersion.replace(klassVersion, runtimePool, newLinkedMethod, newCodeAttribute);
@@ -1345,11 +1347,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return isPolySignatureIntrinsic();
     }
 
-    @Override
-    public void loadingConstraints(Klass accessingClass) {
-        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
-    }
-
     // endregion MethodAccess impl
 
     private static final class Continuum {
@@ -1421,7 +1418,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @CompilationFinal private int vtableIndex = -1;
         @CompilationFinal private int itableIndex = -1;
 
-        @CompilationFinal private int refKind;
+        @CompilationFinal private byte refKind;
 
         @CompilationFinal(dimensions = 1) //
         private ObjectKlass[] checkedExceptions;
@@ -1786,7 +1783,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             if (isNative()) {
                 return EspressoStackElement.NATIVE_BCI;
             }
-            return getCodeAttribute().bciToLineNumber(bci);
+            if (codeAttribute == null) {
+                assert isAbstract();
+                return EspressoStackElement.UNKNOWN_BCI;
+            }
+            return codeAttribute.bciToLineNumber(bci);
         }
 
         @Override
@@ -1957,6 +1958,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return codeAttribute != null && codeAttribute.hasJsr();
         }
 
+        public boolean usesIndy() {
+            return codeAttribute != null && codeAttribute.usesIndy();
+        }
+
         public int getRefKind() {
             return refKind;
         }
@@ -2010,7 +2015,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
-            getMethod().checkLoadingConstraints(loader1, loader2);
+            getMethod().checkLoadingConstraints(loader1, loader2, m -> {
+                throw getContext().throwError(ErrorType.LinkageError, m);
+            });
         }
 
         public int getMaxLocals() {

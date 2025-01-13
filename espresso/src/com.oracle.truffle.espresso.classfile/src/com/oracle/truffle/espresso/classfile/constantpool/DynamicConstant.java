@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface DynamicConstant extends BootstrapMethodConstant {
 
-    static DynamicConstant create(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
+    static Indexes create(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
         return new Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
     }
 
@@ -42,14 +42,11 @@ public interface DynamicConstant extends BootstrapMethodConstant {
         return Tag.DYNAMIC;
     }
 
-    Symbol<Type> getTypeSymbol(ConstantPool pool);
-
     final class Indexes extends BootstrapMethodConstant.Indexes implements DynamicConstant, Resolvable {
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
             super(bootstrapMethodAttrIndex, nameAndTypeIndex);
         }
 
-        @Override
         public Symbol<Type> getTypeSymbol(ConstantPool pool) {
             return Types.fromSymbol(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }

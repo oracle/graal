@@ -24,14 +24,9 @@ package com.oracle.truffle.espresso.constantpool;
 
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.meta.EspressoError;
 
 public final class ResolvedFieldRefConstant implements FieldRefConstant, Resolvable.ResolvedConstant {
     private final Field resolved;
@@ -42,27 +37,7 @@ public final class ResolvedFieldRefConstant implements FieldRefConstant, Resolva
     }
 
     @Override
-    public Symbol<Type> getType(ConstantPool pool) {
-        return resolved.getType();
-    }
-
-    @Override
     public Field value() {
         return resolved;
-    }
-
-    @Override
-    public Symbol<Name> getHolderKlassName(ConstantPool pool) {
-        throw EspressoError.shouldNotReachHere("Field already resolved");
-    }
-
-    @Override
-    public Symbol<Name> getName(ConstantPool pool) {
-        return resolved.getName();
-    }
-
-    @Override
-    public Symbol<Type> getDescriptor(ConstantPool pool) {
-        return getType(pool);
     }
 }

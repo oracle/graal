@@ -877,7 +877,7 @@ public final class FrameAnalysis implements StackMapFrameParser.FrameBuilder<Bui
                 frame.push(FrameType.forType(Type.java_lang_invoke_MethodType));
                 break;
             case DYNAMIC: {
-                Symbol<Type> t = ((DynamicConstant) pool.at(cpi)).getTypeSymbol(pool);
+                Symbol<Type> t = ((DynamicConstant.Indexes) pool.at(cpi)).getTypeSymbol(pool);
                 frame.push(FrameType.forType(t));
                 break;
             }

@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface MethodTypeConstant extends PoolConstant {
 
-    static MethodTypeConstant create(int descriptorIndex) {
+    static Index create(int descriptorIndex) {
         return new Index(descriptorIndex);
     }
 
@@ -42,31 +42,29 @@ public interface MethodTypeConstant extends PoolConstant {
         return Tag.METHODTYPE;
     }
 
-    /**
-     * Gets the signature of this method type constant.
-     *
-     * @param pool the constant pool that maybe be required to convert a constant pool index to a
-     *            name
-     */
-    Symbol<Signature> getSignature(ConstantPool pool);
-
-    @Override
-    default String toString(ConstantPool pool) {
-        return getSignature(pool).toString();
-    }
-
-    final class Index implements MethodTypeConstant, Resolvable {
-
+    final class Index implements MethodTypeConstant, ImmutablePoolConstant, Resolvable {
         private final char descriptorIndex;
 
         Index(int descriptorIndex) {
             this.descriptorIndex = PoolConstant.u2(descriptorIndex);
         }
 
-        @Override
+        /**
+         * Gets the signature of this method type constant.
+         *
+         * @param pool the constant pool that maybe be required to convert a constant pool index to
+         *            a name
+         */
         public Symbol<Signature> getSignature(ConstantPool pool) {
-            // TODO(peterssen): Assert valid signature.
             return pool.symbolAt(descriptorIndex);
+        }
+
+        @Override
+        public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+            if (!(other instanceof Index otherConstant)) {
+                return false;
+            }
+            return getSignature(thisPool) == otherConstant.getSignature(otherPool);
         }
 
         @Override
@@ -78,6 +76,10 @@ public interface MethodTypeConstant extends PoolConstant {
         public void dump(ByteBuffer buf) {
             buf.putChar(descriptorIndex);
         }
-    }
 
+        @Override
+        public String toString(ConstantPool pool) {
+            return getSignature(pool).toString();
+        }
+    }
 }

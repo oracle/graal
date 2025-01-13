@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface ClassMethodRefConstant extends MethodRefConstant {
 
-    static ClassMethodRefConstant create(int classIndex, int nameAndTypeIndex) {
+    static Indexes create(int classIndex, int nameAndTypeIndex) {
         return new Indexes(classIndex, nameAndTypeIndex);
     }
 

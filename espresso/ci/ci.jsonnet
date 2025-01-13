@@ -8,7 +8,20 @@
   nativeimage_guard_includes: [],
   vm_guard_includes: [],
 
+  local espresso_compiler_stub_gate = common.eclipse + common.jdt + common.predicates(true, false, false) +
+   common.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-compiler-stub-style-jdk21-linux-amd64') + {
+    setup+: [
+      ['cd', "../espresso-compiler-stub"],
+    ],
+    guard+: {
+      includes+: [
+        "<graal>/espresso-compiler-stub/**",
+      ],
+    },
+  },
+
   local _builds = common.builds + [
+    common.jdk21_gate_linux_amd64 + espresso_compiler_stub_gate,
     // Benchmarks
     // AWFY peak perf. benchmarks
     common.jdk21_weekly_bench_linux    + common.espresso_benchmark('jvm-ce-llvm', 'awfy:*'                                        , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk21-linux-amd64'},

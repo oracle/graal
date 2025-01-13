@@ -29,7 +29,6 @@ import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ContextDescription;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -148,10 +147,10 @@ public final class EspressoLanguageCache {
         return parserKlassProvider.getParserKlass(env, classLoader, typeOrNull, bytes, info);
     }
 
-    public LinkedKlass getOrCreateLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass linkedSuperKlass,
+    public LinkedKlass getOrCreateLinkedKlass(ClassLoadingEnv env, EspressoLanguage language, StaticObject loader, ParserKlass parserKlass, LinkedKlass linkedSuperKlass,
                     LinkedKlass[] linkedInterfaces,
                     ClassRegistry.ClassDefinitionInfo info) {
         ensureFrozen();
-        return linkedKlassProvider.getLinkedKlass(env, description, loader, parserKlass, linkedSuperKlass, linkedInterfaces, info);
+        return linkedKlassProvider.getLinkedKlass(env, language, loader, parserKlass, linkedSuperKlass, linkedInterfaces, info);
     }
 }

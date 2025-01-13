@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
@@ -47,6 +48,8 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.FieldStorageObject;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
+
+import java.util.function.Function;
 
 /**
  * Represents a resolved Espresso field.
@@ -148,7 +151,11 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
 
     @Override
     public final int getModifiers() {
-        return linkedField.getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
+        return getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
+    }
+
+    public final int getFlags() {
+        return linkedField.getFlags();
     }
 
     @Override
@@ -210,16 +217,12 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         return target;
     }
 
-    public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
-        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
+    @Override
+    public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
+        getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2, errorHandler);
     }
 
     // region FieldAccess impl
-
-    @Override
-    public final void loadingConstraints(Klass accessingClass) {
-        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader());
-    }
 
     @Override
     public final boolean shouldEnforceInitializerCheck() {
@@ -500,6 +503,13 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
     public final void setHiddenObject(StaticObject obj, Object value, boolean forceVolatile) {
         assert isHidden() : this + " is not hidden, use setObject";
         setObjectHelper(obj, value, forceVolatile);
+    }
+
+    public Object compareAndExchangeHiddenObject(StaticObject obj, Object before, Object after) {
+        obj.checkNotForeign();
+        assert isHidden() : this + " is not hidden";
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
+        return linkedField.compareAndExchangeObject(obj, before, after);
     }
     // endregion Hidden Object
     // endregion Object
@@ -1005,6 +1015,16 @@ public class Field extends Member<Type> implements FieldRef, FieldAccess<Klass, 
         meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, this);
         meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
         return instance;
+    }
+
+    public int getConstantValueIndex() {
+        ConstantValueAttribute a = (ConstantValueAttribute) getAttribute(Symbol.Name.ConstantValue);
+        if (a == null) {
+            return 0;
+        }
+        int constantValueIndex = a.getConstantValueIndex();
+        assert constantValueIndex != 0;
+        return constantValueIndex;
     }
 
     /**

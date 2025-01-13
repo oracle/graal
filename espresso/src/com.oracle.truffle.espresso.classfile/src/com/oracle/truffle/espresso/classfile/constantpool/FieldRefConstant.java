@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface FieldRefConstant extends MemberRefConstant {
 
-    static FieldRefConstant create(int classIndex, int nameAndTypeIndex) {
+    static Indexes create(int classIndex, int nameAndTypeIndex) {
         return new Indexes(classIndex, nameAndTypeIndex);
     }
 
@@ -40,14 +40,14 @@ public interface FieldRefConstant extends MemberRefConstant {
         return Tag.FIELD_REF;
     }
 
-    @SuppressWarnings("uncheked")
-    default Symbol<Type> getType(ConstantPool pool) {
-        return Types.fromDescriptor(getDescriptor(pool));
-    }
-
     final class Indexes extends MemberRefConstant.Indexes implements FieldRefConstant, Resolvable {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);
+        }
+
+        @SuppressWarnings("uncheked")
+        public Symbol<Type> getType(ConstantPool pool) {
+            return Types.fromDescriptor(getDescriptor(pool));
         }
 
         @Override
