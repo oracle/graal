@@ -1228,7 +1228,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
 
     @Option(help = "Include a list of methods included in the image for runtime inspection.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(false);
 
     @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
