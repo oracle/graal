@@ -573,7 +573,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 if (!getFlavor().emptyChecksOnMandatoryLoopIterations() &&
                                 curGroup.isMandatoryQuantifier() &&
                                 !curGroup.isExpandedQuantifier() &&
-                                (!ast.getOptions().isBooleanMatch() || ast.getProperties().hasBackReferences() || caretsOnPath())) {
+                                (!ast.getOptions().isBooleanMatch() || ast.getProperties().hasBackReferences() || caretsOnPath() || isReverse() && dollarsOnPath())) {
                     // the existence of a mandatory copy of the quantifier loop implies a minimum
                     // greater than zero
                     assert !curGroup.isMandatoryQuantifier() || quantifier.getMin() > 0;
@@ -1076,7 +1076,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     Quantifier quantifier = quantifierGroup.getQuantifier();
                     if (!quantifierGroup.isExpandedQuantifier()) {
                         if (quantifierGroup.isDead()) {
-                            if (quantifier.getMin() > 0) {
+                            if (quantifier.getMin() > 0 && !quantifierGroup.isOptionalQuantifier()) {
                                 setShouldRetreat();
                             }
                         } else if (quantifier.hasIndex()) {
