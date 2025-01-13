@@ -51,7 +51,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.language.TCKSmokeTestLanguage.TCKSmokeTestLanguageContext;
 import sun.misc.Unsafe;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 
 @Registration(id = TCKSmokeTestLanguage.ID, name = TCKSmokeTestLanguage.ID, characterMimeTypes = TCKSmokeTestLanguage.MIME)
 final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageContext> {
@@ -69,9 +74,15 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
 
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        RootNode root = new RootNodeImpl(this, new PrivilegedCallNode(new Thread(() -> {
-        })), new UnsafeCallNode());
-        return root.getCallTarget();
+        try {
+            Thread thread = new Thread(() -> {
+            });
+            URL url = URI.create("http://localhost").toURL();
+            RootNode root = new RootNodeImpl(this, new PrivilegedCallNode(thread, url), new UnsafeCallNode());
+            return root.getCallTarget();
+        } catch (MalformedURLException urlException) {
+            throw new AssertionError(urlException);
+        }
     }
 
     static final class TCKSmokeTestLanguageContext {
@@ -108,9 +119,11 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
     private static final class PrivilegedCallNode extends BaseNode {
 
         private final Thread otherThread;
+        private final URL url;
 
-        PrivilegedCallNode(Thread thread) {
+        PrivilegedCallNode(Thread thread, URL url) {
             this.otherThread = thread;
+            this.url = url;
         }
 
         @Override
@@ -118,6 +131,7 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
             doPrivilegedCall();
             doBehindBoundaryPrivilegedCall();
             doInterrupt();
+            doPolyMorphicCallToImplInJavaStdLib();
         }
 
         @SuppressWarnings("deprecation" /* JEP-411 */)
@@ -136,6 +150,16 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
                 this.otherThread.interrupt();
             }
             Thread.currentThread().interrupt();
+        }
+
+        @TruffleBoundary
+        void doPolyMorphicCallToImplInJavaStdLib() {
+            try {
+                InputStream in = url.openStream();
+                in.close();
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
         }
     }
 

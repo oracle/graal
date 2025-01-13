@@ -692,6 +692,8 @@ def gate_truffle_native_tck_smoke_test(tasks):
                     mx.abort("Missing UnsafeCallNode.doBehindBoundaryUnsafeAccess call in the log, log:\n" + result)
                 if not 'PrivilegedCallNode.execute' in result:
                     mx.abort("Missing PrivilegedCallNode.execute call in the log, log:\n" + result)
+                if not 'PrivilegedCallNode.doPolyMorphicCallToImplInJavaStdLib' in result:
+                    mx.abort("Missing PrivilegedCallNode.doPolyMorphicCallToImplInJavaStdLib call in the log, log:\n" + result)
                 if not 'PrivilegedCallNode.doBehindBoundaryPrivilegedCall' in result:
                     mx.abort("Missing PrivilegedCallNode.doBehindBoundaryPrivilegedCall call in the log, log:\n" + result)
                 if not 'PrivilegedCallNode.doInterrupt' in result:
