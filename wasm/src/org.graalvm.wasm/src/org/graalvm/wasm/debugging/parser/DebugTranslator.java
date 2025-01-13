@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm.debugging.parser;
 
 import java.nio.file.Path;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.debugging.DebugLineMap;
 import org.graalvm.wasm.debugging.data.DebugDataUtil;
@@ -61,11 +62,13 @@ public class DebugTranslator {
     private final DebugParser parser;
     private final DebugSourceLoader sourceLoader;
     private final String testCompDir;
+    private final TruffleLanguage.Env env;
 
-    public DebugTranslator(byte[] data, String testCompDir) {
+    public DebugTranslator(byte[] data, String testCompDir, TruffleLanguage.Env env) {
         this.parser = new DebugParser(data);
         this.sourceLoader = new DebugSourceLoader();
         this.testCompDir = testCompDir;
+        this.env = env;
     }
 
     @TruffleBoundary
@@ -130,7 +133,7 @@ public class DebugTranslator {
             final DebugLineMap lineMap = fileLineMaps[i];
             if (lineMap != null) {
                 final Path path = lineMap.getFilePath();
-                fileSources[i] = sourceLoader.load(path, languageName, !testCompDir.isEmpty());
+                fileSources[i] = sourceLoader.load(path, languageName, !testCompDir.isEmpty(), env);
             }
             if (fileSources[i] == null) {
                 nullSources++;
