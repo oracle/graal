@@ -27,7 +27,10 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.constantpool.Resolution;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.meta.MemberAccess;
+
+import java.util.function.Function;
 
 public abstract class Member<T extends Descriptor> implements MemberAccess<Klass, Method, Field> {
 
@@ -46,8 +49,8 @@ public abstract class Member<T extends Descriptor> implements MemberAccess<Klass
     }
 
     @Override
-    public final void accessChecks(Klass accessingClass, Klass holderClass) {
-        Resolution.memberDoAccessCheck(accessingClass, holderClass, this, holderClass.getMeta());
+    public final boolean accessChecks(Klass accessingClass, Klass holderClass) {
+        return Resolution.memberCheckAccess(accessingClass, holderClass, this);
     }
 
     @Override
@@ -56,4 +59,11 @@ public abstract class Member<T extends Descriptor> implements MemberAccess<Klass
     public boolean isAbstract() {
         return MemberAccess.super.isAbstract();
     }
+
+    @Override
+    public final void loadingConstraints(Klass accessingClass, Function<String, RuntimeException> errorHandler) {
+        checkLoadingConstraints(accessingClass.getDefiningClassLoader(), getDeclaringKlass().getDefiningClassLoader(), errorHandler);
+    }
+
+    public abstract void checkLoadingConstraints(StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler);
 }

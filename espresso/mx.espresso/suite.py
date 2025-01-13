@@ -230,6 +230,27 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso.jdwp",
         },
 
+        "com.oracle.truffle.espresso.jvmci": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "requires": [
+                "jdk.internal.vm.ci",
+            ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.amd64",
+                    "jdk.vm.ci.aarch64",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.stack",
+                    "jdk.vm.ci.common",
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.runtime",
+                ],
+            },
+            "javaCompliance": "8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
         # Native library for Espresso native interface
         "com.oracle.truffle.espresso.native": {
             "subDir": "src",
@@ -501,6 +522,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
+                                "dependency:espresso:ESPRESSO_JVMCI",
                             ],
                         },
                     },
@@ -515,6 +537,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
+                                "dependency:espresso:ESPRESSO_JVMCI",
                             ],
                         },
                     },
@@ -529,6 +552,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT",
                                 "dependency:espresso:HOTSWAP",
                                 "dependency:espresso:CONTINUATIONS",
+                                "dependency:espresso:ESPRESSO_JVMCI",
                             ],
                         },
                     },
@@ -555,6 +579,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
+                                "dependency:espresso:ESPRESSO_JVMCI/*",
                             ],
                         },
                     },
@@ -571,6 +596,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
+                                "dependency:espresso:ESPRESSO_JVMCI/*",
                             ],
                         },
                     },
@@ -587,6 +613,7 @@ suite = {
                                 "dependency:espresso:ESPRESSO_POLYGLOT/*",
                                 "dependency:espresso:HOTSWAP/*",
                                 "dependency:espresso:CONTINUATIONS/*",
+                                "dependency:espresso:ESPRESSO_JVMCI/*",
                             ],
                         },
                     },
@@ -663,6 +690,21 @@ suite = {
             "maven": {
                 "tag": ["default", "public"],
             },
+        },
+
+        "ESPRESSO_JVMCI": {
+            "subDir": "src",
+            "moduleInfo": {
+                "name": "jdk.internal.vm.ci.espresso",
+                "exports": [
+                    "com.oracle.truffle.espresso.jvmci,com.oracle.truffle.espresso.jvmci.meta to jdk.graal.compiler.espresso",
+                ]
+            },
+            "dependencies": [
+                "com.oracle.truffle.espresso.jvmci",
+            ],
+            "description": "JVMCI implementation for Espresso",
+            "maven": False,
         },
 
         "DACAPO_SCALA_WARMUP": {

@@ -248,12 +248,26 @@ public enum JavaKind {
     }
 
     /**
-     * Returns the kind from the character describing a primitive or void.
+     * Returns the kind from the character describing a primitive or void. An exception is thrown if
+     * the character doesn't correspond to any primitive or void type.
      *
      * @param ch the character for a void or primitive kind as returned by {@link #getTypeChar()}
-     * @return the kind
      */
     public static JavaKind fromPrimitiveOrVoidTypeChar(char ch) {
+        JavaKind kind = fromPrimitiveOrVoidTypeCharOrNull(ch);
+        if (kind == null) {
+            throw new IllegalArgumentException(invalidTypeCharMessage(ch));
+        }
+        return kind;
+    }
+
+    /**
+     * Returns the kind from the character describing a primitive or void. If the character doesn't
+     * correspond to any primitive or void type, null is returned.
+     *
+     * @param ch the character for a void or primitive kind as returned by {@link #getTypeChar()}
+     */
+    public static JavaKind fromPrimitiveOrVoidTypeCharOrNull(char ch) {
         return switch (ch) {
             case 'Z' -> Boolean;
             case 'C' -> Char;
@@ -264,8 +278,7 @@ public enum JavaKind {
             case 'I' -> Int;
             case 'J' -> Long;
             case 'V' -> Void;
-            default ->
-                throw new IllegalStateException(invalidTypeCharMessage(ch));
+            default -> null;
         };
     }
 

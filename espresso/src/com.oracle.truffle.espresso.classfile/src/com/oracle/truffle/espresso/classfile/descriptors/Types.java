@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.classfile.descriptors;
 
 import static com.oracle.truffle.espresso.classfile.descriptors.ByteSequence.EMPTY;
 import static com.oracle.truffle.espresso.classfile.descriptors.ByteSequence.wrap;
+import static com.oracle.truffle.espresso.classfile.descriptors.Validation.validClassNameEntry;
 
 import java.util.Arrays;
 
@@ -363,12 +364,16 @@ public final class Types {
     }
 
     public static ByteSequence nameToType(ByteSequence name) {
+        if (name.byteAt(0) == '[') {
+            assert Validation.validTypeDescriptor(name, true) : "Type validity should have been checked beforehand: " + name;
+            return name;
+        }
         byte[] bytes = new byte[name.length() + 2]; // + L;
         name.writeTo(bytes, 1);
         bytes[0] = 'L';
         bytes[bytes.length - 1] = ';';
         ByteSequence wrap = ByteSequence.wrap(bytes);
-        assert checkType(wrap) != null : "Type validity should have been checked beforehand";
+        assert checkType(wrap) != null : "Type validity should have been checked beforehand: " + name;
         return wrap;
     }
 
@@ -376,7 +381,17 @@ public final class Types {
         return symbols.lookup(checkType(type));
     }
 
-    public Symbol<Type> lookup(ByteSequence type) {
+    public Symbol<Type> lookupName(Symbol<Name> name) {
+        if (!validClassNameEntry(name)) {
+            return null;
+        }
+        if (name.byteAt(0) == '[') {
+            return fromSymbol(name);
+        }
+        return symbols.lookup(nameToType(name));
+    }
+
+    public Symbol<Type> lookupType(ByteSequence type) {
         return symbols.lookup(type);
     }
 

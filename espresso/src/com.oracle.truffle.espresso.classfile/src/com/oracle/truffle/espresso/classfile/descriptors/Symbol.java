@@ -358,6 +358,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> linkToInterface = StaticSymbols.putName("linkToInterface");
         public static final Symbol<Name> linkToSpecial = StaticSymbols.putName("linkToSpecial");
         public static final Symbol<Name> linkToNative = StaticSymbols.putName("linkToNative");
+        public static final Symbol<Name> asFixedArity = StaticSymbols.putName("asFixedArity");
+        public static final Symbol<Name> member = StaticSymbols.putName("member");
 
         // VarHandles
         public static final Symbol<Name> getStaticFieldFromBaseAndOffset = StaticSymbols.putName("getStaticFieldFromBaseAndOffset");
@@ -638,6 +640,30 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> pointers = StaticSymbols.putName("pointers");
         public static final Symbol<Name> primitives = StaticSymbols.putName("primitives");
         public static final Symbol<Name> method = StaticSymbols.putName("method");
+
+        // JVMCI
+        public static final Symbol<Name> runtime = StaticSymbols.putName("runtime");
+        public static final Symbol<Name> forBasicType = StaticSymbols.putName("forBasicType");
+        public static final Symbol<Name> openJVMCITo = StaticSymbols.putName("openJVMCITo");
+        public static final Symbol<Name> NULL_POINTER = StaticSymbols.putName("NULL_POINTER");
+        public static final Symbol<Name> ILLEGAL = StaticSymbols.putName("ILLEGAL");
+        public static final Symbol<Name> forInt = StaticSymbols.putName("forInt");
+        public static final Symbol<Name> forLong = StaticSymbols.putName("forLong");
+        public static final Symbol<Name> forFloat = StaticSymbols.putName("forFloat");
+        public static final Symbol<Name> forDouble = StaticSymbols.putName("forDouble");
+        public static final Symbol<Name> forPrimitive = StaticSymbols.putName("forPrimitive");
+        public static final Symbol<Name> code = StaticSymbols.putName("code");
+        public static final Symbol<Name> INVOKE_BASIC = StaticSymbols.putName("INVOKE_BASIC");
+        public static final Symbol<Name> LINK_TO_VIRTUAL = StaticSymbols.putName("LINK_TO_VIRTUAL");
+        public static final Symbol<Name> LINK_TO_STATIC = StaticSymbols.putName("LINK_TO_STATIC");
+        public static final Symbol<Name> LINK_TO_SPECIAL = StaticSymbols.putName("LINK_TO_SPECIAL");
+        public static final Symbol<Name> LINK_TO_INTERFACE = StaticSymbols.putName("LINK_TO_INTERFACE");
+        public static final Symbol<Name> LINK_TO_NATIVE = StaticSymbols.putName("LINK_TO_NATIVE");
+        public static final Symbol<Name> HIDDEN_OBJECTKLASS_MIRROR = StaticSymbols.putName("0HIDDEN_KLASS_MIRROR");
+        public static final Symbol<Name> HIDDEN_JVMCIINDY = StaticSymbols.putName("0HIDDEN_JVMCIINDY");
+        public static final Symbol<Name> HIDDEN_FIELD_MIRROR = StaticSymbols.putName("0HIDDEN_FIELD_MIRROR");
+        public static final Symbol<Name> HIDDEN_METHOD_MIRROR = StaticSymbols.putName("0HIDDEN_METHOD_MIRROR");
+        public static final Symbol<Name> HIDDEN_OBJECT_CONSTANT = StaticSymbols.putName("0HIDDEN_OBJECT_CONSTANT");
 
         // Panama
         public static final Symbol<Name> segmentMaskOrSize = StaticSymbols.putName("segmentMaskOrSize");
@@ -1047,6 +1073,37 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> org_graalvm_continuations_IllegalContinuationStateException = StaticSymbols.putType(
                         "Lorg/graalvm/continuations/IllegalContinuationStateException;");
 
+        // JVMCI
+        public static final Symbol<Type> jdk_vm_ci_runtime_JVMCIRuntime = StaticSymbols.putType("Ljdk/vm/ci/runtime/JVMCIRuntime;");
+        public static final Symbol<Type> jdk_vm_ci_services_Services = StaticSymbols.putType("Ljdk/vm/ci/services/Services;");
+        public static final Symbol<Type> jdk_vm_ci_meta_UnresolvedJavaType = StaticSymbols.putType("Ljdk/vm/ci/meta/UnresolvedJavaType;");
+        public static final Symbol<Type> jdk_vm_ci_meta_UnresolvedJavaField = StaticSymbols.putType("Ljdk/vm/ci/meta/UnresolvedJavaField;");
+        public static final Symbol<Type> jdk_vm_ci_meta_LineNumberTable = StaticSymbols.putType("Ljdk/vm/ci/meta/LineNumberTable;");
+        public static final Symbol<Type> jdk_vm_ci_meta_LocalVariableTable = StaticSymbols.putType("Ljdk/vm/ci/meta/LocalVariableTable;");
+        public static final Symbol<Type> jdk_vm_ci_meta_Local = StaticSymbols.putType("Ljdk/vm/ci/meta/Local;");
+        public static final Symbol<Type> jdk_vm_ci_meta_Local_array = StaticSymbols.putType("[Ljdk/vm/ci/meta/Local;");
+        public static final Symbol<Type> jdk_vm_ci_meta_JavaType = StaticSymbols.putType("Ljdk/vm/ci/meta/JavaType;");
+        public static final Symbol<Type> jdk_vm_ci_meta_ExceptionHandler = StaticSymbols.putType("Ljdk/vm/ci/meta/ExceptionHandler;");
+        public static final Symbol<Type> jdk_vm_ci_meta_JavaConstant = StaticSymbols.putType("Ljdk/vm/ci/meta/JavaConstant;");
+        public static final Symbol<Type> jdk_vm_ci_meta_JavaConstant_array = StaticSymbols.putType("[Ljdk/vm/ci/meta/JavaConstant;");
+        public static final Symbol<Type> jdk_vm_ci_meta_PrimitiveConstant = StaticSymbols.putType("Ljdk/vm/ci/meta/PrimitiveConstant;");
+        public static final Symbol<Type> jdk_vm_ci_meta_MethodHandleAccessProvider$IntrinsicMethod = StaticSymbols.putType("Ljdk/vm/ci/meta/MethodHandleAccessProvider$IntrinsicMethod;");
+        // @formatter:off
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/EspressoJVMCIRuntime;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedInstanceType;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaField = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaField;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaMethod;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedArrayType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedArrayType;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedPrimitiveType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedPrimitiveType;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoResolvedJavaType;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoConstantPool;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoObjectConstant = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoObjectConstant;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_jvmci_meta_EspressoBootstrapMethodInvocation = StaticSymbols.putType("Lcom/oracle/truffle/espresso/jvmci/meta/EspressoBootstrapMethodInvocation;");
+        // @formatter:on
+
+        public static final Symbol<Type> jdk_graal_compiler_espresso_DummyEspressoGraalJVMCICompiler = StaticSymbols.putType("Lcom/oracle/truffle/espresso/graal/DummyEspressoGraalJVMCICompiler;");
+        public static final Symbol<Type> jdk_graal_compiler_api_runtime_GraalJVMCICompiler = StaticSymbols.putType("Ljdk/graal/compiler/api/runtime/GraalJVMCICompiler;");
+
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");
         public static final Symbol<Type> jdk_internal_foreign_abi_NativeEntryPoint = StaticSymbols.putType("Ljdk/internal/foreign/abi/NativeEntryPoint;");
@@ -1279,6 +1336,7 @@ public final class Symbol<T> extends ByteSequence {
                         Type.java_lang_Object,
                         Type.java_lang_Object);
         public static final Symbol<Signature> MethodHandles$Lookup = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
+        public static final Symbol<Signature> MethodHandle = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandle);
 
         public static final Symbol<Signature> CallSite_Lookup_String_MethodType_MethodType_MethodHandle_MethodType = StaticSymbols.putSignature(
                         Type.java_lang_invoke_CallSite,
@@ -1337,8 +1395,7 @@ public final class Symbol<T> extends ByteSequence {
 
         public static final Symbol<Signature> ArityException_int_int_int = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_ArityException, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> ArityException_int_int_int_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_ArityException, Type._int, Type._int,
-                        Type._int,
-                        Type.java_lang_Throwable);
+                        Type._int, Type.java_lang_Throwable);
 
         public static final Symbol<Signature> InvalidArrayIndexException_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long);
         public static final Symbol<Signature> InvalidArrayIndexException_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException, Type._long,
@@ -1347,8 +1404,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> InvalidBufferOffsetException_long_long = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException, Type._long,
                         Type._long);
         public static final Symbol<Signature> InvalidBufferOffsetException_long_long_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException,
-                        Type._long, Type._long,
-                        Type.java_lang_Throwable);
+                        Type._long, Type._long, Type.java_lang_Throwable);
 
         public static final Symbol<Signature> StopIterationException = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_StopIterationException);
         public static final Symbol<Signature> StopIterationException_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_StopIterationException, Type.java_lang_Throwable);
@@ -1356,6 +1412,30 @@ public final class Symbol<T> extends ByteSequence {
                         Type.java_lang_Object);
         public static final Symbol<Signature> UnknownKeyException_Object_Throwable = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_polyglot_UnknownKeyException,
                         Type.java_lang_Object, Type.java_lang_Throwable);
+
+        // JVMCI
+        public static final Symbol<Signature> EspressoJVMCIRuntime = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_jvmci_EspressoJVMCIRuntime);
+        public static final Symbol<Signature> _void_EspressoResolvedJavaType_int_Class = StaticSymbols.putSignature(Type._void, Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaType,
+                        Type._int, Type.java_lang_Class);
+        public static final Symbol<Signature> _void_EspressoResolvedInstanceType = StaticSymbols.putSignature(Type._void, Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedInstanceType);
+        public static final Symbol<Signature> EspressoResolvedPrimitiveType_int = StaticSymbols.putSignature(Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedPrimitiveType, Type._int);
+        public static final Symbol<Signature> DummyEspressoGraalJVMCICompiler_JVMCIRuntime = StaticSymbols.putSignature(Type.jdk_graal_compiler_espresso_DummyEspressoGraalJVMCICompiler,
+                        Type.jdk_vm_ci_runtime_JVMCIRuntime);
+        public static final Symbol<Signature> _void_Module = StaticSymbols.putSignature(Type._void, Type.java_lang_Module);
+        public static final Symbol<Signature> _void_Local_array = StaticSymbols.putSignature(Type._void, Type.jdk_vm_ci_meta_Local_array);
+        public static final Symbol<Signature> _void_int_array_int_array = StaticSymbols.putSignature(Type._void, Type._int_array, Type._int_array);
+        public static final Symbol<Signature> _void_String_JavaType_int_int_int = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.jdk_vm_ci_meta_JavaType, Type._int, Type._int,
+                        Type._int);
+        public static final Symbol<Signature> _void_int_int_int_int_JavaType = StaticSymbols.putSignature(Type._void, Type._int, Type._int, Type._int, Type._int, Type.jdk_vm_ci_meta_JavaType);
+        public static final Symbol<Signature> _void_JavaType_String_JavaType = StaticSymbols.putSignature(Type._void, Type.jdk_vm_ci_meta_JavaType, Type.java_lang_String,
+                        Type.jdk_vm_ci_meta_JavaType);
+        public static final Symbol<Signature> PrimitiveConstant_int = StaticSymbols.putSignature(Type.jdk_vm_ci_meta_PrimitiveConstant, Type._int);
+        public static final Symbol<Signature> PrimitiveConstant_long = StaticSymbols.putSignature(Type.jdk_vm_ci_meta_PrimitiveConstant, Type._long);
+        public static final Symbol<Signature> PrimitiveConstant_float = StaticSymbols.putSignature(Type.jdk_vm_ci_meta_PrimitiveConstant, Type._float);
+        public static final Symbol<Signature> PrimitiveConstant_double = StaticSymbols.putSignature(Type.jdk_vm_ci_meta_PrimitiveConstant, Type._double);
+        public static final Symbol<Signature> PrimitiveConstant_char_long = StaticSymbols.putSignature(Type.jdk_vm_ci_meta_PrimitiveConstant, Type._char, Type._long);
+        public static final Symbol<Signature> _void_boolean_EspressoResolvedJavaMethod_String_JavaConstant_JavaConstant_array = StaticSymbols.putSignature(Type._void, Type._boolean,
+                        Type.com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMethod, Type.java_lang_String, Type.jdk_vm_ci_meta_JavaConstant, Type.jdk_vm_ci_meta_JavaConstant_array);
 
         public static final Symbol<Signature> _void_sun_misc_Signal = StaticSymbols.putSignature(Type._void, Type.sun_misc_Signal);
         public static final Symbol<Signature> _void_jdk_internal_misc_Signal = StaticSymbols.putSignature(Type._void, Type.jdk_internal_misc_Signal);

@@ -57,7 +57,6 @@ import org.graalvm.collections.Pair;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
@@ -415,7 +414,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             // - Static fields are accessed statically
             // - Final fields and ref_put*
             // These are done when needed by JDK code.
-            Field f = EspressoLinkResolver.resolveFieldSymbol(ctx, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
+            Field f = EspressoLinkResolver.resolveFieldSymbolOrThrow(ctx, callerKlass, name, t, resolutionKlass, false, doConstraintsChecks);
             plantResolvedField(memberName, f, refKind, meta, meta.getLanguage());
             return memberName;
         }
@@ -441,7 +440,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
         Symbol<Signature> sig = lookupSignature(meta, desc, mhMethodId);
         Method m = EspressoLinkResolver.resolveMethodSymbol(ctx, callerKlass, name, sig, resolutionKlass, resolutionKlass.isInterface(), doAccessChecks, doConstraintsChecks);
-        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(ctx, callerKlass, m, SiteTypes.callSiteFromRefKind(refKind), resolutionKlass);
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrThrow(ctx, callerKlass, m, SiteTypes.callSiteFromRefKind(refKind), resolutionKlass);
 
         plantResolvedMethod(memberName, resolvedCall, meta);
 
@@ -461,7 +460,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static PolySigIntrinsics getPolysignatureIntrinsicID(int flags, Klass resolutionKlass, int refKind, Symbol<Name> name) {
         PolySigIntrinsics mhMethodId = None;
         if (Constants.flagHas(flags, MN_IS_METHOD) &&
-                        (resolutionKlass.getType() == Type.java_lang_invoke_MethodHandle || resolutionKlass.getType() == Type.java_lang_invoke_VarHandle)) {
+                        Meta.isSignaturePolymorphicHolderType(resolutionKlass.getType())) {
             if (refKind == REF_invokeVirtual ||
                             refKind == REF_invokeSpecial ||
                             refKind == REF_invokeStatic) {
@@ -491,7 +490,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @TruffleBoundary
     private static Symbol<Type> lookupType(Meta meta, ByteSequence desc) {
-        Symbol<Type> t = meta.getLanguage().getTypes().lookup(desc);
+        Symbol<Type> t = meta.getLanguage().getTypes().lookupType(desc);
         if (t == null) {
             throw meta.throwException(meta.java_lang_NoSuchFieldException);
         }
@@ -663,19 +662,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     public static final class SiteTypes {
         public static CallSiteType callSiteFromOpCode(int opcode) {
-            switch (opcode) {
-                case Bytecodes.INVOKESTATIC:
-                    return CallSiteType.Static;
-                case Bytecodes.INVOKESPECIAL:
-                    return CallSiteType.Special;
-                case Bytecodes.INVOKEVIRTUAL:
-                    return CallSiteType.Virtual;
-                case Bytecodes.INVOKEINTERFACE:
-                    return CallSiteType.Interface;
-                default:
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(opcode));
-            }
+            return CallSiteType.fromOpCode(opcode);
         }
 
         public static CallSiteType callSiteFromRefKind(int refKind) {
@@ -696,19 +683,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
 
         public static FieldAccessType fieldAccessFromOpCode(int opcode) {
-            switch (opcode) {
-                case Bytecodes.GETSTATIC:
-                    return FieldAccessType.GetStatic;
-                case Bytecodes.PUTSTATIC:
-                    return FieldAccessType.PutStatic;
-                case Bytecodes.GETFIELD:
-                    return FieldAccessType.GetInstance;
-                case Bytecodes.PUTFIELD:
-                    return FieldAccessType.PutInstance;
-                default:
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(opcode));
-            }
+            return FieldAccessType.fromOpCode(opcode);
         }
 
         public static FieldAccessType fieldAccessFromRefKind(int refKind) {

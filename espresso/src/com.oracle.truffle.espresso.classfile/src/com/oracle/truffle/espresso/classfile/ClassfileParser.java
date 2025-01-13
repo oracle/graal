@@ -88,6 +88,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.IntegerConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InterfaceMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvalidConstant;
@@ -389,7 +390,7 @@ public final class ClassfileParser {
             throw classFormatError("Invalid constant pool size (" + length + ")");
         }
         int rawPoolStartPosition = stream.getPosition();
-        final PoolConstant[] entries = new PoolConstant[length];
+        ImmutablePoolConstant[] entries = new ImmutablePoolConstant[length];
         entries[0] = InvalidConstant.VALUE;
 
         int i = 1;

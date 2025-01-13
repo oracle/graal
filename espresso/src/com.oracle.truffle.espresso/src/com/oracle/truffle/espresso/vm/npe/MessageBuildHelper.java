@@ -267,7 +267,7 @@ final class MessageBuildHelper {
 
     private static void appendStaticField(Analysis analysis, StringBuilder sb, int bci) {
         ConstantPool pool = analysis.m.getConstantPool();
-        FieldRefConstant ref = pool.fieldAt(analysis.bs.readCPI(bci));
+        FieldRefConstant.Indexes ref = pool.fieldAt(analysis.bs.readCPI(bci));
         Symbol<Name> klassName = ref.getHolderKlassName(pool);
         Symbol<Name> fieldName = ref.getName(pool);
 
@@ -278,7 +278,7 @@ final class MessageBuildHelper {
 
     private static void appendMethodCall(Analysis analysis, StringBuilder sb, int bci) {
         ConstantPool pool = analysis.m.getConstantPool();
-        MethodRefConstant ref = pool.methodAt(analysis.bs.readCPI(bci));
+        MethodRefConstant.Indexes ref = pool.methodAt(analysis.bs.readCPI(bci));
         Symbol<Name> klassName = ref.getHolderKlassName(pool);
         Symbol<Name> methodName = ref.getName(pool);
         Symbol<Signature> signature = ref.getSignature(pool);

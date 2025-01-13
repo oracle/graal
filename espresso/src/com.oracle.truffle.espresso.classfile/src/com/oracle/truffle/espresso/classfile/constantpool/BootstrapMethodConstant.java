@@ -31,21 +31,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
  */
 public interface BootstrapMethodConstant extends PoolConstant {
 
-    int getBootstrapMethodAttrIndex();
-
-    default Symbol<Name> getName(ConstantPool pool) {
-        return getNameAndType(pool).getName(pool);
-    }
-
-    NameAndTypeConstant getNameAndType(ConstantPool pool);
-
-    @Override
-    default String toString(ConstantPool pool) {
-        return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getNameAndType(pool);
-    }
-
-    abstract class Indexes implements BootstrapMethodConstant {
-
+    abstract class Indexes implements BootstrapMethodConstant, ImmutablePoolConstant {
         protected final char bootstrapMethodAttrIndex;
         protected final char nameAndTypeIndex;
 
@@ -54,19 +40,38 @@ public interface BootstrapMethodConstant extends PoolConstant {
             this.nameAndTypeIndex = PoolConstant.u2(nameAndTypeIndex);
         }
 
-        @Override
         public final int getBootstrapMethodAttrIndex() {
             return bootstrapMethodAttrIndex;
         }
 
-        @Override
-        public final Symbol<Name> getName(ConstantPool pool) {
+        public Symbol<Name> getName(ConstantPool pool) {
             return getNameAndType(pool).getName(pool);
         }
 
-        @Override
-        public NameAndTypeConstant getNameAndType(ConstantPool pool) {
+        public Symbol<? extends Symbol.Descriptor> getDescriptor(ConstantPool pool) {
+            return getNameAndType(pool).getDescriptor(pool);
+        }
+
+        public final NameAndTypeConstant getNameAndType(ConstantPool pool) {
             return pool.nameAndTypeAt(nameAndTypeIndex);
+        }
+
+        @Override
+        public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+            if (!(other instanceof Indexes otherConstant)) {
+                return false;
+            }
+            if (tag() != otherConstant.tag()) {
+                return false;
+            }
+            // FIXME: comparison of the index is not enough
+            return getNameAndType(thisPool).isSame(otherConstant.getNameAndType(otherPool), thisPool, otherPool) &&
+                            getBootstrapMethodAttrIndex() == otherConstant.getBootstrapMethodAttrIndex();
+        }
+
+        @Override
+        public String toString(ConstantPool pool) {
+            return "bsmIndex:" + getBootstrapMethodAttrIndex() + " " + getNameAndType(pool);
         }
     }
 }

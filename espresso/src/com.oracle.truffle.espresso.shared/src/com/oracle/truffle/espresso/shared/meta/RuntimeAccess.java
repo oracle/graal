@@ -51,6 +51,12 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
     RuntimeException throwError(ErrorType error, String messageFormat, Object... args);
 
     /**
+     * If {@code error} is an exception that can be thrown by {@link #throwError}, returns the
+     * correspondin {@link ErrorType}. Returns null otherwise.
+     */
+    ErrorType getErrorType(Throwable error);
+
+    /**
      * Performs class loading on behalf of the given accessing class.
      * <p>
      * Its defining class loader is the one to be used for loading.
@@ -83,4 +89,12 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      * {@code String.format(Locale.ENGLISH, messageFormat, args)}.
      */
     RuntimeException fatal(String messageFormat, Object... args);
+
+    /**
+     * Signals that an unexpected exception was seen and that the current operation must be aborted.
+     * <p>
+     * The caller provides the unexpected exception and an error message that can be constructed
+     * using {@code String.format(Locale.ENGLISH, messageFormat, args)}.
+     */
+    RuntimeException fatal(Throwable t, String messageFormat, Object... args);
 }

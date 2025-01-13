@@ -102,8 +102,7 @@ public final class MethodHandleIntrinsics {
     }
 
     public static PolySigIntrinsics getId(Symbol<Name> name, Klass declaringKlass) {
-        if (!(Type.java_lang_invoke_MethodHandle.equals(declaringKlass.getType()) ||
-                        Type.java_lang_invoke_VarHandle.equals(declaringKlass.getType()))) {
+        if (!Meta.isSignaturePolymorphicHolderType(declaringKlass.getType())) {
             return PolySigIntrinsics.None;
         }
         if (Type.java_lang_invoke_MethodHandle.equals(declaringKlass.getType())) {

@@ -29,19 +29,19 @@ import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface MethodRefConstant extends MemberRefConstant {
 
-    /**
-     * Gets the signature descriptor of the method represented by this constant.
-     *
-     * @param pool container of this constant
-     */
-    @SuppressWarnings("unchecked")
-    default Symbol<Signature> getSignature(ConstantPool pool) {
-        return (Symbol<Signature>) getDescriptor(pool);
-    }
-
     abstract class Indexes extends MemberRefConstant.Indexes implements MethodRefConstant {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);
+        }
+
+        /**
+         * Gets the signature descriptor of the method represented by this constant.
+         *
+         * @param pool container of this constant
+         */
+        @SuppressWarnings("unchecked")
+        public Symbol<Signature> getSignature(ConstantPool pool) {
+            return (Symbol<Signature>) getDescriptor(pool);
         }
 
         @Override

@@ -150,6 +150,7 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.substitutions.ModuleExtension;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
@@ -2383,14 +2384,16 @@ public final class VM extends NativeEnv {
         map.set("sun.boot.library.path", props.bootLibraryPath(), "VM");
         map.set("java.ext.dirs", props.extDirs(), "VM");
 
+        int addmodCount = 0;
+        int addexportsCount = 0;
         // Modules properties.
         if (getJavaVersion().modulesEnabled()) {
             map.setPropertyIfExists("jdk.module.main", getModuleMain(options), "Module");
             map.setPropertyIfExists("jdk.module.path", options.get(EspressoOptions.ModulePath), "ModulePath");
             map.setNumberedProperty("jdk.module.addreads.", options.get(EspressoOptions.AddReads), "AddReads");
-            map.setNumberedProperty("jdk.module.addexports.", options.get(EspressoOptions.AddExports), "AddExports");
+            addexportsCount = map.setNumberedProperty("jdk.module.addexports.", options.get(EspressoOptions.AddExports), "AddExports");
             map.setNumberedProperty("jdk.module.addopens.", options.get(EspressoOptions.AddOpens), "AddOpens");
-            map.setNumberedProperty("jdk.module.addmods.", options.get(EspressoOptions.AddModules), "AddModules");
+            addmodCount = map.setNumberedProperty("jdk.module.addmods.", options.get(EspressoOptions.AddModules), "AddModules");
             map.setNumberedProperty("jdk.module.enable.native.access.", options.get(EspressoOptions.EnableNativeAccess), "EnableNativeAccess");
         }
 
@@ -2424,6 +2427,21 @@ public final class VM extends NativeEnv {
 
         if (warnInternalModuleProp) {
             LOGGER.warning("Ignoring system property options whose names match the '-Djdk.module.*'. names that are reserved for internal use.");
+        }
+
+        for (ModuleExtension me : ModuleExtension.getAllExtensions(getContext())) {
+            if (me.isAutoAdd()) {
+                map.set("jdk.module.addmods." + addmodCount++, me.moduleName(), "VM (module extensions)");
+            }
+            for (Map.Entry<String, List<String>> entry : me.getRequiresConcealed().entrySet()) {
+                for (String packageName : entry.getValue()) {
+                    map.set("jdk.module.addexports." + addexportsCount++, entry.getKey() + "/" + packageName + "=" + me.moduleName(), "VM (module extensions)");
+                }
+            }
+        }
+
+        if (getLanguage().isInternalJVMCIEnabled()) {
+            map.set("jdk.internal.vm.ci.enabled", "true", "VM (JVMCI)");
         }
 
         return map;
@@ -3972,6 +3990,10 @@ public final class VM extends NativeEnv {
                 meta.java_lang_StackTraceElement_declaringClassObject.setObject(ste, meta.java_lang_Object.mirror());
             }
         }
+        fillInElementBasic(ste, element, meta);
+    }
+
+    public static void fillInElementBasic(StaticObject ste, StackElement element, Meta meta) {
         // Fill in class name
         meta.java_lang_StackTraceElement_declaringClass.setObject(ste, element.getGuestDeclaringClassName(meta));
         // Fill in method name

@@ -27,7 +27,12 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
-public final class FloatConstant implements PoolConstant {
+public final class FloatConstant implements ImmutablePoolConstant {
+    private final float value;
+
+    FloatConstant(float value) {
+        this.value = value;
+    }
 
     public static FloatConstant create(float value) {
         return new FloatConstant(value);
@@ -38,14 +43,16 @@ public final class FloatConstant implements PoolConstant {
         return Tag.FLOAT;
     }
 
-    private final float value;
-
-    FloatConstant(float value) {
-        this.value = value;
-    }
-
     public float value() {
         return value;
+    }
+
+    @Override
+    public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!(other instanceof FloatConstant otherConstant)) {
+            return false;
+        }
+        return Float.floatToRawIntBits(value) == Float.floatToRawIntBits(otherConstant.value);
     }
 
     @Override

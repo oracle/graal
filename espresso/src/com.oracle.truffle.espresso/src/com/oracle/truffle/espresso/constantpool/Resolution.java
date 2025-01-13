@@ -27,7 +27,6 @@ import java.util.logging.Level;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -207,13 +206,13 @@ public final class Resolution {
         ClassRedefinition classRedefinition = null;
         try {
             try {
-                field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
+                field = EspressoLinkResolver.resolveFieldSymbolOrThrow(context, accessingKlass, name, type, holderKlass, true, true);
             } catch (EspressoException e) {
                 classRedefinition = context.getClassRedefinition();
                 if (classRedefinition != null) {
                     // could be due to ongoing redefinition
                     classRedefinition.check();
-                    field = EspressoLinkResolver.resolveFieldSymbol(context, accessingKlass, name, type, holderKlass, true, true);
+                    field = EspressoLinkResolver.resolveFieldSymbolOrThrow(context, accessingKlass, name, type, holderKlass, true, true);
                 } else {
                     throw e;
                 }
@@ -226,16 +225,7 @@ public final class Resolution {
     }
 
     public static Klass getResolvedHolderKlass(MemberRefConstant.Indexes thiz, RuntimeConstantPool pool, ObjectKlass accessingKlass) {
-        return pool.resolvedKlassAt(accessingKlass, thiz.getClassIndex());
-    }
-
-    @TruffleBoundary
-    public static void memberDoAccessCheck(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member, Meta meta) {
-        assert accessingKlass != null && resolvedKlass != null && member != null : "pre-conditions failed.";
-        if (!memberCheckAccess(accessingKlass, resolvedKlass, member)) {
-            String message = "Class " + accessingKlass.getExternalName() + " cannot access method " + resolvedKlass.getExternalName() + "#" + member.getName();
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(message));
-        }
+        return pool.resolvedKlassAt(accessingKlass, thiz.getHolderIndex());
     }
 
     /**
@@ -254,7 +244,7 @@ public final class Resolution {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean memberCheckAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
+    public static boolean memberCheckAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
         if (member.isPublic()) {
             return true;
         }
@@ -491,7 +481,7 @@ public final class Resolution {
         return new ResolvedClassMethodRefConstant(method);
     }
 
-    static StaticObject signatureToMethodType(Symbol<Type>[] signature, ObjectKlass accessingKlass, boolean failWithBME, Meta meta) {
+    public static StaticObject signatureToMethodType(Symbol<Type>[] signature, ObjectKlass accessingKlass, boolean failWithBME, Meta meta) {
         Symbol<Type> rt = Signatures.returnType(signature);
         int pcount = Signatures.parameterCount(signature);
 
@@ -653,7 +643,7 @@ public final class Resolution {
              * have an interface as declaring klass however if the refKind is invokeVirtual, it
              * would be illegal to use the interface type
              */
-            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getClassIndex());
+            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getHolderIndex());
             refName = target.getName();
         } else {
             assert refTag == Tag.FIELD_REF;
@@ -679,17 +669,16 @@ public final class Resolution {
 
         Tag refTag = pool.tagAt(thiz.getRefIndex());
         if (refTag == Tag.METHOD_REF || refTag == Tag.INTERFACE_METHOD_REF) {
-            MethodRefConstant ref = pool.methodAt(thiz.getRefIndex());
+            MethodRefConstant.Indexes ref = pool.methodAt(thiz.getRefIndex());
             Symbol<Signature> signature = ref.getSignature(pool);
             Symbol<Type>[] parsed = meta.getSignatures().parsed(signature);
 
             mtype = signatureToMethodType(parsed, accessingKlass, false, meta);
-            mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).getClassIndex());
+            mklass = pool.resolvedKlassAt(accessingKlass, ref.getHolderIndex());
             refName = ref.getName(pool);
         } else {
             assert refTag == Tag.FIELD_REF;
-            assert pool.fieldAt(thiz.getRefIndex()) instanceof FieldRefConstant.Indexes;
-            FieldRefConstant.Indexes ref = (FieldRefConstant.Indexes) pool.fieldAt(thiz.getRefIndex());
+            FieldRefConstant.Indexes ref = pool.fieldAt(thiz.getRefIndex());
 
             Symbol<Type> type = ref.getType(pool);
             mtype = meta.resolveSymbolAndAccessCheck(type, accessingKlass).mirror();

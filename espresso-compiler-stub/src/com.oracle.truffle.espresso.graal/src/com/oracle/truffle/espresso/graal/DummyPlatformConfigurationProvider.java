@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.graal;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 
-public final class ContextDescription {
+public final class DummyPlatformConfigurationProvider implements PlatformConfigurationProvider {
+    @Override
+    public BarrierSet getBarrierSet() {
+        throw GraalError.unimplementedOverride();
+    }
 
-    final EspressoLanguage language;
-    final JavaVersion javaVersion;
-
-    public ContextDescription(EspressoLanguage language, JavaVersion javaVersion) {
-        this.language = language;
-        this.javaVersion = javaVersion;
+    @Override
+    public boolean canVirtualizeLargeByteArrayAccess() {
+        throw GraalError.unimplementedOverride();
     }
 }

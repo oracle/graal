@@ -34,29 +34,24 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
-public final class Utf8Constant implements PoolConstant {
-
+public final class Utf8Constant implements ImmutablePoolConstant {
     private static final short VALID_CLASS_NAME = 0x01;
     private static final short VALID_METHOD_NAME = 0x02;
     private static final short VALID_METHOD_NAME_OR_CLINIT = 0x4;
     private static final short VALID_FIELD_NAME = 0x08;
     private static final short VALID_SIGNATURE = 0x10;
-
     private static final short VALID_UTF8 = 0x20;
     private static final short VALID_TYPE = 0x40;
-
     private static final short VALID_INIT_SIGNATURE = 0x80;
-
     private static final short VALID_TYPE_NO_VOID = 0x100;
 
+    private final Symbol<?> value;
     private short validationCache;
 
     @Override
     public Tag tag() {
         return Tag.UTF8;
     }
-
-    private final Symbol<?> value;
 
     public Utf8Constant(Symbol<?> value) {
         this.value = value;
@@ -65,6 +60,14 @@ public final class Utf8Constant implements PoolConstant {
     @SuppressWarnings("unchecked")
     public <T> Symbol<T> unsafeSymbolValue() {
         return (Symbol<T>) value;
+    }
+
+    @Override
+    public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!(other instanceof Utf8Constant otherConstant)) {
+            return false;
+        }
+        return value == otherConstant.value;
     }
 
     @Override

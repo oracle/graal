@@ -33,14 +33,28 @@ import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 
 public final class EspressoLinkResolver {
-    public static Field resolveFieldSymbol(EspressoContext ctx, Klass accessingKlass,
-                    Symbol<Symbol.Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
-                    boolean accessCheck, boolean loadingConstraints) {
-        return LinkResolver.resolveFieldSymbol(ctx, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
+    private EspressoLinkResolver() {
+        // no instance.
     }
 
-    public static Field resolveFieldAccess(EspressoContext ctx, Field symbolicResolution, FieldAccessType fieldAccessType, Klass currentKlass, Method currentMethod) {
-        return LinkResolver.resolveFieldAccess(ctx, symbolicResolution, fieldAccessType, currentKlass, currentMethod);
+    public static Field resolveFieldSymbolOrThrow(EspressoContext ctx, Klass accessingKlass,
+                    Symbol<Symbol.Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
+                    boolean accessCheck, boolean loadingConstraints) {
+        return LinkResolver.resolveFieldSymbolOrThrow(ctx, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
+    }
+
+    public static Field resolveFieldSymbolOrNull(EspressoContext ctx, Klass accessingKlass,
+                    Symbol<Symbol.Name> name, Symbol<Symbol.Type> type, Klass symbolicHolder,
+                    boolean accessCheck, boolean loadingConstraints) {
+        return LinkResolver.resolveFieldSymbolOrNull(ctx, accessingKlass, name, type, symbolicHolder, accessCheck, loadingConstraints);
+    }
+
+    public static void checkFieldAccessOrThrow(EspressoContext ctx, Field symbolicResolution, FieldAccessType fieldAccessType, Klass currentKlass, Method currentMethod) {
+        LinkResolver.checkFieldAccessOrThrow(ctx, symbolicResolution, fieldAccessType, currentKlass, currentMethod);
+    }
+
+    public static boolean checkFieldAccess(EspressoContext ctx, Field symbolicResolution, FieldAccessType fieldAccessType, Klass currentKlass, Method currentMethod) {
+        return LinkResolver.checkFieldAccess(ctx, symbolicResolution, fieldAccessType, currentKlass, currentMethod);
     }
 
     public static Method resolveMethodSymbol(EspressoContext ctx, Klass accessingKlass,
@@ -50,11 +64,18 @@ public final class EspressoLinkResolver {
         return LinkResolver.resolveMethodSymbol(ctx, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
     }
 
-    public static ResolvedCall<Klass, Method, Field> resolveCallSite(EspressoContext ctx, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
-        return LinkResolver.resolveCallSite(ctx, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
+    public static Method resolveMethodSymbolOrNull(EspressoContext ctx, Klass accessingKlass,
+                    Symbol<Symbol.Name> name, Symbol<Symbol.Signature> signature, Klass symbolicHolder,
+                    boolean interfaceLookup,
+                    boolean accessCheck, boolean loadingConstraints) {
+        return LinkResolver.resolveMethodSymbolOrNull(ctx, accessingKlass, name, signature, symbolicHolder, interfaceLookup, accessCheck, loadingConstraints);
     }
 
-    private EspressoLinkResolver() {
-        // no instance.
+    public static ResolvedCall<Klass, Method, Field> resolveCallSiteOrThrow(EspressoContext ctx, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
+        return LinkResolver.resolveCallSiteOrThrow(ctx, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
+    }
+
+    public static ResolvedCall<Klass, Method, Field> resolveCallSiteOrNull(EspressoContext ctx, Klass currentKlass, Method symbolicResolution, CallSiteType callSiteType, Klass symbolicHolder) {
+        return LinkResolver.resolveCallSiteOrNull(ctx, currentKlass, symbolicResolution, callSiteType, symbolicHolder);
     }
 }
