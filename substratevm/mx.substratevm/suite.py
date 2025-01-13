@@ -253,6 +253,36 @@ suite = {
             "jacoco" : "include",
         },
 
+        # This shaded ASM project is just a quickfix.
+        # Eventually, we should migrate to the Classfile API [JDK-8294982] (GR-61102).
+        "com.oracle.svm.shaded.org.objectweb.asm": {
+            # Shadowed ASM libraries (org.ow2.asm:asm,asm-tree)
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "spotbugsIgnoresGenerated" : True,
+            "shadedDependencies" : [
+                "compiler:ASM_9.7.1",
+                "compiler:ASM_TREE_9.7.1",
+            ],
+            "class" : "ShadedLibraryProject",
+            "shade" : {
+                "packages" : {
+                    "org.objectweb.asm" : "com.oracle.svm.shaded.org.objectweb.asm",
+                },
+                "exclude" : [
+                    "META-INF/MANIFEST.MF",
+                    "**/package.html",
+                ],
+            },
+            "description" : "ASM library shadowed for Native Iamge.",
+            # We need to force javac because the generated sources in this project produce warnings in JDT.
+            "forceJavac" : "true",
+            "javac.lint.overrides" : "none",
+            "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
+        },
+
         "com.oracle.svm.processor" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -277,6 +307,7 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.common",
+                "com.oracle.svm.shaded.org.objectweb.asm",
             ],
             "requires" : [
                 "java.compiler",
@@ -318,7 +349,6 @@ suite = {
                     "jdk.internal.vm",
                     "jdk.internal.vm.annotation",
                     "jdk.internal.util",
-                    "jdk.internal.org.objectweb.asm",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
@@ -665,7 +695,6 @@ suite = {
                     "jdk.internal.loader",
                     "jdk.internal.misc",
                     "jdk.internal.vm.annotation",
-                    "jdk.internal.org.objectweb.asm",
                     "sun.net.www",
                     "sun.reflect.annotation",
                     "sun.security.jca",
@@ -1501,7 +1530,6 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
-                    "jdk.internal.org.objectweb.asm",
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1771,7 +1799,6 @@ suite = {
                         "sun.security.ssl",
                         "com.sun.crypto.provider",
                         "sun.reflect.generics.repository",
-                        "jdk.internal.org.objectweb.asm",
                         "sun.util.locale.provider",
                         "sun.util.cldr",
                         "sun.util.resources",
