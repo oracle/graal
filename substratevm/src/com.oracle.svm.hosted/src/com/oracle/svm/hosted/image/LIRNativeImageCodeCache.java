@@ -135,7 +135,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
         return true;
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "resource"})
     @Override
     public void layoutMethods(DebugContext debug, BigBang bb) {
 
@@ -184,6 +184,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                         }
                         orderedTrampolineMap.put(method, sortedTrampolines);
                     }
+
+                    DeadlockWatchdog.singleton().recordActivity();
                 }
             }
 
@@ -222,6 +224,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
      * After the initial method layout, on some platforms some direct calls between methods may be
      * too far apart. When this happens a trampoline must be inserted to reach the call target.
      */
+    @SuppressWarnings("resource")
     private void addDirectCallTrampolines(Map<HostedMethod, Integer> curOffsetMap) {
         HostedDirectCallTrampolineSupport trampolineSupport = HostedDirectCallTrampolineSupport.singleton();
 
@@ -295,6 +298,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 curPos = computeNextMethodStart(curPos, 0);
                 callerCompilationNum++;
             }
+
+            DeadlockWatchdog.singleton().recordActivity();
         } while (changed);
     }
 
