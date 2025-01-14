@@ -64,8 +64,8 @@ final class GraphManager {
     private final PostPartialEvaluationSuite postPartialEvaluationSuite;
     private final boolean useSize;
 
-    GraphManager(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext rootContext) {
-        this.partialEvaluator = partialEvaluator;
+    GraphManager(PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext rootContext) {
+        this.partialEvaluator = rootContext.partialEvaluator;
         this.postPartialEvaluationSuite = postPartialEvaluationSuite;
         this.rootContext = rootContext;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();

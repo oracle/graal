@@ -323,7 +323,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
     // Hook for SVM
     protected TruffleTier newTruffleTier(OptionValues options) {
-        return new TruffleTier(options, partialEvaluator,
+        return new TruffleTier(options,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, partialEvaluator.getInstrumentation()),
                         new PostPartialEvaluationSuite(options, TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
     }

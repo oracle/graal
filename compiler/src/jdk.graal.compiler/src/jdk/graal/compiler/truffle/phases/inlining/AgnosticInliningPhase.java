@@ -32,7 +32,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.util.GraphOrder;
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.PostPartialEvaluationSuite;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.TruffleInliningScope;
@@ -52,11 +51,9 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
         POLICY_PROVIDERS = providers;
     }
 
-    private final PartialEvaluator partialEvaluator;
     private final PostPartialEvaluationSuite postPartialEvaluationSuite;
 
-    public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite) {
-        this.partialEvaluator = partialEvaluator;
+    public AgnosticInliningPhase(PostPartialEvaluationSuite postPartialEvaluationSuite) {
         this.postPartialEvaluationSuite = postPartialEvaluationSuite;
     }
 
@@ -78,7 +75,7 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         final InliningPolicy policy = getInliningPolicyProvider(context).get(context.compilerOptions, context);
-        final CallTree tree = new CallTree(partialEvaluator, postPartialEvaluationSuite, context, policy);
+        final CallTree tree = new CallTree(postPartialEvaluationSuite, context, policy);
         TruffleInliningScope scope = TruffleInliningScope.getCurrent(context.debug);
         if (scope != null) {
             scope.setCallTree(tree);
