@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -358,7 +358,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         // Alignment checking.
-        if (isFlagSet(AArch64.Flag.AvoidUnalignedAccesses)) {
+        if (avoidUnalignedAccesses()) {
             // AArch64 sp is 16-bytes aligned.
             if (curBase.equals(sp)) {
                 long pairMask = byteMemoryTransferSize * 2 - 1;
@@ -2257,5 +2257,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 siteOffset += 4;
             }
         }
+    }
+
+    public boolean useLSE() {
+        return getFeatures().contains(AArch64.CPUFeature.LSE);
+    }
+
+    public boolean avoidUnalignedAccesses() {
+        return false;
     }
 }

@@ -59,7 +59,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final HotSpotGraalRuntimeProvider graalRuntime;
-    private final GraalHotSpotVMConfig config;
     private final UnimplementedGraalIntrinsics unimplementedIntrinsics;
     private EconomicMap<String, Integer> missingIntrinsicMetrics;
 
@@ -75,7 +74,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
 
     HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration, OptionValues options, TargetDescription target) {
         this.graalRuntime = graalRuntime;
-        this.config = config;
         if (Options.WarnMissingIntrinsic.getValue(options)) {
             this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics(target.arch);
         } else {

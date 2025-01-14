@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -168,7 +168,6 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode;
@@ -177,7 +176,6 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64.CPUFeature;
-import jdk.vm.ci.aarch64.AArch64.Flag;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 
@@ -188,8 +186,6 @@ import jdk.vm.ci.code.TargetDescription;
  * <a href="https://developer.arm.com/documentation/ddi0487/latest">here</a>.
  */
 public abstract class AArch64Assembler extends Assembler<CPUFeature> {
-
-    private final EnumSet<Flag> flags;
 
     public static class LogicalBitmaskImmediateEncoding {
 
@@ -1269,19 +1265,10 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
 
     public AArch64Assembler(TargetDescription target) {
         super(target, ((AArch64) target.arch).getFeatures().clone());
-        this.flags = ((AArch64) target.arch).getFlags();
-    }
-
-    public final EnumSet<Flag> getFlags() {
-        return flags;
     }
 
     public boolean supports(CPUFeature feature) {
         return getFeatures().contains(feature);
-    }
-
-    public boolean isFlagSet(Flag flag) {
-        return getFlags().contains(flag);
     }
 
     /* Conditional Branch (5.2.1) */

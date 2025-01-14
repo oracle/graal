@@ -161,6 +161,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
     public final boolean alwaysSafeConstructors = getFlag("AlwaysSafeConstructors", Boolean.class);
 
+    public final boolean avoidUnalignedAccesses = getFlag("AvoidUnalignedAccesses", Boolean.class, false, osArch.equals("aarch64"));
+    public final boolean useLSE = getFlag("UseLSE", Boolean.class, false, osArch.equals("aarch64"));
+    public final boolean useBlockZeroing = getFlag("UseBlockZeroing", Boolean.class, false, osArch.equals("aarch64"));
     public final String onSpinWaitInst = getFlag("OnSpinWaitInst", String.class, "none", osArch.equals("aarch64"));
     public final int onSpinWaitInstCount = getFlag("OnSpinWaitInstCount", Integer.class, 0, osArch.equals("aarch64"));
 
