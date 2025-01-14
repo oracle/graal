@@ -104,7 +104,7 @@ class TestRuntimeDeopt(unittest.TestCase):
         self.assertNotIn('this=<unknown type in <in-memory@', backtrace)
 
     # this should not work with just main objfile type signature fallback
-    # the main objfile is the js launcher which has no debuggin symbols
+    # the main objfile is the js launcher which has no debugging symbols
     def test_type_signature_fallback_main(self):
         # stop at a method where we know that the runtime compiled frame is in the backtrace
         gdb_execute("maintenance set dwarf type-signature-fallback main")

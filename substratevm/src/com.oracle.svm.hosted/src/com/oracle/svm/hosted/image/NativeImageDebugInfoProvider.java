@@ -196,10 +196,9 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 long size = objectInfo.getSize();
                 String typeName = objectInfo.getClazz().toJavaName();
                 ImageHeapPartition partition = objectInfo.getPartition();
-                String partitionName = partition.getName() + "{" + partition.getSize() + "}@" + partition.getStartOffset();
-                String provenance = objectInfo.toString();
 
-                debug.log(DebugContext.INFO_LEVEL, "Data: offset 0x%x size 0x%x type %s partition %s provenance %s ", offset, size, typeName, partitionName, provenance);
+                debug.log(DebugContext.INFO_LEVEL, "Data: offset 0x%x size 0x%x type %s partition %s{%d}@%d provenance %s ", offset, size, typeName, partition.getName(), partition.getSize(),
+                                partition.getStartOffset(), objectInfo);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
