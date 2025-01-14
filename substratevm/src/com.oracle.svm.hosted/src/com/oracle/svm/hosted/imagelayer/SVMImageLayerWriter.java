@@ -938,7 +938,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private void persistAnalysisParsedGraph(AnalysisMethod method) {
-        Object analyzedGraph = method.getGraph();
+        Object analyzedGraph = method.getParsedGraphCacheStateObject();
         if (analyzedGraph instanceof AnalysisParsedGraph analysisParsedGraph) {
             String name = imageLayerSnapshotUtil.getMethodDescriptor(method);
             MethodGraphsInfo graphsInfo = methodsMap.get(name);
