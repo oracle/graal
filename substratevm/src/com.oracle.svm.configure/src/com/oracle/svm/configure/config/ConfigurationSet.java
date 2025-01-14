@@ -189,20 +189,23 @@ public class ConfigurationSet {
                     } else {
                         writer.appendSeparator();
                     }
-                    if (!configFile.equals(ConfigurationFile.RESOURCES)) {
-                        /*
-                         * Resources are printed at the top level of the object, not in a defined
-                         * field
-                         */
-                        writer.quote(configFile.getFieldName()).appendFieldSeparator();
-                    }
-                    configSupplier.apply(configFile).printJson(writer);
+                    printConfigurationToCombinedFile(configSupplier.apply(configFile), configFile, writer);
                 }
             }
             writer.appendObjectEnd();
             writer.close();
         }
         return writtenFiles;
+    }
+
+    public static void printConfigurationToCombinedFile(JsonPrintable config, ConfigurationFile configFile, JsonWriter writer) throws IOException {
+        if (!configFile.equals(ConfigurationFile.RESOURCES)) {
+            /*
+             * Resources are printed at the top level of the object, not in a defined field
+             */
+            writer.quote(configFile.getFieldName()).appendFieldSeparator();
+        }
+        config.printJson(writer);
     }
 
     public List<Path> writeConfiguration(Function<ConfigurationFile, Path> configFilePathResolver) throws IOException {
