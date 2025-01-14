@@ -1301,6 +1301,9 @@ public class SubstrateOptions {
     @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromModule = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
+    @Option(help = "Include all classes, methods, fields, and resources from a given module for dynamic access", type = OptionType.Debug) //
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableDynamicAccessForModule = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
     @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
 
@@ -1308,8 +1311,18 @@ public class SubstrateOptions {
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> IncludeAllFromPackage = new HostedOptionKey<>(
                     AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
+    @Option(help = "Include all classes, methods and fields from the given packages for dynamic access", type = OptionType.Debug) //
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableDynamicAccessForPackage = new HostedOptionKey<>(
+            AccumulatingLocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    @Option(help = "Include all classes, methods, fields, and resources from given paths for dynamic access", type = OptionType.Debug) //
+    public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> EnableDynamicAccessForClassPathEntry = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
     @Option(help = "Include all classes, methods, fields, and resources from the class path", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> IncludeAllFromClassPath = new HostedOptionKey<>(false);
+
+    @Option(help = "Include all classes, methods, fields, and resources for dynamic access for the whole classpath", type = OptionType.Debug) //
+    public static final HostedOptionKey<Boolean> EnableDynamicAccess = new HostedOptionKey<>(false);
 
     public static boolean includeAll() {
         return IncludeAllFromModule.hasBeenSet() || IncludeAllFromPath.hasBeenSet() || IncludeAllFromPackage.hasBeenSet() || IncludeAllFromClassPath.hasBeenSet();

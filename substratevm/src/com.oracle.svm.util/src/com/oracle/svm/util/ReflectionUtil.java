@@ -30,6 +30,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.function.Function;
 
 /**
  * This class contains utility methods for commonly used reflection functionality. Note that lookups
@@ -86,7 +87,7 @@ public final class ReflectionUtil {
             openModule(declaringClass);
             result.setAccessible(true);
             return result;
-        } catch (ReflectiveOperationException ex) {
+        } catch (ReflectiveOperationException | LinkageError ex) {
             if (optional) {
                 return null;
             }
@@ -237,5 +238,18 @@ public final class ReflectionUtil {
 
     public static void writeStaticField(Class<?> declaringClass, String fieldName, Object value) {
         writeField(declaringClass, fieldName, null, value);
+    }
+
+    /**
+     * Query a class value without worrying if the class can be properly linked.
+     */
+    public static <T> T linkageSafeQuery(Class<?> clazz, T defaultValue, Function<Class<?>, T> f) {
+        var result = defaultValue;
+        try {
+            result = f.apply(clazz);
+        } catch (LinkageError e) {
+            /* nothing we can do */
+        }
+        return result;
     }
 }

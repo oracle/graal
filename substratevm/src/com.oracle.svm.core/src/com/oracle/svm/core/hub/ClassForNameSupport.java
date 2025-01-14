@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
+import java.lang.reflect.Modifier;
 import java.util.EnumSet;
 import java.util.Objects;
 
@@ -154,7 +155,7 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerUnsafeAllocated(ConfigurationCondition condition, Class<?> clazz) {
-        if (!clazz.isArray()) {
+        if (!clazz.isArray() && !clazz.isInterface() && !Modifier.isAbstract(clazz.getModifiers())) {
             var conditionSet = unsafeInstantiatedClasses.putIfAbsent(clazz, RuntimeConditionSet.createHosted(condition));
             if (conditionSet != null) {
                 conditionSet.addCondition(condition);

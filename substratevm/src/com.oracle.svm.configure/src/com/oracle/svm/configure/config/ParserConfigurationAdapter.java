@@ -55,7 +55,7 @@ public class ParserConfigurationAdapter implements ReflectionConfigurationParser
     }
 
     @Override
-    public void registerType(UnresolvedConfigurationCondition condition, ConfigurationType type) {
+    public void registerType(UnresolvedConfigurationCondition condition, ConfigurationType type, boolean registerMetadata) {
         VMError.guarantee(condition.equals(type.getCondition()), "condition is already a part of the type");
         configuration.add(type);
     }

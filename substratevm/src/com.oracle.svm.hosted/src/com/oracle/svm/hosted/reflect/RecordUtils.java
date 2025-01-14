@@ -31,18 +31,19 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 public final class RecordUtils {
 
     public static Method[] getRecordComponentAccessorMethods(Class<?> clazz) {
-        return Arrays.stream(clazz.getRecordComponents())
+        return Arrays.stream(ReflectionUtil.linkageSafeQuery(clazz, new RecordComponent[0], Class::getRecordComponents))
                         .map(RecordComponent::getAccessor)
                         .filter(Objects::nonNull)
                         .toArray(Method[]::new);
     }
 
     public static Constructor<?> getCanonicalRecordConstructor(Class<?> clazz) {
-        Class<?>[] paramTypes = Arrays.stream(clazz.getRecordComponents())
+        Class<?>[] paramTypes = Arrays.stream(ReflectionUtil.linkageSafeQuery(clazz, new RecordComponent[0], Class::getRecordComponents))
                         .map(RecordComponent::getType)
                         .toArray(Class<?>[]::new);
         try {
