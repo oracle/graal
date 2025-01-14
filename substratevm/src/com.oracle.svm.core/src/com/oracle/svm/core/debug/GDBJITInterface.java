@@ -40,7 +40,6 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CUnsigned;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
@@ -48,6 +47,8 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.ProjectHeaderFile;
+
+import jdk.graal.compiler.word.Word;
 
 @CContext(GDBJITInterface.GDBJITInterfaceDirectives.class)
 public class GDBJITInterface {
@@ -161,7 +162,7 @@ public class GDBJITInterface {
 
         /* Insert entry at head of the list. */
         JITCodeEntry nextEntry = jitDebugDescriptor.get().getFirstEntry();
-        entry.setPrevEntry(WordFactory.nullPointer());
+        entry.setPrevEntry(Word.nullPointer());
         entry.setNextEntry(nextEntry);
 
         if (nextEntry.isNonNull()) {
