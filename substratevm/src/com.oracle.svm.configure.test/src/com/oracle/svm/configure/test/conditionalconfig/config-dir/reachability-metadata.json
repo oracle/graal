@@ -1,0 +1,138 @@
+{
+  "reflection": [
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.NoPropagationNecessary"
+      },
+      "type": "com.oracle.svm.configure.test.conditionalconfig.NoPropagationNecessary$A"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$ParentA"
+      },
+      "type": "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$ParentA"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$ParentB"
+      },
+      "type": "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$ParentB"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$ParentA"
+      },
+      "type": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$ParentA"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$ParentB"
+      },
+      "type": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$ParentB"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$Util"
+      },
+      "type": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$C"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.NoPropagationNecessary"
+      },
+      "type": {
+        "proxy": [
+          "com.oracle.svm.configure.test.conditionalconfig.NoPropagationNecessary$IA"
+        ]
+      }
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$ParentA"
+      },
+      "type": {
+        "proxy": [
+          "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$IA"
+        ]
+      }
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$ParentB"
+      },
+      "type": {
+        "proxy": [
+          "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$IB"
+        ]
+      }
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$ParentA"
+      },
+      "type": {
+        "proxy": [
+          "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$IA"
+        ]
+      }
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$ParentB"
+      },
+      "type": {
+        "proxy": [
+          "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$IB"
+        ]
+      }
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$Util"
+      },
+      "type": {
+        "proxy": [
+          "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$IC"
+        ]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.NoPropagationNecessary"
+      },
+      "glob": "com/oracle/svm/configure/test/conditionalconfig/resources/NotPropagated.txt"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$ParentA"
+      },
+      "glob": "com/oracle/svm/configure/test/conditionalconfig/resources/PropagateToParentA.txt"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateToParent$ParentB"
+      },
+      "glob": "com/oracle/svm/configure/test/conditionalconfig/resources/PropagateToParentB.txt"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$ParentA"
+      },
+      "glob": "com/oracle/svm/configure/test/conditionalconfig/resources/PropagateToParentA.txt"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$ParentB"
+      },
+      "glob": "com/oracle/svm/configure/test/conditionalconfig/resources/PropagateToParentB.txt"
+    },
+    {
+      "condition": {
+        "typeReached": "com.oracle.svm.configure.test.conditionalconfig.PropagateButLeaveCommonConfiguration$Util"
+      },
+      "glob": "com/oracle/svm/configure/test/conditionalconfig/resources/Common.txt"
+    }
+  ]
+}

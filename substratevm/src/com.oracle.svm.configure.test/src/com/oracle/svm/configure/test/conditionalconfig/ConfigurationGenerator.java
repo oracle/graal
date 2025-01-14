@@ -24,18 +24,23 @@
  */
 package com.oracle.svm.configure.test.conditionalconfig;
 
+import static org.junit.Assume.assumeTrue;
+
 import java.lang.reflect.Proxy;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * Test that generates configuration metadata when traced by the agent. This output is tested
+ * against the expected output in the config-dir directory by {@link ConfigurationVerifier}. This
+ * test is invoked manually from mx.
+ */
 public class ConfigurationGenerator {
 
     @Test
     public void createTestConfig() {
-        if (!Boolean.getBoolean(ConfigurationGenerator.class.getName() + ".enabled")) {
-            return;
-        }
+        assumeTrue("Test must be explicitly enabled because it is not designed for regular execution", Boolean.getBoolean(ConfigurationGenerator.class.getName() + ".enabled"));
         NoPropagationNecessary.runTest();
         PropagateToParent.runTest();
         PropagateButLeaveCommonConfiguration.runTest();
@@ -174,12 +179,12 @@ class PropagateButLeaveCommonConfiguration {
     }
 
     private static final class Util {
-        static void doWork(String clazz, String resource, Class<?>... intefaceList) {
+        static void doWork(String clazz, String resource, Class<?>... interfaceList) {
             ClassUtil.forName(clazz);
             ClassUtil.forName("PropagateButLeaveCommonConfiguration$C");
             ClassUtil.getResource(resource);
             ClassUtil.getResource("Common.txt");
-            ClassUtil.createProxy(intefaceList);
+            ClassUtil.createProxy(interfaceList);
             ClassUtil.createProxy(IC.class);
         }
     }

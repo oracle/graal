@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.configure.test.conditionalconfig;
 
+import static org.junit.Assume.assumeTrue;
+
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URL;
@@ -35,21 +37,24 @@ import org.junit.Test;
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.test.AddExports;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
+/**
+ * Test that validates the configuration metadata produced by the agent. This test is invoked
+ * manually from mx.
+ */
+@AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util"})
 public class ConfigurationVerifier {
 
     public static final String CONFIG_PATH_PROPERTY = ConfigurationVerifier.class.getName() + ".configpath";
 
     @Test
     public void testConfig() throws Exception {
-        String enabledProperty = System.getProperty(ConfigurationVerifier.class.getName() + ".enabled");
-        if (!Boolean.parseBoolean(enabledProperty)) {
-            return;
-        }
+        assumeTrue("Test must be explicitly enabled because it is not designed for regular execution", Boolean.getBoolean(ConfigurationVerifier.class.getName() + ".enabled"));
         ConfigurationSet actualConfig = loadActualConfig();
         ConfigurationSet expectedConfig = loadExpectedConfig();
 
