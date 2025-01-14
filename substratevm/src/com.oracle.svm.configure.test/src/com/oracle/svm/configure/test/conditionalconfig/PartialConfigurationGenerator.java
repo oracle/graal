@@ -55,4 +55,9 @@ public class PartialConfigurationGenerator {
     public void createConfigPartThree() {
         runIfEnabled(PropagateButLeaveCommonConfiguration::runTest);
     }
+
+    @Test
+    public void createConfigPartFour() {
+        runIfEnabled(PropagateThroughRecursiveCall::runTest);
+    }
 }

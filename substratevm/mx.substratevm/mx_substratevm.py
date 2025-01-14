@@ -584,6 +584,7 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
         "createConfigPartOne",
         "createConfigPartTwo",
         "createConfigPartThree",
+        "createConfigPartFour",
     ]
     config_directories = []
     nic_test_dir = join(svmbuild_dir(), 'nic-cond-config-test')

@@ -44,6 +44,7 @@ public class ConfigurationGenerator {
         NoPropagationNecessary.runTest();
         PropagateToParent.runTest();
         PropagateButLeaveCommonConfiguration.runTest();
+        PropagateThroughRecursiveCall.runTest();
     }
 
 }
@@ -189,4 +190,55 @@ class PropagateButLeaveCommonConfiguration {
         }
     }
 
+}
+
+/**
+ * This is a regression test. It ensures that configuration propagated from a recursive call does
+ * not get lost (which can happen unless the configuration is propagated past any recursive
+ * callers).
+ */
+@SuppressWarnings("unused")
+class PropagateThroughRecursiveCall {
+
+    public static void runTest() {
+        ParentA.doWork();
+        ParentB.doWork();
+    }
+
+    private static final class ParentA {
+        static void doWork() {
+            Recursive.recur(true, "PropagateThroughRecursiveCall$A");
+        }
+    }
+
+    private static final class ParentB {
+        static void doWork() {
+            Recursive.recur(true, "PropagateThroughRecursiveCall$B");
+        }
+    }
+
+    private static final class A1 {
+    }
+
+    private static final class A2 {
+    }
+
+    private static final class B1 {
+    }
+
+    private static final class B2 {
+    }
+
+    private static final class Recursive {
+        static void recur(boolean recurse, String clazz) {
+            ClassUtil.forName("PropagateThroughRecursiveCall$Recursive");
+            if (recurse) {
+                ClassUtil.forName(clazz + "1");
+                recur(false, clazz);
+            } else {
+                ClassUtil.forName(clazz + "2");
+            }
+
+        }
+    }
 }
