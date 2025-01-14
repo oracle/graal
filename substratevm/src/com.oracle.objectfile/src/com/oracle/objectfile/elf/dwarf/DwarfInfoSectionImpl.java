@@ -1929,7 +1929,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             // n.b. class entry used to index the method belongs to the inlining method
             // not the inlined method
             setAbstractInlineMethodIndex(classEntry, methodEntry, pos);
-            if (dwarfSections.isRuntimeCompilation()) {
+            if (dwarfSections.isRuntimeCompilation() && classEntry != methodEntry.getOwnerType()) {
                 pos = writeMethodDeclaration(context, classEntry, methodEntry, true, buffer, pos);
             } else {
                 pos = writeAbstractInlineMethod(context, classEntry, methodEntry, buffer, pos);

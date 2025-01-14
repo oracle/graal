@@ -93,6 +93,7 @@ import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -107,7 +108,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
-import jdk.vm.ci.meta.Value;
 
 /**
  * A shared base for providing debug info that can be processed by any debug info format specified
@@ -627,7 +627,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         Signature signature = method.getSignature();
         int parameterCount = signature.getParameterCount(false);
         SortedSet<LocalEntry> paramInfos = new TreeSet<>(Comparator.comparingInt(LocalEntry::slot));
-        LocalVariableTable table = method.getLocalVariableTable();
+        LocalVariableTable lvt = method.getLocalVariableTable();
         int slot = 0;
         SharedType ownerType = (SharedType) method.getDeclaringClass();
         if (!method.isStatic()) {
@@ -637,7 +637,14 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             slot += kind.getSlotCount();
         }
         for (int i = 0; i < parameterCount; i++) {
-            Local local = table == null ? null : table.getLocal(slot, 0);
+            Local local = null;
+            if (lvt != null) {
+                try {
+                    local = lvt.getLocal(slot, 0);
+                } catch (IllegalStateException e) {
+                    debug.log("Found invalid local variable table from method %s during debug info generation.", method.getName());
+                }
+            }
             SharedType paramType = (SharedType) signature.getParameterType(i, null);
             JavaKind kind = paramType.getJavaKind();
             JavaKind storageKind = paramType.getStorageKind();
@@ -743,17 +750,19 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     }
 
     public FileEntry lookupFileEntry(Path fullFilePath) {
-        if (fullFilePath == null || fullFilePath.getFileName() == null) {
+        if (fullFilePath == null) {
+            return null;
+        }
+        Path fileName = fullFilePath.getFileName();
+        if (fileName == null) {
             return null;
         }
 
-        String fileName = fullFilePath.getFileName().toString();
         Path dirPath = fullFilePath.getParent();
-
         DirEntry dirEntry = lookupDirEntry(dirPath);
 
         /* Reuse any existing entry if available. */
-        FileEntry fileEntry = fileIndex.computeIfAbsent(fullFilePath, path -> new FileEntry(fileName, dirEntry));
+        FileEntry fileEntry = fileIndex.computeIfAbsent(fullFilePath, path -> new FileEntry(fileName.toString(), dirEntry));
         assert dirPath == null || fileEntry.dirEntry() != null && fileEntry.dirEntry().path().equals(dirPath);
         return fileEntry;
     }
@@ -1072,7 +1081,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    protected Map<LocalEntry, LocalValueEntry> initLocalInfoList(BytecodePosition pos, MethodEntry method, int frameSize) {
+    protected Map<LocalEntry, LocalValueEntry> initLocalInfoList(BytecodePosition pos, MethodEntry methodEntry, int frameSize) {
         Map<LocalEntry, LocalValueEntry> localInfos = new HashMap<>();
 
         if (pos instanceof BytecodeFrame frame && frame.numLocals > 0) {
@@ -1085,19 +1094,20 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
              * with a synthesized name, the type according to the JavaKind (Object for all
              * classes/array types) and the line of the current bytecode position
              */
-            LocalVariableTable lvt = pos.getMethod().getLocalVariableTable();
-            LineNumberTable lnt = pos.getMethod().getLineNumberTable();
+            SharedMethod method = (SharedMethod) pos.getMethod();
+            LocalVariableTable lvt = method.getLocalVariableTable();
+            LineNumberTable lnt = method.getLineNumberTable();
             int line = lnt == null ? 0 : lnt.getLineNumber(pos.getBCI());
 
             // the owner type to resolve the local types against
-            SharedType ownerType = (SharedType) pos.getMethod().getDeclaringClass();
+            SharedType ownerType = (SharedType) method.getDeclaringClass();
 
             for (int slot = 0; slot < frame.numLocals; slot++) {
                 // Read locals from frame by slot - this might be an Illegal value
                 JavaValue value = frame.getLocalValue(slot);
                 JavaKind storageKind = frame.getLocalValueKind(slot);
 
-                if (value == Value.ILLEGAL) {
+                if (ValueUtil.isIllegalJavaValue(value)) {
                     /*
                      * If we have an illegal value, also the storage kind must be Illegal. We don't
                      * have any value, so we have to continue with the next slot.
@@ -1109,14 +1119,22 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 /*
                  * We might not have a local variable table at all, which means we can only use the
                  * frame local value. Even if there is a local variable table, there might not be a
-                 * local at this slot in the local variable table.
+                 * local at this slot in the local variable table. We also need to check if the
+                 * local variable table is malformed.
                  */
-                Local local = lvt == null ? null : lvt.getLocal(slot, pos.getBCI());
+                Local local = null;
+                if (lvt != null) {
+                    try {
+                        local = lvt.getLocal(slot, pos.getBCI());
+                    } catch (IllegalStateException e) {
+                        debug.log("Found invalid local variable table from method %s during debug info generation.", method.getName());
+                    }
+                }
 
                 String name;
                 SharedType type;
                 if (local == null) {
-                    if (method.getLastParamSlot() >= slot) {
+                    if (methodEntry.getLastParamSlot() >= slot) {
                         /*
                          * If we e.g. get an int from the frame values can we really be sure that
                          * this is a param and not just any other local value that happens to be an
@@ -1132,7 +1150,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                      * We don't have a corresponding local in the local variable table. Collect some
                      * usable information for this local from the frame local kind.
                      */
-                    name = "__" + storageKind.getJavaName() + (method.isStatic() ? slot : slot - 1);
+                    name = "__" + storageKind.getJavaName() + (methodEntry.isStatic() ? slot : slot - 1);
                     Class<?> clazz = storageKind.isObject() ? Object.class : storageKind.toJavaClass();
                     type = (SharedType) metaAccess.lookupJavaType(clazz);
                 } else {
@@ -1159,7 +1177,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                      * Lookup a LocalEntry from the MethodEntry. If the LocalEntry was already read
                      * upfront from the local variable table, the LocalEntry already exists.
                      */
-                    LocalEntry localEntry = method.lookupLocalEntry(name, slot, typeEntry, line);
+                    LocalEntry localEntry = methodEntry.lookupLocalEntry(name, slot, typeEntry, line);
                     LocalValueEntry localValueEntry = createLocalValueEntry(value, frameSize);
                     if (localEntry != null && localValueEntry != null) {
                         localInfos.put(localEntry, localValueEntry);

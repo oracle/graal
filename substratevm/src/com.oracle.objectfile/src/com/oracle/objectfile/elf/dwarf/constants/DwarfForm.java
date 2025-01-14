@@ -35,13 +35,18 @@ public enum DwarfForm {
     DW_FORM_data2(0x05),
     DW_FORM_data4(0x6),
     @SuppressWarnings("unused") DW_FORM_data8(0x7),
-    @SuppressWarnings("unused") DW_FORM_string(0x8),
-    @SuppressWarnings("unused") DW_FORM_block1(0x0a),
+    @SuppressWarnings("unused")//
+    DW_FORM_string(0x8),
+    @SuppressWarnings("unused")//
+    DW_FORM_block1(0x0a),
     DW_FORM_ref_addr(0x10),
-    @SuppressWarnings("unused") DW_FORM_ref1(0x11),
-    @SuppressWarnings("unused") DW_FORM_ref2(0x12),
+    @SuppressWarnings("unused")//
+    DW_FORM_ref1(0x11),
+    @SuppressWarnings("unused")//
+    DW_FORM_ref2(0x12),
     DW_FORM_ref4(0x13),
-    @SuppressWarnings("unused") DW_FORM_ref8(0x14),
+    @SuppressWarnings("unused")//
+    DW_FORM_ref8(0x14),
     DW_FORM_sec_offset(0x17),
     DW_FORM_data1(0x0b),
     DW_FORM_flag(0xc),

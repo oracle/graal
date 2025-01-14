@@ -920,6 +920,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeClassLayoutAbbrevs(context, buffer, pos);
         pos = writeMethodDeclarationAbbrevs(context, buffer, pos);
         pos = writeMethodLocationAbbrev(context, buffer, pos);
+        pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
         pos = writeInlinedSubroutineAbbrev(buffer, pos);
 
         pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
@@ -950,7 +951,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
             pos = writeArrayElementFieldAbbrev(context, buffer, pos);
             pos = writeArrayDataTypeAbbrevs(context, buffer, pos);
             pos = writeArraySubrangeTypeAbbrev(context, buffer, pos);
-            pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
             pos = writeStaticFieldLocationAbbrev(context, buffer, pos);
             pos = writeSuperReferenceAbbrev(context, buffer, pos);
             pos = writeInterfaceImplementorAbbrev(context, buffer, pos);
