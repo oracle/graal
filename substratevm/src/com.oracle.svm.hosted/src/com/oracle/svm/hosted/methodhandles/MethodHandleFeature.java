@@ -33,8 +33,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -42,7 +43,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -107,6 +107,8 @@ public class MethodHandleFeature implements InternalFeature {
 
     private MethodHandleInvokerRenamingSubstitutionProcessor substitutionProcessor;
 
+    private Set<Object> heapSpeciesData = new HashSet<>();
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         Class<?> memberNameClass = ReflectionUtil.lookupClass("java.lang.invoke.MemberName");
@@ -149,6 +151,8 @@ public class MethodHandleFeature implements InternalFeature {
 
         accessImpl.registerObjectReachableCallback(memberNameClass, (a1, member, reason) -> registerHeapMemberName((Member) member));
         accessImpl.registerObjectReachableCallback(MethodType.class, (a1, methodType, reason) -> registerHeapMethodType(methodType));
+        Class<?> speciesDataClass = ReflectionUtil.lookupClass("java.lang.invoke.BoundMethodHandle$SpeciesData");
+        accessImpl.registerObjectReachableCallback(speciesDataClass, (a1, speciesData, reason) -> registerHeapSpeciesData(speciesData));
     }
 
     @Override
@@ -166,9 +170,6 @@ public class MethodHandleFeature implements InternalFeature {
 
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         ImageHeapScanner heapScanner = access.getUniverse().getHeapScanner();
-
-        // GR-60093: currently, Species_L is needed at runtime but not seen by the analysis
-        access.registerAsInHeap(ReflectionUtil.lookupClass("java.lang.invoke.BoundMethodHandle$Species_L"));
 
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer"), "cache"),
@@ -194,17 +195,13 @@ public class MethodHandleFeature implements InternalFeature {
                                 ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
                                 ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
                                 originalMap.forEach((key, speciesData) -> {
-                                    if (isSpeciesTypeInstantiated(speciesData)) {
+                                    if (heapSpeciesData.contains(speciesData)) {
                                         filteredMap.put(key, speciesData);
                                     }
                                 });
+                                /* No uses of heapSpeciesData should be needed after this point. */
+                                heapSpeciesData = null;
                                 return filteredMap;
-                            }
-
-                            private boolean isSpeciesTypeInstantiated(Object speciesData) {
-                                Class<?> speciesClass = ReflectionUtil.readField(SPECIES_DATA_CLASS, "speciesCode", speciesData);
-                                Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
-                                return analysisType.isPresent() && analysisType.get().isInstantiated();
                             }
                         });
         access.registerFieldValueTransformer(
@@ -214,36 +211,37 @@ public class MethodHandleFeature implements InternalFeature {
                         ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.MethodType"), "internTable"),
                         (receiver, originalValue) -> runtimeMethodTypeInternTable);
 
-        /*
-         * SpeciesData.transformHelpers is a lazily initialized cache of MethodHandle objects. We do
-         * not want to make a MethodHandle reachable just because the image builder initialized the
-         * cache, so we filter out unreachable objects. This also solves the problem when late image
-         * heap re-scanning after static analysis would see a method handle that was not yet cached
-         * during static analysis, in which case image building would fail because new types would
-         * be made reachable after analysis.
-         */
-        access.registerFieldValueTransformer(
-                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer$SpeciesData"), "transformHelpers"),
-                        new FieldValueTransformerWithAvailability() {
-                            @Override
-                            public boolean isAvailable() {
-                                return BuildPhaseProvider.isHostedUniverseBuilt();
-                            }
+        FieldValueTransformerWithAvailability methodHandleArrayTransformer = new FieldValueTransformerWithAvailability() {
+            @Override
+            public boolean isAvailable() {
+                return BuildPhaseProvider.isHostedUniverseBuilt();
+            }
 
-                            @Override
-                            @SuppressWarnings("unchecked")
-                            public Object transform(Object receiver, Object originalValue) {
-                                MethodHandle[] originalArray = (MethodHandle[]) originalValue;
-                                MethodHandle[] filteredArray = new MethodHandle[originalArray.length];
-                                for (int i = 0; i < originalArray.length; i++) {
-                                    MethodHandle handle = originalArray[i];
-                                    if (handle != null && heapScanner.isObjectReachable(handle)) {
-                                        filteredArray[i] = handle;
-                                    }
-                                }
-                                return filteredArray;
-                            }
-                        });
+            @Override
+            @SuppressWarnings("unchecked")
+            public Object transform(Object receiver, Object originalValue) {
+                MethodHandle[] originalArray = (MethodHandle[]) originalValue;
+                MethodHandle[] filteredArray = new MethodHandle[originalArray.length];
+                for (int i = 0; i < originalArray.length; i++) {
+                    MethodHandle handle = originalArray[i];
+                    if (handle != null && heapScanner.isObjectReachable(handle)) {
+                        filteredArray[i] = handle;
+                    }
+                }
+                return filteredArray;
+            }
+        };
+
+        /*
+         * SpeciesData.transformHelpers and MethodHandleImpl.ARRAYS are lazily initialized caches of
+         * MethodHandle objects. We do not want to make a MethodHandle reachable just because the
+         * image builder initialized a cache, so we filter out unreachable objects. This also solves
+         * the problem when late image heap re-scanning after static analysis would see a method
+         * handle that was not yet cached during static analysis, in which case image building would
+         * fail because new types would be made reachable after analysis.
+         */
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.ClassSpecializer$SpeciesData"), "transformHelpers"), methodHandleArrayTransformer);
+        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl"), "ARRAYS"), methodHandleArrayTransformer);
 
         if (JavaVersionUtil.JAVA_SPEC >= 24) {
             /*
@@ -415,6 +413,11 @@ public class MethodHandleFeature implements InternalFeature {
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere(e);
         }
+    }
+
+    public void registerHeapSpeciesData(Object speciesData) {
+        VMError.guarantee(heapSpeciesData != null, "The collected SpeciesData objects have already been processed.");
+        heapSpeciesData.add(speciesData);
     }
 
     @Override
