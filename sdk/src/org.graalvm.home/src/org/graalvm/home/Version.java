@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -336,6 +336,32 @@ public final class Version implements Comparable<Version> {
         }
 
         return String.format(processFormat(format), args);
+    }
+
+    /**
+     * Retrieves the numeric value of the version component at the specified index.
+     * <p>
+     * Version components are indexed as follows:
+     * <ul>
+     * <li>{@code componentIndex = 0} represents the major version</li>
+     * <li>{@code componentIndex = 1} represents the minor version</li>
+     * <li>{@code componentIndex = 2} represents the update version</li>
+     * </ul>
+     * If the specified {@code componentIndex} exceeds the number of available components, the
+     * method returns {@code 0}. For example, a version {@code 23.1} will return {@code 0} for
+     * {@code componentIndex = 2}.
+     * </p>
+     *
+     * @param componentIndex the index of the version component to retrieve; must be non-negative
+     * @throws IllegalArgumentException if {@code componentIndex} is negative
+     * @since 24.2
+     * @see Version#create(int...)
+     */
+    public int getComponent(int componentIndex) {
+        if (componentIndex < 0) {
+            throw new IllegalArgumentException("componentIndex must be non-negative: " + componentIndex);
+        }
+        return componentIndex < versions.length ? versions[componentIndex] : 0;
     }
 
     /**
