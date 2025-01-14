@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -243,8 +243,30 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                             FixedGuardNode guard = graph.add(
                                             new FixedGuardNode(conditionNode, deopt.getReason(), deopt.getAction(), deopt.getSpeculation(), negateGuardCondition, survivingSuccessorPosition));
                             FixedWithNextNode pred = (FixedWithNextNode) ifNode.predecessor();
-                            AbstractBeginNode survivingSuccessor;
+                            /**
+                             * We may have the following special case if pred is a LoopBegin:
+                             *
+                             * <pre>
+                             *     LoopBegin (= pred) <--------+
+                             *         |                       |
+                             *         | <- guard insert pos   |
+                             *         |                       |
+                             *       ifNode                    |
+                             *       |     \                   |
+                             *  surviving   LoopEnd -----------+
+                             *       |
+                             *      ...
+                             * </pre>
+                             *
+                             * If the only loop end is on the non-surviving successor path, then
+                             * killing that CFG path will also kill the LoopBegin, i.e., the pred
+                             * node. We would lose our place in the graph for inserting the guard.
+                             * Therefore, insert the guard before killing anything.
+                             */
+                            pred.setNext(guard);
+                            guard.setNext(ifNode);
 
+                            AbstractBeginNode survivingSuccessor;
                             if (negateGuardCondition) {
                                 survivingSuccessor = ifNode.falseSuccessor();
                             } else {
@@ -265,9 +287,6 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                                 survivingSuccessor.replaceAtUsages(newGuard, InputType.Guard);
                             }
                             graph.getOptimizationLog().report(ConvertDeoptimizeToGuardPhase.class, "DeoptimizeToGuardConversion", deopt.asNode());
-                            FixedNode next = pred.next();
-                            pred.setNext(guard);
-                            guard.setNext(next);
                             assert providers != null;
                             SimplifierTool simplifierTool = GraphUtil.getDefaultSimplifier(providers, false, graph.getAssumptions(), graph.getOptions());
                             if (survivingSuccessor.isAlive()) {
