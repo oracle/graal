@@ -1,6 +1,9 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.Invoke;
 
 /**
  * Represents a description of behavior of a function.
@@ -37,4 +40,13 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      * @return true if this summary subsumes other summary
      */
     boolean subsumes(Summary<Domain> other);
+
+    /**
+     * Convert the summary to an abstract domain {@code Domain} and apply it back to the caller state map.
+     * @param invoke of the invokeNode
+     * @param invokeNode the invoke node that we are applying the summary to
+     * @param callerStateMap the state map of the caller
+     */
+    void applySummary(Invoke invoke, Node invokeNode, AbstractStateMap<Domain> callerStateMap);
+
 }
