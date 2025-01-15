@@ -279,7 +279,7 @@ public final class Deoptimizer {
          * {@code gpReturnValue} as an object reference.
          */
         @Option(help = "Enables delayed deoptimization of runtime-compiled code. This slightly enlarges code metadata.")//
-        public static final HostedOptionKey<Boolean> LazyDeoptimization = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> LazyDeoptimization = new HostedOptionKey<>(true);
     }
 
     /**
