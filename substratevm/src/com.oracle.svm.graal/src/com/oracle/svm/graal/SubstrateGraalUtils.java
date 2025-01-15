@@ -96,7 +96,7 @@ public class SubstrateGraalUtils {
         RuntimeConfiguration runtimeConfiguration = TruffleRuntimeCompilationSupport.getRuntimeConfig();
         DebugContext debug = new DebugContext.Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(runtimeConfiguration.getProviders().getSnippetReflection())).build();
         SubstrateInstalledCodeImpl installedCode = new SubstrateInstalledCodeImpl(method);
-        CompilationResult compilationResult = SubstrateGraalUtils.doCompile(debug, TruffleRuntimeCompilationSupport.getRuntimeConfig(), TruffleRuntimeCompilationSupport.getLIRSuites(), method);
+        CompilationResult compilationResult = doCompile(debug, TruffleRuntimeCompilationSupport.getRuntimeConfig(), TruffleRuntimeCompilationSupport.getLIRSuites(), method);
         RuntimeCodeInstaller.install(method, compilationResult, installedCode);
         Log.log().string("Code for " + method.format("%H.%n(%p)") + ": " + compilationResult.getTargetCodeSize() + " bytes").newline();
         return installedCode;

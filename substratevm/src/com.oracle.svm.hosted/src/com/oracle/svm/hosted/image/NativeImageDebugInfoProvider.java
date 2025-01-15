@@ -119,7 +119,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
     NativeImageDebugInfoProvider(DebugContext debug, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
                     RuntimeConfiguration runtimeConfiguration) {
-        super(debug, runtimeConfiguration, metaAccess, SubstrateOptions.getDebugInfoSourceCacheRoot());
+        super(debug, runtimeConfiguration, metaAccess);
         this.heap = heap;
         this.codeCache = codeCache;
         this.nativeLibs = nativeLibs;
@@ -184,6 +184,11 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
 
         return targetMethod;
+    }
+
+    @Override
+    public String cachePath() {
+        return SubstrateOptions.getDebugInfoSourceCacheRoot().toString();
     }
 
     @Override

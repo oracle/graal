@@ -34,7 +34,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -187,8 +186,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     /* Ensure we have a null string and in the string section. */
     protected final String uniqueNullStringEntry = stringTable.uniqueDebugString("");
-    protected final String cachePathEntry;
-
     private HeaderTypeEntry headerTypeEntry;
 
     /*
@@ -204,7 +201,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
 
     static final Path EMPTY_PATH = Paths.get("");
 
-    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess, Path cachePath) {
+    public SharedDebugInfoProvider(DebugContext debug, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess) {
         this.runtimeConfiguration = runtimeConfiguration;
         this.metaAccess = metaAccess;
 
@@ -213,9 +210,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
          * disabled, as we use parallel streams if it is disabled
          */
         this.debug = debug.isLogEnabled() ? debug : DebugContext.disabled(null);
-
-        // Create the cachePath string entry which serves as base directory for source files
-        this.cachePathEntry = stringTable.uniqueDebugString(cachePath.toString());
 
         // Fetch special types that have special use cases.
         // hubType: type of the 'hub' field in the object header.
@@ -273,11 +267,6 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     @Override
     public int objectAlignment() {
         return objectAlignment;
-    }
-
-    @Override
-    public String cachePath() {
-        return cachePathEntry;
     }
 
     @Override
@@ -495,7 +484,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
             LocalEntry thisParam = Modifier.isStatic(modifiers) ? null : paramInfos.removeFirst();
 
             // look for locals in the methods local variable table
-            SortedSet<LocalEntry> locals = getLocalEntries(method, lastParamSlot);
+            List<LocalEntry> locals = getLocalEntries(method, lastParamSlot);
 
             String symbolName = getSymbolName(method);
             int vTableOffset = getVTableOffset(method);
@@ -583,8 +572,8 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
         return name;
     }
 
-    public SortedSet<LocalEntry> getLocalEntries(SharedMethod method, int lastParamSlot) {
-        SortedSet<LocalEntry> localEntries = new TreeSet<>(Comparator.comparingInt(LocalEntry::slot).thenComparing(LocalEntry::name).thenComparingInt(LocalEntry::line));
+    public List<LocalEntry> getLocalEntries(SharedMethod method, int lastParamSlot) {
+        List<LocalEntry> localEntries = new ArrayList<>();
 
         LineNumberTable lnt = method.getLineNumberTable();
         LocalVariableTable lvt = method.getLocalVariableTable();
@@ -605,18 +594,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
                 int bciStart = local.getStartBCI();
                 int line = lnt == null ? 0 : lnt.getLineNumber(bciStart);
                 TypeEntry typeEntry = lookupTypeEntry(type);
-
-                Optional<LocalEntry> existingEntry = localEntries.stream()
-                                .filter(le -> le.slot() == slot && le.type() == typeEntry && le.name().equals(name))
-                                .findFirst();
-
-                LocalEntry localEntry = new LocalEntry(name, typeEntry, slot, line);
-                if (existingEntry.isEmpty()) {
-                    localEntries.add(localEntry);
-                } else if (existingEntry.get().line() > line) {
-                    localEntries.remove(existingEntry.get());
-                    localEntries.add(localEntry);
-                }
+                localEntries.add(new LocalEntry(name, typeEntry, slot, line));
             }
         }
 

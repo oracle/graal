@@ -55,7 +55,7 @@ class TestJITCompilationInterface(unittest.TestCase):
     def test_update_breakpoint(self):
         # set breakpoint in runtime compiled function and stop there
         # store initial breakpoint info for comparison
-        gdb_set_breakpoint("com.oracle.svm.test.debug.runtime.RuntimeCompilations::inlineTest")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest")
         breakpoint_info_before = gdb_execute('info breakpoints')
         gdb_continue()
 
@@ -68,7 +68,7 @@ class TestJITCompilationInterface(unittest.TestCase):
         self.assertIn(breakpoint_info_before.split('0x')[-1], breakpoint_info_after)
         # check if exactly one new correct breakpoint was added
         # new breakpoint address is always added after
-        self.assertEqual(breakpoint_info_after.split(breakpoint_info_before.split('0x')[-1])[-1].count('com.oracle.svm.test.debug.runtime.RuntimeCompilations::inlineTest'), 1)
+        self.assertEqual(breakpoint_info_after.split(breakpoint_info_before.split('0x')[-1])[-1].count('com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest'), 1)
 
         # run until the runtime compilation is invalidated and check if the breakpoint is removed
         gdb_set_breakpoint('com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl::invalidate')
@@ -77,7 +77,7 @@ class TestJITCompilationInterface(unittest.TestCase):
         breakpoint_info_after_invalidation = gdb_execute('info breakpoints')
         # check if additional breakpoint is cleared after invalidate
         # breakpoint info is still printed as multi-breakpoint, thus we check if exactly one valid breakpoint is remaining
-        self.assertEqual(breakpoint_info_after_invalidation.count('com.oracle.svm.test.debug.runtime.RuntimeCompilations::inlineTest'), 1)
+        self.assertEqual(breakpoint_info_after_invalidation.count('com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest'), 1)
         # breakpoint info must change after invalidation
         self.assertNotEquals(breakpoint_info_after, breakpoint_info_after_invalidation)
 
@@ -88,7 +88,7 @@ class TestJITCompilationInterface(unittest.TestCase):
         self.assertFalse(any([o.filename.startswith('<in-memory@') for o in objfiles]))
 
         # set breakpoint in runtime compiled function and stop there
-        gdb_set_breakpoint("com.oracle.svm.test.debug.runtime.RuntimeCompilations::inlineTest")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::inlineTest")
         gdb_continue()
         # we are at the breakpoint, check if the objfile got registered in gdb
         objfiles = gdb.objfiles()
@@ -106,24 +106,24 @@ class TestJITCompilationInterface(unittest.TestCase):
     # a runtime compilation should not add any new function symbols
     def test_method_signature(self):
         # check initially
-        function_info_before = gdb_execute('info function com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod')
+        function_info_before = gdb_execute('info function com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod')
         # one in search term, one function symbol, one deoptimized function symbol
         self.assertEqual(function_info_before.count('paramMethod'), 3)
-        self.assertIn('java.lang.Integer *com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod(java.lang.Integer*, int, java.lang.String*, java.lang.Object*);', function_info_before)
+        self.assertIn('java.lang.Integer *com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod(java.lang.Integer*, int, java.lang.String*, java.lang.Object*);', function_info_before)
 
         # set breakpoint in runtime compiled function and stop there
-        gdb_set_breakpoint("com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod")
         gdb_continue()  # first stops once for the AOT compiled variant
         gdb_continue()
         # ensure we did not register an extra symbol
-        function_info_after = gdb_execute('info function com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod')
+        function_info_after = gdb_execute('info function com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod')
         self.assertEqual(function_info_before, function_info_after)
 
         # run until the runtime compilation is invalidated and check if the symbols still exist
         gdb_set_breakpoint('com.oracle.svm.graal.meta.SubstrateInstalledCodeImpl::invalidate')
         gdb_continue()  # run until invalidation
         gdb_finish()  # finish invalidation - this should trigger an unregister call to gdb
-        function_info_after = gdb_execute('info function com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod')
+        function_info_after = gdb_execute('info function com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod')
         self.assertEqual(function_info_before, function_info_after)
 
 
@@ -145,7 +145,7 @@ class TestRuntimeDebugInfo(unittest.TestCase):
 
     # check if initial parameter values are correct
     def test_params_method_initial(self):
-        gdb_set_breakpoint("com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod")
         gdb_continue()  # first stops once for the AOT compiled variant
         gdb_continue()
         self.assertEqual(gdb_output('param1'), '42')
@@ -153,7 +153,7 @@ class TestRuntimeDebugInfo(unittest.TestCase):
         self.assertEqual(gdb_output('param3'), '"test"')
         self.assertEqual(gdb_output('param4'), 'java.util.ArrayList(0)')
         this = gdb_output('this')
-        self.assertTrue(this.startswith('com.oracle.svm.test.debug.runtime.RuntimeCompilations = {'))
+        self.assertTrue(this.startswith('com.oracle.svm.test.debug.helper.RuntimeCompilations = {'))
         self.assertIn('a = 11', this)
         self.assertIn('b = 0', this)
         self.assertIn('c = null', this)
@@ -161,21 +161,21 @@ class TestRuntimeDebugInfo(unittest.TestCase):
 
     # checks if parameter types are resolved correctly from AOT debug info
     def test_param_types(self):
-        gdb_set_breakpoint("com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod")
         gdb_continue()  # first stops once for the AOT compiled variant
         gdb_continue()
         self.assertTrue(gdb_print_type('param1').startswith('type = class java.lang.Integer : public java.lang.Number {'))
         self.assertEquals(gdb_print_type('param2').strip(), 'type = int')  # printed type may contain newline at the end
         self.assertTrue(gdb_print_type('param3').startswith('type = class java.lang.String : public java.lang.Object {'))
         self.assertTrue(gdb_print_type('param4').startswith('type = class java.lang.Object : public _objhdr {'))
-        self.assertTrue(gdb_print_type('this').startswith('type = class com.oracle.svm.test.debug.runtime.RuntimeCompilations : public java.lang.Object {'))
+        self.assertTrue(gdb_print_type('this').startswith('type = class com.oracle.svm.test.debug.helper.RuntimeCompilations : public java.lang.Object {'))
 
     # run through paramMethod and check params after forced breakpoints
     def test_params_method(self):
-        gdb_set_breakpoint("com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod")
         gdb_continue()  # first stops once for the AOT compiled variant
         gdb_continue()
-        gdb_set_breakpoint("com.oracle.svm.test.debug.runtime.RuntimeCompilations::breakHere")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::breakHere")
         # step 1 set a to param1 (param1 is pinned, so it is not optimized out yet)
         gdb_continue()
         gdb_finish()
@@ -184,7 +184,7 @@ class TestRuntimeDebugInfo(unittest.TestCase):
         self.assertEqual(gdb_output('param3'), '"test"')
         self.assertEqual(gdb_output('param4'), 'java.util.ArrayList(0)')
         this = gdb_output('this')
-        self.assertTrue(this.startswith('com.oracle.svm.test.debug.runtime.RuntimeCompilations = {'))
+        self.assertTrue(this.startswith('com.oracle.svm.test.debug.helper.RuntimeCompilations = {'))
         self.assertIn('a = 42', this)
         self.assertIn('b = 0', this)
         self.assertIn('c = null', this)
@@ -197,7 +197,7 @@ class TestRuntimeDebugInfo(unittest.TestCase):
         self.assertEqual(gdb_output('param3'), '"test"')
         self.assertEqual(gdb_output('param4'), 'java.util.ArrayList(0)')
         this = gdb_output('this')
-        self.assertTrue(this.startswith('com.oracle.svm.test.debug.runtime.RuntimeCompilations = {'))
+        self.assertTrue(this.startswith('com.oracle.svm.test.debug.helper.RuntimeCompilations = {'))
         self.assertIn('a = 42', this)
         self.assertIn('b = 27', this)
         self.assertIn('c = null', this)
@@ -210,7 +210,7 @@ class TestRuntimeDebugInfo(unittest.TestCase):
         self.assertEqual(gdb_output('param3'), '<optimized out>')
         self.assertEqual(gdb_output('param4'), 'java.util.ArrayList(0)')
         this = gdb_output('this')
-        self.assertTrue(this.startswith('com.oracle.svm.test.debug.runtime.RuntimeCompilations = {'))
+        self.assertTrue(this.startswith('com.oracle.svm.test.debug.helper.RuntimeCompilations = {'))
         self.assertIn('a = 42', this)
         self.assertIn('b = 27', this)
         self.assertIn('c = "test"', this)
@@ -223,7 +223,7 @@ class TestRuntimeDebugInfo(unittest.TestCase):
         self.assertEqual(gdb_output('param3'), '<optimized out>')
         self.assertEqual(gdb_output('param4'), '<optimized out>')
         this = gdb_output('this')
-        self.assertTrue(this.startswith('com.oracle.svm.test.debug.runtime.RuntimeCompilations = {'))
+        self.assertTrue(this.startswith('com.oracle.svm.test.debug.helper.RuntimeCompilations = {'))
         self.assertIn('a = 42', this)
         self.assertIn('b = 27', this)
         self.assertIn('c = "test"', this)
@@ -231,7 +231,7 @@ class TestRuntimeDebugInfo(unittest.TestCase):
 
     # compares params and param types of AOT and JIT compiled method
     def test_compare_AOT_to_JIT(self):
-        gdb_set_breakpoint("com.oracle.svm.test.debug.runtime.RuntimeCompilations::paramMethod")
+        gdb_set_breakpoint("com.oracle.svm.test.debug.helper.RuntimeCompilations::paramMethod")
         # first stop for the AOT compiled variant
         gdb_continue()
         this = gdb_output('this')

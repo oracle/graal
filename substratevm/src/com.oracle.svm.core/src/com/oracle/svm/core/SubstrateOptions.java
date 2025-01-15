@@ -501,12 +501,12 @@ public class SubstrateOptions {
         if (sourceDestDir != null) {
             return Paths.get(sourceDestDir);
         }
-        Path executableParentDir = Paths.get(ProcessProperties.getExecutableName()).getParent();
-        if (executableParentDir != null) {
-            return executableParentDir.resolve("sources");
-        } else {
-            return Paths.get("sources");
+        Path result = Paths.get("sources");
+        Path exeDir = Paths.get(ProcessProperties.getExecutableName()).getParent();
+        if (exeDir != null) {
+            result = exeDir.resolve(result);
         }
+        return result;
     }
 
     // TODO change to false
