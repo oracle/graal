@@ -315,6 +315,7 @@ public class FrameInfoEncoder {
                                 if (result == 0) {
                                     result = -Integer.compare(frameMaxHeight.get(f1), frameMaxHeight.get(f2));
                                 }
+                                recordActivity.run();
                                 return result;
                             }).toList();
             for (CompressedFrameData frame : sharedFrames) {
