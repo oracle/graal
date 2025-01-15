@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -259,8 +259,8 @@ public class WebAssembly extends Dictionary {
 
     private WasmModuleWithSource moduleDecodeImpl(byte[] data) {
         String moduleName = makeModuleName(data);
-        Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), moduleName).build();
-        CallTarget parseResult = currentContext.environment().parsePublic(source, WasmLanguage.PARSE_JS_MODULE_ARGS);
+        Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), moduleName).mimeType(WasmLanguage.WASM_MIME_TYPE).build();
+        CallTarget parseResult = currentContext.environment().parsePublic(source);
         WasmModule module = WasmLanguage.getParsedModule(parseResult);
         assert module.limits().equals(JsConstants.JS_LIMITS);
         return new WasmModuleWithSource(module, source);
@@ -332,9 +332,17 @@ public class WebAssembly extends Dictionary {
         return (cause == null) ? new WasmJsApiException(kind, message) : new WasmJsApiException(kind, message, cause);
     }
 
+    /**
+     * Extract a {@link WasmModule} from argument 0. The argument may be a {@link WasmModule} or a
+     * {@link WasmModuleWithSource} as produced by the CallTarget returned from Env.parse or
+     * {@link #moduleDecode}, respectively.
+     */
     private static WasmModule toModule(Object[] args) {
         checkArgumentCount(args, 1);
-        if (args[0] instanceof WasmModuleWithSource moduleObject) {
+        Object arg0 = args[0];
+        if (arg0 instanceof WasmModule moduleObject) {
+            return moduleObject;
+        } else if (arg0 instanceof WasmModuleWithSource moduleObject) {
             return moduleObject.module();
         } else {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm module");

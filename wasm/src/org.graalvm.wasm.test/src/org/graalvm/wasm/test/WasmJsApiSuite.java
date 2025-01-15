@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -835,13 +835,11 @@ public class WasmJsApiSuite {
             context.readModule(binaryWithMixedExports, limits);
 
             final int noLimit = Integer.MAX_VALUE;
-            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit,
-                            noLimit);
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
             try {
-                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit,
-                                noLimit);
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
                 context.readModule(binaryWithMixedExports, limits);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
