@@ -46,6 +46,7 @@ import com.oracle.truffle.api.impl.Accessor.JavaLangSupport;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.runtime.ModulesSupport;
+
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
@@ -98,12 +99,7 @@ final class HotSpotThreadLocalHandshake extends ThreadLocalHandshake {
     @Override
     @TruffleBoundary
     public TruffleSafepointImpl getCurrent() {
-        TruffleSafepointImpl state = STATE.get();
-        if (state == null) {
-            throw CompilerDirectives.shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
-                            "Did you call getCurrent() outside while a polyglot context not entered?");
-        }
-        return state;
+        return STATE.get();
     }
 
     @Override
