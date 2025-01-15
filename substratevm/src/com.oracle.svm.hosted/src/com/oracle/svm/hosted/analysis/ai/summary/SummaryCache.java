@@ -21,18 +21,18 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
     private int cacheHits = 0;
 
     /**
-     * Gets the post-condition of the function with the given target name and precondition.
-     * NOTE: This should be called only if the cache contains the summary.
+     * Gets the complete summary of the function with the given target name and summary precondition.
+     * NOTE: If we want to get a complete summary, we first should call {@link #contains(String, Summary)}
      *
      * @param targetName          the name of the function
      * @param summaryPrecondition the precondition of the function
-     * @return the post-condition of the function
+     * @return the summary for targetName with given summaryPrecondition
      */
-    public Domain getPostCondition(String targetName, Summary<Domain> summaryPrecondition) {
+    public Summary<Domain> getSummary(String targetName, Summary<Domain> summaryPrecondition) {
         List<Summary<Domain>> summaries = cache.get(targetName);
         for (Summary<Domain> summary : summaries) {
             if (summary.subsumes(summaryPrecondition)) {
-                return summary.postCondition();
+                return summary;
             }
         }
         return null;
