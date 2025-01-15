@@ -33,12 +33,10 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 
 import com.oracle.objectfile.BasicNobitsSectionImpl;
@@ -49,6 +47,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.InstalledCodeObserver;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.memory.NativeMemory;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
@@ -145,8 +144,8 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
     static final class GDBJITAccessor implements InstalledCodeObserverHandleAccessor {
 
         static Handle createHandle(NonmovableArray<Byte> debugInfoData) {
-            Handle handle = UnmanagedMemory.malloc(SizeOf.get(Handle.class));
-            GDBJITInterface.JITCodeEntry entry = UnmanagedMemory.calloc(SizeOf.get(GDBJITInterface.JITCodeEntry.class));
+            Handle handle = NativeMemory.malloc(SizeOf.get(Handle.class), NmtCategory.Code);
+            GDBJITInterface.JITCodeEntry entry = NativeMemory.calloc(SizeOf.get(GDBJITInterface.JITCodeEntry.class), NmtCategory.Code);
             handle.setAccessor(ImageSingletons.lookup(GDBJITAccessor.class));
             handle.setRawHandle(entry);
             handle.setDebugInfoData(debugInfoData);
@@ -178,9 +177,9 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
                 GDBJITInterface.unregisterJITCode(entry);
                 handle.setState(Handle.RELEASED);
             }
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(entry);
+            NativeMemory.free(entry);
             NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
-            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(handle);
+            NativeMemory.free(handle);
         }
 
         @Override
@@ -198,7 +197,16 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void releaseOnTearDown(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            release(installedCodeObserverHandle);
+            Handle handle = (Handle) installedCodeObserverHandle;
+            GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
+            // Handle may still be just initialized here, so it never got registered in GDB.
+            if (handle.getState() == Handle.ACTIVATED) {
+                GDBJITInterface.unregisterJITCode(entry);
+                handle.setState(Handle.RELEASED);
+            }
+            NativeMemory.free(entry);
+            NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
+            NativeMemory.free(handle);
         }
     }
 

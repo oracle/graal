@@ -27,7 +27,6 @@ package com.oracle.svm.core.code;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -42,13 +41,17 @@ import com.oracle.svm.core.nmt.NmtCategory;
 
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton
 public final class InstalledCodeObserverSupport {
-    private static final InstalledCodeObserverHandleAction ACTION_ATTACH = h -> getAccessor(h).attachToCurrentIsolate(h);
-    private static final InstalledCodeObserverHandleAction ACTION_DETACH = h -> getAccessor(h).detachFromCurrentIsolate(h);
-    private static final InstalledCodeObserverHandleAction ACTION_RELEASE = h -> getAccessor(h).release(h);
-    private static final InstalledCodeObserverHandleAction ACTION_ACTIVATE = h -> getAccessor(h).activate(h);
+    private static final InstalledCodeObserverHandleAction ACTION_ATTACH = (h, a, i) -> getAccessor(h).attachToCurrentIsolate(h);
+    private static final InstalledCodeObserverHandleAction ACTION_DETACH = (h, a, i) -> getAccessor(h).detachFromCurrentIsolate(h);
+    private static final InstalledCodeObserverHandleAction ACTION_RELEASE = (h, a, i) -> {
+        getAccessor(h).release(h);
+        NonmovableArrays.setWord(a, i, Word.nullPointer());
+    };
+    private static final InstalledCodeObserverHandleAction ACTION_ACTIVATE = (h, a, i) -> getAccessor(h).activate(h);
 
     private final List<InstalledCodeObserver.Factory> observerFactories = new ArrayList<>();
 
@@ -106,7 +109,7 @@ public final class InstalledCodeObserverSupport {
     }
 
     private interface InstalledCodeObserverHandleAction {
-        void invoke(InstalledCodeObserverHandle handle);
+        void invoke(InstalledCodeObserverHandle handle, NonmovableArray<InstalledCodeObserverHandle> observerHandles, int index);
     }
 
     private static void forEach(NonmovableArray<InstalledCodeObserverHandle> array, InstalledCodeObserverHandleAction action) {
@@ -115,7 +118,7 @@ public final class InstalledCodeObserverSupport {
             for (int i = 0; i < length; i++) {
                 InstalledCodeObserverHandle handle = NonmovableArrays.getWord(array, i);
                 if (handle.isNonNull()) {
-                    action.invoke(handle);
+                    action.invoke(handle, array, i);
                 }
             }
         }

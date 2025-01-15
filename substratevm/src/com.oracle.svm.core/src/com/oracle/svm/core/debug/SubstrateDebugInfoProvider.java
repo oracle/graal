@@ -58,7 +58,7 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
     public SubstrateDebugInfoProvider(DebugContext debug, SharedMethod sharedMethod, CompilationResult compilation, RuntimeConfiguration runtimeConfiguration, MetaAccessProvider metaAccess,
                     long codeAddress) {
-        super(debug, runtimeConfiguration, metaAccess, SubstrateOptions.getRuntimeSourceDestDir());
+        super(debug, runtimeConfiguration, metaAccess);
         this.sharedMethod = sharedMethod;
         this.compilation = compilation;
         this.codeAddress = codeAddress;
@@ -76,6 +76,11 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
             name = "UnnamedCompilation";
         }
         return name + "@0x" + Long.toHexString(codeAddress);
+    }
+
+    @Override
+    public String cachePath() {
+        return SubstrateOptions.getRuntimeSourceDestDir().toString();
     }
 
     @Override

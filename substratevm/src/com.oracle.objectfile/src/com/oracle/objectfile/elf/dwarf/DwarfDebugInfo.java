@@ -364,7 +364,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public void setCUIndex(ClassEntry classEntry, int idx) {
         assert idx >= 0;
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.cuIndex == -1 || classProperties.cuIndex == idx;
         classProperties.cuIndex = idx;
     }
@@ -372,7 +372,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public int getCUIndex(ClassEntry classEntry) {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.cuIndex >= 0;
         return classProperties.cuIndex;
     }
@@ -380,7 +380,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public void setCodeRangesIndex(ClassEntry classEntry, int idx) {
         assert idx >= 0;
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.codeRangesIndex == -1 || classProperties.codeRangesIndex == idx;
         classProperties.codeRangesIndex = idx;
     }
@@ -388,7 +388,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public int getCodeRangesIndex(ClassEntry classEntry) {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.codeRangesIndex >= 0;
         return classProperties.codeRangesIndex;
     }
@@ -396,7 +396,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public void setLocationListIndex(ClassEntry classEntry, int idx) {
         assert idx >= 0;
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.locationListIndex == 0 || classProperties.locationListIndex == idx;
         classProperties.locationListIndex = idx;
     }
@@ -404,14 +404,14 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public int getLocationListIndex(ClassEntry classEntry) {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         return classProperties.locationListIndex;
     }
 
     public void setLineIndex(ClassEntry classEntry, int idx) {
         assert idx >= 0;
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.lineIndex == -1 || classProperties.lineIndex == idx;
         classProperties.lineIndex = idx;
     }
@@ -419,7 +419,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public int getLineIndex(ClassEntry classEntry) {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.lineIndex >= 0;
         return classProperties.lineIndex;
     }
@@ -427,7 +427,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public void setLinePrologueSize(ClassEntry classEntry, int size) {
         assert size >= 0;
         DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.linePrologueSize == -1 || classProperties.linePrologueSize == size;
         classProperties.linePrologueSize = size;
     }
@@ -435,7 +435,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public int getLinePrologueSize(ClassEntry classEntry) {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
+        assert classProperties.getTypeEntry().equals(classEntry);
         assert classProperties.linePrologueSize >= 0;
         return classProperties.linePrologueSize;
     }
@@ -443,7 +443,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public void setFieldDeclarationIndex(StructureTypeEntry entry, String fieldName, int pos) {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(entry);
-        assert classProperties.getTypeEntry() == entry;
+        assert classProperties.getTypeEntry().equals(entry);
         HashMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
         if (fieldDeclarationIndex == null) {
             classProperties.fieldDeclarationIndex = fieldDeclarationIndex = new HashMap<>();
@@ -458,7 +458,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public int getFieldDeclarationIndex(StructureTypeEntry entry, String fieldName) {
         DwarfClassProperties classProperties;
         classProperties = lookupClassProperties(entry);
-        assert classProperties.getTypeEntry() == entry;
+        assert classProperties.getTypeEntry().equals(entry);
         HashMap<String, Integer> fieldDeclarationIndex = classProperties.fieldDeclarationIndex;
         assert fieldDeclarationIndex != null : fieldName;
         assert fieldDeclarationIndex.get(fieldName) != null : entry.getTypeName() + fieldName;
