@@ -7,6 +7,7 @@ import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -60,5 +61,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
         payload.getLogger().logHighlightedDebugInfo("Analysis finished, you can see the analysis output at " + payload.getLogger().fileName());
         payload.getLogger().logToFile("Abstract state map after analysis: ");
         payload.getLogger().logToFile(stateMap.toString());
+        AbstractState<Domain> returnState = stateMap.getReturnState();
+        payload.getLogger().logHighlightedDebugInfo("The post-condition of the analysis: " + returnState.getPostCondition());
     }
 }
