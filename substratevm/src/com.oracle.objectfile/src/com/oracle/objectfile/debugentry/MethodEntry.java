@@ -26,8 +26,10 @@
 
 package com.oracle.objectfile.debugentry;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 public class MethodEntry extends MemberEntry {
     private final LocalEntry thisParam;
@@ -35,7 +37,7 @@ public class MethodEntry extends MemberEntry {
     private final int lastParamSlot;
     // local vars are accumulated as they are referenced sorted by slot, then name, then
     // type name. we don't currently deal handle references to locals with no slot.
-    private final SortedSet<LocalEntry> locals;
+    private final ConcurrentSkipListSet<LocalEntry> locals;
     private final boolean isDeopt;
     private boolean isInRange;
     private boolean isInlined;
@@ -44,11 +46,10 @@ public class MethodEntry extends MemberEntry {
     private final int vtableOffset;
     private final String symbolName;
 
-    @SuppressWarnings("this-escape")
     public MethodEntry(FileEntry fileEntry, int line, String methodName, StructureTypeEntry ownerType,
                     TypeEntry valueType, int modifiers, SortedSet<LocalEntry> paramInfos, LocalEntry thisParam,
                     String symbolName, boolean isDeopt, boolean isOverride, boolean isConstructor, int vtableOffset,
-                    int lastParamSlot, SortedSet<LocalEntry> locals) {
+                    int lastParamSlot, List<LocalEntry> locals) {
         super(fileEntry, line, methodName, ownerType, valueType, modifiers);
         this.paramInfos = paramInfos;
         this.thisParam = thisParam;
@@ -58,7 +59,11 @@ public class MethodEntry extends MemberEntry {
         this.isConstructor = isConstructor;
         this.vtableOffset = vtableOffset;
         this.lastParamSlot = lastParamSlot;
-        this.locals = locals;
+
+        this.locals = new ConcurrentSkipListSet<>(Comparator.comparingInt(LocalEntry::slot).thenComparing(LocalEntry::name).thenComparing(le -> le.type().getTypeName()));
+        // sort by line and add all locals, such that the methods locals only contain the lowest
+        // line number
+        locals.stream().sorted(Comparator.comparingInt(LocalEntry::line)).forEach(this.locals::add);
 
         this.isInRange = false;
         this.isInlined = false;
@@ -94,27 +99,28 @@ public class MethodEntry extends MemberEntry {
 
         if (slot <= lastParamSlot) {
             if (thisParam != null) {
-                if (thisParam.slot() == slot && thisParam.name().equals(name) && thisParam.type() == type) {
+                if (thisParam.slot() == slot && thisParam.name().equals(name) && thisParam.type().equals(type)) {
                     return thisParam;
                 }
             }
             for (LocalEntry param : paramInfos) {
-                if (param.slot() == slot && param.name().equals(name) && param.type() == type) {
+                if (param.slot() == slot && param.name().equals(name) && param.type().equals(type)) {
                     return param;
                 }
             }
         } else {
-            for (LocalEntry local : locals) {
-                if (local.slot() == slot && local.name().equals(name) && local.type() == type) {
-                    return local;
-                }
-            }
-
+            /*
+             * Add a new local entry if it was not already present in the locals list. A local is
+             * unique if it has different slot, name, and/or type. If the local is already
+             * contained, we might update the line number to the lowest occurring line number.
+             */
             LocalEntry local = new LocalEntry(name, type, slot, line);
-            synchronized (locals) {
+            if (!locals.contains(local) || locals.removeIf(le -> le.slot() == slot && le.name().equals(name) && le.type().equals(type) && le.line() > line)) {
                 locals.add(local);
+                return local;
+            } else {
+                return locals.headSet(local, true).last();
             }
-            return local;
         }
 
         /*

@@ -232,7 +232,8 @@ public abstract class DebugInfoBase {
 
         stringTable = debugInfoProvider.getStringTable();
 
-        cachePath = debugInfoProvider.cachePath();
+        // Create the cachePath string entry which serves as base directory for source files
+        cachePath = uniqueDebugString(debugInfoProvider.cachePath());
 
         compiledMethods.addAll(debugInfoProvider.compiledMethodEntries());
         debugInfoProvider.typeEntries().forEach(typeEntry -> {
