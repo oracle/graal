@@ -24,12 +24,27 @@
  */
 package com.oracle.svm.driver;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.ExitStatus;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.NativeImage.NativeImageError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 class MemoryUtil {
     private static final long KiB_TO_BYTES = 1024L;
@@ -39,15 +54,34 @@ class MemoryUtil {
     /* Builder needs at least 512MiB for building a helloworld in a reasonable amount of time. */
     private static final long MIN_HEAP_BYTES = 512L * MiB_TO_BYTES;
 
-    /* If free memory is below 8GiB, use 85% of total system memory (e.g., 7GiB * 85% ~ 6GiB). */
-    private static final long DEDICATED_MODE_THRESHOLD = 8L * GiB_TO_BYTES;
+    /* Use 85% of total system memory (e.g., 7GiB * 85% ~ 6GiB) in dedicated mode. */
     private static final double DEDICATED_MODE_TOTAL_MEMORY_RATIO = 0.85D;
+
+    /* If available memory is below 8GiB, fall back to dedicated mode. */
+    private static final int MIN_AVAILABLE_MEMORY_THRESHOLD_GB = 8;
 
     /*
      * Builder uses at most 32GB to avoid disabling compressed oops (UseCompressedOops).
      * Deliberately use GB (not GiB) to stay well below 32GiB when relative maximum is calculated.
      */
     private static final long MAX_HEAP_BYTES = 32_000_000_000L;
+
+    private static final Method IS_CONTAINERIZED_METHOD;
+    private static final Object IS_CONTAINERIZED_RECEIVER;
+
+    static {
+        IS_CONTAINERIZED_METHOD = ReflectionUtil.lookupMethod(jdk.jfr.internal.JVM.class, "isContainerized");
+        if (JavaVersionUtil.JAVA_SPEC == 21) { // non-static
+            var jvmField = ReflectionUtil.lookupField(jdk.jfr.internal.JVM.class, "jvm");
+            try {
+                IS_CONTAINERIZED_RECEIVER = jvmField.get(null);
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        } else {
+            IS_CONTAINERIZED_RECEIVER = null; // static
+        }
+    }
 
     public static List<String> determineMemoryFlags(NativeImage.HostFlags hostFlags) {
         List<String> flags = new ArrayList<>();
@@ -61,9 +95,9 @@ class MemoryUtil {
          * -XX:InitialRAMPercentage or -Xms.
          */
         if (hostFlags.hasMaxRAMPercentage()) {
-            flags.add("-XX:MaxRAMPercentage=" + determineReasonableMaxRAMPercentage());
+            flags.addAll(determineMemoryUsageFlags(value -> "-XX:MaxRAMPercentage=" + value));
         } else if (hostFlags.hasMaximumHeapSizePercent()) {
-            flags.add("-XX:MaximumHeapSizePercent=" + (int) determineReasonableMaxRAMPercentage());
+            flags.addAll(determineMemoryUsageFlags(value -> "-XX:MaximumHeapSizePercent=" + value.intValue()));
         }
         if (hostFlags.hasGCTimeRatio()) {
             /*
@@ -82,23 +116,39 @@ class MemoryUtil {
     }
 
     /**
-     * Returns a percentage (0.0-100.0) to be used as a value for the -XX:MaxRAMPercentage flag of
-     * the builder process. Prefer free memory over total memory to reduce memory pressure on the
-     * host machine. Note that this method uses OperatingSystemMXBean, which is container-aware.
+     * Returns memory usage flags for the build process. Dedicated mode uses a fixed percentage of
+     * total memory and is the default in containers. Shared mode tries to use available memory to
+     * reduce memory pressure on the host machine. Note that this method uses OperatingSystemMXBean,
+     * which is container-aware.
      */
-    private static double determineReasonableMaxRAMPercentage() {
+    private static List<String> determineMemoryUsageFlags(Function<Double, String> toMemoryFlag) {
         var osBean = (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
         final double totalMemorySize = osBean.getTotalMemorySize();
-        double reasonableMaxMemorySize = osBean.getFreeMemorySize();
+        final double dedicatedMemorySize = totalMemorySize * DEDICATED_MODE_TOTAL_MEMORY_RATIO;
 
-        if (reasonableMaxMemorySize < DEDICATED_MODE_THRESHOLD) {
-            /*
-             * When free memory is low, for example in memory-constrained environments or when a
-             * good amount of memory is used for caching, use a fixed percentage of total memory
-             * rather than free memory. In containerized environments, builds are expected to run
-             * more or less exclusively (builder + driver + optional Gradle/Maven process).
-             */
-            reasonableMaxMemorySize = totalMemorySize * DEDICATED_MODE_TOTAL_MEMORY_RATIO;
+        String memoryUsageReason = "unknown";
+        final boolean isDedicatedMemoryUsage;
+        if (SubstrateUtil.isCISetToTrue()) {
+            isDedicatedMemoryUsage = true;
+            memoryUsageReason = "$CI set to 'true'";
+        } else if (isContainerized()) {
+            isDedicatedMemoryUsage = true;
+            memoryUsageReason = "in container";
+        } else {
+            isDedicatedMemoryUsage = false;
+        }
+
+        double reasonableMaxMemorySize;
+        if (isDedicatedMemoryUsage) {
+            reasonableMaxMemorySize = dedicatedMemorySize;
+        } else {
+            reasonableMaxMemorySize = getAvailableMemorySize();
+            if (reasonableMaxMemorySize >= MIN_AVAILABLE_MEMORY_THRESHOLD_GB * GiB_TO_BYTES) {
+                memoryUsageReason = "using available memory";
+            } else { // fall back to dedicated mode
+                memoryUsageReason = "less than " + MIN_AVAILABLE_MEMORY_THRESHOLD_GB + "GB of memory available";
+                reasonableMaxMemorySize = dedicatedMemorySize;
+            }
         }
 
         if (reasonableMaxMemorySize < MIN_HEAP_BYTES) {
@@ -111,6 +161,142 @@ class MemoryUtil {
         /* Ensure max memory size does not exceed upper limit. */
         reasonableMaxMemorySize = Math.min(reasonableMaxMemorySize, MAX_HEAP_BYTES);
 
-        return reasonableMaxMemorySize / totalMemorySize * 100;
+        double reasonableMaxRamPercentage = reasonableMaxMemorySize / totalMemorySize * 100;
+        return List.of(toMemoryFlag.apply(reasonableMaxRamPercentage),
+                        "-D" + SubstrateOptions.BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY + "=" + memoryUsageReason);
+    }
+
+    private static boolean isContainerized() {
+        if (!OS.LINUX.isCurrent()) {
+            return false;
+        }
+        /*
+         * [GR-55515]: Accessing isContainerized() reflectively only for 21 JDK compatibility
+         * (non-static vs static method). After dropping JDK 21, use it directly.
+         */
+        try {
+            return (boolean) IS_CONTAINERIZED_METHOD.invoke(IS_CONTAINERIZED_RECEIVER);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private static double getAvailableMemorySize() {
+        return switch (OS.getCurrent()) {
+            case LINUX -> getAvailableMemorySizeLinux();
+            case DARWIN -> getAvailableMemorySizeDarwin();
+            case WINDOWS -> getAvailableMemorySizeWindows();
+        };
+    }
+
+    /**
+     * Returns the total amount of available memory in bytes on Linux based on
+     * <code>/proc/meminfo</code>, otherwise <code>-1</code>. Note that this metric is not
+     * container-aware (does not take cgroups into account) and may report available memory of the
+     * host.
+     *
+     * @see <a href=
+     *      "https://github.com/torvalds/linux/blob/865fdb08197e657c59e74a35fa32362b12397f58/mm/page_alloc.c#L5137">page_alloc.c#L5137</a>
+     */
+    private static long getAvailableMemorySizeLinux() {
+        try {
+            String memAvailableLine = Files.readAllLines(Paths.get("/proc/meminfo")).stream().filter(l -> l.startsWith("MemAvailable")).findFirst().orElse("");
+            Matcher m = Pattern.compile("^MemAvailable:\\s+(\\d+) kB").matcher(memAvailableLine);
+            if (m.matches()) {
+                return Long.parseLong(m.group(1)) * KiB_TO_BYTES;
+            }
+        } catch (Exception e) {
+        }
+        return -1;
+    }
+
+    /**
+     * Returns the total amount of available memory in bytes on Darwin based on
+     * <code>vm_stat</code>, otherwise <code>-1</code>.
+     *
+     * @see <a href=
+     *      "https://opensource.apple.com/source/system_cmds/system_cmds-496/vm_stat.tproj/vm_stat.c.auto.html">vm_stat.c</a>
+     */
+    private static long getAvailableMemorySizeDarwin() {
+        try {
+            Process p = Runtime.getRuntime().exec(new String[]{"vm_stat"});
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line1 = reader.readLine();
+                if (line1 == null) {
+                    return -1;
+                }
+                Matcher m1 = Pattern.compile("^Mach Virtual Memory Statistics: \\(page size of (\\d+) bytes\\)").matcher(line1);
+                long pageSize = -1;
+                if (m1.matches()) {
+                    pageSize = Long.parseLong(m1.group(1));
+                }
+                if (pageSize <= 0) {
+                    return -1;
+                }
+                String line2 = reader.readLine();
+                Matcher m2 = Pattern.compile("^Pages free:\\s+(\\d+).").matcher(line2);
+                long freePages = -1;
+                if (m2.matches()) {
+                    freePages = Long.parseLong(m2.group(1));
+                }
+                if (freePages <= 0) {
+                    return -1;
+                }
+                String line3 = reader.readLine();
+                if (!line3.startsWith("Pages active")) {
+                    return -1;
+                }
+                String line4 = reader.readLine();
+                Matcher m4 = Pattern.compile("^Pages inactive:\\s+(\\d+).").matcher(line4);
+                long inactivePages = -1;
+                if (m4.matches()) {
+                    inactivePages = Long.parseLong(m4.group(1));
+                }
+                if (inactivePages <= 0) {
+                    return -1;
+                }
+                assert freePages > 0 && inactivePages > 0 && pageSize > 0;
+                return (freePages + inactivePages) * pageSize;
+            } finally {
+                p.waitFor();
+            }
+        } catch (Exception e) {
+        }
+        return -1;
+    }
+
+    /**
+     * Returns the total amount of available memory in bytes on Windows based on <code>wmic</code>,
+     * otherwise <code>-1</code>.
+     *
+     * @see <a href=
+     *      "https://learn.microsoft.com/en-us/windows/win32/cimwin32prov/win32-operatingsystem">Win32_OperatingSystem
+     *      class</a>
+     */
+    private static long getAvailableMemorySizeWindows() {
+        try {
+            Process p = Runtime.getRuntime().exec(new String[]{"cmd.exe", "/c", "wmic", "OS", "get", "FreePhysicalMemory"});
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                String line1 = reader.readLine();
+                if (line1 == null || !line1.startsWith("FreePhysicalMemory")) {
+                    return -1;
+                }
+                String line2 = reader.readLine();
+                if (line2 == null) {
+                    return -1;
+                }
+                String line3 = reader.readLine();
+                if (line3 == null) {
+                    return -1;
+                }
+                Matcher m = Pattern.compile("^(\\d+)\\s+").matcher(line3);
+                if (m.matches()) {
+                    return Long.parseLong(m.group(1)) * KiB_TO_BYTES;
+                }
+            }
+            p.waitFor();
+        } catch (Exception e) {
+        }
+        return -1;
     }
 }
