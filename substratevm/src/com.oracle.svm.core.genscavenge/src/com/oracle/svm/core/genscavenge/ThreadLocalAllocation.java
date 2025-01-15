@@ -52,6 +52,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.GenScavengeAllocationSupport;
@@ -59,7 +60,6 @@ import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatPodNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatStoredContinuationNode;
-import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -236,16 +236,23 @@ public final class ThreadLocalAllocation {
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
     private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub, UnsignedWord size) {
-        DeoptTester.disableDeoptTesting();
-        long startTicks = JfrTicks.elapsedTicks();
-        try {
-            HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
-            GCImpl.getGCImpl().maybeCollectOnAllocation(size);
+        HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
+        GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
-            return allocateInstanceSlow(hub, size);
+        return slowPathNewInstanceWithoutAllocation0(hub, size);
+    }
+
+    @Uninterruptible(reason = "Possible use of StackValue in virtual thread.")
+    private static Object slowPathNewInstanceWithoutAllocation0(DynamicHub hub, UnsignedWord size) {
+        long startTicks = JfrTicks.elapsedTicks();
+
+        BooleanPointer allocatedOutsideTlab = StackValue.get(BooleanPointer.class);
+        allocatedOutsideTlab.write(false);
+
+        try {
+            return allocateInstanceSlow(hub, size, allocatedOutsideTlab);
         } finally {
-            JfrAllocationEvents.emit(startTicks, hub, size, getTlabSize());
-            DeoptTester.enableDeoptTesting();
+            JfrAllocationEvents.emit(startTicks, hub, size, getTlabSize(), allocatedOutsideTlab.read());
         }
     }
 
@@ -267,7 +274,7 @@ public final class ThreadLocalAllocation {
             throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
         }
 
-        Object result = slowPathNewArrayLikeObject0(hub, length, size, podReferenceMap);
+        Object result = slowPathNewArrayLikeObjectWithoutAllocating(hub, length, size, podReferenceMap);
 
         runSlowPathHooks();
         sampleSlowPathAllocation(result, size, length);
@@ -276,14 +283,22 @@ public final class ThreadLocalAllocation {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathNewArrayLikeObject0(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
-        DeoptTester.disableDeoptTesting();
+    private static Object slowPathNewArrayLikeObjectWithoutAllocating(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
+        HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayLikeObjectWithoutAllocating", DynamicHub.toClass(hub).getName());
+        GCImpl.getGCImpl().maybeCollectOnAllocation(size);
+
+        return slowPathNewArrayLikeObjectWithoutAllocation0(hub, length, size, podReferenceMap);
+    }
+
+    @Uninterruptible(reason = "Possible use of StackValue in virtual thread.")
+    private static Object slowPathNewArrayLikeObjectWithoutAllocation0(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
         long startTicks = JfrTicks.elapsedTicks();
         UnsignedWord tlabSize = Word.zero();
-        try {
-            HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayOrPodWithoutAllocating", DynamicHub.toClass(hub).getName());
-            GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
+        BooleanPointer allocatedOutsideTlab = StackValue.get(BooleanPointer.class);
+        allocatedOutsideTlab.write(false);
+
+        try {
             if (!GenScavengeAllocationSupport.arrayAllocatedInAlignedChunk(size)) {
                 /*
                  * Large arrays go into their own unaligned chunk. Only arrays and stored
@@ -305,13 +320,12 @@ public final class ThreadLocalAllocation {
              */
             Object array = allocateSmallArrayLikeObjectInCurrentTlab(hub, length, size, podReferenceMap);
             if (array == null) {
-                array = allocateArraySlow(hub, length, size, podReferenceMap);
+                array = allocateArraySlow(hub, length, size, podReferenceMap, allocatedOutsideTlab);
             }
             tlabSize = getTlabSize();
             return array;
         } finally {
-            JfrAllocationEvents.emit(startTicks, hub, size, tlabSize);
-            DeoptTester.enableDeoptTesting();
+            JfrAllocationEvents.emit(startTicks, hub, size, tlabSize, allocatedOutsideTlab.read());
         }
     }
 
@@ -326,9 +340,9 @@ public final class ThreadLocalAllocation {
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateInstanceSlow(DynamicHub hub, UnsignedWord size) {
+    private static Object allocateInstanceSlow(DynamicHub hub, UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
         assert size.equal(LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()));
-        Pointer memory = allocateRawMemory(size);
+        Pointer memory = allocateRawMemory(size, allocatedOutsideTlab);
         return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, FillContent.WITH_ZEROES, true);
     }
 
@@ -342,19 +356,19 @@ public final class ThreadLocalAllocation {
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateArraySlow(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap) {
-        Pointer memory = allocateRawMemory(size);
+    private static Object allocateArraySlow(DynamicHub hub, int length, UnsignedWord size, byte[] podReferenceMap, BooleanPointer allocatedOutsideTlab) {
+        Pointer memory = allocateRawMemory(size, allocatedOutsideTlab);
         return formatArrayLikeObject(memory, hub, length, false, FillContent.WITH_ZEROES, podReferenceMap);
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/memAllocator.cpp#L333-L341")
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Pointer allocateRawMemory(UnsignedWord size) {
+    private static Pointer allocateRawMemory(UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
         Pointer memory = allocateRawMemoryInTlabSlow(size);
         if (memory.isNonNull()) {
             return memory;
         }
-        return allocateRawMemoryOutsideTlab(size);
+        return allocateRawMemoryOutsideTlab(size, allocatedOutsideTlab);
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+8/src/hotspot/share/gc/shared/memAllocator.cpp#L256-L318")
@@ -404,7 +418,8 @@ public final class ThreadLocalAllocation {
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23-ga/src/hotspot/share/gc/shared/memAllocator.cpp#L240-L251")
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Pointer allocateRawMemoryOutsideTlab(UnsignedWord size) {
+    private static Pointer allocateRawMemoryOutsideTlab(UnsignedWord size, BooleanPointer allocatedOutsideTlab) {
+        allocatedOutsideTlab.write(true);
         Pointer memory = YoungGeneration.getHeapAllocation().allocateOutsideTlab(size);
         allocatedAlignedBytes.set(allocatedAlignedBytes.get().add(size));
         return memory;

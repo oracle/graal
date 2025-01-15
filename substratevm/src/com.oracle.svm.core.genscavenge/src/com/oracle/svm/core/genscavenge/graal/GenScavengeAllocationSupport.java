@@ -24,13 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -123,6 +124,7 @@ public class GenScavengeAllocationSupport implements GCAllocationSupport {
         return ThreadLocalAllocation.Descriptor.offsetOfAllocationEnd();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean arrayAllocatedInAlignedChunk(UnsignedWord objectSize) {
         return objectSize.belowThan(HeapParameters.getLargeArrayThreshold());
     }
