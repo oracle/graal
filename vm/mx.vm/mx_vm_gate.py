@@ -686,16 +686,18 @@ def gate_truffle_native_tck_smoke_test(tasks):
                 result = _svm_truffle_tck(native_image, 'TCKSmokeTestLanguage', test_language_dist, False)
                 if not 'Failed: Language TCKSmokeTestLanguage performs following privileged calls' in result:
                     mx.abort("Expected failure, log:\n" + result)
-                if not 'UnsafeCallNode.doUnsafeAccess' in result:
-                    mx.abort("Missing UnsafeCallNode.doUnsafeAccess call in the log, log:\n" + result)
-                if not 'UnsafeCallNode.doBehindBoundaryUnsafeAccess' in result:
-                    mx.abort("Missing UnsafeCallNode.doBehindBoundaryUnsafeAccess call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.execute' in result:
-                    mx.abort("Missing PrivilegedCallNode.execute call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doBehindBoundaryPrivilegedCall' in result:
-                    mx.abort("Missing PrivilegedCallNode.doBehindBoundaryPrivilegedCall call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doInterrupt' in result:
-                    mx.abort("Missing PrivilegedCallNode.doInterrupt call in the log, log:\n" + result)
+
+                expected_methods = [
+                    'PrivilegedCallNode.doBehindBoundaryPrivilegedCall',
+                    'PrivilegedCallNode.doInterrupt',
+                    'PrivilegedCallNode.doPolymorphicCall',
+                    'PrivilegedCallNode.execute',
+                    'UnsafeCallNode.doBehindBoundaryUnsafeAccess',
+                    'UnsafeCallNode.doUnsafeAccess',
+                ]
+                for expected_method in expected_methods:
+                    if expected_method not in result:
+                        mx.abort(f"Missing {expected_method} call in the log.\nLog content:\n" + result)
 
 
 def gate_truffle_native_tck_js(tasks):
