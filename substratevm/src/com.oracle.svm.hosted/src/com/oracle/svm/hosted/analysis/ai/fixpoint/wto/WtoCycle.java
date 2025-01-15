@@ -5,6 +5,7 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import java.util.List;
 
 public record WtoCycle(HIRBlock block, List<WtoComponent> components) implements WtoComponent {
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -14,5 +15,10 @@ public record WtoCycle(HIRBlock block, List<WtoComponent> components) implements
         }
         sb.append(")");
         return sb.toString();
+    }
+
+    @Override
+    public HIRBlock getBlock() {
+        return block;
     }
 }
