@@ -38,7 +38,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -60,6 +59,7 @@ import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.util.Digest;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -82,17 +82,17 @@ public class SubstrateUtil {
 
     public static String getArchitectureName() {
         String arch = System.getProperty("os.arch");
-        switch (arch) {
-            case "x86_64":
-                arch = "amd64";
-                break;
-            case "arm64":
-                arch = "aarch64";
-                break;
-        }
-        return arch;
+        return switch (arch) {
+            case "x86_64" -> "amd64";
+            case "arm64" -> "aarch64";
+            default -> arch;
+        };
     }
 
+    /*
+     * [GR-55515]: Accessing isTerminal() reflectively only for 21 JDK compatibility. After dropping
+     * JDK 21, use it directly.
+     */
     private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");
 
     private static boolean isTTY() {
@@ -111,8 +111,12 @@ public class SubstrateUtil {
         }
     }
 
-    public static boolean isRunningInCI() {
-        return !isTTY() || System.getenv("CI") != null;
+    public static boolean isNonInteractiveTerminal() {
+        return isCISetToTrue() || !isTTY();
+    }
+
+    public static boolean isCISetToTrue() {
+        return Boolean.parseBoolean(System.getenv("CI"));
     }
 
     /**
