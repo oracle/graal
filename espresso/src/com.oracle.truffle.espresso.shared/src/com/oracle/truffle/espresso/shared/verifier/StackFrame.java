@@ -26,7 +26,7 @@ import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failVer
 import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.formatGuarantee;
 import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.verifyGuarantee;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
@@ -474,7 +474,7 @@ final class Locals<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C, M, 
         this.registers = new Operand[mv.getMaxLocals()];
         int index = 0;
         if (!mv.isStatic()) {
-            if (Name._init_.equals(mv.getMethodName())) {
+            if (ParserNames._init_.equals(mv.getMethodName())) {
                 registers[index++] = new UninitReferenceOperand<>(mv.getThisKlass());
             } else {
                 registers[index++] = new ReferenceOperand<>(mv.getThisKlass());

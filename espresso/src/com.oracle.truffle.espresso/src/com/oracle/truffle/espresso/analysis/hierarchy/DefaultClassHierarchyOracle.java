@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.analysis.hierarchy;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
@@ -161,7 +161,7 @@ public final class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
     public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
         // java.io.Serializable and java.lang.Cloneable are always implemented by all arrays
-        if (klass.getType() == Symbol.Type.java_io_Serializable || klass.getType() == Symbol.Type.java_lang_Cloneable) {
+        if (klass.getType() == Types.java_io_Serializable || klass.getType() == Types.java_lang_Cloneable) {
             return SingleImplementor.MultipleImplementors;
         }
         if (klass.isAbstract() || klass.isInterface()) {

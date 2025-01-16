@@ -37,8 +37,8 @@ import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.DebugCloseable;
 import com.oracle.truffle.espresso.classfile.perf.DebugTimer;
 import com.oracle.truffle.espresso.constantpool.Resolution;
@@ -289,12 +289,12 @@ public abstract class ClassRegistry {
     @SuppressWarnings("try")
     Klass loadKlass(EspressoContext context, Symbol<Type> type, StaticObject protectionDomain) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             Klass elemental = loadKlass(context, env.getTypes().getElementalType(type), protectionDomain);
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(Types.getArrayDimensions(type));
+            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
         }
 
         loadKlassCountInc();
@@ -343,13 +343,13 @@ public abstract class ClassRegistry {
     }
 
     public Klass findLoadedKlass(ClassLoadingEnv env, Symbol<Type> type) {
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             Symbol<Type> elemental = env.getTypes().getElementalType(type);
             Klass elementalKlass = findLoadedKlass(env, elemental);
             if (elementalKlass == null) {
                 return null;
             }
-            return elementalKlass.getArrayClass(Types.getArrayDimensions(type));
+            return elementalKlass.getArrayClass(TypeSymbols.getArrayDimensions(type));
         }
         ClassRegistries.RegistryEntry entry = classes.get(type);
         if (entry == null) {
@@ -605,7 +605,7 @@ public abstract class ClassRegistry {
         renamedKlass.getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
     }
 
-    public void onInnerClassRemoved(Symbol<Symbol.Type> type) {
+    public void onInnerClassRemoved(Symbol<Type> type) {
         // "unload" the class by removing from classes
         ClassRegistries.RegistryEntry removed = classes.remove(type);
         // purge class loader constraint for this type

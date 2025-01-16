@@ -261,12 +261,14 @@ import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
@@ -546,7 +548,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         jlThrowable = new ReferenceOperand<>(knownTypes.java_lang_Throwable());
 
         thisOperand = new ReferenceOperand<>(thisKlass);
-        returnOperand = kindToOperand(Signatures.returnType(sig));
+        returnOperand = kindToOperand(SignatureSymbols.returnType(sig));
     }
 
     private MethodVerifier(R runtime, CodeAttribute codeAttribute, M m) {
@@ -1549,7 +1551,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 case RETURN:
                     verifyGuarantee(returnOperand == voidOp, "Encountered RETURN, but method return type is not void: " + returnOperand);
                     // Only j.l.Object.<init> can omit calling another initializer.
-                    if (isInstanceInit(methodName) && thisKlass.getSymbolicType() != Type.java_lang_Object) {
+                    if (isInstanceInit(methodName) && thisKlass.getSymbolicType() != ParserTypes.java_lang_Object) {
                         verifyGuarantee(calledConstructor, "Did not call super() or this() in constructor " + thisKlass.getJavaName() + "." + methodName);
                     }
                     return bci;
@@ -1635,18 +1637,18 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         validateOrFailVerification(pc, pool);
         ClassConstant.ImmutableClassConstant cc = (ClassConstant.ImmutableClassConstant) pc;
         assert Validation.validClassNameEntry(cc.getName(pool));
-        return runtime.getSymbolPool().getTypes().fromName(cc.getName(pool));
+        return runtime.getSymbolPool().getTypes().fromClassNameEntry(cc.getName(pool));
     }
 
     private void verifyMultiNewArray(int bci, OperandStack<R, C, M, F> stack) {
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for MULTIANEWARRAY: ");
-        verifyGuarantee(Types.isArray(type), "Class " + type + " for MULTINEWARRAY is not an array type.");
+        verifyGuarantee(TypeSymbols.isArray(type), "Class " + type + " for MULTINEWARRAY is not an array type.");
 
         // Check dimensions
         int dim = code.readUByte(bci + 3);
         verifyGuarantee(dim > 0, "Negative or 0 dimension for MULTIANEWARRAY: " + dim);
-        verifyGuarantee(Types.getArrayDimensions(type) >= dim, "Incompatible dimensions from constant pool: " + Types.getArrayDimensions(type) + " and instruction: " + dim);
+        verifyGuarantee(TypeSymbols.getArrayDimensions(type) >= dim, "Incompatible dimensions from constant pool: " + TypeSymbols.getArrayDimensions(type) + " and instruction: " + dim);
 
         // Pop lengths
         for (int i = 0; i < dim; i++) {
@@ -1663,7 +1665,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
 
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for INSTANCEOF: ");
-        verifyGuarantee(!Types.isPrimitive(type), "Primitive type for INSTANCEOF: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for INSTANCEOF: " + type);
 
         // push result
         stack.pushInt();
@@ -1676,7 +1678,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int cpi = code.readCPI(bci);
         Symbol<Type> type = getTypeFromPool(cpi, "Invalid CP constant for CHECKCAST: ");
-        verifyGuarantee(!Types.isPrimitive(type), "Primitive type for CHECKCAST: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for CHECKCAST: " + type);
 
         // push new type
         Operand<R, C, M, F> castOp = spawnFromType(type, cpi);
@@ -1691,7 +1693,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         // Check CP validity
         int cpi = code.readCPI(bci);
         Symbol<Type> type = getTypeFromPool(cpi, "Invalid CP constant for ANEWARRAY: ");
-        verifyGuarantee(!Types.isPrimitive(type), "Primitive type for ANEWARRAY: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type), "Primitive type for ANEWARRAY: " + type);
 
         // Pop length
         stack.popInt();
@@ -1720,7 +1722,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     private void verifyNew(int bci, OperandStack<R, C, M, F> stack) {
         // Check CP validity
         Symbol<Type> type = getTypeFromPool(code.readCPI(bci), "Invalid CP constant for NEW: ");
-        verifyGuarantee(!Types.isPrimitive(type) && !Types.isArray(type), "use NEWARRAY for creating array or primitive type: " + type);
+        verifyGuarantee(!TypeSymbols.isPrimitive(type) && !TypeSymbols.isArray(type), "use NEWARRAY for creating array or primitive type: " + type);
 
         // push result
         Operand<R, C, M, F> op = new UninitReferenceOperand<>(type, bci);
@@ -1743,7 +1745,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         if (curOpcode == PUTFIELD) {
             // Pop and check verifier
             assert Validation.validClassNameEntry(frc.getHolderKlassName(pool));
-            Symbol<Type> fieldHolderType = runtime.getSymbolPool().getTypes().fromName(frc.getHolderKlassName(pool));
+            Symbol<Type> fieldHolderType = runtime.getSymbolPool().getTypes().fromClassNameEntry(frc.getHolderKlassName(pool));
             Operand<R, C, M, F> fieldHolder = kindToOperand(fieldHolderType);
             Operand<R, C, M, F> receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: " + receiver);
@@ -1766,7 +1768,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         if (curOpcode == GETFIELD) {
             // Pop and check receiver
             assert Validation.validClassNameEntry(frc.getHolderKlassName(pool));
-            Symbol<Type> fieldHolderType = runtime.getSymbolPool().getTypes().fromName(frc.getHolderKlassName(pool));
+            Symbol<Type> fieldHolderType = runtime.getSymbolPool().getTypes().fromClassNameEntry(frc.getHolderKlassName(pool));
             Operand<R, C, M, F> fieldHolder = kindToOperand(fieldHolderType);
             Operand<R, C, M, F> receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             checkProtectedMember(receiver, fieldHolderType, frc, false);
@@ -1870,11 +1872,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private static boolean isClassInit(Symbol<Name> calledMethodName) {
-        return Name._clinit_.equals(calledMethodName);
+        return ParserNames._clinit_.equals(calledMethodName);
     }
 
     private static boolean isInstanceInit(Symbol<Name> calledMethodName) {
-        return Name._init_.equals(calledMethodName);
+        return ParserNames._init_.equals(calledMethodName);
     }
 
     private Operand<R, C, M, F> popSignatureGetReturnOp(OperandStack<R, C, M, F> stack, MethodRefConstant.Indexes mrc) {
@@ -1927,7 +1929,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         verifyGuarantee(count == descCount, "Inconsistent redundant argument count for INVOKEINTERFACE.");
 
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
-        Symbol<Type> methodHolder = runtime.getSymbolPool().getTypes().fromName(mrc.getHolderKlassName(pool));
+        Symbol<Type> methodHolder = runtime.getSymbolPool().getTypes().fromClassNameEntry(mrc.getHolderKlassName(pool));
 
         Operand<R, C, M, F> methodHolderOp = kindToOperand(methodHolder);
 
@@ -1979,13 +1981,13 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Operand<R, C, M, F> returnOp = popSignatureGetReturnOp(stack, mrc);
 
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
-        Symbol<Type> methodHolder = runtime.getSymbolPool().getTypes().fromName(mrc.getHolderKlassName(pool));
+        Symbol<Type> methodHolder = runtime.getSymbolPool().getTypes().fromClassNameEntry(mrc.getHolderKlassName(pool));
         Operand<R, C, M, F> methodHolderOp = kindToOperand(methodHolder);
 
         if (isInstanceInit(calledMethodName)) {
             UninitReferenceOperand<R, C, M, F> toInit = (UninitReferenceOperand<R, C, M, F>) stack.popUninitRef(methodHolderOp);
             if (toInit.isUninitThis()) {
-                verifyGuarantee(Name._init_.equals(methodName), "Encountered UninitializedThis outside of Constructor: " + toInit);
+                verifyGuarantee(ParserNames._init_.equals(methodName), "Encountered UninitializedThis outside of Constructor: " + toInit);
                 boolean isValidInitThis = toInit.getType() == methodHolder ||
                                 // Here, the superKlass cannot be null, as the j.l.Object case would
                                 // have been handled by the previous check.
@@ -2042,7 +2044,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         Operand<R, C, M, F> returnOp = popSignatureGetReturnOp(stack, mrc);
 
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
-        Symbol<Type> methodHolder = runtime.getSymbolPool().getTypes().fromName(mrc.getHolderKlassName(pool));
+        Symbol<Type> methodHolder = runtime.getSymbolPool().getTypes().fromClassNameEntry(mrc.getHolderKlassName(pool));
 
         Operand<R, C, M, F> methodHolderOp = kindToOperand(methodHolder);
         Operand<R, C, M, F> stackOp = checkInit(stack.popRef(methodHolderOp));
@@ -2210,9 +2212,9 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
                 if (member == null || !member.isProtected()) {
                     return;
                 }
-                if (!thisKlass.getSymbolicRuntimePackage().contentEquals(Types.getRuntimePackage(holderType))) {
+                if (!thisKlass.getSymbolicRuntimePackage().contentEquals(TypeSymbols.getRuntimePackage(holderType))) {
                     if (method) {
-                        if (stackOp.isArrayType() && Type.java_lang_Object.equals(holderType) && Name.clone.equals(member.getSymbolicName())) {
+                        if (stackOp.isArrayType() && ParserTypes.java_lang_Object.equals(holderType) && ParserNames.clone.equals(member.getSymbolicName())) {
                             // Special case: Arrays pretend to implement Object.clone().
                             return;
                         }
@@ -2286,7 +2288,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
      */
     private Operand<R, C, M, F> kindToOperand(Symbol<Type> type) {
         // @formatter:off
-        switch (Types.getJavaKind(type)) {
+        switch (TypeSymbols.getJavaKind(type)) {
             case Boolean: return booleanOperand;
             case Byte   : return byteOp;
             case Short  : return shortOp;
@@ -2304,8 +2306,8 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
     }
 
     private Operand<R, C, M, F> spawnFromType(Symbol<Type> type, int cpi) {
-        if (Types.isArray(type)) {
-            return new ArrayOperand<>(kindToOperand(runtime.getSymbolPool().getTypes().getElementalType(type)), Types.getArrayDimensions(type));
+        if (TypeSymbols.isArray(type)) {
+            return new ArrayOperand<>(kindToOperand(runtime.getSymbolPool().getTypes().getElementalType(type)), TypeSymbols.getArrayDimensions(type));
         } else {
             return new ReferenceOperand<>(type, cpi);
         }
@@ -2404,11 +2406,11 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         return getThisKlass().getHostType() + "." + getMethodName();
     }
 
-    private Types getTypes() {
+    private TypeSymbols getTypes() {
         return runtime.getSymbolPool().getTypes();
     }
 
-    private Signatures getSignatures() {
+    private SignatureSymbols getSignatures() {
         return runtime.getSymbolPool().getSignatures();
     }
 }

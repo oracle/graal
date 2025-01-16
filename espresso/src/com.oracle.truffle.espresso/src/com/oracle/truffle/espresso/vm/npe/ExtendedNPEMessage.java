@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.vm.npe;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
@@ -50,7 +50,7 @@ public final class ExtendedNPEMessage {
             return null;
         }
         // If this NPE was created via reflection, we have no real NPE.
-        if (top.getMethod().getDeclaringKlass().getType() == Symbol.Type.jdk_internal_reflect_NativeConstructorAccessorImpl) {
+        if (top.getMethod().getDeclaringKlass().getType() == Types.jdk_internal_reflect_NativeConstructorAccessorImpl) {
             return null;
         }
         try {

@@ -27,6 +27,7 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
@@ -142,7 +143,7 @@ public final class EspressoLanguageCache {
         });
     }
 
-    public ParserKlass getOrCreateParserKlass(ClassLoadingEnv env, StaticObject classLoader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
+    public ParserKlass getOrCreateParserKlass(ClassLoadingEnv env, StaticObject classLoader, Symbol<Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
         ensureFrozen();
         return parserKlassProvider.getParserKlass(env, classLoader, typeOrNull, bytes, info);
     }

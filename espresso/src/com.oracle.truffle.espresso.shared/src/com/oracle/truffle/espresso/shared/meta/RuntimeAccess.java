@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.shared.meta;
 
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 
 /**
  * Provides access to some VM-specific capabilities, such as throwing exceptions, or obtaining the

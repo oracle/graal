@@ -36,7 +36,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -345,13 +346,13 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     private void createMainThreadGroup(Meta meta) {
         assert mainThreadGroup == null;
         StaticObject systemThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
-        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void) // private
+        meta.java_lang_ThreadGroup.lookupDeclaredMethod(Names._init_, Signatures._void) // private
                         // ThreadGroup()
                         .invokeDirectSpecial(systemThreadGroup);
 
         mainThreadGroup = meta.java_lang_ThreadGroup.allocateInstance(getContext());
         meta.java_lang_ThreadGroup // public ThreadGroup(ThreadGroup parent, String name)
-                        .lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_ThreadGroup_String) //
+                        .lookupDeclaredMethod(Names._init_, Signatures._void_ThreadGroup_String) //
                         .invokeDirectSpecial(mainThreadGroup,
                                         /* parent */ systemThreadGroup,
                                         /* name */ meta.toGuestString("main"));

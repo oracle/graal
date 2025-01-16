@@ -24,8 +24,8 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.tables.AbstractPackageTable;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;

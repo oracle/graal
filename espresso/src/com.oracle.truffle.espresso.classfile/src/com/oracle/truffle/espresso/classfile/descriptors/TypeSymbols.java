@@ -24,49 +24,77 @@ package com.oracle.truffle.espresso.classfile.descriptors;
 
 import static com.oracle.truffle.espresso.classfile.descriptors.ByteSequence.EMPTY;
 import static com.oracle.truffle.espresso.classfile.descriptors.ByteSequence.wrap;
-import static com.oracle.truffle.espresso.classfile.descriptors.Validation.validClassNameEntry;
 
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserException;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
 
 /**
  * Manages creation and parsing of type descriptors ("field descriptors" in the JVMS).
  *
  * @see "https://docs.oracle.com/javase/specs/jvms/se10/html/jvms-4.html#jvms-4.3.2"
  */
-public final class Types {
+public final class TypeSymbols {
 
     private final Symbols symbols;
 
-    public Types(Symbols symbols) {
+    public TypeSymbols(Symbols symbols) {
         this.symbols = symbols;
     }
 
-    @SuppressWarnings("unchecked")
-    public static Symbol<Type> fromDescriptor(Symbol<? extends Descriptor> descriptor) {
-        Symbol<Type> type = (Symbol<Type>) descriptor;
-        // TODO(peterssen): Turn check into assert, maybe?
-        if (!isValid(type)) {
-            return null;
-        }
-        return type;
+    /**
+     * Creates or retrieves a Type symbol for a valid type descriptor string.
+     *
+     * @param typeString The type descriptor string to process
+     * @return A Symbol representing the type, or null if the descriptor is invalid
+     */
+    public Symbol<Type> getOrCreateValidType(String typeString) {
+        return getOrCreateValidType(ByteSequence.create(typeString));
     }
 
-    public Symbol<Type> getOrCreate(String name) {
-        return getOrCreate(ByteSequence.create(name));
-    }
-
-    public Symbol<Type> getOrCreate(ByteSequence name) {
-        if (!Validation.validTypeDescriptor(name, true)) {
+    /**
+     * Creates or retrieves a Type symbol for a valid type descriptor byte sequence.
+     *
+     * @param typeBytes The type descriptor byte sequence to process
+     * @return A Symbol representing the type, or null if the descriptor is invalid
+     */
+    public Symbol<Type> getOrCreateValidType(ByteSequence typeBytes) {
+        if (Validation.validTypeDescriptor(typeBytes, true)) {
+            return symbols.symbolify(typeBytes);
+        } else {
             return null;
         }
-        return symbols.symbolify(name);
+    }
+
+    /**
+     * Looks up an existing Type symbol for a valid type descriptor string.
+     *
+     * @param typeString The type descriptor string to look up
+     * @return The existing Symbol for the type, or null if not found or invalid
+     *
+     * @see Validation#validTypeDescriptor(ByteSequence, boolean)
+     */
+    public Symbol<Type> lookupValidType(String typeString) {
+        ByteSequence byteSequence = ByteSequence.create(typeString);
+        return lookupValidType(byteSequence);
+    }
+
+    /**
+     * Looks up an existing Type symbol for a valid type descriptor byte sequence.
+     *
+     * @param typeBytes The type descriptor byte sequence to look up
+     * @return The existing Symbol for the type, or null if not found or invalid
+     *
+     * @see Validation#validTypeDescriptor(ByteSequence, boolean)
+     */
+    public Symbol<Type> lookupValidType(ByteSequence typeBytes) {
+        if (Validation.validTypeDescriptor(typeBytes, true)) {
+            return symbols.lookup(typeBytes);
+        } else {
+            return null;
+        }
     }
 
     public static String internalFromClassName(String className) {
@@ -116,7 +144,10 @@ public final class Types {
 
     @TruffleBoundary
     public Symbol<Type> fromClassGetName(String className) {
-        return symbols.symbolify(ByteSequence.create(checkType(internalFromClassName(className))));
+        String internalName = internalFromClassName(className);
+        ByteSequence byteSequence = ByteSequence.create(internalName);
+        ErrorUtil.guarantee(Validation.validTypeDescriptor(byteSequence, true), "invalid type");
+        return symbols.symbolify(byteSequence);
     }
 
     public static Symbol<Type> forPrimitive(JavaKind kind) {
@@ -138,7 +169,7 @@ public final class Types {
         if (endIndex == beginIndex + 1) {
             try {
                 return forPrimitive(JavaKind.fromPrimitiveOrVoidTypeChar((char) descriptor.byteAt(beginIndex)));
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalStateException e) {
                 throw new ParserException.ClassFormatError("invalid descriptor: " + descriptor);
             }
         }
@@ -197,7 +228,7 @@ public final class Types {
      */
     public Symbol<Type> arrayOf(Symbol<Type> type, int dimensions) {
         assert dimensions > 0;
-        if (Types.getArrayDimensions(type) + dimensions > 255) {
+        if (TypeSymbols.getArrayDimensions(type) + dimensions > 255) {
             throw new ParserException.ClassFormatError("Array type with more than 255 dimensions");
         }
         // Prepend #dimensions '[' to type descriptor.
@@ -277,29 +308,6 @@ public final class Types {
         return dims;
     }
 
-    private static boolean isValid(Symbol<Type> type) {
-        if (type.length() == 0) {
-            return false;
-        }
-        if (type.length() == 1) {
-            return isPrimitive(type);
-        }
-        char first = (char) type.byteAt(0);
-        int beginIndex;
-        if (first == '[') {
-            beginIndex = 0;
-            while (beginIndex < type.length() && type.byteAt(beginIndex) == '[') {
-                ++beginIndex;
-            }
-        } else if (first == 'L') {
-            beginIndex = 0;
-        } else {
-            return false;
-        }
-        int endIndex = skipValidTypeDescriptor(type, beginIndex, true);
-        return endIndex == type.length();
-    }
-
     public static boolean isArray(Symbol<Type> type) {
         assert type.length() > 0 : "empty symbol";
         return type.length() > 0 && type.byteAt(0) == '[';
@@ -321,21 +329,8 @@ public final class Types {
 
     public Symbol<Type> fromClass(Class<?> clazz) {
         ByteSequence descriptor = ByteSequence.create(internalFromClassName(clazz.getName()));
-        assert Validation.validTypeDescriptor(descriptor, true);
+        assert Validation.validTypeDescriptor(descriptor, true) : descriptor;
         return symbols.symbolify(descriptor);
-    }
-
-    static ByteSequence checkType(ByteSequence sequence) {
-        // FIXME(peterssen): Do check.
-        return Validation.validTypeDescriptor(sequence, true) ? sequence : null;
-    }
-
-    public static String checkType(String type) {
-        // FIXME(peterssen): Do check.
-        if (type.length() <= 0) {
-            throw new IllegalStateException(type);
-        }
-        return type;
     }
 
     public static String binaryName(Symbol<Type> type) {
@@ -350,15 +345,42 @@ public final class Types {
 
     @SuppressWarnings("unchecked")
     public static Symbol<Type> fromSymbol(Symbol<?> symbol) {
-        Symbol<Type> type = (Symbol<Type>) symbol;
-        assert isValid(type) : "Type validity should have been checked beforehand";
-        return type;
+        ErrorUtil.guarantee(Validation.validTypeDescriptor(symbol, true), "invalid type");
+        return (Symbol<Type>) symbol;
     }
 
-    public Symbol<Type> fromName(Symbol<Name> name) {
+    @SuppressWarnings("unchecked")
+    public static Symbol<Type> fromSymbolUnsafe(Symbol<?> symbol) {
+        assert Validation.validTypeDescriptor(symbol, true) : symbol;
+        return (Symbol<Type>) symbol;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Symbol<Type> fromDescriptorUnsafe(Symbol<? extends Descriptor> descriptor) {
+        assert Validation.validTypeDescriptor(descriptor, true) : descriptor;
+        return (Symbol<Type>) descriptor;
+    }
+
+    /**
+     * Converts a name symbol, as appear in constant pool entries to a type symbol. For historical
+     * reasons, class name entries are not in internal form. For classes, the class name entry is
+     * {@code java/lang/Thread} instead of {@code Ljava/lang/Thread;}. For arrays, the class name is
+     * already in internal form. Primitives are not allowed.
+     */
+    public Symbol<Type> fromClassNameEntry(Symbol<Name> name) {
+        ErrorUtil.guarantee(Validation.validClassNameEntry(name), "invalid class name entry");
+        ErrorUtil.guarantee(!isPrimitive(name), "unexpected primitive name");
         if (name.byteAt(0) == '[') {
-            // TODO(peterssen): Verify . or / separators.
             return fromSymbol(name);
+        }
+        return symbols.symbolify(nameToType(name));
+    }
+
+    public Symbol<Type> fromClassNameEntryUnsafe(Symbol<Name> name) {
+        assert Validation.validClassNameEntry(name) : name;
+        assert !isPrimitive(name) : name;
+        if (name.byteAt(0) == '[') {
+            return fromSymbolUnsafe(name);
         }
         return symbols.symbolify(nameToType(name));
     }
@@ -373,26 +395,8 @@ public final class Types {
         bytes[0] = 'L';
         bytes[bytes.length - 1] = ';';
         ByteSequence wrap = ByteSequence.wrap(bytes);
-        assert checkType(wrap) != null : "Type validity should have been checked beforehand: " + name;
+        assert Validation.validTypeDescriptor(wrap, true) : wrap;
         return wrap;
-    }
-
-    public Symbol<Type> lookup(String type) {
-        return symbols.lookup(checkType(type));
-    }
-
-    public Symbol<Type> lookupName(Symbol<Name> name) {
-        if (!validClassNameEntry(name)) {
-            return null;
-        }
-        if (name.byteAt(0) == '[') {
-            return fromSymbol(name);
-        }
-        return symbols.lookup(nameToType(name));
-    }
-
-    public Symbol<Type> lookupType(ByteSequence type) {
-        return symbols.lookup(type);
     }
 
     public static ByteSequence getRuntimePackage(ByteSequence symbol) {

@@ -26,8 +26,8 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface StringConstant extends PoolConstant {
@@ -65,7 +65,7 @@ public interface StringConstant extends PoolConstant {
          *            a name
          */
         public Symbol<ModifiedUTF8> getSymbol(ConstantPool pool) {
-            return pool.symbolAt(utf8Index);
+            return pool.symbolAtUnsafe(utf8Index);
         }
 
         @Override

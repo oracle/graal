@@ -235,11 +235,11 @@ import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeSwitch;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.LanguageAccess;
 import com.oracle.truffle.espresso.impl.Method;
 
@@ -624,11 +624,11 @@ final class Analysis implements LanguageAccess {
             case INVOKEINTERFACE:
             case INVOKEDYNAMIC: {
                 Symbol<Type>[] parsed = getInvokeSignature(bci, opcode);
-                stack.pop(Signatures.slotsForParameters(parsed));
+                stack.pop(SignatureSymbols.slotsForParameters(parsed));
                 if (!(opcode == INVOKESTATIC || opcode == INVOKEDYNAMIC)) {
                     stack.pop(); // receiver
                 }
-                stack.push(bci, StackType.forType(Signatures.returnType(parsed)));
+                stack.push(bci, StackType.forType(SignatureSymbols.returnType(parsed)));
                 break;
             }
 

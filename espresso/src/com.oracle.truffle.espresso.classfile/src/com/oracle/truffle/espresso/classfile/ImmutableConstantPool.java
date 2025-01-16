@@ -99,7 +99,7 @@ public final class ImmutableConstantPool extends ConstantPool {
         return minorVersion;
     }
 
-    ImmutableConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
+    public ImmutableConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
         int newNamePos = constants.length;
         Utf8Constant newNameConstant = new Utf8Constant(newName);
 

@@ -61,15 +61,13 @@ import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
-import com.oracle.truffle.espresso.classfile.descriptors.Names;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.StaticSymbols;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbols;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -118,9 +116,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     public static final String FILE_EXTENSION = ".class";
 
     @CompilationFinal private Utf8ConstantTable utf8Constants;
-    @CompilationFinal private Names names;
-    @CompilationFinal private Types types;
-    @CompilationFinal private Signatures signatures;
+    @CompilationFinal private NameSymbols nameSymbols;
+    @CompilationFinal private TypeSymbols typeSymbols;
+    @CompilationFinal private SignatureSymbols signatureSymbols;
 
     private final StaticProperty arrayProperty = new DefaultStaticProperty("array");
     // This field should be final, but creating a shape requires a fully-initialized instance of
@@ -170,19 +168,18 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
+        // Initialization order is very fragile.
+        ParserSymbols.ensureInitialized();
         JavaKind.ensureInitialized();
-        Name.ensureInitialized();
-        Type.ensureInitialized();
-        Signature.ensureInitialized();
         Substitutions.ensureInitialized();
-
+        EspressoSymbols.ensureInitialized();
         // Raw symbols are not exposed directly, use the typed interfaces: Names, Types and
         // Signatures instead.
-        Symbols symbols = new Symbols(StaticSymbols.freeze());
+        Symbols symbols = new Symbols(EspressoSymbols.SYMBOLS.freeze());
         this.utf8Constants = new Utf8ConstantTable(symbols);
-        this.names = new Names(symbols);
-        this.types = new Types(symbols);
-        this.signatures = new Signatures(symbols, types);
+        this.nameSymbols = new NameSymbols(symbols);
+        this.typeSymbols = new TypeSymbols(symbols);
+        this.signatureSymbols = new SignatureSymbols(symbols, typeSymbols);
     }
 
     @Override
@@ -304,9 +301,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     private void extractDataFrom(EspressoLanguage other) {
         javaVersion = other.javaVersion;
         utf8Constants = other.getUtf8ConstantTable();
-        names = other.getNames();
-        types = other.getTypes();
-        signatures = other.getSignatures();
+        nameSymbols = other.getNames();
+        typeSymbols = other.getTypes();
+        signatureSymbols = other.getSignatures();
         languageCache.importFrom(other.getLanguageCache());
     }
 
@@ -434,18 +431,18 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> imp
     }
 
     @Override
-    public Names getNames() {
-        return names;
+    public NameSymbols getNames() {
+        return nameSymbols;
     }
 
     @Override
-    public Types getTypes() {
-        return types;
+    public TypeSymbols getTypes() {
+        return typeSymbols;
     }
 
     @Override
-    public Signatures getSignatures() {
-        return signatures;
+    public SignatureSymbols getSignatures() {
+        return signatureSymbols;
     }
 
     @Override

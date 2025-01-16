@@ -44,13 +44,14 @@ import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -114,7 +115,7 @@ public final class Resolution {
             Symbol<Name> klassName = thiz.getName(pool);
             try {
                 EspressoContext context = pool.getContext();
-                Symbol<Type> type = context.getTypes().fromName(klassName);
+                Symbol<Type> type = context.getTypes().fromClassNameEntry(klassName);
                 Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
                 Klass checkedKlass = klass.getElementalType();
                 if (!Klass.checkAccess(checkedKlass, accessingKlass, false)) {
@@ -176,7 +177,7 @@ public final class Resolution {
         try {
             EspressoContext context = pool.getContext();
             Meta meta = context.getMeta();
-            Klass klass = meta.resolveSymbolOrFail(context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
+            Klass klass = meta.resolveSymbolOrFail(context.getTypes().fromClassNameEntryUnsafe(klassName), accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
             if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
                 context.getLogger().log(Level.FINE,
                                 "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
@@ -249,7 +250,7 @@ public final class Resolution {
             return true;
         }
         Klass memberKlass = member.getDeclaringKlass();
-        if (member instanceof Method && Name.clone.equals(member.getName()) && memberKlass.isJavaLangObject()) {
+        if (member instanceof Method && Names.clone.equals(member.getName()) && memberKlass.isJavaLangObject()) {
             if (resolvedKlass.isArray()) {
                 return true;
             }
@@ -482,14 +483,14 @@ public final class Resolution {
     }
 
     public static StaticObject signatureToMethodType(Symbol<Type>[] signature, ObjectKlass accessingKlass, boolean failWithBME, Meta meta) {
-        Symbol<Type> rt = Signatures.returnType(signature);
-        int pcount = Signatures.parameterCount(signature);
+        Symbol<Type> rt = SignatureSymbols.returnType(signature);
+        int pcount = SignatureSymbols.parameterCount(signature);
 
         StaticObject[] ptypes = new StaticObject[pcount];
         StaticObject rtype;
         try {
             for (int i = 0; i < pcount; i++) {
-                Symbol<Type> paramType = Signatures.parameterType(signature, i);
+                Symbol<Type> paramType = SignatureSymbols.parameterType(signature, i);
                 ptypes[i] = meta.resolveSymbolAndAccessCheck(paramType, accessingKlass).mirror();
             }
         } catch (EspressoException e) {

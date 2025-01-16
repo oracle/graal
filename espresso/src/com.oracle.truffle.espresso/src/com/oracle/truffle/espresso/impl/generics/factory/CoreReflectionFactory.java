@@ -68,7 +68,7 @@ public final class CoreReflectionFactory implements GenericsFactory {
     }
 
     public EspressoType makeNamedType(String dotName) {
-        return klass.getMeta().loadKlassOrNull(klass.getTypes().getOrCreate(toInternalName(dotName)), getDefiningClassLoader(), StaticObject.NULL);
+        return klass.getMeta().loadKlassOrNull(klass.getTypes().getOrCreateValidType(toInternalName(dotName)), getDefiningClassLoader(), StaticObject.NULL);
     }
 
     @Override

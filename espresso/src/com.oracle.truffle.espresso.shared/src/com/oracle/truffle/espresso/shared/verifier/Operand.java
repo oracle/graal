@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.shared.verifier;
 
+import static com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failNoClassDefFound;
 import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failVerify;
 import static com.oracle.truffle.espresso.shared.verifier.VerifierError.fatal;
@@ -30,7 +31,7 @@ import java.util.ArrayList;
 
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.shared.meta.ClassLoadingException;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
@@ -280,7 +281,7 @@ class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
     @Override
     boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
         if (other.isReference()) {
-            if (type == null || other.getType() == Type.java_lang_Object) {
+            if (type == null || other.getType() == ParserTypes.java_lang_Object) {
                 return true;
             }
             if (other.getType() == null) {
@@ -372,17 +373,17 @@ final class ArrayOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
     boolean compliesWith(Operand<R, C, M, F> other, MethodVerifier<R, C, M, F> methodVerifier) {
         if (other.isArrayType()) {
             if (other.getDimensions() < getDimensions()) {
-                return other.getElemental().isReference() && (other.getElemental().getType() == Type.java_lang_Object ||
-                                other.getElemental().getType() == Type.java_lang_Cloneable ||
-                                other.getElemental().getType() == Type.java_io_Serializable);
+                return other.getElemental().isReference() && (other.getElemental().getType() == ParserTypes.java_lang_Object ||
+                                other.getElemental().getType() == ParserTypes.java_lang_Cloneable ||
+                                other.getElemental().getType() == ParserTypes.java_io_Serializable);
             } else if (other.getDimensions() == getDimensions()) {
                 return elemental.compliesWith(other.getElemental(), methodVerifier);
             }
             return false;
         }
-        return (other.isTopOperand()) || (other.isReference() && (other.getType() == Type.java_lang_Object ||
-                        other.getType() == Type.java_lang_Cloneable ||
-                        other.getType() == Type.java_io_Serializable));
+        return (other.isTopOperand()) || (other.isReference() && (other.getType() == ParserTypes.java_lang_Object ||
+                        other.getType() == ParserTypes.java_lang_Cloneable ||
+                        other.getType() == ParserTypes.java_io_Serializable));
     }
 
     @Override
@@ -431,7 +432,7 @@ final class ArrayOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<
             // example: (byte[][] U _[][][]) -> Object[]
             return new ArrayOperand<>(methodVerifier.jlObject, newDim - 1);
         }
-        if (smallestElemental.getType() == Type.java_lang_Cloneable || smallestElemental.getType() == Type.java_io_Serializable) {
+        if (smallestElemental.getType() == ParserTypes.java_lang_Cloneable || smallestElemental.getType() == ParserTypes.java_io_Serializable) {
             // example: (Cloneable[][] U _[][][]) -> Cloneable[][]
             return new ArrayOperand<>(smallestElemental, newDim);
         }

@@ -26,8 +26,8 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
@@ -80,7 +80,7 @@ public interface ClassConstant extends PoolConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return pool.symbolAt(classNameIndex);
+            return pool.symbolAtUnsafe(classNameIndex);
         }
 
         @Override

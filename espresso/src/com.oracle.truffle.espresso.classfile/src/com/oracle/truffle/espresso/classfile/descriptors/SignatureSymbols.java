@@ -29,36 +29,105 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserException;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
 
 /**
- * Represents a method signature provided by the runtime.
+ * Represents and manages method signature symbols for the Java runtime.
  *
- * Two representations for method signatures :
+ * Method signatures can be represented in two forms:
  * <ul>
- * <li>Raw: {@link Symbol}&lt;{@link Signature}&gt;
- * <li>Parsed: {@link Symbol}&lt;{@link Type}&gt;[] which includes the return type at the end.
+ * <li>Raw: {@link Symbol}&lt;{@link Signature}&gt; - The original signature string
+ * <li>Parsed: {@link Symbol}&lt;{@link Type}&gt;[] - Array of parameter types with return type at
+ * the end
  * </ul>
+ *
+ * The signature format follows the JVM specification for method descriptors.
  *
  * @see <a href="http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.3.3">Method
  *      Descriptors</a>
  */
-public final class Signatures {
-    private final Types types;
+public final class SignatureSymbols {
+    private final TypeSymbols typeSymbols;
     private final Symbols symbols;
 
     private final ConcurrentHashMap<Symbol<Signature>, Symbol<Type>[]> parsedSignatures = new ConcurrentHashMap<>();
 
-    public Signatures(Symbols symbols, Types types) {
+    /**
+     * Creates a new SignatureSymbols instance.
+     *
+     * @param symbols The Symbols instance for symbol management
+     * @param typeSymbols The TypeSymbols instance for handling type descriptors
+     */
+    public SignatureSymbols(Symbols symbols, TypeSymbols typeSymbols) {
         this.symbols = symbols;
-        this.types = types;
+        this.typeSymbols = typeSymbols;
+    }
+
+    /**
+     * Looks up an existing valid method signature from a string.
+     *
+     * @param signatureString The method signature string to look up
+     * @return The signature Symbol if valid and exists, null otherwise
+     *
+     * @see Validation#validSignatureDescriptor(ByteSequence)
+     */
+    public Symbol<Signature> lookupValidSignature(String signatureString) {
+        return lookupValidSignature(ByteSequence.create(signatureString));
+    }
+
+    /**
+     * Looks up an existing valid method signature from a byte sequence.
+     *
+     * @param signatureBytes The method signature bytes to look up
+     * @return The signature Symbol if valid and exists, null otherwise
+     *
+     * @see Validation#validSignatureDescriptor(ByteSequence)
+     */
+    public Symbol<Signature> lookupValidSignature(ByteSequence signatureBytes) {
+        if (!Validation.validSignatureDescriptor(signatureBytes)) {
+            return null;
+        }
+        return symbols.lookup(signatureBytes);
+    }
+
+    /**
+     * Creates or retrieves a valid method signature symbol from a byte sequence.
+     *
+     * @param signatureBytes The method signature bytes to create or retrieve
+     * @return The signature Symbol if valid, null otherwise
+     *
+     * @see Validation#validSignatureDescriptor(ByteSequence)
+     */
+    public Symbol<Signature> getOrCreateValidSignature(ByteSequence signatureBytes) {
+        if (!Validation.validSignatureDescriptor(signatureBytes)) {
+            return null;
+        }
+        return symbols.symbolify(signatureBytes);
+    }
+
+    /**
+     * Returns the TypeSymbols instance used by this SignatureSymbols.
+     *
+     * @return The TypeSymbols instance for handling type descriptors
+     */
+    public TypeSymbols getTypes() {
+        return typeSymbols;
+    }
+
+    /**
+     * Gets or computes the parsed form of a method signature. The parsed form is an array of Type
+     * symbols where the last element is the return type and all preceding elements are parameter
+     * types. Results are cached for performance.
+     *
+     * @param signature The method signature to parse
+     * @return Array of Type symbols representing parameter types followed by return type
+     */
+    public Symbol<Type>[] parsed(Symbol<Signature> signature) {
+        return parsedSignatures.computeIfAbsent(signature, key -> parse(SignatureSymbols.this.getTypes(), signature, 0));
     }
 
     /**
@@ -87,56 +156,31 @@ public final class Signatures {
         return makeRaw(rtype, buf.toArray(Symbol.EMPTY_ARRAY));
     }
 
-    private static Symbol<Type> toBasic(Symbol<Type> t) {
-        if (t == Type.java_lang_Object || Types.isArray(t)) {
-            return Type.java_lang_Object;
-        } else if (t == Type._int || t == Type._short || t == Type._boolean || t == Type._char) {
-            return Type._int;
+    private static Symbol<Type> toBasic(Symbol<Type> type) {
+        if (type == ParserTypes.java_lang_Object || TypeSymbols.isArray(type)) {
+            return ParserTypes.java_lang_Object;
+        } else if (type == ParserTypes._int || type == ParserTypes._short || type == ParserTypes._boolean || type == ParserTypes._char) {
+            return ParserTypes._int;
         } else {
-            return t;
+            return type;
         }
-    }
-
-    public Symbol<Signature> lookupValidSignature(String signatureString) {
-        if (!isValid(signatureString)) {
-            return null;
-        }
-        return symbols.lookup(signatureString);
-    }
-
-    public Symbol<Signature> lookupValidSignature(ByteSequence signatureBytes) {
-        if (!isValid(signatureBytes)) {
-            return null;
-        }
-        return symbols.lookup(signatureBytes);
-    }
-
-    public Symbol<Signature> symbolifyValidSignature(ByteSequence signatureBytes) {
-        if (!isValid(signatureBytes)) {
-            return null;
-        }
-        return symbols.symbolify(signatureBytes);
-    }
-
-    public Types getTypes() {
-        return types;
     }
 
     /**
      * Parses a signature descriptor string into its parameter and return type components.
      *
      * @return the parsed parameter types followed by the return type.
-     * @throws ParserException.ClassFormatError if {@code string} is not well formed
+     * @throws ParserException.ClassFormatError if {the signature is not well-formed
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
-    static Symbol<Type>[] parse(Types typeDescriptors, Symbol<Signature> signature, int startIndex) throws ParserException.ClassFormatError {
+    static Symbol<Type>[] parse(TypeSymbols typeSymbols, Symbol<Signature> signature, int startIndex) throws ParserException.ClassFormatError {
         if ((startIndex > signature.length() - 3) || signature.byteAt(startIndex) != '(') {
             throw new ParserException.ClassFormatError("Invalid method signature: " + signature);
         }
         final List<Symbol<Type>> buf = new ArrayList<>();
         int i = startIndex + 1;
         while (signature.byteAt(i) != ')') {
-            final Symbol<Type> descriptor = typeDescriptors.parse(signature, i, true);
+            final Symbol<Type> descriptor = typeSymbols.parse(signature, i, true);
             buf.add(descriptor);
             i = i + descriptor.length();
             if (i >= signature.length()) {
@@ -144,7 +188,7 @@ public final class Signatures {
             }
         }
         i++;
-        final Symbol<Type> descriptor = typeDescriptors.parse(signature, i, true);
+        final Symbol<Type> descriptor = typeSymbols.parse(signature, i, true);
         if (i + descriptor.length() != signature.length()) {
             throw new ParserException.ClassFormatError("Invalid method signature: " + signature);
         }
@@ -153,31 +197,15 @@ public final class Signatures {
         return descriptors;
     }
 
-    /**
-     * Parses a raw signature descriptor into its parameter and return type components.
-     *
-     * @return the parsed parameter types followed by the return type.
-     * @throws ParserException.ClassFormatError if {@code string} is not well formed
-     */
-    public static int skipValidSignature(Symbol<Signature> signature, int beginIndex) throws ParserException.ClassFormatError {
-        if ((beginIndex > signature.length() - 3) || signature.byteAt(beginIndex) != '(') {
-            throw new ParserException.ClassFormatError("Invalid method signature: " + signature);
-        }
-        int i = beginIndex + 1;
-        while (signature.byteAt(i) != ')') {
-            int endIndex = Types.skipValidTypeDescriptor(signature, i, true);
-            if (i >= signature.length()) {
-                throw new ParserException.ClassFormatError("Invalid method signature: " + signature);
-            }
-            i = endIndex;
-        }
-        i++;
-        return Types.skipValidTypeDescriptor(signature, i, true);
+    @SuppressWarnings("unchecked")
+    public static Symbol<Signature> fromDescriptor(Symbol<? extends Descriptor> descriptor) {
+        ErrorUtil.guarantee(Validation.validSignatureDescriptor(descriptor), "invalid signature");
+        return (Symbol<Signature>) descriptor;
     }
 
     @SuppressWarnings("unchecked")
-    public static Symbol<Signature> check(Symbol<? extends Descriptor> descriptor) {
-        assert isValid((Symbol<Signature>) descriptor);
+    public static Symbol<Signature> fromDescriptorUnsafe(Symbol<? extends Descriptor> descriptor) {
+        assert Validation.validSignatureDescriptor(descriptor) : "invalid signature " + descriptor;
         return (Symbol<Signature>) descriptor;
     }
 
@@ -192,7 +220,7 @@ public final class Signatures {
      * Gets the kind of the return type in this (parsed) signature object.
      */
     public static JavaKind returnKind(final Symbol<Type>[] signature) {
-        return Types.getJavaKind(returnType(signature));
+        return TypeSymbols.getJavaKind(returnType(signature));
     }
 
     /**
@@ -202,7 +230,7 @@ public final class Signatures {
     public static int getNumberOfSlots(final Symbol<Type>[] signature) {
         int slots = 0;
         for (Symbol<Type> type : signature) {
-            slots += Types.getJavaKind(type).getSlotCount();
+            slots += TypeSymbols.getJavaKind(type).getSlotCount();
         }
         return slots;
     }
@@ -247,7 +275,7 @@ public final class Signatures {
         private SignatureIter(final Symbol<Type>[] signature, boolean reverse, boolean withReturnType) {
             this.signature = signature;
             int tmpStart = 0;
-            int tmpEnd = Signatures.parameterCount(signature);
+            int tmpEnd = SignatureSymbols.parameterCount(signature);
             int tmpStep = 1;
             if (withReturnType) {
                 tmpEnd = signature.length;
@@ -288,36 +316,10 @@ public final class Signatures {
     }
 
     /**
-     * Validates a raw signature.
-     */
-    public static boolean isValid(Symbol<Signature> signature) {
-        int endIndex = skipValidSignature(signature, 0);
-        return endIndex == signature.length();
-    }
-
-    public static boolean isValid(@SuppressWarnings("unused") String signatureString) {
-        // TODO(peterssen): Implement FAST validation.
-        return true;
-    }
-
-    public static boolean isValid(@SuppressWarnings("unused") ByteSequence signatureBytes) {
-        // TODO: Implement FAST validation.
-        return true;
-    }
-
-    public static Symbol<Signature> verify(Symbol<Signature> signature) {
-        int endIndex = skipValidSignature(signature, 0);
-        if (endIndex != signature.length()) {
-            throw new ParserException.ClassFormatError("Invalid signature descriptor " + signature);
-        }
-        return signature;
-    }
-
-    /**
      * Gets the kind of the `paramIndex`-th parameter in this (parsed) signature object.
      */
     public static JavaKind parameterKind(final Symbol<Type>[] signature, int paramIndex) {
-        return Types.getJavaKind(signature[paramIndex]);
+        return TypeSymbols.getJavaKind(signature[paramIndex]);
     }
 
     /**
@@ -330,68 +332,25 @@ public final class Signatures {
 
     @SuppressWarnings({"varargs", "rawtypes"})
     @SafeVarargs
-    public static final Symbol<Type>[] makeParsedUncached(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
+    public static Symbol<Type>[] makeParsedUncached(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         final Symbol<Type>[] signature = Arrays.copyOf(parameterTypes, parameterTypes.length + 1);
         signature[signature.length - 1] = returnType;
         return signature;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public Symbol<Signature> makeRaw(Class<?> returnClass, Class<?>... parameterClasses) {
-        Symbol<Type>[] parameterTypes = new Symbol[parameterClasses.length];
-        for (int i = 0; i < parameterClasses.length; ++i) {
-            parameterTypes[i] = getTypes().fromClass(parameterClasses[i]);
-        }
-        return makeRaw(getTypes().fromClass(returnClass), parameterTypes);
-    }
-
     @SafeVarargs
     public final Symbol<Signature> makeRaw(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
-        if (parameterTypes == null || parameterTypes.length == 0) {
-            final byte[] bytes = new byte[2 + returnType.length()];
-            returnType.writeTo(bytes, 2);
-            bytes[0] = '(';
-            bytes[1] = ')';
-            return symbols.symbolify(ByteSequence.wrap(bytes));
-        }
-
-        int totalLength = returnType.length();
-        for (Symbol<Type> param : parameterTypes) {
-            totalLength += param.length();
-        }
-
-        final byte[] bytes = new byte[totalLength + 2]; // + ()
-
-        int pos = 0;
-        bytes[pos++] = '(';
-        for (Symbol<Type> param : parameterTypes) {
-            param.writeTo(bytes, pos);
-            pos += param.length();
-        }
-        bytes[pos++] = ')';
-        returnType.writeTo(bytes, pos);
-        pos += returnType.length();
-        assert pos == totalLength + 2;
-        return symbols.symbolify(ByteSequence.wrap(bytes));
-    }
-
-    public Symbol<Signature> getOrCreateValidSignature(String signatureString) {
-        return symbols.symbolify(ByteSequence.create(checkSignature(signatureString)));
-    }
-
-    private static String checkSignature(String signatureString) {
-        // FIXME(peterssen): Do check.
-        return signatureString;
+        return symbols.symbolify(createSignature(returnType, parameterTypes));
     }
 
     @SafeVarargs
-    static byte[] buildSignatureBytes(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
+    static ByteSequence createSignature(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         if (parameterTypes == null || parameterTypes.length == 0) {
             byte[] bytes = new byte[/* () */ 2 + returnType.length()];
             bytes[0] = '(';
             bytes[1] = ')';
             returnType.writeTo(bytes, 2);
-            return bytes;
+            return ByteSequence.wrap(bytes);
         }
 
         int totalLength = returnType.length();
@@ -411,15 +370,6 @@ public final class Signatures {
         returnType.writeTo(bytes, pos);
         pos += returnType.length();
         assert pos == totalLength + 2;
-        return bytes;
-    }
-
-    public Symbol<Type>[] parsed(Symbol<Signature> signature) {
-        return parsedSignatures.computeIfAbsent(signature, new Function<Symbol<Signature>, Symbol<Type>[]>() {
-            @Override
-            public Symbol<Type>[] apply(Symbol<Signature> key) {
-                return parse(Signatures.this.getTypes(), signature, 0);
-            }
-        });
+        return ByteSequence.wrap(bytes);
     }
 }

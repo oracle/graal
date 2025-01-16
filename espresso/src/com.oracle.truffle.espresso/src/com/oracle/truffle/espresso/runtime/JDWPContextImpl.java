@@ -49,7 +49,10 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -225,7 +228,7 @@ public final class JDWPContextImpl implements JDWPContext {
             } else {
                 // object type
                 String componentType = componentRawName.substring(1, componentRawName.length() - 1);
-                Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(componentType);
+                Symbol<Type> type = context.getTypes().fromClassGetName(componentType);
                 KlassRef[] klassRefs = context.getRegistries().findLoadedClassAny(type);
                 KlassRef[] result = new KlassRef[klassRefs.length];
                 for (int i = 0; i < klassRefs.length; i++) {
@@ -235,7 +238,7 @@ public final class JDWPContextImpl implements JDWPContext {
             }
         } else {
             // regular type
-            Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(slashName);
+            Symbol<Type> type = context.getTypes().fromClassGetName(slashName);
             return context.getRegistries().findLoadedClassAny(type);
         }
     }
@@ -337,7 +340,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public KlassRef getReflectedType(Object classObject) {
         if (classObject instanceof StaticObject staticObject) {
-            if (staticObject.getKlass().getType() == Symbol.Type.java_lang_Class) {
+            if (staticObject.getKlass().getType() == Types.java_lang_Class) {
                 return (KlassRef) context.getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(staticObject);
             }
         }
@@ -348,11 +351,11 @@ public final class JDWPContextImpl implements JDWPContext {
     public KlassRef[] getNestedTypes(KlassRef klass) {
         if (klass instanceof ObjectKlass objectKlass) {
             ArrayList<KlassRef> result = new ArrayList<>();
-            List<Symbol<Symbol.Name>> nestedTypeNames = objectKlass.getNestedTypeNames();
+            List<Symbol<Name>> nestedTypeNames = objectKlass.getNestedTypeNames();
 
             StaticObject classLoader = objectKlass.getDefiningClassLoader();
-            for (Symbol<Symbol.Name> nestedType : nestedTypeNames) {
-                Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(nestedType.toString());
+            for (Symbol<Name> nestedType : nestedTypeNames) {
+                Symbol<Type> type = context.getTypes().fromClassGetName(nestedType.toString());
                 KlassRef loadedKlass = context.getRegistries().findLoadedClass(type, classLoader);
                 if (loadedKlass != null && loadedKlass != klass) {
                     result.add(loadedKlass);

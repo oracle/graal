@@ -30,9 +30,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -86,7 +88,7 @@ public final class StackWalk {
     }
 
     private static int getConstantField(Klass stackStreamFactory, StaticObject statics, String name, Meta meta) {
-        return stackStreamFactory.lookupDeclaredField(meta.getNames().getOrCreate(name), Symbol.Type._int).getInt(statics);
+        return stackStreamFactory.lookupDeclaredField(meta.getNames().getOrCreate(name), Types._int).getInt(statics);
     }
 
     public StackWalk() {
@@ -252,12 +254,12 @@ public final class StackWalk {
 
         private boolean isCallStackWalk(Method m) {
             return m.getDeclaringKlass() == meta.java_lang_StackStreamFactory_AbstractStackWalker &&
-                            Name.callStackWalk.equals(m.getName()) &&
+                            Names.callStackWalk.equals(m.getName()) &&
                             getCallStackWalkSignature().equals(m.getRawSignature());
         }
 
         private Symbol<Signature> getCallStackWalkSignature() {
-            return meta.getJavaVersion().java19OrLater() ? Signature.Object_long_int_ContinuationScope_Continuation_int_int_Object_array : Signature.Object_long_int_int_int_Object_array;
+            return meta.getJavaVersion().java19OrLater() ? Signatures.Object_long_int_ContinuationScope_Continuation_int_int_Object_array : Signatures.Object_long_int_int_int_Object_array;
         }
 
         @SuppressWarnings("fallthrough")

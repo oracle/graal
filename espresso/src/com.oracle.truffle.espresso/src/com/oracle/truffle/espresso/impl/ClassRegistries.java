@@ -35,10 +35,11 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -75,7 +76,7 @@ public final class ClassRegistries {
     }
 
     public void initJavaBaseModule() {
-        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Name.java_base, null, null, false, null);
+        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Names.java_base, null, null, false, null);
     }
 
     public ClassRegistry getClassRegistry(@JavaType(ClassLoader.class) StaticObject classLoader) {
@@ -127,7 +128,7 @@ public final class ClassRegistries {
 
     public ModuleTable.ModuleEntry getPolyglotAPIModule() {
         if (polyglotAPIModule == null) {
-            polyglotAPIModule = findPlatformOrBootModule(Name.espresso_polyglot);
+            polyglotAPIModule = findPlatformOrBootModule(Names.espresso_polyglot);
         }
         return polyglotAPIModule;
     }
@@ -166,12 +167,12 @@ public final class ClassRegistries {
     public Klass findLoadedClass(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             Klass elemental = findLoadedClass(context.getTypes().getElementalType(type), classLoader);
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(Types.getArrayDimensions(type));
+            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
         }
 
         ClassRegistry registry = getClassRegistry(classLoader);
@@ -274,12 +275,12 @@ public final class ClassRegistries {
     public Klass loadKlass(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) throws EspressoClassLoadingException {
         assert classLoader != null : "use StaticObject.NULL for BCL";
 
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             Klass elemental = loadKlass(context.getTypes().getElementalType(type), classLoader, protectionDomain);
             if (elemental == null) {
                 return null;
             }
-            return elemental.getArrayClass(Types.getArrayDimensions(type));
+            return elemental.getArrayClass(TypeSymbols.getArrayDimensions(type));
         }
         ClassRegistry registry = getClassRegistry(classLoader);
         return registry.loadKlass(context, type, protectionDomain);
@@ -299,14 +300,14 @@ public final class ClassRegistries {
     @TruffleBoundary
     public void checkLoadingConstraint(Symbol<Type> type, StaticObject loader1, StaticObject loader2, Function<String, RuntimeException> errorHandler) {
         Symbol<Type> toCheck = context.getTypes().getElementalType(type);
-        if (!Types.isPrimitive(toCheck) && loader1 != loader2) {
+        if (!TypeSymbols.isPrimitive(toCheck) && loader1 != loader2) {
             constraints.checkConstraint(toCheck, loader1, loader2, errorHandler);
         }
     }
 
     void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
-        assert !Types.isArray(type);
-        if (!Types.isPrimitive(type)) {
+        assert !TypeSymbols.isArray(type);
+        if (!TypeSymbols.isPrimitive(type)) {
             constraints.recordConstraint(type, klass, loader, m -> {
                 throw context.throwError(ErrorType.LinkageError, m);
             });

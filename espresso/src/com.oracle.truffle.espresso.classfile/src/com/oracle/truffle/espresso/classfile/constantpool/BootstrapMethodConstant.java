@@ -23,8 +23,9 @@
 package com.oracle.truffle.espresso.classfile.constantpool;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 /**
  * Interface denoting a bootstrap method constant entry in a constant pool.
@@ -48,7 +49,7 @@ public interface BootstrapMethodConstant extends PoolConstant {
             return getNameAndType(pool).getName(pool);
         }
 
-        public Symbol<? extends Symbol.Descriptor> getDescriptor(ConstantPool pool) {
+        public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
             return getNameAndType(pool).getDescriptor(pool);
         }
 

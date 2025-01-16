@@ -26,9 +26,9 @@ import java.util.function.Supplier;
 
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 
 public interface ParsingContext {
@@ -49,8 +49,6 @@ public interface ParsingContext {
     Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence);
 
     Utf8Constant getOrCreateUtf8Constant(ByteSequence bytes);
-
-    long getNewKlassId();
 
     interface Logger {
         void log(String message);

@@ -325,9 +325,9 @@ import com.oracle.truffle.espresso.classfile.constantpool.MethodTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
 import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.constantpool.ResolvedDynamicConstant;
@@ -522,10 +522,10 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         }
 
         Symbol<Type>[] methodSignature = getMethod().getParsedSignature();
-        int argCount = Signatures.parameterCount(methodSignature);
+        int argCount = SignatureSymbols.parameterCount(methodSignature);
         CompilerAsserts.partialEvaluationConstant(argCount);
         for (int i = 0; i < argCount; ++i) {
-            Symbol<Type> argType = Signatures.parameterType(methodSignature, i);
+            Symbol<Type> argType = SignatureSymbols.parameterType(methodSignature, i);
             // @formatter:off
             switch (argType.byteAt(0)) {
                 case 'Z' : setLocalInt(frame, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
@@ -1775,7 +1775,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
     }
 
     private Object getReturnValueAsObject(VirtualFrame frame, int top) {
-        Symbol<Type> returnType = Signatures.returnType(getMethod().getParsedSignature());
+        Symbol<Type> returnType = SignatureSymbols.returnType(getMethod().getParsedSignature());
         // @formatter:off
         switch (returnType.byteAt(0)) {
             case 'Z' : return stackIntToBoolean(popInt(frame, top - 1));

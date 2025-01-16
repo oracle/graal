@@ -35,12 +35,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public final class CodeAttribute extends Attribute {
 
-    public static final Symbol<Name> NAME = Name.Code;
+    public static final Symbol<Name> NAME = ParserNames.Code;
 
     private final int majorVersion;
 
@@ -99,7 +100,7 @@ public final class CodeAttribute extends Attribute {
 
     public StackMapTableAttribute getStackMapFrame() {
         for (Attribute attr : attributes) {
-            if (attr.getName() == Name.StackMapTable) {
+            if (attr.getName() == ParserNames.StackMapTable) {
                 return (StackMapTableAttribute) attr;
             }
         }
@@ -152,7 +153,7 @@ public final class CodeAttribute extends Attribute {
 
     public LineNumberTableAttribute getLineNumberTableAttribute() {
         for (Attribute attr : attributes) {
-            if (attr.getName() == Name.LineNumberTable) {
+            if (attr.getName() == ParserNames.LineNumberTable) {
                 return (LineNumberTableAttribute) attr;
             }
         }
@@ -161,7 +162,7 @@ public final class CodeAttribute extends Attribute {
 
     public LocalVariableTable getLocalvariableTable() {
         for (Attribute attr : attributes) {
-            if (attr.getName() == Name.LocalVariableTable) {
+            if (attr.getName() == ParserNames.LocalVariableTable) {
                 return (LocalVariableTable) attr;
             }
         }
@@ -170,7 +171,7 @@ public final class CodeAttribute extends Attribute {
 
     public LocalVariableTable getLocalvariableTypeTable() {
         for (Attribute attr : attributes) {
-            if (attr.getName() == Name.LocalVariableTypeTable) {
+            if (attr.getName() == ParserNames.LocalVariableTypeTable) {
                 return (LocalVariableTable) attr;
             }
         }

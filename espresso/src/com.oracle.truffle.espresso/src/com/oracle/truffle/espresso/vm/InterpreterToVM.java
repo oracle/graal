@@ -40,7 +40,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
@@ -689,7 +689,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                 return false;
             }
             if (!afterFillInStackTrace) {
-                if (Name.fillInStackTrace.equals(m.getName()) || Name.fillInStackTrace0.equals(m.getName())) {
+                if (Names.fillInStackTrace.equals(m.getName()) || Names.fillInStackTrace0.equals(m.getName())) {
                     return false;
                 } else {
                     afterFillInStackTrace = true;
@@ -697,7 +697,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
             }
             if (!afterThrowableInit) {
                 assert afterFillInStackTrace;
-                if (Name._init_.equals(m.getName()) && m.getMeta().java_lang_Throwable.isAssignableFrom(m.getDeclaringKlass())) {
+                if (Names._init_.equals(m.getName()) && m.getMeta().java_lang_Throwable.isAssignableFrom(m.getDeclaringKlass())) {
                     return false;
                 } else {
                     afterThrowableInit = true;

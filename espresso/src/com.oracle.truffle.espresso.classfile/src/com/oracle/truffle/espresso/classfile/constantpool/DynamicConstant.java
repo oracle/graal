@@ -27,8 +27,8 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface DynamicConstant extends BootstrapMethodConstant {
@@ -48,7 +48,7 @@ public interface DynamicConstant extends BootstrapMethodConstant {
         }
 
         public Symbol<Type> getTypeSymbol(ConstantPool pool) {
-            return Types.fromSymbol(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
+            return TypeSymbols.fromDescriptorUnsafe(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
 
         @Override
