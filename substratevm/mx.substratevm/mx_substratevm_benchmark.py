@@ -572,8 +572,17 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
     'fop':      [f"-Djava.util.logging.config.file={_empty_file()}",
-                 '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
+                 '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList',
+                 '-H:+ForeignAPISupport'],
     'batik':    []
+}
+
+_DACAPO_EXTRA_IMAGE_RUN_ARGS = {
+    'pmd':         ['--no-validation'],
+    # JDK21 ForeignAPISupport is broken --- disable `enableMemorySegments` for now
+    'lusearch':    ['-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false', '--no-validation'],
+    'luindex':     ['-Dorg.apache.lucene.store.MMapDirectory.enableMemorySegments=false', '--no-validation'],
+    'fop':         ['-Djava.home=' + os.environ['JAVA_HOME']]
 }
 
 '''
@@ -642,15 +651,18 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
         return None
 
     def availableSuiteVersions(self):
-        # This version also ships a custom harness class to allow native image to find the entry point in the nested jar
-        return ["9.12-MR1-git+2baec49"]
+        # The version 9.12-MR1-git+2baec49 also ships a custom harness class to allow native image to find the entry point in the nested jar
+        return ["9.12-MR1-git+2baec49", "23.11-MR2-chopin"]
 
     def daCapoIterations(self):
         compiler_iterations = super(DaCapoNativeImageBenchmarkSuite, self).daCapoIterations()
         return {key: _daCapo_iterations[key] for key in compiler_iterations.keys() if key in _daCapo_iterations.keys()}
 
     def benchmark_resources(self, benchmark):
-        return _dacapo_resources[benchmark]
+        if self.version() == "23.11-MR2-chopin":
+            return []
+        else:
+            return _dacapo_resources[benchmark]
 
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
         return self.intercept_run(super(), benchmarks, bmSuiteArgs)
@@ -661,12 +673,42 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
         return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
+        self.fixDataLocation()
+        user_args = ["-Duser.home=" + str(Path.home())]
+        user_args += super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
+
+        if benchmark in _DACAPO_EXTRA_IMAGE_RUN_ARGS:
+            user_args = user_args + _DACAPO_EXTRA_IMAGE_RUN_ARGS[benchmark]
+
         # remove -n X argument from image run args
         if should_strip_run_args:
             return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
         else:
             return user_args
+
+    def fixDataLocation(self):
+        if self.version() == "23.11-MR2-chopin":
+            print("Fixing data location...")
+            # DaCapo can get data location either from the JAR path or "~/.dacapo-config.properties"
+            # See official dacapobench issue #341
+            dataLocation = self.dataLocation()
+            configFilePath = os.path.join(Path.home(), ".dacapo-config.properties")
+            with open(configFilePath, "w") as config:
+                config.write(f"Data-Location={dataLocation}\n")
+
+            with open(configFilePath) as f:
+                print("Reading " + configFilePath + ":")
+                print("------")
+                print(f.read())
+                print("------")
+
+    def extra_run_arg(self, benchmark, args, image_run_args):
+        self.fixDataLocation()
+        run_args = ["-Duser.home=" + str(Path.home())]
+        run_args += super(DaCapoNativeImageBenchmarkSuite, self).extra_run_arg(benchmark, args, image_run_args)
+        if benchmark in _DACAPO_EXTRA_IMAGE_RUN_ARGS:
+            run_args = run_args + _DACAPO_EXTRA_IMAGE_RUN_ARGS[benchmark]
+        return run_args
 
     def skip_agent_assertions(self, benchmark, args):
         default_args = _DACAPO_SKIP_AGENT_ASSERTIONS[benchmark] if benchmark in _DACAPO_SKIP_AGENT_ASSERTIONS else []
@@ -688,15 +730,20 @@ class DaCapoNativeImageBenchmarkSuite(mx_sdk_benchmark.DaCapoBenchmarkSuite, Bas
         else:
             self.benchmark_name = benchmarks[0]
 
-        run_args = self.postprocessRunArgs(self.benchmarkName(), self.runArgs(bmSuiteArgs))
+        benchmark = benchmarks[0]
+
+        run_args = self.postprocessRunArgs(benchmark, self.runArgs(bmSuiteArgs))
         vm_args = self.vmArgs(bmSuiteArgs)
-        return ['-cp', self.create_classpath(self.benchmarkName())] + vm_args + ['-jar', self.daCapoPath()] + [self.benchmarkName()] + run_args
+        return self.create_classpath(benchmark) + vm_args + ['-jar', self.jarPath(benchmark)] + [benchmark] + run_args
 
     def create_classpath(self, benchmark):
-        dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)
-        dacapo_jars = super(DaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _daCapo_exclude_lib)
-        cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
-        return cp
+        if self.version() == "9.12-MR1-git+2baec49":
+            dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)
+            dacapo_jars = super(DaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _daCapo_exclude_lib)
+            cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
+            return ["-cp", cp]
+        else:
+            return []
 
     def successPatterns(self):
         return super().successPatterns() + SUCCESSFUL_STAGE_PATTERNS
