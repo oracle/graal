@@ -1585,6 +1585,7 @@ suite = {
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "21+",
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
 
         "com.oracle.svm.interpreter": {
@@ -1612,6 +1613,7 @@ suite = {
                 "substratevm:SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
 
         # Common project both jdwp.server and jdwp.resident.
@@ -1633,6 +1635,7 @@ suite = {
                 "substratevm:SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
 
         # JDWP server, should run on HotSpot and as a shared library e.g. libsvmjdwp.so
@@ -1657,6 +1660,7 @@ suite = {
                 "substratevm:SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
 
         # JDWP implementation bits that are included in the application.
@@ -1682,6 +1686,7 @@ suite = {
                 "substratevm:SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
     },
 

@@ -647,12 +647,20 @@ public class SVMHost extends HostVM {
             throw new UnsupportedFeatureException(message);
         }
         if (originalClass.isRecord()) {
-            for (var recordComponent : originalClass.getRecordComponents()) {
-                if (WordBase.class.isAssignableFrom(recordComponent.getType())) {
-                    throw UserError.abort("Records cannot use Word types. " +
-                                    "The equals/hashCode/toString implementation of records uses method handles, and Word types are not supported as parameters of method handle invocations. " +
-                                    "Record type: `" + originalClass.getTypeName() + "`, component: `" + recordComponent.getName() + "` of type `" + recordComponent.getType().getTypeName() + "`");
+            try {
+                for (var recordComponent : originalClass.getRecordComponents()) {
+                    if (WordBase.class.isAssignableFrom(recordComponent.getType())) {
+                        throw UserError.abort("Records cannot use Word types. " +
+                                        "The equals/hashCode/toString implementation of records uses method handles, and Word types are not supported as parameters of method handle invocations. " +
+                                        "Record type: `" + originalClass.getTypeName() + "`, component: `" + recordComponent.getName() + "` of type `" + recordComponent.getType().getTypeName() + "`");
+                    }
                 }
+            } catch (LinkageError e) {
+                /*
+                 * If a record refers to a missing/incomplete type then Class.getRecordComponents()
+                 * will throw a LinkageError. It's safe to ignore this here since the Word type
+                 * restriction applies to VM classes which should be fully defined.
+                 */
             }
         }
     }

@@ -374,6 +374,11 @@ public abstract class NativeImageCodeCache {
             runtimeMetadataEncoder.addConstructorLookupError(type, error);
         });
 
+        reflectionSupport.getRecordComponentLookupErrors().forEach((clazz, error) -> {
+            HostedType type = hMetaAccess.lookupJavaType(clazz);
+            runtimeMetadataEncoder.addRecordComponentsLookupError(type, error);
+        });
+
         Set<AnalysisField> includedFields = new HashSet<>();
         Set<AnalysisMethod> includedMethods = new HashSet<>();
         Map<AnalysisType, Map<AnalysisField, ConditionalRuntimeValue<Field>>> configurationFields = reflectionSupport.getReflectionFields();
@@ -830,6 +835,8 @@ public abstract class NativeImageCodeCache {
         void addMethodLookupError(HostedType declaringClass, Throwable exception);
 
         void addConstructorLookupError(HostedType declaringClass, Throwable exception);
+
+        void addRecordComponentsLookupError(HostedType declaringClass, Throwable exception);
 
         void encodeAllAndInstall();
 
