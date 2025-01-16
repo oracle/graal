@@ -322,6 +322,19 @@ public class SVMImageLayerSnapshotUtil {
         return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
     }
 
+    public static void forcePersistConstant(ImageHeapConstant imageHeapConstant) {
+        AnalysisUniverse universe = imageHeapConstant.getType().getUniverse();
+        universe.getHeapScanner().markReachable(imageHeapConstant, ObjectScanner.OtherReason.PERSISTED);
+
+        imageHeapConstant.getType().registerAsTrackedAcrossLayers(imageHeapConstant);
+        /* If this is a Class constant persist the corresponding type. */
+        ConstantReflectionProvider constantReflection = universe.getBigbang().getConstantReflectionProvider();
+        AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(imageHeapConstant);
+        if (typeFromClassConstant != null) {
+            typeFromClassConstant.registerAsTrackedAcrossLayers(imageHeapConstant);
+        }
+    }
+
     public static class SVMGraphEncoder extends ObjectCopier.Encoder {
         @SuppressWarnings("this-escape")
         public SVMGraphEncoder(Map<Object, Field> externalValues) {
@@ -407,18 +420,7 @@ public class SVMImageLayerSnapshotUtil {
         @Override
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             ImageHeapConstant imageHeapConstant = (ImageHeapConstant) obj;
-
-            AnalysisUniverse universe = imageHeapConstant.getType().getUniverse();
-            universe.getHeapScanner().markReachable(imageHeapConstant, ObjectScanner.OtherReason.PERSISTED);
-
-            imageHeapConstant.getType().registerAsTrackedAcrossLayers(imageHeapConstant);
-            /* If this is a Class constant persist the corresponding type. */
-            ConstantReflectionProvider constantReflection = universe.getBigbang().getConstantReflectionProvider();
-            AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(imageHeapConstant);
-            if (typeFromClassConstant != null) {
-                typeFromClassConstant.registerAsTrackedAcrossLayers(imageHeapConstant);
-            }
-
+            forcePersistConstant(imageHeapConstant);
             stream.writePackedUnsignedInt(ImageHeapConstant.getConstantID(imageHeapConstant));
         }
 

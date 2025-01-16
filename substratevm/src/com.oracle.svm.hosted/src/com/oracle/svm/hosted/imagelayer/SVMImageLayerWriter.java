@@ -105,6 +105,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -179,6 +180,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private final SharedLayerSnapshot.Builder snapshotBuilder = this.snapshotFileBuilder.initRoot(SharedLayerSnapshot.factory);
     private Map<ImageHeapConstant, ConstantParent> constantsMap;
     private final Map<String, MethodGraphsInfo> methodsMap = new ConcurrentHashMap<>();
+    private final Map<InitialLayerOnlyImageSingleton, Integer> initialLayerOnlySingletonMap = new ConcurrentHashMap<>();
     private FileInfo fileInfo;
     private GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
@@ -740,6 +742,13 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         int identityHashCode = identityHashCodeProvider.identityHashCode(imageHeapConstant);
         builder.setIdentityHashCode(identityHashCode);
 
+        if (imageHeapConstant.isBackedByHostedObject() && InitialLayerOnlyImageSingleton.class.isAssignableFrom(type.getJavaClass())) {
+            InitialLayerOnlyImageSingleton singleton = aUniverse.getBigbang().getSnippetReflectionProvider().asObject(InitialLayerOnlyImageSingleton.class, imageHeapConstant.getHostedObject());
+            if (singleton.accessibleInFutureLayers()) {
+                initialLayerOnlySingletonMap.put(singleton, id);
+            }
+        }
+
         switch (imageHeapConstant) {
             case ImageHeapInstance imageHeapInstance -> {
                 builder.initObject().setInstance(Void.VOID);
@@ -994,6 +1003,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             sb.setKeyClassName(key);
             sb.setObjectId(info.id);
             sb.setPersistFlag(info.flags.ordinal());
+            int constantId = -1;
+            if (singleton instanceof InitialLayerOnlyImageSingleton initialLayerOnlyImageSingleton && initialLayerOnlyImageSingleton.accessibleInFutureLayers()) {
+                constantId = initialLayerOnlySingletonMap.getOrDefault(initialLayerOnlyImageSingleton, -1);
+            }
+            sb.setConstantId(constantId);
         }
 
         var sortedByIDs = singletonInfoMap.entrySet().stream()
