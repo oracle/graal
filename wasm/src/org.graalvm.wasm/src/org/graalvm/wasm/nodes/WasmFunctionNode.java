@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2917,7 +2917,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S:
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U:
             case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO:
-            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4: {
+            case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4:
+            case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S:
+            case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U:
+            case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO:
+            case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO: {
                 Vector128 x = popVector128(frame, --stackPointer);
                 Vector128 result = new Vector128(Vector128Ops.unary(x.getBytes(), vectorOpcode));
                 pushVector128(frame, stackPointer++, result);
@@ -3042,14 +3046,30 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             case Bytecode.VECTOR_F64X2_MIN:
             case Bytecode.VECTOR_F64X2_MAX:
             case Bytecode.VECTOR_F64X2_PMIN:
-            case Bytecode.VECTOR_F64X2_PMAX: {
+            case Bytecode.VECTOR_F64X2_PMAX:
+            case Bytecode.VECTOR_I8X16_RELAXED_SWIZZLE:
+            case Bytecode.VECTOR_F32X4_RELAXED_MIN:
+            case Bytecode.VECTOR_F32X4_RELAXED_MAX:
+            case Bytecode.VECTOR_F64X2_RELAXED_MIN:
+            case Bytecode.VECTOR_F64X2_RELAXED_MAX:
+            case Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S:
+            case Bytecode.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S: {
                 Vector128 y = popVector128(frame, --stackPointer);
                 Vector128 x = popVector128(frame, --stackPointer);
                 Vector128 result = new Vector128(Vector128Ops.binary(x.getBytes(), y.getBytes(), vectorOpcode));
                 pushVector128(frame, stackPointer++, result);
                 break;
             }
-            case Bytecode.VECTOR_V128_BITSELECT: {
+            case Bytecode.VECTOR_V128_BITSELECT:
+            case Bytecode.VECTOR_F32X4_RELAXED_MADD:
+            case Bytecode.VECTOR_F32X4_RELAXED_NMADD:
+            case Bytecode.VECTOR_F64X2_RELAXED_MADD:
+            case Bytecode.VECTOR_F64X2_RELAXED_NMADD:
+            case Bytecode.VECTOR_I8X16_RELAXED_LANESELECT:
+            case Bytecode.VECTOR_I16X8_RELAXED_LANESELECT:
+            case Bytecode.VECTOR_I32X4_RELAXED_LANESELECT:
+            case Bytecode.VECTOR_I64X2_RELAXED_LANESELECT:
+            case Bytecode.VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S: {
                 Vector128 z = popVector128(frame, --stackPointer);
                 Vector128 y = popVector128(frame, --stackPointer);
                 Vector128 x = popVector128(frame, --stackPointer);
