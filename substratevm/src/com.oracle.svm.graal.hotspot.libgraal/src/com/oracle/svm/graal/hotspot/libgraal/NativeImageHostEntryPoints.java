@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
-import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
-import jdk.graal.compiler.word.Word;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
+
+import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Entry points for native-image specific methods called by guest Graal using method handles.
@@ -74,5 +76,9 @@ public final class NativeImageHostEntryPoints {
 
     public static Object createTruffleCompilerOptionDescriptor(String name, int type, boolean deprecated, String help, String deprecationMessage) {
         return new TruffleCompilerOptionDescriptor(name, TruffleCompilerOptionDescriptor.Type.values()[type], deprecated, help, deprecationMessage);
+    }
+
+    public static void onCompilationSuccess(Object hsHandle, int tier, boolean lastTier) {
+        TruffleFromLibGraalStartPoints.onCompilationSuccess(hsHandle, tier, lastTier);
     }
 }
