@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,22 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
- * Modified UTF-8 conversions.
+ * Provides Modified UTF-8 encoding methods.
+ * <p>
+ * Tag type representing Java's Modified UTF-8 encoding format. Used as a type parameter in
+ * {@code Symbol<ModifiedUTF8>} for type safety.
  */
-public final class ModifiedUtf8 {
+public sealed class ModifiedUTF8 permits Descriptor, Name {
 
-    private ModifiedUtf8() {
-        /* no instances */
+    /**
+     * Type-safe cast from Symbol with ModifiedUTF8 bound to Symbol<ModifiedUTF8>.
+     *
+     * @param symbol The symbol to cast
+     * @return The input symbol cast to Symbol<ModifiedUTF8>
+     */
+    @SuppressWarnings("unchecked")
+    public static Symbol<ModifiedUTF8> fromSymbol(Symbol<? extends ModifiedUTF8> symbol) {
+        return (Symbol<ModifiedUTF8>) symbol;
     }
 
     public static int utfLength(String str) {

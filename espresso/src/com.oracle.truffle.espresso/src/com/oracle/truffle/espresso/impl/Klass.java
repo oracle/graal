@@ -64,12 +64,15 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.DebugCounter;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
@@ -377,7 +380,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             }
             /* Check that the class has a public constructor */
             for (Method m : receiver.getDeclaredMethods()) {
-                if (m.isPublic() && !m.isStatic() && m.getName().equals(Name._init_)) {
+                if (m.isPublic() && !m.isStatic() && m.getName().equals(Names._init_)) {
                     return true;
                 }
             }
@@ -498,7 +501,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
             return context.getAllocator().createNewMultiArray(arrayKlass.getComponentType(), dimensions);
         }
 
-        static final String INIT_NAME = Name._init_.toString();
+        static final String INIT_NAME = Names._init_.toString();
 
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
@@ -977,7 +980,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     private synchronized ArrayKlass createArrayKlass() {
         CompilerAsserts.neverPartOfCompilation();
         ArrayKlass result = this.arrayKlass;
-        if (result == null && Type._void != getType()) { // ignore void[]
+        if (result == null && Types._void != getType()) { // ignore void[]
             this.arrayKlass = result = new ArrayKlass(this);
         }
         return result;
@@ -1275,7 +1278,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
      * Returns the {@code <clinit>} method for this class if there is one.
      */
     public Method getClassInitializer() {
-        Method clinit = lookupDeclaredMethod(Name._clinit_, Signature._void);
+        Method clinit = lookupDeclaredMethod(Names._clinit_, Signatures._void);
         if (clinit != null && clinit.isStatic()) {
             return clinit;
         }
@@ -1653,7 +1656,7 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @CompilationFinal private final Symbol<Name> runtimePackage;
 
     private Symbol<Name> initRuntimePackage() {
-        ByteSequence hostPkgName = Types.getRuntimePackage(type);
+        ByteSequence hostPkgName = TypeSymbols.getRuntimePackage(type);
         return getNames().getOrCreate(hostPkgName);
     }
 

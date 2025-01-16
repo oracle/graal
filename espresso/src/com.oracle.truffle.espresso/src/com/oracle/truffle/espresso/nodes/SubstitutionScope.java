@@ -34,7 +34,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Method;
 
 @ExportLibrary(InteropLibrary.class)
@@ -99,7 +99,7 @@ final class SubstitutionScope implements TruffleObject {
     }
 
     private String[] fetchNames() {
-        MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Symbol.Name.MethodParameters);
+        MethodParametersAttribute methodParameters = (MethodParametersAttribute) method.getAttribute(Names.MethodParameters);
 
         if (methodParameters == null) {
             return new String[0];
@@ -122,7 +122,7 @@ final class SubstitutionScope implements TruffleObject {
             // For a 0 index, give an empty name.
             String name;
             if (entry.getNameIndex() != 0) {
-                name = method.getConstantPool().symbolAt(entry.getNameIndex(), "parameter name").toString();
+                name = method.getConstantPool().symbolAtUnsafe(entry.getNameIndex(), "parameter name").toString();
             } else {
                 name = "";
             }

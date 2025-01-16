@@ -52,8 +52,8 @@ import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
 
 /**
  * Immutable, shareable constant-pool representation.
@@ -243,11 +243,11 @@ public abstract class ConstantPool {
         }
     }
 
-    public final <T> Symbol<T> symbolAt(int index) {
-        return symbolAt(index, null);
+    public final <T> Symbol<T> symbolAtUnsafe(int index) {
+        return symbolAtUnsafe(index, null);
     }
 
-    public final <T> Symbol<T> symbolAt(int index, String description) {
+    public final <T> Symbol<T> symbolAtUnsafe(int index, String description) {
         try {
             final Utf8Constant constant = (Utf8Constant) at(index);
             return constant.unsafeSymbolValue();

@@ -75,13 +75,15 @@ import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttr
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.descriptors.Names;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
@@ -212,7 +214,7 @@ public final class ObjectKlass extends Klass {
             LinkedField lkField = lkStaticFields[i];
             // User-defined static non-final fields should remain modifiable.
             if (superKlass == getMeta().java_lang_Enum && !isEnumValuesField(lkField) //
-                            && Types.isReference(lkField.getType()) && Modifier.isFinal(lkField.getFlags())) {
+                            && TypeSymbols.isReference(lkField.getType()) && Modifier.isFinal(lkField.getFlags())) {
                 staticField = new EnumConstantField(klassVersion, lkField, pool);
             } else {
                 staticField = new Field(klassVersion, lkField, pool);
@@ -243,8 +245,8 @@ public final class ObjectKlass extends Klass {
     }
 
     private static boolean isEnumValuesField(LinkedField lkStaticFields) {
-        return lkStaticFields.getName() == Name.$VALUES ||
-                        lkStaticFields.getName() == Name.ENUM$VALUES;
+        return lkStaticFields.getName() == Names.$VALUES ||
+                        lkStaticFields.getName() == Names.ENUM$VALUES;
     }
 
     private void addSubType(ObjectKlass objectKlass) {
@@ -798,7 +800,7 @@ public final class ObjectKlass extends Klass {
     public Method[] getDeclaredConstructors() {
         List<Method> constructors = new ArrayList<>();
         for (Method m : getDeclaredMethods()) {
-            if (Name._init_.equals(m.getName())) {
+            if (Names._init_.equals(m.getName())) {
                 constructors.add(m);
             }
         }
@@ -1185,7 +1187,7 @@ public final class ObjectKlass extends Klass {
          * specified by the interface method reference, which has its ACC_PUBLIC flag set and does
          * not have its ACC_STATIC flag set, method lookup succeeds.
          */
-        assert getSuperKlass().getType() == Type.java_lang_Object;
+        assert getSuperKlass().getType() == Types.java_lang_Object;
         Method m = getSuperKlass().lookupDeclaredMethod(methodName, signature);
         if (m != null && m.isPublic() && !m.isStatic()) {
             return m;
@@ -1347,7 +1349,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private void initPackage(@JavaType(ClassLoader.class) StaticObject classLoader) {
-        if (!Names.isUnnamedPackage(getRuntimePackage())) {
+        if (!NameSymbols.isUnnamedPackage(getRuntimePackage())) {
             ClassRegistry registry = getRegistries().getClassRegistry(classLoader);
             PackageEntry entry = registry.packages().lookup(getRuntimePackage());
             // If the package name is not found in the loader's package
@@ -1437,7 +1439,7 @@ public final class ObjectKlass extends Klass {
             if (attr == null) {
                 genericSignature = ""; // if no generics, the generic signature is empty
             } else {
-                genericSignature = getConstantPool().symbolAt(attr.getSignatureIndex()).toString();
+                genericSignature = getConstantPool().symbolAtUnsafe(attr.getSignatureIndex()).toString();
             }
         }
         return genericSignature;
@@ -1636,7 +1638,7 @@ public final class ObjectKlass extends Klass {
     // we need to invalidate the super class method, to allow
     // for new method dispatch lookup
     private void checkSuperMethods(ObjectKlass superKlass, int flags, Symbol<Name> methodName, Symbol<Signature> signature, List<ObjectKlass> invalidatedClasses) {
-        if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(methodName)) {
+        if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Names._init_.equals(methodName)) {
             ObjectKlass currentKlass = this;
             ObjectKlass currentSuper = superKlass;
             while (currentSuper != null) {
@@ -1677,10 +1679,10 @@ public final class ObjectKlass extends Klass {
     }
 
     private static boolean isVirtual(ParserMethod m) {
-        return !Modifier.isStatic(m.getFlags()) && !Modifier.isPrivate(m.getFlags()) && !Name._init_.equals(m.getName());
+        return !Modifier.isStatic(m.getFlags()) && !Modifier.isPrivate(m.getFlags()) && !Names._init_.equals(m.getName());
     }
 
-    public void patchClassName(Symbol<Symbol.Name> newName, Symbol<Symbol.Type> newType) {
+    public void patchClassName(Symbol<Name> newName, Symbol<Type> newType) {
         name = newName;
         type = newType;
     }
@@ -1851,7 +1853,7 @@ public final class ObjectKlass extends Klass {
                     methods[i] = redefineContent.getMethodVersion();
 
                     int flags = newMethod.getFlags();
-                    if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(newMethod.getName())) {
+                    if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Names._init_.equals(newMethod.getName())) {
                         copyCheckMap.put(declMethod, redefineContent);
                     }
                 }
@@ -2050,7 +2052,7 @@ public final class ObjectKlass extends Klass {
         }
 
         public String getSourceFile() {
-            SourceFileAttribute sfa = (SourceFileAttribute) getAttribute(Name.SourceFile);
+            SourceFileAttribute sfa = (SourceFileAttribute) getAttribute(Names.SourceFile);
             if (sfa == null) {
                 return null;
             }

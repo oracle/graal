@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.nodes.methodhandle;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -41,7 +41,7 @@ public abstract class MHLinkToNativeNode extends MethodHandleIntrinsicNode {
     protected MHLinkToNativeNode(Method method, Field downcallStubAddress) {
         super(method);
         this.downcallStubAddress = downcallStubAddress;
-        this.argCount = Signatures.parameterCount(method.getParsedSignature());
+        this.argCount = SignatureSymbols.parameterCount(method.getParsedSignature());
         assert argCount >= 1;
     }
 

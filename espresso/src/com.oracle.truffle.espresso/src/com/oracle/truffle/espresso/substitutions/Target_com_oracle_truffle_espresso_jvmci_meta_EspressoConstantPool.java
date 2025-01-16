@@ -65,12 +65,12 @@ import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.constantpool.CallSiteLink;
 import com.oracle.truffle.espresso.constantpool.Resolution;
 import com.oracle.truffle.espresso.constantpool.ResolvedDynamicConstant;
@@ -213,11 +213,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
                 LOGGER.finer(() -> "ECP.lookupType found " + klass);
                 return toJVMCIObjectType(klass, meta);
             } else {
-                return toJVMCIUnresolvedType(Types.nameToType(((ClassConstant.ImmutableClassConstant) classConstant).getName(constantPool)), meta);
+                return toJVMCIUnresolvedType(TypeSymbols.nameToType(((ClassConstant.ImmutableClassConstant) classConstant).getName(constantPool)), meta);
             }
         }
         if (poolConstant instanceof Utf8Constant utf8Constant) {
-            return toJVMCIUnresolvedType(Types.nameToType(utf8Constant.unsafeSymbolValue()), meta);
+            return toJVMCIUnresolvedType(TypeSymbols.nameToType(utf8Constant.unsafeSymbolValue()), meta);
         }
         throw meta.throwIllegalArgumentExceptionBoundary();
     }
@@ -378,7 +378,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
                         LOGGER.finer(() -> "ECP.lookupReferencedType found " + klass);
                         return toJVMCIObjectType(klass, meta);
                     } else {
-                        return toJVMCIUnresolvedType(Types.nameToType(classConstant.getName(constantPool)), meta);
+                        return toJVMCIUnresolvedType(TypeSymbols.nameToType(classConstant.getName(constantPool)), meta);
                     }
                 }
                 break;
@@ -398,7 +398,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
                         return toJVMCIObjectType(holderKlass, meta);
                     } else {
                         Symbol<Name> holderName = memberRef.getHolderKlassName(constantPool);
-                        return toJVMCIUnresolvedType(Types.nameToType(holderName), meta);
+                        return toJVMCIUnresolvedType(TypeSymbols.nameToType(holderName), meta);
                     }
                 }
                 break;
@@ -518,7 +518,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             } else if (resolve) {
                 throw EspressoError.shouldNotReachHere();
             } else {
-                return toJVMCIUnresolvedType(Types.nameToType(((ClassConstant.ImmutableClassConstant) classConstant).getName(constantPool)), meta);
+                return toJVMCIUnresolvedType(TypeSymbols.nameToType(((ClassConstant.ImmutableClassConstant) classConstant).getName(constantPool)), meta);
             }
         }
         if (poolConstant instanceof StringConstant) {
@@ -661,11 +661,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             Symbol<Name> name = bsmConstant.getName(constantPool);
             StaticObject type;
             if (isIndy) {
-                Symbol<Signature> invokeSignature = Signatures.check(bsmConstant.getDescriptor(constantPool));
+                Symbol<Signature> invokeSignature = SignatureSymbols.fromDescriptor(bsmConstant.getDescriptor(constantPool));
                 Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
                 type = Resolution.signatureToMethodType(parsedInvokeSignature, cpHolderKlass, meta.getContext().getJavaVersion().java8OrEarlier(), meta);
             } else {
-                Symbol<Type> typeSymbol = Types.fromSymbol(bsmConstant.getDescriptor(constantPool));
+                Symbol<Type> typeSymbol = TypeSymbols.fromSymbol(bsmConstant.getDescriptor(constantPool));
                 Klass klass = meta.resolveSymbolOrFail(typeSymbol, cpHolderKlass.getDefiningClassLoader(), cpHolderKlass.protectionDomain());
                 type = klass.mirror();
             }

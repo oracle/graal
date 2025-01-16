@@ -22,12 +22,11 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import static com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
@@ -56,7 +55,7 @@ public interface MethodTypeConstant extends PoolConstant {
          *            a name
          */
         public Symbol<Signature> getSignature(ConstantPool pool) {
-            return pool.symbolAt(descriptorIndex);
+            return pool.symbolAtUnsafe(descriptorIndex);
         }
 
         @Override

@@ -58,11 +58,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -76,7 +78,6 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.shared.resolver.CallSiteType;
-import com.oracle.truffle.espresso.shared.resolver.FieldAccessType;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 
 @EspressoSubstitutions
@@ -92,15 +93,15 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @Inject Meta meta, @Inject EspressoLanguage language) {
         Klass targetKlass = ref.getKlass();
 
-        if (targetKlass.getType() == Type.java_lang_reflect_Method) {
+        if (targetKlass.getType() == Types.java_lang_reflect_Method) {
             // Actual planting
             Method target = Method.getHostReflectiveMethodRoot(ref, meta);
             plantResolvedMethod(self, target, target.getRefKind(), meta);
-        } else if (targetKlass.getType() == Type.java_lang_reflect_Field) {
+        } else if (targetKlass.getType() == Types.java_lang_reflect_Field) {
             // Actual planting
             Field field = Field.getReflectiveFieldRoot(ref, meta);
             plantResolvedField(self, field, getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self)), meta, language);
-        } else if (targetKlass.getType() == Type.java_lang_reflect_Constructor) {
+        } else if (targetKlass.getType() == Types.java_lang_reflect_Constructor) {
             Method target = Method.getHostReflectiveConstructorRoot(ref, meta);
             plantResolvedMethod(self, target, target.getRefKind(), meta);
         } else {
@@ -168,7 +169,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     meta.java_lang_invoke_MemberName_name.setObject(self, meta.toGuestString(f.getName()));
                 }
                 if (!haveType) {
-                    if (Types.isPrimitive(f.getType())) {
+                    if (TypeSymbols.isPrimitive(f.getType())) {
                         Klass k = meta.resolvePrimitive(f.getType());
                         meta.java_lang_invoke_MemberName_type.setObject(self, k.mirror());
                     } else {
@@ -420,7 +421,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
 
         if (Constants.flagHas(flags, MN_IS_CONSTRUCTOR)) {
-            if (name != Name._init_) {
+            if (name != Names._init_) {
                 throw meta.throwException(meta.java_lang_LinkageError);
             }
             // Ignores refKind
@@ -490,7 +491,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @TruffleBoundary
     private static Symbol<Type> lookupType(Meta meta, ByteSequence desc) {
-        Symbol<Type> t = meta.getLanguage().getTypes().lookupType(desc);
+        Symbol<Type> t = meta.getLanguage().getTypes().lookupValidType(desc);
         if (t == null) {
             throw meta.throwException(meta.java_lang_NoSuchFieldException);
         }
@@ -501,7 +502,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     private static Symbol<Signature> lookupSignature(Meta meta, ByteSequence desc, PolySigIntrinsics iid) {
         Symbol<Signature> signature;
         if (iid != None) {
-            signature = meta.getSignatures().symbolifyValidSignature(desc);
+            signature = meta.getSignatures().getOrCreateValidSignature(desc);
         } else {
             signature = meta.getSignatures().lookupValidSignature(desc);
         }
@@ -667,14 +668,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
         public static CallSiteType callSiteFromRefKind(int refKind) {
             switch (refKind) {
-                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual:
+                case REF_invokeVirtual:
                     return CallSiteType.Virtual;
-                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic:
+                case REF_invokeStatic:
                     return CallSiteType.Static;
-                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial: // fallthrough
-                case com.oracle.truffle.espresso.classfile.Constants.REF_newInvokeSpecial:
+                case REF_invokeSpecial: // fallthrough
+                case REF_newInvokeSpecial:
                     return CallSiteType.Special;
-                case com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface:
+                case REF_invokeInterface:
                     return CallSiteType.Interface;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -682,25 +683,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             }
         }
 
-        public static FieldAccessType fieldAccessFromOpCode(int opcode) {
-            return FieldAccessType.fromOpCode(opcode);
-        }
-
-        public static FieldAccessType fieldAccessFromRefKind(int refKind) {
-            switch (refKind) {
-                case com.oracle.truffle.espresso.classfile.Constants.REF_getField:
-                    return FieldAccessType.GetInstance;
-                case com.oracle.truffle.espresso.classfile.Constants.REF_getStatic:
-                    return FieldAccessType.GetStatic;
-                case com.oracle.truffle.espresso.classfile.Constants.REF_putField:
-                    return FieldAccessType.PutInstance;
-                case com.oracle.truffle.espresso.classfile.Constants.REF_putStatic:
-                    return FieldAccessType.PutStatic;
-                default:
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere("refkind: " + refKind);
-            }
-        }
     }
 
     /**

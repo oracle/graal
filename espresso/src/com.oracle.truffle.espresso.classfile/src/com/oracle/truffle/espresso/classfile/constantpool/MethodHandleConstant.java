@@ -37,8 +37,9 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface MethodHandleConstant extends PoolConstant {
@@ -75,13 +76,13 @@ public interface MethodHandleConstant extends PoolConstant {
             member.validate(pool);
 
             Symbol<Name> memberName = member.getName(pool);
-            if (Name._clinit_.equals(memberName)) {
+            if (ParserNames._clinit_.equals(memberName)) {
                 throw ValidationException.raise("Ill-formed constant: " + tag());
             }
 
             // If the value is 8 (REF_newInvokeSpecial), the name of the method represented by a
             // CONSTANT_Methodref_info structure must be <init>.
-            if (Name._init_.equals(memberName) && refKind != REF_newInvokeSpecial) {
+            if (ParserNames._init_.equals(memberName) && refKind != REF_newInvokeSpecial) {
                 throw ValidationException.raise("Ill-formed constant: " + tag());
             }
 
@@ -93,7 +94,7 @@ public interface MethodHandleConstant extends PoolConstant {
             // (REF_invokeStatic), 7 (REF_invokeSpecial), or 9 (REF_invokeInterface), the name of
             // the method represented by a CONSTANT_Methodref_info structure or a
             // CONSTANT_InterfaceMethodref_info structure must not be <init> or <clinit>.
-            if (memberName.equals(Name._init_) || memberName.equals(Name._clinit_)) {
+            if (memberName.equals(ParserNames._init_) || memberName.equals(ParserNames._clinit_)) {
                 if (refKind == REF_invokeVirtual ||
                                 refKind == REF_invokeStatic ||
                                 refKind == REF_invokeSpecial ||

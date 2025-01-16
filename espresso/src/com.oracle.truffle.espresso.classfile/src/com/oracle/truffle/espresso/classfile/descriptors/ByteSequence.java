@@ -76,14 +76,14 @@ public abstract class ByteSequence {
             }
 
             @Override
-            public int offset() {
+            int offset() {
                 return offset;
             }
         };
     }
 
     public static ByteSequence create(String str) {
-        final byte[] bytes = ModifiedUtf8.fromJavaString(str);
+        final byte[] bytes = ModifiedUTF8.fromJavaString(str);
         return ByteSequence.wrap(bytes, 0, bytes.length);
     }
 
@@ -108,7 +108,7 @@ public abstract class ByteSequence {
      */
     public abstract int length();
 
-    public abstract int offset();
+    abstract int offset();
 
     /**
      * Returns the <code>byte</code> value at the specified index. An index ranges from zero to
@@ -174,7 +174,7 @@ public abstract class ByteSequence {
     @Override
     public String toString() {
         try {
-            return ModifiedUtf8.toJavaString(getUnderlyingBytes(), offset(), length());
+            return ModifiedUTF8.toJavaString(getUnderlyingBytes(), offset(), length());
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }

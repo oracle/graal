@@ -52,13 +52,14 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
@@ -324,7 +325,7 @@ public final class JniEnv extends NativeEnv {
 
     public Object[] popVarArgs(@Pointer TruffleObject varargsPtr, final Symbol<Type>[] signature, StaticObject receiver) {
         VarArgs varargs = new VarArgsImpl(varargsPtr);
-        int paramCount = Signatures.parameterCount(signature);
+        int paramCount = SignatureSymbols.parameterCount(signature);
         int argCount = paramCount;
         int argOffset = 0;
         if (receiver != null) {
@@ -336,7 +337,7 @@ public final class JniEnv extends NativeEnv {
             args[0] = receiver;
         }
         for (int i = 0; i < paramCount; ++i) {
-            JavaKind kind = Signatures.parameterKind(signature, i);
+            JavaKind kind = SignatureSymbols.parameterKind(signature, i);
             // @formatter:off
             switch (kind) {
                 case Boolean : args[i + argOffset] = varargs.popBoolean(); break;
@@ -442,7 +443,7 @@ public final class JniEnv extends NativeEnv {
         Field field = null;
         Symbol<Name> fieldName = getNames().lookup(name);
         if (fieldName != null) {
-            Symbol<Type> fieldType = getTypes().lookup(type);
+            Symbol<Type> fieldType = getTypes().lookupValidType(type);
             if (fieldType != null) {
                 // Lookup only if name and type are known symbols.
                 klass.safeInitialize();
@@ -485,7 +486,7 @@ public final class JniEnv extends NativeEnv {
         Field field = null;
         Symbol<Name> fieldName = getNames().lookup(name);
         if (fieldName != null) {
-            Symbol<Type> fieldType = getTypes().lookup(type);
+            Symbol<Type> fieldType = getTypes().lookupValidType(type);
             if (fieldType != null) {
                 Klass klass = clazz.getMirrorKlass(getMeta());
                 klass.safeInitialize();
@@ -583,7 +584,7 @@ public final class JniEnv extends NativeEnv {
 
                 klass.safeInitialize();
                 // Lookup only if name and type are known symbols.
-                if (Name._clinit_.equals(methodName)) {
+                if (Names._clinit_.equals(methodName)) {
                     // Never search superclasses for static initializers.
                     method = klass.lookupDeclaredMethod(methodName, methodSignature);
                 } else {
@@ -1580,7 +1581,7 @@ public final class JniEnv extends NativeEnv {
             ByteBuffer isCopyBuf = NativeUtils.directByteBuffer(isCopyPtr, 1);
             isCopyBuf.put((byte) 1); // always copy since pinning is not supported
         }
-        byte[] bytes = ModifiedUtf8.fromJavaString(getMeta().toHostString(str), true);
+        byte[] bytes = ModifiedUTF8.fromJavaString(getMeta().toHostString(str), true);
         ByteBuffer region = allocateDirect(bytes.length);
         region.put(bytes);
         return NativeUtils.byteBufferPointer(region);
@@ -1688,7 +1689,7 @@ public final class JniEnv extends NativeEnv {
 
     @JniImpl
     public int GetStringUTFLength(@JavaType(String.class) StaticObject string) {
-        return ModifiedUtf8.utfLength(getMeta().toHostString(string));
+        return ModifiedUTF8.utfLength(getMeta().toHostString(string));
     }
 
     @JniImpl
@@ -1700,7 +1701,7 @@ public final class JniEnv extends NativeEnv {
             throw meta.throwException(meta.java_lang_StringIndexOutOfBoundsException);
         }
         // always 0-terminated.
-        byte[] bytes = ModifiedUtf8.fromJavaString(hostString, start, len, true);
+        byte[] bytes = ModifiedUTF8.fromJavaString(hostString, start, len, true);
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, bytes.length, JavaKind.Byte);
         buf.put(bytes);
     }
