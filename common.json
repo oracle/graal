@@ -45,13 +45,13 @@
 
     "oraclejdk23":       {"name": "jpg-jdk",   "version": "23", "build_id": "jdk-23+37", "platformspecific": true, "extrabundles": ["static-libs"]},
 
-    "oraclejdk-latest":       {"name": "jpg-jdk",   "version": "25",      "build_id": "jdk-25+5", "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-25+5-jvmci-b01", "platformspecific": true },
-    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-25+5-jvmci-b01-debug", "platformspecific": true },
-    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-25+5-jvmci-b01-sulong", "platformspecific": true },
-    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-25+5-jvmci-b01", "platformspecific": true },
-    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-25+5-jvmci-b01-debug", "platformspecific": true },
-    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-25+5-jvmci-b01-sulong", "platformspecific": true }
+    "oraclejdk-latest":       {"name": "jpg-jdk",   "version": "25",      "build_id": "jdk-25+6", "platformspecific": true, "extrabundles": ["static-libs"]},
+    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-25+6-jvmci-b01-20250116172238-4817f44f6b", "platformspecific": true },
+    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-25+6-jvmci-b01-20250116172238-4817f44f6b-debug", "platformspecific": true },
+    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-25+6-jvmci-b01-20250116172238-4817f44f6b-sulong", "platformspecific": true },
+    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-25+6-jvmci-b01-20250116172238-4817f44f6b+1c1be8f6c4", "platformspecific": true },
+    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-25+6-jvmci-b01-20250116172238-4817f44f6b+1c1be8f6c4-debug", "platformspecific": true },
+    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-25+6-jvmci-b01-20250116172238-4817f44f6b+1c1be8f6c4-sulong", "platformspecific": true }
   },
 
   "eclipse": {
