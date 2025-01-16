@@ -80,7 +80,6 @@ import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
@@ -100,6 +99,8 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * JNI calls to HotSpot called by guest Graal using method handles.
@@ -298,6 +299,29 @@ public final class TruffleFromLibGraalStartPoints {
         JNIEnv env = JNIMethodScope.env();
         callOnCompilationFailed(calls, env, ((HSObject) hsHandle).getHandle(), ((HSObject) serializedExceptionHsHandle).getHandle(),
                         suppressed, bailout, permanentBailout, graphTooBig);
+    }
+
+    private static volatile JNIMethod onCompilationSuccessMethod;
+
+    private static JNIMethod findOnCompilationSuccessMethod(JNIEnv env) {
+        JNIMethod res = onCompilationSuccessMethod;
+        if (res == null) {
+            res = findJNIMethod(env, "onCompilationSuccess", void.class, Object.class, int.class, boolean.class);
+            onCompilationSuccessMethod = res;
+        }
+        return res.getJMethodID().isNonNull() ? res : null;
+    }
+
+    public static void onCompilationSuccess(Object hsHandle, int compilationTier, boolean lastTier) {
+        JNIEnv env = JNIMethodScope.env();
+        JNIMethod methodOrNull = findOnCompilationSuccessMethod(env);
+        if (methodOrNull != null) {
+            JValue args = StackValue.get(3, JValue.class);
+            args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
+            args.addressOf(1).setInt(compilationTier);
+            args.addressOf(2).setBoolean(lastTier);
+            calls.getJNICalls().callStaticVoid(env, calls.getPeer(), methodOrNull, args);
+        }
     }
 
     @TruffleFromLibGraal(Id.GetCompilableName)

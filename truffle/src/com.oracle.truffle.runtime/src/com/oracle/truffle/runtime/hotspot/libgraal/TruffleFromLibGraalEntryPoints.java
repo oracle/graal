@@ -342,6 +342,10 @@ final class TruffleFromLibGraalEntryPoints {
         ((TruffleCompilable) compilable).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
     }
 
+    static void onCompilationSuccess(Object compilable, int compilationTier, boolean lastTier) {
+        ((TruffleCompilable) compilable).onCompilationSuccess(compilationTier, lastTier);
+    }
+
     @TruffleFromLibGraal(OnSuccess)
     static void onSuccess(Object listener, Object compilable, Object plan, long graphInfoHandle, long compilationResultInfoHandle, int tier) {
         try (LibGraalGraphInfo graphInfo = new LibGraalGraphInfo(graphInfoHandle);

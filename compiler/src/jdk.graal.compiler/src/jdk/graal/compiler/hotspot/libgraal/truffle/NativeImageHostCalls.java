@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.hotspot.libgraal.truffle;
 
-import java.lang.invoke.MethodHandle;
-
 import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
+
+import java.lang.invoke.MethodHandle;
 
 /**
  * Methods to call Native image specific API.
@@ -96,6 +96,14 @@ final class NativeImageHostCalls {
         }
     }
 
+    static void onCompilationSuccess(Object hsHandle, int compilationTier, boolean lastTier) {
+        try {
+            HANDLES.onCompilationSuccess.invoke(hsHandle, compilationTier, lastTier);
+        } catch (Throwable t) {
+            throw HSIndirectHandle.handleException(t);
+        }
+    }
+
     private static final class Handles {
         final MethodHandle initializeHost = getHostMethodHandleOrFail("initializeHost");
         final MethodHandle createLocalHandleForLocalReference = getHostMethodHandleOrFail("createLocalHandleForLocalReference");
@@ -104,5 +112,6 @@ final class NativeImageHostCalls {
         final MethodHandle isSameObject = getHostMethodHandleOrFail("isSameObject");
         final MethodHandle getObjectClass = getHostMethodHandleOrFail("getObjectClass");
         final MethodHandle createTruffleCompilerOptionDescriptor = getHostMethodHandleOrFail("createTruffleCompilerOptionDescriptor");
+        final MethodHandle onCompilationSuccess = getHostMethodHandleOrFail("onCompilationSuccess");
     }
 }
