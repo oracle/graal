@@ -391,6 +391,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         SVMHost svmHost = (SVMHost) hostVM;
         DynamicHub hub = svmHost.dynamicHub(type);
         builder.setHubIdentityHashCode(System.identityHashCode(hub));
+        builder.setHasArrayType(hub.getArrayHub() != null);
 
         builder.setIsInitializedAtBuildTime(ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type));
 
