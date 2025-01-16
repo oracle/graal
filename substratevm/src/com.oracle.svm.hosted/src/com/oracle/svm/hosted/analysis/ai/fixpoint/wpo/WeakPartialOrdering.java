@@ -28,7 +28,7 @@ public final class WeakPartialOrdering {
     public WeakPartialOrdering(ControlFlowGraph cfg) {
         HIRBlock root = cfg.getStartBlock();
 
-        // Handle base case -> there is only one block in the graph
+        /* Handle base case -> there is only one block in the graph */
         if (cfg.getStartBlock().getSuccessorCount() == 0) {
             wpoNodes.add(new WpoNode(root, WpoNode.Kind.Plain, 1, 1));
             return;

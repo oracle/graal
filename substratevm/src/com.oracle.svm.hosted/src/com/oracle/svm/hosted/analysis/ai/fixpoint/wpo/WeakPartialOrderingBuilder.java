@@ -14,6 +14,8 @@ import java.util.Set;
 
 /*
  * WeakPartialOrderingBuilder constructs a weak partial ordering of a control flow graph
+ * NOTE: Even though this is a Builder class, it does not have a build() method, as the WPO is constructed in the constructor,
+ * by modifying the provided arguments.
  */
 public final class WeakPartialOrderingBuilder {
 
@@ -33,10 +35,10 @@ public final class WeakPartialOrderingBuilder {
     private final List<HIRBlock> dfnToNode = new ArrayList<>();
 
     /* List of back predecessors' depth-first numbers */
-    private final List<List<Integer>> backPredecessorsDfn = new ArrayList<>();
+    private final Map<Integer, List<Integer>> backPredecessorsDfn = new HashMap<>();
 
     /* List of non-back predecessors' depth-first numbers */
-    private final List<List<Integer>> nonBackPredecessorsDfn = new ArrayList<>();
+    private final Map<Integer, List<Integer>> nonBackPredecessorsDfn = new HashMap<>();
 
     /* Maps a depth-first number to the corresponding index in the wpoNodes list */
     private final Map<Integer, List<Edge>> crossForwardEdges = new HashMap<>();
@@ -46,7 +48,9 @@ public final class WeakPartialOrderingBuilder {
     private int nextIdx = 0;
     private final List<Integer> dfnToIndex = new ArrayList<>();
 
-    public WeakPartialOrderingBuilder(HIRBlock startBlock, List<WpoNode> wpoNodes, Map<HIRBlock, Set<HIRBlock>> backPredecessors) {
+    public WeakPartialOrderingBuilder(HIRBlock startBlock,
+                                      List<WpoNode> wpoNodes,
+                                      Map<HIRBlock, Set<HIRBlock>> backPredecessors) {
         this.wpoNodes = wpoNodes;
         this.backPredecessors = backPredecessors;
         constructAuxiliary(startBlock);
@@ -64,17 +68,15 @@ public final class WeakPartialOrderingBuilder {
     }
 
     /**
-     * Constructs auxiliary data structures for the WPO algorithm.
+     * Perform iterative DFS to create data structures needed for WPO constructions
      *
      * @param startBlock the start block of the control flow graph
      */
     private void constructAuxiliary(HIRBlock startBlock) {
         Deque<Tuple> stack = new ArrayDeque<>();
-        List<Boolean> black = new ArrayList<>();
-        List<Integer> ancestor = new ArrayList<>();
-        Map<Integer, Integer> rankMap = new HashMap<>();
-        Map<Integer, Integer> parentMap = new HashMap<>();
-        DisjointSets dsets = new DisjointSets(rankMap, parentMap);
+        Map<Integer, Boolean> black = new HashMap<>();
+        Map<Integer, Integer> ancestorMap = new HashMap<>();
+        DisjointSets dsets = new DisjointSets();
         stack.push(new Tuple(startBlock, false, 0));
 
         while (!stack.isEmpty()) {
@@ -84,38 +86,48 @@ public final class WeakPartialOrderingBuilder {
             int predDfn = tuple.predDfn;
 
             if (finished) {
+                /* DFS is done with this vertex -> set the postDFN */
                 nodeToPostDfn.put(node, nextPostDfn++);
-                int dfn = nodeToDfn.get(node);
-                black.set(dfn, true);
-                dsets.unionSet(dfn, predDfn);
-                ancestor.set(dsets.findSet(predDfn), predDfn);
-            } else if (!nodeToDfn.containsKey(node)) {
-                int dfn = nextDfn++;
+
+                int vertex = nodeToDfn.get(node);
+                /* Mark visited. */
+                black.put(vertex, true);
+
+                dsets.unionSet(vertex, predDfn);
+                ancestorMap.put(dsets.findSet(predDfn), predDfn);
+            } else {
+                if (nodeToDfn.containsKey(node)) {
+                    /* Forward edges can be ignored, as they are redundant. */
+                    continue;
+                }
+                /* New vertex is discovered. */
+                int vertex = nextDfn++;
                 dfnToNode.add(node);
-                nodeToDfn.put(node, dfn);
-                black.add(false);
-                backPredecessorsDfn.add(new ArrayList<>());
-                nonBackPredecessorsDfn.add(new ArrayList<>());
-                dsets.makeSet(dfn);
-                ancestor.add(dfn);
+                nodeToDfn.put(node, vertex);
+                dsets.makeSet(vertex);
+                ancestorMap.put(vertex, vertex);
+
+                /* This will be popped after all its successors are finished. */
                 stack.push(new Tuple(node, true, predDfn));
 
                 for (int i = node.getSuccessorCount() - 1; i >= 0; i--) {
                     HIRBlock successor = node.getSuccessorAt(i);
                     int successorDfn = nodeToDfn.getOrDefault(successor, 0);
                     if (successorDfn == 0) {
-                        stack.push(new Tuple(successor, false, dfn));
-                    } else if (black.get(successorDfn)) {
-                        int lca = ancestor.get(dsets.findSet(successorDfn));
-                        crossForwardEdges.computeIfAbsent(lca, k -> new ArrayList<>()).add(new Edge(dfn, successorDfn));
+                        stack.push(new Tuple(successor, false, vertex));
+                    } else if (black.containsKey(successorDfn)) {
+                        /* cross forward edge */
+                        int lca = ancestorMap.get(dsets.findSet(successorDfn));
+                        crossForwardEdges.computeIfAbsent(lca, k -> new ArrayList<>()).add(new Edge(vertex, successorDfn));
                     } else {
-                        backPredecessorsDfn.get(successorDfn).add(dfn);
-                        backPredecessors.computeIfAbsent(successor, k -> new HashSet<>()).add(node);
+                        /* back edge */
+                        backPredecessorsDfn.computeIfAbsent(successorDfn, k -> new ArrayList<>()).add(vertex);
                     }
                 }
 
                 if (predDfn != 0) {
-                    nonBackPredecessorsDfn.get(dfn).add(predDfn);
+                    /* tree edge */
+                    nonBackPredecessorsDfn.computeIfAbsent(vertex, k -> new ArrayList<>()).add(predDfn);
                 }
             }
         }
@@ -125,104 +137,124 @@ public final class WeakPartialOrderingBuilder {
      * Constructs the weak partial ordering.
      */
     private void constructWpo() {
-        Map<Integer, Integer> rank = new HashMap<>();
-        Map<Integer, Integer> parent = new HashMap<>();
-        DisjointSets dsets = new DisjointSets(rank, parent);
+        DisjointSets dsets = new DisjointSets();
         Map<Integer, Integer> rep = new HashMap<>();
         Map<Integer, Integer> exit = new HashMap<>();
-        Map<Integer, Integer> size = new HashMap<>();
         Map<Integer, List<Edge>> origin = new HashMap<>();
+        Map<Integer, Integer> size = new HashMap<>();
         dfnToIndex.addAll(Collections.nCopies(2 * nextDfn, 0));
+        int dfn = nextDfn;
 
+        // Initialization
         for (int v = 1; v < nextDfn; v++) {
             dsets.makeSet(v);
             rep.put(v, v);
             exit.put(v, v);
             origin.put(v, new ArrayList<>());
-            for (int u : nonBackPredecessorsDfn.get(v)) {
+            List<Integer> nonBackPreds = nonBackPredecessorsDfn.getOrDefault(v, Collections.emptyList());
+            for (int u : nonBackPreds) {
                 origin.get(v).add(new Edge(u, v));
             }
         }
 
+        // In reverse DFS order, build WPOs for SCCs bottom-up
         for (int h = nextDfn - 1; h > 0; h--) {
-            List<Edge> edges = crossForwardEdges.get(h);
-            if (edges != null) {
-                for (Edge edge : edges) {
-                    int repTo = rep.get(dsets.findSet(edge.to));
-                    nonBackPredecessorsDfn.get(repTo).add(edge.from);
-                    origin.get(repTo).add(edge);
-                }
+            List<Edge> crossFwds = crossForwardEdges.getOrDefault(h, Collections.emptyList());
+            for (Edge edge : crossFwds) {
+                int u = edge.from;
+                int v = edge.to;
+                int repV = rep.get(dsets.findSet(v));
+                nonBackPredecessorsDfn.computeIfAbsent(repV, k -> new ArrayList<>()).add(u);
+                origin.get(repV).add(new Edge(u, v));
             }
 
-            boolean isScc = false;
-            Set<Integer> exitsH = new HashSet<>();
-            for (int v : backPredecessorsDfn.get(h)) {
+            boolean isSCC = false;
+            Set<Integer> backPredsH = new HashSet<>();
+            for (int v : backPredecessorsDfn.getOrDefault(h, Collections.emptyList())) {
                 if (v != h) {
-                    exitsH.add(rep.get(dsets.findSet(v)));
+                    backPredsH.add(rep.get(dsets.findSet(v)));
                 } else {
-                    isScc = true;
+                    isSCC = true;
                 }
             }
-            if (!exitsH.isEmpty()) {
-                isScc = true;
+            if (!backPredsH.isEmpty()) {
+                isSCC = true;
             }
 
-            Set<Integer> componentsH = new HashSet<>(exitsH);
-            List<Integer> worklistH = new ArrayList<>(exitsH);
-
+            Set<Integer> nestedSCCsH = new HashSet<>(backPredsH);
+            Deque<Integer> worklistH = new ArrayDeque<>(backPredsH);
             while (!worklistH.isEmpty()) {
-                int v = worklistH.removeLast();
-                for (int u : nonBackPredecessorsDfn.get(v)) {
-                    int repU = rep.get(dsets.findSet(u));
-                    if (!componentsH.contains(repU) && repU != h) {
-                        componentsH.add(repU);
-                        worklistH.add(repU);
+                int v = worklistH.pop();
+                for (int p : nonBackPredecessorsDfn.getOrDefault(v, Collections.emptyList())) {
+                    int repP = rep.get(dsets.findSet(p));
+                    if (!nestedSCCsH.contains(repP) && repP != h) {
+                        nestedSCCsH.add(repP);
+                        worklistH.push(repP);
                     }
                 }
             }
 
-            if (!isScc) {
+            if (!isSCC) {
                 size.put(h, 1);
-                addWpoNode(h, dfnToNode.get(h), WpoNode.Kind.Plain, 1);
+                addWpoNode(h, dfnToNode.get(h - 1), WpoNode.Kind.Plain, 1);
                 continue;
             }
 
             int sizeH = 2;
-            for (int v : componentsH) {
+            for (int v : nestedSCCsH) {
                 sizeH += size.get(v);
             }
             size.put(h, sizeH);
 
-            int x = nextDfn++;
-            addWpoNode(x, dfnToNode.get(h), WpoNode.Kind.Exit, sizeH);
-            addWpoNode(h, dfnToNode.get(h), WpoNode.Kind.Head, sizeH);
-            setHeadExit(h, x);
+            int xH = dfn++;
+            addWpoNode(xH, dfnToNode.get(h - 1), WpoNode.Kind.Exit, sizeH);
+            addWpoNode(h, dfnToNode.get(h - 1), WpoNode.Kind.Head, sizeH);
 
-            if (exitsH.isEmpty()) {
-                addSuccessor(h, x, x, false);
+            if (backPredsH.isEmpty()) {
+                addSuccessor(h, xH, xH, false);
             } else {
-                for (int xx : exitsH) {
-                    addSuccessor(exit.get(xx), x, x, false);
+                for (int p : backPredsH) {
+                    addSuccessor(exit.get(p), xH, xH, false);
                 }
             }
 
-            for (int v : componentsH) {
-                processEdges(dsets, rep, exit, origin, v);
+            for (int v : nestedSCCsH) {
+                for (Edge edge : origin.get(v)) {
+                    int u = edge.from;
+                    int vv = edge.to;
+                    int xU = exit.get(rep.get(dsets.findSet(u)));
+                    int xV = exit.get(v);
+                    if (true) {
+                        addSuccessor(xU, v, xV, xV != v);
+                    } else {
+                        addSuccessor(xU, vv, xV, xV != v);
+                    }
+                }
             }
 
-            for (int v : componentsH) {
+            for (int v : nestedSCCsH) {
                 dsets.unionSet(v, h);
                 rep.put(dsets.findSet(v), h);
             }
 
-            exit.put(h, x);
+            exit.put(h, xH);
         }
 
         List<Integer> topLevels = new ArrayList<>();
         for (int v = 1; v < nextDfn; v++) {
             if (rep.get(dsets.findSet(v)) == v) {
                 topLevels.add(v);
-                processEdges(dsets, rep, exit, origin, v);
+                for (Edge edge : origin.get(v)) {
+                    int u = edge.from;
+                    int vv = edge.to;
+                    int xU = exit.get(rep.get(dsets.findSet(u)));
+                    int xV = exit.get(v);
+                    if (true) {
+                        addSuccessor(xU, v, xV, xV != v);
+                    } else {
+                        addSuccessor(xU, vv, xV, xV != v);
+                    }
+                }
             }
         }
     }
@@ -288,30 +320,41 @@ public final class WeakPartialOrderingBuilder {
         }
     }
 
-    private record DisjointSets(Map<Integer, Integer> rank, Map<Integer, Integer> parent) {
-        void makeSet(int x) {
+    private static class DisjointSets {
+        private final Map<Integer, Integer> rank = new HashMap<>();
+        private final Map<Integer, Integer> parent = new HashMap<>();
+
+        public void makeSet(int x) {
             parent.put(x, x);
             rank.put(x, 0);
         }
 
-        int findSet(int x) {
+        private int findSet(int x) {
+            /* This works for our use case, but it's not a proper disjoint set implementation */
+            if (!parent.containsKey(x)) {
+                makeSet(x);
+            }
+
             if (parent.get(x) != x) {
                 parent.put(x, findSet(parent.get(x)));
             }
             return parent.get(x);
         }
 
-        void unionSet(int x, int y) {
+        public void unionSet(int x, int y) {
+            System.out.println("Union set: " + x + " " + y);
+            System.out.println("Parent: " + parent);
             int rootX = findSet(x);
             int rootY = findSet(y);
+
             if (rootX != rootY) {
                 if (rank.get(rootX) > rank.get(rootY)) {
                     parent.put(rootY, rootX);
-                } else {
+                } else if (rank.get(rootX) < rank.get(rootY)) {
                     parent.put(rootX, rootY);
-                    if (rank.get(rootX).equals(rank.get(rootY))) {
-                        rank.put(rootY, rank.get(rootY) + 1);
-                    }
+                } else {
+                    parent.put(rootY, rootX);
+                    rank.put(rootX, rank.get(rootX) + 1);
                 }
             }
         }
