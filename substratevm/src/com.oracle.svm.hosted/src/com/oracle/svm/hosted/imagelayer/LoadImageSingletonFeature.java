@@ -35,10 +35,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
@@ -54,6 +55,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
@@ -63,8 +65,10 @@ import com.oracle.svm.core.layeredimagesingleton.ImageSingletonWriter;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredAllowNullEntries;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -74,6 +78,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -166,6 +171,12 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         LayeredImageHeapObjectAdder.singleton().registerObjectAdder(this::addInitialObjects);
     }
 
+    static void checkAllowNullEntries(Class<?> key) {
+        boolean nullEntriesAllowed = AnnotationAccess.isAnnotationPresent(key, MultiLayeredAllowNullEntries.class);
+        UserError.guarantee(nullEntriesAllowed,
+                        "This MultiLayeredSingleton requires an entry to be installed in every layer. Please see the javadoc within MultiLayeredAllowNullEntries for more details.");
+    }
+
     /**
      * This method needs to be called after all image singletons are registered. Currently, some
      * singletons are registered in
@@ -229,6 +240,8 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
                         Class<?> key = slotInfo.keyClass();
                         if (ImageSingletons.contains(key)) {
                             multiLayerEmbeddedRoots.add(layeredImageSingletonSupport.runtimeLookup(key));
+                        } else {
+                            checkAllowNullEntries(key);
                         }
                         /*
                          * Within the application layer there will be an array created to hold all
@@ -262,6 +275,9 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
             if (!multiLayerEmbeddedRoots.isEmpty()) {
                 multiLayerEmbeddedRootsRegistration.accept(multiLayerEmbeddedRoots.toArray());
             }
+        } else {
+            // GR-58631
+            throw GraalError.unimplemented("More work needed for 3+ layer support");
         }
     }
 
@@ -273,15 +289,46 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
 
     ImageHeapObjectArray createMultiLayerArray(Class<?> key, AnalysisType arrayType, SnippetReflectionProvider snippetReflectionProvider) {
         List<Integer> priorIds = getCrossLayerSingletonMappingInfo().getPriorLayerObjectIDs(key);
-        Stream<JavaConstant> values = priorIds.stream().map(priorId -> loader.getOrCreateConstant(priorId));
+        var layerInfo = DynamicImageLayerInfo.singleton();
 
+        final JavaConstant[] elements = new JavaConstant[layerInfo.numLayers];
+        BiConsumer<JavaConstant, Integer> installElement = (priorConstant, index) -> {
+            assert elements[index] == null : elements[index];
+            elements[index] = priorConstant;
+        };
+
+        // first install prior singletons
+        priorIds.forEach(priorId -> {
+            var priorConstant = loader.getOrCreateConstant(priorId);
+            int index = 0;
+            assert layerInfo.numLayers == 2 : "incompatible with 3+ layers";
+            installElement.accept(priorConstant, index);
+        });
+
+        // next install current singleton
         if (ImageSingletons.contains(key)) {
             var singleton = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
             JavaConstant singletonConstant = snippetReflectionProvider.forObject(singleton);
-            values = Stream.concat(values, Stream.of(singletonConstant));
+            installElement.accept(singletonConstant, layerInfo.layerNumber);
         }
 
-        Object[] elements = values.toArray();
+        // finally fill any missing holes
+        boolean holesPresent = false;
+        for (int i = 0; i < layerInfo.numLayers; i++) {
+            if (elements[i] == null) {
+                holesPresent = true;
+                installElement.accept(JavaConstant.NULL_POINTER, i);
+            }
+        }
+
+        if (holesPresent) {
+            /*
+             * Once more validate that null entries are allowed. However, any issues are expected to
+             * be caught before this point.
+             */
+            checkAllowNullEntries(key);
+        }
+
         return ImageHeapObjectArray.createUnbackedImageHeapArray(arrayType, elements);
     }
 
@@ -475,6 +522,15 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
              * A different thread added this singleton in the meantime.
              */
             return result;
+        }
+
+        if (result.kind == SlotRecordKind.MULTI_LAYERED_SINGLETON) {
+            if (!ImageSingletons.contains(keyClass)) {
+                /*
+                 * If the singleton doesn't exist, ensure this is allowed.
+                 */
+                LoadImageSingletonFeature.checkAllowNullEntries(keyClass);
+            }
         }
 
         SlotInfo priorSlotInfo = priorKeyToSlotInfoMap.get(keyClass);
