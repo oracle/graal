@@ -823,7 +823,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     /**
-     * See {@link SVMImageLayerWriter#persistAnalysisParsedGraphs()} for implementation.
+     * See
+     * {@link SVMImageLayerWriter#persistAnalysisParsedGraph(AnalysisMethod, AnalysisParsedGraph)}
+     * for implementation.
      */
     @Override
     public boolean hasAnalysisParsedGraph(AnalysisMethod analysisMethod) {
@@ -1248,11 +1250,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             if (delegateProcessing(constantData, values, position)) {
                 continue;
             }
+            int finalPosition = position;
             values[position] = switch (constantData.which()) {
                 case OBJECT_CONSTANT -> {
                     int constantId = constantData.getObjectConstant().getConstantId();
                     boolean relink = positionsToRelink.contains(position);
-                    int finalPosition = position;
                     yield new AnalysisFuture<>(() -> {
                         ensureHubInitialized(parentConstant);
 
@@ -1279,7 +1281,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                      * in the base image.
                      */
                     new AnalysisFuture<>(() -> {
-                        throw AnalysisError.shouldNotReachHere("This constant was not materialized in the base image.");
+                        String errorMessage = "Reading the value of a base layer constant which was not materialized in the base image, ";
+                        if (parentConstant instanceof ImageHeapInstance instance) {
+                            AnalysisField field = getFieldFromIndex(instance, finalPosition);
+                            errorMessage += "reachable by reading field " + field + " of parent object constant: " + parentConstant;
+                        } else {
+                            errorMessage += "reachable by indexing at position " + finalPosition + " into parent array constant: " + parentConstant;
+                        }
+                        throw AnalysisError.shouldNotReachHere(errorMessage);
                     });
                 case PRIMITIVE_VALUE -> {
                     PrimitiveValue.Reader pv = constantData.getPrimitiveValue();

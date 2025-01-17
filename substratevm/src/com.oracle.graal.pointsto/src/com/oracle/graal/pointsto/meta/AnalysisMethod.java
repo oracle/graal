@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.ReentrantLock;
@@ -50,6 +51,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.ImageLayerLoader;
+import com.oracle.graal.pointsto.api.ImageLayerWriter;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -174,6 +176,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final boolean enableReachableInCurrentLayer;
 
     private final AtomicReference<GraphCacheEntry> parsedGraphCacheState = new AtomicReference<>(GraphCacheEntry.UNPARSED);
+    private final AtomicBoolean trackedGraphPersisted = new AtomicBoolean(false);
 
     private EncodedGraph analyzedGraph;
 
@@ -547,6 +550,13 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         ConcurrentLightHashSet.removeElementIf(this, implementationInvokedNotificationsUpdater, ElementNotification::isNotified);
     }
 
+    private void persistTrackedGraph(AnalysisParsedGraph graph) {
+        if (isTrackedAcrossLayers() && trackedGraphPersisted.compareAndSet(false, true)) {
+            ImageLayerWriter imageLayerWriter = getUniverse().getImageLayerWriter();
+            imageLayerWriter.persistAnalysisParsedGraph(this, graph);
+        }
+    }
+
     /** Get the set of all callers for this method, as inferred by the static analysis. */
     public Set<AnalysisMethod> getCallers() {
         return getInvokeLocations().stream().map(location -> (AnalysisMethod) location.getMethod()).collect(Collectors.toSet());
@@ -684,6 +694,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             parameter.registerAsTrackedAcrossLayers(reason);
         }
         signature.getReturnType().registerAsTrackedAcrossLayers(reason);
+
+        if (getParsedGraphCacheStateObject() instanceof AnalysisParsedGraph analysisParsedGraph) {
+            persistTrackedGraph(analysisParsedGraph);
+        }
     }
 
     public void registerOverrideReachabilityNotification(MethodOverrideReachableNotification notification) {
@@ -1233,7 +1247,13 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             boolean result = parsedGraphCacheState.compareAndSet(lockState, newEntry);
             AnalysisError.guarantee(result, "State transition failed");
 
-            return (AnalysisParsedGraph) newEntry.get(stage);
+            AnalysisParsedGraph analysisParsedGraph = (AnalysisParsedGraph) newEntry.get(stage);
+
+            if (stage == Stage.finalStage()) {
+                persistTrackedGraph(analysisParsedGraph);
+            }
+
+            return analysisParsedGraph;
 
         } catch (Throwable ex) {
             parsedGraphCacheState.set(GraphCacheEntry.createParsingError(stage, expectedValue, ex));
