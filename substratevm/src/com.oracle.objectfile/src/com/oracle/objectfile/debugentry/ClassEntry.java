@@ -201,7 +201,7 @@ public class ClassEntry extends StructureTypeEntry {
         return indexedFiles.get(file);
     }
 
-    private DirEntry getDirEntry(FileEntry file) {
+    private static DirEntry getDirEntry(FileEntry file) {
         if (file == null) {
             return null;
         }
