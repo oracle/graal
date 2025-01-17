@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,12 +45,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 
 /**
@@ -65,9 +65,10 @@ public class DebugSourceLoader {
      * @param path the path of the source
      * @param language the source language
      * @param testMode if true, load the source as a resource instead of from the file system.
+     * @param env Truffle environment used to access source files
      */
     @TruffleBoundary
-    public Source load(Path path, String language, boolean testMode) {
+    public Source load(Path path, String language, boolean testMode, TruffleLanguage.Env env) {
         if (path == null || language == null) {
             return null;
         }
@@ -88,7 +89,7 @@ public class DebugSourceLoader {
                 }
                 reader = new InputStreamReader(stream);
             } else {
-                reader = Files.newBufferedReader(path);
+                reader = env.getPublicTruffleFile(path.toString()).newBufferedReader();
             }
             s = Source.newBuilder(language, reader, fileName.toString()).build();
         } catch (IOException | SecurityException e) {
