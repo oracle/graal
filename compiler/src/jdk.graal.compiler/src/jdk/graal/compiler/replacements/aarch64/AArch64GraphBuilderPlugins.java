@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,8 +65,6 @@ import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
-import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
-import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.FloatToHalfFloatNode;
 import jdk.graal.compiler.replacements.nodes.HalfFloatToFloatNode;
 import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -86,8 +84,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
-                registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
                 registerFloatPlugins(invocationPlugins, replacements);
                 registerMathPlugins(invocationPlugins, registerForeignCallMath);
                 registerStrictMathPlugins(invocationPlugins);
@@ -95,26 +91,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
-            }
-        });
-    }
-
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, Replacements replacements) {
-        Class<?> declaringClass = kind.toBoxedJavaClass();
-        Class<?> type = kind.toJavaClass();
-        Registration r = new Registration(plugins, declaringClass, replacements);
-        r.register(new InvocationPlugin("numberOfLeadingZeros", type) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.addPush(JavaKind.Int, CountLeadingZerosNode.create(value));
-                return true;
-            }
-        });
-        r.register(new InvocationPlugin("numberOfTrailingZeros", type) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.addPush(JavaKind.Int, CountTrailingZerosNode.create(value));
-                return true;
             }
         });
     }

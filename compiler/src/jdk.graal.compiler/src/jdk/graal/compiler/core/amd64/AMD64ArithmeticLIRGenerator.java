@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -131,6 +131,8 @@ import jdk.graal.compiler.lir.amd64.AMD64BitCountOp;
 import jdk.graal.compiler.lir.amd64.AMD64BitSwapOp;
 import jdk.graal.compiler.lir.amd64.AMD64ClearRegisterOp;
 import jdk.graal.compiler.lir.amd64.AMD64ConvertFloatToIntegerOp;
+import jdk.graal.compiler.lir.amd64.AMD64CountLeadingZerosOp;
+import jdk.graal.compiler.lir.amd64.AMD64CountTrailingZerosOp;
 import jdk.graal.compiler.lir.amd64.AMD64FloatToHalfFloatOp;
 import jdk.graal.compiler.lir.amd64.AMD64HalfFloatToFloatOp;
 import jdk.graal.compiler.lir.amd64.AMD64MathCopySignOp;
@@ -1101,7 +1103,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Variable emitBitCount(Value value) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(value).changeType(AMD64Kind.DWORD));
-        if (getLIRGen().target().arch.getFeatures().contains(CPUFeature.POPCNT)) {
+        if (getAMD64LIRGen().usePopCountInstruction()) {
             assert ((AMD64Kind) value.getPlatformKind()).isInteger();
             if (value.getPlatformKind() == AMD64Kind.QWORD) {
                 getLIRGen().append(new AMD64Unary.RMOp(POPCNT, QWORD, result, asAllocatable(value)));
@@ -1153,10 +1155,14 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Value emitCountLeadingZeros(Value value) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(value).changeType(AMD64Kind.DWORD));
         assert ((AMD64Kind) value.getPlatformKind()).isInteger();
-        if (value.getPlatformKind() == AMD64Kind.QWORD) {
-            getLIRGen().append(new AMD64Unary.RMOp(LZCNT, QWORD, result, asAllocatable(value)));
+        if (getAMD64LIRGen().useCountLeadingZerosInstruction()) {
+            if (value.getPlatformKind() == AMD64Kind.QWORD) {
+                getLIRGen().append(new AMD64Unary.RMOp(LZCNT, QWORD, result, asAllocatable(value)));
+            } else {
+                getLIRGen().append(new AMD64Unary.RMOp(LZCNT, DWORD, result, asAllocatable(value)));
+            }
         } else {
-            getLIRGen().append(new AMD64Unary.RMOp(LZCNT, DWORD, result, asAllocatable(value)));
+            getLIRGen().append(new AMD64CountLeadingZerosOp(getLIRGen(), result, asAllocatable(value)));
         }
         return result;
     }
@@ -1165,10 +1171,14 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Value emitCountTrailingZeros(Value value) {
         Variable result = getLIRGen().newVariable(LIRKind.combine(value).changeType(AMD64Kind.DWORD));
         assert ((AMD64Kind) value.getPlatformKind()).isInteger();
-        if (value.getPlatformKind() == AMD64Kind.QWORD) {
-            getLIRGen().append(new AMD64Unary.RMOp(TZCNT, QWORD, result, asAllocatable(value)));
+        if (getAMD64LIRGen().useCountTrailingZerosInstruction()) {
+            if (value.getPlatformKind() == AMD64Kind.QWORD) {
+                getLIRGen().append(new AMD64Unary.RMOp(TZCNT, QWORD, result, asAllocatable(value)));
+            } else {
+                getLIRGen().append(new AMD64Unary.RMOp(TZCNT, DWORD, result, asAllocatable(value)));
+            }
         } else {
-            getLIRGen().append(new AMD64Unary.RMOp(TZCNT, DWORD, result, asAllocatable(value)));
+            getLIRGen().append(new AMD64CountTrailingZerosOp(getLIRGen(), result, asAllocatable(value)));
         }
         return result;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -35,7 +35,6 @@ import static jdk.vm.ci.meta.JavaConstant.INT_0;
 import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -90,7 +89,6 @@ import jdk.graal.compiler.lir.aarch64.g1.AArch64G1BarrierSetLIRGenerator;
 import jdk.graal.compiler.lir.gen.BarrierSetLIRGeneratorTool;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.MoveFactory;
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -470,14 +468,11 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public void emitZeroMemory(Value address, Value length, boolean isAligned) {
-        final EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
-
         int zvaLength = config.zvaLength;
         boolean isDcZvaProhibited = 0 == zvaLength;
 
         // Use DC ZVA if it's not prohibited and AArch64 HotSpot flag UseBlockZeroing is on.
-        boolean useDcZva = !isDcZvaProhibited && flags.contains(AArch64.Flag.UseBlockZeroing);
-
+        boolean useDcZva = !isDcZvaProhibited && config.useBlockZeroing;
         emitZeroMemory(address, length, isAligned, useDcZva, zvaLength);
     }
 
@@ -518,5 +513,10 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     protected int getSoftwarePrefetchHintDistance() {
         return config.softwarePrefetchHintDistance;
+    }
+
+    @Override
+    public boolean useLSE() {
+        return config.useLSE;
     }
 }

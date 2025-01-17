@@ -27,7 +27,6 @@ package jdk.graal.compiler.hotspot.meta;
 import static jdk.graal.compiler.hotspot.HotSpotGraalServices.isIntrinsicAvailable;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -60,7 +59,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final HotSpotGraalRuntimeProvider graalRuntime;
-    private final GraalHotSpotVMConfig config;
     private final UnimplementedGraalIntrinsics unimplementedIntrinsics;
     private EconomicMap<String, Integer> missingIntrinsicMetrics;
 
@@ -76,7 +74,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
 
     HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration, OptionValues options, TargetDescription target) {
         this.graalRuntime = graalRuntime;
-        this.config = config;
         if (Options.WarnMissingIntrinsic.getValue(options)) {
             this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics(target.arch);
         } else {
@@ -98,22 +95,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         }
 
         registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
-    }
-
-    @Override
-    protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
-        if (!config.usePopCountInstruction) {
-            if ("bitCount".equals(plugin.name)) {
-                GraalError.guarantee(declaringClass.equals(Integer.class) || declaringClass.equals(Long.class), declaringClass.getTypeName());
-                return;
-            }
-        }
-        if (!config.useUnalignedAccesses) {
-            if (plugin.name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
-                return;
-            }
-        }
-        super.register(declaringClass, plugin, allowOverwrite);
     }
 
     @Override
