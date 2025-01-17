@@ -40,6 +40,8 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -50,7 +52,6 @@ import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.EncodedSnippets;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
-import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionsParser;
@@ -59,8 +60,6 @@ import jdk.graal.compiler.util.ObjectCopier;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.services.JVMCIServiceLocator;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * This class is used at image build-time when a libgraal image gets built. Its static methods are
@@ -149,7 +148,6 @@ public class BuildTime {
     public static void configureGraalForLibGraal(String arch,
                     List<Class<?>> guestServiceClasses,
                     Consumer<Class<?>> registerAsInHeap,
-                    Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses,
                     String nativeImageLocationQualifier,
                     byte[] encodedGuestObjects) {
         GraalError.guarantee(VALID_LOADER_NAME.equals(LOADER.getName()),
@@ -190,9 +188,6 @@ public class BuildTime {
 
             List<ForeignCallSignature> foreignCallSignatures = (List<ForeignCallSignature>) libgraalObjects.get("foreignCallSignatures");
             HotSpotForeignCallLinkage.Stubs.initStubs(foreignCallSignatures);
-
-            hostedGraalSetFoldNodePluginClasses.accept(GeneratedInvocationPlugin.getFoldNodePluginClasses());
-
         } catch (ReflectiveOperationException e) {
             throw GraalError.shouldNotReachHere(e);
         }
