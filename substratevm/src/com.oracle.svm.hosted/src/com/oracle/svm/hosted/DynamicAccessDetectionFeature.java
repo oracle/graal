@@ -162,8 +162,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
     private void dumpReportForEntry(String entry) {
         try {
             Path outputDirectory = getOrCreateDirectory(NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(OUTPUT_DIR_NAME));
-            String fileName = getEntryName(entry) + ".json";
-            Path targetPath = outputDirectory.resolve(fileName);
+            Path targetPath = outputDirectory.resolve(getEntryName(entry) + ".json");
             try (var writer = new JsonPrettyWriter(targetPath)) {
                 try (JsonBuilder.ObjectBuilder dynamicAccessBuilder = writer.objectBuilder()) {
                     MethodsByType methodsByType = getMethodsByType(entry);
