@@ -106,16 +106,7 @@ public class DynamicHubInitializer {
             registerPackage(heapScanner, javaClass, hub);
         }
 
-        boolean rescan = true;
-        /*
-         * The constant should not be rescanned directly if it is from the base layer, as it would
-         * try to access the constant again, which would trigger the dynamic hub initialization
-         * again. The constant has to be rescanned after the initialization is finished.
-         */
-        if (hostVM.useBaseLayer()) {
-            ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hub, OtherReason.HUB);
-            rescan = hubConstant == null || !hubConstant.isInBaseLayer();
-        }
+        boolean rescan = shouldRescanHub(heapScanner, hub);
 
         /*
          * Start by rescanning the hub itself. This ensures the correct scan reason in case this is
@@ -131,7 +122,7 @@ public class DynamicHubInitializer {
             if (type.isArray()) {
                 AnalysisError.guarantee(hub.getComponentHub().getArrayHub() == null, "Array hub already initialized for %s.", type.getComponentType().toJavaName(true));
                 hub.getComponentHub().setArrayHub(hub);
-                if (rescan) {
+                if (shouldRescanHub(heapScanner, hub.getComponentHub())) {
                     heapScanner.rescanField(hub.getComponentHub().getCompanion(), hubCompanionArrayHubField);
                 }
             }
@@ -154,6 +145,20 @@ public class DynamicHubInitializer {
                 }
             }
         }
+    }
+
+    /**
+     * The hub should not be rescanned directly if it is from the base layer, as it would try to
+     * access the constant again, which would trigger the dynamic hub initialization again. The hub
+     * has to be rescanned after the initialization is finished. This will be simplified by
+     * GR-60254.
+     */
+    private boolean shouldRescanHub(ImageHeapScanner heapScanner, DynamicHub hub) {
+        if (hostVM.useBaseLayer()) {
+            ImageHeapConstant hubConstant = (ImageHeapConstant) heapScanner.createImageHeapConstant(hub, OtherReason.HUB);
+            return hubConstant == null || !hubConstant.isInBaseLayer();
+        }
+        return true;
     }
 
     /**
