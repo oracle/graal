@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.jfr.internal.MetadataRepository;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -171,7 +172,11 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
                 }
             }
 
-            SecuritySupport.registerEvent(newEventClass);
+            if (JavaVersionUtil.JAVA_SPEC == 21) {
+                ReflectionUtil.lookupMethod(SecuritySupport.class, "registerEvent", Class.class).invoke(null, newEventClass);
+            } else {
+                ReflectionUtil.lookupMethod(MetadataRepository.class, "register", Class.class).invoke(MetadataRepository.getInstance(), newEventClass);
+            }
 
             JfrJavaEvents.registerEventClass(newEventClass);
             // the reflection registration for the event handler field is delayed to the JfrFeature
