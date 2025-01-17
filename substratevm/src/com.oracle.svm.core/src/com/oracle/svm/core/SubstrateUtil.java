@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.common.meta.GuaranteeFolded;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -69,7 +70,7 @@ public class SubstrateUtil {
     /**
      * Field that is true during native image generation, but false at run time.
      */
-    public static final boolean HOSTED;
+    @GuaranteeFolded public static final boolean HOSTED;
 
     static {
         /*
