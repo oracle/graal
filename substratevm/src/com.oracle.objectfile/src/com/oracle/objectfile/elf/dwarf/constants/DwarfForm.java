@@ -34,7 +34,8 @@ public enum DwarfForm {
     DW_FORM_addr(0x1),
     DW_FORM_data2(0x05),
     DW_FORM_data4(0x6),
-    @SuppressWarnings("unused") DW_FORM_data8(0x7),
+    @SuppressWarnings("unused")//
+    DW_FORM_data8(0x7),
     @SuppressWarnings("unused")//
     DW_FORM_string(0x8),
     @SuppressWarnings("unused")//

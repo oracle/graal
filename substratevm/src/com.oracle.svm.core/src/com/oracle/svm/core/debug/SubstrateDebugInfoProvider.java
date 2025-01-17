@@ -50,6 +50,18 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Implements the {@link com.oracle.objectfile.debuginfo.DebugInfoProvider DebugInfoProvider}
+ * interface based on the {@code SharedDebugInfoProvider} to handle runt-time compiled methods.
+ *
+ * <p>
+ * For each run-time compilation, one {@code SubstrateDebugInfoProvider} is created and the debug
+ * info for the compiled method is installed. As type information is already available in the native
+ * image's debug info, the {@code SubstrateDebugInfoProvider} just produces as little information as
+ * needed and reuses debug info from the native image. Therefore, for type entries the
+ * {@code SubstrateDebugInfoProvider} just creates stubs that contain the type signature, which can
+ * then be resolved by the debugger.
+ */
 public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
     private final SharedMethod sharedMethod;
@@ -64,6 +76,12 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         this.codeAddress = codeAddress;
     }
 
+    /**
+     * Create a compilation unit name from the {@link CompilationResult} or the {@link SharedMethod}
+     * the debug info is produced for.
+     * 
+     * @return the name of the compilation unit in the debug info
+     */
     public String getCompilationName() {
         String name = null;
         if (compilation != null) {
@@ -88,28 +106,55 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         return true;
     }
 
+    /**
+     * Returns an empty stream, because there are no types to stream here. All types needed for the
+     * run-time debug info are installed when needed for providing debug info of the compilation.
+     * 
+     * @return an empty stream
+     */
     @Override
     protected Stream<SharedType> typeInfo() {
         // create type infos on demand for compilation
         return Stream.empty();
     }
 
+    /**
+     * Provides the single compilation with its corresponding method as code info for this object
+     * file. All the debug info for the object file is produced based on this compilation and
+     * method.
+     * 
+     * @return a stream containing the run-time compilation result and method
+     */
     @Override
     protected Stream<Pair<SharedMethod, CompilationResult>> codeInfo() {
         return Stream.of(Pair.create(sharedMethod, compilation));
     }
 
+    /**
+     * Returns an empty stream, no any additional data is handled for run-time compilations.
+     * 
+     * @return an empty stream
+     */
     @Override
     protected Stream<Object> dataInfo() {
-        // no data info needed for runtime compilations
+        // no data info needed for run-time compilations
         return Stream.empty();
     }
 
     @Override
     protected long getCodeOffset(@SuppressWarnings("unused") SharedMethod method) {
+        // use the code offset from the compilation
         return codeAddress;
     }
 
+    /**
+     * Fetches the package name from the types hub and the types source file name and produces a
+     * file name with that. There is no guarantee that the source file is at the location of the
+     * file entry, but it is the best guess we can make at run-time.
+     * 
+     * @param type the given {@code ResolvedJavaType}
+     * @return the {@code FileEntry} of the type
+     */
     @Override
     public FileEntry lookupFileEntry(ResolvedJavaType type) {
         if (type instanceof SharedType sharedType) {
@@ -137,13 +182,26 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
+    /**
+     * Creates a {@code TypeEntry} for use in object files produced for run-time compilations.
+     * 
+     * <p>
+     * To avoid duplicating debug info, this mainly produces the {@link #getTypeSignature type
+     * signatures} to link the types to type entries produced at native image build time. Connecting
+     * the run-time compiled type entry with the native image's type entry is left for the debugger.
+     * This allows the reuse of type information from the native image, where we have more
+     * information available to produce debug info.
+     * 
+     * @param type the {@code SharedType} to process
+     * @return a {@code TypeEntry} for the type
+     */
     @Override
     protected TypeEntry createTypeEntry(SharedType type) {
         String typeName = type.toJavaName();
         LoaderEntry loaderEntry = lookupLoaderEntry(type);
         int size = getTypeSize(type);
         long classOffset = -1;
-        String loaderName = loaderEntry == null ? uniqueNullStringEntry : loaderEntry.loaderId();
+        String loaderName = loaderEntry == null ? "" : loaderEntry.loaderId();
         long typeSignature = getTypeSignature(typeName + loaderName);
         long compressedTypeSignature = useHeapBase ? getTypeSignature(INDIRECT_PREFIX + typeName + loaderName) : typeSignature;
 
@@ -173,6 +231,15 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
+    /**
+     * The run-time debug info relies on type entries in the native image. In
+     * {@link #createTypeEntry} we just produce dummy types that hold just enough information to
+     * connect them to the types in the native image. Therefore, there is nothing to do for
+     * processing types at run-time.
+     *
+     * @param type the {@code SharedType} of the type entry
+     * @param typeEntry the {@code TypeEntry} to process
+     */
     @Override
     protected void processTypeEntry(@SuppressWarnings("unused") SharedType type, @SuppressWarnings("unused") TypeEntry typeEntry) {
         // nothing to do here
@@ -180,6 +247,6 @@ public class SubstrateDebugInfoProvider extends SharedDebugInfoProvider {
 
     @Override
     public long objectOffset(@SuppressWarnings("unused") JavaConstant constant) {
-        return 0;
+        return -1;
     }
 }

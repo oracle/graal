@@ -29,7 +29,6 @@ package com.oracle.objectfile.debuginfo;
 import java.util.SortedSet;
 
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.StringTable;
 import com.oracle.objectfile.debugentry.TypeEntry;
 
 /**
@@ -68,8 +67,6 @@ public interface DebugInfoProvider {
      * Alignment of object memory area (and, therefore, of any oop) in bytes.
      */
     int objectAlignment();
-
-    StringTable getStringTable();
 
     SortedSet<TypeEntry> typeEntries();
 

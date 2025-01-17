@@ -99,17 +99,33 @@ public class ClassEntry extends StructureTypeEntry {
         }
     }
 
+    /**
+     * Add a field to the class entry and store its file entry.
+     * 
+     * @param field the {@code FieldEntry} to add
+     */
     @Override
     public void addField(FieldEntry field) {
         addFile(field.getFileEntry());
         super.addField(field);
     }
 
+    /**
+     * Add a method to the class entry and store its file entry.
+     *
+     * @param methodEntry the {@code MethodEntry} to add
+     */
     public void addMethod(MethodEntry methodEntry) {
         addFile(methodEntry.getFileEntry());
         methods.add(methodEntry);
     }
 
+    /**
+     * Add a compiled method to the class entry and store its file entry and the file entries of
+     * inlined methods.
+     *
+     * @param compiledMethodEntry the {@code CompiledMethodEntry} to add
+     */
     public void addCompiledMethod(CompiledMethodEntry compiledMethodEntry) {
         addFile(compiledMethodEntry.primary().getFileEntry());
         for (Range range : compiledMethodEntry.topDownRangeStream().toList()) {
@@ -156,6 +172,18 @@ public class ClassEntry extends StructureTypeEntry {
         return getFileIdx(this.getFileEntry());
     }
 
+    /**
+     * Returns the file index of a given file entry within this class entry.
+     *
+     * <p>
+     * The first time a file entry is fetched, this produces a file index that is used for further
+     * index lookups. The file index is only created once. Therefore, this method must be used only
+     * after debug info generation is finished and no more file entries can be added to this class
+     * entry.
+     * 
+     * @param file the given file entry
+     * @return the index of the file entry
+     */
     public int getFileIdx(FileEntry file) {
         if (file == null || files.isEmpty() || !files.contains(file)) {
             return 0;
@@ -173,7 +201,7 @@ public class ClassEntry extends StructureTypeEntry {
         return indexedFiles.get(file);
     }
 
-    public DirEntry getDirEntry(FileEntry file) {
+    private DirEntry getDirEntry(FileEntry file) {
         if (file == null) {
             return null;
         }
@@ -185,6 +213,18 @@ public class ClassEntry extends StructureTypeEntry {
         return getDirIdx(dirEntry);
     }
 
+    /**
+     * Returns the dir index of a given dir entry within this class entry.
+     *
+     * <p>
+     * The first time a dir entry is fetched, this produces a dir index that is used for further
+     * index lookups. The dir index is only created once. Therefore, this method must be used only
+     * after debug info generation is finished and no more dir entries can be added to this class
+     * entry.
+     *
+     * @param dir the given dir entry
+     * @return the index of the dir entry
+     */
     public int getDirIdx(DirEntry dir) {
         if (dir == null || dir.getPathString().isEmpty() || dirs.isEmpty() || !dirs.contains(dir)) {
             return 0;
@@ -251,20 +291,20 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     /**
-     * Retrieve a stream of all files referenced from debug info for this class in line info file
+     * Retrieve a list of all files referenced from debug info for this class in line info file
      * table order, starting with the file at index 1.
      *
-     * @return a stream of all referenced files
+     * @return a list of all referenced files
      */
     public List<FileEntry> getFiles() {
         return List.copyOf(files);
     }
 
     /**
-     * Retrieve a stream of all directories referenced from debug info for this class in line info
+     * Retrieve a list of all directories referenced from debug info for this class in line info
      * directory table order, starting with the directory at index 1.
      *
-     * @return a stream of all referenced directories
+     * @return a list of all referenced directories
      */
     public List<DirEntry> getDirs() {
         return List.copyOf(dirs);
