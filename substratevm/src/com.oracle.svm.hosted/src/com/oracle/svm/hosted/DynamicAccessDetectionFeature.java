@@ -115,7 +115,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         callLocations.add(callLocation);
     }
 
-    private MethodsByType getMethodsByType(String entry) {
+    public MethodsByType getMethodsByType(String entry) {
         return this.callsByPathEntry.getOrDefault(entry, new MethodsByType());
     }
 
@@ -131,7 +131,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         return fileName;
     }
 
-    public void printReportForEntry(String entry) {
+    private void printReportForEntry(String entry) {
         System.out.println("Dynamic method usage detected in " + entry + ":");
         MethodsByType methodsByType = getMethodsByType(entry);
         for (String methodType : methodsByType.getMethodTypes()) {
@@ -146,7 +146,7 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
-    public void dumpReportForEntry(String entry) {
+    private void dumpReportForEntry(String entry) {
         String fileName = getEntryName(entry) + "_method_calls.json";
         Path targetPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(fileName);
         try (var writer = new JsonPrettyWriter(targetPath)) {

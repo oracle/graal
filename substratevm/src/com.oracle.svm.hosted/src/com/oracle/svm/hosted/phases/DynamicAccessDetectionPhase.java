@@ -71,10 +71,10 @@ import java.util.random.RandomGeneratorFactory;
  */
 
 public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
-    public static final String METHODTYPE_REFLECTION = "reflection";
-    public static final String METHODTYPE_RESOURCE = "resource";
-    public static final String METHODTYPE_SERIALIZATION = "serialization";
-    public static final String METHODTYPE_PROXY = "proxy";
+    private static final String METHODTYPE_REFLECTION = "reflection";
+    private static final String METHODTYPE_RESOURCE = "resource";
+    private static final String METHODTYPE_SERIALIZATION = "serialization";
+    private static final String METHODTYPE_PROXY = "proxy";
 
     private static final Map<String, Set<String>> reflectMethodNames = new HashMap<>();
     private static final Map<String, Set<String>> resourceMethodNames = new HashMap<>();
@@ -204,7 +204,7 @@ public class DynamicAccessDetectionPhase extends BasePhase<CoreProviders> {
      * Returns the name and type of a method if it exists in the predetermined set, based on its
      * graph and MethodCallTargetNode; otherwise, returns null.
      */
-    public Pair<String, String> getMethod(MethodCallTargetNode callTarget) {
+    private static Pair<String, String> getMethod(MethodCallTargetNode callTarget) {
         String methodName = callTarget.targetMethod().getName();
         String declaringClass = callTarget.targetMethod().getDeclaringClass().toJavaName();
 
