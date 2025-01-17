@@ -33,8 +33,8 @@ public final class CallSiteLinkingFailure extends RuntimeException {
         this.cause = cause;
     }
 
-    public FailInvokeDynamicConstant failConstant() {
-        return new FailInvokeDynamicConstant(cause);
+    public ResolvedFailInvokeDynamicConstant failConstant() {
+        return new ResolvedFailInvokeDynamicConstant(cause);
     }
 
     @Override

@@ -23,32 +23,31 @@
 package com.oracle.truffle.espresso.constantpool;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
-/**
- * Constant Pool patching inserts already resolved constants in the constant pool. However, at the
- * time of patching, we do not have a Runtime CP. Therefore, we help the CP by inserting a
- * Pre-Resolved constant.
- * <p>
- * This is also used to Pre-resolve anonymous classes.
- */
-public final class PreResolvedClassConstant implements ClassConstant, Resolvable {
-    private final Klass resolved;
-
-    PreResolvedClassConstant(Klass resolved) {
-        this.resolved = Objects.requireNonNull(resolved);
+public final class ResolvedFailInvokeDynamicConstant extends AbstractFailedConstant implements LinkableInvokeDynamicConstant {
+    public ResolvedFailInvokeDynamicConstant(EspressoException failure) {
+        super(failure);
     }
 
-    public Klass getResolved() {
-        return resolved;
+    @Override
+    public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
+        throw fail(method.getMeta());
     }
 
     @Override
     public void dump(ByteBuffer buf) {
-        buf.putChar((char) 0);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
+    }
+
+    @Override
+    public boolean isSuccess() {
+        return false;
     }
 }

@@ -29,26 +29,13 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public final class ResolvedFailDynamicConstant implements ResolvedDynamicConstant {
-    final EspressoException failure;
-
+public final class ResolvedFailDynamicConstant extends AbstractFailedConstant implements ResolvedDynamicConstant {
     public ResolvedFailDynamicConstant(EspressoException failure) {
-        this.failure = failure;
-    }
-
-    @Override
-    public void checkFail() {
-        throw failure;
+        super(failure);
     }
 
     @Override
     public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Failure should have arose earlier.");
-    }
-
-    @Override
-    public Object value() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Failure should have arose earlier.");
     }

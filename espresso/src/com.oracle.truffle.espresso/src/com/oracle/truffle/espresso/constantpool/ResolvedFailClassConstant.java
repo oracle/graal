@@ -22,8 +22,10 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public interface ResolvedClassConstant extends ClassConstant, Resolvable.ResolvedConstant, StickyFailureConstant {
+public final class ResolvedFailClassConstant extends AbstractFailedConstant implements ResolvedClassConstant {
+    public ResolvedFailClassConstant(EspressoException failure) {
+        super(failure);
+    }
 }

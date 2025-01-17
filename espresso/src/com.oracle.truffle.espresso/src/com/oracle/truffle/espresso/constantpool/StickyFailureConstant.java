@@ -22,8 +22,9 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.meta.Meta;
 
-public interface ResolvedClassConstant extends ClassConstant, Resolvable.ResolvedConstant, StickyFailureConstant {
+public interface StickyFailureConstant extends Resolvable.ResolvedConstant {
+    void checkFail(Meta meta);
 }

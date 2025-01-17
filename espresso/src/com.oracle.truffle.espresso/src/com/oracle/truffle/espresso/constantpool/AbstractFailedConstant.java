@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,39 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public final class FailInvokeDynamicConstant implements LinkableInvokeDynamicConstant {
-    private final EspressoException failure;
+public abstract class AbstractFailedConstant implements StickyFailureConstant {
+    private final ObjectKlass exceptionType;
+    private final StaticObject message;
+    private final StaticObject cause;
 
-    public FailInvokeDynamicConstant(EspressoException failure) {
-        this.failure = failure;
+    public AbstractFailedConstant(EspressoException failure) {
+        StaticObject exception = failure.getGuestException();
+        exceptionType = (ObjectKlass) exception.getKlass();
+        message = EspressoException.getGuestMessage(exception);
+        cause = EspressoException.getGuestCause(exception);
     }
 
     @Override
-    public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
-        throw failure;
-    }
-
-    @Override
-    public Object value() {
+    public final Object value() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Use indy.link() rather than Resolved.value()");
+        throw EspressoError.shouldNotReachHere("Exception should have been thrown earlier by calling checkFail.");
     }
 
     @Override
-    public void dump(ByteBuffer buf) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
+    public final void checkFail(Meta meta) {
+        throw fail(meta);
     }
 
-    @Override
-    public boolean isSuccess() {
-        return false;
+    final EspressoException fail(Meta meta) {
+        StaticObject exception = Meta.initExceptionWithMessage(exceptionType, message);
+        meta.java_lang_Throwable_cause.set(exception, cause);
+        throw meta.throwException(exception);
     }
 }

@@ -148,7 +148,8 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public Klass resolvedKlassAt(ObjectKlass accessingKlass, int index) {
-        Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "klass");
+        ResolvedClassConstant resolved = (ResolvedClassConstant) resolvedAt(accessingKlass, index, "klass");
+        resolved.checkFail(getContext().getMeta());
         return (Klass) resolved.value();
     }
 
@@ -248,7 +249,7 @@ public final class RuntimeConstantPool extends ConstantPool {
 
     public ResolvedDynamicConstant resolvedDynamicConstantAt(ObjectKlass accessingKlass, int index) {
         ResolvedDynamicConstant dynamicConstant = (ResolvedDynamicConstant) outOfLockResolvedAt(accessingKlass, index, "dynamic constant");
-        dynamicConstant.checkFail();
+        dynamicConstant.checkFail(getContext().getMeta());
         return dynamicConstant;
     }
 
@@ -265,7 +266,7 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public void setKlassAt(int index, ObjectKlass klass) {
-        resolvedConstants[index] = new ResolvedClassConstant(klass);
+        resolvedConstants[index] = new ResolvedFoundClassConstant(klass);
     }
 
     @Override
@@ -326,7 +327,6 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     Resolvable.ResolvedConstant resolve(Resolvable resolvable, int thisIndex, ObjectKlass accessingKlass) {
-
         switch (resolvable.tag()) {
             case STRING:
                 if (resolvable instanceof StringConstant.Index fromIndex) {
@@ -371,8 +371,6 @@ public final class RuntimeConstantPool extends ConstantPool {
             case CLASS:
                 if (resolvable instanceof ClassConstant.Index fromIndex) {
                     return Resolution.resolveClassConstant(fromIndex, this, thisIndex, accessingKlass);
-                } else if (resolvable instanceof ClassConstant.WithString fromString) {
-                    return Resolution.resolveClassConstant(fromString, this, thisIndex, accessingKlass);
                 }
                 break;
         }
