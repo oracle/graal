@@ -55,11 +55,10 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
+import org.graalvm.wasm.nodes.WasmFixedMemoryImplFunctionNode;
+import org.graalvm.wasm.nodes.WasmFunctionRootNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
-import org.graalvm.wasm.nodes.WasmInstrumentableFunctionNode;
-import org.graalvm.wasm.nodes.WasmMemoryOverheadModeRootNode;
-import org.graalvm.wasm.nodes.WasmRootNode;
+import org.graalvm.wasm.nodes.WasmMemoryOverheadModeFunctionRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
@@ -497,12 +496,13 @@ public class WasmInstantiator {
         }
         final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.usesMemoryZero());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
-        final WasmInstrumentableFunctionNode functionNode = instantiateFunctionNode(module, instance, wasmCodeEntry, codeEntry);
-        final WasmRootNode rootNode;
+        final Node[] callNodes = setupCallNodes(module, instance, codeEntry);
+        final WasmFixedMemoryImplFunctionNode functionNode = WasmFixedMemoryImplFunctionNode.create(module, wasmCodeEntry, codeEntry.bytecodeStartOffset(), codeEntry.bytecodeEndOffset(), callNodes);
+        final WasmFunctionRootNode rootNode;
         if (context.getContextOptions().memoryOverheadMode()) {
-            rootNode = new WasmMemoryOverheadModeRootNode(language, frameDescriptor, functionNode);
+            rootNode = new WasmMemoryOverheadModeFunctionRootNode(language, frameDescriptor, module, functionNode, wasmCodeEntry);
         } else {
-            rootNode = new WasmRootNode(language, frameDescriptor, functionNode);
+            rootNode = new WasmFunctionRootNode(language, frameDescriptor, module, functionNode, wasmCodeEntry);
         }
         var callTarget = rootNode.getCallTarget();
         if (context.language().isMultiContext()) {
@@ -513,8 +513,7 @@ public class WasmInstantiator {
         return callTarget;
     }
 
-    private static WasmInstrumentableFunctionNode instantiateFunctionNode(WasmModule module, WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
-        final WasmFunctionNode currentFunction = new WasmFunctionNode(module, codeEntry, entry.bytecodeStartOffset(), entry.bytecodeEndOffset());
+    private static Node[] setupCallNodes(WasmModule module, WasmInstance instance, CodeEntry entry) {
         List<CallNode> childNodeList = entry.callNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;
@@ -539,13 +538,11 @@ public class WasmInstantiator {
                 }
                 final int stubIndex = childIndex;
                 instance.addLinkAction((ctx, inst, imports) -> {
-                    ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, bytecodeIndex, resolvedFunction);
+                    ctx.linker().resolveCallsite(inst, callNodes, entry.bytecodeStartOffset(), stubIndex, bytecodeIndex, resolvedFunction);
                 });
             }
             callNodes[childIndex++] = child;
         }
-        currentFunction.initializeCallNodes(callNodes);
-        final int sourceCodeLocation = module.functionSourceCodeStartOffset(codeEntry.functionIndex());
-        return new WasmInstrumentableFunctionNode(module, codeEntry, currentFunction, sourceCodeLocation);
+        return callNodes;
     }
 }

@@ -73,6 +73,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
 import org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
 import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
@@ -100,7 +101,8 @@ import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
+import org.graalvm.wasm.nodes.WasmCallStubNode;
+import org.graalvm.wasm.nodes.WasmDirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -108,6 +110,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 public class Linker {
     public enum LinkState {
@@ -469,13 +472,24 @@ public class Linker {
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveCallsite(WasmInstance instance, WasmFunctionNode functionNode, int controlTableOffset, int bytecodeOffset, WasmFunction function) {
-        final Runnable resolveAction = () -> functionNode.resolveCallNode(instance, controlTableOffset, bytecodeOffset);
+    public void resolveCallNode(Node[] callNodes, WasmInstance instance, int callNodeIndex, int bytecodeOffset) {
+        Node unresolvedCallNode = callNodes[callNodeIndex];
+        if (unresolvedCallNode instanceof WasmCallStubNode) {
+            final WasmFunction function = ((WasmCallStubNode) unresolvedCallNode).function();
+            final CallTarget target = instance.target(function.index());
+            callNodes[callNodeIndex] = WasmDirectCallNode.create(target, bytecodeOffset);
+        } else {
+            assert unresolvedCallNode instanceof WasmIndirectCallNode : unresolvedCallNode;
+        }
+    }
+
+    public void resolveCallsite(WasmInstance instance, Node[] callNodes, int instructionOffset, int controlTableOffset, int bytecodeOffset, WasmFunction function) {
+        final Runnable resolveAction = () -> resolveCallNode(callNodes, instance, controlTableOffset, bytecodeOffset);
         final Sym[] dependencies = new Sym[]{
                         function.isImported()
                                         ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index())
                                         : new CodeEntrySym(instance.name(), function.index())};
-        resolutionDag.resolveLater(new CallsiteSym(instance.name(), functionNode.startOffset(), controlTableOffset), dependencies, resolveAction);
+        resolutionDag.resolveLater(new CallsiteSym(instance.name(), instructionOffset, controlTableOffset), dependencies, resolveAction);
     }
 
     void resolveCodeEntry(WasmModule module, int functionIndex) {
