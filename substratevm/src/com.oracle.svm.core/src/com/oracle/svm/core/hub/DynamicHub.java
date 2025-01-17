@@ -1012,7 +1012,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     public InputStream getResourceAsStream(String resourceName) {
         String resolvedName = resolveName(resourceName);
-        return Resources.singleton().createInputStream(companion.module, resolvedName);
+        return Resources.createInputStream(companion.module, resolvedName);
     }
 
     @KeepOriginal

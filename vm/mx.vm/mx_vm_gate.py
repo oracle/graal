@@ -72,6 +72,7 @@ class VmGateTasks:
     truffle_native_tck_sl = 'truffle-native-tck-sl'
     truffle_native_tck_js = 'truffle-native-tck-js'
     truffle_native_tck_python = 'truffle-native-tck-python'
+    truffle_native_tck_wasm = 'truffle-native-tck-wasm'
     truffle_jvm = 'truffle-jvm'
     truffle_native = 'truffle-native'
     truffle_native_quickbuild = 'truffle-native-quickbuild'
@@ -548,6 +549,7 @@ def gate_body(args, tasks):
     gate_truffle_native_tck_sl(tasks)
     gate_truffle_native_tck_js(tasks)
     gate_truffle_native_tck_python(tasks)
+    gate_truffle_native_tck_wasm(tasks)
     gate_truffle_jvm(tasks)
     gate_truffle_native(tasks)
     gate_truffle_native(tasks, quickbuild=True)
@@ -720,6 +722,17 @@ def gate_truffle_native_tck_python(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, 'python', py_language)
+
+
+def gate_truffle_native_tck_wasm(tasks):
+    with Task('GraalWasm Truffle Native TCK', tasks, tags=[VmGateTasks.truffle_native_tck_wasm]) as t:
+        if t:
+            wasm_language = mx.distribution('wasm:WASM', fatalIfMissing=False)
+            if not wasm_language:
+                mx.abort("Cannot resolve the `wasm:WASM` language distribution. To resolve this, import the wasm suite using `--dynamicimports /wasm`.")
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                _svm_truffle_tck(native_image, 'wasm', wasm_language)
 
 def gate_truffle_jvm(tasks):
     truffle_suite = mx.suite('truffle')

@@ -84,10 +84,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
-import org.graalvm.collections.MapCursor;
-
 import com.oracle.svm.core.MissingRegistrationUtils;
-import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.TimeUtils;
 
@@ -577,7 +574,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
         IndexNode indexNode = inodes.get(IndexNode.keyOf(path));
         if (indexNode == null && MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             // Try to access the resource to see if the metadata is present
-            Resources.singleton().getAtRuntime(getString(path), true);
+            Resources.getAtRuntime(getString(path), true);
         }
         return indexNode;
     }
@@ -658,14 +655,15 @@ public class NativeImageResourceFileSystem extends FileSystem {
     }
 
     private void readAllEntries() {
-        MapCursor<Resources.ModuleResourceKey, ConditionalRuntimeValue<ResourceStorageEntryBase>> entries = Resources.singleton().getResourceStorage().getEntries();
-        while (entries.advance()) {
-            byte[] name = getBytes(entries.getKey().resource());
-            ResourceStorageEntryBase entry = entries.getValue().getValue();
-            if (entry != null && entry.hasData()) {
-                IndexNode newIndexNode = new IndexNode(name, entry.isDirectory(), true);
-                inodes.put(newIndexNode, newIndexNode);
-            }
+        for (var resources : Resources.layeredSingletons()) {
+            resources.forEachResource((key, value) -> {
+                byte[] name = getBytes(key.resource());
+                ResourceStorageEntryBase entry = value.getValue();
+                if (entry != null && entry.hasData()) {
+                    IndexNode newIndexNode = new IndexNode(name, entry.isDirectory(), true);
+                    inodes.put(newIndexNode, newIndexNode);
+                }
+            });
         }
         buildNodeTree();
     }
