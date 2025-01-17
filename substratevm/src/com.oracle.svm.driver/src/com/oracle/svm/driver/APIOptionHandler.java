@@ -142,7 +142,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     Map<String, GroupInfo> groupInfos, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances, Map<String, HostedOptionInfo> allOptionNames) {
 
         Class<?> optionValueType = optionDescriptor.getOptionValueType();
-        boolean booleanOption = optionValueType.equals(Boolean.class);
+        boolean isBooleanOption = optionValueType.equals(Boolean.class);
 
         for (APIOption apiAnnotation : OptionUtils.getAnnotationsByType(optionDescriptor, APIOption.class)) {
             String builderOption = optionPrefix;
@@ -159,7 +159,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 optionValueType = optionValueType.getComponentType();
             }
             boolean hasFixedValue = apiAnnotation.fixedValue().length > 0;
-            if (booleanOption) {
+            if (isBooleanOption) {
                 if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                     try {
                         Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
@@ -247,7 +247,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             for (char valueSeparator : apiAnnotation.valueSeparator()) {
                 if (valueSeparator == APIOption.WHITESPACE_SEPARATOR) {
                     String msgTail = " cannot use APIOption.WHITESPACE_SEPARATOR as value separator";
-                    if (booleanOption) {
+                    if (isBooleanOption) {
                         throw VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s)" + msgTail, apiOptionName, rawOptionName));
                     }
                     if (hasFixedValue) {
@@ -258,13 +258,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     }
                 }
             }
-            boolean defaultFinal = booleanOption || hasFixedValue;
+            boolean defaultFinal = isBooleanOption || hasFixedValue;
             apiOptions.put(apiOptionName,
                             new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
                                             defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra(), apiAnnotation.launcherOption()));
         }
 
-        allOptionNames.put(optionDescriptor.getName(), new HostedOptionInfo(optionDescriptor.getStability() == OptionStability.STABLE, booleanOption));
+        allOptionNames.put(optionDescriptor.getName(), new HostedOptionInfo(optionDescriptor.getStability() == OptionStability.STABLE, isBooleanOption));
     }
 
     private static void extractPathOption(String optionPrefix, OptionDescriptor optionDescriptor, Map<String, PathsOptionInfo> pathOptions) {
@@ -317,52 +317,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             numberOfActiveUnlockExperimentalVMOptions--;
         } else if (!OptionOrigin.isAPI(args.argumentOrigin) && headArg.startsWith(NativeImage.oH)) {
-            String optionName = headArg.substring(NativeImage.oH.length()).split("=", 2)[0].split("@", 2)[0];
-            char booleanPrefix = 0;
-            if (!optionName.isEmpty()) {
-                char first = optionName.charAt(0);
-                if (first == '+' || first == '-') {
-                    optionName = optionName.substring(1);
-                    booleanPrefix = first;
-                }
-            }
-            HostedOptionInfo info = allOptionNames.get(optionName);
-            if (info == null) {
-                List<String> matches = new ArrayList<>();
-                OptionsParser.collectFuzzyMatches(() -> allOptionNames.keySet().iterator(), optionName, matches, Function.identity());
-                StringBuilder msg = new StringBuilder();
-                msg.append("Unrecognized option '").append(NativeImage.oH);
-                if (booleanPrefix != 0) {
-                    msg.append(booleanPrefix);
-                }
-                msg.append(optionName);
-                if (booleanPrefix == 0) {
-                    msg.append("=...");
-                }
-                OptionOrigin optionOrigin = OptionOrigin.from(args.argumentOrigin);
-                msg.append("' from ").append(optionOrigin).append('.');
-                if (!matches.isEmpty()) {
-                    msg.append(" Did you mean one of these:");
-                    for (var match : matches) {
-                        msg.append(' ').append('\'').append(NativeImage.oH);
-                        boolean matchIsBoolean = allOptionNames.get(match).isBoolean;
-                        if (matchIsBoolean) {
-                            msg.append(CommonOptionParser.PLUS_MINUS_BOOLEAN_OPTION_PREFIX);
-                        }
-                        msg.append(match);
-                        if (!matchIsBoolean) {
-                            msg.append("=...");
-                        }
-                        msg.append('\'');
-                    }
-                    msg.append('.');
-                }
-                msg.append(" Use '--expert-options' (see also '--help-extra') to list all available options.");
-                throw NativeImage.showError(msg.toString());
-            }
-            if (numberOfActiveUnlockExperimentalVMOptions == 0 && !info.isStable()) {
-                illegalExperimentalOptions.add(headArg);
-            }
+            validateHostedOption(headArg, args.argumentOrigin);
         }
         for (Entry<String, GroupInfo> entry : groupInfos.entrySet()) {
             String groupNameAndSeparator = entry.getKey();
@@ -374,6 +329,55 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
         }
         return false;
+    }
+
+    private void validateHostedOption(String hostedOptionArg, String argumentOrigin) {
+        String optionName = hostedOptionArg.substring(NativeImage.oH.length()).split("=", 2)[0].split("@", 2)[0];
+        char booleanPrefix = 0;
+        if (!optionName.isEmpty()) {
+            char first = optionName.charAt(0);
+            if (first == '+' || first == '-') {
+                optionName = optionName.substring(1);
+                booleanPrefix = first;
+            }
+        }
+        HostedOptionInfo info = allOptionNames.get(optionName);
+        if (info == null) {
+            List<String> matches = new ArrayList<>();
+            OptionsParser.collectFuzzyMatches(() -> allOptionNames.keySet().iterator(), optionName, matches, Function.identity());
+            StringBuilder msg = new StringBuilder();
+            msg.append("Unrecognized option '").append(NativeImage.oH);
+            if (booleanPrefix != 0) {
+                msg.append(booleanPrefix);
+            }
+            msg.append(optionName);
+            if (booleanPrefix == 0) {
+                msg.append("=...");
+            }
+            OptionOrigin optionOrigin = OptionOrigin.from(argumentOrigin);
+            msg.append("' from ").append(optionOrigin).append('.');
+            if (!matches.isEmpty()) {
+                msg.append(" Did you mean one of these:");
+                for (var match : matches) {
+                    msg.append(' ').append('\'').append(NativeImage.oH);
+                    boolean matchIsBoolean = allOptionNames.get(match).isBoolean;
+                    if (matchIsBoolean) {
+                        msg.append(CommonOptionParser.PLUS_MINUS_BOOLEAN_OPTION_PREFIX);
+                    }
+                    msg.append(match);
+                    if (!matchIsBoolean) {
+                        msg.append("=...");
+                    }
+                    msg.append('\'');
+                }
+                msg.append('.');
+            }
+            msg.append(" Use '--expert-options' (see also '--help-extra') to list all available options.");
+            throw NativeImage.showError(msg.toString());
+        }
+        if (numberOfActiveUnlockExperimentalVMOptions == 0 && !info.isStable()) {
+            illegalExperimentalOptions.add(hostedOptionArg);
+        }
     }
 
     String translateOption(ArgumentQueue argQueue) {
