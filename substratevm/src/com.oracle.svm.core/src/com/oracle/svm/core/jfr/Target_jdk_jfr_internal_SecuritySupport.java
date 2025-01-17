@@ -33,6 +33,7 @@ import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(value = jdk.jfr.internal.SecuritySupport.class, onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
+@SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_SecuritySupport {
 
     @Substitute
@@ -45,5 +46,9 @@ public final class Target_jdk_jfr_internal_SecuritySupport {
 }
 
 @TargetClass(className = "jdk.jfr.internal.SecuritySupport$SafePath", onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
+@SuppressWarnings("unused")
 final class Target_jdk_jfr_internal_SecuritySupport_SafePath {
+    @Alias
+    Target_jdk_jfr_internal_SecuritySupport_SafePath(String path) {
+    }
 }

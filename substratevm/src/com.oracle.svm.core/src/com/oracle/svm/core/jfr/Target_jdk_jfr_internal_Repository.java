@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -36,6 +37,7 @@ import com.oracle.svm.core.jdk.JDKLatest;
 import jdk.jfr.internal.Repository;
 
 @TargetClass(value = Repository.class, onlyWith = {HasJfrSupport.class, JDKLatest.class})
+@SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_Repository {
 
     @Delete //
@@ -45,7 +47,7 @@ public final class Target_jdk_jfr_internal_Repository {
     private Path baseLocation;
 
     @Alias //
-    public synchronized native void setBasePath(Path baseLocation) throws Exception;
+    public native void setBasePath(Path baseLocation) throws IOException;
 
     @Substitute
     synchronized void ensureRepository() throws Exception {
@@ -57,12 +59,13 @@ public final class Target_jdk_jfr_internal_Repository {
 }
 
 @TargetClass(value = Repository.class, onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
+@SuppressWarnings("unused")
 final class Target_jdk_jfr_internal_Repository_JDK21 {
     @Alias //
     private Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocation;
 
     @Alias //
-    public synchronized native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocation) throws Exception;
+    public native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocation) throws IOException;
 
     @Substitute
     synchronized void ensureRepository() throws Exception {
