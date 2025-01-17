@@ -42,6 +42,7 @@ import jdk.graal.nativeimage.LibGraalLoader;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
@@ -66,9 +67,11 @@ public class OptionsParser {
 
     /**
      * Compiler options info available in libgraal. This field is only non-null when
-     * {@link OptionsParser} is loaded by a {@link jdk.graal.nativeimage.LibGraalLoader}.
+     * {@link OptionsParser} is loaded by a {@link jdk.graal.nativeimage.LibGraalLoader} and
+     * {@linkplain ImageInfo#inImageBuildtimeCode libgraal is being built}.
      */
-    public static final LibGraalOptionsInfo libgraalOptions = OptionsParser.class.getClassLoader() instanceof LibGraalLoader ? LibGraalOptionsInfo.create() : null;
+    public static final LibGraalOptionsInfo libgraalOptions = inImageBuildtimeCode() &&
+                    OptionsParser.class.getClassLoader() instanceof LibGraalLoader ? LibGraalOptionsInfo.create() : null;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
@@ -79,10 +82,10 @@ public class OptionsParser {
             return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
         boolean inLibGraal = libgraalOptions != null;
-        if (inLibGraal && inImageBuildtimeCode()) {
+        if (inLibGraal) {
             /*
-             * Graal code is being run is loaded by a LibGraalLoader while building libgraal so use
-             * the loader to load the OptionDescriptors.
+             * Graal code being run is loaded by a LibGraalLoader while building libgraal so use the
+             * loader to load the OptionDescriptors.
              */
             ClassLoader myCL = OptionsParser.class.getClassLoader();
             return ServiceLoader.load(OptionDescriptors.class, myCL);

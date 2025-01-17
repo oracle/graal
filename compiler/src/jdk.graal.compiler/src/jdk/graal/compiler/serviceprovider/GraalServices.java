@@ -114,7 +114,7 @@ public final class GraalServices {
 
     static {
         ClassLoader cl = GraalServices.class.getClassLoader();
-        if (cl instanceof LibGraalLoader libgraalLoader) {
+        if (inImageBuildtimeCode() && cl instanceof LibGraalLoader libgraalLoader) {
             libgraalServices = new HashMap<>();
             Set<String> libgraalServicesModules = libgraalLoader.getServicesModules();
             Map<String, String> modules = libgraalLoader.getModuleMap();

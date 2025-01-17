@@ -597,6 +597,13 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "jdk.graal.compiler",
+        "requires" : [
+          # These dependencies are only required when building libgraal.
+          # Running jargraal works without them so make them optional
+          # (i.e., "static") dependencies.
+          "static jdk.graal.nativeimage",
+          "static org.graalvm.nativebridge"
+        ],
         "exports" : [
           """* to com.oracle.graal.graal_enterprise,
                   org.graalvm.nativeimage.pointsto,
