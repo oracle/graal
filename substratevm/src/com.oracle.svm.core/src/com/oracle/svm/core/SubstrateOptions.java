@@ -509,9 +509,8 @@ public class SubstrateOptions {
         return result;
     }
 
-    // TODO change to false
     @Option(help = "Provide debuginfo for runtime-compiled code.")//
-    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false);
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//

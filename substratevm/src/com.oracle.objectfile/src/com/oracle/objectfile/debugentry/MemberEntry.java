@@ -81,6 +81,12 @@ public abstract class MemberEntry {
         return fileEntry;
     }
 
+    /**
+     * Fetch the file index from its owner class entry with {@link ClassEntry#getFileIdx}. The file
+     * entry must only be fetched for members whose owner is a {@link ClassEntry}.
+     * 
+     * @return the file index of this members file in the owner class entry
+     */
     public int getFileIdx() {
         if (ownerType instanceof ClassEntry) {
             return ((ClassEntry) ownerType).getFileIdx(fileEntry);

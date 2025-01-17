@@ -61,10 +61,17 @@ public class MethodEntry extends MemberEntry {
         this.lastParamSlot = lastParamSlot;
 
         this.locals = new ConcurrentSkipListSet<>(Comparator.comparingInt(LocalEntry::slot).thenComparing(LocalEntry::name).thenComparing(le -> le.type().getTypeName()));
-        // sort by line and add all locals, such that the methods locals only contain the lowest
-        // line number
-        locals.stream().sorted(Comparator.comparingInt(LocalEntry::line)).forEach(this.locals::add);
+        /*
+         * Sort by line and add all locals, such that the methods locals only contain the lowest
+         * line number.
+         */
+        locals.stream().sorted(Comparator.comparingInt(LocalEntry::getLine)).forEach(this.locals::add);
 
+        /*
+         * Flags to identify compiled methods. We set inRange if there is a compilation for this
+         * method and inlined if it is encountered as a CallNode when traversing the compilation
+         * result frame tree.
+         */
         this.isInRange = false;
         this.isInlined = false;
     }
@@ -92,6 +99,24 @@ public class MethodEntry extends MemberEntry {
         return thisParam;
     }
 
+    /**
+     * Returns the local entry for a given name slot and type entry. Decides with the slot number
+     * whether this is a parameter or local variable.
+     *
+     * <p>
+     * Local variable might not be contained in this method entry. Creates a new local entry in
+     * {@link #locals} with the given parameters.
+     * <p>
+     * For locals, we also make sure that the line information is the lowest line encountered in
+     * local variable lookups. If a new lower line number is encountered for an existing local
+     * entry, we update the line number in the local entry.
+     * 
+     * @param name the given name
+     * @param slot the given slot
+     * @param type the given {@code TypeEntry}
+     * @param line the given line
+     * @return the local entry stored in {@link #locals}
+     */
     public LocalEntry lookupLocalEntry(String name, int slot, TypeEntry type, int line) {
         if (slot < 0) {
             return null;
@@ -115,12 +140,18 @@ public class MethodEntry extends MemberEntry {
              * contained, we might update the line number to the lowest occurring line number.
              */
             LocalEntry local = new LocalEntry(name, type, slot, line);
-            if (!locals.contains(local) || locals.removeIf(le -> le.slot() == slot && le.name().equals(name) && le.type().equals(type) && le.line() > line)) {
-                locals.add(local);
-                return local;
-            } else {
-                return locals.headSet(local, true).last();
+            if (!locals.add(local)) {
+                /*
+                 * Fetch local from locals list. This iterates over all locals to create the head
+                 * set and then takes the last value.
+                 */
+                local = locals.headSet(local, true).last();
+                // Update line number if a lower one was encountered.
+                if (local.getLine() > line) {
+                    local.setLine(line);
+                }
             }
+            return local;
         }
 
         /*
