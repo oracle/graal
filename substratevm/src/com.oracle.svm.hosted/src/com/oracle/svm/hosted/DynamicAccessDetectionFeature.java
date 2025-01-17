@@ -38,6 +38,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Locale;
@@ -89,6 +91,8 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
             return callLocationsByMethod.getOrDefault(methodName, new ArrayList<>());
         }
     };
+
+    private static final String OUTPUT_DIR_NAME = "dynamic-calls";
 
     private final Set<String> pathEntries; // Class or module path entries
     private final Map<String, MethodsByType> callsByPathEntry;
@@ -146,28 +150,39 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
         }
     }
 
+    public static Path getOrCreateDirectory(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            Files.createDirectory(directory);
+        } else if (!Files.isDirectory(directory)) {
+            throw new NoSuchFileException(directory.toString());
+        }
+        return directory;
+    }
+
     private void dumpReportForEntry(String entry) {
-        String fileName = getEntryName(entry) + "_method_calls.json";
-        Path targetPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(fileName);
-        try (var writer = new JsonPrettyWriter(targetPath)) {
-            try (JsonBuilder.ObjectBuilder dynamicAccessBuilder = writer.objectBuilder()) {
-                MethodsByType methodsByType = getMethodsByType(entry);
-                for (String methodType : methodsByType.getMethodTypes()) {
-                    try (JsonBuilder.ObjectBuilder methodsByTypeBuilder = dynamicAccessBuilder.append(methodType).object()) {
-                        for (String methodName : methodsByType.getCallLocationsByMethod(methodType).getMethods()) {
-                            try (JsonBuilder.ArrayBuilder methodCallLocationBuilder = methodsByTypeBuilder.append(methodName).array()) {
-                                for (String methodLocation : methodsByType.getCallLocationsByMethod(methodType).getMethodCallLocations(methodName)) {
-                                    methodCallLocationBuilder.append(methodLocation);
+        try {
+            Path outputDirectory = getOrCreateDirectory(NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(OUTPUT_DIR_NAME));
+            String fileName = getEntryName(entry) + ".json";
+            Path targetPath = outputDirectory.resolve(fileName);
+            try (var writer = new JsonPrettyWriter(targetPath)) {
+                try (JsonBuilder.ObjectBuilder dynamicAccessBuilder = writer.objectBuilder()) {
+                    MethodsByType methodsByType = getMethodsByType(entry);
+                    for (String methodType : methodsByType.getMethodTypes()) {
+                        try (JsonBuilder.ObjectBuilder methodsByTypeBuilder = dynamicAccessBuilder.append(methodType).object()) {
+                            for (String methodName : methodsByType.getCallLocationsByMethod(methodType).getMethods()) {
+                                try (JsonBuilder.ArrayBuilder methodCallLocationBuilder = methodsByTypeBuilder.append(methodName).array()) {
+                                    for (String methodLocation : methodsByType.getCallLocationsByMethod(methodType).getMethodCallLocations(methodName)) {
+                                        methodCallLocationBuilder.append(methodLocation);
+                                    }
                                 }
                             }
                         }
                     }
                 }
+                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, targetPath);
             }
-
-            BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, targetPath);
         } catch (IOException e) {
-            System.out.println("Failed to print JSON to " + targetPath + ":");
+            System.out.println("Failed to dump report for entry " + entry + ":");
             e.printStackTrace(System.out);
         }
     }
