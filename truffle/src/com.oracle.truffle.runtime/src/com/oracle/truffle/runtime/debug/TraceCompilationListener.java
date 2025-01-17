@@ -78,14 +78,14 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
 
     public static final String TIER_FORMAT = "Tier %d";
     private static final String QUEUE_FORMAT = "Queue: Size %4d Change %c%-2d Load %5.2f Time %5dus                    ";
-    private static final String TARGET_FORMAT = "engine=%-2d id=%-5d %-50s ";
+    private static final String TARGET_FORMAT = "engine=%-2d TargetId=%-5d %-50s ";
     public static final String COUNT_THRESHOLD_FORMAT = "Count/Thres  %9d/%9d";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS").withZone(ZoneId.of("UTC"));
     // @formatter:off
     private static final String QUEUED_FORMAT   = "opt queued " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|UTC %s|Src %s";
     private static final String UNQUEUED_FORMAT = "opt unque. " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|UTC %s|Src %s|Reason %s";
     private static final String START_FORMAT    = "opt start  " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Priority %9d|Rate %.6f|"         + QUEUE_FORMAT + "|UTC %s|Src %s";
-    private static final String DONE_FORMAT     = "opt done   " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|AST %4d|Inlined %3dY %3dN|IR %6d/%6d|CodeSize %7d|Addr 0x%012x|UTC %s|Src %s";
+    private static final String DONE_FORMAT     = "opt done   " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|AST %4d|Inlined %3dY %3dN|IR %6d/%6d|CompilationId %s|CodeSize %7d|Addr 0x%012x|UTC %s|Src %s";
     private static final String FAILED_FORMAT   = "opt failed " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|Reason: %s|UTC %s|Src %s";
     private static final String INV_FORMAT      = "opt inval. " + TARGET_FORMAT + "                                                                                                                |UTC %s|Src %s|Reason %s";
     private static final String DEOPT_FORMAT    = "opt deopt  " + TARGET_FORMAT + "|                                                                                                               |UTC %s|Src %s";
@@ -243,6 +243,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         inlinedAndDispatched[1],
                         compilation.nodeCountPartialEval,
                         graph == null ? 0 : graph.getNodeCount(),
+                        result == null ? 0 : result.getCompilationId(),
                         result == null ? 0 : result.getTargetCodeSize(),
                         target.getCodeAddress(),
                         TIME_FORMATTER.format(ZonedDateTime.now()),

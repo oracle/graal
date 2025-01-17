@@ -87,4 +87,8 @@ final class LibGraalCompilationResultInfo extends LibGraalScopedHandle implement
     public int getDataPatchesCount() {
         return TruffleToLibGraalCalls.getDataPatchesCount(getIsolateThread(), getHandle());
     }
+
+    public String getCompilationId() {
+        return "LibGraal";
+    }
 }
