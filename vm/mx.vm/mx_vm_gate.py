@@ -652,6 +652,7 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
         options = mx.get_runtime_jvm_args(dists, exclude_names=['substratevm:SVM']) + [
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
         ] + mx_sdk_vm_impl.svm_experimental_options([
+            '-H:TruffleTCKUnusedAllowListEntriesAction=Warn', # GR-61487: Clean JavaScript allow list
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-H:-FoldSecurityManagerGetter',
