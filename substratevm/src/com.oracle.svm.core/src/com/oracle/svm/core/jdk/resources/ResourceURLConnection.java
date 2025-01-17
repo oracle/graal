@@ -74,7 +74,7 @@ public final class ResourceURLConnection extends URLConnection {
         String resourceName = urlPath.substring(1);
 
         Module module = hostNameOrNull != null ? ModuleLayer.boot().findModule(hostNameOrNull).orElse(null) : null;
-        Object entry = Resources.singleton().getAtRuntime(module, resourceName, true);
+        Object entry = Resources.getAtRuntime(module, resourceName, true);
         if (entry != null) {
             ResourceStorageEntry resourceStorageEntry = (ResourceStorageEntry) entry;
             List<byte[]> bytes = resourceStorageEntry.getData();
@@ -174,7 +174,7 @@ public final class ResourceURLConnection extends URLConnection {
                     properties.add(CONTENT_LENGTH, String.valueOf(data.length));
                 }
 
-                long lastModified = Resources.singleton().getLastModifiedTime();
+                long lastModified = Resources.getLastModifiedTime();
                 Date date = new Date(lastModified);
                 SimpleDateFormat fo = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.US);
                 fo.setTimeZone(TimeZone.getTimeZone("GMT"));
