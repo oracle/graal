@@ -31,6 +31,7 @@ import java.lang.constant.DirectMethodHandleDesc;
 import java.lang.constant.DirectMethodHandleDesc.Kind;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.foreign.MemoryLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -41,6 +42,7 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -81,9 +83,11 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -222,12 +226,6 @@ public class ForeignFunctionsFeature implements InternalFeature {
             return false;
         }
         UserError.guarantee(JavaVersionUtil.JAVA_SPEC >= 22, "Support for the Foreign Function and Memory API is available only with JDK 22 and later.");
-        boolean isLinuxAmd64 = OS.LINUX.isCurrent() && SubstrateUtil.getArchitectureName().contains("amd64");
-        boolean isWindowsAmd64 = OS.WINDOWS.isCurrent() && SubstrateUtil.getArchitectureName().contains("amd64");
-        boolean isDarwinAArch64 = OS.DARWIN.isCurrent() && SubstrateUtil.getArchitectureName().contains("aarch64");
-        boolean isLinuxAArch64 = OS.LINUX.isCurrent() && SubstrateUtil.getArchitectureName().contains("aarch64");
-        UserError.guarantee(isLinuxAmd64 || isWindowsAmd64 || isDarwinAArch64 || isLinuxAArch64,
-                        "Support for the Foreign Function and Memory API is currently available on Linux AMD64, Windows AMD64, Darwin AArch64 or Linux AArch64.");
         UserError.guarantee(!SubstrateOptions.useLLVMBackend(), "Support for the Foreign Function and Memory API is not available with the LLVM backend.");
         return true;
     }
@@ -240,9 +238,21 @@ public class ForeignFunctionsFeature implements InternalFeature {
         ImageSingletons.add(RuntimeForeignAccessSupport.class, accessSupport);
         ImageSingletons.add(LinkToNativeSupport.class, new LinkToNativeSupportImpl());
 
-        ConfigurationParser parser = new ForeignFunctionsConfigurationParser(access.getImageClassLoader(), accessSupport);
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
+        ImageClassLoader imageClassLoader = access.getImageClassLoader();
+        ConfigurationParserUtils.parseAndRegisterConfigurations(getConfigurationParser(imageClassLoader), imageClassLoader, "panama foreign",
                         ConfigurationFiles.Options.ForeignConfigurationFiles, ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName());
+    }
+
+    private ConfigurationParser getConfigurationParser(ImageClassLoader imageClassLoader) {
+        /*
+         * If foreign function calls are not supported on this platform, we still want to parse the
+         * configuration files such that their syntax is validated. In this case,
+         * 'AbiUtils.singleton()' would return the 'Unsupported' ABI and calling method
+         * 'canonicalLayouts' would cause an exception. However, since the layouts won't be
+         * consumed, it doesn't matter much which ones we use and so we just use the hosted ones.
+         */
+        Map<String, MemoryLayout> canonicalLayouts = ForeignFunctionsRuntime.areFunctionCallsSupported() ? AbiUtils.singleton().canonicalLayouts() : Linker.nativeLinker().canonicalLayouts();
+        return new ForeignFunctionsConfigurationParser(imageClassLoader, accessSupport, canonicalLayouts);
     }
 
     private interface StubFactory<S, T, U extends ResolvedJavaMethod> {
@@ -457,6 +467,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
         RuntimeReflection.register(subtype.getDeclaredMethods());
     }
 
+    private static String platform() {
+        return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase(Locale.ROOT);
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
@@ -490,8 +504,21 @@ public class ForeignFunctionsFeature implements InternalFeature {
         access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
                         "Runtime support, registered in " + ForeignFunctionsFeature.class);
 
-        createDowncallStubs(access);
-        createUpcallStubs(access);
+        if (ForeignFunctionsRuntime.areFunctionCallsSupported()) {
+            createDowncallStubs(access);
+            createUpcallStubs(access);
+        } else {
+            if (!registeredDowncalls.isEmpty() || !registeredUpcalls.isEmpty() || !registeredDirectUpcalls.isEmpty()) {
+                registeredDowncalls.clear();
+                registeredUpcalls.clear();
+                registeredDirectUpcalls.clear();
+
+                LogUtils.warning("Registered down- and upcall stubs will be ignored because calling foreign functions is currently not supported on platform: %s", platform());
+            }
+            downcallCount = 0;
+            upcallCount = 0;
+            directUpcallCount = 0;
+        }
         ProgressReporter.singleton().setForeignFunctionsInfo(getCreatedDowncallStubsCount(), getCreatedUpcallStubsCount());
     }
 
