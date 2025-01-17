@@ -23,10 +23,11 @@
 
 package com.oracle.truffle.espresso.shared.meta;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.shared.resolver.LinkResolver;
 
 /**
@@ -43,9 +44,42 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
     String getJavaName();
 
     /**
+     * Returns the symbolic reference of this class.
+     */
+    Symbol<Type> getSymbolicType();
+
+    /**
+     * Returns whether this class and the other class share the same defining class loader.
+     */
+    boolean hasSameDefiningClassLoader(C other);
+
+    /**
+     * Finds the least common ancestor between this class and the other class.
+     */
+    C findLeastCommonAncestor(C other);
+
+    /**
      * Returns the superclass of this class, or {@code null} if this class is {@link Object}.
      */
     C getSuperClass();
+
+    /**
+     * Returns the host class of this VM-anonymous class, or {@code null} if this class is not a
+     * VM-anonymous class.
+     *
+     * @apiNote A VM-anonymous class is a class defined through
+     *          {@code Unsafe.defineAnonymousClass()} and is unrelated to the
+     *          {@link Class#isAnonymousClass() Java concept of anonymous classes}.
+     * @implNote The concept of VM-anonymous classes was removed from Java 17 onwards, and this
+     *           method should therefore always return {@code null} for implementations of Java 17
+     *           or later.
+     */
+    C getHostType();
+
+    /**
+     * Returns the name of the runtime package in which this class is defined.
+     */
+    Symbol<Name> getSymbolicRuntimePackage();
 
     /**
      * Performs field lookup on this class for the given field name and field type, according to
@@ -145,4 +179,25 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
     default boolean isJavaLangObject() {
         return getSuperClass() == null;
     }
+
+    /**
+     * Whether this class extends the "magic accessor".
+     */
+    boolean isMagicAccessor();
+
+    /**
+     * The {@link ConstantPool} associated with this class.
+     */
+    ConstantPool getConstantPool();
+
+    /**
+     * Resolves a class in the runtime constant pool of this type, then returns it. Further calls to
+     * this method with the same cpi should not trigger class loading.
+     *
+     * @param cpi The constant pool index in which to find the class constant
+     * @throws IllegalArgumentException If there is no
+     *             {@link com.oracle.truffle.espresso.classfile.constantpool.ClassConstant} in the
+     *             constant pool at index {@code cpi}.
+     */
+    C resolveClassConstantInPool(int cpi);
 }

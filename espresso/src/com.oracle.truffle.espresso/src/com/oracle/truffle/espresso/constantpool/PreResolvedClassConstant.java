@@ -25,11 +25,8 @@ package com.oracle.truffle.espresso.constantpool;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 
 /**
@@ -48,11 +45,6 @@ public final class PreResolvedClassConstant implements ClassConstant, Resolvable
 
     public Klass getResolved() {
         return resolved;
-    }
-
-    @Override
-    public Symbol<Name> getName(ConstantPool pool) {
-        return resolved.getName();
     }
 
     @Override

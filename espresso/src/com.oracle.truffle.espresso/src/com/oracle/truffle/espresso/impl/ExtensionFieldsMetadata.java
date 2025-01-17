@@ -31,8 +31,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ParserField;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 
 final class ExtensionFieldsMetadata {
@@ -84,7 +84,7 @@ final class ExtensionFieldsMetadata {
             LinkedField linkedField = new LinkedField(newField, nextFieldSlot, mode);
             Field field;
             if (holder.getSuperKlass() == holder.getKlass().getMeta().java_lang_Enum &&
-                            newField.getName() != Symbol.Name.$VALUES && newField.getName() != Symbol.Name.ENUM$VALUES) {
+                            newField.getName() != Names.$VALUES && newField.getName() != Names.ENUM$VALUES) {
                 field = new RedefineAddedEnumField(holder, linkedField, pool);
             } else {
                 field = new RedefineAddedField(holder, linkedField, pool, false);

@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -67,10 +66,5 @@ public final class ResolvedIntDynamicConstant implements ResolvedDynamicConstant
                 throw EspressoError.shouldNotReachHere(kind.toString());
         };
         return Meta.box(meta, value);
-    }
-
-    @Override
-    public String toString(ConstantPool pool) {
-        return "ResolvedDynamicConstant(" + resolved + ")";
     }
 }

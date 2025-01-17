@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
@@ -73,7 +74,7 @@ public final class EnumRedefinitionPlugin extends InternalRedefinitionPlugin {
                             MethodVariable nameVar = variables[1];
                             String enumName = objectKlass.getMeta().toHostString((StaticObject) nameVar.getValue());
 
-                            Symbol<Symbol.Name> name = objectKlass.getContext().getNames().getOrCreate(enumName);
+                            Symbol<Name> name = objectKlass.getContext().getNames().getOrCreate(enumName);
                             Field field = objectKlass.lookupField(name, objectKlass.getType());
                             StaticObject existingEnumConstant = field.getObject(objectKlass.getStatics());
                             if (StaticObject.notNull(existingEnumConstant)) {

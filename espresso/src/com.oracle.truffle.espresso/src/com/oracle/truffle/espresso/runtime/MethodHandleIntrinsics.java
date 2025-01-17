@@ -26,11 +26,13 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -102,27 +104,26 @@ public final class MethodHandleIntrinsics {
     }
 
     public static PolySigIntrinsics getId(Symbol<Name> name, Klass declaringKlass) {
-        if (!(Type.java_lang_invoke_MethodHandle.equals(declaringKlass.getType()) ||
-                        Type.java_lang_invoke_VarHandle.equals(declaringKlass.getType()))) {
+        if (!Meta.isSignaturePolymorphicHolderType(declaringKlass.getType())) {
             return PolySigIntrinsics.None;
         }
-        if (Type.java_lang_invoke_MethodHandle.equals(declaringKlass.getType())) {
-            if (name == Name.linkToStatic) {
+        if (Types.java_lang_invoke_MethodHandle.equals(declaringKlass.getType())) {
+            if (name == Names.linkToStatic) {
                 return PolySigIntrinsics.LinkToStatic;
             }
-            if (name == Name.linkToVirtual) {
+            if (name == Names.linkToVirtual) {
                 return PolySigIntrinsics.LinkToVirtual;
             }
-            if (name == Name.linkToSpecial) {
+            if (name == Names.linkToSpecial) {
                 return PolySigIntrinsics.LinkToSpecial;
             }
-            if (name == Name.linkToInterface) {
+            if (name == Names.linkToInterface) {
                 return PolySigIntrinsics.LinkToInterface;
             }
-            if (name == Name.linkToNative) {
+            if (name == Names.linkToNative) {
                 return PolySigIntrinsics.LinkToNative;
             }
-            if (name == Name.invokeBasic) {
+            if (name == Names.invokeBasic) {
                 return PolySigIntrinsics.InvokeBasic;
             }
         }
@@ -189,7 +190,7 @@ public final class MethodHandleIntrinsics {
 
         @Override
         public String toString() {
-            return Types.binaryName(clazz) + "#" + methodName + signature;
+            return TypeSymbols.binaryName(clazz) + "#" + methodName + signature;
         }
 
     }

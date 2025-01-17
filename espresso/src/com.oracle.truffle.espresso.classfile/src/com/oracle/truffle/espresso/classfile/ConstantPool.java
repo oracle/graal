@@ -40,22 +40,20 @@ import java.util.Formatter;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FloatConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.IntegerConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.InterfaceMethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.LongConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.ModifiedUTF8;
 
 /**
  * Immutable, shareable constant-pool representation.
@@ -115,7 +113,7 @@ public abstract class ConstantPool {
             this.loadable = isLoadable;
         }
 
-        public final int getValue() {
+        public final byte getValue() {
             return value;
         }
 
@@ -124,28 +122,26 @@ public abstract class ConstantPool {
         }
 
         public static Tag fromValue(int value) {
-            // @formatter:off
-            switch (value) {
-                case 1: return UTF8;
-                case 3: return INTEGER;
-                case 4: return FLOAT;
-                case 5: return LONG;
-                case 6: return DOUBLE;
-                case 7: return CLASS;
-                case 8: return STRING;
-                case 9: return FIELD_REF;
-                case 10: return METHOD_REF;
-                case 11: return INTERFACE_METHOD_REF;
-                case 12: return NAME_AND_TYPE;
-                case 15: return METHODHANDLE;
-                case 16: return METHODTYPE;
-                case 17: return DYNAMIC;
-                case 18: return INVOKEDYNAMIC;
-                case 19: return MODULE;
-                case 20: return PACKAGE;
-                default: return null;
-            }
-            // @formatter:on
+            return switch (value) {
+                case 1 -> UTF8;
+                case 3 -> INTEGER;
+                case 4 -> FLOAT;
+                case 5 -> LONG;
+                case 6 -> DOUBLE;
+                case 7 -> CLASS;
+                case 8 -> STRING;
+                case 9 -> FIELD_REF;
+                case 10 -> METHOD_REF;
+                case 11 -> INTERFACE_METHOD_REF;
+                case 12 -> NAME_AND_TYPE;
+                case 15 -> METHODHANDLE;
+                case 16 -> METHODTYPE;
+                case 17 -> DYNAMIC;
+                case 18 -> INVOKEDYNAMIC;
+                case 19 -> MODULE;
+                case 20 -> PACKAGE;
+                default -> null;
+            };
         }
 
         public boolean isValidForVersion(int major) {
@@ -165,9 +161,9 @@ public abstract class ConstantPool {
 
     public abstract int length();
 
-    public abstract PoolConstant at(int index, String description);
+    public abstract ImmutablePoolConstant at(int index, String description);
 
-    public final PoolConstant at(int index) {
+    public final ImmutablePoolConstant at(int index) {
         return at(index, null);
     }
 
@@ -247,11 +243,11 @@ public abstract class ConstantPool {
         }
     }
 
-    public final <T> Symbol<T> symbolAt(int index) {
-        return symbolAt(index, null);
+    public final <T> Symbol<T> symbolAtUnsafe(int index) {
+        return symbolAtUnsafe(index, null);
     }
 
-    public final <T> Symbol<T> symbolAt(int index, String description) {
+    public final <T> Symbol<T> symbolAtUnsafe(int index, String description) {
         try {
             final Utf8Constant constant = (Utf8Constant) at(index);
             return constant.unsafeSymbolValue();
@@ -278,7 +274,7 @@ public abstract class ConstantPool {
 
     public final Symbol<ModifiedUTF8> stringAt(int index, String description) {
         try {
-            final StringConstant constant = (StringConstant) at(index);
+            StringConstant.Index constant = (StringConstant.Index) at(index);
             return constant.getSymbol(this);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, description, STRING);
@@ -299,73 +295,49 @@ public abstract class ConstantPool {
         }
     }
 
-    public final ClassConstant classAt(int index) {
+    public final ClassConstant.ImmutableClassConstant classAt(int index) {
         return classAt(index, null);
     }
 
-    public final ClassConstant classAt(int index, String description) {
+    public final ClassConstant.ImmutableClassConstant classAt(int index, String description) {
         try {
-            return (ClassConstant) at(index);
+            return (ClassConstant.ImmutableClassConstant) at(index);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, description, CLASS);
         }
     }
 
-    public final MemberRefConstant memberAt(int index) {
+    public final MemberRefConstant.Indexes memberAt(int index) {
         return memberAt(index, null);
     }
 
-    public final MemberRefConstant memberAt(int index, String description) {
+    public final MemberRefConstant.Indexes memberAt(int index, String description) {
         try {
-            return (MemberRefConstant) at(index);
+            return (MemberRefConstant.Indexes) at(index);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, description, METHOD_REF, INTERFACE_METHOD_REF, FIELD_REF);
         }
     }
 
-    public final MethodRefConstant methodAt(int index) {
+    public final MethodRefConstant.Indexes methodAt(int index) {
         try {
-            return (MethodRefConstant) at(index);
+            return (MethodRefConstant.Indexes) at(index);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, null, METHOD_REF, INTERFACE_METHOD_REF);
         }
     }
 
-    public final ClassMethodRefConstant classMethodAt(int index) {
+    public final FieldRefConstant.Indexes fieldAt(int index) {
         try {
-            return (ClassMethodRefConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, METHOD_REF);
-        }
-    }
-
-    public final InterfaceMethodRefConstant interfaceMethodAt(int index) {
-        try {
-            return (InterfaceMethodRefConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, INTERFACE_METHOD_REF);
-        }
-    }
-
-    public final FieldRefConstant fieldAt(int index) {
-        try {
-            return (FieldRefConstant) at(index);
+            return (FieldRefConstant.Indexes) at(index);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, null, FIELD_REF);
         }
     }
 
-    public final StringConstant stringConstantAt(int index) {
+    public final InvokeDynamicConstant.Indexes indyAt(int index) {
         try {
-            return (StringConstant) at(index);
-        } catch (ClassCastException e) {
-            throw unexpectedEntry(index, null, STRING);
-        }
-    }
-
-    public final InvokeDynamicConstant indyAt(int index) {
-        try {
-            return (InvokeDynamicConstant) at(index);
+            return (InvokeDynamicConstant.Indexes) at(index);
         } catch (ClassCastException e) {
             throw unexpectedEntry(index, null, INVOKEDYNAMIC);
         }
@@ -377,7 +349,7 @@ public abstract class ConstantPool {
     public String toString() {
         Formatter buf = new Formatter();
         for (int i = 0; i < length(); i++) {
-            PoolConstant c = at(i);
+            ImmutablePoolConstant c = at(i);
             buf.format("#%d = %-15s // %s%n", i, c.tag(), c.toString(this));
         }
         return buf.toString();

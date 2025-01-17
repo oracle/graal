@@ -29,7 +29,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -121,14 +122,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_TypeLiteral {
         }
 
         private static Klass rawType(StaticObject type) {
-            Method method = type.getKlass().lookupDeclaredMethod(Symbol.Name.getRawType, Symbol.Signature.Class, Klass.LookupMode.INSTANCE_ONLY);
+            Method method = type.getKlass().lookupDeclaredMethod(Names.getRawType, Signatures.Class, Klass.LookupMode.INSTANCE_ONLY);
             assert method != null;
             StaticObject rawGuestClass = (StaticObject) method.invokeDirectVirtual(type);
             return rawGuestClass.getMirrorKlass();
         }
 
         private EspressoType[] typeArguments(StaticObject type, EspressoContext context) {
-            Method method = type.getKlass().lookupDeclaredMethod(Symbol.Name.getActualTypeArguments, Symbol.Signature.Type_array, Klass.LookupMode.INSTANCE_ONLY);
+            Method method = type.getKlass().lookupDeclaredMethod(Names.getActualTypeArguments, Signatures.Type_array, Klass.LookupMode.INSTANCE_ONLY);
             assert method != null;
             StaticObject typesArray = (StaticObject) method.invokeDirectVirtual(type);
             StaticObject[] types = typesArray.unwrap(context.getLanguage());

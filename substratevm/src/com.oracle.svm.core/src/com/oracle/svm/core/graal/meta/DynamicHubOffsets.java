@@ -75,54 +75,20 @@ public class DynamicHubOffsets {
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
     private int flagsOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int additionalFlagsOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int modifiersOffset;
 
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int superHubOffset;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
     private int componentTypeOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int arrayHubOffset;
-
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int declaringClassOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int interfacesEncodingOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int enumConstantsReferenceOffset;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
     private int referenceMapIndexOffset;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
     private int layerIdOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int metaTypeOffset;
 
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int sourceFileNameOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int classInitializationInfoOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int moduleOffset;
-
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int nestHostOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int simpleBinaryNameOffset;
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
     private int companionOffset;
 
     @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
     private int signatureOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int classRedefinedCountOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int hubMetadataOffset;
-    @UnknownPrimitiveField(availability = BuildPhaseProvider.ReadyForCompilation.class) //
-    private int reflectionMetadataOffset;
 
     @Fold
     public static DynamicHubOffsets singleton() {
@@ -205,36 +171,8 @@ public class DynamicHubOffsets {
         return flagsOffset;
     }
 
-    public int getAdditionalFlagsOffset() {
-        return additionalFlagsOffset;
-    }
-
-    public int getModifiersOffset() {
-        return modifiersOffset;
-    }
-
-    public int getSuperHubOffset() {
-        return superHubOffset;
-    }
-
     public int getComponentTypeOffset() {
         return componentTypeOffset;
-    }
-
-    public int getArrayHubOffset() {
-        return arrayHubOffset;
-    }
-
-    public int getDeclaringClassOffset() {
-        return declaringClassOffset;
-    }
-
-    public int getInterfacesEncodingOffset() {
-        return interfacesEncodingOffset;
-    }
-
-    public int getEnumConstantsReferenceOffset() {
-        return enumConstantsReferenceOffset;
     }
 
     public int getReferenceMapIndexOffset() {
@@ -245,48 +183,12 @@ public class DynamicHubOffsets {
         return layerIdOffset;
     }
 
-    public int getMetaTypeOffset() {
-        return metaTypeOffset;
-    }
-
-    public int getSourceFileNameOffset() {
-        return sourceFileNameOffset;
-    }
-
-    public int getClassInitializationInfoOffset() {
-        return classInitializationInfoOffset;
-    }
-
-    public int getModuleOffset() {
-        return moduleOffset;
-    }
-
-    public int getNestHostOffset() {
-        return nestHostOffset;
-    }
-
-    public int getSimpleBinaryNameOffset() {
-        return simpleBinaryNameOffset;
-    }
-
     public int getCompanionOffset() {
         return companionOffset;
     }
 
     public int getSignatureOffset() {
         return signatureOffset;
-    }
-
-    public int getClassRedefinedCountOffset() {
-        return classRedefinedCountOffset;
-    }
-
-    public int getHubMetadataOffset() {
-        return hubMetadataOffset;
-    }
-
-    public int getReflectionMetadataOffset() {
-        return reflectionMetadataOffset;
     }
 
     public static void writeObject(DynamicHub hub, int offset, Object value) {

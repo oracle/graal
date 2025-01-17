@@ -72,6 +72,7 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         initializeAtRunTime(a, "sun.nio.ch.Net", "sun.nio.ch.SocketOptionRegistry$LazyInitialization");
         initializeAtRunTime(a, "sun.nio.ch.AsynchronousSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.AsynchronousServerSocketChannelImpl$DefaultOptionsHolder",
                         "sun.nio.ch.DatagramChannelImpl$DefaultOptionsHolder", "sun.nio.ch.ServerSocketChannelImpl$DefaultOptionsHolder", "sun.nio.ch.SocketChannelImpl$DefaultOptionsHolder");
+        initializeAtRunTime(a, "sun.nio.ch.NioSocketImpl");
         /* Ensure that the interrupt signal handler is initialized at runtime. */
         initializeAtRunTime(a, "sun.nio.ch.NativeThread");
         initializeAtRunTime(a, "sun.nio.ch.FileDispatcherImpl", "sun.nio.ch.FileChannelImpl$Unmapper");

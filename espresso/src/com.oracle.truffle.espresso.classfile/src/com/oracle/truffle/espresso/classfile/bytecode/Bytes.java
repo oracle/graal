@@ -93,6 +93,13 @@ public final class Bytes {
         return (data[bci] << 24) | ((data[bci + 1] & 0xff) << 16) | ((data[bci + 2] & 0xff) << 8) | (data[bci + 3] & 0xff);
     }
 
+    public static void beS4(byte[] data, int bci, int value) {
+        data[bci] = (byte) ((value >> 24) & 0xff);
+        data[bci + 1] = (byte) ((value >> 16) & 0xff);
+        data[bci + 2] = (byte) ((value >> 8) & 0xff);
+        data[bci + 3] = (byte) (value & 0xff);
+    }
+
     /**
      * Gets either a signed 2-byte or a signed 4-byte big-endian value.
      *

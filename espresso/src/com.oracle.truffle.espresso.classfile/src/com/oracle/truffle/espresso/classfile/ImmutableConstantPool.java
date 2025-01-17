@@ -29,6 +29,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -42,11 +43,11 @@ public final class ImmutableConstantPool extends ConstantPool {
     private final int minorVersion;
 
     @CompilationFinal(dimensions = 1) //
-    private final PoolConstant[] constants;
+    private final ImmutablePoolConstant[] constants;
 
     private final int totalPoolBytes;
 
-    ImmutableConstantPool(PoolConstant[] constants, int majorVersion, int minorVersion, int totalPoolBytes) {
+    ImmutableConstantPool(ImmutablePoolConstant[] constants, int majorVersion, int minorVersion, int totalPoolBytes) {
         this.constants = Objects.requireNonNull(constants);
         this.majorVersion = majorVersion;
         this.minorVersion = minorVersion;
@@ -80,7 +81,7 @@ public final class ImmutableConstantPool extends ConstantPool {
     }
 
     @Override
-    public PoolConstant at(int index, String description) {
+    public ImmutablePoolConstant at(int index, String description) {
         try {
             return constants[index];
         } catch (IndexOutOfBoundsException exception) {
@@ -98,11 +99,11 @@ public final class ImmutableConstantPool extends ConstantPool {
         return minorVersion;
     }
 
-    ImmutableConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
+    public ImmutableConstantPool patchForHiddenClass(int thisKlassIndex, Symbol<?> newName) {
         int newNamePos = constants.length;
         Utf8Constant newNameConstant = new Utf8Constant(newName);
 
-        PoolConstant[] newEntries = Arrays.copyOf(constants, constants.length + 1);
+        ImmutablePoolConstant[] newEntries = Arrays.copyOf(constants, constants.length + 1);
         newEntries[newNamePos] = newNameConstant;
         newEntries[thisKlassIndex] = ClassConstant.create(newNamePos);
         // This will get resolved in the ObjectKlass constructor

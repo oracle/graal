@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
@@ -87,7 +88,12 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     private static StaticObject getEspressoExtensionPaths(EspressoContext context) {
         ArrayList<StaticObject> extensionPaths = new ArrayList<>(2);
         for (ModuleExtension me : ModuleExtension.getAllExtensions(context)) {
-            extensionPaths.add(getEspressoModulePath(context, me.jarName()));
+            Path jar = context.getEspressoLibs().resolve(me.jarName());
+            if (Files.notExists(jar)) {
+                context.getLogger().warning("Missing jar for extension module" + me.moduleName() + ": " + jar);
+                continue;
+            }
+            extensionPaths.add(getEspressoModulePath(context, jar));
         }
         if (extensionPaths.isEmpty()) {
             return StaticObject.NULL;
@@ -109,8 +115,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     }
 
     @TruffleBoundary
-    private static StaticObject getEspressoModulePath(EspressoContext context, String jarName) {
-        Path jar = context.getEspressoLibs().resolve(jarName);
+    private static StaticObject getEspressoModulePath(EspressoContext context, Path jar) {
         Meta meta = context.getMeta();
         // Paths.get(guestPath);
         StaticObject guestPath = meta.toGuestString(jar.toFile().getAbsolutePath());

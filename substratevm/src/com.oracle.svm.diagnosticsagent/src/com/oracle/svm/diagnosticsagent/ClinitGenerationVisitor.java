@@ -25,11 +25,10 @@
 package com.oracle.svm.diagnosticsagent;
 
 import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
-
-import jdk.internal.org.objectweb.asm.ClassVisitor;
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassWriter;
+import com.oracle.svm.shaded.org.objectweb.asm.MethodVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
 
 public class ClinitGenerationVisitor extends ClassVisitor {
     private boolean hasClinit = false;

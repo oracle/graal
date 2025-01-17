@@ -280,6 +280,11 @@ public final class BytecodeStream {
         return Bytes.beS4(code, curBCI + 1);
     }
 
+    public void writeCPI4(int curBCI, int value) {
+        assert opcode(curBCI) == Bytecodes.INVOKEDYNAMIC;
+        Bytes.beS4(code, curBCI + 1, value);
+    }
+
     /**
      * Reads a signed, 1-byte value for the current instruction (e.g. BIPUSH).
      *

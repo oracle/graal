@@ -27,9 +27,9 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
-import com.oracle.truffle.espresso.classfile.descriptors.Names;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -56,19 +56,19 @@ public abstract class EspressoNode extends Node implements ContextAccess {
 
     @Override
     @Idempotent
-    public final Names getNames() {
+    public final NameSymbols getNames() {
         return getLanguage().getNames();
     }
 
     @Override
     @Idempotent
-    public final Types getTypes() {
+    public final TypeSymbols getTypes() {
         return getLanguage().getTypes();
     }
 
     @Override
     @Idempotent
-    public final Signatures getSignatures() {
+    public final SignatureSymbols getSignatures() {
         return getLanguage().getSignatures();
     }
 

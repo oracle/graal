@@ -391,6 +391,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         SVMHost svmHost = (SVMHost) hostVM;
         DynamicHub hub = svmHost.dynamicHub(type);
         builder.setHubIdentityHashCode(System.identityHashCode(hub));
+        builder.setHasArrayType(hub.getArrayHub() != null);
 
         builder.setIsInitializedAtBuildTime(ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(type));
 
@@ -938,7 +939,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     }
 
     private void persistAnalysisParsedGraph(AnalysisMethod method) {
-        Object analyzedGraph = method.getGraph();
+        Object analyzedGraph = method.getParsedGraphCacheStateObject();
         if (analyzedGraph instanceof AnalysisParsedGraph analysisParsedGraph) {
             String name = imageLayerSnapshotUtil.getMethodDescriptor(method);
             MethodGraphsInfo graphsInfo = methodsMap.get(name);

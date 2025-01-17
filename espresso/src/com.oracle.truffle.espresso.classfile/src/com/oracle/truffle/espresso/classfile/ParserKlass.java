@@ -24,9 +24,9 @@ package com.oracle.truffle.espresso.classfile;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.attributes.Attribute;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 
 /**
  * Immutable raw representation of classes in Espresso, this is the output of the parser, super
@@ -131,6 +131,10 @@ public final class ParserKlass {
             }
         }
         return null;
+    }
+
+    public Attribute[] getAttributes() {
+        return attributes;
     }
 
     public int getThisKlassIndex() {

@@ -5,6 +5,7 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
 ## Version 24.2.0
 
 * Updated developer metadata of Maven artifacts.
+* Deprecated the `--wasm.AsyncParsingBinarySize` and `--wasm.AsyncParsingStackSize` options. These options no longer have any effect and will be removed in a future release.
 
 ## Version 24.1.0
 

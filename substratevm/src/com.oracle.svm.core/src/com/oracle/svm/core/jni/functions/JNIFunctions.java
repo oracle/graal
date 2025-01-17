@@ -34,7 +34,6 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
@@ -129,6 +128,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
@@ -366,7 +366,7 @@ public final class JNIFunctions {
             throw new NoClassDefFoundError("Class name is either null or invalid UTF-8 string");
         }
 
-        Class<?> clazz = JNIReflectionDictionary.singleton().getClassObjectByName(name);
+        Class<?> clazz = JNIReflectionDictionary.getClassObjectByName(name);
         if (clazz == null) {
             throw new NoClassDefFoundError(name.toString());
         }
@@ -400,7 +400,7 @@ public final class JNIFunctions {
             CFunctionPointer fnPtr = entry.fnPtr();
 
             String declaringClass = MetaUtil.toInternalName(clazz.getName());
-            JNINativeLinkage linkage = JNIReflectionDictionary.singleton().getLinkage(declaringClass, name, signature);
+            JNINativeLinkage linkage = JNIReflectionDictionary.getLinkage(declaringClass, name, signature);
             if (linkage != null) {
                 linkage.setEntryPoint(fnPtr);
             } else {
@@ -427,7 +427,7 @@ public final class JNIFunctions {
     static int UnregisterNatives(JNIEnvironment env, JNIObjectHandle hclazz) {
         Class<?> clazz = JNIObjectHandles.getObject(hclazz);
         String internalName = MetaUtil.toInternalName(clazz.getName());
-        JNIReflectionDictionary.singleton().unsetEntryPoints(internalName);
+        JNIReflectionDictionary.unsetEntryPoints(internalName);
         return JNIErrors.JNI_OK();
     }
 
@@ -952,7 +952,7 @@ public final class JNIFunctions {
         Field obj = JNIObjectHandles.getObject(fieldHandle);
         if (obj != null) {
             boolean isStatic = Modifier.isStatic(obj.getModifiers());
-            fieldId = JNIReflectionDictionary.singleton().getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
+            fieldId = JNIReflectionDictionary.getDeclaredFieldID(obj.getDeclaringClass(), obj.getName(), isStatic);
         }
         return fieldId;
     }
@@ -966,7 +966,7 @@ public final class JNIFunctions {
         Field field = null;
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
         if (clazz != null) {
-            String name = JNIReflectionDictionary.singleton().getFieldNameByID(clazz, fieldId);
+            String name = JNIReflectionDictionary.getFieldNameByID(clazz, fieldId);
             if (name != null) {
                 try {
                     field = clazz.getDeclaredField(name);
@@ -989,7 +989,7 @@ public final class JNIFunctions {
         if (method != null) {
             boolean isStatic = Modifier.isStatic(method.getModifiers());
             JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-            methodId = JNIReflectionDictionary.singleton().getDeclaredMethodID(method.getDeclaringClass(), descriptor, isStatic);
+            methodId = JNIReflectionDictionary.getDeclaredMethodID(method.getDeclaringClass(), descriptor, isStatic);
         }
         return methodId;
     }
@@ -1839,10 +1839,10 @@ public final class JNIFunctions {
         }
 
         private static JNIMethodId getMethodID(Class<?> clazz, CharSequence name, CharSequence signature, boolean isStatic) {
-            JNIMethodId methodID = JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic);
+            JNIMethodId methodID = JNIReflectionDictionary.getMethodID(clazz, name, signature, isStatic);
             if (methodID.isNull()) {
                 String message = clazz.getName() + "." + name + signature;
-                JNIMethodId candidate = JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, !isStatic);
+                JNIMethodId candidate = JNIReflectionDictionary.getMethodID(clazz, name, signature, !isStatic);
                 if (candidate.isNonNull()) {
                     if (isStatic) {
                         message += " (found matching non-static method that would be returned by GetMethodID)";
@@ -1864,7 +1864,7 @@ public final class JNIFunctions {
                 throw new NoSuchFieldError("Field name is either null or invalid UTF-8 string");
             }
 
-            JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name, isStatic);
+            JNIFieldId fieldID = JNIReflectionDictionary.getFieldID(clazz, name, isStatic);
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);
             }

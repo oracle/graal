@@ -30,7 +30,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  Garbage collector: Serial GC (max heap size: 80% of RAM)
 --------------------------------------------------------------------------------
  Build resources:
- - 13.24GB of memory (42.7% of 31.00GB system memory, determined at start)
+ - 13.24GB of memory (42.7% of system memory, using available memory)
  - 16 thread(s) (100.0% of 16 available processor(s), determined at start)
 [2/8] Performing analysis...  [****]                             (4.5s @ 0.54GB)
     3,163 reachable types   (72.5% of    4,364 total)
@@ -142,12 +142,13 @@ The `NATIVE_IMAGE_OPTIONS` environment variable is designed to be used by users,
 #### <a name="glossary-build-resources"></a>Build Resources
 The memory limit and number of threads used by the build process.
 
-More precisely, the memory limit of the Java heap, so actual memory consumption can be even higher.
+More precisely, the memory limit of the Java heap, so actual memory consumption can be higher.
 Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
-By default, the build process tries to only use free memory (to avoid memory pressure on the build machine), and never more than 32GB of memory.
-If less than 8GB of memory are free, the build process falls back to use 85% of total memory.
+By default, the build process uses the dedicated mode (up to 85% of system memory) in containers or CI environments (when the `$CI` environment variable is set to `true`), but never more than 32GB of memory.
+Otherwise, it tries to use available memory to avoid memory pressure on developer machines (shared mode).
+If less than 8GB of memory are available, the build process falls back to the dedicated mode.
 Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
-It is possible to overwrite the default behavior, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
+It is possible to override the default behavior and set relative or absolute memory limits, for example with `-J-XX:MaxRAMPercentage=60.0` or `-J-Xmx16g`.
 
 By default, the build process uses all available processors to maximize speed, but not more than 32 threads.
 Use the `--parallelism` option to set the number of threads explicitly (for example, `--parallelism=4`).

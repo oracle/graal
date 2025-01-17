@@ -111,7 +111,7 @@ public class LockEliminationPhase extends Phase {
              * If the monitor operations operate on the same unproxified object, ensure any pi nodes
              * in the proxy chain are safe to re-order when moving monitor operations.
              */
-            HIRBlock lowestBlockA = lowestGuardedInputBlock(b, cfg);
+            HIRBlock lowestBlockA = cfg != null ? lowestGuardedInputBlock(b, cfg) : null;
             HIRBlock lowestBlockB = null;
             /*
              * If the object nodes are the same and there is no object or data guard for one of the

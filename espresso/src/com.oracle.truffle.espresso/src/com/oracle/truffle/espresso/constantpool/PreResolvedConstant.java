@@ -46,9 +46,4 @@ public final class PreResolvedConstant implements Resolvable.ResolvedConstant {
     public ConstantPool.Tag tag() {
         return tag;
     }
-
-    @Override
-    public String toString(ConstantPool pool) {
-        return "pre-resolved";
-    }
 }

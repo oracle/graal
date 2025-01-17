@@ -34,6 +34,34 @@ import java.util.function.Consumer;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.core.configure.ConfigurationFile;
 
+/**
+ * Models a call tree. Each node represents a method invocation, and each edge represents a call
+ * from the parent method to the child method. A node's chain of parent pointers identifies the
+ * calling context (i.e., call stack) at the point that the method was called. A node's
+ * {@link #configuration} field is used to associate configuration metadata with the node's calling
+ * context.
+ *
+ * <p>
+ * For example, in the following graph,
+ * </p>
+ *
+ * <pre>
+ *                  Foo#foo
+ *                  /    \
+ *             Bar#bar   Baz#baz
+ *                |         |
+ *             Qux#qux   Qux#qux
+ * </pre>
+ *
+ * the left {@code Qux#qux} node contains the configuration metadata traced for {@code Qux#qux} when
+ * it was called by {@code Bar#bar} (which was itself called by {@code Foo#foo}). The right
+ * {@code Qux#qux} represents a different calling context (with {@code Baz#baz} as the caller) and
+ * tracks its configuration set independently of the left {@code Qux#qux}.
+ * <p>
+ * The {@link #createRoot() root node} of the tree is a sentinel node with no {@link #methodInfo}.
+ * Its direct children represent entrypoint methods (i.e., methods at the base of the call stack).
+ * </p>
+ */
 public final class MethodCallNode {
 
     public final MethodInfo methodInfo;

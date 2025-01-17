@@ -112,7 +112,7 @@ public class UnsupportedFeatures {
                     printStream.println();
                 }
                 if (!singleEntry) {
-                    if (entry.originalException != null && !(entry.originalException instanceof UnsupportedFeatureException)) {
+                    if (entry.originalException != null) {
                         printStream.print("Original exception that caused the problem: ");
                         entry.originalException.printStackTrace(printStream);
                     }

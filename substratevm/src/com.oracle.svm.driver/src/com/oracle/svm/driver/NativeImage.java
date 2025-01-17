@@ -2504,12 +2504,12 @@ public class NativeImage {
     }
 
     private static boolean hasColorSupport() {
-        return !isDumbTerm() && !SubstrateUtil.isRunningInCI() && OS.getCurrent() != OS.WINDOWS &&
+        return !isDumbTerm() && !SubstrateUtil.isNonInteractiveTerminal() && OS.getCurrent() != OS.WINDOWS &&
                         System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
     }
 
     private static boolean hasProgressSupport(List<String> imageBuilderArgs) {
-        if (isDumbTerm() || SubstrateUtil.isRunningInCI()) {
+        if (isDumbTerm() || SubstrateUtil.isNonInteractiveTerminal()) {
             return false;
         }
 

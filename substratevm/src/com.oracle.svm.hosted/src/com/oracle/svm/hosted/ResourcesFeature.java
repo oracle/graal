@@ -108,7 +108,6 @@ import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.util.json.JsonPrettyWriter;
 import jdk.graal.compiler.util.json.JsonWriter;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -639,7 +638,7 @@ public class ResourcesFeature implements InternalFeature {
         sealed = true;
         if (Options.GenerateEmbeddedResourcesFile.getValue()) {
             Path reportLocation = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(Options.EMBEDDED_RESOURCES_FILE_NAME);
-            try (JsonWriter writer = new JsonPrettyWriter(reportLocation)) {
+            try (JsonWriter writer = new JsonWriter(reportLocation)) {
                 EmbeddedResourceExporter.printReport(writer);
             } catch (IOException e) {
                 throw VMError.shouldNotReachHere("Json writer cannot write to: " + reportLocation, e);

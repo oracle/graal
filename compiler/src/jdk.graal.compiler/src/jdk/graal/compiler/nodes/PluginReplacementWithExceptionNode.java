@@ -37,6 +37,7 @@ import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginInjectionProvide
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.spi.Replacements;
 
+/** See Javadoc in {@link PluginReplacementNode}. */
 @NodeInfo(nameTemplate = "PluginReplacementWithException/{p#pluginName}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class PluginReplacementWithExceptionNode extends WithExceptionNode implements PluginReplacementInterface {
     public static final NodeClass<PluginReplacementWithExceptionNode> TYPE = NodeClass.create(PluginReplacementWithExceptionNode.class);

@@ -61,6 +61,7 @@ import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -1355,14 +1356,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             return dispatchTableMethods;
         }
 
-        Set<ResolvedJavaMethod> wrappedMethods = new HashSet<>();
-        wrappedMethods.addAll(Arrays.asList(getWrapped().getDeclaredMethods(false)));
-        wrappedMethods.addAll(Arrays.asList(getWrapped().getDeclaredConstructors(false)));
-
         var resultSet = new HashSet<AnalysisMethod>();
-        for (ResolvedJavaMethod m : wrappedMethods) {
+        for (ResolvedJavaMethod m : getWrapped().getDeclaredMethods(false)) {
+            assert !m.isConstructor() : Assertions.errorMessage("Unexpected constructor", m);
             if (m.isStatic()) {
-                /* Only looking at member methods and constructors */
+                /* Only looking at member methods */
                 continue;
             }
             try {

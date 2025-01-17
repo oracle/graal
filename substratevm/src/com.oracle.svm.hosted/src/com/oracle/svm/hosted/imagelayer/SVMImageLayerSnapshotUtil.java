@@ -34,10 +34,10 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -57,6 +57,7 @@ import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -101,22 +102,24 @@ public class SVMImageLayerSnapshotUtil {
 
     public static final String GENERATED_SERIALIZATION = "jdk.internal.reflect.GeneratedSerializationConstructorAccessor";
 
-    public static final Field companion = ReflectionUtil.lookupField(DynamicHub.class, "companion");
-    public static final Field classInitializationInfo = ReflectionUtil.lookupField(DynamicHub.class, "classInitializationInfo");
-    private static final Field name = ReflectionUtil.lookupField(DynamicHub.class, "name");
-    private static final Field superHub = ReflectionUtil.lookupField(DynamicHub.class, "superHub");
-    private static final Field componentType = ReflectionUtil.lookupField(DynamicHub.class, "componentType");
-    public static final Field arrayHub = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
-    public static final Field interfacesEncoding = ReflectionUtil.lookupField(DynamicHub.class, "interfacesEncoding");
-    public static final Field enumConstantsReference = ReflectionUtil.lookupField(DynamicHub.class, "enumConstantsReference");
+    static final Field companion = ReflectionUtil.lookupField(DynamicHub.class, "companion");
+    static final Field name = ReflectionUtil.lookupField(DynamicHub.class, "name");
+    static final Field componentType = ReflectionUtil.lookupField(DynamicHub.class, "componentType");
 
-    protected static final Set<Field> dynamicHubRelinkedFields = Set.of(companion, classInitializationInfo, name, superHub, componentType, arrayHub);
+    static final Field classInitializationInfo = ReflectionUtil.lookupField(DynamicHubCompanion.class, "classInitializationInfo");
+    static final Field superHub = ReflectionUtil.lookupField(DynamicHubCompanion.class, "superHub");
+    static final Field interfacesEncoding = ReflectionUtil.lookupField(DynamicHubCompanion.class, "interfacesEncoding");
+    static final Field enumConstantsReference = ReflectionUtil.lookupField(DynamicHubCompanion.class, "enumConstantsReference");
+    static final Field arrayHub = ReflectionUtil.lookupField(DynamicHubCompanion.class, "arrayHub");
+
+    protected static final Set<Field> dynamicHubRelinkedFields = Set.of(companion, name, componentType);
+    protected static final Set<Field> dynamicHubCompanionRelinkedFields = Set.of(classInitializationInfo, superHub, arrayHub);
 
     /**
      * This map stores the field indexes that should be relinked using the hosted value of a
      * constant from the key type.
      */
-    protected final Map<AnalysisType, Set<Integer>> fieldsToRelink = new HashMap<>();
+    protected final Map<AnalysisType, Set<Integer>> fieldsToRelink = new ConcurrentHashMap<>();
     private final ImageClassLoader imageClassLoader;
     protected final List<Field> externalValueFields;
     /** This needs to be initialized after analysis, as some fields are not available before. */
@@ -187,16 +190,21 @@ public class SVMImageLayerSnapshotUtil {
         Set<Integer> result = fieldsToRelink.computeIfAbsent(type, key -> {
             Class<?> clazz = type.getJavaClass();
             if (clazz == Class.class) {
-                type.getInstanceFields(true);
-                return dynamicHubRelinkedFields.stream().map(metaAccess::lookupJavaField).map(AnalysisField::getPosition).collect(Collectors.toSet());
-            } else {
-                return null;
+                return getRelinkedFields(type, dynamicHubRelinkedFields, metaAccess);
+            } else if (clazz == DynamicHubCompanion.class) {
+                return getRelinkedFields(type, dynamicHubCompanionRelinkedFields, metaAccess);
             }
+            return null;
         });
         if (result == null) {
             return Set.of();
         }
         return result;
+    }
+
+    private static Set<Integer> getRelinkedFields(AnalysisType type, Set<Field> typeRelinkedFieldsSet, AnalysisMetaAccess metaAccess) {
+        type.getInstanceFields(true);
+        return typeRelinkedFieldsSet.stream().map(metaAccess::lookupJavaField).map(AnalysisField::getPosition).collect(Collectors.toSet());
     }
 
     public SVMGraphEncoder getGraphEncoder(SVMImageLayerWriter imageLayerWriter) {

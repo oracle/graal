@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
@@ -181,7 +182,7 @@ public abstract class ClassInclusionPolicy {
                 Class<?> declaringClass = method.getDeclaringClass();
                 AnalysisMethod analysisMethod = bb.getMetaAccess().lookupJavaMethod(method);
                 registerMethod(method.getModifiers(), declaringClass, analysisMethod);
-                bb.forcedAddRootMethod(analysisMethod, false, reason);
+                bb.forcedAddRootMethod(analysisMethod, analysisMethod.isConstructor(), reason);
             });
         }
 
@@ -190,7 +191,7 @@ public abstract class ClassInclusionPolicy {
             bb.postTask(debug -> {
                 Class<?> declaringClass = method.getDeclaringClass().getJavaClass();
                 registerMethod(method.getModifiers(), declaringClass, method);
-                bb.forcedAddRootMethod(method, false, reason);
+                bb.forcedAddRootMethod(method, method.isConstructor(), reason);
             });
         }
 
@@ -221,12 +222,12 @@ public abstract class ClassInclusionPolicy {
 
         @Override
         public void includeMethod(Executable method) {
-            bb.postTask(debug -> bb.addRootMethod(method, false, reason));
+            bb.postTask(debug -> bb.addRootMethod(method, method instanceof Constructor<?>, reason));
         }
 
         @Override
         public void includeMethod(AnalysisMethod method) {
-            bb.postTask(debug -> bb.addRootMethod(method, false, reason));
+            bb.postTask(debug -> bb.addRootMethod(method, method.isConstructor(), reason));
         }
     }
 

@@ -24,9 +24,10 @@ package com.oracle.truffle.espresso.impl;
 
 import java.util.concurrent.locks.ReadWriteLock;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.tables.AbstractModuleTable;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -65,7 +66,7 @@ public final class ModuleTable extends AbstractModuleTable<StaticObject, ModuleT
                 return meta.java_lang_Module_loader.getObject(module);
             } else {
                 // this must be the early java.base module
-                assert name.equals(Name.java_base);
+                assert name.equals(Names.java_base);
                 return StaticObject.NULL;
             }
         }
@@ -79,7 +80,7 @@ public final class ModuleTable extends AbstractModuleTable<StaticObject, ModuleT
                 return registries.getClassRegistry(loader);
             } else {
                 // this must be the early java.base module
-                assert name.equals(Name.java_base);
+                assert name.equals(Names.java_base);
                 return registries.getBootClassRegistry();
             }
         }

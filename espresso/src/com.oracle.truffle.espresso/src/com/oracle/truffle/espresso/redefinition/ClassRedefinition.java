@@ -54,9 +54,13 @@ import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
@@ -206,13 +210,14 @@ public final class ClassRedefinition {
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
             StaticObject loader = klass.getDefiningClassLoader();
-            Types types = klass.getContext().getTypes();
-            parserKlass = ParserKlassProvider.parseKlass(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), loader, types.fromName(hotSwapInfo.getName()), bytes);
+            TypeSymbols typeSymbols = klass.getContext().getTypes();
+            parserKlass = ParserKlassProvider.parseKlass(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), loader, typeSymbols.fromClassNameEntry(hotSwapInfo.getName()), bytes);
             if (hotSwapInfo.isPatched()) {
                 byte[] patched = hotSwapInfo.getPatchedBytes();
                 newParserKlass = parserKlass;
                 // we detect changes against the patched bytecode
-                parserKlass = ParserKlassProvider.parseKlass(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), loader, types.fromName(hotSwapInfo.getNewName()), patched);
+                parserKlass = ParserKlassProvider.parseKlass(ClassRegistry.ClassDefinitionInfo.EMPTY, context.getClassLoadingEnv(), loader, typeSymbols.fromClassNameEntry(hotSwapInfo.getNewName()),
+                                patched);
             }
             classChange = detectClassChanges(parserKlass, klass, detectedChange, newParserKlass);
             if (classChange == ClassChange.CLASS_HIERARCHY_CHANGED && detectedChange.getSuperKlass() != null) {
@@ -267,7 +272,7 @@ public final class ClassRedefinition {
                     // if there is a currently loaded class under that name
                     // we have to replace that in the class loader registry etc.
                     // otherwise, don't eagerly define the new class
-                    Symbol<Symbol.Type> type = context.getTypes().fromName(classInfo.getName());
+                    Symbol<Type> type = context.getTypes().fromClassNameEntry(classInfo.getName());
                     ClassRegistry classRegistry = context.getRegistries().getClassRegistry(classInfo.getClassLoader());
                     Klass loadedKlass = classRegistry.findLoadedKlass(context.getClassLoadingEnv(), type);
                     if (loadedKlass != null) {
@@ -493,13 +498,13 @@ public final class ClassRedefinition {
         // detect invalid enum constant changes
         // currently, we only allow appending new enum constants
         Field[] oldEnumFields = oldKlass.getDeclaredFields();
-        LinkedList<Symbol<Symbol.Name>> oldEnumConstants = new LinkedList<>();
+        LinkedList<Symbol<Name>> oldEnumConstants = new LinkedList<>();
         for (Field oldEnumField : oldEnumFields) {
             if (oldEnumField.getType() == oldKlass.getType()) {
                 oldEnumConstants.addLast(oldEnumField.getName());
             }
         }
-        LinkedList<Symbol<Symbol.Name>> newEnumConstants = new LinkedList<>();
+        LinkedList<Symbol<Name>> newEnumConstants = new LinkedList<>();
         ParserField[] newEnumFields = newParserKlass.getFields();
         for (ParserField newEnumField : newEnumFields) {
             if (newEnumField.getType() == oldKlass.getType()) {
@@ -519,12 +524,12 @@ public final class ClassRedefinition {
         }
     }
 
-    private static Klass getLoadedKlass(Symbol<Symbol.Type> klassType, ObjectKlass oldKlass) throws RedefinitionNotSupportedException {
+    private static Klass getLoadedKlass(Symbol<Type> klassType, ObjectKlass oldKlass) throws RedefinitionNotSupportedException {
         Klass klass;
         klass = oldKlass.getContext().getRegistries().findLoadedClass(klassType, oldKlass.getDefiningClassLoader());
         if (klass == null) {
             // new super interface must be loaded eagerly then
-            StaticObject resourceGuestString = oldKlass.getMeta().toGuestString(Types.binaryName(klassType));
+            StaticObject resourceGuestString = oldKlass.getMeta().toGuestString(TypeSymbols.binaryName(klassType));
             try {
                 StaticObject loadedClass = (StaticObject) oldKlass.getMeta().java_lang_ClassLoader_loadClass.invokeDirectVirtual(oldKlass.getDefiningClassLoader(), resourceGuestString);
                 klass = loadedClass.getMirrorKlass();
@@ -539,7 +544,7 @@ public final class ClassRedefinition {
                     Method oldMethod, ParserMethod oldParserMethod, ParserMethod newMethod) {
         // mark constructors of nested anonymous inner classes
         // if they include an anonymous inner class type parameter
-        if (Symbol.Name._init_.equals(oldParserMethod.getName()) && Symbol.Signature._void != oldParserMethod.getSignature()) {
+        if (Names._init_.equals(oldParserMethod.getName()) && Signatures._void != oldParserMethod.getSignature()) {
             // only mark constructors that contain the outer anonymous inner class
             Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldParserMethod.getSignature().toString());
             if (matcher.matches()) {
@@ -555,8 +560,8 @@ public final class ClassRedefinition {
     }
 
     private static boolean isObsolete(ParserMethod oldMethod, ParserMethod newMethod, ConstantPool oldPool, ConstantPool newPool) {
-        CodeAttribute oldCodeAttribute = (CodeAttribute) oldMethod.getAttribute(Symbol.Name.Code);
-        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Symbol.Name.Code);
+        CodeAttribute oldCodeAttribute = (CodeAttribute) oldMethod.getAttribute(Names.Code);
+        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Names.Code);
         if (oldCodeAttribute == null) {
             return newCodeAttribute != null;
         } else if (newCodeAttribute == null) {
@@ -586,10 +591,10 @@ public final class ClassRedefinition {
                             opcode == Bytecodes.PUTSTATIC ||
                             Bytecodes.isInvoke(opcode)) {
                 int oldCPI = oldCode.readCPI(bci);
-                PoolConstant oldConstant = oldPool.at(oldCPI);
+                ImmutablePoolConstant oldConstant = oldPool.at(oldCPI);
                 int newCPI = newCode.readCPI(bci);
-                PoolConstant newConstant = newPool.at(newCPI);
-                if (!oldConstant.toString(oldPool).equals(newConstant.toString(newPool))) {
+                ImmutablePoolConstant newConstant = newPool.at(newCPI);
+                if (!newConstant.isSame(oldConstant, newPool, oldPool)) {
                     return false;
                 }
             }
@@ -599,8 +604,8 @@ public final class ClassRedefinition {
 
     private static ClassChange detectMethodChanges(ParserMethod oldMethod, ParserMethod newMethod) {
         // check code attribute
-        CodeAttribute oldCodeAttribute = (CodeAttribute) oldMethod.getAttribute(Symbol.Name.Code);
-        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Symbol.Name.Code);
+        CodeAttribute oldCodeAttribute = (CodeAttribute) oldMethod.getAttribute(Names.Code);
+        CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Names.Code);
 
         if (oldCodeAttribute == null) {
             return newCodeAttribute != null ? ClassChange.METHOD_BODY_CHANGE : ClassChange.NO_CHANGE;
@@ -666,7 +671,7 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private static boolean attrChanged(ParserMethod oldMethod, ParserMethod newMethod, Symbol<Symbol.Name> name) {
+    private static boolean attrChanged(ParserMethod oldMethod, ParserMethod newMethod, Symbol<Name> name) {
         Attribute oldAttribute = oldMethod.getAttribute(name);
         Attribute newAttribute = newMethod.getAttribute(name);
         if ((oldAttribute == null || newAttribute == null)) {
@@ -684,39 +689,39 @@ public final class ClassRedefinition {
         if (same) {
             // check method attributes that would constitute a higher-level
             // class redefinition than a method body change
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleTypeAnnotations)) {
+            if (attrChanged(oldMethod, newMethod, Names.RuntimeVisibleTypeAnnotations)) {
                 return false;
             }
 
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleTypeAnnotations)) {
+            if (attrChanged(oldMethod, newMethod, Names.RuntimeInvisibleTypeAnnotations)) {
                 return false;
             }
 
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleAnnotations)) {
+            if (attrChanged(oldMethod, newMethod, Names.RuntimeVisibleAnnotations)) {
                 return false;
             }
 
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleAnnotations)) {
+            if (attrChanged(oldMethod, newMethod, Names.RuntimeInvisibleAnnotations)) {
                 return false;
             }
 
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleParameterAnnotations)) {
+            if (attrChanged(oldMethod, newMethod, Names.RuntimeInvisibleParameterAnnotations)) {
                 return false;
             }
 
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleParameterAnnotations)) {
+            if (attrChanged(oldMethod, newMethod, Names.RuntimeVisibleParameterAnnotations)) {
                 return false;
             }
 
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.Exceptions)) {
+            if (attrChanged(oldMethod, newMethod, Names.Exceptions)) {
                 return false;
             }
 
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.Signature)) {
+            if (attrChanged(oldMethod, newMethod, Names.Signature)) {
                 return false;
             }
 
-            if (attrChanged(oldMethod, newMethod, Symbol.Name.Exceptions)) {
+            if (attrChanged(oldMethod, newMethod, Names.Exceptions)) {
                 return false;
             }
         }
@@ -777,8 +782,8 @@ public final class ClassRedefinition {
             // 4. update the JDWP refType ID for the klass instance
             // 5. replace/record a classloader constraint for the new type and klass combination
 
-            Symbol<Symbol.Name> newName = packet.info.getName();
-            Symbol<Symbol.Type> newType = context.getTypes().fromName(newName);
+            Symbol<Name> newName = packet.info.getName();
+            Symbol<Type> newType = context.getTypes().fromClassNameEntry(newName);
 
             oldKlass.patchClassName(newName, newType);
             ClassRegistry classRegistry = context.getRegistries().getClassRegistry(packet.info.getClassLoader());

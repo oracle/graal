@@ -674,6 +674,12 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
 
+    @Option(help = "Enables the JVMCI API inside the context.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableJVMCI = new OptionKey<>(false);
+
     public enum GuestFieldOffsetStrategyEnum {
         safety,
         compact,

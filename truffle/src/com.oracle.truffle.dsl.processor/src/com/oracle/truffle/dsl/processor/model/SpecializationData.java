@@ -64,6 +64,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
+import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
 public final class SpecializationData extends TemplateMethod {
 
@@ -155,6 +156,22 @@ public final class SpecializationData extends TemplateMethod {
         copy.unroll = unroll;
         copy.uncachedSpecialization = uncachedSpecialization;
         return copy;
+    }
+
+    public List<TypeGuard> getImplicitTypeGuards() {
+        TypeSystemData typeSystem = getNode().getTypeSystem();
+        if (typeSystem.getImplicitCasts().isEmpty()) {
+            return List.of();
+        }
+        int signatureIndex = 0;
+        List<TypeGuard> implicitTypeChecks = new ArrayList<>();
+        for (Parameter p : getDynamicParameters()) {
+            if (typeSystem.hasImplicitSourceTypes(p.getType())) {
+                implicitTypeChecks.add(new TypeGuard(typeSystem, p.getType(), signatureIndex));
+            }
+            signatureIndex++;
+        }
+        return implicitTypeChecks;
     }
 
     public boolean isNodeReceiverVariable(VariableElement var) {

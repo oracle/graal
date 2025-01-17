@@ -105,6 +105,17 @@
     ]
   },
   {
+    "name" : "java.util.concurrent.ForkJoinPool",
+    "methods" : [
+      { "name" : "deregisterWorker" ,
+        "justification" : "Calls ForkJoinPool.tryTerminate but always with now=false",
+        "parameterTypes" : [
+          "java.util.concurrent.ForkJoinWorkerThread",
+          "java.lang.Throwable"
+        ]}
+    ]
+  },
+  {
     "name" : "java.util.concurrent.ForkJoinWorkerThread",
     "methods" : [
         { "name" : "run" ,
@@ -143,12 +154,43 @@
     ]
   },
   {
+    "name" : "java.security.ProtectionDomain",
+    "methods" : [
+      { "name" : "seeAllp" ,
+        "parameterTypes" : [],
+        "justification" : "Safe operation, calls SecurityManager and catches a SecurityException to determine if toString should print all permissions."
+      }
+    ]
+  },
+  {
     "name" : "java.security.Provider",
     "methods" : [
         { "name" : "check" ,
           "parameterTypes" : [
               "java.lang.String"
         ]}
+    ]
+  },
+  {
+    "name" : "java.security.Provider$Service",
+    "methods" : [
+      { "name" : "getKeyClass" ,
+        "parameterTypes" : [
+          "java.lang.String"
+        ],
+        "justification" : "On SVM security providers are statically configured."
+      }
+    ]
+  },
+  {
+    "name" : "java.security.Provider$Service",
+    "methods" : [
+      { "name" : "newInstance" ,
+        "parameterTypes" : [
+          "java.lang.Object"
+        ],
+        "justification" : "On SVM security providers are statically configured."
+      }
     ]
   },
   {
@@ -222,6 +264,18 @@
     ]
   },
   {
+    "name": "java.lang.reflect.Proxy",
+    "methods": [
+      {
+        "name": "getInvocationHandler",
+        "parameterTypes" : [
+          "java.lang.Object"
+        ],
+        "justification": "On SVM proxies are statically configured."
+      }
+    ]
+  },
+  {
     "name": "java.lang.runtime.ObjectMethods",
     "methods":[
       {
@@ -263,6 +317,15 @@
       {
         "name": "sort",
         "justification": "In the JDK 17 Arrays#sort and Arrays#parallelSort share the same DualPivotQuicksort#sort(array,parallelism,low,high) implementation that uses ForkJoinPool for parallelism > 1. This causes a spurious privileged call being found in the Arrays#sort, so we allow Arrays#sort to avoid this false positive and keep Arrays#parallelSort denied."
+      }
+    ]
+  },
+  {
+    "name": "java.util.ResourceBundle",
+    "methods": [
+      {
+        "name": "loadBundle",
+        "justification": "On SVM resource bundles are statically configured."
       }
     ]
   },

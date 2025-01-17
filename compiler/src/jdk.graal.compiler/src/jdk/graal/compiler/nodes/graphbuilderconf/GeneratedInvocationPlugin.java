@@ -95,9 +95,13 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
 
         ResolvedJavaMethod thisExecuteMethod = getExecuteMethod(b);
         if (inImageBuildtimeCode()) {
-            // Calls to the @Fold method from the generated fold plugin shouldn't be folded.
-            ResolvedJavaType pluginClass = thisExecuteMethod.getDeclaringClass();
-            if (pluginClass.getName().equals(b.getMethod().getDeclaringClass().getName())) {
+            // Calls to the @Fold method from the generated fold plugin shouldn't be folded. This is
+            // detected by comparing the class names of the current plugin and the method being
+            // parsed. These might be in different class loaders so the classes can't be compared
+            // directly. Class.getName() and ResolvedJavaType.getName() return different formats so
+            // get the ResolvedJavaType for this plugin.
+            ResolvedJavaType thisClass = b.getMetaAccess().lookupJavaType(getClass());
+            if (thisClass.getName().equals(b.getMethod().getDeclaringClass().getName())) {
                 return false;
             }
         }

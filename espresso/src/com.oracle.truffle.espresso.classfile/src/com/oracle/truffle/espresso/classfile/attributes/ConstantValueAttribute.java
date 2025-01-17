@@ -22,8 +22,9 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 /**
  * The ConstantValue attribute is a fixed-length attribute in the attributes table of a field_info
@@ -41,7 +42,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
  * structure.
  */
 public final class ConstantValueAttribute extends Attribute {
-    public static final Symbol<Name> NAME = Name.ConstantValue;
+    public static final Symbol<Name> NAME = ParserNames.ConstantValue;
     private final int constantValueIndex;
 
     public ConstantValueAttribute(int constantValueIndex) {

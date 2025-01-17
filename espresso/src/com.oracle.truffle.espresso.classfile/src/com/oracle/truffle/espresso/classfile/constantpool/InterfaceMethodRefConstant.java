@@ -26,7 +26,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
 public interface InterfaceMethodRefConstant extends MethodRefConstant {
 
-    static InterfaceMethodRefConstant create(int classIndex, int nameAndTypeIndex) {
+    static Indexes create(int classIndex, int nameAndTypeIndex) {
         return new Indexes(classIndex, nameAndTypeIndex);
     }
 

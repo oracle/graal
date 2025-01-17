@@ -39,6 +39,7 @@ import jdk.vm.ci.meta.MetaUtil;
  *
  * <ul>
  * <li>Named types: regular Java types described by their fully qualified name.</li>
+ * <li>Proxy types: proxy classes described by the names of the implemented interface(s).</li>
  * </ul>
  */
 public interface ConfigurationTypeDescriptor extends Comparable<ConfigurationTypeDescriptor>, JsonPrintable {

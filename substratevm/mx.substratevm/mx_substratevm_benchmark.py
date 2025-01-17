@@ -289,6 +289,9 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
 
     def benchmarkList(self, bmSuiteArgs):
         exclude = []
+        if mx.get_jdk().javaCompliance == "21":
+            # ktor-hello-world fails with UnsupportedClassVersionError on JDK 21 (GR-60507)
+            exclude.append("ktor-hello-world")
         return [b for b in self.completeBenchmarkList(bmSuiteArgs) if b not in exclude]
 
     def stages(self, bm_suite_args: List[str]) -> List[mx_sdk_benchmark.Stage]:
@@ -457,6 +460,8 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             if stage == mx_sdk_benchmark.Stage.INSTRUMENT_RUN:
                 # Make instrument run short
                 ni_barista_cmd += self._short_load_testing_phases()
+                # Workaround for iprof not existing for specific apps because the shutdown hook does not trigger GR-60456
+                self._updateCommandOption(ni_barista_cmd, "--vm-options", "-v", "-XX:ProfilingDumpPeriod=1")
                 # Add explicit instrument stage args
                 ni_barista_cmd += mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-profile-run-arg=", suite.context.bmSuiteArgs) or mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-run-arg=", suite.context.bmSuiteArgs)
             else:

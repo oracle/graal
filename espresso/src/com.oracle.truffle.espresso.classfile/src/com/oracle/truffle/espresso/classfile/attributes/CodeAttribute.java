@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.INVOKEDYNAMIC;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR_W;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.MONITORENTER;
@@ -34,12 +35,13 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ExceptionHandler;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public final class CodeAttribute extends Attribute {
 
-    public static final Symbol<Name> NAME = Name.Code;
+    public static final Symbol<Name> NAME = ParserNames.Code;
 
     private final int majorVersion;
 
@@ -58,6 +60,7 @@ public final class CodeAttribute extends Attribute {
     private static final int FLAGS_READY = 0x1;
     private static final int FLAGS_HAS_JSR = 0x2;
     private static final int FLAGS_USES_MONITORS = 0x4;
+    private static final int FLAGS_HAS_INDY = 0x8;
     @CompilationFinal byte flags;
 
     public CodeAttribute(Symbol<Name> name, int maxStack, int maxLocals, byte[] code, ExceptionHandler[] exceptionHandlerEntries, Attribute[] attributes, int majorVersion) {
@@ -97,7 +100,7 @@ public final class CodeAttribute extends Attribute {
 
     public StackMapTableAttribute getStackMapFrame() {
         for (Attribute attr : attributes) {
-            if (attr.getName() == Name.StackMapTable) {
+            if (attr.getName() == ParserNames.StackMapTable) {
                 return (StackMapTableAttribute) attr;
             }
         }
@@ -113,6 +116,10 @@ public final class CodeAttribute extends Attribute {
 
     public boolean usesMonitors() {
         return (getFlags() & FLAGS_USES_MONITORS) != 0;
+    }
+
+    public boolean usesIndy() {
+        return (getFlags() & FLAGS_HAS_INDY) != 0;
     }
 
     private byte getFlags() {
@@ -136,6 +143,8 @@ public final class CodeAttribute extends Attribute {
                     flags |= FLAGS_HAS_JSR;
                 case MONITORENTER, MONITOREXIT ->
                     flags |= FLAGS_USES_MONITORS;
+                case INVOKEDYNAMIC ->
+                    flags |= FLAGS_HAS_INDY;
             }
             bci = bs.nextBCI(bci);
         }
@@ -144,7 +153,7 @@ public final class CodeAttribute extends Attribute {
 
     public LineNumberTableAttribute getLineNumberTableAttribute() {
         for (Attribute attr : attributes) {
-            if (attr.getName() == Name.LineNumberTable) {
+            if (attr.getName() == ParserNames.LineNumberTable) {
                 return (LineNumberTableAttribute) attr;
             }
         }
@@ -153,7 +162,7 @@ public final class CodeAttribute extends Attribute {
 
     public LocalVariableTable getLocalvariableTable() {
         for (Attribute attr : attributes) {
-            if (attr.getName() == Name.LocalVariableTable) {
+            if (attr.getName() == ParserNames.LocalVariableTable) {
                 return (LocalVariableTable) attr;
             }
         }
@@ -162,7 +171,7 @@ public final class CodeAttribute extends Attribute {
 
     public LocalVariableTable getLocalvariableTypeTable() {
         for (Attribute attr : attributes) {
-            if (attr.getName() == Name.LocalVariableTypeTable) {
+            if (attr.getName() == ParserNames.LocalVariableTypeTable) {
                 return (LocalVariableTable) attr;
             }
         }

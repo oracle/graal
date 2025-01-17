@@ -14,7 +14,7 @@
     c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.dacapo + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.scala_dacapo + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.renaissance + PR_bench_libgraal,
-    c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.barista,
+    c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.barista + PR_bench_libgraal,
     c.daily + c.opt_post_merge + hw.e3 + jdk + cc.libgraal + bench.specjvm2008 + PR_bench_libgraal,
     c.on_demand                + hw.e3 + jdk + cc.libgraal + bench.dacapo_size_variants,
     c.on_demand                + hw.e3 + jdk + cc.libgraal + bench.scala_dacapo_size_variants,

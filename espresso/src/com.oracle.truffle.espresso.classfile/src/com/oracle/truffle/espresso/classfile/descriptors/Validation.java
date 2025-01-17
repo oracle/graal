@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.classfile.descriptors;
 
 import com.oracle.truffle.espresso.classfile.Constants;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 
 public final class Validation {
     private Validation() {
@@ -95,7 +95,7 @@ public final class Validation {
         }
         char first = (char) bytes.byteAt(0);
         if (first == '<') {
-            return bytes.contentEquals(Name._init_) || (allowClinit && bytes.contentEquals(Name._clinit_));
+            return bytes.contentEquals(ParserNames._init_) || (allowClinit && bytes.contentEquals(ParserNames._clinit_));
         }
         for (int i = 0; i < bytes.length(); ++i) {
             char ch = (char) bytes.byteAt(i);
@@ -343,6 +343,6 @@ public final class Validation {
     }
 
     public static boolean validModifiedUTF8(ByteSequence bytes) {
-        return ModifiedUtf8.isValid(bytes.getUnderlyingBytes(), bytes.offset(), bytes.length());
+        return ModifiedUTF8.isValid(bytes.getUnderlyingBytes(), bytes.offset(), bytes.length());
     }
 }

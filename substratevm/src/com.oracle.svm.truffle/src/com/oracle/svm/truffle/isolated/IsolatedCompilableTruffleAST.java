@@ -83,6 +83,11 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
+    public void onCompilationSuccess(int compilationTier, boolean lastTier) {
+        onCompilationSuccess0(IsolatedCompileContext.get().getClient(), handle, compilationTier, lastTier);
+    }
+
+    @Override
     public String getName() {
         if (cachedName == null) {
             cachedName = IsolatedCompileContext.get().unhand(getName0(IsolatedCompileContext.get().getClient(), handle));
@@ -172,6 +177,12 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
                     CompilerHandle<Supplier<String>> serializedExceptionHandle, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
         Supplier<String> serializedException = new IsolatedStringSupplier(serializedExceptionHandle);
         IsolatedCompileClient.get().unhand(compilableHandle).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static void onCompilationSuccess0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
+                    int tier, boolean lastTier) {
+        IsolatedCompileClient.get().unhand(compilableHandle).onCompilationSuccess(tier, lastTier);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)

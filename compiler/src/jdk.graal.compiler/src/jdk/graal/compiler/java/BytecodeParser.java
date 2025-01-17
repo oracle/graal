@@ -3126,6 +3126,10 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
     protected void genJsr(int dest) {
         BciBlock successor = currentBlock.getJsrSuccessor();
+        if (currentBlock.getJsrScope().containsJSREntry(successor)) {
+            handleUnsupportedJsr("unsupported jsr recursion (internal limitation)");
+            return;
+        }
         assert successor.startBci == dest : successor.startBci + " != " + dest + " @" + bci();
         JsrScope scope = currentBlock.getJsrScope();
         int nextBci = getStream().nextBCI();

@@ -85,6 +85,8 @@ public interface ReflectionHostedSupport {
 
     Map<Class<?>, Throwable> getConstructorLookupErrors();
 
+    Map<Class<?>, Throwable> getRecordComponentLookupErrors();
+
     int getReflectionMethodsCount();
 
     int getReflectionFieldsCount();

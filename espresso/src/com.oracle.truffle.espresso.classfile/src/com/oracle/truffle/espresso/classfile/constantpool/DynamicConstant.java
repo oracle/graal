@@ -27,13 +27,13 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface DynamicConstant extends BootstrapMethodConstant {
 
-    static DynamicConstant create(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
+    static Indexes create(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
         return new Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
     }
 
@@ -42,16 +42,13 @@ public interface DynamicConstant extends BootstrapMethodConstant {
         return Tag.DYNAMIC;
     }
 
-    Symbol<Type> getTypeSymbol(ConstantPool pool);
-
     final class Indexes extends BootstrapMethodConstant.Indexes implements DynamicConstant, Resolvable {
         Indexes(int bootstrapMethodAttrIndex, int nameAndTypeIndex) {
             super(bootstrapMethodAttrIndex, nameAndTypeIndex);
         }
 
-        @Override
         public Symbol<Type> getTypeSymbol(ConstantPool pool) {
-            return Types.fromSymbol(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
+            return TypeSymbols.fromDescriptorUnsafe(pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool));
         }
 
         @Override

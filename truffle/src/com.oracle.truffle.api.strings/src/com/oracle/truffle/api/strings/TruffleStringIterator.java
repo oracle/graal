@@ -268,7 +268,7 @@ public final class TruffleStringIterator {
             int codepoint = b & (0xff >>> nBytes);
             assert 1 < nBytes && nBytes < 5 : nBytes;
             assert it.rawIndex + nBytes - 1 <= it.a.length();
-            // Checkstyle: stop
+            // Checkstyle: stop FallThrough
             switch (nBytes) {
                 case 4:
                     assert it.curIsUtf8ContinuationByte();
@@ -280,7 +280,7 @@ public final class TruffleStringIterator {
                     assert it.curIsUtf8ContinuationByte();
                     codepoint = codepoint << 6 | (it.readAndIncS0() & 0x3f);
             }
-            // Checkstyle: resume
+            // Checkstyle: resume FallThrough
             return codepoint;
         }
 

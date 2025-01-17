@@ -25,13 +25,13 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface FieldRefConstant extends MemberRefConstant {
 
-    static FieldRefConstant create(int classIndex, int nameAndTypeIndex) {
+    static Indexes create(int classIndex, int nameAndTypeIndex) {
         return new Indexes(classIndex, nameAndTypeIndex);
     }
 
@@ -40,14 +40,13 @@ public interface FieldRefConstant extends MemberRefConstant {
         return Tag.FIELD_REF;
     }
 
-    @SuppressWarnings("uncheked")
-    default Symbol<Type> getType(ConstantPool pool) {
-        return Types.fromDescriptor(getDescriptor(pool));
-    }
-
     final class Indexes extends MemberRefConstant.Indexes implements FieldRefConstant, Resolvable {
         Indexes(int classIndex, int nameAndTypeIndex) {
             super(classIndex, nameAndTypeIndex);
+        }
+
+        public Symbol<Type> getType(ConstantPool pool) {
+            return TypeSymbols.fromDescriptorUnsafe(getDescriptor(pool));
         }
 
         @Override

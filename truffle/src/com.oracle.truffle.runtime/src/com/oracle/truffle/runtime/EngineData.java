@@ -52,6 +52,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.CompileOnly;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompilationThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.FirstTierMinInvokeThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MaximumCompilations;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MinInvokeThreshold;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.Mode;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.MultiTier;
@@ -159,6 +160,7 @@ public final class EngineData {
     @CompilationFinal public double traversingFirstTierBonus;
     @CompilationFinal public boolean propagateCallAndLoopCount;
     @CompilationFinal public int propagateCallAndLoopCountMaxDepth;
+    @CompilationFinal public int maximumCompilations;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -316,6 +318,7 @@ public final class EngineData {
         traversingFirstTierPriority = options.get(TraversingQueueFirstTierPriority);
         // See usage of traversingFirstTierBonus for explanation of this formula.
         traversingFirstTierBonus = options.get(TraversingQueueFirstTierBonus) * options.get(LastTierCompilationThreshold) / options.get(FirstTierCompilationThreshold);
+        maximumCompilations = options.get(MaximumCompilations);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);

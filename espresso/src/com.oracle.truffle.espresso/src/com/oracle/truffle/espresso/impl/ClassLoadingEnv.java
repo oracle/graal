@@ -34,10 +34,10 @@ import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.ParsingContext;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.classfile.perf.TimerCollection;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -182,17 +182,12 @@ public class ClassLoadingEnv implements LanguageAccess {
 
             @Override
             public Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence) {
-                return env.getTypes().getOrCreate(Types.nameToType(byteSequence));
+                return env.getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence));
             }
 
             @Override
             public Utf8Constant getOrCreateUtf8Constant(ByteSequence bytes) {
                 return env.getLanguage().getUtf8ConstantTable().getOrCreate(bytes);
-            }
-
-            @Override
-            public long getNewKlassId() {
-                return env.getNewKlassId();
             }
         };
     }

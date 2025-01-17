@@ -54,7 +54,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -67,6 +66,7 @@ import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -299,6 +299,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
      * after the compilation has started does not reset the task until the compilation finishes.
      */
     private volatile CompilationTask compilationTask;
+    private int successfulCompilationsCount;
 
     private volatile boolean needsSplit;
 
@@ -1000,6 +1001,15 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
 
                     try {
                         assert compilationTask == null;
+                        if (engine.maximumCompilations >= 0 && successfulCompilationsCount >= engine.maximumCompilations) {
+                            compilationFailed = true;
+                            runtime().getListener().onCompilationStarted(this, new PresubmitFailureCompilationTask(engine.firstTierOnly, lastTier));
+                            String failureReason = String.format("Maximum compilation count %d reached.", engine.maximumCompilations);
+                            runtime().getListener().onCompilationFailed(this, failureReason, true, true,
+                                            lastTier ? 2 : 1, null);
+                            handleCompilationFailure(() -> failureReason, false, true, true);
+                            return false;
+                        }
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTier);
                     } catch (RejectedExecutionException e) {
                         return false;
@@ -1158,6 +1168,11 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
     }
 
     @Override
+    public void onCompilationSuccess(int compilationTier, boolean lastTier) {
+        successfulCompilationsCount++;
+    }
+
+    @Override
     public final boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
         cachedNonTrivialNodeCount = -1;
         if (wasActive) {
@@ -1175,6 +1190,10 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
             }
         }
 
+        handleCompilationFailure(serializedException, silent, bailout, permanentBailout);
+    }
+
+    private void handleCompilationFailure(Supplier<String> serializedException, boolean silent, boolean bailout, boolean permanentBailout) {
         ExceptionAction action;
         if (bailout && !permanentBailout) {
             /*
@@ -1972,4 +1991,31 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return engine.getCompilerOptions();
     }
 
+    private static class PresubmitFailureCompilationTask extends AbstractCompilationTask {
+        private final boolean firstTierOnly;
+        private final boolean lastTier;
+
+        PresubmitFailureCompilationTask(boolean firstTierOnly, boolean lastTier) {
+            this.firstTierOnly = firstTierOnly;
+            this.lastTier = lastTier;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public boolean isLastTier() {
+            return lastTier;
+        }
+
+        @Override
+        public boolean hasNextTier() {
+            if (lastTier) {
+                return false;
+            }
+            return !firstTierOnly;
+        }
+    }
 }

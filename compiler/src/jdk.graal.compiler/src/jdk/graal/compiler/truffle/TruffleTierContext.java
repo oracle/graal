@@ -107,7 +107,7 @@ public final class TruffleTierContext extends HighTierContext {
                     CompilationIdentifier compilationId, SpeculationLog log,
                     TruffleCompilationTask task, PerformanceInformationHandler handler) {
 
-        boolean readyForCompilation = compilable.prepareForCompilation(true, task.tier(), task.isLastTier());
+        boolean readyForCompilation = compilable.prepareForCompilation(true, task.tier(), !task.hasNextTier());
         if (!readyForCompilation) {
             /*
              * If the root node not ready for compilation we throw a retryable bailout for root
@@ -123,7 +123,7 @@ public final class TruffleTierContext extends HighTierContext {
     }
 
     public TruffleTierContext createInlineContext(TruffleCompilable inlinedCompilable) {
-        boolean readyForCompilation = inlinedCompilable.prepareForCompilation(false, task.tier(), task.isLastTier());
+        boolean readyForCompilation = inlinedCompilable.prepareForCompilation(false, task.tier(), !task.hasNextTier());
         if (!readyForCompilation) {
             /*
              * If the root node not ready for compilation we throw a retryable bailout. For inlining

@@ -846,6 +846,7 @@ public class PythonTests extends RegexTestBase {
         test("[\\W]", "i", "\u0399", 0, false);
         test("(\\Aa)+?|(?<=ab\\1)", "", "empty", 0, false);
         test("^([c-l])\\1|(\\A\\1)+", "", "kk", 0, true, 0, 2, 0, 1, -1, -1, 1);
+        test("(?:\\Z|\\Aa){1,44}a", "", "aaaa", 0, true, 0, 2, -1);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }

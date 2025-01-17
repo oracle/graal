@@ -27,7 +27,12 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
-public final class LongConstant implements PoolConstant {
+public final class LongConstant implements ImmutablePoolConstant {
+    private final long value;
+
+    LongConstant(long value) {
+        this.value = value;
+    }
 
     public static LongConstant create(long value) {
         // TODO: cache ?
@@ -39,14 +44,16 @@ public final class LongConstant implements PoolConstant {
         return Tag.LONG;
     }
 
-    private final long value;
-
-    LongConstant(long value) {
-        this.value = value;
-    }
-
     public long value() {
         return value;
+    }
+
+    @Override
+    public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!(other instanceof LongConstant otherConstant)) {
+            return false;
+        }
+        return value == otherConstant.value;
     }
 
     @Override

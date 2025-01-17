@@ -34,7 +34,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.EspressoType;
 import com.oracle.truffle.espresso.impl.Field;
@@ -201,7 +201,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public final boolean isMirrorKlass() {
-        return getKlass().getType() == Type.java_lang_Class && !isStaticStorage();
+        return getKlass().getType() == Types.java_lang_Class && !isStaticStorage();
     }
 
     /**

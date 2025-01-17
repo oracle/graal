@@ -25,8 +25,9 @@ package com.oracle.truffle.espresso.classfile.attributes;
 import java.util.AbstractList;
 import java.util.List;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 /**
  * Maps bytecode indexes to source line numbers.
@@ -35,7 +36,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
  */
 public final class LineNumberTableAttribute extends Attribute implements LineNumberTableRef {
 
-    public static final Symbol<Name> NAME = Name.LineNumberTable;
+    public static final Symbol<Name> NAME = ParserNames.LineNumberTable;
 
     // Use an empty char array rather than null to throw IooB exceptions, rather than NPE.
     public static final LineNumberTableAttribute EMPTY = new LineNumberTableAttribute(NAME, new char[0]);
@@ -128,7 +129,7 @@ public final class LineNumberTableAttribute extends Attribute implements LineNum
         }
     }
 
-    private class ListWrapper extends AbstractList<Entry> {
+    private final class ListWrapper extends AbstractList<Entry> {
         @Override
         public Entry get(int index) {
             if (index >= 0 && index < size()) {

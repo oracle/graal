@@ -40,6 +40,11 @@ import com.oracle.svm.configure.filters.ComplexFilter;
 import com.oracle.svm.core.configure.ConfigurationConditionResolver;
 import com.oracle.svm.core.configure.ConfigurationFile;
 
+/**
+ * Generates a {@link ConfigurationSet} from a {@link MethodCallNode tree of calling contexts}. This
+ * process generates conditional configuration entries using a heuristic to infer the methods
+ * responsible for each entry.
+ */
 public class ConditionalConfigurationComputer {
 
     private final MethodCallNode rootNode;
@@ -54,18 +59,28 @@ public class ConditionalConfigurationComputer {
 
     public ConfigurationSet computeConditionalConfiguration() {
         retainOnlyUserCodeMethodCallNodes();
-
         Map<MethodInfo, List<MethodCallNode>> methodCallNodes = mapMethodsToCallNodes();
-
         propagateConfiguration(methodCallNodes);
-
-        return deduceConditionalConfiguration(methodCallNodes);
+        return inferConditionalConfiguration(methodCallNodes);
     }
 
     private void retainOnlyUserCodeMethodCallNodes() {
         retainOnlyUserCodeMethodCallNodes(rootNode);
     }
 
+    /**
+     * Remove nodes from the tree that don't match the user filter. The configuration (shown in
+     * parentheses) of a removed node is merged into the parent, and its children are merged into
+     * the parent's children. For example:
+     *
+     * <pre>
+     *          A(v)                             A(v+x)
+     *         /   \                            /     \
+     *      B(w)   to_filter(x)     ==>     B(w+z)     C(y)
+     *             /        \
+     *           C(y)      B(z)
+     * </pre>
+     */
     private void retainOnlyUserCodeMethodCallNodes(MethodCallNode node) {
         /* Make a copy as the map can change under our feet */
         List<MethodCallNode> calledMethods = new ArrayList<>(node.calledMethods.values());
@@ -82,8 +97,10 @@ public class ConditionalConfigurationComputer {
         });
     }
 
+    /**
+     * Create a mapping from each method to the call nodes of that method in the call tree.
+     */
     private Map<MethodInfo, List<MethodCallNode>> mapMethodsToCallNodes() {
-        /* Create a map that maps each method to the call nodes of that method in the call graph. */
         Map<MethodInfo, List<MethodCallNode>> methodCallNodes = new HashMap<>();
         ConfigurationSet emptyConfigurationSet = new ConfigurationSet();
         rootNode.visitPostOrder(node -> {
@@ -96,57 +113,69 @@ public class ConditionalConfigurationComputer {
 
         return methodCallNodes;
     }
-    /* This code is only ever executed by one thread. */
 
-    @SuppressWarnings("NonAtomicOperationOnVolatileField")
+    /**
+     * Perform one round of propagation. Return the set of methods that inherited configurations
+     * from their children (i.e., methods that need to be re-visited).
+     */
+    @SuppressWarnings("NonAtomicOperationOnVolatileField") // only executed by one thread
     private static Set<MethodInfo> maybePropagateConfiguration(List<MethodCallNode> callNodes) {
-        /*
-         * Iterate over a given method's call nodes and try to find the common config across all
-         * calls of that method. Then, for each call node of the given method: 1. Set the common
-         * config as the configuration of that node 2. Find the parent call node of that node 3. Add
-         * the config difference between the previous config and the common config of that node to
-         * the parent node config
-         */
-
-        /* Only one call of this method happened. Keep everything as it is. */
+        // Only one call of this method happened. Cannot infer a config to propagate.
         if (callNodes.size() <= 1) {
             return Collections.emptySet();
         }
 
-        /* Find configuration present in every call of this method */
+        // Compute the configuration common to every call of this method.
         ConfigurationSet commonConfig = findCommonConfigurationForMethod(callNodes);
 
-        /*
-         * For each call, determine the configuration unique to that call and see if any such
-         * configuration exists
-         */
-        List<ConfigurationSet> newNodeConfiguration = new ArrayList<>();
-        boolean hasNonEmptyNode = false;
-        for (MethodCallNode node : callNodes) {
-            ConfigurationSet callParentConfig = node.configuration.copyAndSubtract(commonConfig);
-            if (!callParentConfig.isEmpty()) {
-                hasNonEmptyNode = true;
-            }
-            newNodeConfiguration.add(callParentConfig);
+        // Compute the configuration to propagate from each node by subtracting the common config.
+        final boolean commonConfigIsEmpty = commonConfig.isEmpty();
+        ConfigurationSet[] configsToPropagate = new ConfigurationSet[callNodes.size()];
+        boolean configsToPropagateAllEmpty = true;
+        for (int i = 0; i < callNodes.size(); i++) {
+            configsToPropagate[i] = commonConfigIsEmpty ? callNodes.get(i).configuration : callNodes.get(i).configuration.copyAndSubtract(commonConfig);
+            configsToPropagateAllEmpty = configsToPropagateAllEmpty && configsToPropagate[i].isEmpty();
         }
 
-        /* All remaining configuration is common to each node, no need to propagate anything. */
-        if (!hasNonEmptyNode) {
+        // All nodes share the same configuration. Nothing to propagate.
+        if (configsToPropagateAllEmpty) {
             return Collections.emptySet();
         }
 
-        Set<MethodInfo> affectedNodes = new HashSet<>();
+        // Propagate the configurations.
+        Set<MethodInfo> nodesWithPropagatedConfig = new HashSet<>();
         for (int i = 0; i < callNodes.size(); i++) {
+            if (configsToPropagate[i].isEmpty()) {
+                continue; // Nothing to propagate.
+            }
             MethodCallNode node = callNodes.get(i);
-            ConfigurationSet uniqueNodeConfig = newNodeConfiguration.get(i);
+            /*
+             * NB: We propagate to the first ancestor that represents a different method. If the
+             * method is recursive, its parent could be itself; we don't want to propagate the
+             * configuration to the same method, because 1) the propagated configuration may be lost
+             * when the parent is assigned the common configuration and 2) it will eventually be
+             * propagated up anyway.
+             */
+            MethodCallNode nodeToUpdate = getFirstDifferingAncestor(node);
             node.configuration = new ConfigurationSet(commonConfig);
-            node.parent.configuration = node.parent.configuration.copyAndMerge(uniqueNodeConfig);
-            affectedNodes.add(node.parent.methodInfo);
+            nodeToUpdate.configuration = nodeToUpdate.configuration.copyAndMerge(configsToPropagate[i]);
+            nodesWithPropagatedConfig.add(nodeToUpdate.methodInfo);
         }
-
-        return affectedNodes;
+        return nodesWithPropagatedConfig;
     }
 
+    private static MethodCallNode getFirstDifferingAncestor(MethodCallNode method) {
+        assert method.methodInfo != null;
+        MethodCallNode current = method;
+        do {
+            current = current.parent;
+        } while (method.methodInfo.equals(current.methodInfo));
+        return current;
+    }
+
+    /**
+     * Compute the set intersection of the call nodes' configurations.
+     */
     private static ConfigurationSet findCommonConfigurationForMethod(List<MethodCallNode> callNodes) {
         ConfigurationSet config = null;
         for (MethodCallNode node : callNodes) {
@@ -159,25 +188,33 @@ public class ConditionalConfigurationComputer {
         return config;
     }
 
-    private ConfigurationSet deduceConditionalConfiguration(Map<MethodInfo, List<MethodCallNode>> methodCallNodes) {
+    /**
+     * Use the call tree with propagated configurations to generate a final configuration set with
+     * inferred conditional entries.
+     */
+    private ConfigurationSet inferConditionalConfiguration(Map<MethodInfo, List<MethodCallNode>> methodCallNodes) {
         ConfigurationSet configurationSet = new ConfigurationSet();
 
         /*
-         * Once the configuration has been propagated, iterate over all call nodes and use each call
-         * node as the condition for that call node's config.
+         * For any configuration entries propagated to the root, the algorithm could not infer a
+         * method that "caused" them. Register them as unconditional.
          */
-        MethodCallNode rootCallNode = methodCallNodes.remove(null).get(0);
+        MethodCallNode rootCallNode = methodCallNodes.remove(null).getFirst();
+        addConfigurationWithCondition(configurationSet, rootCallNode.configuration, UnresolvedConfigurationCondition.alwaysTrue());
 
-        for (List<MethodCallNode> value : methodCallNodes.values()) {
-            for (MethodCallNode node : value) {
+        /*
+         * For other configuration entries, use the associated method's class as the "cause".
+         */
+        for (List<MethodCallNode> list : methodCallNodes.values()) {
+            ConfigurationSet configurationToAdd = list.getFirst().configuration;
+            assert list.stream().allMatch(node -> node.configuration.equals(configurationToAdd)) : "The ";
+            for (MethodCallNode node : list) {
                 String className = node.methodInfo.getJavaDeclaringClassName();
                 UnresolvedConfigurationCondition condition = UnresolvedConfigurationCondition.create(className);
                 var resolvedCondition = ConfigurationConditionResolver.identityResolver().resolveCondition(condition);
                 addConfigurationWithCondition(configurationSet, node.configuration, resolvedCondition.get());
             }
         }
-
-        addConfigurationWithCondition(configurationSet, rootCallNode.configuration, UnresolvedConfigurationCondition.alwaysTrue());
 
         return configurationSet.filter(configurationFilter);
     }
@@ -196,20 +233,46 @@ public class ConditionalConfigurationComputer {
         }
     }
 
+    /**
+     * Attempt to infer the methods responsible for configuration entries. This algorithm is a
+     * fixed-point algorithm that uses a heuristic and is not guaranteed to be correct.
+     * <p>
+     * The general idea: the configuration entries common to all call sites of method {@code M}
+     * (i.e., the intersection of their configurations) can probably be attributed to {@code M}. For
+     * example, if all call sites of {@code M} cause a reflective access of class {@code Foo},
+     * {@code M} likely performs reflection on {@code Foo}.
+     * </p>
+     * <p>
+     * Conversely, the configuration entries <i>not</i> shared across all call sites of {@code M}
+     * are likely not caused by {@code M}, and instead should be attributed to some method in the
+     * calling context. For example, if {@code M} performs a reflective access on a type passed in
+     * as a parameter, the associated configuration entry will be different at each call site, and
+     * so the entry should be attributed to some other method in the calling context (i.e., some
+     * method that caused the type to flow into {@code M}).
+     * </p>
+     * <p>
+     * To implement this heuristic, we assign each node of {@code M} the "common" shared
+     * configuration and then <i>propagate</i> the remaining configuration up the call tree (merging
+     * it with the parent node). We repeat this process until there are no changes.
+     * </p>
+     * <p>
+     * This heuristic is a little fragile and may miss some conditional configurations depending on
+     * the method traversal order. For example, if {@code M} calls {@code N} in one context and
+     * {@code O} in another, and both {@code N} and {@code O} have some configuration entry
+     * {@code x} due to {@code M}, we would only attribute the entry to {@code M} if {@code N} and
+     * {@code O} propagate their configuration before {@code M}; if {@code M} is processed in
+     * between the two, {@code x} would not be common to all {@code M} nodes, and would incorrectly
+     * be propagated up.
+     * </p>
+     */
     private static void propagateConfiguration(Map<MethodInfo, List<MethodCallNode>> methodCallNodes) {
-        /*
-         * Iteratively propagate configuration from children to parent calls until an iteration
-         * doesn't produce any changes.
-         */
-
-        Set<MethodInfo> methodsToHandle = methodCallNodes.keySet();
-        while (methodsToHandle.size() != 0) {
-            Set<MethodInfo> nextIterationMethodsToHandle = new HashSet<>();
+        Set<MethodInfo> worklist = methodCallNodes.keySet();
+        while (!worklist.isEmpty()) {
+            Set<MethodInfo> newWorkList = new HashSet<>();
             for (List<MethodCallNode> callNodes : methodCallNodes.values()) {
-                Set<MethodInfo> affectedMethods = maybePropagateConfiguration(callNodes);
-                nextIterationMethodsToHandle.addAll(affectedMethods);
+                newWorkList.addAll(maybePropagateConfiguration(callNodes));
             }
-            methodsToHandle = nextIterationMethodsToHandle;
+            worklist = newWorkList;
         }
     }
 

@@ -58,6 +58,11 @@ public final class EspressoError extends Error {
         throw new EspressoError("fatal: " + message);
     }
 
+    public static RuntimeException fatal(String message, Throwable cause) {
+        CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
+        throw new EspressoError("fatal: " + message, cause);
+    }
+
     public static RuntimeException shouldNotReachHere() {
         CompilerAsserts.neverPartOfCompilation(UNREACHABLE_MESSAGE);
         throw new EspressoError("should not reach here");

@@ -1481,6 +1481,14 @@ public class BciBlockMapping implements JavaMethodContext {
         }
         debug.log("JSR alternatives block %s  sux %s  jsrSux %s  retSux %s  jsrScope %s", block, block.getSuccessors(), block.getJsrSuccessor(), block.getRetSuccessor(), block.getJsrScope());
 
+        if (block.getJsrSuccessor() != null && scope.containsJSREntry(block.getJsrSuccessor())) {
+            /*
+             * Subroutine recursion is not supported; stop creating jsr alternatives. The actual
+             * handling happens when parsing the jsr bytecode. This permits it to be handled either
+             * as a compiler bailout or as an error at run time.
+             */
+            return;
+        }
         if (block.getJsrSuccessor() != null || !scope.isEmpty()) {
             for (int i = 0; i < block.getSuccessorCount(); i++) {
                 BciBlock successor = block.getSuccessor(i);

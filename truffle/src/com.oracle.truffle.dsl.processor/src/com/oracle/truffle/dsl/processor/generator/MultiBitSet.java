@@ -68,6 +68,21 @@ class MultiBitSet {
         return length;
     }
 
+    public CodeTree createContainsAll(FrameState frameState, StateQuery elements) {
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        String sep = "";
+        for (BitSet set : sets) {
+            StateQuery selected = set.filter(elements);
+            if (!selected.isEmpty()) {
+                CodeTree containsAll = set.createIs(frameState, selected, selected);
+                builder.string(sep);
+                builder.tree(containsAll);
+                sep = " && ";
+            }
+        }
+        return builder.build();
+    }
+
     public CodeTree createContains(FrameState frameState, StateQuery elements) {
         return createContainsImpl(sets, frameState, elements);
     }

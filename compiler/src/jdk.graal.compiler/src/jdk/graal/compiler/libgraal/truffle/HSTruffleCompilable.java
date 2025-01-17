@@ -92,6 +92,11 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     }
 
     @Override
+    public void onCompilationSuccess(int compilationTier, boolean lastTier) {
+        TruffleFromLibGraalStartPoints.onCompilationSuccess(hsHandle, compilationTier, lastTier);
+    }
+
+    @Override
     public boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
         throw GraalError.shouldNotReachHere("Should not be reachable."); // ExcludeFromJacocoGeneratedReport
     }

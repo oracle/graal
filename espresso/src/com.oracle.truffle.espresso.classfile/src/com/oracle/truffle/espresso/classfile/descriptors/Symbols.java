@@ -46,26 +46,26 @@ public final class Symbols {
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
-    <T> Symbol<T> lookup(ByteSequence sequence) {
-        return (Symbol<T>) symbols.get(new SymbolKey(sequence));
+    <T> Symbol<T> lookup(ByteSequence byteSequence) {
+        return (Symbol<T>) symbols.get(new SymbolKey(byteSequence));
     }
 
-    <T> Symbol<T> lookup(String str) {
-        return lookup(ByteSequence.create(str));
+    <T> Symbol<T> lookup(String string) {
+        return lookup(ByteSequence.create(string));
     }
 
     @SuppressWarnings("unchecked")
     @TruffleBoundary
-    <T> Symbol<T> symbolify(final ByteSequence sequence) {
-        final SymbolKey key = new SymbolKey(sequence);
+    <T> Symbol<T> symbolify(ByteSequence byteSequence) {
+        final SymbolKey key = new SymbolKey(byteSequence);
         return (Symbol<T>) symbols.computeIfAbsent(key, new Function<SymbolKey, Symbol<?>>() {
             @Override
             public Symbol<?> apply(SymbolKey unused) {
                 // Create Symbol<?>
-                final byte[] bytes = Arrays.copyOfRange(sequence.getUnderlyingBytes(),
-                                sequence.offset(),
-                                sequence.offset() + sequence.length());
-                Symbol<?> computed = new Symbol<>(bytes, sequence.hashCode());
+                final byte[] rawBytes = Arrays.copyOfRange(byteSequence.getUnderlyingBytes(),
+                                byteSequence.offset(),
+                                byteSequence.offset() + byteSequence.length());
+                Symbol<?> computed = new Symbol<>(rawBytes, byteSequence.hashCode());
                 // Swap the byte sequence, which could be holding a large underlying byte array, by
                 // a fresh symbol.
                 //

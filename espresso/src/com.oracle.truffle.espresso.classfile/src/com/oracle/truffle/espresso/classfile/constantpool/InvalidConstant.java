@@ -31,10 +31,11 @@ import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
  * Place holder for invalid constant pool indexes such as 0 and the indexes immediately after a
  * {@link Tag#LONG} or {@link Tag#DOUBLE} entry.
  */
-public final class InvalidConstant implements PoolConstant {
+public final class InvalidConstant implements ImmutablePoolConstant {
+    public static final InvalidConstant VALUE = new InvalidConstant();
 
     private InvalidConstant() {
-        /* no instances */
+        /* singleton */
     }
 
     @Override
@@ -43,11 +44,14 @@ public final class InvalidConstant implements PoolConstant {
     }
 
     @Override
+    public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+        return false;
+    }
+
+    @Override
     public String toString(ConstantPool pool) {
         return "<INVALID>";
     }
-
-    public static final InvalidConstant VALUE = new InvalidConstant();
 
     @Override
     public void dumpBytes(ByteBuffer buf) {

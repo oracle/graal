@@ -353,10 +353,17 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return addRootMethod(analysisMethod, invokeSpecial, reason, otherRoots);
     }
 
+    protected void validateRootMethodRegistration(AnalysisMethod aMethod, boolean invokeSpecial) {
+        if (invokeSpecial && aMethod.isAbstract()) {
+            throw AnalysisError.userError("Abstract methods cannot be registered as special invoke entry points.");
+        }
+    }
+
     @Override
     @SuppressWarnings("try")
     public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
+        validateRootMethodRegistration(aMethod, invokeSpecial);
         AnalysisError.guarantee(aMethod.isOriginalMethod());
         boolean isStatic = aMethod.isStatic();
         int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
@@ -387,9 +394,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 triggerStaticMethodFlow.accept(ptaMethod);
             }
         } else {
-            if (invokeSpecial && originalPTAMethod.isAbstract()) {
-                throw AnalysisError.userError("Abstract methods cannot be registered as special invoke entry point.");
-            }
+            /*
+             * Always treat constructors as invokeSpecial.
+             */
+            boolean overrideInvokeSpecial = invokeSpecial || originalPTAMethod.isConstructor();
             /*
              * For special invoked methods trigger method resolution by using the
              * context-insensitive special invoke type flow. This will resolve the method in its
@@ -412,12 +420,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * will be done during callee resolution.
              */
             postTask(() -> {
-                if (invokeSpecial) {
+                if (overrideInvokeSpecial) {
                     originalPTAMethod.registerAsDirectRootMethod(reason);
                 } else {
                     originalPTAMethod.registerAsVirtualRootMethod(reason);
                 }
-                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, MultiMethod.ORIGINAL_METHOD);
+                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, overrideInvokeSpecial, MultiMethod.ORIGINAL_METHOD);
                 /*
                  * Initialize the type flow of the invoke's actual parameters with the corresponding
                  * parameter declared type. Thus, when the invoke links callees it will propagate

@@ -24,14 +24,20 @@
  */
 package com.oracle.svm.configure.test.conditionalconfig;
 
+import static org.junit.Assume.assumeTrue;
+
 import org.junit.Test;
 
+/**
+ * Like {@link ConfigurationGenerator}, but performs the work across multiple test methods. The
+ * agent is run separately for each and configured to emit "partial" configurations, and then the
+ * results are combined using the {@code native-image-configure generate-conditional} command. This
+ * test is invoked manually from mx.
+ */
 public class PartialConfigurationGenerator {
 
     private static void runIfEnabled(Runnable runnable) {
-        if (!Boolean.getBoolean(PartialConfigurationGenerator.class.getName() + ".enabled")) {
-            return;
-        }
+        assumeTrue("Test must be explicitly enabled because it is not designed for regular execution", Boolean.getBoolean(PartialConfigurationGenerator.class.getName() + ".enabled"));
         runnable.run();
     }
 
@@ -48,5 +54,10 @@ public class PartialConfigurationGenerator {
     @Test
     public void createConfigPartThree() {
         runIfEnabled(PropagateButLeaveCommonConfiguration::runTest);
+    }
+
+    @Test
+    public void createConfigPartFour() {
+        runIfEnabled(PropagateThroughRecursiveCall::runTest);
     }
 }

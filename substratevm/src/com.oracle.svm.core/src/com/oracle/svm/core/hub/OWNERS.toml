@@ -2,6 +2,7 @@
 files = "*"
 all = [
     "christian.haeubl@oracle.com",
+    "peter.hofer@oracle.com",
 ]
 any = [
 ]

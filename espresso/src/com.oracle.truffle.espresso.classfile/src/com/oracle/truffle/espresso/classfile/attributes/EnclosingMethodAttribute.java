@@ -23,12 +23,13 @@
 
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public final class EnclosingMethodAttribute extends Attribute {
 
-    public static final Symbol<Name> NAME = Name.EnclosingMethod;
+    public static final Symbol<Name> NAME = ParserNames.EnclosingMethod;
 
     private final int classIndex;
     private final int methodIndex;

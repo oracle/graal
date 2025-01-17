@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.constantpool;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -57,10 +56,5 @@ public final class ResolvedFailDynamicConstant implements ResolvedDynamicConstan
     @Override
     public JavaKind getKind() {
         return JavaKind.Illegal;
-    }
-
-    @Override
-    public String toString(ConstantPool pool) {
-        return "ResolvedDynamicConstant(" + failure + ")";
     }
 }
