@@ -47,7 +47,7 @@ public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntr
      * Returns a stream that traverses all the callees of the method associated with this entry. The
      * stream performs a depth-first pre-order traversal of the call tree.
      *
-     * @return the iterator
+     * @return the stream of all ranges
      */
     public Stream<Range> topDownRangeStream() {
         // skip the root of the range stream which is the primary range
@@ -59,7 +59,7 @@ public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntr
      * returns only the leafs. The stream performs a depth-first pre-order traversal of the call
      * tree returning only ranges with no callees.
      *
-     * @return the iterator
+     * @return the stream of leaf ranges
      */
     public Stream<Range> leafRangeStream() {
         return topDownRangeStream().filter(Range::isLeaf);
@@ -70,7 +70,7 @@ public record CompiledMethodEntry(PrimaryRange primary, List<FrameSizeChangeEntr
      * returns only the call ranges. The stream performs a depth-first pre-order traversal of the
      * call tree returning only ranges with callees.
      *
-     * @return the iterator
+     * @return the stream of call ranges
      */
     public Stream<Range> callRangeStream() {
         return topDownRangeStream().filter(range -> !range.isLeaf());

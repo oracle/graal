@@ -1217,7 +1217,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         AbbrevCode abbrevCode;
         String paramName = paramInfo.name();
         TypeEntry paramType = paramInfo.type();
-        int line = paramInfo.line();
+        int line = paramInfo.getLine();
         if (artificial) {
             abbrevCode = AbbrevCode.METHOD_PARAMETER_DECLARATION_1;
         } else if (line >= 0) {
@@ -1263,7 +1263,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         AbbrevCode abbrevCode;
         String paramName = uniqueDebugString(paramInfo.name());
         TypeEntry paramType = paramInfo.type();
-        int line = paramInfo.line();
+        int line = paramInfo.getLine();
         if (line >= 0) {
             abbrevCode = AbbrevCode.METHOD_LOCAL_DECLARATION_1;
         } else {

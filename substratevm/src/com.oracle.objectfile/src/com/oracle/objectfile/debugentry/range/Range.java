@@ -97,6 +97,10 @@ public abstract class Range implements Comparable<Range> {
      * alternatively, marked as invalid in this range.
      */
     private final Map<LocalEntry, LocalValueEntry> localValueInfos;
+    /**
+     * Mapping of local entries to subranges they occur in.
+     */
+    private final Map<LocalEntry, List<Range>> varRangeMap = new HashMap<>();
 
     /**
      * Create a primary range representing the root of the subrange tree for a top level compiled
@@ -153,19 +157,31 @@ public abstract class Range implements Comparable<Range> {
         this.localValueInfos = localValueInfos;
     }
 
+    /**
+     * Splits an initial range at the given stack decrement point. The lower split will stay as it
+     * with its high offset reduced to the stack decrement point. The higher split starts at the
+     * stack decrement point and has updated local value entries for the parameters in the then
+     * extended stack.
+     * 
+     * @param stackDecrement the offset to split the range at
+     * @param frameSize the frame size after the split
+     * @param preExtendFrameSize the frame size before the split
+     * @return the higher split, that has been split off the original {@code Range}
+     */
     public Range split(int stackDecrement, int frameSize, int preExtendFrameSize) {
-        // this should be for an initial range extending beyond the stack decrement
+        // This should be for an initial range extending beyond the stack decrement.
         assert loOffset == 0 && loOffset < stackDecrement && stackDecrement < hiOffset : "invalid split request";
 
         Map<LocalEntry, LocalValueEntry> splitLocalValueInfos = new HashMap<>();
 
         for (var localInfo : localValueInfos.entrySet()) {
             if (localInfo.getValue() instanceof StackValueEntry stackValue) {
-                // need to redefine the value for this param using a stack slot value
-                // that allows for the stack being extended by framesize. however we
-                // also need to remove any adjustment that was made to allow for the
-                // difference between the caller SP and the pre-extend callee SP
-                // because of a stacked return address.
+                /*
+                 * Need to redefine the value for this param using a stack slot value that allows
+                 * for the stack being extended by framesize. however we also need to remove any
+                 * adjustment that was made to allow for the difference between the caller SP and
+                 * the pre-extend callee SP because of a stacked return address.
+                 */
                 int adjustment = frameSize - preExtendFrameSize;
                 splitLocalValueInfos.put(localInfo.getKey(), new StackValueEntry(stackValue.stackSlot() + adjustment));
             } else {
@@ -314,18 +330,34 @@ public abstract class Range implements Comparable<Range> {
         return depth;
     }
 
+    /**
+     * Returns the subranges grouped by local entries in the subranges. If the map is empty, it
+     * first tries to populate the map with its callees {@link #localValueInfos}.
+     * 
+     * @return a mapping from local entries to subranges
+     */
     public Map<LocalEntry, List<Range>> getVarRangeMap() {
-        HashMap<LocalEntry, List<Range>> varRangeMap = new HashMap<>();
-        for (Range callee : getCallees()) {
-            for (LocalEntry local : callee.localValueInfos.keySet()) {
-                varRangeMap.computeIfAbsent(local, l -> new ArrayList<>()).add(callee);
+        if (varRangeMap.isEmpty()) {
+            for (Range callee : getCallees()) {
+                for (LocalEntry local : callee.localValueInfos.keySet()) {
+                    varRangeMap.computeIfAbsent(local, l -> new ArrayList<>()).add(callee);
+                }
             }
         }
+
         return varRangeMap;
     }
 
+    /**
+     * Returns whether subranges contain a value in {@link #localValueInfos} for a given local
+     * entry. A value is valid if it exists, and it can be represented as local values in the debug
+     * info.
+     * 
+     * @param local the local entry to check for
+     * @return whether a local entry has a value in any of this range's subranges
+     */
     public boolean hasLocalValues(LocalEntry local) {
-        for (Range callee : getCallees()) {
+        for (Range callee : getVarRangeMap().getOrDefault(local, List.of())) {
             LocalValueEntry localValue = callee.lookupValue(local);
             if (localValue != null) {
                 if (localValue instanceof ConstantValueEntry constantValueEntry) {

@@ -25,10 +25,28 @@
 
 package com.oracle.objectfile.debugentry;
 
-public record LocalEntry(String name, TypeEntry type, int slot, int line) {
+import java.util.concurrent.atomic.AtomicInteger;
+
+public record LocalEntry(String name, TypeEntry type, int slot, AtomicInteger line) {
+
+    public LocalEntry(String name, TypeEntry type, int slot, int line) {
+        /*
+         * Use a AtomicInteger for the line number as it might change if we encounter the same local
+         * variable in a different frame state with a lower line number
+         */
+        this(name, type, slot, new AtomicInteger(line));
+    }
 
     @Override
     public String toString() {
-        return String.format("Local(%s type=%s slot=%d line=%d)", name, type.getTypeName(), slot, line);
+        return String.format("Local(%s type=%s slot=%d line=%d)", name, type.getTypeName(), slot, getLine());
+    }
+
+    public void setLine(int line) {
+        this.line.set(line);
+    }
+
+    public int getLine() {
+        return line.get();
     }
 }

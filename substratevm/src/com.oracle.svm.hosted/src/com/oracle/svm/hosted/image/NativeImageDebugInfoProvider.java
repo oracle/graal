@@ -67,6 +67,7 @@ import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.debug.BFDNameProvider;
 import com.oracle.svm.core.debug.SharedDebugInfoProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -106,7 +107,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
- * to be passed to an ObjectFile when generation of debug info is enabled.
+ * to be passed to an ObjectFile when generation of debug info is enabled at native image build
+ * time.
  */
 class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     protected final NativeImageHeap heap;
@@ -141,8 +143,8 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     @SuppressWarnings("unused")
     private static ResolvedJavaType getOriginal(ResolvedJavaType type) {
         /*
-         * unwrap then traverse through substitutions to the original. We don't want to get the
-         * original type of LambdaSubstitutionType to keep the stable name
+         * Unwrap then traverse through substitutions to the original. We don't want to get the
+         * original type of LambdaSubstitutionType to keep the stable name.
          */
         ResolvedJavaType targetType = type;
         while (targetType instanceof WrappedJavaType wrappedJavaType) {
@@ -164,20 +166,22 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         while (targetMethod instanceof WrappedJavaMethod wrappedJavaMethod) {
             targetMethod = wrappedJavaMethod.getWrapped();
         }
-        // This method is only used when identifying the modifiers or the declaring class
-        // of a HostedMethod. Normally the method unwraps to the underlying JVMCI method
-        // which is the one that provides bytecode to the compiler as well as, line numbers
-        // and local info. If we unwrap to a SubstitutionMethod then we use the annotated
-        // method, not the JVMCI method that the annotation refers to since that will be the
-        // one providing the bytecode etc used by the compiler. If we unwrap to any other,
-        // custom substitution method we simply use it rather than dereferencing to the
-        // original. The difference is that the annotated method's bytecode will be used to
-        // replace the original and the debugger needs to use it to identify the file and access
-        // permissions. A custom substitution may exist alongside the original, as is the case
-        // with some uses for reflection. So, we don't want to conflate the custom substituted
-        // method and the original. In this latter case the method code will be synthesized without
-        // reference to the bytecode of the original. Hence, there is no associated file and the
-        // permissions need to be determined from the custom substitution method itself.
+        /*
+         * This method is only used when identifying the modifiers or the declaring class of a
+         * HostedMethod. Normally the method unwraps to the underlying JVMCI method which is the one
+         * that provides bytecode to the compiler as well as, line numbers and local info. If we
+         * unwrap to a SubstitutionMethod then we use the annotated method, not the JVMCI method
+         * that the annotation refers to since that will be the one providing the bytecode etc used
+         * by the compiler. If we unwrap to any other, custom substitution method we simply use it
+         * rather than dereferencing to the original. The difference is that the annotated method's
+         * bytecode will be used to replace the original and the debugger needs to use it to
+         * identify the file and access permissions. A custom substitution may exist alongside the
+         * original, as is the case with some uses for reflection. So, we don't want to conflate the
+         * custom substituted method and the original. In this latter case the method code will be
+         * synthesized without reference to the bytecode of the original. Hence, there is no
+         * associated file and the permissions need to be determined from the custom substitution
+         * method itself.
+         */
 
         if (targetMethod instanceof SubstitutionMethod substitutionMethod) {
             targetMethod = substitutionMethod.getAnnotated();
@@ -191,9 +195,14 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         return SubstrateOptions.getDebugInfoSourceCacheRoot().toString();
     }
 
+    /**
+     * Logs information of {@link NativeImageHeap.ObjectInfo ObjectInfo}.
+     * 
+     * @param data the data info to process
+     */
     @Override
     @SuppressWarnings("try")
-    protected void handleDataInfo(Object data) {
+    protected void installDataInfo(Object data) {
         // log ObjectInfo data
         if (debug.isLogEnabled(DebugContext.INFO_LEVEL) && data instanceof NativeImageHeap.ObjectInfo objectInfo) {
             try (DebugContext.Scope s = debug.scope("DebugDataInfo")) {
@@ -208,7 +217,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 throw debug.handle(e);
             }
         } else {
-            super.handleDataInfo(data);
+            super.installDataInfo(data);
         }
     }
 
@@ -231,6 +240,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         return sizableInfo.getKind();
     }
 
+    /**
+     * Fetch the typedef name of an element info for {@link StructInfo structs} or
+     * {@link PointerToInfo pointer types}. Otherwise, we use the name of the element info.
+     * 
+     * @param elementInfo the given element info
+     * @return the typedef name
+     */
     private static String typedefName(ElementInfo elementInfo) {
         String name = null;
         if (elementInfo != null) {
@@ -246,6 +262,12 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         return name;
     }
 
+    /**
+     * Checks if a foreign type is a pointer type with {@link NativeLibraries}.
+     * 
+     * @param type the given foreign type
+     * @return true if the type is a foreign pointer type, otherwise false
+     */
     private boolean isForeignPointerType(HostedType type) {
         // unwrap because native libs operates on the analysis type universe
         return nativeLibs.isPointerBase(type.getWrapped());
@@ -329,17 +351,33 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         throw VMError.shouldNotReachHere("Field %s must have a GETTER, SETTER, ADDRESS or OFFSET accessor".formatted(field));
     }
 
+    /**
+     * Creates a stream all types from the hosted universe.
+     * 
+     * @return a stream of type in the hosted universe
+     */
     @Override
     protected Stream<SharedType> typeInfo() {
         // null represents the header type
         return heap.hUniverse.getTypes().stream().map(type -> type);
     }
 
+    /**
+     * Creates a stream of all compilations with the corresponding hosted methods from the native
+     * image code cache.
+     * 
+     * @return a stream of compilations
+     */
     @Override
     protected Stream<Pair<SharedMethod, CompilationResult>> codeInfo() {
         return codeCache.getOrderedCompilations().stream().map(pair -> Pair.create(pair.getLeft(), pair.getRight()));
     }
 
+    /**
+     * Creates a stream of all {@link NativeImageHeap.ObjectInfo objects} in the native image heap.
+     * 
+     * @return a stream of native image heap objects.
+     */
     @Override
     protected Stream<Object> dataInfo() {
         return heap.getObjects().stream().filter(obj -> obj.getPartition().getStartOffset() > 0).map(obj -> obj);
@@ -351,6 +389,21 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         return ((HostedMethod) method).getCodeAddressOffset();
     }
 
+    /**
+     * Processes type entries for {@link HostedType hosted types}.
+     *
+     * <p>
+     * We need to process fields of {@link StructureTypeEntry structured types} after creating it to
+     * make sure that it is available for the field types. Otherwise, this would create a cycle for
+     * the type lookup.
+     *
+     * <p>
+     * For a {@link ClassEntry} we also need to process interfaces and methods for the same reason
+     * with the fields for structured types.
+     * 
+     * @param type the {@code SharedType} of the type entry
+     * @param typeEntry the {@code TypeEntry} to process
+     */
     @Override
     protected void processTypeEntry(SharedType type, TypeEntry typeEntry) {
         assert type instanceof HostedType;
@@ -372,6 +425,14 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
+    /**
+     * For processing methods of a type, we iterate over all its declared methods and lookup the
+     * corresponding {@link MethodEntry} objects. This ensures that all declared methods of a type
+     * are installed.
+     * 
+     * @param type the given type
+     * @param classEntry the type's {@code ClassEntry}
+     */
     private void processMethods(HostedType type, ClassEntry classEntry) {
         for (HostedMethod method : type.getAllDeclaredMethods()) {
             MethodEntry methodEntry = lookupMethodEntry(method);
@@ -403,11 +464,18 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         return builder.toString();
     }
 
+    /**
+     * Produce a method name of a {@code HostedMethod} for the debug info.
+     * 
+     * @param method method to produce a name for
+     * @return method name for the debug info
+     */
     @Override
-    public String getMethodName(SharedMethod method) {
+    protected String getMethodName(SharedMethod method) {
         String name;
         if (method instanceof HostedMethod hostedMethod) {
             name = hostedMethod.getName();
+            // replace <init> (method name of a constructor) with the class name
             if (name.equals("<init>")) {
                 name = hostedMethod.getDeclaringClass().toJavaName();
                 if (name.indexOf('.') >= 0) {
@@ -433,11 +501,24 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         return method instanceof HostedMethod hostedMethod && hostedMethod.hasVTableIndex();
     }
 
+    /**
+     * Fetch a methods symbol produced by the {@link BFDNameProvider}
+     * 
+     * @param method method to get the symbol name for
+     * @return symbol name of the method
+     */
     @Override
     public String getSymbolName(SharedMethod method) {
         return NativeImage.localSymbolNameForMethod(method);
     }
 
+    /**
+     * Process interfaces from the hosted type and add the class entry as an implementor. This
+     * ensures all interfaces are installed as debug entries.
+     * 
+     * @param type the given type
+     * @param classEntry the {@code ClassEntry} of the type
+     */
     private void processInterfaces(HostedType type, ClassEntry classEntry) {
         for (HostedType interfaceType : type.getInterfaces()) {
             TypeEntry entry = lookupTypeEntry(interfaceType);
@@ -453,6 +534,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
+    /**
+     * For arrays, we add a synthetic field for their length. This ensures that the length can be
+     * exposed in the object files debug info.
+     * 
+     * @param type the given array type
+     * @param arrayTypeEntry the {@code ArrayTypeEntry} of the type
+     */
     private void processArrayFields(HostedType type, ArrayTypeEntry arrayTypeEntry) {
         JavaKind arrayKind = type.getBaseType().getJavaKind();
         int headerSize = getObjectLayout().getArrayBaseOffset(arrayKind);
@@ -462,6 +550,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         arrayTypeEntry.addField(createSyntheticFieldEntry("len", arrayTypeEntry, (HostedType) metaAccess.lookupJavaType(JavaKind.Int.toJavaClass()), arrayLengthOffset, arrayLengthSize));
     }
 
+    /**
+     * Process {@link StructFieldInfo fields} for {@link StructInfo foreign structs}. Fields are
+     * ordered by offset and added as {@link FieldEntry field entries} to the foreign type entry.
+     * 
+     * @param type the given type
+     * @param foreignTypeEntry the {@code ForeignTypeEntry} of the type
+     */
     private void processForeignTypeFields(HostedType type, ForeignTypeEntry foreignTypeEntry) {
         ElementInfo elementInfo = nativeLibs.findElementInfo(type);
         if (elementInfo instanceof StructInfo) {
@@ -477,6 +572,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
+    /**
+     * Processes instance fields and static fields of hosted types to and adds {@link FieldEntry
+     * field entries} to the structured type entry.
+     *
+     * @param type the given type
+     * @param structureTypeEntry the {@code StructuredTypeEntry} of the type
+     */
     private void processFieldEntries(HostedType type, StructureTypeEntry structureTypeEntry) {
         for (HostedField field : type.getInstanceFields(false)) {
             structureTypeEntry.addField(createFieldEntry(field, structureTypeEntry));
@@ -488,6 +590,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
+    /**
+     * Creates a new field entry for a hosted field.
+     * 
+     * @param field the given hfield
+     * @param ownerType the structured type owning the hosted field
+     * @return a {@code FieldEntry} representing the hosted field
+     */
     private FieldEntry createFieldEntry(HostedField field, StructureTypeEntry ownerType) {
         FileEntry fileEntry = lookupFileEntry(field);
         String fieldName = field.getName();
@@ -511,6 +620,19 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         return createFieldEntry(fileEntry, fieldName, ownerType, valueType, offset, size, false, modifiers);
     }
 
+    /**
+     * Creates an unprocessed type entry. The type entry contains all static information, which is
+     * its name, size, classOffset, loader entry and type signatures. For {@link ClassEntry} types,
+     * it also contains the superclass {@code ClassEntry}.
+     *
+     * <p>
+     * The returned type entry does not hold information on its fields, methods, and interfaces
+     * implementors. This information is patched later in {@link #processTypeEntry}. This is done to
+     * avoid cycles in the type entry lookup.
+     * 
+     * @param type the {@code SharedType} to process
+     * @return an unprocessed type entry
+     */
     @Override
     protected TypeEntry createTypeEntry(SharedType type) {
         assert type instanceof HostedType;
@@ -520,7 +642,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         int size = getTypeSize(hostedType);
         long classOffset = getClassOffset(hostedType);
         LoaderEntry loaderEntry = lookupLoaderEntry(hostedType);
-        String loaderName = loaderEntry == null ? uniqueNullStringEntry : loaderEntry.loaderId();
+        String loaderName = loaderEntry == null ? "" : loaderEntry.loaderId();
         long typeSignature = getTypeSignature(typeName + loaderName);
         long compressedTypeSignature = useHeapBase ? getTypeSignature(INDIRECT_PREFIX + typeName + loaderName) : typeSignature;
 
@@ -529,7 +651,10 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
             debug.log("typename %s (%d bits)%n", typeName, kind == JavaKind.Void ? 0 : kind.getBitCount());
             return new PrimitiveTypeEntry(typeName, size, classOffset, typeSignature, kind);
         } else {
-            // otherwise we have a structured type
+            /*
+             * this is a structured type (array or class entry), or a foreign type entry (uses the
+             * layout signature even for not structured types)
+             */
             long layoutTypeSignature = getTypeSignature(LAYOUT_PREFIX + typeName + loaderName);
             if (hostedType.isArray()) {
                 TypeEntry elementTypeEntry = lookupTypeEntry(hostedType.getComponentType());
@@ -538,7 +663,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                 return new ArrayTypeEntry(typeName, size, classOffset, typeSignature, compressedTypeSignature,
                                 layoutTypeSignature, elementTypeEntry, loaderEntry);
             } else {
-                // otherwise this is a class entry
+                // this is a class entry or a foreign type entry
                 ClassEntry superClass = hostedType.getSuperclass() == null ? null : (ClassEntry) lookupTypeEntry(hostedType.getSuperclass());
 
                 if (debug.isLogEnabled() && superClass != null) {
@@ -547,6 +672,10 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
 
                 FileEntry fileEntry = lookupFileEntry(hostedType);
                 if (isForeignWordType(hostedType)) {
+                    /*
+                     * A foreign type is either a generic word type, struct type, integer type,
+                     * float type, or a pointer.
+                     */
                     if (debug.isLogEnabled()) {
                         logForeignTypeInfo(hostedType);
                     }
@@ -561,7 +690,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                                         superClass, fileEntry, loaderEntry, isSigned);
                     } else if (elementInfo instanceof StructInfo) {
                         // look for the first interface that also has an associated StructInfo
-                        String typedefName = typedefName(elementInfo); // stringTable.uniqueDebugString(typedefName(elementInfo));
+                        String typedefName = typedefName(elementInfo);
                         ForeignStructTypeEntry parentEntry = null;
                         for (HostedInterface hostedInterface : hostedType.getInterfaces()) {
                             ElementInfo otherInfo = nativeLibs.findElementInfo(hostedInterface);
@@ -576,14 +705,16 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
                     } else if (elementKind == SizableInfo.ElementKind.FLOAT) {
                         return new ForeignFloatTypeEntry(typeName, size, classOffset, typeSignature, layoutTypeSignature, superClass, fileEntry, loaderEntry);
                     } else {
-                        // This must be a pointer. If the target type is known use it to declare the
-                        // pointer
-                        // type, otherwise default to 'void *'
+                        /*
+                         * This must be a pointer. If the target type is known use it to declare the
+                         * pointer type, otherwise default to 'void *'
+                         */
                         TypeEntry pointerToEntry = null;
                         if (elementKind == SizableInfo.ElementKind.POINTER) {
-                            // any target type for the pointer will be defined by a CPointerTo or
-                            // RawPointerTo
-                            // annotation
+                            /*
+                             * any target type for the pointer will be defined by a CPointerTo or
+                             * RawPointerTo annotation
+                             */
                             CPointerTo cPointerTo = type.getAnnotation(CPointerTo.class);
                             if (cPointerTo != null) {
                                 HostedType pointerTo = heap.hMetaAccess.lookupJavaType(cPointerTo.value());
@@ -632,6 +763,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         }
     }
 
+    /* The following methods provide some logging for foreign type entries. */
     private void logForeignTypeInfo(HostedType hostedType) {
         if (!isForeignPointerType(hostedType)) {
             // non pointer type must be an interface because an instance needs to be pointed to
@@ -756,6 +888,16 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         stringBuilder.append("  ".repeat(Math.max(0, indent + 1)));
     }
 
+    /**
+     * Lookup the file entry of a {@code ResolvedJavaType}.
+     *
+     * <p>
+     * First tries to find the source file using the {@link SourceManager}. If no file was found, a
+     * file name is generated from the full class name.
+     * 
+     * @param type the given {@code ResolvedJavaType}
+     * @return the {@code FileEntry} for the type
+     */
     @Override
     @SuppressWarnings("try")
     public FileEntry lookupFileEntry(ResolvedJavaType type) {
@@ -774,6 +916,13 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         return super.lookupFileEntry(type);
     }
 
+    /**
+     * Lookup a {@code FileEntry} for a {@code HostedMethod}. For a {@link SubstitutionMethod}, this
+     * uses the source file of the annotated method.
+     * 
+     * @param method the given {@code ResolvedJavaMethod}
+     * @return the {@code FilEntry} for the method
+     */
     @Override
     public FileEntry lookupFileEntry(ResolvedJavaMethod method) {
         ResolvedJavaMethod targetMethod = method;

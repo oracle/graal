@@ -155,20 +155,20 @@ public abstract class DebugInfoBase {
      */
     private ClassEntry hubClassEntry;
 
-    /*
+    /**
      * A prefix used to label indirect types used to ensure gdb performs oop reference --> raw
-     * address translation
+     * address translation.
      */
     public static final String COMPRESSED_PREFIX = "_z_.";
-    /*
+    /**
      * A prefix used for type signature generation to generate unique type signatures for type
-     * layout type units
+     * layout type units.
      */
     public static final String LAYOUT_PREFIX = "_layout_.";
 
-    /*
+    /**
      * The name of the type for header field hub which needs special case processing to remove tag
-     * bits
+     * bits.
      */
     public static final String HUB_TYPE_NAME = "java.lang.Class";
 
@@ -230,9 +230,10 @@ public abstract class DebugInfoBase {
         /* Reference alignment must be 8 bytes. */
         assert objectAlignment == 8;
 
-        stringTable = debugInfoProvider.getStringTable();
-
-        // Create the cachePath string entry which serves as base directory for source files
+        stringTable = new StringTable();
+        /* Ensure we have a null string at the start of the string table. */
+        uniqueDebugString("");
+        /* Create the cachePath string entry which serves as base directory for source files */
         cachePath = uniqueDebugString(debugInfoProvider.cachePath());
 
         compiledMethods.addAll(debugInfoProvider.compiledMethodEntries());
