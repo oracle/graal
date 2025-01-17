@@ -42,8 +42,8 @@ public record LocalEntry(String name, TypeEntry type, int slot, AtomicInteger li
         return String.format("Local(%s type=%s slot=%d line=%d)", name, type.getTypeName(), slot, getLine());
     }
 
-    public void setLine(int line) {
-        this.line.set(line);
+    public void setLine(int newLine) {
+        this.line.set(newLine);
     }
 
     public int getLine() {
