@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1202,5 +1202,17 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } catch (IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public boolean usePopCountInstruction() {
+        return supportsCPUFeature(CPUFeature.POPCNT);
+    }
+
+    public boolean useCountLeadingZerosInstruction() {
+        return supportsCPUFeature(CPUFeature.LZCNT);
+    }
+
+    public boolean useCountTrailingZerosInstruction() {
+        return supportsCPUFeature(CPUFeature.BMI1);
     }
 }

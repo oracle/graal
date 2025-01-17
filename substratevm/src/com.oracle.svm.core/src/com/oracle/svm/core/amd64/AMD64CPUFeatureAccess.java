@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,17 +50,6 @@ public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     public AMD64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
         super(buildtimeCPUFeatures, offsets, errorMessageBytes, buildtimeFeatureMaskBytes);
-    }
-
-    /**
-     * We include all flags that enable AMD64 CPU instructions as we want best possible performance
-     * for the code.
-     *
-     * @return All the flags that enable AMD64 CPU instructions.
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static EnumSet<AMD64.Flag> allAMD64Flags() {
-        return EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountTrailingZerosInstruction);
     }
 
     @Override
@@ -124,7 +113,7 @@ public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
         architecture.getFeatures().addAll(features);
 
         // update largest storable kind
-        AMD64Kind largestStorableKind = (new AMD64(features, architecture.getFlags())).getLargestStorableKind(AMD64.XMM);
+        AMD64Kind largestStorableKind = (new AMD64(features, EnumSet.noneOf(AMD64.Flag.class))).getLargestStorableKind(AMD64.XMM);
         JVMCISubstitutions.updateLargestStorableKind(architecture, largestStorableKind);
     }
 }

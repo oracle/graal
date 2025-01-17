@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -913,5 +913,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         emitMove(regAddress, address);
         emitMove(regLength, length);
         append(new AArch64ZeroMemoryOp(regAddress, regLength, isAligned, useDcZva, zvaLength));
+    }
+
+    public boolean supportsCPUFeature(AArch64.CPUFeature feature) {
+        return ((AArch64) target().arch).getFeatures().contains(feature);
+    }
+
+    public boolean useLSE() {
+        return supportsCPUFeature(AArch64.CPUFeature.LSE);
     }
 }

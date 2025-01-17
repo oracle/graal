@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -124,8 +124,6 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
-import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
@@ -167,7 +165,6 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.riscv64.RISCV64CPUFeatureAccess;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
@@ -468,19 +465,25 @@ public class NativeImageGenerator {
                     }
                 }
             }
-            AMD64 architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
+            // Graal backend does not use the second argument `flags' passed to the AMD64
+            // constructor. Instead, it tests CPU feature directly.
+            AMD64 architecture = new AMD64(features, null);
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
             EnumSet<AArch64.CPUFeature> features = CPUTypeAArch64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AArch64.CPUFeature.values()));
-            AArch64 architecture = new AArch64(features, AArch64CPUFeatureAccess.enabledAArch64Flags());
+            // Graal backend does not use the second argument `flags' passed to the AArch64
+            // constructor. Instead, it tests CPU feature directly.
+            AArch64 architecture = new AArch64(features, null);
             // runtime checked features are the same as static features on AArch64 for now
             EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.RISCV64.class)) {
             EnumSet<RISCV64.CPUFeature> features = CPUTypeRISCV64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(RISCV64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), RISCV64.CPUFeature.values()));
-            RISCV64 architecture = new RISCV64(features, RISCV64CPUFeatureAccess.enabledRISCV64Flags());
+            // Graal backend does not use the second argument `flags' passed to the RISCV64
+            // constructor. Instead, it tests CPU feature directly.
+            RISCV64 architecture = new RISCV64(features, null);
             // runtime checked features are the same as static features on RISCV64 for now
             EnumSet<RISCV64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);

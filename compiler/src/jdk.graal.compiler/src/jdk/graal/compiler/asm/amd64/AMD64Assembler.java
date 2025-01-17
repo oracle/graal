@@ -4784,6 +4784,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AMD64BinaryArithmetic.AND.getRMOpcode(OperandSize.QWORD).emit(this, OperandSize.QWORD, dst, src);
     }
 
+    public final void bsfl(Register dst, Register src) {
+        AMD64RMOp.BSF.emit(this, OperandSize.DWORD, dst, src);
+    }
+
     public final void bsfq(Register dst, Register src) {
         AMD64RMOp.BSF.emit(this, OperandSize.QWORD, dst, src);
     }
