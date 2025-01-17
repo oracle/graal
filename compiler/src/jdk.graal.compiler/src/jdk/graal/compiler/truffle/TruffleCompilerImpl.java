@@ -407,8 +407,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
 
         @Override
-        public String getCompilationId() {
-            return compResult.getCompilationId().toString(CompilationIdentifier.Verbosity.ID);
+        public long getCompilationId() {
+            return ((TruffleCompilationIdentifier) compResult.getCompilationId()).getTruffleCompilationId();
         }
 
         @Override

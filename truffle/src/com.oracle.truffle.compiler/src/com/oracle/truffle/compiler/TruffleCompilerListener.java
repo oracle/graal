@@ -70,8 +70,12 @@ public interface TruffleCompilerListener {
      * Summary information for the result of a compilation.
      */
     interface CompilationResultInfo {
-        /** Gets the ID of the compilation. */
-        String getCompilationId();
+        /**
+         * Gets the ID of the compilation.
+         */
+        default long getCompilationId() {
+            return -1;
+        }
 
         /**
          * Gets the size of the machine code generated.

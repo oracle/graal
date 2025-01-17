@@ -54,6 +54,11 @@ final class LibGraalCompilationResultInfo extends LibGraalScopedHandle implement
     }
 
     @Override
+    public long getCompilationId() {
+        return TruffleToLibGraalCalls2.getCompilationId(getIsolateThread(), getHandle());
+    }
+
+    @Override
     public int getTargetCodeSize() {
         return TruffleToLibGraalCalls.getTargetCodeSize(getIsolateThread(), getHandle());
     }
@@ -86,9 +91,5 @@ final class LibGraalCompilationResultInfo extends LibGraalScopedHandle implement
     @Override
     public int getDataPatchesCount() {
         return TruffleToLibGraalCalls.getDataPatchesCount(getIsolateThread(), getHandle());
-    }
-
-    public String getCompilationId() {
-        return "LibGraal";
     }
 }
