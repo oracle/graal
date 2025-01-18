@@ -65,6 +65,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     }
 
     protected void setLocation(int location) {
+        wrapped.checkGuaranteeFolded();
         assert this.location == LOC_UNINITIALIZED;
         assert location >= 0;
         this.location = location;

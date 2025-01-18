@@ -61,7 +61,7 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.OpenTypeWorldFeature;
+import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -772,7 +772,8 @@ final class LayeredDispatchTableSupportFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        LayeredDispatchTableSupport.singleton().installBuilderModules(ImageSingletons.lookup(OpenTypeWorldFeature.class).getBuilderModules());
+    public void beforeCompilation(BeforeCompilationAccess a) {
+        BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
+        LayeredDispatchTableSupport.singleton().installBuilderModules(access.getImageClassLoader().getBuilderModules());
     }
 }

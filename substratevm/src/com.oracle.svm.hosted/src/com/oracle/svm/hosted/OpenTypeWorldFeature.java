@@ -69,12 +69,6 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
     }
 
-    public Set<Module> getBuilderModules() {
-        Module m0 = ImageSingletons.lookup(VMFeature.class).getClass().getModule();
-        Module m1 = SVMHost.class.getModule();
-        return m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
-    }
-
     private final Set<AnalysisType> triggeredTypes = new HashSet<>();
     private final Set<AnalysisMethod> triggeredMethods = new HashSet<>();
 
