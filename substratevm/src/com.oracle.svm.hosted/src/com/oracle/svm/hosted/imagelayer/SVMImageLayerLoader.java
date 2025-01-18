@@ -1485,7 +1485,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
              * created and the initializeMetaDataTask needs to be executed to ensure the hosted
              * object matches the persisted constant.
              */
-            PersistedAnalysisType.Reader typeData = findBaseLayerType(type);
+            PersistedAnalysisType.Reader typeData = findType(getBaseLayerTypeId(type));
             if (typeData != null && typeData.getHasArrayType()) {
                 AnalysisType arrayClass = type.getArrayClass();
                 ensureHubInitialized(arrayClass);

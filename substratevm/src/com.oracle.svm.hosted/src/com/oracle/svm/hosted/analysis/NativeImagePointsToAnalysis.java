@@ -148,6 +148,10 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                  */
                 HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type, ((SVMHost) hostVM).dynamicHub(type));
             }
+            if (type.isArray() && type.getComponentType().isInBaseLayer()) {
+                /* Rescan the component hub. This will be simplified by GR-60254. */
+                HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type.getComponentType(), ((SVMHost) hostVM).dynamicHub(type).getComponentHub());
+            }
             if (SubstrateOptions.includeAll()) {
                 /*
                  * Using getInstanceFields and getStaticFields allows to include the fields from the
