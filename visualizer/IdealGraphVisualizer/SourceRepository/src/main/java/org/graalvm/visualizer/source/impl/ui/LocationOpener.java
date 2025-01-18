@@ -37,6 +37,7 @@ import org.openide.util.NbBundle;
 import javax.swing.SwingUtilities;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
+import org.openide.util.Mutex;
 
 /**
  *
@@ -65,22 +66,24 @@ public class LocationOpener implements Openable, Trackable {
         int line = location.getLine();
         EditorCookie cake = toOpen.getLookup().lookup(EditorCookie.class);
 
-        Line l;
-        try {
-            l = cake.getLineSet().getOriginal(line - 1);
-        } catch (IndexOutOfBoundsException ex) {
-            // expected, the source has changed
-            return;
-        }
+        Line l = findLine(cake, line);
         if (l == null) {
             cake.open();
             StatusDisplayer.getDefault().setStatusText(Bundle.ERR_LineNotFound());
             return;
         }
-        if (SwingUtilities.isEventDispatchThread()) {
+        Mutex.EVENT.readAccess(() -> {
             l.show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT);
-        } else {
-            SwingUtilities.invokeLater(() -> l.show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT));
+        });
+    }
+
+    private Line findLine(EditorCookie cake, int line) {
+        try {
+            return cake.getLineSet().getOriginal(line - 1);
+        } catch (IndexOutOfBoundsException ex) {
+            // expected, the source has changed
+            // just open the file
+            return null;
         }
     }
 
