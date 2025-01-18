@@ -32,6 +32,7 @@ import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.regist
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.FileSystems;
@@ -941,6 +942,8 @@ public class NativeImageGenerator {
                 featureHandler.registerFeatures(loader, debug);
                 BuildPhaseProvider.markFeatureRegistrationFinished();
 
+                loader.initBuilderModules();
+
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
                 setDefaultLibCIfMissing();
@@ -1656,17 +1659,17 @@ public class NativeImageGenerator {
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
                 if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {
-                    checkName(method.format("%H.%n(%p)"), method, bb);
+                    checkName(bb, method);
                 }
             }
             for (AnalysisField field : aUniverse.getFields()) {
                 if (field.isAccessed()) {
-                    checkName(field.format("%H.%n"), null, bb);
+                    checkName(bb, field);
                 }
             }
             for (AnalysisType type : aUniverse.getTypes()) {
                 if (type.isReachable()) {
-                    checkName(type.toJavaName(true), null, bb);
+                    checkName(bb, type);
                 }
             }
         }
@@ -1698,32 +1701,47 @@ public class NativeImageGenerator {
         // the unsupported features are reported after checkUniverse is invoked
     }
 
-    public static void checkName(String name, AnalysisMethod method, BigBang bb) {
+    public static void checkName(BigBang bb, AnalysisMethod method) {
+        String format = method.format("%H.%n(%p)");
+        checkName(bb, method, format);
+    }
+
+    public static void checkName(BigBang bb, AnalysisField field) {
+        String format = field.format("%H.%n");
+        checkName(bb, null, format);
+    }
+
+    public static void checkName(BigBang bb, Field field) {
+        String format = field.getType().getName() + "." + field.getName();
+        checkName(bb, null, format);
+    }
+
+    public static void checkName(BigBang bb, AnalysisType type) {
+        String format = type.toJavaName(true);
+        checkName(bb, null, format);
+    }
+
+    private static void checkName(BigBang bb, AnalysisMethod method, String format) {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
          * The same holds for "host VM" elements, which come from the hosting VM, unless they are
          * JDK internal types.
          */
-        String message = checkName(name);
-        if (message != null) {
-            if (bb != null) {
-                bb.getUnsupportedFeatures().addMessage(name, method, message);
-            } else {
-                throw new UnsupportedFeatureException(message);
-            }
+        String lformat = format.toLowerCase(Locale.ROOT);
+        if (lformat.contains("hosted")) {
+            report(bb, format, method, "Hosted element used at run time: " + format + ".");
+        } else if (!lformat.startsWith("jdk.internal") && lformat.contains("hotspot")) {
+            report(bb, format, method, "HotSpot element used at run time: " + format + ".");
         }
     }
 
-    public static String checkName(String name) {
-        String lname = name.toLowerCase(Locale.ROOT);
-        String message = null;
-        if (lname.contains("hosted")) {
-            message = "Hosted element used at run time: " + name;
-        } else if (!name.startsWith("jdk.internal") && lname.contains("hotspot")) {
-            message = "HotSpot element used at run time: " + name;
+    private static void report(BigBang bb, String key, AnalysisMethod method, String message) {
+        if (bb != null) {
+            bb.getUnsupportedFeatures().addMessage(key, method, message);
+        } else {
+            throw new UnsupportedFeatureException(message);
         }
-        return message;
     }
 
     @SuppressWarnings("try")

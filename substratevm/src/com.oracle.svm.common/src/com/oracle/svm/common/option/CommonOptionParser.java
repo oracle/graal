@@ -41,6 +41,12 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.StringUtil;
+
 import jdk.graal.compiler.options.EnumMultiOptionKey;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
@@ -48,10 +54,8 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionsParser;
 
-import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.StringUtil;
-
 public class CommonOptionParser {
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public static final String HOSTED_OPTION_PREFIX = "-H:";
     public static final String RUNTIME_OPTION_PREFIX = "-R:";
 

@@ -68,6 +68,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.common.meta.GuaranteeFolded;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.MissingRegistrationSupport;
@@ -171,6 +172,7 @@ public class SVMHost extends HostVM {
 
     private final Map<String, Set<UsageKind>> forbiddenTypes;
     private final Platform platform;
+    private final ImageClassLoader loader;
     private final ClassInitializationSupport classInitializationSupport;
     private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
@@ -207,13 +209,11 @@ public class SVMHost extends HostVM {
     private final boolean enableTrackAcrossLayers;
     private final boolean enableReachableInCurrentLayer;
 
-    /** Modules containing all {@code svm.core} and {@code svm.hosted} classes. */
-    private final Set<Module> builderModules;
-
     @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ImageClassLoader loader, ClassInitializationSupport classInitializationSupport, AnnotationSubstitutionProcessor annotationSubstitutions,
                     MissingRegistrationSupport missingRegistrationSupport) {
         super(options, loader.getClassLoader());
+        this.loader = loader;
         this.classInitializationSupport = classInitializationSupport;
         this.missingRegistrationSupport = missingRegistrationSupport;
         this.stringTable = HostedStringDeduplication.singleton();
@@ -244,7 +244,6 @@ public class SVMHost extends HostVM {
 
         enableTrackAcrossLayers = ImageLayerBuildingSupport.buildingSharedLayer();
         enableReachableInCurrentLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-        builderModules = ImageSingletons.contains(OpenTypeWorldFeature.class) ? ImageSingletons.lookup(OpenTypeWorldFeature.class).getBuilderModules() : null;
     }
 
     /**
@@ -254,7 +253,7 @@ public class SVMHost extends HostVM {
      */
     @Override
     public boolean isCoreType(AnalysisType type) {
-        return builderModules.contains(type.getJavaClass().getModule());
+        return loader.getBuilderModules().contains(type.getJavaClass().getModule());
     }
 
     @Override
@@ -311,7 +310,7 @@ public class SVMHost extends HostVM {
 
     private void checkForbidden(AnalysisType type, UsageKind kind) {
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
-            NativeImageGenerator.checkName(type.getWrapped().toJavaName(), null, null);
+            NativeImageGenerator.checkName(null, type);
         }
 
         if (forbiddenTypes == null) {
@@ -949,15 +948,16 @@ public class SVMHost extends HostVM {
         if (excludedFields.contains(field)) {
             return false;
         }
-
-        /* Fields with those names are not allowed in the image */
-        if (NativeImageGenerator.checkName(field.getType().getName() + "." + field.getName()) != null) {
-            return false;
-        }
         /* Options should not be in the image */
         if (OptionKey.class.isAssignableFrom(field.getType())) {
             return false;
         }
+
+        /* Fields that are always folded don't need to be included. */
+        if (field.getAnnotation(GuaranteeFolded.class) != null) {
+            return false;
+        }
+
         /* Fields from this package should not be in the image */
         if (field.getDeclaringClass().getName().startsWith("jdk.graal.compiler")) {
             return false;
@@ -970,6 +970,12 @@ public class SVMHost extends HostVM {
                 return false;
             }
         }
+
+        /* Remaining fields should match the naming conventions. */
+        if (SubstrateOptions.VerifyNamingConventions.getValue()) {
+            NativeImageGenerator.checkName(bb, field);
+        }
+
         return super.isFieldIncluded(bb, field);
     }
 
@@ -993,10 +999,6 @@ public class SVMHost extends HostVM {
             return false;
         }
 
-        /* Fields with those names are not allowed in the image */
-        if (NativeImageGenerator.checkName(field.getType().toJavaName() + "." + field.getName()) != null) {
-            return false;
-        }
         /* Options should not be in the image */
         if (optionKey == null) {
             optionKey = bb.getMetaAccess().lookupJavaType(OptionKey.class);
@@ -1004,6 +1006,12 @@ public class SVMHost extends HostVM {
         if (optionKey.isAssignableFrom(field.getType())) {
             return false;
         }
+
+        /* Fields that are always folded don't need to be included. */
+        if (field.isGuaranteeFolded()) {
+            return false;
+        }
+
         /* Fields from this package should not be in the image */
         if (field.getDeclaringClass().toJavaName().startsWith("jdk.graal.compiler")) {
             return false;
@@ -1013,6 +1021,12 @@ public class SVMHost extends HostVM {
         if (!included) {
             return false;
         }
+
+        /* Remaining fields should match the naming conventions. */
+        if (SubstrateOptions.VerifyNamingConventions.getValue()) {
+            NativeImageGenerator.checkName(bb, field);
+        }
+
         return super.isFieldIncluded(bb, field);
     }
 
