@@ -14,6 +14,10 @@ public final class CountingDomain extends AbstractDomain<CountingDomain> {
         this.value = value;
     }
 
+    public int getValue() {
+        return value;
+    }
+
     public void increment() {
         value++;
     }

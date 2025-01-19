@@ -14,6 +14,10 @@ public final class BooleanOrDomain extends AbstractDomain<BooleanOrDomain> {
         this.value = value;
     }
 
+    public boolean getValue() {
+        return value;
+    }
+
     @Override
     public boolean isBot() {
         return !value;
