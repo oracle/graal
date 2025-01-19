@@ -34,7 +34,7 @@ public final class WeakPartialOrdering {
             return;
         }
 
-        new WeakPartialOrderingBuilder(cfg.getStartBlock(), wpoNodes, backPredecessors);
+        new WeakPartialOrderingConstructor(cfg.getStartBlock(), wpoNodes, backPredecessors);
     }
 
 
