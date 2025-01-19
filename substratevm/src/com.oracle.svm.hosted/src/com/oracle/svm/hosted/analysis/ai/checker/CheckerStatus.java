@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.checker;
 /**
  * Represents the result of a check performed by a {@link Checker}.
  */
-public enum CheckStatus {
+public enum CheckerStatus {
     OK,
     WARNING,
     UNKNOWN,

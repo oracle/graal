@@ -19,7 +19,7 @@ public class DivisionByZeroChecker implements Checker {
         var domain = abstractStateMap.getPostCondition(node);
 
         if (!(domain instanceof IntInterval)) {
-            return new CheckerResult(CheckStatus.UNKNOWN, "Unsupported domain");
+            return new CheckerResult(CheckerStatus.UNKNOWN, "Unsupported domain");
         }
 
         if (node instanceof FloatDivNode || node instanceof RemNode) {
@@ -27,10 +27,10 @@ public class DivisionByZeroChecker implements Checker {
             IntInterval divisorInterval = (IntInterval) abstractStateMap.getPostCondition(divisorNode);
 
             if (divisorInterval.containsValue(0)) {
-                return new CheckerResult(CheckStatus.ERROR, "Division by zero on line: " + node.getNodeSourcePosition().toString());
+                return new CheckerResult(CheckerStatus.ERROR, "Division by zero on line: " + node.getNodeSourcePosition().toString());
             }
         }
 
-        return new CheckerResult(CheckStatus.OK, "No division by zero");
+        return new CheckerResult(CheckerStatus.OK, "No division by zero");
     }
 }
