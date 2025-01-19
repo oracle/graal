@@ -383,6 +383,7 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             Useful for the `agent` and `instrument-run` stages.
             """
             return [
+                "--startup-iteration-count", "1",
                 "--warmup-iteration-count", "1",
                 "--warmup-duration", "5",
                 "--throughput-iteration-count", "0",
@@ -457,6 +458,8 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             if stage == mx_sdk_benchmark.Stage.INSTRUMENT_RUN:
                 # Make instrument run short
                 ni_barista_cmd += self._short_load_testing_phases()
+                if suite.context.benchmark == "play-scala-hello-world":
+                    self._updateCommandOption(ni_barista_cmd, "--vm-options", "-v", "-Dpidfile.path=/dev/null")
                 # Add explicit instrument stage args
                 ni_barista_cmd += mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-profile-run-arg=", suite.context.bmSuiteArgs) or mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-run-arg=", suite.context.bmSuiteArgs)
             else:
