@@ -13,11 +13,10 @@ import java.util.Map;
 import java.util.Set;
 
 /*
- * WeakPartialOrderingBuilder constructs a weak partial ordering of a control flow graph
- * NOTE: Even though this is a Builder class, it does not have a build() method, as the WPO is constructed in the constructor,
- * by modifying the provided arguments.
+ * WeakPartialOrderingConstructor constructs a weak partial ordering of a control flow graph
+ * by modifying the provided arguments in the constructor
  */
-public final class WeakPartialOrderingBuilder {
+public final class WeakPartialOrderingConstructor {
 
     /* List of all WpoNodes */
     private final List<WpoNode> wpoNodes;
@@ -48,9 +47,9 @@ public final class WeakPartialOrderingBuilder {
     private int nextIdx = 0;
     private final List<Integer> dfnToIndex = new ArrayList<>();
 
-    public WeakPartialOrderingBuilder(HIRBlock startBlock,
-                                      List<WpoNode> wpoNodes,
-                                      Map<HIRBlock, Set<HIRBlock>> backPredecessors) {
+    public WeakPartialOrderingConstructor(HIRBlock startBlock,
+                                          List<WpoNode> wpoNodes,
+                                          Map<HIRBlock, Set<HIRBlock>> backPredecessors) {
         this.wpoNodes = wpoNodes;
         this.backPredecessors = backPredecessors;
         constructAuxiliary(startBlock);
