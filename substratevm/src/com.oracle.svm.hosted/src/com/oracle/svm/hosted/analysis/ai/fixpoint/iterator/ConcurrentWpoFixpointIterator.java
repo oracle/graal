@@ -82,6 +82,7 @@ public final class ConcurrentWpoFixpointIterator<
 
         while (!workQueue.isEmpty()) {
             WorkNode workNode = workQueue.poll();
+            logger.logToFile("Processing work node: " + workNode.node);
             List<WorkNode> successors = workNode.update();
 
             for (WorkNode successor : successors) {
@@ -90,7 +91,6 @@ public final class ConcurrentWpoFixpointIterator<
                 }
             }
         }
-
     }
 
     @Override
@@ -139,12 +139,14 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         List<WorkNode> updatePlain() {
+            logger.logToFile("Updating plain node: " + node);
             transferFunction.analyzeBlock(node, abstractStateMap);
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             return successors;
         }
 
         List<WorkNode> updateHead() {
+            logger.logToFile("Updating head node: " + node);
             if (refCount.get() == weakPartialOrdering.getNumPredecessors(index)) {
                 for (WorkNode pred : predecessors) {
                     if (!weakPartialOrdering.isBackEdge(node, pred.node)) {
@@ -158,6 +160,7 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         List<WorkNode> updateExit() {
+            logger.logToFile("Updating exit node: " + node);
             boolean converged = head.updateHeadBackEdge();
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             if (converged) {
@@ -169,6 +172,7 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         boolean updateHeadBackEdge() {
+            logger.logToFile("Updating head back edge for node: " + node);
             Domain oldPre = abstractStateMap.getPreCondition(node.getBeginNode()).copyOf();
             transferFunction.collectInvariantsFromCfgPredecessors(node.getBeginNode(), abstractStateMap);
             extrapolate(node.getBeginNode());
@@ -182,6 +186,7 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         void handleIrreducible() {
+            logger.logToFile("Handling irreducible node: " + node);
             for (Map.Entry<Integer, Integer> entry : weakPartialOrdering.getIrreducibles(index).entrySet()) {
                 nodeToWork.get(weakPartialOrdering.getNode(entry.getKey())).refCount.addAndGet(entry.getValue());
             }
