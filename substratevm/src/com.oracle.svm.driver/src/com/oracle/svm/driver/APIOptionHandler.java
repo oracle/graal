@@ -96,6 +96,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     record HostedOptionInfo(Boolean isStable, Boolean isBoolean) {
     }
 
+    private final HostedOptionInfo injectedKnownHostedRegularOptionInfo = new HostedOptionInfo(false, false);
+    private final HostedOptionInfo injectedKnownHostedBooleanOptionInfo = new HostedOptionInfo(false, true);
+
     private final Map<String, HostedOptionInfo> allOptionNames;
 
     private int numberOfActiveUnlockExperimentalVMOptions = 0;
@@ -287,10 +290,17 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return str.substring(0, 1).toLowerCase(Locale.ROOT) + str.substring(1);
     }
 
-    private final HostedOptionInfo injectedKnownHostedOptionInfo = new HostedOptionInfo(false, false);
-
     void injectKnownHostedOption(String optionName) {
-        allOptionNames.put(optionName, injectedKnownHostedOptionInfo);
+        String baseOptionName;
+        HostedOptionInfo optionInfo;
+        if (optionName.endsWith("=")) {
+            baseOptionName = optionName.substring(0, optionName.length() - 1);
+            optionInfo = injectedKnownHostedRegularOptionInfo;
+        } else {
+            baseOptionName = optionName;
+            optionInfo = injectedKnownHostedBooleanOptionInfo;
+        }
+        allOptionNames.put(baseOptionName, optionInfo);
     }
 
     @Override

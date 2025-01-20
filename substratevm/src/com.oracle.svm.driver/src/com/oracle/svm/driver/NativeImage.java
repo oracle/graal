@@ -779,7 +779,7 @@ public class NativeImage {
                 }
                 forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
                 forEachPropertyValue(properties.get("Args"), args, resolver);
-                forEachPropertyValue(properties.get("CustomHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
+                forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
