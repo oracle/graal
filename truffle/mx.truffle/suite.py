@@ -82,19 +82,19 @@ suite = {
 
     "ANTLR4": {
       "moduleName": "org.antlr.antlr4.runtime",
-      "digest" : "sha512:4abb69a3c6895edeec64c11d61886fbeb68eda5ebb21094f596e4f7add8afa9ff049c05fa916264b9185ac9013b16d8eabf44fb65da0b6871997c8f1473a3771",
-      "sourceDigest" : "sha512:611840da04cf2768f234ef06d69d95ed6edb2c55a48c3cffdf96ab23e76fc3bdd03e900155e454d2dd23ce8b644d48882a980aa6f5a76905dbbad57320d1cce0",
+      "digest" : "sha512:1c3e47b6b5dc40ca13927a7ae2ed187f470b8f406cea325e73c7a18af8e07b9ada0484312dd611f225f030b5585924932c702fd9326c143a626e271682b2b95e",
+      "sourceDigest" : "sha512:11978d2fb7322b1441ac7e69a4c80b33d53428b9ef6cf5cead4f26913a7d97bcd3da0a857447a1fa026351a6bbca767db602db961807ac9544e29cf38540241c",
       "maven" : {
         "groupId" : "org.antlr",
         "artifactId" : "antlr4-runtime",
-        "version" : "4.12.0",
+        "version" : "4.13.2",
       }
     },
 
     "ANTLR4_COMPLETE": {
-      # original: https://www.antlr.org/download/antlr-4.12.0-complete.jar
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.12.0-complete.jar"],
-      "digest": "sha512:f92f976375421ef117a97cb4298b7478b849370334a1eaf2efb243bd510e79358f258f47327deb2b9441843e7061acc67add2d034259f3136d97da8a09e545a4",
+      # original: https://www.antlr.org/download/antlr-4.13.2-complete.jar
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.13.2-complete.jar"],
+      "digest": "sha512:22569a011d207fb8f33e7e71162542a5748cc3daa67eec59cbdc2aeb0894c331dfb8b6100ea88529c6cea72672cbddd77ca6134ddf331685d68b3e72b4e0a914",
     },
 
     "JCODINGS_1.0.58": {
