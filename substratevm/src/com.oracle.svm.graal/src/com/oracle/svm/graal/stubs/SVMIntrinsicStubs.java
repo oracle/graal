@@ -31,6 +31,7 @@ import jdk.graal.compiler.replacements.nodes.AESNode;
 import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayFillNode;
 import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
@@ -55,6 +56,7 @@ import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 @GeneratedStubsHolder(targetVM = "substrate", sources = {
                 ArrayIndexOfNode.class,
                 ArrayEqualsNode.class,
+                ArrayFillNode.class,
                 ArrayRegionEqualsNode.class,
                 ArrayCompareToNode.class,
                 ArrayRegionCompareToNode.class,
