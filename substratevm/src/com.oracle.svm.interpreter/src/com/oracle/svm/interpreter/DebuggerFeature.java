@@ -248,7 +248,7 @@ public class DebuggerFeature implements InternalFeature {
         }
     }
 
-    private static boolean isReachable(AnalysisMethod m) {
+    static boolean isReachable(AnalysisMethod m) {
         return m.isReachable() || m.isDirectRootMethod() || m.isVirtualRootMethod();
     }
 
@@ -300,6 +300,13 @@ public class DebuggerFeature implements InternalFeature {
             SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(method);
 
             if (method.isReachable() && !methodsProcessedDuringAnalysis.contains(method)) {
+                methodsProcessedDuringAnalysis.add(method);
+                if (method.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution()) {
+                    if (subMethod.getOriginal().isNative()) {
+                        accessImpl.registerAsRoot(method, false, "compiled entry point of substitution needed for interpreter");
+                        continue;
+                    }
+                }
                 byte[] code = method.getCode();
                 if (code == null) {
                     continue;
@@ -345,7 +352,6 @@ public class DebuggerFeature implements InternalFeature {
                         }
                     }
                 }
-                methodsProcessedDuringAnalysis.add(method);
             }
         }
         supportImpl.trimForcedReferencesInImageHeap();
@@ -398,13 +404,12 @@ public class DebuggerFeature implements InternalFeature {
             if (isReachable(aMethod)) {
                 boolean needsMethodBody = InterpreterFeature.executableByInterpreter(aMethod);
                 // Test if the methods needs to be compiled for execution in the interpreter:
-                if (hMethod.hasBytecodes() && aMethod.getAnalyzedGraph() != null) {
-                    if (aMethod.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution() ||
-                                    invocationPlugins.lookupInvocation(aMethod, invocationLookupOptions) != null) {
-                        // The method is substituted, or an invocation plugin is registered
-                        SubstrateCompilationDirectives.singleton().registerForcedCompilation(hMethod);
-                        needsMethodBody = false;
-                    }
+                if (aMethod.getAnalyzedGraph() != null && //
+                                (aMethod.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution() ||
+                                                invocationPlugins.lookupInvocation(aMethod, invocationLookupOptions) != null)) {
+                    // The method is substituted, or an invocation plugin is registered
+                    SubstrateCompilationDirectives.singleton().registerForcedCompilation(hMethod);
+                    needsMethodBody = false;
                 }
                 BuildTimeInterpreterUniverse.singleton().method(aMethod, needsMethodBody, aMetaAccess);
             }
