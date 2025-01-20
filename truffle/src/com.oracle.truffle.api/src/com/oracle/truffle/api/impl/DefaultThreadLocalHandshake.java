@@ -42,7 +42,6 @@ package com.oracle.truffle.api.impl;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 
 final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
@@ -74,12 +73,7 @@ final class DefaultThreadLocalHandshake extends ThreadLocalHandshake {
 
     @Override
     public TruffleSafepointImpl getCurrent() {
-        TruffleSafepointImpl state = STATE.get();
-        if (state == null) {
-            throw CompilerDirectives.shouldNotReachHere("Thread local handshake is not initialized for this thread. " +
-                            "Did you call getCurrent() outside while a polyglot context not entered?");
-        }
-        return state;
+        return STATE.get();
     }
 
     @Override
