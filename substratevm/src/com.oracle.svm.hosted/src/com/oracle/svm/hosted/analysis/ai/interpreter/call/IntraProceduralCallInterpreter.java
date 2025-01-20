@@ -5,7 +5,6 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.InvokeNode;
 
 /**
  * Represents a context insensitive call interpreter.

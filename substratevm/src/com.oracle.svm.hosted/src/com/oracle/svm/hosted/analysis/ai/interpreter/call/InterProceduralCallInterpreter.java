@@ -12,7 +12,6 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryCache;
 import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
-import com.oracle.svm.hosted.analysis.ai.util.AnalysisMethodUtils;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -34,17 +33,21 @@ public final class InterProceduralCallInterpreter<
         SummaryCache<Domain> summaryCache = analysisContext.getSummaryCache();
         Summary<Domain> invokeSummary = analysisContext.getSummarySupplier().get(invoke, abstractStateMap.getState(invokeNode));
         AnalysisMethod targetAnalysisMethod = GraphUtils.getInvokeAnalysisMethod(analysisContext.getRoot(), invoke);
-        analysisContext.getLogger().logHighlightedDebugInfo("Analyzing AnalysisMethod: " + targetAnalysisMethod.getQualifiedName());
-
         if (analysisContext.getMethodFilter().shouldSkip(targetAnalysisMethod)) {
+            abstractStateMap.getPostCondition(invokeNode).joinWith(abstractStateMap.getPreCondition(invokeNode));
             return;
         }
 
+        GraphUtils.printGraph(targetAnalysisMethod, analysisContext.getDebugContext());
+        analysisContext.getLogger().logHighlightedDebugInfo("Analyzing AnalysisMethod: " + targetAnalysisMethod.getQualifiedName());
+
+        /* If the summaryCache contains the summary for the target method, we can use it */
         if (summaryCache.contains(targetMethod.getName(), invokeSummary)) {
             analysisContext.getLogger().logToFile("Summary cache contains targetMethod: " + targetMethod.getName());
-            Domain domain = summaryCache.getPostCondition(targetMethod.getName(), invokeSummary);
-            analysisContext.getLogger().logToFile("The summary is: " + domain);
-            abstractStateMap.setPostCondition(invokeNode, domain);
+            Summary<Domain> completeSummary = summaryCache.getSummary(targetMethod.getName(), invokeSummary);
+            assert completeSummary != null;
+            analysisContext.getLogger().logToFile("The summary is: " + completeSummary);
+            completeSummary.applySummary(invoke, invokeNode, abstractStateMap);
             return;
         }
 
@@ -53,7 +56,6 @@ public final class InterProceduralCallInterpreter<
         FixpointIterator<Domain> fixpointIterator;
         analysisContext.getCallStack().push(targetAnalysisMethod);
         analysisContext.getLogger().logToFile("Call stack: " + analysisContext.getCallStack());
-
         if (analysisContext.getIteratorPolicy().isConcurrent()) {
             fixpointIterator = new ConcurrentWpoFixpointIterator<>(analysisContext, transferFunction);
         } else {
@@ -62,9 +64,10 @@ public final class InterProceduralCallInterpreter<
 
         AbstractStateMap<Domain> invokeAbstractStateMap = fixpointIterator.iterateUntilFixpoint();
         AbstractState<Domain> returnAbstractState = invokeAbstractStateMap.getReturnState();
-        analysisContext.getLogger().logToFile("Analyzing AnalysisMethod finished with abstract context: " + returnAbstractState.toString());
+        analysisContext.getLogger().logToFile("Analyzing AnalysisMethod [" + targetMethod.getName() + "] finished with abstract context: " + returnAbstractState.toString());
         Summary<Domain> completeSummary = analysisContext.getSummarySupplier().createCompleteSummary(invokeSummary, returnAbstractState);
         summaryCache.put(targetMethod.getName(), completeSummary);
+        completeSummary.applySummary(invoke, invokeNode, abstractStateMap);
         analysisContext.getCallStack().pop();
     }
 }
