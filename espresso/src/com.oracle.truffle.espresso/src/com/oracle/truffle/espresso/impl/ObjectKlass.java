@@ -60,6 +60,7 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.Class
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.ParserField;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.ParserMethod;
@@ -1708,6 +1709,22 @@ public final class ObjectKlass extends Klass {
 
     public Source getSource() {
         return getKlassVersion().getSource();
+    }
+
+    public long getInstanceSize() {
+        return computeInstanceSize();
+    }
+
+    @TruffleBoundary
+    private long computeInstanceSize() {
+        if (fieldTable.length == 0) {
+            return 0L;
+        }
+        long size = 0L;
+        for (Field f : getFieldTable()) {
+            size += f.getKind() == JavaKind.Object ? JavaKind.Long.getByteCount() : f.getKind().getByteCount();
+        }
+        return size;
     }
 
     public final class KlassVersion {
