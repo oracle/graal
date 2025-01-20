@@ -89,6 +89,7 @@ public class EspressoSymbols {
         public static final Symbol<Type> java_lang_ClassLoader$NativeLibrary = SYMBOLS.putType("Ljava/lang/ClassLoader$NativeLibrary;");
         public static final Symbol<Type> jdk_internal_loader_NativeLibraries = SYMBOLS.putType("Ljdk/internal/loader/NativeLibraries;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = SYMBOLS.putType("Lsun/misc/Launcher$ExtClassLoader;");
+        public static final Symbol<Type> sun_instrument_InstrumentationImpl = SYMBOLS.putType("Lsun/instrument/InstrumentationImpl;");
         public static final Symbol<Type> jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = SYMBOLS.putType("Ljdk/internal/loader/RawNativeLibraries$RawNativeLibraryImpl;");
         public static final Symbol<Type> jdk_internal_util_ArraysSupport = SYMBOLS.putType("Ljdk/internal/util/ArraysSupport;");
         public static final Symbol<Type> java_io_InputStream = SYMBOLS.putType("Ljava/io/InputStream;");
@@ -518,6 +519,11 @@ public class EspressoSymbols {
         public static final Symbol<Name> thiz = SYMBOLS.putName("this");
         // finding main
         public static final Symbol<Name> checkAndLoadMain = SYMBOLS.putName("checkAndLoadMain");
+        // java agents premain
+        public static final Symbol<Name> loadClassAndCallPremain = SYMBOLS.putName("loadClassAndCallPremain");
+        public static final Symbol<Name> transform = SYMBOLS.putName("transform");
+        public static final Symbol<Name> appendToClassPathForInstrumentation = SYMBOLS.putName("appendToClassPathForInstrumentation");
+
         public static final Symbol<Name> main = SYMBOLS.putName("main");
         // Reflection
         public static final Symbol<Name> clazz = SYMBOLS.putName("clazz");
@@ -1013,6 +1019,26 @@ public class EspressoSymbols {
         public static final Symbol<Signature> _void_String_array = SYMBOLS.putSignature(Types._void, Types.java_lang_String_array);
         public static final Symbol<Signature> Class_String_boolean_ClassLoader = SYMBOLS.putSignature(Types.java_lang_Class, Types.java_lang_String, Types._boolean, Types.java_lang_ClassLoader);
         public static final Symbol<Signature> Throwable = SYMBOLS.putSignature(Types.java_lang_Throwable);
+        public static final Symbol<Signature> _void_long_boolean_boolean = SYMBOLS.putSignature(Types._void, Types._long, Types._boolean, Types._boolean);
+        public static final Symbol<Signature> _void_long_boolean_boolean_boolean = SYMBOLS.putSignature(Types._void, Types._long, Types._boolean, Types._boolean, Types._boolean);
+        public static final Symbol<Signature> _byte_array_Module_ClassLoader_String_Class_ProtectionDomain_byte_array_boolean = SYMBOLS.putSignature(
+                        Types._byte_array,
+                        Types.java_lang_Module,
+                        Types.java_lang_ClassLoader,
+                        Types.java_lang_String,
+                        Types.java_lang_Class,
+                        Types.java_security_ProtectionDomain,
+                        Types._byte_array,
+                        Types._boolean);
+        public static final Symbol<Signature> _byte_array_ClassLoader_String_Class_ProtectionDomain_byte_array_boolean = SYMBOLS.putSignature(
+                        Types._byte_array,
+                        Types.java_lang_ClassLoader,
+                        Types.java_lang_String,
+                        Types.java_lang_Class,
+                        Types.java_security_ProtectionDomain,
+                        Types._byte_array,
+                        Types._boolean);
+        public static final Symbol<Signature> _void_String_String = SYMBOLS.putSignature(Types._void, Types.java_lang_String, Types.java_lang_String);
         public static final Symbol<Signature> _void_Throwable = SYMBOLS.putSignature(Types._void, Types.java_lang_Throwable);
         public static final Symbol<Signature> StackTraceElement_array = SYMBOLS.putSignature(Types.java_lang_StackTraceElement_array);
         public static final Symbol<Signature> _void_String_Throwable = SYMBOLS.putSignature(Types._void, Types.java_lang_String, Types.java_lang_Throwable);

@@ -49,44 +49,44 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * with no runtime overhead:
  * <ul>
  * <li>{@code Symbol<Name>} - For identifiers (field, class, or method names)
- * 
+ *
  * <pre>
  * Example: Symbol&lt;Name&gt; methodName = ...
  * </pre>
- * 
+ *
  * </li>
  * <li>{@code Symbol<ModifiedUTF8>} - For constant pool UTF-8 strings
- * 
+ *
  * <pre>
  * Example: Symbol&lt;ModifiedUTF8&gt; constString = ...
  * </pre>
- * 
+ *
  * </li>
  * <li>{@code Symbol<? extends Descriptor>} - For type or signature descriptors
- * 
+ *
  * <pre>
  * Example: Symbol&lt;? extends Descriptor&gt; desc = ...
  * </pre>
- * 
+ *
  * </li>
  * <li>{@code Symbol<Signature>} - For method/field signature descriptors
- * 
+ *
  * <pre>
  * Example: Symbol&lt;Signature&gt; methodSignature = ...
  * </pre>
- * 
+ *
  * </li>
  * <li>{@code Symbol<Type>} - For type descriptors in internal form
- * 
+ *
  * <pre>
  * Example: Symbol&lt;Type&gt; typeDescriptor = ...
  * </pre>
- * 
+ *
  * </li>
  * </ul>
  *
  * <h2>Usage Example</h2>
- * 
+ *
  * <pre>
  * // Creating a method name symbol
  * Symbol&lt;Name&gt; methodName = ...;
@@ -172,7 +172,7 @@ public final class Symbol<T> extends ByteSequence {
      * @param to The ending index (exclusive)
      * @return A ByteSequence representing the subsequence
      */
-    ByteSequence substring(int from, int to) {
+    public ByteSequence substring(int from, int to) {
         assert 0 <= from && from <= to && to <= length();
         if (from == 0 && to == length()) {
             return this;

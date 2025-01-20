@@ -121,7 +121,9 @@ public final class JDWPContextImpl implements JDWPContext {
 
     public void finalizeContext() {
         if (context.getEspressoEnv().JDWPOptions != null) {
-            controller.disposeDebugger(false);
+            if (controller != null) { // in case we exited before initializing the controller field
+                controller.disposeDebugger(false);
+            }
         }
     }
 
@@ -245,7 +247,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public KlassRef[] getAllLoadedClasses() {
-        return context.getRegistries().getAllLoadedClasses();
+        return context.getRegistries().getAllLoadedClasses().toArray(new KlassRef[0]);
     }
 
     @Override

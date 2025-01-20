@@ -67,6 +67,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.classfile.JavaVersion;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
@@ -193,6 +194,7 @@ public final class EspressoContext
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
     @CompilationFinal private AgentLibraries agents;
+    @CompilationFinal private JavaAgents javaAgents;
     @CompilationFinal private NativeAccess nativeAccess;
     @CompilationFinal private JNIHandles handles;
     // endregion VM
@@ -285,6 +287,10 @@ public final class EspressoContext
         return startupClockNanos;
     }
 
+    public JavaAgents getJavaAgents() {
+        return javaAgents;
+    }
+
     public EspressoLanguageCache getLanguageCache() {
         return getLanguage().getLanguageCache();
     }
@@ -303,12 +309,13 @@ public final class EspressoContext
         return bootClasspath;
     }
 
-    public ClassLoadingEnv getClassLoadingEnv() {
-        return classLoadingEnv;
+    @TruffleBoundary
+    public void appendBootClasspath(ClasspathEntry entry) {
+        bootClasspath = getBootClasspath().append(entry);
     }
 
-    public void setBootClassPath(Classpath classPath) {
-        this.bootClasspath = classPath;
+    public ClassLoadingEnv getClassLoadingEnv() {
+        return classLoadingEnv;
     }
 
     public EspressoProperties getVmProperties() {
@@ -429,7 +436,7 @@ public final class EspressoContext
                 registries.initJavaBaseModule();
                 registries.getBootClassRegistry().initUnnamedModule(null);
             }
-
+            javaAgentsOnLoad();
             initializeAgents();
 
             try (DebugCloseable metaInit = META_INIT.scope(espressoEnv.getTimers())) {
@@ -499,10 +506,12 @@ public final class EspressoContext
                     meta.java_lang_System_initPhase3.invokeDirectStatic();
                 }
             }
+            meta.postSystemInit();
 
             getVM().getJvmti().postVmInit();
-
-            meta.postSystemInit();
+            if (javaAgents != null) {
+                javaAgents.startJavaAgents();
+            }
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 // System exceptions.
@@ -684,6 +693,12 @@ public final class EspressoContext
         throw abort("Cannot find native backend '" + nativeBackend + "'. Available backends: " + available);
     }
 
+    private void javaAgentsOnLoad() {
+        if (getEnv().getOptions().hasBeenSet(EspressoOptions.JavaAgent)) {
+            javaAgents = JavaAgents.createJavaAgents(this, getEnv().getOptions().get(EspressoOptions.JavaAgent));
+        }
+    }
+
     private void initializeAgents() {
         agents = new AgentLibraries(this);
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentLib)) {
@@ -692,10 +707,7 @@ public final class EspressoContext
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.AgentPath)) {
             agents.registerAgents(getEnv().getOptions().get(EspressoOptions.AgentPath), true);
         }
-        if (getEnv().getOptions().hasBeenSet(EspressoOptions.JavaAgent)) {
-            agents.registerAgent("instrument", getEnv().getOptions().get(EspressoOptions.JavaAgent), false);
-        }
-        if (espressoEnv.EnableAgents) {
+        if (espressoEnv.EnableNativeAgents) {
             agents.initialize();
         } else {
             if (!agents.isEmpty()) {
@@ -883,7 +895,7 @@ public final class EspressoContext
     // region Agents
 
     public TruffleObject lookupAgentSymbol(String mangledName) {
-        if (espressoEnv.EnableAgents) {
+        if (espressoEnv.EnableNativeAgents) {
             return agents.lookupSymbol(mangledName);
         }
         return null;
