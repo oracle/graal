@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
+import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
 import static org.graalvm.nativeimage.ImageInfo.inImageCode;
 
 import jdk.graal.compiler.bytecode.BytecodeProvider;
@@ -201,7 +202,9 @@ public abstract class HotSpotBackendFactory implements ArchitectureSpecific {
             try (InitTimer rt = timer("create Replacements provider")) {
                 replacements = createReplacements(target, providers, bytecodeProvider);
                 providers = replacements.getProviders();
-                replacements.maybeInitializeEncoder();
+                if (inImageBuildtimeCode()) {
+                    replacements.maybeInitializeEncoder();
+                }
             }
             GraphBuilderConfiguration.Plugins plugins;
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {

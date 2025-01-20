@@ -40,12 +40,10 @@ import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * Ensures that the only code directly accessing
- * {@link jdk.vm.ci.services.Services#IS_IN_NATIVE_IMAGE} and
- * {@link jdk.vm.ci.services.Services#IS_BUILDING_NATIVE_IMAGE} is in
+ * {@link jdk.vm.ci.services.Services#IS_IN_NATIVE_IMAGE} is in
  * {@link jdk.graal.compiler.serviceprovider.GraalServices}. All other code must use one of the
  * following methods:
  * <ul>
- * <li>{@link GraalServices#isBuildingLibgraal()}</li>
  * <li>{@link GraalServices#isInLibgraal()}</li>
  * <li>{@link ImageInfo#inImageCode()}</li>
  * <li>{@link ImageInfo#inImageBuildtimeCode()}</li>
@@ -79,14 +77,12 @@ public class VerifyLibGraalContextChecks extends VerifyPhase<CoreProviders> {
         for (LoadFieldNode load : loads) {
             ResolvedJavaField field = load.field();
             if (field.getDeclaringClass().toJavaName().equals(Services.class.getName())) {
-                if (field.getName().equals("IS_BUILDING_NATIVE_IMAGE") || field.getName().equals("IS_IN_NATIVE_IMAGE")) {
+                if (field.getName().equals("IS_IN_NATIVE_IMAGE")) {
                     if (!isAllowedToAccess(graph.method())) {
-                        String recommendation = field.getName().equals("IS_BUILDING_NATIVE_IMAGE") ? "isBuildingLibgraal" : "isInLibgraal";
-                        throw new VerificationError("reading %s in %s is prohibited - use %s.%s() instead",
+                        throw new VerificationError("reading %s in %s is prohibited - use %s.isInLibgraal() instead",
                                         field.format("%H.%n"),
                                         graph.method().format("%H.%n(%p)"),
-                                        GraalServices.class.getName(),
-                                        recommendation);
+                                        GraalServices.class.getName());
 
                     }
                 }

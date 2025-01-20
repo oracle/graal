@@ -43,7 +43,6 @@ import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 @ServiceProvider(TTYStreamProvider.class)
@@ -74,7 +73,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
     /**
      * Gets a pointer to a global word initialized to 0.
      */
-    private static final GlobalAtomicLong BARRIER = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong BARRIER = new GlobalAtomicLong("BARRIER", 0L);
 
     /**
      * Executes {@code action}. {@link #BARRIER} is used to ensure the action is executed exactly
@@ -154,7 +153,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
          * initialization.
          */
         class DelayedOutputStream extends OutputStream {
-            @NativeImageReinitialize private volatile OutputStream lazy;
+            private volatile OutputStream lazy;
 
             private OutputStream lazy() {
                 if (lazy == null) {

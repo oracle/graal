@@ -35,6 +35,8 @@ import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.PrintStream;
 
+import jdk.graal.compiler.options.Option;
+import jdk.graal.nativeimage.LibGraalRuntime;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -58,9 +60,7 @@ import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider.TypeFilter;
-import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
@@ -80,9 +80,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     static class Options {
-        @Option(help = "Perform a full GC of the libgraal heap after every compile to reduce idle heap and reclaim " +
-                        "references to the HotSpot heap.  This flag has no effect in the context of jargraal.", type = OptionType.Debug)//
-        public static final OptionKey<Boolean> FullGCAfterCompile = new OptionKey<>(false);
         @Option(help = "Options which are enabled based on the method being compiled. " +
                         "The basic syntax is a MethodFilter option specification followed by a list of options to be set for that compilation. " +
                         "\"MethodFilter:\" is used to distinguish this from normal usage of MethodFilter as option." +
@@ -492,11 +489,13 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
         try (DebugCloseable a = CompilationTime.start(debug)) {
             HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
-
-            // Notify the runtime that most objects allocated in the current compilation
-            // are dead and can be reclaimed.
-            try (DebugCloseable timer = HintedFullGC.start(debug)) {
-                GraalServices.notifyLowMemoryPoint(Options.FullGCAfterCompile.getValue(debug.getOptions()));
+            if (GraalServices.isInLibgraal()) {
+                // Notify the runtime that most objects allocated in the current compilation
+                // are dead and can be reclaimed.
+                try (DebugCloseable timer = HintedFullGC.start(debug)) {
+                    LibGraalRuntime.notifyLowMemoryPoint(true);
+                    LibGraalRuntime.processReferences();
+                }
             }
             return result;
         }

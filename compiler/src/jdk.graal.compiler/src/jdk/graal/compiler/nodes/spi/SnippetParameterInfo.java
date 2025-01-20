@@ -149,10 +149,6 @@ public class SnippetParameterInfo {
         return true;
     }
 
-    public void clearNames() {
-        names = null;
-    }
-
     public static BitSet getNonNullParameters(SnippetParameterInfo info) {
         BitSet nonNullParameters = new BitSet(info.getParameterCount());
         for (int i = 0; i < info.getParameterCount(); i++) {

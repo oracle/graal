@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,4 +83,13 @@ public interface FieldValueTransformer {
      * @since 22.3
      */
     Object transform(Object receiver, Object originalValue);
+
+    /**
+     * Returns true when the value for this custom computation is available.
+     *
+     * @since 25
+     */
+    default boolean isAvailable() {
+        return true;
+    }
 }

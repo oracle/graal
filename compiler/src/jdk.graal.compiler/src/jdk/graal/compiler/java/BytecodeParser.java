@@ -2411,7 +2411,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
     @Override
     public void replacePlugin(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args, PluginReplacementNode.ReplacementFunction replacementFunction) {
-        assert replacementFunction != null;
+        GraalError.guarantee(replacementFunction != null, "%s", targetMethod);
         JavaType returnType = maybeEagerlyResolve(targetMethod.getSignature().getReturnType(method.getDeclaringClass()), targetMethod.getDeclaringClass());
         StampPair returnStamp = getReplacements().getGraphBuilderPlugins().getOverridingStamp(this, returnType, false);
         if (returnStamp == null) {

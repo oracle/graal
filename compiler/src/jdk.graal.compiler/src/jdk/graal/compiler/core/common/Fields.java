@@ -24,18 +24,25 @@
  */
 package jdk.graal.compiler.core.common;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Edges;
+import jdk.graal.compiler.libgraal.LibGraalFeature;
 import jdk.internal.misc.Unsafe;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.Feature.BeforeCompilationAccess;
 
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.
  */
-public class Fields {
+public class Fields implements FeatureComponent {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
@@ -57,6 +64,7 @@ public class Fields {
 
     private final Class<?>[] declaringClasses;
 
+    @SuppressWarnings("this-escape")
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
@@ -71,10 +79,51 @@ public class Fields {
             declaringClasses[index] = f.declaringClass;
             index++;
         }
+
+        if (ImageInfo.inImageBuildtimeCode() && LibGraalFeature.singleton() != null) {
+            LibGraalFeature.singleton().addFeatureComponent(this);
+        }
+    }
+
+    private Field getField(int i) {
+        try {
+            return getDeclaringClass(i).getDeclaredField(getName(i));
+        } catch (NoSuchFieldException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
+    }
+
+    /**
+     * Recomputes the {@link Unsafe} based field offsets and the {@link Edges#getIterationMask()}
+     * derived from them.
+     *
+     * @param access provides the new offsets via {@link BeforeCompilationAccess#objectFieldOffset}
+     * @return a pair (represented as a map entry) where the key is the new offsets and the value is
+     *         the iteration mask
+     *
+     */
+    public Map.Entry<long[], Long> recomputeOffsetsAndIterationMask(Feature.BeforeCompilationAccess access) {
+        long[] newOffsets = new long[offsets.length];
+        for (int i = 0; i < offsets.length; i++) {
+            Field field = getField(i);
+            long newOffset = access.objectFieldOffset(field);
+            newOffsets[i] = newOffset;
+        }
+        return Map.entry(newOffsets, 0L);
+    }
+
+    @Override
+    public void duringAnalysis(Feature feature, Feature.DuringAnalysisAccess access) {
+        if (feature == LibGraalFeature.singleton()) {
+            for (int i = 0; i < offsets.length; i++) {
+                Field field = getField(i);
+                access.registerAsUnsafeAccessed(field);
+            }
+        }
     }
 
     public static Fields create(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
-        if (fields.size() == 0) {
+        if (fields.isEmpty()) {
             return EMPTY_FIELDS;
         }
         return new Fields(fields);
@@ -94,33 +143,12 @@ public class Fields {
     }
 
     /**
-     * Function enabling an object field value to be replaced with another value when being copied
-     * within {@link Fields#copy(Object, Object, ObjectTransformer)}.
-     */
-    @FunctionalInterface
-    public interface ObjectTransformer {
-        Object apply(int index, Object from);
-    }
-
-    /**
      * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
      *
      * @param from the object from which the fields should be copied
      * @param to the object to which the fields should be copied
      */
     public void copy(Object from, Object to) {
-        copy(from, to, null);
-    }
-
-    /**
-     * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
-     *
-     * @param from the object from which the fields should be copied
-     * @param to the object to which the fields should be copied
-     * @param trans function to applied to object field values as they are copied. If {@code null},
-     *            the value is copied unchanged.
-     */
-    public void copy(Object from, Object to, ObjectTransformer trans) {
         assert from.getClass() == to.getClass() : from + " " + to;
         for (int index = 0; index < offsets.length; index++) {
             long offset = offsets[index];
@@ -154,7 +182,7 @@ public class Fields {
                         obj = ((Object[]) obj).clone();
                     }
                 }
-                UNSAFE.putReference(to, offset, trans == null ? obj : trans.apply(index, obj));
+                UNSAFE.putReference(to, offset, obj);
             }
         }
     }
@@ -276,7 +304,7 @@ public class Fields {
     /**
      * Gets the type of a field.
      *
-     * @param index index of a field
+     * @param index index of the field
      */
     public Class<?> getType(int index) {
         return types[index];
