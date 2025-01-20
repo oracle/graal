@@ -139,7 +139,7 @@ public class FileStackProcessor implements StackProcessor {
                 fk = new FileKey(langMime, langStratum.uri);
             }
             Location newLoc = new Location(langStratum.uri,
-                    fk, langStratum.line, lastloc, lastDepth, depth);
+                    fk, langStratum.line, langStratum.startOffset, langStratum.endOffset, lastloc, lastDepth, depth);
             if (newLoc.equals(lastloc)) {
                 replaceTop(newLoc);
                 return null;

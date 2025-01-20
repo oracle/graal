@@ -23,6 +23,7 @@
 
 package org.graalvm.visualizer.source.impl.ui;
 
+import javax.swing.JEditorPane;
 import org.graalvm.visualizer.source.Location;
 import org.graalvm.visualizer.source.ui.Trackable;
 import org.netbeans.api.actions.Openable;
@@ -34,14 +35,17 @@ import org.openide.filesystems.FileObject;
 import org.openide.text.Line;
 import org.openide.util.NbBundle;
 
-import javax.swing.SwingUtilities;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
+import org.openide.text.NbDocument;
+import org.openide.util.Mutex;
+import org.openide.util.Task;
+import org.openide.util.TaskListener;
 
 /**
  *
  */
-public class LocationOpener implements Openable, Trackable {
+public final class LocationOpener implements Openable, Trackable {
     private final Location location;
 
     public LocationOpener(Location location) {
@@ -63,24 +67,48 @@ public class LocationOpener implements Openable, Trackable {
             return;
         }
         int line = location.getLine();
+        int[] offsets = location.getOffsetsOrNull();
         EditorCookie cake = toOpen.getLookup().lookup(EditorCookie.class);
-
-        Line l;
-        try {
-            l = cake.getLineSet().getOriginal(line - 1);
-        } catch (IndexOutOfBoundsException ex) {
-            // expected, the source has changed
-            return;
+        if (cake.getDocument() != null && offsets != null) {
+            line = NbDocument.findLineNumber(cake.getDocument(), offsets[0]);
         }
+
+        Task task = cake.prepareDocument();
+
+        TaskListener[] whenShowing = new TaskListener[1];
+        whenShowing[0] = (ev) -> {
+            task.removeTaskListener(whenShowing[0]);
+
+            for (JEditorPane p : cake.getOpenedPanes()) {
+                p.select(offsets[0], offsets[1]);
+            }
+        };
+
+        Line l = findLine(cake, line);
         if (l == null) {
             cake.open();
-            StatusDisplayer.getDefault().setStatusText(Bundle.ERR_LineNotFound());
+            if (offsets == null) {
+                StatusDisplayer.getDefault().setStatusText(Bundle.ERR_LineNotFound());
+            } else {
+                task.addTaskListener(whenShowing[0]);
+            }
             return;
         }
-        if (SwingUtilities.isEventDispatchThread()) {
+        Mutex.EVENT.readAccess(() -> {
             l.show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT);
-        } else {
-            SwingUtilities.invokeLater(() -> l.show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT));
+            if (offsets != null) {
+                task.addTaskListener(whenShowing[0]);
+            }
+        });
+    }
+
+    private Line findLine(EditorCookie cake, int line) {
+        try {
+            return cake.getLineSet().getOriginal(line - 1);
+        } catch (IndexOutOfBoundsException ex) {
+            // expected, the source has changed
+            // just open the file
+            return null;
         }
     }
 
