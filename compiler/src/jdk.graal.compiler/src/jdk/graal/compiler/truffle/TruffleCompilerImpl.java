@@ -407,6 +407,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
 
         @Override
+        public String getCompilationId() {
+            return compResult.getCompilationId().toString(CompilationIdentifier.Verbosity.ID);
+        }
+
+        @Override
         public int getTargetCodeSize() {
             return compResult.getTargetCodeSize();
         }
