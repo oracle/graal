@@ -1059,12 +1059,12 @@ public class NativeImage {
             char boolPrefix = option.length() > oH.length() ? option.charAt(oH.length()) : 0;
             if (boolPrefix == '-' || boolPrefix == '+') {
                 if (eqIndex != -1) {
-                    showError("Ill-formed boolean native-image hosted-option '" + option + "' (boolean option with extraneous '=') from " + OptionOrigin.from(origin));
+                    showError("Malformed boolean native-image hosted-option '" + option + "' (boolean option with extraneous '=') from " + OptionOrigin.from(origin));
                 }
                 return option + optionOriginSeparator + origin;
             } else {
                 if (eqIndex == -1) {
-                    showError("Ill-formed native-image hosted-option '" + option + "' ('=' missing after option name) from " + OptionOrigin.from(origin));
+                    showError("Malformed native-image hosted-option '" + option + "' ('=' missing after option name) from " + OptionOrigin.from(origin));
                 }
                 String front = option.substring(0, eqIndex);
                 String back = option.substring(eqIndex);
