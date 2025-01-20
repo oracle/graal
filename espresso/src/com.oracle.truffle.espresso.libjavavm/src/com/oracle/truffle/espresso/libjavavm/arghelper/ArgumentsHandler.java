@@ -106,6 +106,7 @@ public class ArgumentsHandler {
     private List<String> addOpens = new ArrayList<>();
     private List<String> addReads = new ArrayList<>();
     private List<String> enableNativeAccess = new ArrayList<>();
+    private List<String> javaAgent = new ArrayList<>();
 
     @SuppressWarnings("this-escape")
     public ArgumentsHandler(Context.Builder builder, Set<String> ignoredXXOptions, Map<String, String> mappedXXOptions, JNIJavaVMInitArgs args) {
@@ -182,6 +183,10 @@ public class ArgumentsHandler {
 
     public void enableNativeAccess(String option) {
         enableNativeAccess.add(option);
+    }
+
+    public void addJavaAgent(String option) {
+        javaAgent.add(option);
     }
 
     public void setExperimental(boolean experimental) {
@@ -280,6 +285,11 @@ public class ArgumentsHandler {
         }
         if (!enableNativeAccess.isEmpty()) {
             builder.option("java.EnableNativeAccess", String.join(File.pathSeparator, enableNativeAccess));
+        }
+        if (!javaAgent.isEmpty()) {
+            for (int i = 0; i < javaAgent.size(); i++) {
+                builder.option(Arguments.JAVA_AGENT + "." + i, javaAgent.get(i));
+            }
         }
         printHelp();
         polyglotAccess.argumentProcessingDone();

@@ -3,6 +3,7 @@
 ## Version 25.0.0
 ### User-visible changes
 * Added experimental support for JVMCI. It can be enabled with the `java.EnableJVMCI` option.
+* Added experimentation support for `-javaagent`. It can also be enabled from the polyglot API with `java.JavaAgent.$i` option set to `/path/to/jar=agent-options` where `$i` starts at 0 and increments by 1 for each extra java agent.
 
 ## Version 24.1.0
 ### User-visible changes

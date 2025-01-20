@@ -55,7 +55,7 @@ public final class Arguments {
 
     private static final String AGENT_LIB = "java.AgentLib.";
     private static final String AGENT_PATH = "java.AgentPath.";
-    private static final String JAVA_AGENT = "java.JavaAgent";
+    public static final String JAVA_AGENT = "java.JavaAgent";
 
     /*
      * HotSpot comment:
@@ -126,7 +126,7 @@ public final class Arguments {
                         builder.option("java.JDWPOptions", value);
                     } else if (optionString.startsWith("-javaagent:")) {
                         String value = optionString.substring("-javaagent:".length());
-                        builder.option(JAVA_AGENT, value);
+                        handler.addJavaAgent(value);
                         handler.addModules("java.instrument");
                     } else if (optionString.startsWith("-agentlib:")) {
                         String[] split = splitEquals(optionString.substring("-agentlib:".length()));

@@ -32,10 +32,14 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.ParserKlass;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
@@ -334,6 +338,7 @@ public abstract class ClassRegistry {
 
     public abstract @JavaType(ClassLoader.class) StaticObject getClassLoader();
 
+    @TruffleBoundary
     public List<Klass> getLoadedKlasses() {
         ArrayList<Klass> klasses = new ArrayList<>(classes.size());
         for (ClassRegistries.RegistryEntry entry : classes.values()) {
@@ -363,8 +368,22 @@ public abstract class ClassRegistry {
     }
 
     @SuppressWarnings("try")
-    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
+    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] initialBytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
+        byte[] bytes = initialBytes;
+        if (context.getJavaAgents() != null && context.getJavaAgents().hasTransformer() && !info.isHidden() && !info.isAnonymousClass()) {
+            // we must not apply a transformation on a class that was loaded in response
+            // to an ongoing transformation, so we check our ThreadLocal state
+            EspressoThreadLocalState tls = context.getLanguage().getThreadLocalState();
+            if (!tls.isInTransformer()) {
+                try (EspressoThreadLocalState.TransformerScope transformerScope = tls.transformerScope()) {
+                    StaticObject module = getGuestModuleInstance(typeOrNull, context);
+                    StaticObject protectionDomain = info.protectionDomain == null ? StaticObject.NULL : info.protectionDomain;
+                    bytes = context.getJavaAgents().transformClass(module, getClassLoader(), typeOrNull, protectionDomain, initialBytes);
+                }
+            }
+        }
+
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
             parserKlass = parseKlass(env, bytes, typeOrNull, info);
@@ -392,6 +411,45 @@ public abstract class ClassRegistry {
             registerStrongHiddenClass(klass);
         }
         return klass;
+    }
+
+    private StaticObject getGuestModuleInstance(Symbol<Type> typeOrNull, EspressoContext context) {
+        // we need the package symbol first
+        Symbol<Name> pkgSymbol = typeOrNull == null ? context.getNames().getOrCreate(ByteSequence.EMPTY) : context.getNames().getOrCreate(TypeSymbols.getRuntimePackage(typeOrNull));
+        // then obtain the package entry
+        PackageTable.PackageEntry pkgEntry = getPackageEntry(context, pkgSymbol);
+        // from the package entry we can now get the module
+        return getModuleEntry(pkgEntry).module();
+    }
+
+    public PackageTable.PackageEntry getPackageEntry(EspressoContext context, Symbol<Name> pkgSymbol) {
+        PackageTable.PackageEntry pkgEntry = null;
+        if (!NameSymbols.isUnnamedPackage(pkgSymbol)) {
+            pkgEntry = packages().lookup(pkgSymbol);
+            // If the package name is not found in the entry table, it is an indication that the
+            // package has not been defined. Consider it defined within the unnamed module.
+            if (pkgEntry == null) {
+                if (!context.getRegistries().javaBaseDefined()) {
+                    // Before java.base is defined during bootstrapping, define all packages in
+                    // the java.base module.
+                    pkgEntry = packages().lookupOrCreate(pkgSymbol, context.getRegistries().getJavaBaseModule());
+                } else {
+                    pkgEntry = packages().lookupOrCreate(pkgSymbol, getUnnamedModule());
+                }
+            }
+        }
+        return pkgEntry;
+    }
+
+    private ModuleEntry getModuleEntry(PackageTable.PackageEntry pkgEntry) {
+        ModuleEntry moduleEntry;
+        if (pkgEntry != null) {
+            moduleEntry = pkgEntry.module();
+        } else {
+            // unnamed package, thus unnamed module in loader
+            moduleEntry = getUnnamedModule();
+        }
+        return moduleEntry;
     }
 
     private static void patchAnonymousClass(RuntimeConstantPool constantPool, StaticObject[] patches) {

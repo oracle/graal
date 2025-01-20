@@ -27,6 +27,8 @@ import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.ALL
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_19_OR_HIGHER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_20_OR_LOWER;
+import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_21_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_8_OR_LOWER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.VERSION_9_OR_HIGHER;
 import static com.oracle.truffle.espresso.classfile.JavaVersion.VersionRange.higher;
@@ -1268,6 +1270,20 @@ public final class Meta extends ContextAccessImpl
                             .notRequiredMethod(java_lang_reflect_ProxyGenerator);
         }
 
+        // when no agents are added, those classes might not be discoverable
+        sun_instrument_InstrumentationImpl = loadPlatformKlassOrNull(Types.sun_instrument_InstrumentationImpl);
+        if (sun_instrument_InstrumentationImpl != null) {
+            sun_instrument_InstrumentationImpl_init = diff() //
+                            .method(VERSION_20_OR_LOWER, Names._init_, Signatures._void_long_boolean_boolean) //
+                            .method(VERSION_21_OR_HIGHER, Names._init_, Signatures._void_long_boolean_boolean_boolean) //
+                            .method(sun_instrument_InstrumentationImpl);
+            sun_instrument_InstrumentationImpl_loadClassAndCallPremain = sun_instrument_InstrumentationImpl.requireDeclaredMethod(Names.loadClassAndCallPremain, Signatures._void_String_String);
+            sun_instrument_InstrumentationImpl_transform = diff() //
+                            .method(VERSION_8_OR_LOWER, Names.transform, Signatures._byte_array_ClassLoader_String_Class_ProtectionDomain_byte_array_boolean) //
+                            .method(VERSION_9_OR_HIGHER, Names.transform, Signatures._byte_array_Module_ClassLoader_String_Class_ProtectionDomain_byte_array_boolean) //
+                            .method(sun_instrument_InstrumentationImpl);
+        }
+
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEspressoEnv().Polyglot;
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
@@ -2006,6 +2022,10 @@ public final class Meta extends ContextAccessImpl
     @CompilationFinal public Method java_beans_ThreadGroupContext_removeBeanInfo;
     @CompilationFinal public ObjectKlass java_beans_Introspector;
     @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
+    @CompilationFinal public ObjectKlass sun_instrument_InstrumentationImpl;
+    @CompilationFinal public Method sun_instrument_InstrumentationImpl_init;
+    @CompilationFinal public Method sun_instrument_InstrumentationImpl_loadClassAndCallPremain;
+    @CompilationFinal public Method sun_instrument_InstrumentationImpl_transform;
 
     public final class ContinuumSupport {
         public final Method org_graalvm_continuations_ContinuationImpl_run;

@@ -76,7 +76,6 @@ import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.NameSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
@@ -1349,23 +1348,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private void initPackage(@JavaType(ClassLoader.class) StaticObject classLoader) {
-        if (!NameSymbols.isUnnamedPackage(getRuntimePackage())) {
-            ClassRegistry registry = getRegistries().getClassRegistry(classLoader);
-            PackageEntry entry = registry.packages().lookup(getRuntimePackage());
-            // If the package name is not found in the loader's package
-            // entry table, it is an indication that the package has not
-            // been defined. Consider it defined within the unnamed module.
-            if (entry == null) {
-                if (!getRegistries().javaBaseDefined()) {
-                    // Before java.base is defined during bootstrapping, define all packages in
-                    // the java.base module.
-                    entry = registry.packages().lookupOrCreate(getRuntimePackage(), getRegistries().getJavaBaseModule());
-                } else {
-                    entry = registry.packages().lookupOrCreate(getRuntimePackage(), registry.getUnnamedModule());
-                }
-            }
-            packageEntry = entry;
-        }
+        packageEntry = getRegistries().getClassRegistry(classLoader).getPackageEntry(getContext(), getRuntimePackage());
     }
 
     @Override

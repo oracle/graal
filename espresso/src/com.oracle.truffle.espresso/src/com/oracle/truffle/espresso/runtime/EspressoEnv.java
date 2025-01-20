@@ -99,7 +99,7 @@ public final class EspressoEnv {
     public final boolean EnableSignals;
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
-    public final boolean EnableAgents;
+    public final boolean EnableNativeAgents;
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
     public final boolean RegexSubstitutions;
@@ -134,7 +134,7 @@ public final class EspressoEnv {
         this.SplitMethodHandles = JDWPOptions == null && env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
-        this.EnableAgents = env.getOptions().get(EspressoOptions.EnableAgents);
+        this.EnableNativeAgents = env.getOptions().get(EspressoOptions.EnableNativeAgents);
         this.TrivialMethodSize = env.getOptions().get(EspressoOptions.TrivialMethodSize);
         boolean regexSubstitutions = env.getOptions().get(EspressoOptions.UseTRegex);
         if (regexSubstitutions && !env.getInternalLanguages().containsKey("regex")) {
