@@ -33,7 +33,6 @@ import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NONE;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_NULL_POINTER;
 import static com.oracle.svm.core.jvmti.headers.JvmtiError.JVMTI_ERROR_OUT_OF_MEMORY;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -109,6 +108,8 @@ import com.oracle.svm.core.jvmti.headers.JvmtiVersion;
 import com.oracle.svm.core.jvmti.headers.VoidPointerPointer;
 import com.oracle.svm.core.memory.NullableNativeMemory;
 import com.oracle.svm.core.nmt.NmtCategory;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Defines all JVMTI entry points. This class may only contain methods that are annotated with
@@ -402,6 +403,13 @@ public final class JvmtiFunctions {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
     static int NotifyFramePop(JvmtiExternalEnv externalEnv, JThread thread, int depth) {
+        return JVMTI_ERROR_ACCESS_DENIED.getCValue();
+    }
+
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "JVMTI function.")
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(prologue = JvmtiEnvEnterPrologue.class)
+    static int ClearAllFramePops(JvmtiExternalEnv externalEnv, JThread thread) {
         return JVMTI_ERROR_ACCESS_DENIED.getCValue();
     }
 

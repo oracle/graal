@@ -41,7 +41,7 @@
 
 namespace svm_container {
 
-static const char* cg_controller_name[] = { "cpu", "cpuset", "cpuacct", "memory", "pids" };
+static const char* cg_controller_name[] = { "cpuset", "cpu", "cpuacct", "memory", "pids" };
 
 CgroupSubsystem* CgroupSubsystemFactory::create() {
   CgroupV1MemoryController* memory = nullptr;
@@ -171,7 +171,7 @@ static bool find_ro_opt(char* mount_opts) {
   char* token;
   char* mo_ptr = mount_opts;
   // mount options are comma-separated (man proc).
-  while ((token = strsep(&mo_ptr, ",")) != NULL) {
+  while ((token = strsep(&mo_ptr, ",")) != nullptr) {
     if (strcmp(token, "ro") == 0) {
       return true;
     }
@@ -230,9 +230,10 @@ bool CgroupSubsystemFactory::determine_type(CgroupInfo* cg_infos,
   char buf[MAXPATHLEN+1];
   char *p;
   bool is_cgroupsV2;
-  // true iff all required controllers, memory, cpu, cpuset, cpuacct are enabled
+  // true iff all required controllers, memory, cpu, cpuacct are enabled
   // at the kernel level.
   // pids might not be enabled on older Linux distros (SLES 12.1, RHEL 7.1)
+  // cpuset might not be enabled on newer Linux distros (Fedora 41)
   bool all_required_controllers_enabled;
 
   /*
@@ -264,6 +265,7 @@ bool CgroupSubsystemFactory::determine_type(CgroupInfo* cg_infos,
       cg_infos[MEMORY_IDX]._hierarchy_id = hierarchy_id;
       cg_infos[MEMORY_IDX]._enabled = (enabled == 1);
     } else if (strcmp(name, "cpuset") == 0) {
+      log_debug(os, container)("Detected optional cpuset controller entry in %s", proc_cgroups);
       cg_infos[CPUSET_IDX]._name = os::strdup(name);
       cg_infos[CPUSET_IDX]._hierarchy_id = hierarchy_id;
       cg_infos[CPUSET_IDX]._enabled = (enabled == 1);
@@ -287,8 +289,8 @@ bool CgroupSubsystemFactory::determine_type(CgroupInfo* cg_infos,
   is_cgroupsV2 = true;
   all_required_controllers_enabled = true;
   for (int i = 0; i < CG_INFO_LENGTH; i++) {
-    // pids controller is optional. All other controllers are required
-    if (i != PIDS_IDX) {
+    // pids and cpuset controllers are optional. All other controllers are required
+    if (i != PIDS_IDX && i != CPUSET_IDX) {
       is_cgroupsV2 = is_cgroupsV2 && cg_infos[i]._hierarchy_id == 0;
       all_required_controllers_enabled = all_required_controllers_enabled && cg_infos[i]._enabled;
     }
