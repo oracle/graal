@@ -159,6 +159,10 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
         if (hasReferencePendingList()) {
             return;
         }
+        if (!getContext().multiThreadingEnabled()) {
+            // Ensure we do not block in single threaded mode.
+            return;
+        }
         doWaitForReferencePendingList();
     }
 
