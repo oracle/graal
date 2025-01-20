@@ -59,12 +59,17 @@ public class LoopFragmentTest extends GraalCompilerTest {
         }
         NodeIterable<LoopBeginNode> loops = graph.getNodes().filter(LoopBeginNode.class);
         // Loops might be optimizable after partial unrolling
-        if (!loops.isEmpty()) {
-            for (LoopBeginNode loop : loops) {
-                if (loop.isMainLoop()) {
-                    return;
-                }
+        boolean seenLoop = false;
+        for (LoopBeginNode loop : loops) {
+            if (loop.isStripMinedOuter()) {
+                continue;
             }
+            seenLoop = true;
+            if (loop.isMainLoop()) {
+                return;
+            }
+        }
+        if (seenLoop) {
             fail("expected a main loop");
         }
     }

@@ -29,6 +29,7 @@ import jdk.graal.compiler.loop.phases.LoopSafepointEliminationPhase;
 import jdk.graal.compiler.nodes.CallTargetNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.LoopBeginNode.SafepointState;
 import jdk.graal.compiler.nodes.LoopEndNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
@@ -43,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * safepoints when the loop contains truffle calls or when there is a plain counted loop without
  * allocations.
  *
- * @see LoopEndNode#canGuestSafepoint
+ * @see LoopEndNode#getGuestSafepointState()
  */
 public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEliminationPhase {
 
@@ -55,10 +56,10 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
 
     @Override
     protected void run(StructuredGraph graph, MidTierContext context) {
-        LoopSafepointEliminationPhase.Instance instance = new LoopSafepointEliminationPhase.Instance(graph, context) {
+        LoopSafepointEliminationPhase.SafepointOptimizer instance = new LoopSafepointEliminationPhase.SafepointOptimizer(graph, context) {
 
             @Override
-            protected void onSafepointDisabledLoopBegin(Loop loop) {
+            protected void onSafepointDisabledLoopBegin(LoopSafepointPlan safepointPlan, Loop loop) {
                 for (Node node : loop.whole().nodes()) {
                     if (node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode) {
                         // we can disable truffle safepoints if there are no allocations
@@ -66,14 +67,14 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
                         return;
                     }
                 }
-                loop.loopBegin().disableGuestSafepoint(loop.loopBegin().getLoopEndsSafepointState());
+                safepointPlan.setGuestEndStateAllEnds(loop, SafepointState.OPTIMIZER_DISABLED);
             }
 
             @Override
-            protected boolean onCallInLoop(LoopEndNode loopEnd, FixedNode currentCallNode) {
+            protected boolean onCallInLoop(LoopSafepointPlan safepointPlan, LoopEndNode loopEnd, FixedNode currentCallNode) {
                 if (currentCallNode instanceof Invoke && isTruffleCall((Invoke) currentCallNode)) {
                     // only truffle calls imply a truffle safepoint at method exits
-                    loopEnd.disableGuestSafepoint();
+                    safepointPlan.setGuestEndState(loopEnd, SafepointState.OPTIMIZER_DISABLED);
                     return true;
                 }
                 return false;
@@ -84,7 +85,7 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
                 return true;
             }
         };
-        instance.optimizeSafepoints();
+        instance.optimizeSafepoints().apply();
     }
 
     private boolean isTruffleCall(Invoke call) {
