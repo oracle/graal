@@ -48,6 +48,9 @@ public final class Location {
      */
     private final int originLine;
 
+    private final int startOffset;
+    private final int endOffset;
+
     /**
      * Additional data/services, like OpenCookie, Node to present the data etc.
      */
@@ -62,10 +65,12 @@ public final class Location {
 
     private short frameFrom = -1, frameTo = -1;
 
-    public Location(String originSpec, FileKey originFile, int originLine, Location nested, int frame, int frameTo) {
+    public Location(String originSpec, FileKey originFile, int originLine, int startOffset, int endOffset, Location nested, int frame, int frameTo) {
         this.file = originFile;
         this.originSpec = originSpec;
         this.originLine = originLine;
+        this.startOffset = startOffset;
+        this.endOffset = endOffset;
         this.frameFrom = (short) frame;
         this.frameTo = (short) (frameTo == -1 ? frame : frameTo);
     }
@@ -101,6 +106,14 @@ public final class Location {
 
     public int getLine() {
         return originLine;
+    }
+
+    public int[] getOffsetsOrNull() {
+        if (startOffset >= 0 && endOffset > startOffset) {
+            return new int[] { startOffset, endOffset };
+        } else {
+            return null;
+        }
     }
 
     Lookup getLookup() {
