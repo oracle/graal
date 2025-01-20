@@ -99,8 +99,8 @@ public class LoopSafepointStateVerificationTest extends GraalCompilerTest {
             @Override
             protected void run(StructuredGraph graph, HighTierContext context) {
                 for (LoopBeginNode lb : graph.getNodes(LoopBeginNode.TYPE)) {
-                    lb.disableSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
-                    lb.disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                    lb.setLoopEndSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                    lb.setGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
                 }
             }
 

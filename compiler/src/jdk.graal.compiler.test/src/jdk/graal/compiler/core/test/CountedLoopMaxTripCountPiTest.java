@@ -54,6 +54,7 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
         for (int i = start; GraalDirectives.injectIterationCount(101, i < limit); i++) {
             GraalDirectives.sideEffect(i);
             sum += i;
+            GraalDirectives.neverStripMine();
         }
         return sum + maxTripCount;
     }
@@ -64,6 +65,7 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
         for (int i = start; GraalDirectives.injectIterationCount(102, i >= limit); i--) {
             GraalDirectives.sideEffect(i);
             sum += i;
+            GraalDirectives.neverStripMine();
         }
         return sum + maxTripCount;
     }
@@ -76,9 +78,12 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
     void checkGraph(StructuredGraph graph, LoopsData loops) {
         loops.detectCountedLoops();
         for (Loop loop : loops.loops()) {
+            if (loop.loopBegin().isStripMinedOuter()) {
+                continue;
+            }
             // max trip count can only be used if a loop does not overflow
-            loop.counted().createOverFlowGuard();
             Assert.assertTrue("expect all loops to be counted", loop.isCounted());
+            loop.counted().createOverFlowGuard();
             ValueNode maxTripCountNode = loop.counted().maxTripCountNode();
             Assert.assertTrue("expect a PiNode for the guarded maxTripCount, got: " + maxTripCountNode, maxTripCountNode instanceof PiNode);
         }

@@ -3910,9 +3910,9 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             EndNode preLoopEnd = graph.add(new EndNode());
             LoopBeginNode loopBegin = graph.add(new LoopBeginNode());
             if (disableLoopSafepoint()) {
-                loopBegin.disableSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
-                loopBegin.disableGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
-                loopBegin.disableLoopExitSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                loopBegin.setLoopEndSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                loopBegin.setGuestSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+                loopBegin.setLoopExitSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
             }
             fixedWithNext.setNext(preLoopEnd);
             // Add the single non-loop predecessor of the loop header.
