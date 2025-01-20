@@ -216,7 +216,7 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass[] getAllLoadedClasses() {
+    public List<Klass> getAllLoadedClasses() {
         ArrayList<Klass> list = new ArrayList<>();
         // add classes from boot registry
         for (RegistryEntry entry : bootClassRegistry.classes.values()) {
@@ -230,7 +230,7 @@ public final class ClassRegistries {
                 }
             }
         }
-        return list.toArray(Klass.EMPTY_ARRAY);
+        return list;
     }
 
     public ModuleRef[] getAllModuleRefs() {

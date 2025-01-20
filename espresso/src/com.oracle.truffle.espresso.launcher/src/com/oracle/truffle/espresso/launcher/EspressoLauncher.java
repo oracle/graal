@@ -179,6 +179,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
         boolean isRelaxStaticObjectSafetyChecksSet = false;
+        int javaAgentIndex = 0;
 
         List<String> expandedArguments = expandAtFiles(arguments);
 
@@ -301,7 +302,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                         espressoOptions.put("java.JDWPOptions", value);
                     } else if (arg.startsWith("-javaagent:")) {
                         String value = arg.substring("-javaagent:".length());
-                        espressoOptions.put(JAVA_AGENT, value);
+                        espressoOptions.put(JAVA_AGENT + "." + javaAgentIndex++, value);
                         mergeOption("java.AddModules", "java.instrument");
                     } else if (arg.startsWith("-agentlib:")) {
                         String[] split = splitEquals(arg.substring("-agentlib:".length()));

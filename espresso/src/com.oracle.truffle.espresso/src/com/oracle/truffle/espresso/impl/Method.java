@@ -384,7 +384,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private CallTarget lookupAgents() {
-        if (!getContext().getEspressoEnv().EnableAgents) {
+        if (!getContext().getEspressoEnv().EnableNativeAgents) {
             return null;
         }
         // Look in agents

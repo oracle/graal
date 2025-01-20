@@ -245,7 +245,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public KlassRef[] getAllLoadedClasses() {
-        return context.getRegistries().getAllLoadedClasses();
+        return context.getRegistries().getAllLoadedClasses().toArray(new KlassRef[0]);
     }
 
     @Override

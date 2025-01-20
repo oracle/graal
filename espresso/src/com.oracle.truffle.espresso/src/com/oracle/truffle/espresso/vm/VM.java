@@ -1123,10 +1123,9 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     public @JavaType(Class.class) StaticObject JVM_GetDeclaringClass(@JavaType(Class.class) StaticObject self) {
         // Primitives and arrays are not "enclosed".
-        if (!(self.getMirrorKlass(getMeta()) instanceof ObjectKlass)) {
+        if (!(self.getMirrorKlass(getMeta()) instanceof ObjectKlass k)) {
             return StaticObject.NULL;
         }
-        ObjectKlass k = (ObjectKlass) self.getMirrorKlass(getMeta());
         Klass outerKlass = computeEnclosingClass(k);
         if (outerKlass == null) {
             return StaticObject.NULL;
@@ -1164,8 +1163,7 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public @JavaType(String.class) StaticObject JVM_GetClassSignature(@JavaType(Class.class) StaticObject self) {
-        if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass) {
-            ObjectKlass klass = (ObjectKlass) self.getMirrorKlass(getMeta());
+        if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass klass) {
             SignatureAttribute signature = (SignatureAttribute) klass.getAttribute(Names.Signature);
             if (signature != null) {
                 String sig = klass.getConstantPool().symbolAtUnsafe(signature.getSignatureIndex(), "signature").toString();
@@ -1224,8 +1222,7 @@ public final class VM extends NativeEnv {
     public @JavaType(Object[].class) StaticObject JVM_GetEnclosingMethodInfo(@JavaType(Class.class) StaticObject self, @Inject EspressoLanguage language) {
         Meta meta = getMeta();
         InterpreterToVM vm = meta.getInterpreterToVM();
-        if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass) {
-            ObjectKlass klass = (ObjectKlass) self.getMirrorKlass(getMeta());
+        if (self.getMirrorKlass(getMeta()) instanceof ObjectKlass klass) {
             EnclosingMethodAttribute enclosingMethodAttr = klass.getEnclosingMethod();
             if (enclosingMethodAttr == null) {
                 return StaticObject.NULL;
@@ -1292,10 +1289,9 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public @JavaType(internalName = "[Ljava/lang/reflect/RecordComponent;") StaticObject JVM_GetRecordComponents(@JavaType(Class.class) StaticObject self) {
         Klass k = self.getMirrorKlass(getMeta());
-        if (!(k instanceof ObjectKlass)) {
+        if (!(k instanceof ObjectKlass klass)) {
             return StaticObject.NULL;
         }
-        ObjectKlass klass = (ObjectKlass) k;
         RecordAttribute record = (RecordAttribute) klass.getAttribute(RecordAttribute.NAME);
         if (record == null) {
             return StaticObject.NULL;
@@ -1317,10 +1313,9 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public @JavaType(Class[].class) StaticObject JVM_GetPermittedSubclasses(@JavaType(Class.class) StaticObject self) {
         Klass k = self.getMirrorKlass(getMeta());
-        if (!(k instanceof ObjectKlass)) {
+        if (!(k instanceof ObjectKlass klass)) {
             return StaticObject.NULL;
         }
-        ObjectKlass klass = (ObjectKlass) k;
         if (!klass.isSealed()) {
             return StaticObject.NULL;
         }
@@ -2700,8 +2695,7 @@ public final class VM extends NativeEnv {
      * Returns the espresso root node for this frame, event if it comes from a different context.
      */
     private static EspressoRootNode getRawEspressoRootFromFrame(FrameInstance frameInstance) {
-        if (frameInstance.getCallTarget() instanceof RootCallTarget) {
-            RootCallTarget callTarget = (RootCallTarget) frameInstance.getCallTarget();
+        if (frameInstance.getCallTarget() instanceof RootCallTarget callTarget) {
             RootNode rootNode = callTarget.getRootNode();
             if (rootNode instanceof EspressoRootNode) {
                 return ((EspressoRootNode) rootNode);
