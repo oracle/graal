@@ -118,7 +118,9 @@ public final class JDWPContextImpl implements JDWPContext {
 
     public void finalizeContext() {
         if (context.getEspressoEnv().JDWPOptions != null) {
-            controller.disposeDebugger(false);
+            if (controller != null) { // in case we exited before initializing the controller field
+                controller.disposeDebugger(false);
+            }
         }
     }
 
