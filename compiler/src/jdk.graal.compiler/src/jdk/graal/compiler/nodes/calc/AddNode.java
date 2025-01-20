@@ -58,6 +58,10 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         super(c, getArithmeticOpTable(x).getAdd(), x, y);
     }
 
+    protected AddNode(NodeClass<? extends AddNode> c, Stamp betterStartStamp, ValueNode x, ValueNode y) {
+        super(c, betterStartStamp, x, y);
+    }
+
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
         BinaryOp<Add> op = ArithmeticOpTable.forStamp(x.stamp(view)).getAdd();
         Stamp stamp = op.foldStamp(x.stamp(view), y.stamp(view));

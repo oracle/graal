@@ -181,7 +181,7 @@ public final class MonitorDeoptTest extends GraalCompilerTest {
      */
     private static void removeLoopSafepoint(StructuredGraph graph) {
         LoopBeginNode loopBegin = findFirstLoop(graph);
-        loopBegin.disableSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
+        loopBegin.setLoopEndSafepoint(SafepointState.MUST_NEVER_SAFEPOINT);
     }
 
     @Test
