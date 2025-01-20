@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,46 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.io.IOException;
+import java.nio.file.Path;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
-import jdk.jfr.internal.SecuritySupport.SafePath;
+import jdk.jfr.internal.SecuritySupport;
+import jdk.jfr.internal.Repository;
 
 @TargetClass(value = jdk.jfr.internal.Repository.class, onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_Repository {
-    @Alias private SafePath baseLocation;
+    @Alias @TargetElement(onlyWith = SecuritySupportSafePathAbsent.class)
+    private static Path JAVA_IO_TMPDIR;
+    @Alias @TargetElement(name = "baseLocation", onlyWith = SecuritySupportSafePathPresent.class)
+    private Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocationSafePath;
+    @Alias @TargetElement(name = "baseLocation", onlyWith = SecuritySupportSafePathAbsent.class)
+    private Path baseLocationPath;
 
-    @Substitute
-    synchronized void ensureRepository() throws Exception {
-        if (baseLocation == null) {
-            SafePath path = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("java.io.tmpdir", null);
-            SubstrateUtil.cast(this, jdk.jfr.internal.Repository.class).setBasePath(path);
+    @Substitute @TargetElement(name = "ensureRepository", onlyWith = SecuritySupportSafePathPresent.class)
+    synchronized void ensureRepositorySafePath() throws Exception {
+        if (baseLocationSafePath == null) {
+            Target_jdk_jfr_internal_SecuritySupport_SafePath path = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("java.io.tmpdir", null);
+            setBasePath(path);
         }
     }
+
+    @Substitute @TargetElement(name = "ensureRepository", onlyWith = SecuritySupportSafePathAbsent.class)
+    synchronized void ensureRepositoryPath() throws Exception {
+        if (baseLocationPath == null) {
+            setBasePath(JAVA_IO_TMPDIR);
+        }
+    }
+
+    @Alias @TargetElement(onlyWith = SecuritySupportSafePathPresent.class)
+    public synchronized native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocation) throws IOException;
+
+    @Alias @TargetElement(onlyWith = SecuritySupportSafePathAbsent.class)
+    public synchronized native void setBasePath(Path baseLocation) throws IOException;
 }

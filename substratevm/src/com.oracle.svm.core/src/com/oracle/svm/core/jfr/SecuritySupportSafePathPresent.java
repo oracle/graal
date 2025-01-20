@@ -24,31 +24,40 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.List;
-
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.util.VMError;
 
-import jdk.jfr.internal.SecuritySupport;
+import java.util.function.BooleanSupplier;
 
-@TargetClass(value = jdk.jfr.internal.SecuritySupport.class, onlyWith = HasJfrSupport.class)
-public final class Target_jdk_jfr_internal_SecuritySupport {
-    // Checkstyle: stop
-    @Alias @TargetElement(onlyWith = SecuritySupportSafePathPresent.class) @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    static Target_jdk_jfr_internal_SecuritySupport_SafePath JFC_DIRECTORY;
-    @Alias @TargetElement(onlyWith = SecuritySupportSafePathPresent.class) @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    static Target_jdk_jfr_internal_SecuritySupport_SafePath JAVA_IO_TMPDIR;
-    // Checkstyle: resume
-
-    @Substitute @TargetElement(onlyWith = SecuritySupportSafePathPresent.class)
-    public static List<Target_jdk_jfr_internal_SecuritySupport_SafePath> getPredefinedJFCFiles() {
-        throw VMError.shouldNotReachHere("Paths from the image build must not be embedded into the Native Image.");
+/**
+ * A predicate that returns {@code true} if {@code boolean jdk.jfr.internal.SecuritySupport.SafePath} exists.
+ */
+final class SecuritySupportSafePathPresent implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        try {
+            Class.forName("jdk.jfr.internal.SecuritySupport$SafePath");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
+}
 
-    @Alias @TargetElement(onlyWith = SecuritySupportSafePathPresent.class)
-    static native Target_jdk_jfr_internal_SecuritySupport_SafePath getPathInProperty(String prop, String subPath);
+final class SecuritySupportSafePathAbsent implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return !new SecuritySupportSafePathPresent().getAsBoolean();
+    }
+}
+
+@TargetClass(className = "jdk.jfr.internal.SecuritySupport$SafePath", onlyWith = SecuritySupportSafePathPresent.class)
+final class Target_jdk_jfr_internal_SecuritySupport_SafePath {
+    public Target_jdk_jfr_internal_SecuritySupport_SafePath(String p) {
+        originalConstructor(p);
+    }
+    @Alias
+    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
+    native void originalConstructor(String p);
 }

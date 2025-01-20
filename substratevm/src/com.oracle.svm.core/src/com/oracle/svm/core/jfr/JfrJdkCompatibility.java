@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -117,7 +118,7 @@ public final class JfrJdkCompatibility {
         }
     }
 
-    public static void setDumpDirectory(PlatformRecording platformRecording, SecuritySupport.SafePath directory) {
+    public static void setDumpDirectory(PlatformRecording platformRecording, Target_jdk_jfr_internal_SecuritySupport_SafePath directory) {
         Target_jdk_jfr_internal_PlatformRecording pr = SubstrateUtil.cast(platformRecording, Target_jdk_jfr_internal_PlatformRecording.class);
         if (JavaVersionUtil.JAVA_SPEC >= 23) {
             pr.setDumpDirectory(directory);
@@ -161,12 +162,16 @@ final class Target_jdk_jfr_internal_util_ValueFormatter {
 @TargetClass(className = "jdk.jfr.internal.PlatformRecording")
 final class Target_jdk_jfr_internal_PlatformRecording {
     @Alias
-    @TargetElement(onlyWith = JDKLatest.class)
-    public native void setDumpDirectory(SecuritySupport.SafePath directory);
+    @TargetElement(onlyWith = SecuritySupportSafePathAbsent.class)
+    public native void setDumpDirectory(Path directory);
 
     @Alias
-    @TargetElement(onlyWith = JDK21OrEarlier.class)
-    public native void setDumpOnExitDirectory(SecuritySupport.SafePath directory);
+    @TargetElement(onlyWith = {JDKLatest.class, SecuritySupportSafePathPresent.class})
+    public native void setDumpDirectory(Target_jdk_jfr_internal_SecuritySupport_SafePath directory);
+
+    @Alias
+    @TargetElement(onlyWith = {JDK21OrEarlier.class, SecuritySupportSafePathPresent.class})
+    public native void setDumpOnExitDirectory(Target_jdk_jfr_internal_SecuritySupport_SafePath directory);
 }
 
 final class JfrFilenameUtil {

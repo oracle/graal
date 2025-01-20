@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2024, 2024, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -31,6 +31,7 @@ import static com.oracle.svm.core.jfr.JfrArgumentParser.parseInteger;
 import static com.oracle.svm.core.jfr.JfrArgumentParser.parseJfrOptions;
 import static com.oracle.svm.core.jfr.JfrArgumentParser.parseMaxSize;
 
+import java.nio.file.Paths;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -125,8 +126,12 @@ public class JfrManager {
 
         if (repositoryPath != null) {
             try {
-                SecuritySupport.SafePath repositorySafePath = new SecuritySupport.SafePath(repositoryPath);
-                Repository.getRepository().setBasePath(repositorySafePath);
+                if (new SecuritySupportSafePathPresent().getAsBoolean()) {
+                    Target_jdk_jfr_internal_SecuritySupport_SafePath repositorySafePath = new Target_jdk_jfr_internal_SecuritySupport_SafePath(repositoryPath);
+                    SubstrateUtil.cast(Repository.getRepository(), Target_jdk_jfr_internal_Repository.class).setBasePath(repositorySafePath);
+                } else {
+                    SubstrateUtil.cast(Repository.getRepository(), Target_jdk_jfr_internal_Repository.class).setBasePath(Paths.get(repositoryPath));
+                }
             } catch (Throwable e) {
                 throw new JfrArgumentParsingFailed("Could not use " + repositoryPath + " as repository. " + e.getMessage(), e);
             }

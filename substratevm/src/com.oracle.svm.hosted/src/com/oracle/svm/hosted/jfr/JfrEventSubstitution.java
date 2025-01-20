@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,6 +45,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.MetadataRepository;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -68,6 +69,9 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private final Map<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
 
     private static final Method registerMirror = JavaVersionUtil.JAVA_SPEC < 22 ? ReflectionUtil.lookupMethod(SecuritySupport.class, "registerMirror", Class.class) : null;
+    private static final Method registerEvent = ReflectionUtil.lookupMethod(true, SecuritySupport.class, "registerEvent", Class.class);
+    private static final Method register = registerEvent == null ? ReflectionUtil.lookupMethod(true, MetadataRepository.class, "register", Class.class) : null;
+    private static final Method getInstance = registerEvent == null ? ReflectionUtil.lookupMethod(true, MetadataRepository.class, "getInstance") : null;
     private static final Method getConfiguration = ReflectionUtil.lookupMethod(JVM.class, "getConfiguration", Class.class);
 
     JfrEventSubstitution(MetaAccessProvider metaAccess, ImageHeapScanner heapScanner) {
@@ -171,7 +175,12 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
                 }
             }
 
-            SecuritySupport.registerEvent(newEventClass);
+            if (registerEvent != null) {
+                registerEvent.invoke(null, newEventClass);
+            } else {
+                MetadataRepository mdr = (MetadataRepository)getInstance.invoke(null);
+                register.invoke(mdr, newEventClass);
+            }
 
             JfrJavaEvents.registerEventClass(newEventClass);
             // the reflection registration for the event handler field is delayed to the JfrFeature
