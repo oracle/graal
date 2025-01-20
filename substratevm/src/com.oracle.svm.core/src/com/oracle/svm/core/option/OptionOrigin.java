@@ -37,9 +37,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-
+import com.oracle.svm.core.option.OptionUtils.MacroOptionKind;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 
 public abstract class OptionOrigin {
 
@@ -264,7 +265,7 @@ final class MacroOptionOrigin extends OptionOrigin {
 
     @Override
     public boolean commandLineLike() {
-        return OptionUtils.MacroOptionKind.Macro.equals(kind);
+        return MacroOptionKind.Macro.equals(kind);
     }
 
     @Override

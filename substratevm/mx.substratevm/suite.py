@@ -2591,6 +2591,14 @@ suite = {
             }
         },
 
+        "SVM_JDWP_RESIDENT_SUPPORT" : {
+            "native" : True,
+            "description" : "JDWP debugging support",
+            "layout" : {
+                "native-image.properties" : "file:mx.substratevm/macro-svmjdwp.properties",
+            },
+        },
+
         "SVM_JDWP_SERVER": {
             "subDir": "src",
             "dependencies": [
