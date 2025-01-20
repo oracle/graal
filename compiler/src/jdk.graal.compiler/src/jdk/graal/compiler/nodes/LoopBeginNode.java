@@ -26,6 +26,9 @@ package jdk.graal.compiler.nodes;
 
 import static jdk.graal.compiler.graph.iterators.NodePredicates.isNotA;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.debug.Assertions;
@@ -411,8 +414,12 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return usages().filter(LoopExitNode.class);
     }
 
-    public NodeIterable<SafepointNode> loopSafepoints() {
-        return usages().filter(SafepointNode.class);
+    public List<SafepointNode> loopSafepoints() {
+        ArrayList<SafepointNode> safePoints = new ArrayList<>();
+        for (LoopExitNode lex : loopExits()) {
+            safePoints.addAll(lex.usages().filter(SafepointNode.class).snapshot());
+        }
+        return safePoints;
     }
 
     @Override
@@ -701,7 +708,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
 
     public void removeSafepoints() {
         this.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, this.graph(), "Before removing safepoints at %s", this);
-        for (SafepointNode loopSafepoint : loopSafepoints().snapshot()) {
+        for (SafepointNode loopSafepoint : loopSafepoints()) {
             if (loopSafepoint.isAlive()) {
                 if (loopSafepoint.predecessor() != null && loopSafepoint.next() != null) {
                     this.graph().removeFixed(loopSafepoint);

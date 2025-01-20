@@ -67,7 +67,7 @@ public class LoopSafepointInsertionPhase extends BasePhase<MidTierContext> {
                         try (DebugCloseable s = loopEndNode.withNodeSourcePosition()) {
                             SafepointNode safepointNode = graph.add(new SafepointNode(loopBeginNode));
                             graph.addBeforeFixed(loopEndNode, safepointNode);
-                            safepointNode.setLoop(loopBeginNode);
+                            safepointNode.setLoopLink(loopBeginNode);
                         }
                     }
                 }

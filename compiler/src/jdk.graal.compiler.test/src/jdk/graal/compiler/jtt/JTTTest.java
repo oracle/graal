@@ -367,7 +367,7 @@ public class JTTTest extends GraalCompilerTest {
      */
     @Override
     protected Suites createSuites(OptionValues opts) {
-        if (!Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
+        if (!Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY) || fuzzedSuites == null) {
             return super.createSuites(opts);
         }
         fuzzedSuites.getHighTier().appendPhase(new TestPhase() {

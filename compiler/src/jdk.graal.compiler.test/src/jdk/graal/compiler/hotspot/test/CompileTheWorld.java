@@ -948,6 +948,16 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
          * method that expects to only be inlined into a snippet.
          */
         if (!result.getFailureMessage().startsWith(HotSpotBytecodeParser.BAD_NODE_INTRINSIC_PLUGIN_CONTEXT)) {
+
+            if (Options.FuzzPhasePlan.getValue(harnessOptions)) {
+                HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
+                HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
+                HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+
+                HotSpotFuzzedSuitesProvider hp = (HotSpotFuzzedSuitesProvider) graalRuntime.getHostBackend().getProviders().getSuites();
+                TTY.printf("Fuzzing seed was %s%n", hp.getLastSeed().get());
+            }
+
             super.handleFailure(result);
         }
     }

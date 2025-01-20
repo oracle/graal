@@ -2186,6 +2186,7 @@ public class SnippetTemplate {
                 // snippet exception handler
                 UnwindNode snippetUnwindDuplicate = (UnwindNode) duplicates.get(unwindPath);
                 ValueNode snippetExceptionValue = snippetUnwindDuplicate.exception();
+                ValueNode snippetExceptionPrevBegin = AbstractBeginNode.prevBegin(snippetUnwindDuplicate);
                 FixedWithNextNode snippetUnwindPath = (FixedWithNextNode) snippetUnwindDuplicate.predecessor();
                 GraalError.guarantee(!(snippetExceptionValue instanceof ExceptionObjectNode) || snippetUnwindPath == snippetExceptionValue,
                                 "Snippet unwind predecessor must be the exception object %s: %s", snippetUnwindPath, snippetExceptionValue);
@@ -2205,6 +2206,7 @@ public class SnippetTemplate {
                                     "Must not have guards attached to exception object node %s", exceptionEdge);
                     replaceeWithExceptionNode.setExceptionEdge(null);
                     // replace the old exception object with the one
+                    exceptionEdge.replaceAtUsages(snippetExceptionPrevBegin, InputType.Anchor, InputType.Guard);
                     exceptionEdge.replaceAtUsages(snippetExceptionValue);
                     GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
                     // replace exceptionEdge with snippetUnwindPath
