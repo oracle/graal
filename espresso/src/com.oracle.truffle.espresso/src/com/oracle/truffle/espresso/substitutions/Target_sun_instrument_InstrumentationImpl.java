@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
@@ -134,10 +135,9 @@ public final class Target_sun_instrument_InstrumentationImpl {
     public static long getObjectSize0(
                     @SuppressWarnings("unused") StaticObject self,
                     @SuppressWarnings("unused") long agentId,
-                    @SuppressWarnings("unused") @JavaType(Object.class) StaticObject object,
-                    @Inject EspressoContext context) {
-        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_UnsupportedOperationException,
-                        "Espresso VM doesn't support getting object size from java agents. This restriction will be lifted in later versions.");
+                    @JavaType(Object.class) StaticObject object,
+                    @Inject EspressoLanguage language) {
+        return object.getObjectSize(language);
     }
 
     @Substitution(hasReceiver = true)
