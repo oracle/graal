@@ -252,6 +252,16 @@ public abstract class StrengthenGraphs {
             return;
         }
 
+        if (method.analyzedInPriorLayer()) {
+            /*
+             * The method was already strengthened in a prior layer, so there is no need to
+             * strengthen it in this layer.
+             */
+            return;
+        }
+
+        preStrengthenGraphs(graph, method);
+
         graph.resetDebug(debug);
         if (beforeCounters != null) {
             beforeCounters.collect(graph);
@@ -278,6 +288,8 @@ public abstract class StrengthenGraphs {
             }
         }
     }
+
+    protected abstract void preStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
 
     protected abstract void postStrengthenGraphs(StructuredGraph graph, AnalysisMethod method);
 
