@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.BaseProcessPropertiesSupport;
+import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.memory.UntrackedNullableNativeMemory;
 import com.oracle.svm.core.posix.headers.Dlfcn;
@@ -108,7 +109,9 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
         }
     }
 
+    /** This method is unsafe and should not be used, see {@link LocaleSupport}. */
     @Override
+    @SuppressWarnings("deprecation")
     public String setLocale(String category, String locale) {
         return PosixUtils.setLocale(category, locale);
     }

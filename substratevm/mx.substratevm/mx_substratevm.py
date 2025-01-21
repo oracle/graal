@@ -1572,6 +1572,9 @@ libgraal_build_args = [
     # Reduce image size by outlining all write barriers.
     # Benchmarking showed no performance degradation.
     '-H:+OutlineWriteBarriers',
+
+    # Libgraal must not change the process-wide locale settings.
+    '-H:-UseSystemLocale',
 ] + ([
     # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
     '-H:PageSize=64K'

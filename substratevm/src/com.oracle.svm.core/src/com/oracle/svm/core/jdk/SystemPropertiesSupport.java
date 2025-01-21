@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import static java.util.Locale.Category.DISPLAY;
-import static java.util.Locale.Category.FORMAT;
 import static jdk.graal.compiler.nodes.extended.MembarNode.FenceKind.STORE_STORE;
 
 import java.util.ArrayList;
@@ -41,19 +39,15 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
-import com.oracle.svm.core.LibCHelper;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
+import com.oracle.svm.core.c.locale.LocaleSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.headers.LibCSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 
 /**
@@ -94,13 +88,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     "java.vm.specification.vendor",
                     "java.vm.specification.version"
     };
-
-    /* The list of field positions in locale_props_t (see locale_str.h). */
-    private static final int LANGUAGE_POSITION = 0;
-    private static final int SCRIPT_POSITION = LANGUAGE_POSITION + 1;
-    private static final int COUNTRY_POSITION = SCRIPT_POSITION + 1;
-    private static final int VARIANT_POSITION = COUNTRY_POSITION + 1;
-    private static final int EXTENSION_POSITION = VARIANT_POSITION + 1;
 
     /** System properties that are computed at run time on first access. */
     private final Map<String, LazySystemProperty> lazySystemProperties = new HashMap<>();
@@ -157,21 +144,18 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         lazyProperties.add(new LazySystemProperty("java.io.tmpdir", this::javaIoTmpdirValue));
         lazyProperties.add(new LazySystemProperty("java.library.path", this::javaLibraryPathValue));
         lazyProperties.add(new LazySystemProperty("os.version", this::osVersionValue));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE, () -> postProcessLocale(UserSystemProperty.LANGUAGE, parseLocale(DISPLAY).language(), null)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE_DISPLAY, () -> postProcessLocale(UserSystemProperty.LANGUAGE, parseLocale(DISPLAY).language(), DISPLAY)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE_FORMAT, () -> postProcessLocale(UserSystemProperty.LANGUAGE, parseLocale(FORMAT).language(), FORMAT)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT, () -> postProcessLocale(UserSystemProperty.SCRIPT, parseLocale(DISPLAY).script(), null)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT_DISPLAY, () -> postProcessLocale(UserSystemProperty.SCRIPT, parseLocale(DISPLAY).script(), DISPLAY)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT_FORMAT, () -> postProcessLocale(UserSystemProperty.SCRIPT, parseLocale(FORMAT).script(), FORMAT)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY, () -> postProcessLocale(UserSystemProperty.COUNTRY, parseLocale(DISPLAY).country(), null)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY_DISPLAY, () -> postProcessLocale(UserSystemProperty.COUNTRY, parseLocale(DISPLAY).country(), DISPLAY)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY_FORMAT, () -> postProcessLocale(UserSystemProperty.COUNTRY, parseLocale(FORMAT).country(), FORMAT)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT, () -> postProcessLocale(UserSystemProperty.VARIANT, parseLocale(FORMAT).country(), FORMAT)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_DISPLAY, () -> postProcessLocale(UserSystemProperty.VARIANT, parseLocale(DISPLAY).variant(), DISPLAY)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_FORMAT, () -> postProcessLocale(UserSystemProperty.VARIANT, parseLocale(FORMAT).variant(), FORMAT)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.EXTENSIONS, () -> postProcessLocale(UserSystemProperty.EXTENSIONS, parseLocale(DISPLAY).extensions(), null)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.EXTENSIONS_DISPLAY, () -> postProcessLocale(UserSystemProperty.EXTENSIONS, parseLocale(DISPLAY).extensions(), DISPLAY)));
-        lazyProperties.add(new LazySystemProperty(UserSystemProperty.EXTENSIONS_FORMAT, () -> postProcessLocale(UserSystemProperty.EXTENSIONS, parseLocale(FORMAT).extensions(), FORMAT)));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE, () -> LocaleSupport.singleton().getLocale().language()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE_DISPLAY, () -> LocaleSupport.singleton().getLocale().displayLanguage()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.LANGUAGE_FORMAT, () -> LocaleSupport.singleton().getLocale().formatLanguage()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT, () -> LocaleSupport.singleton().getLocale().script()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT_DISPLAY, () -> LocaleSupport.singleton().getLocale().displayScript()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.SCRIPT_FORMAT, () -> LocaleSupport.singleton().getLocale().formatScript()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY, () -> LocaleSupport.singleton().getLocale().country()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY_DISPLAY, () -> LocaleSupport.singleton().getLocale().displayCountry()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.COUNTRY_FORMAT, () -> LocaleSupport.singleton().getLocale().formatCountry()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT, () -> LocaleSupport.singleton().getLocale().variant()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_DISPLAY, () -> LocaleSupport.singleton().getLocale().displayVariant()));
+        lazyProperties.add(new LazySystemProperty(UserSystemProperty.VARIANT_FORMAT, () -> LocaleSupport.singleton().getLocale().formatVariant()));
 
         String targetName = System.getProperty("svm.targetName");
         if (targetName != null) {
@@ -363,73 +347,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     protected String javaLibraryPathValue() {
         /* Fallback for platforms that don't implement this method. */
         return "";
-    }
-
-    public record LocaleEncoding(String language, String script, String country, String variant, String extensions) {
-        private LocaleEncoding(CCharPointerPointer properties) {
-            this(fromCStringArray(properties, LANGUAGE_POSITION),
-                            fromCStringArray(properties, SCRIPT_POSITION),
-                            fromCStringArray(properties, COUNTRY_POSITION),
-                            fromCStringArray(properties, VARIANT_POSITION),
-                            fromCStringArray(properties, EXTENSION_POSITION));
-        }
-
-        private static String fromCStringArray(CCharPointerPointer cString, int index) {
-            if (cString.isNull()) {
-                return null;
-            }
-            return CTypeConversion.toJavaString(cString.read(index));
-        }
-    }
-
-    private LocaleEncoding displayLocale;
-
-    private LocaleEncoding formatLocale;
-
-    protected LocaleEncoding parseLocale(Locale.Category category) {
-        if (!ImageSingletons.contains(LibCSupport.class)) {
-            /* If native calls are not supported, just return fixed values. */
-            return new LocaleEncoding("en", "", "US", "", "");
-        }
-        switch (category) {
-            case DISPLAY -> {
-                if (displayLocale == null) {
-                    displayLocale = new LocaleEncoding(LibCHelper.Locale.parseDisplayLocale());
-                }
-                return displayLocale;
-            }
-            case FORMAT -> {
-                if (formatLocale == null) {
-                    formatLocale = new LocaleEncoding(LibCHelper.Locale.parseFormatLocale());
-                }
-                return formatLocale;
-            }
-            default -> throw new GraalError("Unknown locale category: " + category + ".");
-        }
-    }
-
-    private String postProcessLocale(String base, String value, Locale.Category category) {
-        if (category == null) {
-            /* user.xxx property */
-            String baseValue = null;
-            if (value != null) {
-                initializeProperty(base, value);
-                baseValue = value;
-            }
-            return baseValue;
-        }
-        switch (category) {
-            case DISPLAY, FORMAT -> {
-                /* user.xxx.(display|format) property */
-                String baseValue = getCurrentProperty(base);
-                if (baseValue == null && value != null) {
-                    initializeProperty(base + '.' + category.name().toLowerCase(Locale.ROOT), value);
-                    return value;
-                }
-                return null;
-            }
-            default -> throw new GraalError("Unknown locale category: " + category + ".");
-        }
     }
 
     private static class LazySystemProperty {
