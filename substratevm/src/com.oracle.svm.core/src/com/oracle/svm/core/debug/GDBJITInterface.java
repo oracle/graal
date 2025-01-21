@@ -65,7 +65,7 @@ public class GDBJITInterface {
         }
     }
 
-    private static class IncludeForRuntimeDebugOnly implements BooleanSupplier {
+    private static final class IncludeForRuntimeDebugOnly implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             return SubstrateOptions.RuntimeDebugInfo.getValue();
