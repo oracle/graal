@@ -502,7 +502,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
     }
 
     /**
-     * Fetch a methods symbol produced by the {@link BFDNameProvider}
+     * Fetch a methods symbol produced by the {@link BFDNameProvider}.
      * 
      * @param method method to get the symbol name for
      * @return symbol name of the method
