@@ -47,6 +47,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
 import com.oracle.svm.core.SubstrateOptions;
@@ -59,6 +60,7 @@ import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.driver.APIOptionHandler.HostedOptionInfo;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
@@ -71,6 +73,7 @@ import com.oracle.svm.util.StringUtil;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
 import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionsParser;
 
 class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String ENTER_UNLOCK_SCOPE = SubstrateOptionsParser.commandArgument(SubstrateOptions.UnlockExperimentalVMOptions, "+");
@@ -83,20 +86,20 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
-    static final class PathsOptionInfo {
-        private final String delimiter;
-        private final BundleMember.Role role;
-
-        PathsOptionInfo(String delimiter, BundleMember.Role role) {
-            this.delimiter = delimiter;
-            this.role = role;
-        }
+    record PathsOptionInfo(String delimiter, BundleMember.Role role) {
     }
 
     private final SortedMap<String, OptionInfo> apiOptions;
     private final Map<String, GroupInfo> groupInfos;
     private final Map<String, PathsOptionInfo> pathOptions;
-    private final Set<String> stableOptionNames;
+
+    record HostedOptionInfo(Boolean isStable, Boolean isBoolean) {
+    }
+
+    private final HostedOptionInfo injectedKnownHostedRegularOptionInfo = new HostedOptionInfo(false, false);
+    private final HostedOptionInfo injectedKnownHostedBooleanOptionInfo = new HostedOptionInfo(false, true);
+
+    private final Map<String, HostedOptionInfo> allOptionNames;
 
     private int numberOfActiveUnlockExperimentalVMOptions = 0;
     private Set<String> illegalExperimentalOptions = new HashSet<>(0);
@@ -107,28 +110,28 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             APIOptionSupport support = ImageSingletons.lookup(APIOptionSupport.class);
             groupInfos = support.groupInfos();
             pathOptions = support.pathOptions();
-            stableOptionNames = support.stableOptionNames();
+            allOptionNames = support.allOptionNames();
             apiOptions = support.options();
         } else {
             groupInfos = new HashMap<>();
             pathOptions = new HashMap<>();
-            stableOptionNames = new HashSet<>();
-            apiOptions = extractOptions(ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader()), groupInfos, pathOptions, stableOptionNames);
+            allOptionNames = new HashMap<>();
+            apiOptions = extractOptions(ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader()), groupInfos, pathOptions, allOptionNames);
         }
     }
 
     static SortedMap<String, OptionInfo> extractOptions(ServiceLoader<OptionDescriptors> optionDescriptors, Map<String, GroupInfo> groupInfos, Map<String, PathsOptionInfo> pathOptions,
-                    Set<String> stableOptionNames) {
+                    Map<String, HostedOptionInfo> allOptionNames) {
         EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
         EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
         HostedOptionParser.collectOptions(optionDescriptors, hostedOptions, runtimeOptions);
         SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
         Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances = new HashMap<>();
         hostedOptions.getValues().forEach(o -> {
-            extractOption(NativeImage.oH, o, apiOptions, groupInfos, groupInstances, stableOptionNames);
+            extractOption(NativeImage.oH, o, apiOptions, groupInfos, groupInstances, allOptionNames);
             extractPathOption(NativeImage.oH, o, pathOptions);
         });
-        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupInfos, groupInstances, stableOptionNames));
+        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupInfos, groupInstances, allOptionNames));
         groupInfos.forEach((groupName, groupInfo) -> {
             if (groupInfo.defaultValues.size() > 1) {
                 VMError.shouldNotReachHere(String.format("APIOptionGroup %s must only have a single default (but has: %s)",
@@ -139,7 +142,11 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor, SortedMap<String, OptionInfo> apiOptions,
-                    Map<String, GroupInfo> groupInfos, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances, Set<String> stableOptionNames) {
+                    Map<String, GroupInfo> groupInfos, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances, Map<String, HostedOptionInfo> allOptionNames) {
+
+        Class<?> optionValueType = optionDescriptor.getOptionValueType();
+        boolean isBooleanOption = optionValueType.equals(Boolean.class);
+
         for (APIOption apiAnnotation : OptionUtils.getAnnotationsByType(optionDescriptor, APIOption.class)) {
             String builderOption = optionPrefix;
             if (apiAnnotation.name().length <= 0) {
@@ -150,14 +157,12 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             APIOptionGroup group = null;
             String defaultValue = null;
 
-            boolean booleanOption = false;
-            Class<?> optionValueType = optionDescriptor.getOptionValueType();
             if (optionValueType.isArray()) {
                 VMError.guarantee(optionDescriptor.getOptionKey() instanceof HostedOptionKey, "Only HostedOptionKeys are allowed to have array type key values.");
                 optionValueType = optionValueType.getComponentType();
             }
             boolean hasFixedValue = apiAnnotation.fixedValue().length > 0;
-            if (optionValueType.equals(Boolean.class)) {
+            if (isBooleanOption) {
                 if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                     try {
                         Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
@@ -191,7 +196,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 builderOption += apiAnnotation.kind().equals(APIOptionKind.Negated) ? "-" : "+";
                 builderOption += rawOptionName;
-                booleanOption = true;
             } else {
                 if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                     VMError.shouldNotReachHere(String.format("Using @APIOption.group not supported for non-boolean APIOption %s(%s)", apiOptionName, rawOptionName));
@@ -246,7 +250,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             for (char valueSeparator : apiAnnotation.valueSeparator()) {
                 if (valueSeparator == APIOption.WHITESPACE_SEPARATOR) {
                     String msgTail = " cannot use APIOption.WHITESPACE_SEPARATOR as value separator";
-                    if (booleanOption) {
+                    if (isBooleanOption) {
                         throw VMError.shouldNotReachHere(String.format("Boolean APIOption %s(%s)" + msgTail, apiOptionName, rawOptionName));
                     }
                     if (hasFixedValue) {
@@ -257,16 +261,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     }
                 }
             }
-            boolean defaultFinal = booleanOption || hasFixedValue;
+            boolean defaultFinal = isBooleanOption || hasFixedValue;
             apiOptions.put(apiOptionName,
                             new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
                                             defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra(), apiAnnotation.launcherOption()));
         }
 
-        if (optionDescriptor.getStability() == OptionStability.STABLE) {
-            String infix = optionDescriptor.getOptionValueType() == Boolean.class ? "[+-]+" : "";
-            stableOptionNames.add("^-H:" + infix + optionDescriptor.getName() + ".*");
-        }
+        allOptionNames.put(optionDescriptor.getName(), new HostedOptionInfo(optionDescriptor.getStability() == OptionStability.STABLE, isBooleanOption));
     }
 
     private static void extractPathOption(String optionPrefix, OptionDescriptor optionDescriptor, Map<String, PathsOptionInfo> pathOptions) {
@@ -287,6 +288,19 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private static String startLowerCase(String str) {
         return str.substring(0, 1).toLowerCase(Locale.ROOT) + str.substring(1);
+    }
+
+    void injectKnownHostedOption(String optionName) {
+        String baseOptionName;
+        HostedOptionInfo optionInfo;
+        if (optionName.endsWith("=")) {
+            baseOptionName = optionName.substring(0, optionName.length() - 1);
+            optionInfo = injectedKnownHostedRegularOptionInfo;
+        } else {
+            baseOptionName = optionName;
+            optionInfo = injectedKnownHostedBooleanOptionInfo;
+        }
+        allOptionNames.put(baseOptionName, optionInfo);
     }
 
     @Override
@@ -312,9 +326,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 throw VMError.shouldNotReachHere("Unlocking of experimental options in inconsistent state: trying to lock more scopes than exist or allowed.");
             }
             numberOfActiveUnlockExperimentalVMOptions--;
-        } else if (numberOfActiveUnlockExperimentalVMOptions == 0 && !OptionOrigin.isAPI(args.argumentOrigin) && headArg.startsWith(NativeImage.oH) &&
-                        stableOptionNames.stream().noneMatch(p -> headArg.matches(p))) {
-            illegalExperimentalOptions.add(headArg);
+        } else if (!OptionOrigin.isAPI(args.argumentOrigin) && headArg.startsWith(NativeImage.oH)) {
+            validateHostedOption(headArg, args.argumentOrigin);
         }
         for (Entry<String, GroupInfo> entry : groupInfos.entrySet()) {
             String groupNameAndSeparator = entry.getKey();
@@ -326,6 +339,67 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
         }
         return false;
+    }
+
+    private void validateHostedOption(String hostedOptionArg, String argumentOrigin) {
+        String optionName = hostedOptionArg.substring(NativeImage.oH.length()).split("=", 2)[0].split("@", 2)[0];
+        char booleanPrefix = 0;
+        if (!optionName.isEmpty()) {
+            char first = optionName.charAt(0);
+            if (first == '+' || first == '-') {
+                optionName = optionName.substring(1);
+                booleanPrefix = first;
+            }
+        }
+        HostedOptionInfo info = allOptionNames.get(optionName);
+        if (info == null) {
+            List<String> matches = new ArrayList<>();
+            OptionsParser.collectFuzzyMatches(() -> allOptionNames.keySet().iterator(), optionName, matches, Function.identity());
+            StringBuilder msg = new StringBuilder("Unrecognized option ");
+            msg.append(optionDescription(optionName, booleanPrefix, argumentOrigin)).append('.');
+            if (!matches.isEmpty()) {
+                msg.append(" Did you mean one of these:");
+                for (var match : matches) {
+                    msg.append(' ').append('\'').append(NativeImage.oH);
+                    boolean matchIsBoolean = allOptionNames.get(match).isBoolean;
+                    if (matchIsBoolean) {
+                        msg.append(CommonOptionParser.PLUS_MINUS_BOOLEAN_OPTION_PREFIX);
+                    }
+                    msg.append(match);
+                    if (!matchIsBoolean) {
+                        msg.append("=...");
+                    }
+                    msg.append('\'');
+                }
+                msg.append('.');
+            }
+            msg.append(" Use '--expert-options' (see also '--help-extra') to list all available options.");
+            throw NativeImage.showError(msg.toString());
+        }
+        if ((booleanPrefix != 0) != info.isBoolean()) {
+            var optionDescription = optionDescription(optionName, booleanPrefix, argumentOrigin);
+            if (info.isBoolean()) {
+                throw NativeImage.showError(CommonOptionParser.MISMATCH_BOOLEAN_OPTION.formatted(optionDescription, optionName));
+            } else {
+                throw NativeImage.showError(CommonOptionParser.MISMATCH_NON_BOOLEAN_OPTION.formatted(optionDescription, optionName));
+            }
+        }
+        if (numberOfActiveUnlockExperimentalVMOptions == 0 && !info.isStable()) {
+            illegalExperimentalOptions.add(hostedOptionArg);
+        }
+    }
+
+    private static String optionDescription(String optionName, char booleanPrefix, String argumentOrigin) {
+        var result = new StringBuilder("'" + NativeImage.oH);
+        if (booleanPrefix != 0) {
+            result.append(booleanPrefix);
+        }
+        result.append(optionName);
+        if (booleanPrefix == 0) {
+            result.append("=...");
+        }
+        result.append("' from ").append(OptionOrigin.from(argumentOrigin));
+        return result.toString();
     }
 
     String translateOption(ArgumentQueue argQueue) {
@@ -622,7 +696,7 @@ class GroupInfo {
 }
 
 record APIOptionSupport(Map<String, GroupInfo> groupInfos, SortedMap<String, APIOptionHandler.OptionInfo> options, Map<String, APIOptionHandler.PathsOptionInfo> pathOptions,
-                Set<String> stableOptionNames) {
+                Map<String, HostedOptionInfo> allOptionNames) {
 }
 
 final class APIOptionFeature implements Feature {
@@ -638,9 +712,9 @@ final class APIOptionFeature implements Feature {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         Map<String, GroupInfo> groupInfos = new HashMap<>();
         Map<String, APIOptionHandler.PathsOptionInfo> pathOptions = new HashMap<>();
-        Set<String> stableOptionNames = new HashSet<>();
+        Map<String, HostedOptionInfo> allOptionNames = new HashMap<>();
         ServiceLoader<OptionDescriptors> optionDescriptors = ServiceLoader.load(OptionDescriptors.class, accessImpl.getImageClassLoader().getClassLoader());
-        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos, pathOptions, stableOptionNames);
-        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options, pathOptions, stableOptionNames));
+        SortedMap<String, APIOptionHandler.OptionInfo> options = APIOptionHandler.extractOptions(optionDescriptors, groupInfos, pathOptions, allOptionNames);
+        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(groupInfos, options, pathOptions, allOptionNames));
     }
 }

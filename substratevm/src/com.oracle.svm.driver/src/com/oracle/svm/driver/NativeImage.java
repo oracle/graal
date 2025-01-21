@@ -779,6 +779,7 @@ public class NativeImage {
                 }
                 forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
                 forEachPropertyValue(properties.get("Args"), args, resolver);
+                forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
@@ -1058,12 +1059,12 @@ public class NativeImage {
             char boolPrefix = option.length() > oH.length() ? option.charAt(oH.length()) : 0;
             if (boolPrefix == '-' || boolPrefix == '+') {
                 if (eqIndex != -1) {
-                    showError("Invalid boolean native-image hosted-option " + option + " at " + origin);
+                    showError("Malformed boolean native-image hosted-option '" + option + "' (boolean option with extraneous '=') from " + OptionOrigin.from(origin) + ".");
                 }
                 return option + optionOriginSeparator + origin;
             } else {
                 if (eqIndex == -1) {
-                    showError("Invalid native-image hosted-option " + option + " at " + origin);
+                    showError("Malformed native-image hosted-option '" + option + "' ('=' missing after option name) from " + OptionOrigin.from(origin) + ".");
                 }
                 String front = option.substring(0, eqIndex);
                 String back = option.substring(eqIndex);
@@ -1978,14 +1979,14 @@ public class NativeImage {
         environment.putAll(restrictedEnvironment);
     }
 
-    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = NativeImage::new;
+    protected static Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = NativeImage::new;
 
     public static void main(String[] args) {
         performBuild(new BuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);
     }
 
     public static List<String> translateAPIOptions(List<String> arguments) {
-        var handler = new APIOptionHandler(new NativeImage(new BuildConfiguration(arguments)));
+        var handler = new APIOptionHandler(defaultNativeImageProvider.apply(new BuildConfiguration(arguments)));
         var argumentQueue = new ArgumentQueue(OptionOrigin.originDriver);
         handler.nativeImage.config.args.forEach(argumentQueue::add);
         List<String> translatedOptions = new ArrayList<>();
@@ -2558,8 +2559,10 @@ public class NativeImage {
         return useColorfulOutput;
     }
 
+    static final String MANY_SPACES_REGEX = "\\s+";
+
     static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver) {
-        return forEachPropertyValue(propertyValue, target, resolver, "\\s+");
+        return forEachPropertyValue(propertyValue, target, resolver, MANY_SPACES_REGEX);
     }
 
     static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver, String separatorRegex) {
