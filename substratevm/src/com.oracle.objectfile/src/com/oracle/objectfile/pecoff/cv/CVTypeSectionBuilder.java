@@ -25,28 +25,6 @@
  */
 package com.oracle.objectfile.pecoff.cv;
 
-import com.oracle.objectfile.debugentry.ArrayTypeEntry;
-import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.FieldEntry;
-import com.oracle.objectfile.debugentry.HeaderTypeEntry;
-import com.oracle.objectfile.debugentry.MemberEntry;
-import com.oracle.objectfile.debugentry.MethodEntry;
-import com.oracle.objectfile.debugentry.StructureTypeEntry;
-import com.oracle.objectfile.debugentry.TypeEntry;
-
-import jdk.graal.compiler.debug.GraalError;
-
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.ADDRESS_BITS;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.CV_CALL_NEAR_C;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.FUNC_IS_CONSTRUCTOR;
@@ -82,8 +60,30 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_REAL64;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_UINT4;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_VOID;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_WCHAR;
-import static com.oracle.objectfile.pecoff.cv.CVTypeRecord.CVClassRecord.ATTR_FORWARD_REF;
 import static com.oracle.objectfile.pecoff.cv.CVTypeRecord.CV_TYPE_RECORD_MAX_SIZE;
+import static com.oracle.objectfile.pecoff.cv.CVTypeRecord.CVClassRecord.ATTR_FORWARD_REF;
+
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import com.oracle.objectfile.debugentry.ArrayTypeEntry;
+import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.FieldEntry;
+import com.oracle.objectfile.debugentry.HeaderTypeEntry;
+import com.oracle.objectfile.debugentry.MemberEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.StructureTypeEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
+
+import jdk.graal.compiler.debug.GraalError;
 
 class CVTypeSectionBuilder {
 
@@ -112,31 +112,20 @@ class CVTypeSectionBuilder {
          * If we've never seen the class or only defined it as a forward reference, define it now.
          */
         if (typeRecord != null && typeRecord.type == LF_CLASS && !((CVTypeRecord.CVClassRecord) typeRecord).isForwardRef()) {
-            log("buildType() type %s(%s) is known %s", typeEntry.getTypeName(), typeEntry.typeKind().name(), typeRecord);
+            log("buildType() type %s(%s) is known %s", typeEntry.getTypeName(), "typeEntry.typeKind().name()", typeRecord);
         } else {
-            log("buildType() %s %s size=%d - begin", typeEntry.typeKind().name(), typeEntry.getTypeName(), typeEntry.getSize());
-            switch (typeEntry.typeKind()) {
-                case PRIMITIVE: {
-                    typeRecord = types.getExistingType(typeEntry);
-                    break;
-                }
-                case ARRAY:
-                case ENUM:
-                case INSTANCE:
-                case INTERFACE:
-                    // TODO continue treat foreign types as interfaces/classes but fix this later
-                case FOREIGN: {
-                    typeRecord = buildStructureTypeEntry((StructureTypeEntry) typeEntry);
-                    break;
-                }
-                case HEADER: {
-                    /*
-                     * The bits at the beginning of an Object: contains pointer to DynamicHub.
-                     */
-                    assert typeEntry.getTypeName().equals(OBJ_HEADER_NAME);
-                    typeRecord = buildStructureTypeEntry((HeaderTypeEntry) typeEntry);
-                    break;
-                }
+            log("buildType() %s %s size=%d - begin", "typeEntry.typeKind().name()", typeEntry.getTypeName(), typeEntry.getSize());
+            if (typeEntry.isPrimitive()) {
+                typeRecord = types.getExistingType(typeEntry);
+            } else if (typeEntry.isHeader()) {
+                /*
+                 * The bits at the beginning of an Object: contains pointer to DynamicHub.
+                 */
+                assert typeEntry.getTypeName().equals(OBJ_HEADER_NAME);
+                typeRecord = buildStructureTypeEntry((HeaderTypeEntry) typeEntry);
+            } else if (typeEntry.isClass() || typeEntry.isArray()) {
+                // TODO continue treat foreign types as interfaces/classes but fix this later
+                typeRecord = buildStructureTypeEntry((StructureTypeEntry) typeEntry);
             }
         }
         assert typeRecord != null;
@@ -151,7 +140,7 @@ class CVTypeSectionBuilder {
      * @return type record for this function (may return existing matching record)
      */
     CVTypeRecord buildFunction(CompiledMethodEntry entry) {
-        return buildMemberFunction(entry.getClassEntry(), entry.getPrimary().getMethodEntry());
+        return buildMemberFunction(entry.classEntry(), entry.primary().getMethodEntry());
     }
 
     static class FieldListBuilder {
@@ -217,7 +206,7 @@ class CVTypeSectionBuilder {
 
     private CVTypeRecord buildStructureTypeEntry(final StructureTypeEntry typeEntry) {
 
-        log("buildStructureTypeEntry size=%d kind=%s %s", typeEntry.getSize(), typeEntry.typeKind().name(), typeEntry.getTypeName());
+        log("buildStructureTypeEntry size=%d kind=%s %s", typeEntry.getSize(), "typeEntry.typeKind().name()", typeEntry.getTypeName());
 
         ClassEntry superType = typeEntry.isClass() ? ((ClassEntry) typeEntry).getSuperClass() : null;
         int superTypeIndex = superType != null ? types.getIndexForForwardRef(superType) : 0;
@@ -247,7 +236,7 @@ class CVTypeSectionBuilder {
         }
 
         /* Only define manifested fields. */
-        typeEntry.fields().filter(CVTypeSectionBuilder::isManifestedField).forEach(f -> {
+        typeEntry.getFields().stream().filter(CVTypeSectionBuilder::isManifestedField).forEach(f -> {
             log("field %s attr=(%s) offset=%d size=%d valuetype=%s", f.fieldName(), f.getModifiersString(), f.getOffset(), f.getSize(), f.getValueType().getTypeName());
             CVTypeRecord.FieldRecord fieldRecord = buildField(f);
             log("field %s", fieldRecord);
@@ -286,10 +275,10 @@ class CVTypeSectionBuilder {
             HashSet<String> overloaded = new HashSet<>(methods.size());
             HashSet<String> allFunctions = new HashSet<>(methods.size());
             methods.forEach(m -> {
-                if (allFunctions.contains(m.methodName())) {
-                    overloaded.add(m.methodName());
+                if (allFunctions.contains(m.getMethodName())) {
+                    overloaded.add(m.getMethodName());
                 } else {
-                    allFunctions.add(m.methodName());
+                    allFunctions.add(m.getMethodName());
                 }
             });
 
@@ -300,12 +289,12 @@ class CVTypeSectionBuilder {
                 CVTypeRecord.CVTypeMethodListRecord mlist = new CVTypeRecord.CVTypeMethodListRecord();
 
                 /* LF_MFUNCTION records */
-                methods.stream().filter(methodEntry -> methodEntry.methodName().equals(mname)).forEach(m -> {
-                    log("overloaded method %s attr=(%s) valuetype=%s", m.methodName(), m.getModifiersString(), m.getValueType().getTypeName());
+                methods.stream().filter(methodEntry -> methodEntry.getMethodName().equals(mname)).forEach(m -> {
+                    log("overloaded method %s attr=(%s) valuetype=%s", m.getMethodName(), m.getModifiersString(), m.getValueType().getTypeName());
                     CVTypeRecord.CVTypeMFunctionRecord mFunctionRecord = buildMemberFunction((ClassEntry) typeEntry, m);
                     short attr = modifiersToAttr(m);
                     log("    overloaded method %s", mFunctionRecord);
-                    mlist.add(attr, mFunctionRecord.getSequenceNumber(), m.getVtableOffset(), m.methodName());
+                    mlist.add(attr, mFunctionRecord.getSequenceNumber(), m.getVtableOffset(), m.getMethodName());
                 });
 
                 CVTypeRecord.CVTypeMethodListRecord nmlist = addTypeRecord(mlist);
@@ -315,8 +304,8 @@ class CVTypeSectionBuilder {
                 fieldListBuilder.addField(methodRecord);
             });
 
-            methods.stream().filter(methodEntry -> !overloaded.contains(methodEntry.methodName())).forEach(m -> {
-                log("`unique method %s %s(...)", m.methodName(), m.getModifiersString(), m.getValueType().getTypeName(), m.methodName());
+            methods.stream().filter(methodEntry -> !overloaded.contains(methodEntry.getMethodName())).forEach(m -> {
+                log("`unique method %s %s(...)", m.getMethodName(), m.getModifiersString(), m.getValueType().getTypeName(), m.getMethodName());
                 CVTypeRecord.CVOneMethodRecord method = buildMethod((ClassEntry) typeEntry, m);
                 log("    unique method %s", method);
                 fieldListBuilder.addField(method);
@@ -395,7 +384,7 @@ class CVTypeSectionBuilder {
     private CVTypeRecord.CVOneMethodRecord buildMethod(ClassEntry classEntry, MethodEntry methodEntry) {
         CVTypeRecord.CVTypeMFunctionRecord funcRecord = buildMemberFunction(classEntry, methodEntry);
         short attr = modifiersToAttr(methodEntry);
-        return new CVTypeRecord.CVOneMethodRecord(attr, funcRecord.getSequenceNumber(), methodEntry.getVtableOffset(), methodEntry.methodName());
+        return new CVTypeRecord.CVOneMethodRecord(attr, funcRecord.getSequenceNumber(), methodEntry.getVtableOffset(), methodEntry.getMethodName());
     }
 
     private static short accessToAttr(MemberEntry member) {
@@ -423,8 +412,8 @@ class CVTypeSectionBuilder {
         mFunctionRecord.setFuncAttr(attr);
         mFunctionRecord.setReturnType(types.getIndexForPointerOrPrimitive(methodEntry.getValueType()));
         CVTypeRecord.CVTypeArglistRecord argListType = new CVTypeRecord.CVTypeArglistRecord();
-        for (int i = 0; i < methodEntry.getParamCount(); i++) {
-            argListType.add(types.getIndexForPointerOrPrimitive(methodEntry.getParamType(i)));
+        for (TypeEntry paramType : methodEntry.getParamTypes()) {
+            argListType.add(types.getIndexForPointerOrPrimitive(paramType));
         }
         argListType = addTypeRecord(argListType);
         mFunctionRecord.setArgList(argListType);

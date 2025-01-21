@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,22 +26,15 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import java.util.Iterator;
-import java.util.Map;
-
 import com.oracle.objectfile.debugentry.ClassEntry;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
-import jdk.graal.compiler.debug.DebugContext;
-
-import com.oracle.objectfile.LayoutDecision;
-import com.oracle.objectfile.LayoutDecisionMap;
-import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debugentry.range.SubRange;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
+
+import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * Section generator for debug_line section.
@@ -84,7 +77,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
 
         Cursor byteCount = new Cursor();
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+        instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
             setLineIndex(classEntry, byteCount.get());
             int headerSize = headerSize();
             int dirTableSize = computeDirTableSize(classEntry);
@@ -132,13 +125,13 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return LN_HEADER_SIZE;
     }
 
-    private int computeDirTableSize(ClassEntry classEntry) {
+    private static int computeDirTableSize(ClassEntry classEntry) {
         /*
          * Table contains a sequence of 'nul'-terminated UTF8 dir name bytes followed by an extra
          * 'nul'.
          */
         Cursor cursor = new Cursor();
-        classEntry.dirStream().forEachOrdered(dirEntry -> {
+        classEntry.getDirs().forEach(dirEntry -> {
             int length = countUTF8Bytes(dirEntry.getPathString());
             // We should never have a null or zero length entry in local dirs
             assert length > 0;
@@ -159,9 +152,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * time stamps
          */
         Cursor cursor = new Cursor();
-        classEntry.fileStream().forEachOrdered(fileEntry -> {
+        classEntry.getFiles().forEach(fileEntry -> {
             // We want the file base name excluding path.
-            String baseName = fileEntry.getFileName();
+            String baseName = fileEntry.fileName();
             int length = countUTF8Bytes(baseName);
             // We should never have a null or zero length entry in local files.
             assert length > 0;
@@ -188,32 +181,15 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     @Override
-    public byte[] getOrDecideContent(Map<ObjectFile.Element, LayoutDecisionMap> alreadyDecided, byte[] contentHint) {
-        ObjectFile.Element textElement = getElement().getOwner().elementForName(".text");
-        LayoutDecisionMap decisionMap = alreadyDecided.get(textElement);
-        if (decisionMap != null) {
-            Object valueObj = decisionMap.getDecidedValue(LayoutDecision.Kind.VADDR);
-            if (valueObj != null && valueObj instanceof Number) {
-                /*
-                 * This may not be the final vaddr for the text segment but it will be close enough
-                 * to make debug easier i.e. to within a 4k page or two.
-                 */
-                debugTextBase = ((Number) valueObj).longValue();
-            }
-        }
-        return super.getOrDecideContent(alreadyDecided, contentHint);
-    }
-
-    @Override
     public void writeContent(DebugContext context) {
         assert contentByteArrayCreated();
 
         byte[] buffer = getContent();
         Cursor cursor = new Cursor();
 
-        enableLog(context, cursor.get());
+        enableLog(context);
         log(context, "  [0x%08x] DEBUG_LINE", cursor.get());
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEachOrdered(classEntry -> {
+        instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
             int pos = cursor.get();
             setLineIndex(classEntry, pos);
             int lengthPos = pos;
@@ -311,7 +287,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
         Cursor cursor = new Cursor(p);
         Cursor idx = new Cursor(1);
-        classEntry.dirStream().forEach(dirEntry -> {
+        classEntry.getDirs().forEach(dirEntry -> {
             int dirIdx = idx.get();
             assert (classEntry.getDirIdx(dirEntry) == dirIdx);
             String dirPath = dirEntry.getPathString();
@@ -333,12 +309,12 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
         Cursor cursor = new Cursor(p);
         Cursor idx = new Cursor(1);
-        classEntry.fileStream().forEach(fileEntry -> {
+        classEntry.getFiles().forEach(fileEntry -> {
             int pos = cursor.get();
             int fileIdx = idx.get();
             assert classEntry.getFileIdx(fileEntry) == fileIdx;
             int dirIdx = classEntry.getDirIdx(fileEntry);
-            String baseName = fileEntry.getFileName();
+            String baseName = fileEntry.fileName();
             verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
             pos = writeUTF8StringBytes(baseName, buffer, pos);
             pos = writeULEB(dirIdx, buffer, pos);
@@ -359,15 +335,15 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private int writeCompiledMethodLineInfo(DebugContext context, ClassEntry classEntry, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
-        Range primaryRange = compiledEntry.getPrimary();
+        Range primaryRange = compiledEntry.primary();
         // the compiled method might be a substitution and not in the file of the class entry
         FileEntry fileEntry = primaryRange.getFileEntry();
         if (fileEntry == null) {
-            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] skipped (no file) %s", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
+            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] skipped (no file) %s", pos, primaryRange.getLo(), primaryRange.getHi(),
                             primaryRange.getFullMethodNameWithParams());
             return pos;
         }
-        String file = fileEntry.getFileName();
+        String file = fileEntry.fileName();
         int fileIdx = classEntry.getFileIdx(fileEntry);
         /*
          * Each primary represents a method i.e. a contiguous sequence of subranges. For normal
@@ -396,7 +372,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Set state for primary.
          */
-        log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
+        log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s %s:%d", pos, primaryRange.getLo(), primaryRange.getHi(),
                         primaryRange.getFullMethodNameWithParams(),
                         file, primaryRange.getLine());
 
@@ -420,27 +396,24 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Now write a row for each subrange lo and hi.
          */
-        Iterator<SubRange> iterator = compiledEntry.leafRangeIterator();
-        if (prologueRange != null) {
-            // skip already processed range
-            SubRange first = iterator.next();
-            assert first == prologueRange;
-        }
-        while (iterator.hasNext()) {
-            SubRange subrange = iterator.next();
+
+        assert prologueRange == null || compiledEntry.leafRangeStream().findFirst().filter(first -> first == prologueRange).isPresent();
+
+        // skip already processed range
+        for (Range subrange : compiledEntry.leafRangeStream().skip(prologueRange != null ? 1 : 0).toList()) {
             assert subrange.getLo() >= primaryRange.getLo();
             assert subrange.getHi() <= primaryRange.getHi();
             FileEntry subFileEntry = subrange.getFileEntry();
             if (subFileEntry == null) {
                 continue;
             }
-            String subfile = subFileEntry.getFileName();
+            String subfile = subFileEntry.fileName();
             int subFileIdx = classEntry.getFileIdx(subFileEntry);
             assert subFileIdx > 0;
             long subLine = subrange.getLine();
             long subAddressLo = subrange.getLo();
             long subAddressHi = subrange.getHi();
-            log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodNameWithParams(), subfile,
+            log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s %s:%d", pos, subAddressLo, subAddressHi, subrange.getFullMethodNameWithParams(), subfile,
                             subLine);
             if (subLine < 0) {
                 /*
@@ -538,6 +511,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             line += lineDelta;
             address += addressDelta;
         }
+
         /*
          * Append a final end sequence just below the next primary range.
          */
@@ -555,10 +529,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private int writeLineNumberTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         Cursor cursor = new Cursor(p);
-        classEntry.compiledEntries().forEachOrdered(compiledMethod -> {
+        classEntry.compiledMethods().forEach(compiledMethod -> {
             int pos = cursor.get();
-            String methodName = compiledMethod.getPrimary().getFullMethodNameWithParams();
-            String fileName = compiledMethod.getClassEntry().getFullFileName();
+            String methodName = compiledMethod.primary().getFullMethodNameWithParams();
+            String fileName = compiledMethod.classEntry().getFullFileName();
             log(context, "  [0x%08x] %s %s", pos, methodName, fileName);
             pos = writeCompiledMethodLineInfo(context, classEntry, compiledMethod, buffer, pos);
             cursor.set(pos);
@@ -566,23 +540,18 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return cursor.get();
     }
 
-    private static SubRange prologueLeafRange(CompiledMethodEntry compiledEntry) {
-        Iterator<SubRange> iterator = compiledEntry.leafRangeIterator();
-        if (iterator.hasNext()) {
-            SubRange range = iterator.next();
-            if (range.getLo() == compiledEntry.getPrimary().getLo()) {
-                return range;
-            }
-        }
-        return null;
+    private static Range prologueLeafRange(CompiledMethodEntry compiledEntry) {
+        return compiledEntry.leafRangeStream()
+                        .findFirst()
+                        .filter(r -> r.getLo() == compiledEntry.primary().getLo())
+                        .orElse(null);
     }
 
     private int writeCopyOp(DebugContext context, byte[] buffer, int p) {
         DwarfLineOpcode opcode = DwarfLineOpcode.DW_LNS_copy;
-        int pos = p;
         debugCopyCount++;
-        verboseLog(context, "  [0x%08x] Copy %d", pos, debugCopyCount);
-        return writeLineOpcode(opcode, buffer, pos);
+        verboseLog(context, "  [0x%08x] Copy %d", p, debugCopyCount);
+        return writeLineOpcode(opcode, buffer, p);
     }
 
     private int writeAdvancePCOp(DebugContext context, long uleb, byte[] buffer, int p) {
@@ -622,24 +591,21 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     @SuppressWarnings("unused")
     private int writeNegateStmtOp(DebugContext context, byte[] buffer, int p) {
         DwarfLineOpcode opcode = DwarfLineOpcode.DW_LNS_negate_stmt;
-        int pos = p;
-        return writeLineOpcode(opcode, buffer, pos);
+        return writeLineOpcode(opcode, buffer, p);
     }
 
     private int writeSetBasicBlockOp(DebugContext context, byte[] buffer, int p) {
         DwarfLineOpcode opcode = DwarfLineOpcode.DW_LNS_set_basic_block;
-        int pos = p;
-        verboseLog(context, "  [0x%08x] Set basic block", pos);
-        return writeLineOpcode(opcode, buffer, pos);
+        verboseLog(context, "  [0x%08x] Set basic block", p);
+        return writeLineOpcode(opcode, buffer, p);
     }
 
     private int writeConstAddPCOp(DebugContext context, byte[] buffer, int p) {
         DwarfLineOpcode opcode = DwarfLineOpcode.DW_LNS_const_add_pc;
-        int pos = p;
         int advance = opcodeAddress((byte) 255);
         debugAddress += advance;
-        verboseLog(context, "  [0x%08x] Advance PC by constant %d to 0x%08x", pos, advance, debugAddress);
-        return writeLineOpcode(opcode, buffer, pos);
+        verboseLog(context, "  [0x%08x] Advance PC by constant %d to 0x%08x", p, advance, debugAddress);
+        return writeLineOpcode(opcode, buffer, p);
     }
 
     private int writeFixedAdvancePCOp(DebugContext context, short arg, byte[] buffer, int p) {
@@ -655,7 +621,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         DwarfLineOpcode opcode = DwarfLineOpcode.DW_LNE_end_sequence;
         int pos = p;
         verboseLog(context, "  [0x%08x] Extended opcode 1: End sequence", pos);
-        debugAddress = debugTextBase;
+        debugAddress = 0;
         debugLine = 1;
         debugCopyCount = 0;
         pos = writePrefixOpcode(buffer, pos);
@@ -669,15 +635,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     private int writeSetAddressOp(DebugContext context, long arg, byte[] buffer, int p) {
         DwarfLineOpcode opcode = DwarfLineOpcode.DW_LNE_set_address;
         int pos = p;
-        debugAddress = debugTextBase + (int) arg;
-        verboseLog(context, "  [0x%08x] Extended opcode 2: Set Address to 0x%08x", pos, debugAddress);
+        verboseLog(context, "  [0x%08x] Extended opcode 2: Set Address to 0x%08x", pos, arg);
         pos = writePrefixOpcode(buffer, pos);
         /*
          * Insert extended insn byte count as ULEB.
          */
         pos = writeULEB(9, buffer, pos);
         pos = writeLineOpcode(opcode, buffer, pos);
-        return writeRelocatableCodeOffset(arg, buffer, pos);
+        return writeCodeOffset(arg, buffer, pos);
     }
 
     @SuppressWarnings("unused")
@@ -733,15 +698,14 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeSpecialOpcode(DebugContext context, byte opcode, byte[] buffer, int p) {
-        int pos = p;
         if (debug && opcode == 0) {
             verboseLog(context, "  [0x%08x] ERROR Special Opcode %d: Address 0x%08x Line %d", debugAddress, debugLine);
         }
         debugAddress += opcodeAddress(opcode);
         debugLine += opcodeLine(opcode);
         verboseLog(context, "  [0x%08x] Special Opcode %d: advance Address by %d to 0x%08x and Line by %d to %d",
-                        pos, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
-        return writeByte(opcode, buffer, pos);
+                        p, opcodeId(opcode), opcodeAddress(opcode), debugAddress, opcodeLine(opcode), debugLine);
+        return writeByte(opcode, buffer, p);
     }
 
     private static final int MAX_ADDRESS_ONLY_DELTA = (0xff - LN_OPCODE_BASE) / LN_LINE_RANGE;

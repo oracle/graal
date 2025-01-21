@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.objectfile.elf.dwarf.DwarfLocSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -49,7 +50,6 @@ import com.oracle.objectfile.SymbolTable;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.dwarf.DwarfARangesSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfAbbrevSectionImpl;
-import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
 import com.oracle.objectfile.elf.dwarf.DwarfFrameSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl;
 import com.oracle.objectfile.elf.dwarf.DwarfLineSectionImpl;
@@ -1174,6 +1174,7 @@ public class ELFObjectFile extends ObjectFile {
     @Override
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
         DwarfDebugInfo dwarfSections = new DwarfDebugInfo(getMachine(), getByteOrder());
+
         /* We need an implementation for each generated DWARF section. */
         DwarfStrSectionImpl elfStrSectionImpl = dwarfSections.getStrSectionImpl();
         DwarfAbbrevSectionImpl elfAbbrevSectionImpl = dwarfSections.getAbbrevSectionImpl();
@@ -1217,6 +1218,7 @@ public class ELFObjectFile extends ObjectFile {
         elfAbbrevSectionImpl.getOrCreateRelocationElement(0);
         frameSectionImpl.getOrCreateRelocationElement(0);
         elfInfoSectionImpl.getOrCreateRelocationElement(0);
+        // elfTypesSectionImpl.getOrCreateRelocationElement(0);
         elfLocSectionImpl.getOrCreateRelocationElement(0);
         elfARangesSectionImpl.getOrCreateRelocationElement(0);
         elfRangesSectionImpl.getOrCreateRelocationElement(0);

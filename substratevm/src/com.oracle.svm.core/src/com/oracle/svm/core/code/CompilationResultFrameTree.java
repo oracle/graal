@@ -496,16 +496,12 @@ public final class CompilationResultFrameTree {
                         SourceMappingWrapper wrapper = SourceMappingWrapper.create(sourceMapping, maxDepth);
                         if (wrapper != null) {
                             if (wrapper.getStartOffset() > targetCodeSize - 1) {
-                                if (debug.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
-                                    debug.log(" Discard SourceMapping outside code-range %s", SourceMappingWrapper.getSourceMappingString(sourceMapping));
-                                }
+                                debug.log(DebugContext.DETAILED_LEVEL, " Discard SourceMapping outside code-range %s", SourceMappingWrapper.getSourceMappingString(sourceMapping));
                                 continue;
                             }
                             sourcePosData.add(wrapper);
                         } else {
-                            if (debug.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
-                                debug.log(" Discard SourceMapping %s", SourceMappingWrapper.getSourceMappingString(sourceMapping));
-                            }
+                            debug.log(DebugContext.DETAILED_LEVEL, " Discard SourceMapping %s", SourceMappingWrapper.getSourceMappingString(sourceMapping));
                         }
                     }
                 }
@@ -697,7 +693,7 @@ public final class CompilationResultFrameTree {
                 }
 
                 boolean hasEqualCaller = FrameNode.hasEqualCaller(root.frame, frame);
-                if (debug.isLogEnabled() && !hasEqualCaller) {
+                if (!hasEqualCaller) {
                     debug.log("Bottom frame mismatch for %s", sourcePos);
                 }
                 if (callee == null && hasEqualCaller) {

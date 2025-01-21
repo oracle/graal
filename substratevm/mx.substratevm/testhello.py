@@ -147,25 +147,25 @@ def test():
 
     # check incoming parameters are bound to sensible values
     exec_string = execute("info args")
-    rexp = [fr"__0 = {digits_pattern}",
-            fr"__1 = 0x{hex_digits_pattern}"]
+    rexp = [fr"__int0 = {digits_pattern}",
+            fr"__long1 = 0x{hex_digits_pattern}"]
     checker = Checker(f"info args : {method_name}", rexp)
     checker.check(exec_string)
 
-    exec_string = execute("p __0")
+    exec_string = execute("p __int0")
     rexp = [fr"\${digits_pattern} = 1"]
-    checker = Checker("p __0", rexp)
+    checker = Checker("p __int0", rexp)
     checker.check(exec_string)
 
-    exec_string = execute("p __1")
+    exec_string = execute("p __long1")
     rexp = [fr"\${digits_pattern} = \(org\.graalvm\.nativeimage\.c\.type\.CCharPointerPointer\) 0x{hex_digits_pattern}"]
-    checker = Checker("p __1", rexp)
+    checker = Checker("p __long1", rexp)
     checker.check(exec_string)
 
-    exec_string = execute("p __1[0]")
+    exec_string = execute("p __long1[0]")
     rexp = [
         fr'\${digits_pattern} = \(org\.graalvm\.nativeimage\.c\.type\.CCharPointer\) 0x{hex_digits_pattern} "{wildcard_pattern}/hello_image"']
-    checker = Checker("p __1[0]", rexp)
+    checker = Checker("p __long1[0]", rexp)
     checker.check(exec_string)
 
     # set a break point at hello.Hello::main

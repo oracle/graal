@@ -72,6 +72,7 @@ class TestClassloaderObjUtils(unittest.TestCase):
         self.maxDiff = None
         set_up_test()
         set_up_gdb_debughelpers()
+        self.svm_util = SVMUtil()
 
     def tearDown(self):
         gdb_delete_breakpoints()
@@ -82,8 +83,8 @@ class TestClassloaderObjUtils(unittest.TestCase):
         gdb_run()
         this = gdb.parse_and_eval('this')  # type = com.oracle.svm.test.missing.classes.TestClass -> testClassLoader
         field = gdb.parse_and_eval('this.instanceField')  # instanceField is null
-        self.assertRegex(SVMUtil.get_classloader_namespace(this), f'testClassLoader_{hex_rexp.pattern}')
-        self.assertEqual(SVMUtil.get_classloader_namespace(field), "")
+        self.assertRegex(self.svm_util.get_classloader_namespace(this), f'testClassLoader_{hex_rexp.pattern}')
+        self.assertEqual(self.svm_util.get_classloader_namespace(field), "")
 
 
 # redirect unittest output to terminal

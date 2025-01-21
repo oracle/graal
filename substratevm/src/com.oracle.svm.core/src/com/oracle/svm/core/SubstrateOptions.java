@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
@@ -464,6 +465,25 @@ public class SubstrateOptions {
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
+
+    @Option(help = "Directory where Java source-files will be placed for the debugger")//
+    public static final RuntimeOptionKey<String> RuntimeSourceDestDir = new RuntimeOptionKey<>(null, RelevantForCompilationIsolates);
+
+    public static Path getRuntimeSourceDestDir() {
+        String sourceDestDir = RuntimeSourceDestDir.getValue();
+        if (sourceDestDir != null) {
+            return Paths.get(sourceDestDir);
+        }
+        Path result = Paths.get("sources");
+        Path exeDir = Paths.get(ProcessProperties.getExecutableName()).getParent();
+        if (exeDir != null) {
+            result = exeDir.resolve(result);
+        }
+        return result;
+    }
+
+    @Option(help = "Provide debuginfo for runtime-compiled code.")//
+    public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false);
 
     @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//

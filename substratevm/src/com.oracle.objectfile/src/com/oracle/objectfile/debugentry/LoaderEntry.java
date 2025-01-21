@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,19 +26,10 @@
 package com.oracle.objectfile.debugentry;
 
 /**
- * A LoaderEntry is used to record a unique id string for the class loader asscoiated with classes
+ * A LoaderEntry is used to record a unique id string for the class loader associated with classes
  * that can be susceptible to repeat definitions. In such cases the loader id can be used when
  * constructing a unique linker symbol for methods and static fields of the class. That same id may
  * need to be embedded in debug info that identifies class and method names.
  */
-public class LoaderEntry {
-    private final String loaderId;
-
-    public LoaderEntry(String id) {
-        loaderId = id;
-    }
-
-    public String getLoaderId() {
-        return loaderId;
-    }
+public record LoaderEntry(String loaderId) {
 }
