@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,7 +130,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
 
     @Override
     protected Value[] createNativeABICallerSaveRegisters(GraalHotSpotVMConfig config, RegisterConfig regConfig) {
-        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters().asList());
+        List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters());
         if (config.osName.equals("windows")) {
             // http://msdn.microsoft.com/en-us/library/9z1stfyw.aspx
             callerSave.remove(AMD64.rdi);

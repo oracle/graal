@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -197,7 +198,6 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterAttributes;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
@@ -1714,7 +1714,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     }
 
     private static boolean isCalleeSaved(Register register, RegisterConfig config, SharedMethod method) {
-        RegisterAttributes registerAttributes = config.getAttributesMap()[register.number];
+        RegisterAttributes registerAttributes = config.getAttributesMap().get(register.number);
         return registerAttributes.isCalleeSave() || registerAttributes.isAllocatable() && method.hasCalleeSavedRegisters();
     }
 
@@ -1943,12 +1943,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         private boolean initialized;
 
         @Override
-        protected RegisterArray initAllocatable(RegisterArray registers) {
+        protected List<Register> initAllocatable(List<Register> registers) {
             initialized = true;
             if (preserveFramePointer) {
-                var allocatableRegisters = new ArrayList<>(registers.asList());
+                var allocatableRegisters = new ArrayList<>(registers);
                 allocatableRegisters.remove(rbp);
-                return super.initAllocatable(new RegisterArray(allocatableRegisters));
+                return super.initAllocatable(List.copyOf(allocatableRegisters));
             }
             return super.initAllocatable(registers);
         }

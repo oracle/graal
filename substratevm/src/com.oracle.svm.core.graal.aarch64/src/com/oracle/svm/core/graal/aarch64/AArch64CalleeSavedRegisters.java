@@ -66,7 +66,7 @@ final class AArch64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         Register frameRegister = registerConfig.getFrameRegister();
         assert frameRegister.equals(AArch64.sp) : "Unexpected frame register " + frameRegister;
-        List<Register> calleeSavedRegisters = new ArrayList<>(registerConfig.getAllocatableRegisters().asList());
+        List<Register> calleeSavedRegisters = new ArrayList<>(registerConfig.getAllocatableRegisters());
 
         /*
          * Even though lr is an allocatable register, it is not possible for this register to be

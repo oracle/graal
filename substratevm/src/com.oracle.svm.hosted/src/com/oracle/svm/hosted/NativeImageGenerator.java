@@ -470,25 +470,19 @@ public class NativeImageGenerator {
                     }
                 }
             }
-            // Graal backend does not use the second argument `flags' passed to the AMD64
-            // constructor. Instead, it tests CPU feature directly.
-            AMD64 architecture = new AMD64(features, null);
+            AMD64 architecture = new AMD64(features);
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
             EnumSet<AArch64.CPUFeature> features = CPUTypeAArch64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AArch64.CPUFeature.values()));
-            // Graal backend does not use the second argument `flags' passed to the AArch64
-            // constructor. Instead, it tests CPU feature directly.
-            AArch64 architecture = new AArch64(features, null);
+            AArch64 architecture = new AArch64(features);
             // runtime checked features are the same as static features on AArch64 for now
             EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.RISCV64.class)) {
             EnumSet<RISCV64.CPUFeature> features = CPUTypeRISCV64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(RISCV64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), RISCV64.CPUFeature.values()));
-            // Graal backend does not use the second argument `flags' passed to the RISCV64
-            // constructor. Instead, it tests CPU feature directly.
-            RISCV64 architecture = new RISCV64(features, null);
+            RISCV64 architecture = new RISCV64(features);
             // runtime checked features are the same as static features on RISCV64 for now
             EnumSet<RISCV64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);

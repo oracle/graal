@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,16 +28,14 @@ import static jdk.vm.ci.amd64.AMD64.rax;
 
 import java.util.Arrays;
 
-import jdk.graal.compiler.core.test.GraalCompilerTest;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-
+import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.meta.JavaKind;
@@ -128,7 +126,6 @@ public class AMD64HotSpotFrameOmissionTest extends GraalCompilerTest {
     }
 
     private Register getArgumentRegister(int index, JavaKind kind) {
-        RegisterArray regs = getCodeCache().getRegisterConfig().getCallingConventionRegisters(HotSpotCallingConventionType.JavaCall, kind);
-        return regs.get(index);
+        return getCodeCache().getRegisterConfig().getCallingConventionRegisters(HotSpotCallingConventionType.JavaCall, kind).get(index);
     }
 }
