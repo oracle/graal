@@ -36,12 +36,14 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+
+import jdk.graal.compiler.debug.GraalError;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
@@ -345,12 +347,25 @@ public class OptionsParser {
      * @return whether any fuzzy matches were found
      */
     public static boolean collectFuzzyMatches(Iterable<OptionDescriptor> toSearch, String name, Collection<OptionDescriptor> matches) {
+        return collectFuzzyMatches(toSearch, name, matches, OptionDescriptor::getName);
+    }
+
+    /**
+     * Collects from given entries toSearch the ones that fuzzy match a given String name. String
+     * similarity for fuzzy matching is based on Dice's coefficient.
+     *
+     * @param toSearch the entries search
+     * @param name the name to search for
+     * @param matches the collection to which fuzzy matches of {@code name} will be added
+     * @return whether any fuzzy matches were found
+     */
+    public static <T> boolean collectFuzzyMatches(Iterable<T> toSearch, String name, Collection<T> matches, Function<T, String> extractor) {
         boolean found = false;
-        for (OptionDescriptor option : toSearch) {
-            float score = stringSimilarity(option.getName(), name);
+        for (T entry : toSearch) {
+            float score = stringSimilarity(extractor.apply(entry), name);
             if (score >= FUZZY_MATCH_THRESHOLD) {
                 found = true;
-                matches.add(option);
+                matches.add(entry);
             }
         }
         return found;
