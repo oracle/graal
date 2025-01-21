@@ -47,9 +47,11 @@ import jdk.jfr.internal.jfc.JFC;
 @SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_jfc_JFC {
 
+    // Checkstyle: stop
     @Delete //
     @TargetElement(onlyWith = JDKLatest.class) //
     private static Path JFC_DIRECTORY;
+    // Checkstyle: resume
 
     @Substitute
     public static List<Configuration> getConfigurations() {

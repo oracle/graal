@@ -34,11 +34,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
@@ -48,8 +46,6 @@ import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.jfr.Recording;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.JVMSupport;
-import jdk.jfr.internal.PlatformRecording;
-import jdk.jfr.internal.SecuritySupport;
 
 /**
  * Compatibility class to handle incompatible changes between JDK 21 and JDK 22. Once support for

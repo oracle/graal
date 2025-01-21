@@ -40,8 +40,10 @@ import jdk.jfr.internal.Repository;
 @SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_Repository {
 
+    // Checkstyle: stop
     @Delete //
     private static Path JAVA_IO_TMPDIR;
+    // Checkstyle: resume
 
     @Alias //
     private Path baseLocation;
@@ -79,5 +81,5 @@ final class Target_jdk_jfr_internal_Repository_JDK21 {
 @TargetClass(className = "jdk.jfr.internal.util.Utils", onlyWith = {HasJfrSupport.class, JDKLatest.class})
 final class Target_jdk_jfr_internal_util_Utils {
     @Alias
-    public native static Path getPathInProperty(String prop, String subPath);
+    public static native Path getPathInProperty(String prop, String subPath);
 }
