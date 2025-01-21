@@ -787,6 +787,7 @@ public class ObjectCopier {
                 checkIllegalValue(LocationIdentity.class, obj, objectPath, "must come from a static field");
                 checkIllegalValue(HashSet.class, obj, objectPath, "hashes are typically not stable across VM executions");
 
+                prepareObject(obj);
                 makeStringId(clazz.getName(), objectPath);
                 ClassInfo classInfo = makeClassInfo(clazz, objectPath);
                 classInfo.fields().forEach((fieldDesc, f) -> {
@@ -797,6 +798,11 @@ public class ObjectCopier {
                     }
                 });
             }
+        }
+
+        @SuppressWarnings("unused")
+        protected void prepareObject(Object obj) {
+            /* Hook to prepare special objects */
         }
 
         private ClassInfo makeClassInfo(Class<?> clazz, ObjectPath objectPath) {
