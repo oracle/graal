@@ -116,12 +116,12 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
 
     @Override
     public int getMaxLocals() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public int getMaxStackSize() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
@@ -136,17 +136,17 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
 
     @Override
     public boolean isBridge() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public boolean isDefault() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public boolean isClassInitializer() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
@@ -171,42 +171,42 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
 
     @Override
     public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public void reprofile() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public ConstantPool getConstantPool() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public Annotation[][] getParameterAnnotations() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public Type[] getGenericParameterTypes() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public boolean canBeInlined() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public boolean hasNeverInlineDirective() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public boolean shouldBeInlined() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
@@ -221,32 +221,36 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
 
     @Override
     public Constant getEncoding() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public SpeculationLog getSpeculationLog() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public Annotation[] getAnnotations() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
     }
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        throw GraalError.unimplemented("This method is incomplete and should not be used.");
+        throw unimplemented();
+    }
+
+    private RuntimeException unimplemented() {
+        return GraalError.unimplemented("This method is incomplete and should not be used. Base layer method: " + format("%H.%n(%p)"));
     }
 
     @Override
