@@ -365,11 +365,13 @@ public final class TypeSymbols {
      * Converts a name symbol, as appear in constant pool entries to a type symbol. For historical
      * reasons, class name entries are not in internal form. For classes, the class name entry is
      * {@code java/lang/Thread} instead of {@code Ljava/lang/Thread;}. For arrays, the class name is
-     * already in internal form. Primitives are not allowed.
+     * already in internal form.
      */
     public Symbol<Type> fromClassNameEntry(Symbol<Name> name) {
         ErrorUtil.guarantee(Validation.validClassNameEntry(name), "invalid class name entry");
-        ErrorUtil.guarantee(!isPrimitive(name), "unexpected primitive name");
+        // There are no "name" symbols for primitives, only "type" symbols.
+        // That's why primitives cannot be represented here.
+        // The entry "V" refers to the class "LV;" and not the void.class.
         if (name.byteAt(0) == '[') {
             return fromSymbol(name);
         }
@@ -378,7 +380,9 @@ public final class TypeSymbols {
 
     public Symbol<Type> fromClassNameEntryUnsafe(Symbol<Name> name) {
         assert Validation.validClassNameEntry(name) : name;
-        assert !isPrimitive(name) : name;
+        // There are no "name" symbols for primitives, only "type" symbols.
+        // That's why primitives cannot be represented here.
+        // The entry "V" refers to the class "LV;" and not the void.class.
         if (name.byteAt(0) == '[') {
             return fromSymbolUnsafe(name);
         }
