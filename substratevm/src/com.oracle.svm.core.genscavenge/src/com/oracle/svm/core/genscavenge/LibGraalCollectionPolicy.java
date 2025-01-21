@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,15 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.options.Option;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.options.Option;
 
 /**
  * A libgraal specific garbage collection policy that responds to GC hints and aggressively
@@ -60,7 +62,10 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
      */
     protected static final UnsignedWord MAXIMUM_HEAP_SIZE = WordFactory.unsigned(16L * 1024L * 1024L * 1024L);
 
+    protected static final UnsignedWord MAXIMUM_EDEN_SIZE = WordFactory.unsigned(4L * 1024L * 1024L * 1024L);
+
     private UnsignedWord sizeBefore = WordFactory.zero();
+
     private GCCause lastGCCause = null;
 
     /**
@@ -94,11 +99,13 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
 
     @Override
     public UnsignedWord getMaximumHeapSize() {
-        UnsignedWord initialSetup = super.getMaximumHeapSize();
-        if (initialSetup.aboveThan(MAXIMUM_HEAP_SIZE)) {
-            return MAXIMUM_HEAP_SIZE;
-        }
-        return initialSetup;
+        return UnsignedUtils.min(super.getMaximumHeapSize(), MAXIMUM_HEAP_SIZE);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord getMaximumEdenSize() {
+        return UnsignedUtils.min(super.getMaximumEdenSize(), MAXIMUM_EDEN_SIZE);
     }
 
     @Override
