@@ -743,7 +743,7 @@ public class WebAssembly extends Dictionary {
         final long previousSize = memoryLib.grow(memory, delta);
         if (previousSize == -1) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError,
-                            StrictMath.addExact(memoryLib.size(memory), delta) <= memory.declaredMaxSize() ? "Cannot grow memory above implementation limit" : "Cannot grow memory above max limit");
+                            Math.addExact(memoryLib.size(memory), delta) <= memory.declaredMaxSize() ? "Cannot grow memory above implementation limit" : "Cannot grow memory above max limit");
         }
         return previousSize;
     }

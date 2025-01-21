@@ -41,8 +41,8 @@
 package org.graalvm.wasm.memory;
 
 import static java.lang.Long.compareUnsigned;
-import static java.lang.StrictMath.addExact;
-import static java.lang.StrictMath.multiplyExact;
+import static java.lang.Math.addExact;
+import static java.lang.Math.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.io.IOException;
