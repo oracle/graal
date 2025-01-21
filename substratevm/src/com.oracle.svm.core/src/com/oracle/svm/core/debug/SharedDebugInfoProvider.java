@@ -162,9 +162,8 @@ import jdk.vm.ci.meta.Signature;
  * which is further composed of:
  * <ul>
  * <li>{@link LeafRange}: A leaf in the {@link CompilationResultFrameTree}.</li>
- * <li>{@link CallRange}: A {@link CompilationResultFrameTree.CallNode CallNode} in the
- * {@link CompilationResultFrameTree}. Represents inlined calls and is therefore itself composed of
- * ranges.</li>
+ * <li>{@link CallRange}: A {@code CallNode} in the {@link CompilationResultFrameTree}. Represents
+ * inlined calls and is therefore itself composed of ranges.</li>
  * </ul>
  * </li>
  * </ul>
