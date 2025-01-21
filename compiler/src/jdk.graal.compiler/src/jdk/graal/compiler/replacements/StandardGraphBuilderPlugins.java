@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,8 +49,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
-import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
@@ -83,6 +81,7 @@ import jdk.graal.compiler.nodes.EndNode;
 import jdk.graal.compiler.nodes.FixedGuardNode;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.MergeNode;
@@ -196,7 +195,9 @@ import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import jdk.graal.compiler.replacements.nodes.BitCountNode;
 import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import jdk.graal.compiler.replacements.nodes.CountLeadingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
+import jdk.graal.compiler.replacements.nodes.CountTrailingZerosNode;
 import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
 import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
@@ -1966,6 +1967,14 @@ public class StandardGraphBuilderPlugins {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                         b.addPush(kind, new OpaqueValueNode(value));
+                        return true;
+                    }
+                });
+                r.register(new RequiredInvocationPlugin("opaqueUntilAfter", javaClass, GraphState.StageFlag.class) {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode stageFlag) {
+                        GraphState.StageFlag foldAfter = Objects.requireNonNull(asConstantObject(b, GraphState.StageFlag.class, stageFlag), stageFlag + " must be a non-null compile time constant");
+                        b.addPush(kind, new OpaqueValueNode(value, foldAfter));
                         return true;
                     }
                 });

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,14 +27,14 @@ package jdk.graal.compiler.phases.common;
 import java.util.Optional;
 
 import jdk.graal.compiler.nodes.GraphState;
-import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.OpaqueValueNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 
 /**
- * Removes all {@link jdk.graal.compiler.nodes.extended.OpaqueValueNode}s from the graph.
+ * Removes all remaining {@link OpaqueValueNode}s from the graph.
  */
 public class RemoveOpaqueValuePhase extends BasePhase<CoreProviders> {
     @Override
@@ -52,13 +52,12 @@ public class RemoveOpaqueValuePhase extends BasePhase<CoreProviders> {
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         for (OpaqueValueNode opaque : graph.getNodes(OpaqueValueNode.TYPE)) {
-            opaque.replaceAtUsagesAndDelete(opaque.getValue());
+            opaque.remove();
         }
     }
 
     @Override
     public void updateGraphState(GraphState graphState) {
-        super.updateGraphState(graphState);
         graphState.setAfterStage(StageFlag.REMOVE_OPAQUE_VALUES);
     }
 }
