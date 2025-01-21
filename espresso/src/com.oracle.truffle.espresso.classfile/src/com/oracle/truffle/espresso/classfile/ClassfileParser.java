@@ -667,7 +667,7 @@ public final class ClassfileParser {
          * Classes in general have lots of methods: use a hash set rather than array lookup for dup
          * check.
          */
-        final HashSet<MethodKey> dup = HashSet.newHashSet(methodCount);
+        final HashSet<MethodKey> dup = new HashSet<>(methodCount);
         for (int i = 0; i < methodCount; ++i) {
             ParserMethod method;
             try (DebugCloseable closeable = PARSE_SINGLE_METHOD.scope(parsingContext.getTimers())) {
@@ -1940,7 +1940,7 @@ public final class ClassfileParser {
             interfaces[i] = interfaceType;
         }
         // Check for duplicate interfaces in the interface array.
-        Set<Symbol<Type>> present = HashSet.newHashSet(interfaces.length);
+        Set<Symbol<Type>> present = new HashSet<>(interfaces.length);
         for (Symbol<Type> t : interfaces) {
             if (!present.add(t)) {
                 throw classFormatError("Duplicate interface name in classfile: " + t);
