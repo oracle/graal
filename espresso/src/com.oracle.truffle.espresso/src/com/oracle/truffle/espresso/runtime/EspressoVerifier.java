@@ -50,8 +50,6 @@ public final class EspressoVerifier {
                     throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
                 case ClassFormat:
                     throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
-                case NoClassDefFound:
-                    throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
             }
         }
     }

@@ -2650,8 +2650,6 @@ public final class Meta extends ContextAccessImpl
         StaticObject classLoader = getJavaVersion().java8OrEarlier() ? StaticObject.NULL : getPlatformClassLoader();
         try {
             result = getRegistries().loadKlass(type, classLoader, StaticObject.NULL);
-        } catch (EspressoClassLoadingException.ClassDefNotFoundError e) {
-            return null;
         } catch (EspressoClassLoadingException e) {
             throw e.asGuestException(this);
         } catch (EspressoException e) {

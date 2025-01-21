@@ -52,11 +52,6 @@ public abstract class EspressoClassLoadingException extends Exception {
         throw new EspressoClassLoadingException.SecurityException(msg);
     }
 
-    public static EspressoClassLoadingException.ClassDefNotFoundError classDefNotFoundError(String msg) throws EspressoClassLoadingException.ClassDefNotFoundError {
-        CompilerDirectives.transferToInterpreter();
-        throw new EspressoClassLoadingException.ClassDefNotFoundError(msg);
-    }
-
     public static EspressoClassLoadingException.LinkageError linkageError(String msg) throws EspressoClassLoadingException.LinkageError {
         CompilerDirectives.transferToInterpreter();
         throw new EspressoClassLoadingException.LinkageError(msg);
@@ -123,20 +118,6 @@ public abstract class EspressoClassLoadingException extends Exception {
         @Override
         public EspressoException asGuestException(Meta meta) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, getMessage());
-        }
-    }
-
-    public static final class ClassDefNotFoundError extends EspressoClassLoadingException {
-
-        private static final long serialVersionUID = 1820085678127928882L;
-
-        private ClassDefNotFoundError(String msg) {
-            super(msg);
-        }
-
-        @Override
-        public EspressoException asGuestException(Meta meta) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, getMessage());
         }
     }
 

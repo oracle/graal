@@ -43,8 +43,6 @@ public class VerificationException extends Exception {
         Verify,
         /** Corresponds to {@link ClassFormatError}. */
         ClassFormat,
-        /** Corresponds to {@link NoClassDefFoundError}. */
-        NoClassDefFound,
     }
 
     private final Kind kind;
