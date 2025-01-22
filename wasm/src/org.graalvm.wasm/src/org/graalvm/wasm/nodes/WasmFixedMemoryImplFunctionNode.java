@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.nodes;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -52,6 +53,8 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
+
+import java.util.Arrays;
 
 /**
  * Dispatches to specialized instances of {@link WasmInstrumentableFunctionNode}, ensuring that each
@@ -69,6 +72,10 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     private final int bytecodeEndOffset;
     private final Node[] callNodes;
 
+    private static final WasmInstrumentableFunctionNode[] EMPTY_INSTRUMENTABLE_FUNCTION_NODES = new WasmInstrumentableFunctionNode[0];
+
+    @Children private WasmInstrumentableFunctionNode[] instrumentableFunctionNodes = EMPTY_INSTRUMENTABLE_FUNCTION_NODES;
+
     protected WasmFixedMemoryImplFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes) {
         this.module = module;
         this.codeEntry = codeEntry;
@@ -85,13 +92,13 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     protected void doFixedMemoryImpl(VirtualFrame frame, WasmContext context, WasmInstance instance,
                     @CachedLibrary(value = "instance.memory(0)") @SuppressWarnings("unused") WasmMemoryLibrary cachedMemoryLib0,
                     @Cached("createMemoryLibs1(cachedMemoryLib0)") @SuppressWarnings("unused") WasmMemoryLibrary[] cachedMemoryLibs,
-                    @Cached("createFunctionNode(cachedMemoryLibs)") WasmInstrumentableFunctionNode specializedFunctionNode) {
+                    @Cached(value = "createSpecializedFunctionNode(cachedMemoryLibs)", adopt = false) WasmInstrumentableFunctionNode specializedFunctionNode) {
         specializedFunctionNode.execute(frame, context, instance);
     }
 
     @Specialization(replaces = "doFixedMemoryImpl")
     protected void doDispatched(VirtualFrame frame, WasmContext context, WasmInstance instance,
-                    @Cached("createDispatchedFunctionNode()") WasmInstrumentableFunctionNode dispatchedFunctionNode) {
+                    @Cached(value = "createDispatchedFunctionNode()", adopt = false) WasmInstrumentableFunctionNode dispatchedFunctionNode) {
         dispatchedFunctionNode.execute(frame, context, instance);
     }
 
@@ -106,17 +113,26 @@ public abstract class WasmFixedMemoryImplFunctionNode extends Node {
     }
 
     @NeverDefault
-    protected WasmInstrumentableFunctionNode createFunctionNode(WasmMemoryLibrary[] memoryLibs) {
-        return new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
+    protected WasmInstrumentableFunctionNode createSpecializedFunctionNode(WasmMemoryLibrary[] memoryLibs) {
+        CompilerAsserts.neverPartOfCompilation();
+        WasmInstrumentableFunctionNode instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
+        instrumentableFunctionNodes = Arrays.copyOf(instrumentableFunctionNodes, instrumentableFunctionNodes.length + 1);
+        instrumentableFunctionNodes[instrumentableFunctionNodes.length - 1] = insert(instrumentableFunctionNode);
+        notifyInserted(instrumentableFunctionNode);
+        return instrumentableFunctionNode;
     }
 
     @NeverDefault
     protected WasmInstrumentableFunctionNode createDispatchedFunctionNode() {
+        CompilerAsserts.neverPartOfCompilation();
         WasmMemoryLibrary[] memoryLibs = new WasmMemoryLibrary[module.memoryCount()];
         for (int memoryIndex = 0; memoryIndex < module.memoryCount(); memoryIndex++) {
             memoryLibs[memoryIndex] = insert(WasmMemoryLibrary.getFactory().createDispatched(3));
         }
-        return createFunctionNode(memoryLibs);
+        WasmInstrumentableFunctionNode instrumentableFunctionNode = new WasmInstrumentableFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
+        instrumentableFunctionNodes = new WasmInstrumentableFunctionNode[]{insert(instrumentableFunctionNode)};
+        notifyInserted(instrumentableFunctionNode);
+        return instrumentableFunctionNode;
     }
 
     public abstract void execute(VirtualFrame frame, WasmContext context, WasmInstance instance);
