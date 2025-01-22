@@ -26,7 +26,6 @@ package com.oracle.svm.core.code;
 
 import java.util.concurrent.locks.ReentrantLock;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Keeps track of {@link CodeInfo} structures of runtime-compiled methods (including invalidated and
@@ -226,6 +226,17 @@ public class RuntimeCodeInfoMemory {
         }
     }
 
+    public boolean contains(CodeInfo info) {
+        assert !VMOperation.isGCInProgress();
+        assert info.isNonNull() : "null";
+        lock.lock();
+        try {
+            return contains0(info);
+        } finally {
+            lock.unlock();
+        }
+    }
+
     public boolean removeDuringGC(CodeInfo info) {
         assert VMOperation.isGCInProgress() : "Otherwise, we would need to protect the CodeInfo from the GC.";
         assert info.isNonNull();
@@ -300,6 +311,21 @@ public class RuntimeCodeInfoMemory {
                 assert count >= 0 : "invalid counter value";
                 rehashAfterUnregisterAt(index);
                 subtractToSizeCounters(info);
+                return true;
+            }
+            index = nextIndex(index, length);
+            entry = NonmovableArrays.getWord(table, index);
+        }
+        return false;
+    }
+
+    @Uninterruptible(reason = "Access hashtable atomically with regard to GC.")
+    private boolean contains0(CodeInfo info) {
+        int length = NonmovableArrays.lengthOf(table);
+        int index = hashIndex(info, length);
+        UntetheredCodeInfo entry = NonmovableArrays.getWord(table, index);
+        while (entry.isNonNull()) {
+            if (entry.equal(info)) {
                 return true;
             }
             index = nextIndex(index, length);
