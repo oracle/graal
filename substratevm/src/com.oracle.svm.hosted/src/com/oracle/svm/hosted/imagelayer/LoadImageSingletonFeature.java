@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import static com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature.CROSS_LAYER_SINGLETON_TABLE_SYMBOL;
+import static com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature.getCrossLayerSingletonMappingInfo;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -102,7 +103,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class LoadImageSingletonFeature implements InternalFeature, FeatureSingleton, UnsavedSingleton {
     public static final String CROSS_LAYER_SINGLETON_TABLE_SYMBOL = "__layered_singleton_table_start";
 
-    private static CrossLayerSingletonMappingInfo getCrossLayerSingletonMappingInfo() {
+    static CrossLayerSingletonMappingInfo getCrossLayerSingletonMappingInfo() {
         return (CrossLayerSingletonMappingInfo) ImageSingletons.lookup(LoadImageSingletonFactory.class);
     }
 
@@ -454,7 +455,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
     /**
      * Map of all slot infos (past & present). Is created in {@link #assignSlots}.
      */
-    private Map<Class<?>, SlotInfo> currentKeyToSlotInfoMap;
+    Map<Class<?>, SlotInfo> currentKeyToSlotInfoMap;
 
     /**
      * Map of constant identifiers for MultiLayer objects installed in this layer.
@@ -467,7 +468,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
     private final Map<Class<?>, LoadImageSingletonDataImpl> layerKeyToSingletonDataMap = new ConcurrentHashMap<>();
 
     boolean sealedSingletonLookup = false;
-    private CGlobalData<Pointer> singletonTableStart;
+    CGlobalData<Pointer> singletonTableStart;
     int referenceSize = 0;
 
     @Override
@@ -524,7 +525,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
             return result;
         }
 
-        if (result.kind == SlotRecordKind.MULTI_LAYERED_SINGLETON) {
+        if (result.getKind() == SlotRecordKind.MULTI_LAYERED_SINGLETON) {
             if (!ImageSingletons.contains(keyClass)) {
                 /*
                  * If the singleton doesn't exist, ensure this is allowed.
@@ -580,7 +581,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
                      * singleton a slot now.
                      */
                     slotAssignment = nextFreeSlot++;
-                    slotInfo = new SlotInfo(keyClass, slotAssignment, info.kind);
+                    slotInfo = new SlotInfo(keyClass, slotAssignment, info.getKind());
                 }
                 var prior = currentKeyToSlotInfoMap.put(keyClass, slotInfo);
                 assert prior == null : prior;
@@ -689,28 +690,33 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
 
         return new CrossLayerSingletonMappingInfo(Map.copyOf(keyClassToSlotInfoMap), Map.copyOf(keyClassToObjectIDListMap));
     }
+}
 
-    class LoadImageSingletonDataImpl implements LoadImageSingletonData {
+class LoadImageSingletonDataImpl implements LoadImageSingletonFactory.LoadImageSingletonData {
 
-        private final Class<?> key;
-        private final SlotRecordKind kind;
+    private final Class<?> key;
+    private final SlotRecordKind kind;
 
-        LoadImageSingletonDataImpl(Class<?> key, SlotRecordKind kind) {
-            this.key = key;
-            this.kind = kind;
-        }
+    LoadImageSingletonDataImpl(Class<?> key, SlotRecordKind kind) {
+        this.key = key;
+        this.kind = kind;
+    }
 
-        @Override
-        public Class<?> getLoadType() {
-            return kind == SlotRecordKind.APPLICATION_LAYER_SINGLETON ? key : key.arrayType();
-        }
+    public SlotRecordKind getKind() {
+        return kind;
+    }
 
-        @Override
-        public SingletonAccessInfo getAccessInfo() {
-            assert singletonTableStart != null;
-            CGlobalDataInfo cglobal = CGlobalDataFeature.singleton().registerAsAccessedOrGet(singletonTableStart);
-            int slotNum = currentKeyToSlotInfoMap.get(key).slotNum();
-            return new SingletonAccessInfo(cglobal, slotNum * referenceSize);
-        }
+    @Override
+    public Class<?> getLoadType() {
+        return kind == SlotRecordKind.APPLICATION_LAYER_SINGLETON ? key : key.arrayType();
+    }
+
+    @Override
+    public LoadImageSingletonFactory.SingletonAccessInfo getAccessInfo() {
+        CrossLayerSingletonMappingInfo singleton = getCrossLayerSingletonMappingInfo();
+        assert singleton.singletonTableStart != null;
+        CGlobalDataInfo cglobal = CGlobalDataFeature.singleton().registerAsAccessedOrGet(singleton.singletonTableStart);
+        int slotNum = singleton.currentKeyToSlotInfoMap.get(key).slotNum();
+        return new LoadImageSingletonFactory.SingletonAccessInfo(cglobal, slotNum * singleton.referenceSize);
     }
 }

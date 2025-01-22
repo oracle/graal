@@ -189,6 +189,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.replacements.nodes.ExplodeLoopNode;
 import jdk.graal.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
+import jdk.graal.compiler.replacements.nodes.LateLoweredNode;
 import jdk.graal.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
 import jdk.graal.compiler.replacements.nodes.MacroWithExceptionNode;
 import jdk.graal.compiler.util.CollectionsUtil;
@@ -2863,9 +2864,11 @@ public class SnippetTemplate {
                     } else if (stateAfter != null) {
                         deoptDupDuring.computeStateDuring(stateAfter);
                     } else if (stateBefore != null) {
-                        boolean guarantee = ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect();
-                        GraalError.guarantee(guarantee, "Can't use stateBefore as stateDuring for state split %s",
-                                        deoptDupDuring);
+                        // late lowered nodes are before,during and after deopts to allow maximum
+                        // versatility, verification is disabled for them
+                        boolean guarantee = ((DeoptBefore) replaceeDeopt).canUseAsStateDuring() || !deoptDupDuring.hasSideEffect() || deoptDup instanceof LateLoweredNode;
+                        GraalError.guarantee(guarantee, "Can't use stateBefore as stateDuring for state split %s. Replacee is %s",
+                                        deoptDupDuring, replacee);
                         deoptDupDuring.setStateDuring(stateBefore);
                     } else {
                         throw GraalError.shouldNotReachHere("No stateDuring assigned."); // ExcludeFromJacocoGeneratedReport
@@ -2876,7 +2879,9 @@ public class SnippetTemplate {
                     if (stateAfter != null) {
                         deoptDupAfter.setStateAfter(stateAfter);
                     } else {
-                        boolean guarantee = stateBefore != null && !deoptDupAfter.hasSideEffect();
+                        // late lowered nodes are before,during and after deopts to allow maximum
+                        // versatility, verification is disabled for them
+                        boolean guarantee = stateBefore != null && !deoptDupAfter.hasSideEffect() || deoptDup instanceof LateLoweredNode;
                         GraalError.guarantee(guarantee, "Can't use stateBefore as stateAfter for state split %s", deoptDupAfter);
                         deoptDupAfter.setStateAfter(stateBefore);
                     }
