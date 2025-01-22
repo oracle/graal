@@ -132,6 +132,8 @@ public final class Location {
         hash = 89 * hash + this.originLine;
         hash = 89 * hash + Objects.hashCode(this.file);
         hash = 89 * hash + Objects.hashCode(this.parent);
+        hash = 37 * hash + startOffset;
+        hash = 37 * hash + endOffset;
         cachedHash = hash == -1 ? 7 : hash;
         return cachedHash;
     }
@@ -149,6 +151,12 @@ public final class Location {
         }
         final Location other = (Location) obj;
         if (this.originLine != other.originLine) {
+            return false;
+        }
+        if (this.startOffset != other.startOffset) {
+            return false;
+        }
+        if (this.endOffset != other.endOffset) {
             return false;
         }
         if (this.parent != other.parent) {
