@@ -55,7 +55,9 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.BuiltinDirectives;
@@ -64,6 +66,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.cenum.CEnumCallWrapperMethod;
+import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.graal.compiler.bytecode.BridgeMethodUtils;
@@ -224,13 +227,17 @@ public class InfoTreeBuilder {
         List<AccessorInfo> structAccessorInfos = new ArrayList<>();
 
         for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
-            final AccessorInfo accessorInfo;
-            final String fieldName;
+            if (!AnnotationSubstitutionProcessor.isIncluded(method.getAnnotation(TargetElement.class), ((AnalysisType) method.getDeclaringClass()).getJavaClass(), method)) {
+                continue;
+            }
 
             CField fieldAnnotation = getMethodAnnotation(method, CField.class);
             CFieldAddress fieldAddressAnnotation = getMethodAnnotation(method, CFieldAddress.class);
             CFieldOffset fieldOffsetAnnotation = getMethodAnnotation(method, CFieldOffset.class);
             CBitfield bitfieldAnnotation = getMethodAnnotation(method, CBitfield.class);
+
+            final AccessorInfo accessorInfo;
+            final String fieldName;
             if (fieldAnnotation != null) {
                 accessorInfo = new AccessorInfo(method, getAccessorKind(method), false, hasLocationIdentityParameter(method), hasUniqueLocationIdentity(method));
                 fieldName = getStructFieldName(accessorInfo, fieldAnnotation.value());
