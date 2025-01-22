@@ -232,7 +232,7 @@ public final class NativeImageHeap implements ImageHeap {
         processAddObjectWorklist();
 
         HostedField hostedField = hMetaAccess.optionalLookupJavaField(StringInternSupport.getInternedStringsField());
-        boolean usesInternedStrings = hostedField != null && hostedField.isAccessed();
+        boolean usesInternedStrings = hostedField != null && hostedField.isReachable();
         if (usesInternedStrings) {
             /*
              * Ensure that the hub of the String[] array (used for the interned objects) is written.
@@ -257,7 +257,7 @@ public final class NativeImageHeap implements ImageHeap {
             } else {
                 imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
                 Arrays.sort(imageInternedStrings);
-                ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
+                StringInternSupport.setImageInternedStrings(imageInternedStrings);
             }
             /* Manually snapshot the interned strings array. */
             aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);

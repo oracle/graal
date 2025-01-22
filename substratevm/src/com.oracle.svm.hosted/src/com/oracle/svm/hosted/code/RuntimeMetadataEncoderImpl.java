@@ -865,7 +865,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private static void install(UnsafeArrayTypeWriter encodingBuffer) {
         int encodingSize = TypeConversion.asS4(encodingBuffer.getBytesWritten());
         byte[] dataEncoding = new byte[encodingSize];
-        ImageSingletons.lookup(RuntimeMetadataEncoding.class).setEncoding(encodingBuffer.toArray(dataEncoding));
+        RuntimeMetadataEncoding.currentLayer().setEncoding(encodingBuffer.toArray(dataEncoding));
     }
 
     private static boolean anySet(int... indices) {

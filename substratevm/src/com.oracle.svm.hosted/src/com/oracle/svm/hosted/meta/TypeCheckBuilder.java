@@ -465,7 +465,7 @@ public final class TypeCheckBuilder {
             type.subTypes = subtypeMap.get(type).toArray(HostedType.EMPTY_ARRAY);
         }
 
-        DynamicHubSupport.singleton().setMaxTypeId(nextTypeID);
+        DynamicHubSupport.currentLayer().setMaxTypeId(nextTypeID);
 
         /*
          * Search through list in reverse order so that all of a type's subtypes are traversed

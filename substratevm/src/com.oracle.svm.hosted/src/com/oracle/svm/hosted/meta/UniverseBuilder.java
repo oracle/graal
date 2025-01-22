@@ -773,7 +773,7 @@ public class UniverseBuilder {
         int nextObjectField = 0;
 
         @SuppressWarnings("unchecked")
-        List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[DynamicHubSupport.singleton().getMaxTypeId()];
+        List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[DynamicHubSupport.currentLayer().getMaxTypeId()];
 
         for (HostedField field : fields) {
             if (skipStaticField(field)) {
@@ -820,7 +820,7 @@ public class UniverseBuilder {
 
     @SuppressWarnings("unchecked")
     private void collectDeclaredMethods() {
-        List<HostedMethod>[] methodsOfType = (ArrayList<HostedMethod>[]) new ArrayList<?>[DynamicHubSupport.singleton().getMaxTypeId()];
+        List<HostedMethod>[] methodsOfType = (ArrayList<HostedMethod>[]) new ArrayList<?>[DynamicHubSupport.currentLayer().getMaxTypeId()];
         for (HostedMethod method : hUniverse.methods.values()) {
             int typeId = method.getDeclaringClass().getTypeID();
             List<HostedMethod> list = methodsOfType[typeId];
@@ -860,7 +860,7 @@ public class UniverseBuilder {
             referenceMaps.put(type, referenceMap);
             referenceMapEncoder.add(referenceMap);
         }
-        DynamicHubSupport.singleton().setReferenceMapEncoding(referenceMapEncoder.encodeAll());
+        DynamicHubSupport.currentLayer().setReferenceMapEncoding(referenceMapEncoder.encodeAll());
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();

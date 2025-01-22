@@ -99,7 +99,7 @@ public class EmbeddedResourceExporter {
         }
 
         List<ResourceReportEntry> resourceInfoList = new ArrayList<>();
-        Resources.singleton().forEachResource((key, value) -> {
+        Resources.currentLayer().forEachResource((key, value) -> {
             Module module = key.module();
             String resourceName = key.resource();
 

@@ -150,7 +150,7 @@ public class HeapBreakdownProvider {
             addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX + "java.lang.String"), stringByteArrayTotalSize, stringByteArrayTotalCount);
         }
         /* Extract byte[] for code info. */
-        List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getImageCodeCache().getTotalByteArrayLengths();
+        List<Integer> codeInfoByteArrayLengths = CodeInfoTable.getCurrentLayerImageCodeCache().getTotalByteArrayLengths();
         long codeInfoSize = codeInfoByteArrayLengths.stream().map(l -> objectLayout.getArraySize(JavaKind.Byte, l, true)).reduce(0L, Long::sum);
         addEntry(entries, byteArrayEntry, new HeapBreakdownEntry(BYTE_ARRAY_PREFIX, "code metadata", "#glossary-code-metadata"), codeInfoSize, codeInfoByteArrayLengths.size());
         /* Extract byte[] for metadata. */
@@ -165,7 +165,7 @@ public class HeapBreakdownProvider {
             /* Extract byte[] for resources. */
             long resourcesByteArraySize = 0;
             int resourcesByteArrayCount = 0;
-            for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.singleton().resources()) {
+            for (ConditionalRuntimeValue<ResourceStorageEntryBase> resourceList : Resources.currentLayer().resources()) {
                 if (resourceList.getValueUnconditionally().hasData()) {
                     for (byte[] resource : resourceList.getValueUnconditionally().getData()) {
                         resourcesByteArraySize += objectLayout.getArraySize(JavaKind.Byte, resource.length, true);

@@ -30,7 +30,6 @@ import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.configure.ConditionalRuntimeValue;
 import com.oracle.svm.core.configure.RuntimeConditionSet;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
@@ -55,8 +55,13 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         this.libGraalLoader = libGraalLoader;
     }
 
-    public static ClassForNameSupport singleton() {
-        return ImageSingletons.lookup(ClassForNameSupport.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static ClassForNameSupport currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(ClassForNameSupport.class, false, true);
+    }
+
+    private static ClassForNameSupport[] layeredSingletons() {
+        return MultiLayeredImageSingleton.getAllLayers(ClassForNameSupport.class);
     }
 
     /**
@@ -187,9 +192,13 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
         if (className == null) {
             return null;
         }
-        ClassForNameSupport classForNameSupport = singleton();
-        Object result = classForNameSupport.getSingletonData(classForNameSupport, MultiLayeredImageSingleton.getAllLayers(ClassForNameSupport.class),
-                        singleton -> singleton.forName0(className, classLoader));
+        Object result = null;
+        for (var singleton : layeredSingletons()) {
+            result = singleton.forName0(className, classLoader);
+            if (result != null) {
+                break;
+            }
+        }
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         // TODO rewrite stack traces (GR-42813)
         if (result instanceof Class<?>) {
@@ -238,9 +247,13 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     public static RuntimeConditionSet getConditionFor(Class<?> jClass) {
         Objects.requireNonNull(jClass);
         String jClassName = jClass.getName();
-        ClassForNameSupport classForNameSupport = singleton();
-        ConditionalRuntimeValue<Object> conditionalClass = classForNameSupport.getSingletonData(classForNameSupport, MultiLayeredImageSingleton.getAllLayers(ClassForNameSupport.class),
-                        singleton -> singleton.knownClasses.get(jClassName));
+        ConditionalRuntimeValue<Object> conditionalClass = null;
+        for (var singleton : layeredSingletons()) {
+            conditionalClass = singleton.knownClasses.get(jClassName);
+            if (conditionalClass != null) {
+                break;
+            }
+        }
         if (conditionalClass == null) {
             return RuntimeConditionSet.unmodifiableEmptySet();
         } else {
@@ -254,9 +267,13 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
      */
     public static boolean canUnsafeInstantiateAsInstance(DynamicHub hub) {
         Class<?> clazz = DynamicHub.toClass(hub);
-        ClassForNameSupport classForNameSupport = singleton();
-        RuntimeConditionSet conditionSet = classForNameSupport.getSingletonData(classForNameSupport, MultiLayeredImageSingleton.getAllLayers(ClassForNameSupport.class),
-                        singleton -> singleton.unsafeInstantiatedClasses.get(clazz));
+        RuntimeConditionSet conditionSet = null;
+        for (var singleton : layeredSingletons()) {
+            conditionSet = singleton.unsafeInstantiatedClasses.get(clazz);
+            if (conditionSet != null) {
+                break;
+            }
+        }
         return conditionSet != null && conditionSet.satisfied();
     }
 
