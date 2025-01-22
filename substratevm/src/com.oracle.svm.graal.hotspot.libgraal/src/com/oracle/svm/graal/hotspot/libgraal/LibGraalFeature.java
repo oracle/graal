@@ -186,7 +186,7 @@ public final class LibGraalFeature implements Feature {
 
         libGraalClassLoader = createHostedLibGraalClassLoader(access);
         loader = libGraalClassLoader.getClassLoader();
-        ImageSingletons.lookup(ClassForNameSupport.class).setLibGraalLoader(loader);
+        ClassForNameSupport.currentLayer().setLibGraalLoader(loader);
 
         buildTimeClass = loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
 

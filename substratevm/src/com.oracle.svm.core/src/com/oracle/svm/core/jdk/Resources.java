@@ -71,6 +71,7 @@ import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.CompressedGlobTrie;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobTrieNode;
 import com.oracle.svm.core.jdk.resources.CompressedGlobTrie.GlobUtils;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -94,8 +95,8 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
      *         singleton otherwise
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static Resources singleton() {
-        return ImageSingletons.lookup(Resources.class);
+    public static Resources currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(Resources.class, false, true);
     }
 
     /**
@@ -202,7 +203,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Set<String> getIncludedResourcesModules() {
-        return StreamSupport.stream(singleton().resources.getKeys().spliterator(), false)
+        return StreamSupport.stream(currentLayer().resources.getKeys().spliterator(), false)
                         .map(ModuleResourceKey::module)
                         .filter(Objects::nonNull)
                         .map(Module::getName)
@@ -255,7 +256,7 @@ public final class Resources implements MultiLayeredImageSingleton, UnsavedSingl
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerResource(String resourceName, InputStream is) {
-        singleton().registerResource(null, resourceName, is, true);
+        currentLayer().registerResource(null, resourceName, is, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -607,7 +608,7 @@ final class ResourcesFeature implements InternalFeature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.singleton().resources()) {
+        for (ConditionalRuntimeValue<ResourceStorageEntryBase> entry : Resources.currentLayer().resources()) {
             var unconditionalEntry = entry.getValueUnconditionally();
             if (unconditionalEntry.hasData()) {
                 for (byte[] resource : unconditionalEntry.getData()) {

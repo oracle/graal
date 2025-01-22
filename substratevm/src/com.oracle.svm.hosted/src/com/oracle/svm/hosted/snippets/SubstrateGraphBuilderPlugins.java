@@ -1161,15 +1161,20 @@ public class SubstrateGraphBuilderPlugins {
                     return true;
                 }
 
-                Object singleton = LayeredImageSingletonSupport.singleton().runtimeLookup(key);
-                if (singleton instanceof LayeredImageSingleton layeredSingleton && !layeredSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)) {
-                    /*
-                     * Runtime compilation installs many singletons into the image which are
-                     * otherwise hosted only. Note the platform checks still apply and can be used
-                     * to ensure certain singleton are not installed into the image.
-                     */
-                    if (!RuntimeCompilation.isEnabled()) {
-                        throw VMError.shouldNotReachHere("Layered image singleton without runtime access is in runtime graph: " + singleton);
+                Object singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, true);
+                if (singleton instanceof LayeredImageSingleton layeredSingleton) {
+                    if (!layeredSingleton.getImageBuilderFlags().contains(LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS)) {
+                        /*
+                         * Runtime compilation installs many singletons into the image which are
+                         * otherwise hosted only. Note the platform checks still apply and can be
+                         * used to ensure certain singleton are not installed into the image.
+                         */
+                        if (!RuntimeCompilation.isEnabled()) {
+                            throw VMError.shouldNotReachHere("Layered image singleton without runtime access is in runtime graph: " + singleton);
+                        }
+                    }
+                    if (layeredSingleton instanceof MultiLayeredImageSingleton) {
+                        throw VMError.shouldNotReachHere("Forbidden lookup of MultiLayeredImageSingleton in runtime graph: " + singleton);
                     }
                 }
                 b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(singleton), b.getMetaAccess()));

@@ -41,15 +41,14 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
  * {@link ImageSingletons#lookup} calls refer to a single singleton which will be created in the
  * application layer.</li>
  *
- * <li>{@link MultiLayeredImageSingleton}: {@link ImageSingletons#lookup} calls continue to refer to
- * the appropriate per layer image singleton, but there is also an additional method
- * {@link MultiLayeredImageSingleton#getAllLayers} which returns an array with the image singletons
- * corresponding to this key for all layers. The length of this array will always be the total
- * number of layers. If a singleton corresponding to this key was not installed in a given layer
- * (and this is allowed), then the array will contain null for the given index. See
- * {@link MultiLayeredAllowNullEntries} for more details. Within the array, the singletons will be
- * arranged so that index [0] corresponds to the singleton originating from the initial layer and
- * index [length - 1] holds the singleton from the application layer. See
+ * <li>{@link MultiLayeredImageSingleton}: {@link ImageSingletons#lookup} should no longer be used.
+ * Instead, there is the method {@link MultiLayeredImageSingleton#getAllLayers} which returns an
+ * array with the image singletons corresponding to this key for all layers. The length of this
+ * array will always be the total number of layers. If a singleton corresponding to this key was not
+ * installed in a given layer (and this is allowed), then the array will contain null for the given
+ * index. See {@link MultiLayeredAllowNullEntries} for more details. Within the array, the
+ * singletons will be arranged so that index [0] corresponds to the singleton originating from the
+ * initial layer and index [length - 1] holds the singleton from the application layer. See
  * {@link ImageLayerBuildingSupport} for a description of the different layer names.</li>
  * </ul>
  *

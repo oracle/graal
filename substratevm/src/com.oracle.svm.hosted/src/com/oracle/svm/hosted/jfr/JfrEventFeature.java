@@ -117,7 +117,7 @@ public class JfrEventFeature implements InternalFeature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
         // Reserve slot 0 for error-catcher.
-        int mapSize = DynamicHubSupport.singleton().getMaxTypeId() + 1;
+        int mapSize = DynamicHubSupport.currentLayer().getMaxTypeId() + 1;
 
         // Create trace-ID map with fixed size.
         ImageSingletons.lookup(JfrTraceIdMap.class).initialize(mapSize);

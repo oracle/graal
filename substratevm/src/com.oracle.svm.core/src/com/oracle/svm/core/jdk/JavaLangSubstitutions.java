@@ -41,7 +41,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -171,7 +170,7 @@ final class Target_java_lang_String {
     @Substitute
     public String intern() {
         String thisStr = SubstrateUtil.cast(this, String.class);
-        return ImageSingletons.lookup(StringInternSupport.class).intern(thisStr);
+        return StringInternSupport.intern(thisStr);
     }
 
     @AnnotateOriginal

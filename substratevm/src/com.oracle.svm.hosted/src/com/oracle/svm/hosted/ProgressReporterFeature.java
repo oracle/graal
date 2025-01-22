@@ -132,7 +132,7 @@ public class ProgressReporterFeature implements InternalFeature {
             return false; // AWT not used
         }
         // check if any class located in java.awt or sun.awt is registered for JNI access
-        for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
+        for (JNIAccessibleClass clazz : JNIReflectionDictionary.currentLayer().getClasses()) {
             String className = clazz.getClassObject().getName();
             if (className.startsWith("java.awt") || className.startsWith("sun.awt")) {
                 return false;

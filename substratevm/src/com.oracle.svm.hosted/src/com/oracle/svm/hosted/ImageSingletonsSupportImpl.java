@@ -56,12 +56,12 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
     @Override
     public <T> T lookup(Class<T> key) {
-        return HostedManagement.getAndAssertExists().doLookup(key, false);
+        return HostedManagement.getAndAssertExists().doLookup(key, false, false);
     }
 
     @Override
-    public <T> T runtimeLookup(Class<T> key) {
-        return HostedManagement.getAndAssertExists().doLookup(key, true);
+    public <T> T lookup(Class<T> key, boolean accessRuntimeOnly, boolean accessMultiLayer) {
+        return HostedManagement.getAndAssertExists().doLookup(key, accessRuntimeOnly, accessMultiLayer);
     }
 
     @Override
@@ -249,7 +249,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             multiLayeredImageSingletonKeys = Set.copyOf(multiLayeredImageSingletonKeys);
         }
 
-        <T> T doLookup(Class<T> key, boolean stripRuntimeOnly) {
+        <T> T doLookup(Class<T> key, boolean stripRuntimeOnly, boolean allowMultiLayered) {
             checkKey(key);
             Object result = configObjects.get(key);
             if (result == null) {
@@ -263,6 +263,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 }
                 result = wrapper.wrappedObject();
 
+            }
+            if (!allowMultiLayered && result instanceof MultiLayeredImageSingleton) {
+                throw UserError.abort("Forbidden lookup of MultiLayeredImageSingleton. Use LayeredImageSingletonSupport.lookup if really necessary. Key: %s, object %s", key, result);
             }
             return key.cast(result);
         }

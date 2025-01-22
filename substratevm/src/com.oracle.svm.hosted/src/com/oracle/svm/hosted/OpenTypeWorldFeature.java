@@ -220,7 +220,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
              */
             var typeIdentifierIds = identifierToTypeInfo.keySet().stream().sorted().toList();
             writer.writeIntList("typeIdentifierIds", typeIdentifierIds);
-            writer.writeInt("maxTypeID", DynamicHubSupport.singleton().getMaxTypeId());
+            writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
 
             for (int identifierID : typeIdentifierIds) {
                 var typeInfo = identifierToTypeInfo.get(identifierID);

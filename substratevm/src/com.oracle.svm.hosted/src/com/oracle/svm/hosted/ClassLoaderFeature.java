@@ -124,7 +124,7 @@ public class ClassLoaderFeature implements InternalFeature {
             LibGraalClassLoaderBase libGraalLoader = ((DuringSetupAccessImpl) access).imageClassLoader.classLoaderSupport.getLibGraalLoader();
             if (libGraalLoader != null) {
                 ClassLoader libGraalClassLoader = libGraalLoader.getClassLoader();
-                ClassForNameSupport.singleton().setLibGraalLoader(libGraalClassLoader);
+                ClassForNameSupport.currentLayer().setLibGraalLoader(libGraalClassLoader);
 
                 ClassLoader runtimeLibGraalClassLoader = libGraalLoader.getRuntimeClassLoader();
                 if (runtimeLibGraalClassLoader != null) {

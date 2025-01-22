@@ -48,6 +48,7 @@ import com.oracle.svm.core.jni.MissingJNIRegistrationUtils;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
+import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.UnsavedSingleton;
 import com.oracle.svm.core.log.Log;
@@ -96,8 +97,8 @@ public final class JNIReflectionDictionary implements MultiLayeredImageSingleton
     }
 
     @Platforms(HOSTED_ONLY.class)
-    public static JNIReflectionDictionary singleton() {
-        return ImageSingletons.lookup(JNIReflectionDictionary.class);
+    public static JNIReflectionDictionary currentLayer() {
+        return LayeredImageSingletonSupport.singleton().lookup(JNIReflectionDictionary.class, false, true);
     }
 
     private static JNIReflectionDictionary[] layeredSingletons() {
