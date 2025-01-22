@@ -598,6 +598,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     public void registerUnsafeAccessedStaticField(AnalysisField field) {
+        AnalysisError.guarantee(!field.getType().isWordType(), "static Word fields cannot be unsafe accessed %s", this);
         unsafeAccessedStaticFields.put(field, true);
     }
 
