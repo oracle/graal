@@ -184,11 +184,15 @@ _vm_homes = {}
 
 def _vm_home(config):
     if config not in _vm_homes:
-        # get things initialized (e.g., cloning)
-        _run_graalvm_cmd(['graalvm-home'], config, out=mx.OutputCapture())
-        capture = mx.OutputCapture()
-        _run_graalvm_cmd(['graalvm-home'], config, out=capture, quiet=True)
-        _vm_homes[config] = capture.data.strip()
+        if config is None:
+            result = mx_sdk_vm.graalvm_home(fatalIfMissing=False)
+        else:
+            # get things initialized (e.g., cloning)
+            _run_graalvm_cmd(['graalvm-home'], config, out=mx.OutputCapture())
+            capture = mx.OutputCapture()
+            _run_graalvm_cmd(['graalvm-home'], config, out=capture, quiet=True)
+            result = capture.data.strip()
+        _vm_homes[config] = result
     return _vm_homes[config]
 
 
