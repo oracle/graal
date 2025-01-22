@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -82,8 +83,30 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
-    public UnsignedWord getHeaderSizeOfUnalignedChunk() {
-        return UnalignedChunkRememberedSet.getHeaderSize();
+    public UnsignedWord getHeaderSizeOfUnalignedChunk(UnsignedWord objectSize) {
+        return UnalignedChunkRememberedSet.getHeaderSize(objectSize);
+    }
+
+    @Override
+    public UnsignedWord calculateObjectStartOffset(UnsignedWord objectSize) {
+        return UnalignedChunkRememberedSet.calculateObjectStartOffset(objectSize);
+    }
+
+    @Override
+    public void setObjectStartOffset(UnalignedHeader chunk, UnsignedWord objectSize) {
+        UnalignedChunkRememberedSet.setObjectStartOffset(chunk, objectSize);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public UnsignedWord getObjectStartOffset(UnalignedHeader chunk) {
+        return UnalignedChunkRememberedSet.getObjectStartOffset(chunk);
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public UnsignedWord getObjectStartOffset(Pointer objPtr) {
+        return UnalignedChunkRememberedSet.getObjectStartOffset(objPtr);
     }
 
     @Override
@@ -94,8 +117,8 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk) {
-        UnalignedChunkRememberedSet.enableRememberedSet(chunk);
+    public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk, UnsignedWord objectSize) {
+        UnalignedChunkRememberedSet.enableRememberedSet(chunk, objectSize);
     }
 
     @Override

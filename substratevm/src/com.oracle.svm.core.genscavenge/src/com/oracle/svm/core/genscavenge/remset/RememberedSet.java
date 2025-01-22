@@ -31,6 +31,7 @@ import java.util.List;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -58,8 +59,17 @@ public interface RememberedSet extends BarrierSetProvider {
     /** Returns the header size of aligned chunks. */
     UnsignedWord getHeaderSizeOfAlignedChunk();
 
-    /** Returns the header size of unaligned chunks. */
-    UnsignedWord getHeaderSizeOfUnalignedChunk();
+    /** Returns the header size of an unaligned chunk with a given object size. */
+    UnsignedWord getHeaderSizeOfUnalignedChunk(UnsignedWord objectSize);
+
+    UnsignedWord calculateObjectStartOffset(UnsignedWord objectSize);
+
+    /** Sets the object start offset in the unaligned chunk. */
+    void setObjectStartOffset(UnalignedHeader chunk, UnsignedWord objectSize);
+
+    UnsignedWord getObjectStartOffset(UnalignedHeader chunk);
+
+    UnsignedWord getObjectStartOffset(Pointer objPtr);
 
     /**
      * Enables remembered set tracking for an aligned chunk and its objects. Must be called when
@@ -73,7 +83,7 @@ public interface RememberedSet extends BarrierSetProvider {
      * adding a new chunk to the image heap or old generation.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk);
+    void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk, UnsignedWord objectSize);
 
     /**
      * Enables remembered set tracking for an aligned chunk and its objects. Must be called when

@@ -37,7 +37,6 @@ import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.word.Word;
 
 /**
@@ -89,14 +88,15 @@ public final class UnalignedHeapChunk {
     public interface UnalignedHeader extends HeapChunk.Header<UnalignedHeader> {
     }
 
-    public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize) {
+    public static void initialize(UnalignedHeader chunk, UnsignedWord chunkSize, UnsignedWord objectSize) {
         assert chunk.isNonNull();
-        HeapChunk.initialize(chunk, UnalignedHeapChunk.getObjectStart(chunk), chunkSize);
+        HeapChunk.initialize(chunk, HeapChunk.asPointer(chunk).add(RememberedSet.get().calculateObjectStartOffset(objectSize)), chunkSize);
+        RememberedSet.get().setObjectStartOffset(chunk, objectSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectStart(UnalignedHeader that) {
-        return HeapChunk.asPointer(that).add(getObjectStartOffset());
+        return HeapChunk.asPointer(that).add(RememberedSet.get().getObjectStartOffset(that));
     }
 
     public static Pointer getObjectEnd(UnalignedHeader that) {
@@ -104,7 +104,7 @@ public final class UnalignedHeapChunk {
     }
 
     static UnsignedWord getChunkSizeForObject(UnsignedWord objectSize) {
-        UnsignedWord objectStart = getObjectStartOffset();
+        UnsignedWord objectStart = RememberedSet.get().getHeaderSizeOfUnalignedChunk(objectSize);
         UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(objectStart.add(objectSize), alignment);
     }
@@ -133,7 +133,7 @@ public final class UnalignedHeapChunk {
         if (!GraalDirectives.inIntrinsic()) {
             assert HeapImpl.isImageHeapAligned() || !HeapImpl.getHeapImpl().isInImageHeap(ptr) : "can't be used for the image heap because the image heap is not aligned to the chunk size";
         }
-        Pointer chunkPointer = ptr.subtract(getObjectStartOffset());
+        Pointer chunkPointer = ptr.subtract(RememberedSet.get().getObjectStartOffset(ptr));
         return (UnalignedHeader) chunkPointer;
     }
 
@@ -147,13 +147,8 @@ public final class UnalignedHeapChunk {
         HeapChunk.walkObjectsFromInline(that, getObjectStart(that), visitor);
     }
 
-    @Fold
-    static UnsignedWord getObjectStartOffset() {
-        return RememberedSet.get().getHeaderSizeOfUnalignedChunk();
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCommittedObjectMemory(UnalignedHeader that) {
-        return HeapChunk.getEndOffset(that).subtract(getObjectStartOffset());
+        return HeapChunk.getEndOffset(that).subtract(RememberedSet.get().getObjectStartOffset(that));
     }
 }

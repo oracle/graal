@@ -31,6 +31,7 @@ import java.util.List;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -68,10 +69,34 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
-    public UnsignedWord getHeaderSizeOfUnalignedChunk() {
+    public UnsignedWord getHeaderSizeOfUnalignedChunk(UnsignedWord objectSize) {
+        return getHeaderSizeOfUnalignedChunk();
+    }
+
+    private static UnsignedWord getHeaderSizeOfUnalignedChunk() {
         UnsignedWord headerSize = Word.unsigned(SizeOf.get(UnalignedHeader.class));
         UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);
+    }
+
+    @Override
+    public void setObjectStartOffset(UnalignedHeader chunk, UnsignedWord objectSize) {
+        // Nothing to do.
+    }
+
+    @Override
+    public UnsignedWord calculateObjectStartOffset(UnsignedWord objectSize) {
+        return getHeaderSizeOfUnalignedChunk();
+    }
+
+    @Override
+    public UnsignedWord getObjectStartOffset(UnalignedHeader chunk) {
+        return getHeaderSizeOfUnalignedChunk();
+    }
+
+    @Override
+    public UnsignedWord getObjectStartOffset(Pointer objPtr) {
+        return getHeaderSizeOfUnalignedChunk();
     }
 
     @Override
@@ -82,7 +107,7 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk) {
+    public void enableRememberedSetForUnalignedChunk(HostedByteBufferPointer chunk, UnsignedWord objectSize) {
         // Nothing to do.
     }
 

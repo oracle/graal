@@ -26,6 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.List;
 
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.image.ImageHeapObject;
 
 interface ImageHeapChunkWriter {
@@ -33,7 +35,7 @@ interface ImageHeapChunkWriter {
 
     void enableRememberedSetForAlignedChunk(int chunkPosition, List<ImageHeapObject> objects);
 
-    void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk);
+    void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk, UnsignedWord objectSize);
 
-    void enableRememberedSetForUnalignedChunk(int chunkPosition);
+    void enableRememberedSetForUnalignedChunk(int chunkPosition, UnsignedWord objectSize);
 }

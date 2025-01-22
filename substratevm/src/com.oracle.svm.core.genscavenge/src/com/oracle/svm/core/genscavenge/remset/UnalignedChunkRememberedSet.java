@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.remset;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -48,22 +50,52 @@ final class UnalignedChunkRememberedSet {
     private UnalignedChunkRememberedSet() {
     }
 
-    @Fold
-    public static UnsignedWord getHeaderSize() {
-        UnsignedWord headerSize = getCardTableLimitOffset();
+    public static UnsignedWord getHeaderSize(UnsignedWord objectSize) {
+        UnsignedWord headerSize = getCardTableLimitOffset(objectSize);
+
+        // TODO-th change to sizeof word or alignment
+        headerSize = headerSize.add(8);
         UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 
+    public static UnsignedWord calculateObjectStartOffset(UnsignedWord objectSize) {
+        return getHeaderSize(objectSize);
+    }
+
+    public static void setObjectStartOffset(UnalignedHeader chunk, UnsignedWord objectSize) {
+        UnsignedWord objectStartOffset = chunk.getEndOffset().subtract(objectSize);
+        HeapChunk.asPointer(chunk).add(objectStartOffset).writeWord(-8, objectStartOffset);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static UnsignedWord getObjectStartOffset(UnalignedHeader chunk) {
+        UnsignedWord headerSize = Word.unsigned(SizeOf.get(UnalignedHeader.class)).add(8);
+        UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
+        UnsignedWord alignedHeaderSize = UnsignedUtils.roundUp(headerSize, alignment);
+        UnsignedWord ctAndObjSize = chunk.getEndOffset().subtract(alignedHeaderSize);
+
+        UnsignedWord objSize = UnsignedUtils.roundDown(ctAndObjSize.multiply(512).unsignedDivide(513), Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment()));
+        UnsignedWord objectStartOffset = HeapChunk.getEndOffset(chunk).subtract(objSize);
+        assert objectStartOffset.equal(getObjectStartOffset(HeapChunk.asPointer(chunk).add(objectStartOffset)));
+
+        return objectStartOffset;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static UnsignedWord getObjectStartOffset(Pointer objPtr) {
+        return objPtr.readWord(-8);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void enableRememberedSet(HostedByteBufferPointer chunk) {
-        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+    public static void enableRememberedSet(HostedByteBufferPointer chunk, UnsignedWord objectSize) {
+        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize(objectSize));
         // The remembered set bit in the header will be set by the code that writes the objects.
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void enableRememberedSet(UnalignedHeader chunk) {
-        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize(getObjectStartOffset(chunk).subtract(8)));
         // Unaligned chunks don't have a first object table.
 
         Object obj = UnalignedHeapChunk.getObjectStart(chunk).toObjectNonNull();
@@ -72,7 +104,7 @@ final class UnalignedChunkRememberedSet {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void clearRememberedSet(UnalignedHeader chunk) {
-        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize());
+        CardTable.cleanTable(getCardTableStart(chunk), getCardTableSize(getObjectStartOffset(chunk).subtract(8)));
     }
 
     /**
@@ -117,17 +149,16 @@ final class UnalignedChunkRememberedSet {
         return UnsignedUtils.roundUp(headerSize, alignment);
     }
 
-    @Fold
-    static UnsignedWord getCardTableSize() {
-        UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(Word.unsigned(1));
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    static UnsignedWord getCardTableSize(UnsignedWord objectSize) {
+        UnsignedWord requiredSize = CardTable.tableSizeForMemorySize(objectSize);
         UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(requiredSize, alignment);
     }
 
-    @Fold
-    static UnsignedWord getCardTableLimitOffset() {
+    static UnsignedWord getCardTableLimitOffset(UnsignedWord objectSize) {
         UnsignedWord tableStart = getCardTableStartOffset();
-        UnsignedWord tableSize = getCardTableSize();
+        UnsignedWord tableSize = getCardTableSize(objectSize);
         UnsignedWord tableLimit = tableStart.add(tableSize);
         UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
         return UnsignedUtils.roundUp(tableLimit, alignment);
@@ -150,6 +181,6 @@ final class UnalignedChunkRememberedSet {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getCardTableEnd(UnalignedHeader chunk) {
-        return getCardTableStart(chunk).add(getCardTableSize());
+        return getCardTableStart(chunk).add(getCardTableSize(getObjectStartOffset(chunk).subtract(8)));
     }
 }

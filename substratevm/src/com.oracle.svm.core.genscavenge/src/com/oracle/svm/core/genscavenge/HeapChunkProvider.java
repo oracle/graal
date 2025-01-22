@@ -233,7 +233,7 @@ final class HeapChunkProvider {
         UnsignedWord chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objectSize);
 
         UnalignedHeader result = (UnalignedHeader) ChunkBasedCommittedMemoryProvider.get().allocateUnalignedChunk(chunkSize);
-        UnalignedHeapChunk.initialize(result, chunkSize);
+        UnalignedHeapChunk.initialize(result, chunkSize, objectSize);
         assert objectSize.belowOrEqual(HeapChunk.availableObjectMemory(result)) : "UnalignedHeapChunk insufficient for requested object";
 
         /* Avoid zapping if unaligned chunks are pre-zeroed. */

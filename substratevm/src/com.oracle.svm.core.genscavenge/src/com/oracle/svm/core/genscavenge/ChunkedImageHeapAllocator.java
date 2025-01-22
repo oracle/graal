@@ -30,6 +30,7 @@ import java.util.List;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -78,13 +79,20 @@ class ChunkedImageHeapAllocator {
     }
 
     static final class UnalignedChunk extends Chunk {
-        UnalignedChunk(long begin, long endOffset, boolean writable) {
+        private final UnsignedWord objectSize;
+
+        UnalignedChunk(long begin, long endOffset, boolean writable, UnsignedWord objectSize) {
             super(begin, endOffset, writable);
+            this.objectSize = objectSize;
         }
 
         @Override
         public long getTopOffset() {
             return getEndOffset();
+        }
+
+        public UnsignedWord getObjectSize() {
+            return objectSize;
         }
     }
 
@@ -162,7 +170,6 @@ class ChunkedImageHeapAllocator {
     private final int alignedChunkSize;
     private final int alignedChunkAlignment;
     private final int alignedChunkObjectsOffset;
-    private final int unalignedChunkObjectsOffset;
 
     private long position;
 
@@ -177,7 +184,6 @@ class ChunkedImageHeapAllocator {
         this.alignedChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
         this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkAlignment());
         this.alignedChunkObjectsOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getObjectsStartOffset());
-        this.unalignedChunkObjectsOffset = UnsignedUtils.safeToInt(UnalignedHeapChunk.getObjectStartOffset());
 
         this.position = position;
 
@@ -199,8 +205,8 @@ class ChunkedImageHeapAllocator {
         UnsignedWord objSize = Word.unsigned(obj.getSize());
         long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objSize).rawValue();
         long chunkBegin = allocateRaw(chunkSize);
-        unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable));
-        return chunkBegin + unalignedChunkObjectsOffset;
+        unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable, objSize));
+        return chunkBegin + UnsignedUtils.safeToInt(RememberedSet.get().calculateObjectStartOffset(objSize));
     }
 
     public void maybeStartAlignedChunk() {
