@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.hosted.pltgot.GOTEntryAllocator.GOT_NO_ENTRY;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.INVOKEDYNAMIC;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_NO_ENTRY;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_ONE_IMPL;
 import static com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl.toHexString;
-import static com.oracle.svm.hosted.pltgot.GOTEntryAllocator.GOT_NO_ENTRY;
 
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -73,18 +73,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.interpreter.classfile.ClassFile;
-import com.oracle.svm.interpreter.metadata.BytecodeStream;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
-import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
-import com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl;
-import com.oracle.svm.interpreter.metadata.MetadataUtil;
-import com.oracle.svm.interpreter.metadata.ReferenceConstant;
-import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
-import com.oracle.svm.interpreter.metadata.serialization.Serializers;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.code.CompileQueue;
@@ -101,6 +89,18 @@ import com.oracle.svm.hosted.pltgot.IdentityMethodAddressResolverFeature;
 import com.oracle.svm.hosted.pltgot.PLTGOTOptions;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
+import com.oracle.svm.interpreter.classfile.ClassFile;
+import com.oracle.svm.interpreter.metadata.BytecodeStream;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
+import com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl;
+import com.oracle.svm.interpreter.metadata.MetadataUtil;
+import com.oracle.svm.interpreter.metadata.ReferenceConstant;
+import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
+import com.oracle.svm.interpreter.metadata.serialization.Serializers;
 import com.oracle.svm.util.ModuleSupport;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -697,13 +697,7 @@ public class DebuggerFeature implements InternalFeature {
 
         // Be explicit here: .metadata file is derived from <final binary name (including
         // extension)>
-        String imageFileName = accessImpl.getImageName();
-        String extension = accessImpl.getImage().getImageKind().getFilenameSuffix();
-        if (!imageFileName.endsWith(extension)) {
-            imageFileName += extension;
-        }
-
-        String metadataFileName = MetadataUtil.metadataFileName(imageFileName);
+        String metadataFileName = MetadataUtil.metadataFileName(accessImpl.getOutputFilename());
         Path metadataPath = destDir.resolve(metadataFileName);
 
         int crc32;
