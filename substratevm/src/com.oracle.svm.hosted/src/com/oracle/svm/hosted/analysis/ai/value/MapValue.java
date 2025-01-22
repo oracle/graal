@@ -37,7 +37,7 @@ public final class MapValue<
     }
 
     @Override
-    public AbstractValueKind kind() {
+    public AbstractValueKind getKind() {
         return map.isEmpty() ? AbstractValueKind.BOT : AbstractValueKind.VAL;
     }
 
@@ -61,7 +61,7 @@ public final class MapValue<
         for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
             map.merge(entry.getKey(), entry.getValue(), Domain::join);
         }
-        return kind();
+        return getKind();
     }
 
     @Override
@@ -74,7 +74,7 @@ public final class MapValue<
         for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
             map.merge(entry.getKey(), entry.getValue(), Domain::meet);
         }
-        return kind();
+        return getKind();
     }
 
     @Override
@@ -87,6 +87,11 @@ public final class MapValue<
     @Override
     public void clear() {
         map.clear();
+    }
+
+    @Override
+    public MapValue<Key, Domain> copyOf() {
+        return new MapValue<>(map, initialDomain);
     }
 
     public boolean empty() {

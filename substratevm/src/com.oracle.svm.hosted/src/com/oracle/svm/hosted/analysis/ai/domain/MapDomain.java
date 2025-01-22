@@ -36,7 +36,6 @@ public final class MapDomain<
     public MapDomain(MapDomain<Key, Domain> other) {
         super(() -> new MapValue<>(other.initialDomain));
         this.initialDomain = other.initialDomain.copyOf();
-        this.kind = other.kind;
     }
 
     public Domain get(Key key) {
@@ -51,6 +50,7 @@ public final class MapDomain<
     public String toString() {
         return "MapDomain{" +
                 "mapValue=" + getValue() +
+                ", kind=" + getKind() +
                 '}';
     }
 
