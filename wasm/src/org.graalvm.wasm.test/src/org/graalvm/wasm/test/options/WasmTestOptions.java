@@ -40,13 +40,18 @@
  */
 package org.graalvm.wasm.test.options;
 
+import java.util.Arrays;
+import java.util.List;
+
 public final class WasmTestOptions {
     public static final String WAT_TO_WASM_EXECUTABLE = System.getProperty("wasmtest.watToWasmExecutable");
     public static final String TEST_SOURCE_PATH = System.getProperty("wasmtest.testSourcePath");
     public static final String TEST_FILTER = System.getProperty("wasmtest.testFilter");
+    public static final List<String> DISABLED_TESTS = System.getProperty("wasmtest.disabledTests") == null ? null : Arrays.asList(System.getProperty("wasmtest.disabledTests").split(","));
     public static final String LOG_LEVEL = System.getProperty("wasmtest.logLevel");
     public static final String STORE_CONSTANTS_POLICY = System.getProperty("wasmtest.storeConstantsPolicy");
     public static final String OFFICIAL_TESTS_DIR = System.getProperty("wasmtest.officialTestsDir");
+    public static final String OFFICIAL_TESTS_CONTEXT_OPTIONS = System.getProperty("wasmtest.officialTestsContextOptions");
     public static final boolean OFFICIAL_TESTS_RUN_ALL = Boolean.parseBoolean(System.getProperty("wasmtest.officialTestsRunAll"));
     public static final boolean OFFICIAL_TESTS_LOG = Boolean.parseBoolean(System.getProperty("wasmtest.officialTestsLog"));
     public static final boolean SHARED_ENGINE = Boolean.parseBoolean(System.getProperty("wasmtest.sharedEngine"));
