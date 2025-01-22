@@ -78,28 +78,24 @@ public final class LocationOpener implements Openable, Trackable {
         TaskListener[] whenShowing = new TaskListener[1];
         whenShowing[0] = (ev) -> {
             task.removeTaskListener(whenShowing[0]);
-
-            for (JEditorPane p : cake.getOpenedPanes()) {
-                p.select(offsets[0], offsets[1]);
-            }
+            Mutex.EVENT.postReadRequest(() -> {
+                if (offsets == null) {
+                    StatusDisplayer.getDefault().setStatusText(Bundle.ERR_LineNotFound());
+                } else {
+                    for (JEditorPane p : cake.getOpenedPanes()) {
+                        p.select(offsets[0], offsets[1]);
+                    }
+                }
+            });
         };
 
         Line l = findLine(cake, line);
         if (l == null) {
             cake.open();
-            if (offsets == null) {
-                StatusDisplayer.getDefault().setStatusText(Bundle.ERR_LineNotFound());
-            } else {
-                task.addTaskListener(whenShowing[0]);
-            }
-            return;
-        }
-        Mutex.EVENT.readAccess(() -> {
+        } else {
             l.show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT);
-            if (offsets != null) {
-                task.addTaskListener(whenShowing[0]);
-            }
-        });
+        }
+        task.addTaskListener(whenShowing[0]);
     }
 
     private Line findLine(EditorCookie cake, int line) {
