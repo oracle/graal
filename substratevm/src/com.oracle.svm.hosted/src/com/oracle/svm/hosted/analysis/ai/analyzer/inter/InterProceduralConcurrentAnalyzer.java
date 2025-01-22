@@ -8,9 +8,9 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.context.filter.MethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.ConcurrentWpoFixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
+import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import com.oracle.svm.hosted.analysis.ai.interpreter.call.InterProceduralCallInterpreter;
-import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.SummarySupplier;
 import jdk.graal.compiler.debug.DebugContext;
 

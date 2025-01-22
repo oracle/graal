@@ -8,6 +8,7 @@ import com.oracle.svm.hosted.analysis.ai.value.SetValue;
     For example the domain could represent set of live variables
  */
 public final class SetDomain<Element> extends LatticeDomain<SetValue<Element>, SetDomain<Element>> {
+
     public SetDomain() {
         super(SetValue::new);
     }

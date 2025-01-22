@@ -29,7 +29,7 @@ public final class SetValue<Element>
     }
 
     @Override
-    public AbstractValueKind kind() {
+    public AbstractValueKind getKind() {
         return set.isEmpty() ? AbstractValueKind.BOT : AbstractValueKind.VAL;
     }
 
@@ -46,7 +46,7 @@ public final class SetValue<Element>
     @Override
     public AbstractValueKind joinWith(SetValue<Element> other) {
         set.addAll(other.set);
-        return kind();
+        return getKind();
     }
 
     @Override
@@ -57,7 +57,7 @@ public final class SetValue<Element>
     @Override
     public AbstractValueKind meetWith(SetValue<Element> other) {
         set.retainAll(other.set);
-        return kind();
+        return getKind();
     }
 
     @Override
@@ -70,6 +70,12 @@ public final class SetValue<Element>
     @Override
     public void clear() {
         set.clear();
+    }
+
+
+    @Override
+    public SetValue<Element> copyOf() {
+        return new SetValue<>(this);
     }
 
     public boolean empty() {

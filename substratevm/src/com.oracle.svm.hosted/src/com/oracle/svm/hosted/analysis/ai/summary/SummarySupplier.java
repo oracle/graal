@@ -3,7 +3,6 @@ package com.oracle.svm.hosted.analysis.ai.summary;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.InvokeNode;
 
 public interface SummarySupplier<Domain extends AbstractDomain<Domain>> {
 

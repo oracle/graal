@@ -18,13 +18,13 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      *
      * @return the pre-condition of the summary
      */
-    Domain preCondition();
+    Domain getPreCondition();
 
     /**
      * Gets the {@code Domain} from the internal state of the summary
      *
      */
-    Domain postCondition();
+    Domain getPostCondition();
 
     /**
      * Checks if this summary covers the other summary.

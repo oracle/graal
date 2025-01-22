@@ -2,12 +2,7 @@ package com.oracle.svm.hosted.analysis.ai;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.ProgressReporter;
-import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.inter.InterProceduralSequentialAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
-import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.interpreter.node.example.LeaksCountingDomainNodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.summary.example.LeakCountingSummaryProvider;
+import com.oracle.svm.hosted.analysis.ai.analyzer.example.leaks.set.IdentifierSetDomainInterAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -33,11 +28,13 @@ public class AbstractInterpretationDriver {
         }
     }
 
+    /**
+     * Run the abstract interpretation analysis
+     * Create a custom analyzer (or create your own, and run the analysis)
+     */
     private void doRun() {
         GraphUtils.printGraph(root, debug);
-        NodeInterpreter<CountingDomain> nodeInterpreter = new LeaksCountingDomainNodeInterpreter();
-        LeakCountingSummaryProvider summaryProvider = new LeakCountingSummaryProvider();
-        Analyzer<CountingDomain> analyzer = new InterProceduralSequentialAnalyzer<>(root, debug, summaryProvider);
-        analyzer.run(new CountingDomain(), nodeInterpreter);
+        IdentifierSetDomainInterAnalyzer analyzer = new IdentifierSetDomainInterAnalyzer(root, debug);
+        analyzer.run();
     }
 }

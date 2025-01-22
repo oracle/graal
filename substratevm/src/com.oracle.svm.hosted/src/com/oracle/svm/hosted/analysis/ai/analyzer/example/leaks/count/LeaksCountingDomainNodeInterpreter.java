@@ -1,11 +1,10 @@
-package com.oracle.svm.hosted.analysis.ai.interpreter.node.example;
+package com.oracle.svm.hosted.analysis.ai.analyzer.example.leaks.count;
 
 import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.InvokeNode;
 
 public class LeaksCountingDomainNodeInterpreter implements NodeInterpreter<CountingDomain> {
 

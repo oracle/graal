@@ -17,20 +17,19 @@ import java.util.function.Supplier;
  * This way, we only have to implement domain specific methods inside CustomAbstractDomain
  * without writing boilerplate code for handling methods from AbstractDomain.
  *
- * @param <Value>  the type of derived AbstractValue
- * @param <Domain> the type of derived AbstractDomain
+ * @param <Value>  the type of derived {@link AbstractValue}
+ * @param <Domain> the type of derived {@link AbstractDomain}
  */
-
 public class LatticeDomain<
         Value extends AbstractValue<Value>,
         Domain extends LatticeDomain<Value, Domain>>
         extends AbstractDomain<Domain> {
+
     protected AbstractValueKind kind;
     private Value value;
 
     public LatticeDomain(Supplier<Value> valueSupplier) {
         this.value = valueSupplier.get();
-        this.kind = AbstractValueKind.VAL;
     }
 
     public LatticeDomain(AbstractValueKind kind, Supplier<Value> valueSupplier) {
@@ -38,25 +37,28 @@ public class LatticeDomain<
         this.value = valueSupplier.get();
     }
 
+    public Value getValue() {
+        return value;
+    }
+
     public AbstractValueKind getKind() {
-        return kind;
+        return value.getKind();
     }
 
     public boolean isBot() {
-        return kind == AbstractValueKind.BOT;
+        return value.getKind() == AbstractValueKind.BOT;
     }
 
     public boolean isTop() {
-        return kind == AbstractValueKind.TOP;
+        return value.getKind() == AbstractValueKind.TOP;
     }
 
     public boolean isVal() {
-        return kind == AbstractValueKind.VAL;
+        return getKind() == AbstractValueKind.VAL;
     }
 
     public void setToBot() {
         kind = AbstractValueKind.BOT;
-        value.clear();
     }
 
     public void setToTop() {
@@ -92,19 +94,6 @@ public class LatticeDomain<
         performMeetOperation(other, () -> kind = value.meetWith(other.getValue()));
     }
 
-    @Override
-    public String toString() {
-        return "ConstantDomain{" +
-                "kind=" + kind +
-                ", value=" + value +
-                '}';
-    }
-
-    @Override
-    public Domain copyOf() {
-        return null;
-    }
-
     protected void performJoinOperation(Domain other, Runnable operation) {
         if (isTop() || other.isBot()) return;
         if (other.isTop()) {
@@ -117,6 +106,7 @@ public class LatticeDomain<
             return;
         }
         operation.run();
+        updateKind();
     }
 
     protected void performMeetOperation(Domain other, Runnable operation) {
@@ -131,25 +121,24 @@ public class LatticeDomain<
             return;
         }
         operation.run();
-    }
-
-    protected Value getValue() {
-        return value;
+        updateKind();
     }
 
     protected void setValue(Value value) {
-        this.kind = value.kind();
-        this.value = value;
+        this.kind = value.getKind();
+        this.value = value.copyOf();
+        updateKind();
     }
 
     /**
-     * This method is used for keeping the domain in a consistent state after performing operations
+     * This method is used for keeping the kind in a consistent state after performing operations
      */
-    protected void checkConsistency() {
+    protected void updateKind() {
+        kind = value.getKind();
+
         if (kind == AbstractValueKind.BOT) {
             return;
         }
-        kind = value.kind();
         if (kind == AbstractValueKind.TOP) {
             value.clear();
         }
@@ -159,5 +148,19 @@ public class LatticeDomain<
         if (kind != AbstractValueKind.VAL) {
             throw new IllegalStateException("Invalid kind for operation");
         }
+    }
+
+    @Override
+    public String toString() {
+        return "LatticeDomain{" +
+                "value=" + value +
+                ", kind=" + kind +
+                '}';
+    }
+
+    /* Should be implemented by the derived classes */
+    @Override
+    public Domain copyOf() {
+        return null;
     }
 }

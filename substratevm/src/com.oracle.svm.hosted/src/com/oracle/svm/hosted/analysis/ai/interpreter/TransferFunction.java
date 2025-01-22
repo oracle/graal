@@ -3,12 +3,10 @@ package com.oracle.svm.hosted.analysis.ai.interpreter;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.call.CallInterpreter;
-import com.oracle.svm.hosted.analysis.ai.interpreter.node.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.Invoke;
-import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**

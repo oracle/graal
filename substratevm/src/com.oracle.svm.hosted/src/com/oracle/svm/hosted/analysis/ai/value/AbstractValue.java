@@ -3,6 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.value;
 /**
  * Represents the structure of elements of an abstract domain.
  * (constant, interval, set, etc.)
+ * This can be used for more complex abstract domains, to simplify the implementation.
  *
  * @param <Derived> the type of the derived value
  */
@@ -13,7 +14,7 @@ public interface AbstractValue<Derived extends AbstractValue<Derived>> {
      *
      * @return the kind of the value (TOP, BOT, or VAL)
      */
-    AbstractValueKind kind();
+    AbstractValueKind getKind();
 
     /**
      * Checks if this value is less than or equal to another value.
@@ -67,4 +68,10 @@ public interface AbstractValue<Derived extends AbstractValue<Derived>> {
      * This method can be used to clear the memory and reset the value to a default state.
      */
     void clear();
+
+    /**
+     * Creates a copy of this abstract value.
+     * @return a copy of this abstract value
+     */
+    Derived copyOf();
 }

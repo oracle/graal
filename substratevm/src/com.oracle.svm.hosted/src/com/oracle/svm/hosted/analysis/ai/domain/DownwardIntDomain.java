@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 
 public final class DownwardIntDomain extends AbstractDomain<DownwardIntDomain> {
     private int value;
-    private static final int MAX_COUNT = Integer.MAX_VALUE; // Example max count, adjust as needed
+    private static final int MAX_COUNT = Integer.MAX_VALUE;
 
     public DownwardIntDomain() {
         this.value = MAX_COUNT;

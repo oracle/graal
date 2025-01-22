@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.interpreter.node;
+package com.oracle.svm.hosted.analysis.ai.interpreter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
