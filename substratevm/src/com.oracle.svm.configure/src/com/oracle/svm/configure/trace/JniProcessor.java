@@ -68,7 +68,7 @@ class JniProcessor extends AbstractProcessor {
             LazyValue<String> forNameStringLazyValue = lazyValue(forNameString);
             if (!advisor.shouldIgnore(forNameStringLazyValue, callerClassLazyValue)) {
                 if (function.equals("FindClass")) {
-                    if (!advisor.shouldIgnoreJniLookup(forNameStringLazyValue, lazyNull(), lazyNull(), callerClassLazyValue)) {
+                    if (!advisor.shouldIgnoreJniLookup(function, forNameStringLazyValue, lazyNull(), lazyNull(), callerClassLazyValue)) {
                         configurationSet.getJniConfiguration().getOrCreateType(condition, forNameString);
                     }
                 } else if (!AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(lookupName).matches()) { // DefineClass
@@ -99,7 +99,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                if (!advisor.shouldIgnoreJniLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniLookup(function, lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
                     if (!declaringClassOrClazz.equals(clazz)) {
                         config.getOrCreateType(condition, clazz);
@@ -112,7 +112,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 String signature = (String) args.get(1);
-                if (!advisor.shouldIgnoreJniLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniLookup(function, lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(condition, declaringClassOrClazz).addField(name, declaration, false);
                     if (!declaringClassOrClazz.equals(clazz)) {
                         config.getOrCreateType(condition, clazz);
@@ -124,7 +124,7 @@ class JniProcessor extends AbstractProcessor {
                 expectSize(args, 1); // exception message, ignore
                 String name = ConfigurationMethod.CONSTRUCTOR_NAME;
                 String signature = "(Ljava/lang/String;)V";
-                if (!advisor.shouldIgnoreJniLookup(lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
+                if (!advisor.shouldIgnoreJniLookup(function, lazyValue(clazz), lazyValue(name), lazyValue(signature), callerClassLazyValue)) {
                     config.getOrCreateType(condition, declaringClassOrClazz).addMethod(name, signature, declaration);
                     assert declaringClassOrClazz.equals(clazz) : "Constructor can only be accessed via declaring class";
                 }

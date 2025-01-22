@@ -209,61 +209,64 @@ public final class AccessAdvisor {
         return shouldIgnore(queriedClass, callerClass, true);
     }
 
-    record JNICallDescriptor(String declaringClass, String name, String signature, boolean required) {
-        public boolean matches(String otherDeclaringClass, String otherName, String otherSignature) {
-            return (declaringClass == null || declaringClass.equals(otherDeclaringClass)) &&
+    record JNICallDescriptor(String jniFunction, String declaringClass, String name, String signature, boolean required) {
+        public boolean matches(String otherJniFunction, String otherDeclaringClass, String otherName, String otherSignature) {
+            return jniFunction.equals(otherJniFunction) &&
+                            (declaringClass == null || declaringClass.equals(otherDeclaringClass)) &&
                             (otherName == null || name.equals(otherName)) &&
                             (otherSignature == null || signature.equals(otherSignature));
         }
     }
 
     private static final JNICallDescriptor[] JNI_STARTUP_SEQUENCE = new JNICallDescriptor[]{
-                    new JNICallDescriptor("sun.launcher.LauncherHelper", "getApplicationClass", "()Ljava/lang/Class;", true),
-                    new JNICallDescriptor("java.lang.Class", "getCanonicalName", "()Ljava/lang/String;", false),
-                    new JNICallDescriptor("java.lang.String", "lastIndexOf", "(I)I", false),
-                    new JNICallDescriptor("java.lang.String", "substring", "(I)Ljava/lang/String;", false),
-                    new JNICallDescriptor("java.lang.System", "getProperty", "(Ljava/lang/String;)Ljava/lang/String;", false),
-                    new JNICallDescriptor("java.lang.System", "setProperty", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;", false),
-                    new JNICallDescriptor(null, "main", "([Ljava/lang/String;)V", true),
+                    new JNICallDescriptor("GetStaticMethodID", "sun.launcher.LauncherHelper", "getApplicationClass", "()Ljava/lang/Class;", true),
+                    new JNICallDescriptor("GetMethodID", "java.lang.Class", "getCanonicalName", "()Ljava/lang/String;", false),
+                    new JNICallDescriptor("GetMethodID", "java.lang.String", "lastIndexOf", "(I)I", false),
+                    new JNICallDescriptor("GetMethodID", "java.lang.String", "substring", "(I)Ljava/lang/String;", false),
+                    new JNICallDescriptor("GetStaticMethodID", "java.lang.System", "getProperty", "(Ljava/lang/String;)Ljava/lang/String;", false),
+                    new JNICallDescriptor("GetStaticMethodID", "java.lang.System", "setProperty", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;", false),
+                    new JNICallDescriptor("GetStaticMethodID", null, "main", "([Ljava/lang/String;)V", true),
     };
+    private static final int JNI_STARTUP_COMPLETE = JNI_STARTUP_SEQUENCE.length;
+    private static final int JNI_STARTUP_MISMATCH_COMPLETE = JNI_STARTUP_COMPLETE + 1;
 
-    public boolean shouldIgnoreJniLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
-        assert !shouldIgnore(queriedClass, callerClass) : "must have been checked before";
-        if (!heuristicsEnabled) {
+    /**
+     * The JVM uses JNI calls internally when starting up. To avoid emitting configuration for these
+     * calls, we ignore calls until an expected sequence of calls ({@link #JNI_STARTUP_SEQUENCE}) is
+     * observed.
+     */
+    public boolean shouldIgnoreJniLookup(String jniFunction, LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
+        if (shouldIgnore(queriedClass, callerClass)) {
+            throw new AssertionError("shouldIgnore must have been checked before shouldIgnoreJniLookup");
+        }
+        if (!heuristicsEnabled || launchPhase >= JNI_STARTUP_COMPLETE) {
+            // Startup sequence completed (or we're not using the startup heuristics).
             return false;
         }
-        if (launchPhase >= 0) {
-            JNICallDescriptor expectedCall = JNI_STARTUP_SEQUENCE[launchPhase];
-            while (!expectedCall.matches(queriedClass.get(), name.get(), signature.get())) {
-                if ("sun.launcher.LauncherHelper".equals(queriedClass.get())) {
-                    return true;
-                }
-                if (!expectedCall.required) {
-                    launchPhase++;
-                    expectedCall = JNI_STARTUP_SEQUENCE[launchPhase];
-                } else {
-                    launchPhase = -1;
-                    return false;
-                }
-            }
-            if (name.get() != null && signature.get() != null) {
-                /*
-                 * We ignore class lookups before field/method lookups but don't skip to the next
-                 * query
-                 */
-                launchPhase++;
-            }
-            if (launchPhase == JNI_STARTUP_SEQUENCE.length) {
-                launchPhase = -1;
-            }
+        if (!"GetStaticMethodID".equals(jniFunction) && !"GetMethodID".equals(jniFunction)) {
+            // Ignore function calls for functions not tracked by the startup sequence.
             return true;
         }
-        /*
-         * NOTE: JVM invocations cannot be reliably filtered with callerClass == null because these
-         * could also be calls in a manually launched thread which is attached to JNI, but is not
-         * executing Java code (yet).
-         */
-        return false;
+
+        JNICallDescriptor expectedCall = JNI_STARTUP_SEQUENCE[launchPhase];
+        while (!expectedCall.matches(jniFunction, queriedClass.get(), name.get(), signature.get())) {
+            if ("sun.launcher.LauncherHelper".equals(queriedClass.get())) {
+                // Ignore mismatched calls from sun.launcher.LauncherHelper.
+                return true;
+            }
+
+            if (expectedCall.required) {
+                // Mismatch on a required call. Mark startup as complete and start tracing JNI
+                // calls. (We prefer to emit extraneous configuration than to lose configuration).
+                launchPhase = JNI_STARTUP_MISMATCH_COMPLETE;
+                return false;
+            }
+
+            // The call is optional (e.g., it only happens on some platforms). Skip it.
+            launchPhase++;
+            expectedCall = JNI_STARTUP_SEQUENCE[launchPhase];
+        }
+        return true;
     }
 
     public static boolean shouldIgnoreResourceLookup(LazyValue<String> resource) {
