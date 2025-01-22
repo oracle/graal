@@ -22,9 +22,27 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public interface StickyFailureConstant extends Resolvable.ResolvedConstant {
-    void checkFail(Meta meta);
+public abstract class AbstractStickyFailure implements StickyFallible {
+    private final ObjectKlass exceptionType;
+    private final StaticObject message;
+    private final StaticObject cause;
+
+    public AbstractStickyFailure(EspressoException failure) {
+        StaticObject exception = failure.getGuestException();
+        exceptionType = (ObjectKlass) exception.getKlass();
+        message = EspressoException.getGuestMessage(exception);
+        cause = EspressoException.getGuestCause(exception);
+    }
+
+    @Override
+    public final void checkFail(Meta meta) {
+        StaticObject exception = Meta.initExceptionWithMessage(exceptionType, message);
+        meta.java_lang_Throwable_cause.set(exception, cause);
+        throw meta.throwException(exception);
+    }
 }

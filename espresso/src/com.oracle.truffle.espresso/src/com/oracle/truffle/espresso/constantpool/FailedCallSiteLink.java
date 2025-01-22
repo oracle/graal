@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,49 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public final class ResolvedFailInvokeDynamicConstant extends AbstractFailedConstant implements LinkableInvokeDynamicConstant {
-    public ResolvedFailInvokeDynamicConstant(EspressoException failure) {
+public final class FailedCallSiteLink extends AbstractStickyFailure implements CallSiteLink {
+    private final Method method;
+    private final int bci;
+
+    public FailedCallSiteLink(Method method, int bci, EspressoException failure) {
         super(failure);
+        this.method = method;
+        this.bci = bci;
     }
 
     @Override
-    public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
-        throw fail(method.getMeta());
+    public boolean isFailed() {
+        return true;
     }
 
     @Override
-    public void dump(ByteBuffer buf) {
+    public boolean matchesCallSite(Method siteMethod, int siteBci) {
+        return bci == siteBci && method == siteMethod;
+    }
+
+    @Override
+    public StaticObject getMemberName() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
+        throw EspressoError.shouldNotReachHere("Exception should have been thrown earlier by calling checkFail.");
     }
 
     @Override
-    public boolean isSuccess() {
-        return false;
+    public StaticObject getUnboxedAppendix() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Exception should have been thrown earlier by calling checkFail.");
+    }
+
+    @Override
+    public Symbol<Type>[] getParsedSignature() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Exception should have been thrown earlier by calling checkFail.");
     }
 }

@@ -230,17 +230,10 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public CallSiteLink linkInvokeDynamic(ObjectKlass accessingKlass, int index, Method method, int bci) {
-        LinkableInvokeDynamicConstant indy = (LinkableInvokeDynamicConstant) resolvedAt(accessingKlass, index, "indy");
-        try {
-            return indy.link(this, accessingKlass, index, method, bci);
-        } catch (CallSiteLinkingFailure failure) {
-            // On failure, shortcut subsequent linking operations.
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                resolvedConstants[index] = failure.failConstant();
-            }
-            throw failure.cause;
-        }
+        ResolvedInvokeDynamicConstant indy = (ResolvedInvokeDynamicConstant) resolvedAt(accessingKlass, index, "indy");
+        CallSiteLink link = indy.link(this, accessingKlass, index, method, bci);
+        link.checkFail(getContext().getMeta());
+        return link;
     }
 
     public ResolvedInvokeDynamicConstant peekResolvedInvokeDynamic(int index) {

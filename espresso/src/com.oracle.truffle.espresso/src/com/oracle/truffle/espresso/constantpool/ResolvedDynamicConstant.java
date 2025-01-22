@@ -25,11 +25,12 @@ package com.oracle.truffle.espresso.constantpool;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public interface ResolvedDynamicConstant extends DynamicConstant, StickyFailureConstant {
+public interface ResolvedDynamicConstant extends DynamicConstant, StickyFallible, Resolvable.ResolvedConstant {
     void putResolved(VirtualFrame frame, int top, BytecodeNode node);
 
     JavaKind getKind();
@@ -42,6 +43,7 @@ public interface ResolvedDynamicConstant extends DynamicConstant, StickyFailureC
         return Meta.box(meta, value);
     }
 
+    @Override
     default void checkFail(Meta meta) {
     }
 }

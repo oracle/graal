@@ -22,19 +22,56 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public sealed interface CallSiteLink extends StickyFallible permits FailedCallSiteLink, SuccessfulCallSiteLink {
-    StaticObject getMemberName();
+public final class SuccessfulCallSiteLink implements CallSiteLink {
+    private final Method method;
+    private final int bci;
+    final StaticObject memberName;
+    final StaticObject unboxedAppendix;
 
-    StaticObject getUnboxedAppendix();
+    @CompilationFinal(dimensions = 1) //
+    final Symbol<Type>[] parsedSignature;
 
-    Symbol<Type>[] getParsedSignature();
+    public SuccessfulCallSiteLink(Method method, int bci, StaticObject memberName, StaticObject unboxedAppendix, Symbol<Type>[] parsedSignature) {
+        this.method = method;
+        this.bci = bci;
+        this.memberName = memberName;
+        this.unboxedAppendix = unboxedAppendix;
+        this.parsedSignature = parsedSignature;
+    }
 
-    boolean matchesCallSite(Method siteMethod, int siteBci);
+    @Override
+    public StaticObject getMemberName() {
+        return memberName;
+    }
 
-    boolean isFailed();
+    @Override
+    public StaticObject getUnboxedAppendix() {
+        return unboxedAppendix;
+    }
+
+    @Override
+    public Symbol<Type>[] getParsedSignature() {
+        return parsedSignature;
+    }
+
+    @Override
+    public boolean matchesCallSite(Method siteMethod, int siteBci) {
+        return bci == siteBci && method == siteMethod;
+    }
+
+    @Override
+    public void checkFail(Meta meta) {
+    }
+
+    @Override
+    public boolean isFailed() {
+        return false;
+    }
 }

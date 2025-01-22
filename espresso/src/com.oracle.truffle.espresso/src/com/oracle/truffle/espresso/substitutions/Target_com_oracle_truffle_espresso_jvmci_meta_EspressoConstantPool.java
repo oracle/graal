@@ -241,8 +241,8 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         if (opcode == INVOKEDYNAMIC) {
             LOGGER.finer(() -> "ECP.lookupResolvedMethod resolving indy in CP of %s at cpi=0x%08x".formatted(cpHolderKlass, cpi));
             CallSiteLink callSiteLink = getCallSiteLink(self, cpi, meta);
-            if (callSiteLink == null) {
-                LOGGER.fine(() -> "ECP.lookupResolvedMethod no call site link in CP of %s at cpi=0x%08x".formatted(cpHolderKlass, cpi));
+            if (callSiteLink == null || callSiteLink.isFailed()) {
+                LOGGER.fine(() -> "ECP.lookupResolvedMethod no call site link or failed link in CP of %s at cpi=0x%08x".formatted(cpHolderKlass, cpi));
                 return StaticObject.NULL;
             }
             Method target = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(callSiteLink.getMemberName());
@@ -444,18 +444,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
                 JVMCIIndyData.Location location = indyData.getLocation(cpi);
                 assert location != null;
                 int indyCpi = indyCpi(cpi);
-                RuntimeConstantPool constantPool1 = cpHolderKlass.getConstantPool();
-                PoolConstant poolConstant = constantPool1.maybeResolvedAt(indyCpi, meta);
-                CallSiteLink callSiteLink = null;
+                PoolConstant poolConstant = constantPool.maybeResolvedAt(indyCpi, meta);
                 if (!(poolConstant instanceof InvokeDynamicConstant)) {
                     throw meta.throwIllegalArgumentExceptionBoundary();
                 }
-                if (poolConstant instanceof ResolvedInvokeDynamicConstant resolvedIndy) {
-                    callSiteLink = resolvedIndy.getCallSiteLink(location.method(), location.bci());
-                }
-                if (callSiteLink == null) {
-                    constantPool.linkInvokeDynamic(cpHolderKlass, indyCpi, location.method(), location.bci());
-                }
+                constantPool.linkInvokeDynamic(cpHolderKlass, indyCpi, location.method(), location.bci());
                 return false;
             }
             case Bytecodes.GETSTATIC:
@@ -593,7 +586,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             LOGGER.finer(() -> "ECP.lookupAppendix: Looking up CallSiteLink for index=" + Integer.toHexString(index) + " in " +
                             meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(meta.jvmci.EspressoConstantPool_holder.getObject(self)));
             CallSiteLink callSiteLink = getCallSiteLink(self, index, meta);
-            if (callSiteLink == null) {
+            if (callSiteLink == null || callSiteLink.isFailed()) {
                 return StaticObject.NULL;
             }
             return wrapEspressoObjectConstant(callSiteLink.getUnboxedAppendix(), meta);

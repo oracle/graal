@@ -25,5 +25,5 @@ package com.oracle.truffle.espresso.constantpool;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 
-public interface ResolvedClassConstant extends ClassConstant, Resolvable.ResolvedConstant, StickyFailureConstant {
+public interface ResolvedClassConstant extends ClassConstant, StickyFallible, Resolvable.ResolvedConstant {
 }
