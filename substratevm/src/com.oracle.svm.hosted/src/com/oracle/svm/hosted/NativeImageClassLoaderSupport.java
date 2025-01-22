@@ -473,8 +473,13 @@ public final class NativeImageClassLoaderSupport {
         });
     }
 
-    private static void warn(String m) {
-        LogUtils.warning("WARNING", m, true);
+    /**
+     * Print a specially-formatted warning to stderr for compatibility with the output of `java`.
+     */
+    private static void warn(String message) {
+        // Checkstyle: Allow raw info or warning printing - begin
+        System.err.println("WARNING: " + message);
+        // Checkstyle: Allow raw info or warning printing - end
     }
 
     private static void processListModulesOption(ModuleLayer layer) {
@@ -560,11 +565,7 @@ public final class NativeImageClassLoaderSupport {
             try {
                 return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
             } catch (FindException e) {
-                /*
-                 * Print a specially-formatted warning to be 100% compatible with the output of
-                 * `java` in this case.
-                 */
-                LogUtils.warning("WARNING", e.getMessage(), true);
+                warn(e.getMessage());
                 return Stream.empty();
             }
         });

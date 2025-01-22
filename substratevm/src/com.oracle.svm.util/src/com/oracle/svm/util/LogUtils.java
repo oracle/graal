@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.util;
 
-import java.io.PrintStream;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -67,15 +65,7 @@ public class LogUtils {
      * Print a warning.
      */
     public static void warning(String message) {
-        warning("Warning", message, false);
-    }
-
-    /**
-     * Print a warning message with the given prefix, optionally to stderr.
-     */
-    public static void warning(String prefix, String message, boolean stderr) {
-        PrintStream out = stderr ? System.err : System.out;
-        out.println(prefix + ": " + message);
+        System.out.println("Warning: " + message);
     }
 
     /**
