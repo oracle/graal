@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,8 @@ import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.PrintStream;
 
+import org.graalvm.nativeimage.ImageInfo;
+
 import jdk.graal.compiler.api.runtime.GraalRuntime;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.MethodFilter;
@@ -48,7 +50,6 @@ import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 import jdk.vm.ci.services.Services;
-import org.graalvm.nativeimage.ImageInfo;
 
 public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
@@ -244,7 +245,7 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
         }
     }
 
-    static boolean shouldExclude(HotSpotResolvedJavaMethod method) {
+    public static boolean shouldExclude(HotSpotResolvedJavaMethod method) {
         if (graalCompileOnlyFilter != null) {
             String javaClassName = method.getDeclaringClass().toJavaName();
             String name = method.getName();
