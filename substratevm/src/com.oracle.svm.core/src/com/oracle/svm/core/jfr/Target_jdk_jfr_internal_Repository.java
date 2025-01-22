@@ -64,15 +64,15 @@ public final class Target_jdk_jfr_internal_Repository {
 @SuppressWarnings("unused")
 final class Target_jdk_jfr_internal_Repository_JDK21 {
     @Alias //
-    private Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocation;
+    private Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 baseLocation;
 
     @Alias //
-    public native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocation) throws IOException;
+    public native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 baseLocation) throws IOException;
 
     @Substitute
     synchronized void ensureRepository() throws Exception {
         if (baseLocation == null) {
-            Target_jdk_jfr_internal_SecuritySupport_SafePath path = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("java.io.tmpdir", null);
+            Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 path = Target_jdk_jfr_internal_SecuritySupport_JDK21.getPathInProperty("java.io.tmpdir", null);
             setBasePath(path);
         }
     }

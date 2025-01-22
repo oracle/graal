@@ -34,21 +34,21 @@ import com.oracle.svm.core.util.VMError;
 
 @TargetClass(value = jdk.jfr.internal.SecuritySupport.class, onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
 @SuppressWarnings("unused")
-public final class Target_jdk_jfr_internal_SecuritySupport {
+public final class Target_jdk_jfr_internal_SecuritySupport_JDK21 {
 
     @Substitute
-    public static List<Target_jdk_jfr_internal_SecuritySupport_SafePath> getPredefinedJFCFiles() {
+    public static List<Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21> getPredefinedJFCFiles() {
         throw VMError.shouldNotReachHere("Paths from the image build must not be embedded into the Native Image.");
     }
 
     @Alias
-    static native Target_jdk_jfr_internal_SecuritySupport_SafePath getPathInProperty(String prop, String subPath);
+    static native Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 getPathInProperty(String prop, String subPath);
 }
 
 @TargetClass(className = "jdk.jfr.internal.SecuritySupport$SafePath", onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
 @SuppressWarnings("unused")
-final class Target_jdk_jfr_internal_SecuritySupport_SafePath {
+final class Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 {
     @Alias
-    Target_jdk_jfr_internal_SecuritySupport_SafePath(String path) {
+    Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21(String path) {
     }
 }

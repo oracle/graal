@@ -149,7 +149,7 @@ public class JfrManager {
 
     private static void setRepositoryBasePath(String repositoryPath) throws IOException {
         if (JavaVersionUtil.JAVA_SPEC == 21) {
-            Target_jdk_jfr_internal_SecuritySupport_SafePath repositorySafePath = new Target_jdk_jfr_internal_SecuritySupport_SafePath(repositoryPath);
+            Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 repositorySafePath = new Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21(repositoryPath);
             SubstrateUtil.cast(Repository.getRepository(), Target_jdk_jfr_internal_Repository_JDK21.class).setBasePath(repositorySafePath);
         } else {
             Path path = Paths.get(repositoryPath);
