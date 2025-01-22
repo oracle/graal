@@ -670,6 +670,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
             AnalysisMethod override = resolveConcreteMethod(method, null);
             if (override != null && !override.equals(method)) {
                 ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+                if (method.reachableInCurrentLayer()) {
+                    override.setReachableInCurrentLayer();
+                }
             }
         });
     }
