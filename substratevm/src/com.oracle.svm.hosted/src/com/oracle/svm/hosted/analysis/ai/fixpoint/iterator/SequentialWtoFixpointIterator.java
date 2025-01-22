@@ -30,8 +30,9 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
         clear();
         WeakTopologicalOrdering weakTopologicalOrdering = new WeakTopologicalOrdering(cfgGraph);
+        logger.logToFile("Weak Topological Ordering for given graph: ");
         for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
-            debug.log(component.toString());
+            logger.logToFile(component.toString());
         }
 
         for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
@@ -50,6 +51,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
     }
 
     private void analyzeVertex(WtoVertex vertex) {
+        logger.logToFile("Analyzing vertex: " + vertex);
         Node node = vertex.block().getBeginNode();
         if (node == cfgGraph.graph.start()) {
             abstractStateMap.setPrecondition(node, initialDomain);
@@ -59,6 +61,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
     }
 
     private void analyzeCycle(WtoCycle cycle) {
+        logger.logToFile("Analyzing cycle: " + cycle);
         Node head = cycle.block().getBeginNode();
         boolean iterate = true;
 
