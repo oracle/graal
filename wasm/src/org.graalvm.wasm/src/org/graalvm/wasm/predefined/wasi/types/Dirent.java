@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /** A directory entry. */
 public final class Dirent {
@@ -60,13 +61,13 @@ public final class Dirent {
     public static final int BYTES = 24;
 
     /** Reads the offset of the next directory entry stored in this directory. */
-    public static long readDNext(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 0);
+    public static long readDNext(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 0);
     }
 
     /** Writes the offset of the next directory entry stored in this directory. */
-    public static void writeDNext(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 0, value);
+    public static void writeDNext(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 0, value);
     }
 
     /** Writes the offset of the next directory entry stored in this directory. */
@@ -75,13 +76,13 @@ public final class Dirent {
     }
 
     /** Reads the serial number of the file referred to by this directory entry. */
-    public static long readDIno(Node node, WasmMemory memory, int address) {
-        return memory.load_i64(node, address + 8);
+    public static long readDIno(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i64(memory, node, address + 8);
     }
 
     /** Writes the serial number of the file referred to by this directory entry. */
-    public static void writeDIno(Node node, WasmMemory memory, int address, long value) {
-        memory.store_i64(node, address + 8, value);
+    public static void writeDIno(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, long value) {
+        memoryLib.store_i64(memory, node, address + 8, value);
     }
 
     /** Writes the serial number of the file referred to by this directory entry. */
@@ -90,13 +91,13 @@ public final class Dirent {
     }
 
     /** Reads the length of the name of the directory entry. */
-    public static int readDNamlen(Node node, WasmMemory memory, int address) {
-        return memory.load_i32(node, address + 16);
+    public static int readDNamlen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return memoryLib.load_i32(memory, node, address + 16);
     }
 
     /** Writes the length of the name of the directory entry. */
-    public static void writeDNamlen(Node node, WasmMemory memory, int address, int value) {
-        memory.store_i32(node, address + 16, value);
+    public static void writeDNamlen(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, int value) {
+        memoryLib.store_i32(memory, node, address + 16, value);
     }
 
     /** Writes the length of the name of the directory entry. */
@@ -105,13 +106,13 @@ public final class Dirent {
     }
 
     /** Reads the type of the file referred to by this directory entry. */
-    public static Filetype readDType(Node node, WasmMemory memory, int address) {
-        return Filetype.fromValue((byte) memory.load_i32_8u(node, address + 20));
+    public static Filetype readDType(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return Filetype.fromValue((byte) memoryLib.load_i32_8u(memory, node, address + 20));
     }
 
     /** Writes the type of the file referred to by this directory entry. */
-    public static void writeDType(Node node, WasmMemory memory, int address, Filetype value) {
-        memory.store_i32_8(node, address + 20, value.toValue());
+    public static void writeDType(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, Filetype value) {
+        memoryLib.store_i32_8(memory, node, address + 20, value.toValue());
     }
 
     /** Writes the type of the file referred to by this directory entry. */

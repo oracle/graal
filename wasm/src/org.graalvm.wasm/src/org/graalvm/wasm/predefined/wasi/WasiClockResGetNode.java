@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,7 @@ public final class WasiClockResGetNode extends WasmBuiltinRootNode {
         switch (clockId) {
             case Realtime:
             case Monotonic:
-                memory.store_i64(this, resultAddress, CLOCK_RESOLUTION_NANOS);
+                memoryLib.store_i64(memory, this, resultAddress, CLOCK_RESOLUTION_NANOS);
                 break;
             case ProcessCputimeId:
             case ThreadCputimeId:
