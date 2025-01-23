@@ -57,10 +57,10 @@ public class WasmMemoryFactory {
             if (directByteBufferMemoryAccess || shared) {
                 return new UnsafeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
             } else if (declaredMaxSize > ByteArrayWasmMemory.MAX_ALLOWED_SIZE) {
-                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
+                return new NativeWasmMemory(declaredMinSize, declaredMaxSize, indexType64);
             }
         }
-        return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, indexType64, shared);
+        return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, indexType64);
     }
 
     public static long getMaximumAllowedSize(boolean shared, boolean unsafeMemory, boolean directByteBufferMemoryAccess) {
