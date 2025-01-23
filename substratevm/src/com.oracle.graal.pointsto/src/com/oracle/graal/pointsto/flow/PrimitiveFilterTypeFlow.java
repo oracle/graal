@@ -43,12 +43,14 @@ public class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
     private final TypeFlow<?> left;
     private final TypeFlow<?> right;
     private final PrimitiveComparison comparison;
+    private final boolean isUnsigned;
 
-    public PrimitiveFilterTypeFlow(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeFlow<?> right, PrimitiveComparison comparison) {
+    public PrimitiveFilterTypeFlow(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeFlow<?> right, PrimitiveComparison comparison, boolean isUnsigned) {
         super(position, declaredType);
         this.left = left;
         this.right = right;
         this.comparison = comparison;
+        this.isUnsigned = isUnsigned;
     }
 
     private PrimitiveFilterTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, PrimitiveFilterTypeFlow original) {
@@ -56,6 +58,7 @@ public class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
         this.left = methodFlows.lookupCloneOf(bb, original.left);
         this.right = methodFlows.lookupCloneOf(bb, original.right);
         this.comparison = original.comparison;
+        this.isUnsigned = original.isUnsigned;
     }
 
     @Override
@@ -85,7 +88,7 @@ public class PrimitiveFilterTypeFlow extends TypeFlow<BytecodePosition> {
         var rightState = right.getOutputState(bb);
         assert leftState.isPrimitive() || leftState.isEmpty() : left;
         assert rightState.isPrimitive() || rightState.isEmpty() : right;
-        return TypeState.filter(leftState, comparison, rightState);
+        return TypeState.filter(leftState, comparison, rightState, isUnsigned);
     }
 
     public PrimitiveComparison getComparison() {
