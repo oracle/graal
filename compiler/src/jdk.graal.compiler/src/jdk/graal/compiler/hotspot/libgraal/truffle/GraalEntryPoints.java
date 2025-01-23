@@ -24,10 +24,13 @@
  */
 package jdk.graal.compiler.hotspot.libgraal.truffle;
 
+import java.util.function.Supplier;
+
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
 import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
+
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
@@ -36,8 +39,6 @@ import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.function.Supplier;
 
 /**
  * Guest Graal entry points for Truffle to libgraal calls.
@@ -124,6 +125,10 @@ public final class GraalEntryPoints {
 
     public static String[] getNodeTypes(Object graphInfo, boolean simpleNames) {
         return ((GraphInfo) graphInfo).getNodeTypes(simpleNames);
+    }
+
+    public static long getCompilationId(Object compilationResultInfo) {
+        return ((CompilationResultInfo) compilationResultInfo).getCompilationId();
     }
 
     public static int getTargetCodeSize(Object compilationResultInfo) {

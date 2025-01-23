@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,37 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.runtime.jfr;
+package com.oracle.truffle.api.test;
 
-import java.util.function.Supplier;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-/**
- * The JFR event describing a Truffle compilation.
- */
-public interface CompilationEvent extends RootFunctionEvent {
+import org.graalvm.polyglot.Context;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
-    void compilationStarted();
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-    void failed(int tier, boolean permanent, String reason, Supplier<String> lazyStackTrace);
+public class CompilationIdLogTest {
 
-    void succeeded(int tier);
-
-    void setCompiledCodeSize(int size);
-
-    void setCompiledCodeAddress(long addr);
-
-    void setInlinedCalls(int count);
-
-    void setDispatchedCalls(int count);
-
-    void setGraalNodeCount(int count);
-
-    void setPartialEvaluationNodeCount(int count);
-
-    void setPartialEvaluationTime(long time);
-
-    void setCompilationId(String id);
+    @Test
+    public void testCompilationIdAvailable() throws IOException {
+        /*
+         * This test runs with jargraal, libgraal, polyglot isolates, and on SVM.
+         */
+        Runtime.Version jdkVersion = Runtime.version();
+        Assume.assumeTrue("Not running with optimizing runtime", TruffleTestAssumptions.isOptimizingRuntime());
+        Assume.assumeTrue("Too old JDK feature version", jdkVersion.feature() >= 25);
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        Context context = Context.newBuilder().out(out).err(out).allowExperimentalOptions(true).option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation",
+                                        "false").option("engine.TraceCompilation", "true").build()) {
+            context.eval("instrumentation-test-language", "CONSTANT(true)");
+            Pattern compilationIdPattern = Pattern.compile("\\[engine] opt done.*CompId \\d+");
+            Matcher compilationIdMatcher = compilationIdPattern.matcher(out.toString());
+            Assert.assertTrue(out.toString(), compilationIdMatcher.find());
+        }
+    }
 }

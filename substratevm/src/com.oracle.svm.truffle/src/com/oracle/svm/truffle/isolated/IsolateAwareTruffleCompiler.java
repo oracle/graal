@@ -58,11 +58,11 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 
-import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.TruffleCompilation;
+import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
 import jdk.graal.compiler.word.Word;
 
@@ -107,7 +107,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                 if (listener != null) {
                     eventContext = new IsolatedEventContext(listener, compilable, task);
                 }
-                ClientHandle<CompilationIdentifier> compilationIdentifier = client.hand(delegate.createCompilationIdentifier(task, compilable));
+                ClientHandle<TruffleCompilationIdentifier> compilationIdentifier = client.hand(delegate.createCompilationIdentifier(task, compilable));
                 ClientHandle<String> thrownException = doCompile0(context,
                                 (ClientIsolateThread) CurrentIsolate.getCurrentThread(),
                                 ImageHeapObjects.ref(delegate),
@@ -186,7 +186,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                     ImageHeapRef<SubstrateTruffleCompilerImpl> delegateRef,
                     ClientHandle<TruffleCompilationTask> taskHandle,
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
-                    ClientHandle<CompilationIdentifier> compilationIdentifier,
+                    ClientHandle<TruffleCompilationIdentifier> compilationIdentifier,
                     ClientHandle<IsolatedEventContext> eventContextHandle,
                     boolean firstCompilation) {
         IsolatedCompileContext.set(new IsolatedCompileContext(client));

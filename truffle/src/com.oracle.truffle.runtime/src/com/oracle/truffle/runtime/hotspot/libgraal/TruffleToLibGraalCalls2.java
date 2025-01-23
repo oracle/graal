@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.runtime.jfr;
+package com.oracle.truffle.runtime.hotspot.libgraal;
 
-import java.util.function.Supplier;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilationId;
 
-/**
- * The JFR event describing a Truffle compilation.
- */
-public interface CompilationEvent extends RootFunctionEvent {
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleToLibGraal;
 
-    void compilationStarted();
+final class TruffleToLibGraalCalls2 {
 
-    void failed(int tier, boolean permanent, String reason, Supplier<String> lazyStackTrace);
-
-    void succeeded(int tier);
-
-    void setCompiledCodeSize(int size);
-
-    void setCompiledCodeAddress(long addr);
-
-    void setInlinedCalls(int count);
-
-    void setDispatchedCalls(int count);
-
-    void setGraalNodeCount(int count);
-
-    void setPartialEvaluationNodeCount(int count);
-
-    void setPartialEvaluationTime(long time);
-
-    void setCompilationId(String id);
+    @TruffleToLibGraal(GetCompilationId)
+    static native long getCompilationId(long isolateThreadAddress, long handle);
 }
