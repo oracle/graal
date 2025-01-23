@@ -352,6 +352,11 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
         # Added by BaristaNativeImageCommand
         return []
 
+    def extra_image_build_argument(self, benchmark, args):
+        return [
+            "--install-exit-handlers"
+        ] + super().extra_image_build_argument(benchmark, args)
+
     def run(self, benchmarks, bmSuiteArgs) -> mx_benchmark.DataPoints:
         self.context = mx_sdk_benchmark.BaristaBenchmarkSuite.RuntimeContext(self, None, benchmarks[0], bmSuiteArgs)
         return self.intercept_run(super(), benchmarks, bmSuiteArgs)
@@ -460,8 +465,6 @@ class BaristaNativeImageBenchmarkSuite(mx_sdk_benchmark.BaristaBenchmarkSuite, m
             if stage == mx_sdk_benchmark.Stage.INSTRUMENT_RUN:
                 # Make instrument run short
                 ni_barista_cmd += self._short_load_testing_phases()
-                # Workaround for iprof not existing for specific apps because the shutdown hook does not trigger GR-60456
-                self._updateCommandOption(ni_barista_cmd, "--vm-options", "-v", "-XX:ProfilingDumpPeriod=1")
                 # Add explicit instrument stage args
                 ni_barista_cmd += mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-profile-run-arg=", suite.context.bmSuiteArgs) or mx_sdk_benchmark.parse_prefixed_args("-Dnative-image.benchmark.extra-run-arg=", suite.context.bmSuiteArgs)
             else:
