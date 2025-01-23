@@ -91,10 +91,7 @@ public class WasmContextOptions {
         this.relaxedSimd = readBooleanOption(WasmOptions.RelaxedSIMD);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
-        // Temporary: Default DirectByteBufferMemoryAccess to true when UseUnsafeMemory is set to
-        // true. After GraalNode.js starts setting DirectByteBufferMemoryAccess, we can default
-        // DirectByteBufferMemoryAccess to false.
-        this.directByteBufferMemoryAccess = WasmOptions.DirectByteBufferMemoryAccess.hasBeenSet(optionValues) ? readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess) : unsafeMemory;
+        this.directByteBufferMemoryAccess = readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess);
         this.debugCompDirectory = readStringOption(WasmOptions.DebugCompDirectory);
     }
 
