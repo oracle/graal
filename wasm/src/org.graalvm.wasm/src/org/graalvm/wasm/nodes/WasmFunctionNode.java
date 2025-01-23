@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,6 +104,7 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /**
  * This node represents the function body of a WebAssembly function. It executes the instruction
@@ -153,22 +154,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @CompilationFinal(dimensions = 1) private byte[] bytecode;
     @CompilationFinal private WasmNotifyFunction notifyFunction;
 
-    public WasmFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
+    @Children private WasmMemoryLibrary[] memoryLibs;
+
+    public WasmFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes, WasmMemoryLibrary[] memoryLibs) {
         this.module = module;
         this.codeEntry = codeEntry;
         this.bytecodeStartOffset = bytecodeStartOffset;
         this.bytecodeEndOffset = bytecodeEndOffset;
         this.bytecode = codeEntry.bytecode();
-    }
-
-    @SuppressWarnings("hiding")
-    public void initializeCallNodes(Node[] callNodes) {
-        assert this.callNodes == null;
-        this.callNodes = callNodes;
-    }
-
-    public int startOffset() {
-        return bytecodeStartOffset;
+        this.callNodes = new Node[callNodes.length];
+        for (int childIndex = 0; childIndex < callNodes.length; childIndex++) {
+            this.callNodes[childIndex] = insert(callNodes[childIndex].deepCopy());
+        }
+        this.memoryLibs = memoryLibs;
     }
 
     private void enterErrorBranch() {
@@ -183,12 +181,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.notifyFunction = notifyFunction;
     }
 
-    private WasmMemory memory0(WasmInstance instance) {
-        return memory(instance, 0).checkSize(module.memoryInitialSize(0));
+    private WasmMemory memory(WasmInstance instance, int index) {
+        return instance.memory(index).checkSize(memoryLib(index), module.memoryInitialSize(index));
     }
 
-    private WasmMemory memory(WasmInstance instance, int index) {
-        return module.memory(instance, index);
+    private WasmMemoryLibrary memoryLib(int memoryIndex) {
+        return memoryLibs[memoryIndex];
     }
 
     // region OSR support
@@ -270,7 +268,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int line = startLine;
 
         // Note: The module may not have any memories.
-        final WasmMemory zeroMemory = !codeEntry.usesMemoryZero() ? null : memory0(instance);
+        final WasmMemory zeroMemory = !codeEntry.usesMemoryZero() ? null : memory(instance, 0);
+        final WasmMemoryLibrary zeroMemoryLib = !codeEntry.usesMemoryZero() ? null : memoryLib(0);
 
         check(bytecode.length, (1 << 31) - 1);
 
@@ -808,7 +807,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     }
                     final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                     final WasmMemory memory = memory(instance, memoryIndex);
-                    load(memory, frame, stackPointer - 1, opcode, address);
+                    load(memory, memoryLib(memoryIndex), frame, stackPointer - 1, opcode, address);
                     break;
                 }
                 case Bytecode.I32_LOAD_U8: {
@@ -818,7 +817,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    int value = zeroMemory.load_i32(this, address);
+                    int value = zeroMemoryLib.load_i32(zeroMemory, this, address);
                     pushInt(frame, stackPointer - 1, value);
                     break;
                 }
@@ -829,7 +828,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    int value = zeroMemory.load_i32(this, address);
+                    int value = zeroMemoryLib.load_i32(zeroMemory, this, address);
                     pushInt(frame, stackPointer - 1, value);
                     break;
                 }
@@ -852,7 +851,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    load(zeroMemory, frame, stackPointer - 1, opcode, address);
+                    load(zeroMemory, zeroMemoryLib, frame, stackPointer - 1, opcode, address);
                     break;
                 }
                 case Bytecode.I64_LOAD_I32:
@@ -874,7 +873,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int baseAddress = popInt(frame, stackPointer - 1);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    load(zeroMemory, frame, stackPointer - 1, opcode, address);
+                    load(zeroMemory, zeroMemoryLib, frame, stackPointer - 1, opcode, address);
                     break;
                 }
                 case Bytecode.I32_STORE:
@@ -917,7 +916,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     }
                     final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                     final WasmMemory memory = memory(instance, memoryIndex);
-                    store(memory, frame, stackPointer - 1, opcode, address);
+                    store(memory, memoryLib(memoryIndex), frame, stackPointer - 1, opcode, address);
                     stackPointer -= 2;
                     break;
                 }
@@ -929,7 +928,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
                     final int value = popInt(frame, stackPointer - 1);
-                    zeroMemory.store_i32(this, address, value);
+                    zeroMemoryLib.store_i32(zeroMemory, this, address, value);
                     stackPointer -= 2;
                     break;
                 }
@@ -941,7 +940,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
                     final int value = popInt(frame, stackPointer - 1);
-                    zeroMemory.store_i32(this, address, value);
+                    zeroMemoryLib.store_i32(zeroMemory, this, address, value);
                     stackPointer -= 2;
                     break;
                 }
@@ -959,7 +958,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int baseAddress = popInt(frame, stackPointer - 2);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    store(zeroMemory, frame, stackPointer - 1, opcode, address);
+                    store(zeroMemory, zeroMemoryLib, frame, stackPointer - 1, opcode, address);
                     stackPointer -= 2;
 
                     break;
@@ -978,7 +977,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int baseAddress = popInt(frame, stackPointer - 2);
                     final long address = effectiveMemoryAddress(memOffset, baseAddress);
 
-                    store(zeroMemory, frame, stackPointer - 1, opcode, address);
+                    store(zeroMemory, zeroMemoryLib, frame, stackPointer - 1, opcode, address);
                     stackPointer -= 2;
 
                     break;
@@ -987,7 +986,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int memoryIndex = rawPeekI32(bytecode, offset);
                     offset += 4;
                     final WasmMemory memory = memory(instance, memoryIndex);
-                    int pageSize = (int) memory.size();
+                    int pageSize = (int) memoryLib(memoryIndex).size(memory);
                     pushInt(frame, stackPointer, pageSize);
                     stackPointer++;
                     break;
@@ -997,7 +996,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     offset += 4;
                     final WasmMemory memory = memory(instance, memoryIndex);
                     int extraSize = popInt(frame, stackPointer - 1);
-                    int previousSize = (int) memory.grow(extraSize);
+                    int previousSize = (int) memoryLib(memoryIndex).grow(memory, extraSize);
                     pushInt(frame, stackPointer - 1, previousSize);
                     break;
                 }
@@ -1671,7 +1670,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int memoryIndex = rawPeekI32(bytecode, offset);
                             offset += 4;
                             final WasmMemory memory = memory(instance, memoryIndex);
-                            long pageSize = memory.size();
+                            long pageSize = memoryLib(memoryIndex).size(memory);
                             pushLong(frame, stackPointer, pageSize);
                             stackPointer++;
                             break;
@@ -1681,7 +1680,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             offset += 4;
                             final WasmMemory memory = memory(instance, memoryIndex);
                             long extraSize = popLong(frame, stackPointer - 1);
-                            long previousSize = memory.grow(extraSize);
+                            long previousSize = memoryLib(memoryIndex).grow(memory, extraSize);
                             pushLong(frame, stackPointer - 1, previousSize);
                             break;
                         }
@@ -1713,7 +1712,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     }
 
                     final WasmMemory memory = memory(instance, memoryIndex);
-                    final int stackPointerDecrement = executeAtomic(frame, stackPointer, atomicOpcode, memory, memOffset, indexType64);
+                    final int stackPointerDecrement = executeAtomic(frame, stackPointer, atomicOpcode, memory, memoryLib(memoryIndex), memOffset, indexType64);
                     stackPointer -= stackPointerDecrement;
                     break;
                 }
@@ -1820,103 +1819,103 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void load(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, long address) {
+    private void load(WasmMemory memory, WasmMemoryLibrary memoryLib, VirtualFrame frame, int stackPointer, int opcode, long address) {
         switch (opcode) {
             case Bytecode.I32_LOAD:
             case Bytecode.I32_LOAD_U8:
             case Bytecode.I32_LOAD_I32: {
-                final int value = memory.load_i32(this, address);
+                final int value = memoryLib.load_i32(memory, this, address);
                 pushInt(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I64_LOAD:
             case Bytecode.I64_LOAD_U8:
             case Bytecode.I64_LOAD_I32: {
-                final long value = memory.load_i64(this, address);
+                final long value = memoryLib.load_i64(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.F32_LOAD:
             case Bytecode.F32_LOAD_U8:
             case Bytecode.F32_LOAD_I32: {
-                final float value = memory.load_f32(this, address);
+                final float value = memoryLib.load_f32(memory, this, address);
                 pushFloat(frame, stackPointer, value);
                 break;
             }
             case Bytecode.F64_LOAD:
             case Bytecode.F64_LOAD_U8:
             case Bytecode.F64_LOAD_I32: {
-                final double value = memory.load_f64(this, address);
+                final double value = memoryLib.load_f64(memory, this, address);
                 pushDouble(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I32_LOAD8_S:
             case Bytecode.I32_LOAD8_S_U8:
             case Bytecode.I32_LOAD8_S_I32: {
-                final int value = memory.load_i32_8s(this, address);
+                final int value = memoryLib.load_i32_8s(memory, this, address);
                 pushInt(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I32_LOAD8_U:
             case Bytecode.I32_LOAD8_U_U8:
             case Bytecode.I32_LOAD8_U_I32: {
-                final int value = memory.load_i32_8u(this, address);
+                final int value = memoryLib.load_i32_8u(memory, this, address);
                 pushInt(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I32_LOAD16_S:
             case Bytecode.I32_LOAD16_S_U8:
             case Bytecode.I32_LOAD16_S_I32: {
-                final int value = memory.load_i32_16s(this, address);
+                final int value = memoryLib.load_i32_16s(memory, this, address);
                 pushInt(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I32_LOAD16_U:
             case Bytecode.I32_LOAD16_U_U8:
             case Bytecode.I32_LOAD16_U_I32: {
-                final int value = memory.load_i32_16u(this, address);
+                final int value = memoryLib.load_i32_16u(memory, this, address);
                 pushInt(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I64_LOAD8_S:
             case Bytecode.I64_LOAD8_S_U8:
             case Bytecode.I64_LOAD8_S_I32: {
-                final long value = memory.load_i64_8s(this, address);
+                final long value = memoryLib.load_i64_8s(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I64_LOAD8_U:
             case Bytecode.I64_LOAD8_U_U8:
             case Bytecode.I64_LOAD8_U_I32: {
-                final long value = memory.load_i64_8u(this, address);
+                final long value = memoryLib.load_i64_8u(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I64_LOAD16_S:
             case Bytecode.I64_LOAD16_S_U8:
             case Bytecode.I64_LOAD16_S_I32: {
-                final long value = memory.load_i64_16s(this, address);
+                final long value = memoryLib.load_i64_16s(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I64_LOAD16_U:
             case Bytecode.I64_LOAD16_U_U8:
             case Bytecode.I64_LOAD16_U_I32: {
-                final long value = memory.load_i64_16u(this, address);
+                final long value = memoryLib.load_i64_16u(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I64_LOAD32_S:
             case Bytecode.I64_LOAD32_S_U8:
             case Bytecode.I64_LOAD32_S_I32: {
-                final long value = memory.load_i64_32s(this, address);
+                final long value = memoryLib.load_i64_32s(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.I64_LOAD32_U:
             case Bytecode.I64_LOAD32_U_U8:
             case Bytecode.I64_LOAD32_U_I32: {
-                final long value = memory.load_i64_32u(this, address);
+                final long value = memoryLib.load_i64_32u(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
@@ -1925,69 +1924,69 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void store(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, long address) {
+    private void store(WasmMemory memory, WasmMemoryLibrary memoryLib, VirtualFrame frame, int stackPointer, int opcode, long address) {
         switch (opcode) {
             case Bytecode.I32_STORE:
             case Bytecode.I32_STORE_U8:
             case Bytecode.I32_STORE_I32: {
                 final int value = popInt(frame, stackPointer);
-                memory.store_i32(this, address, value);
+                memoryLib.store_i32(memory, this, address, value);
                 break;
             }
             case Bytecode.I64_STORE:
             case Bytecode.I64_STORE_U8:
             case Bytecode.I64_STORE_I32: {
                 final long value = popLong(frame, stackPointer);
-                memory.store_i64(this, address, value);
+                memoryLib.store_i64(memory, this, address, value);
                 break;
             }
             case Bytecode.F32_STORE:
             case Bytecode.F32_STORE_U8:
             case Bytecode.F32_STORE_I32: {
                 final float value = popFloat(frame, stackPointer);
-                memory.store_f32(this, address, value);
+                memoryLib.store_f32(memory, this, address, value);
                 break;
             }
             case Bytecode.F64_STORE:
             case Bytecode.F64_STORE_U8:
             case Bytecode.F64_STORE_I32: {
                 final double value = popDouble(frame, stackPointer);
-                memory.store_f64(this, address, value);
+                memoryLib.store_f64(memory, this, address, value);
                 break;
             }
             case Bytecode.I32_STORE_8:
             case Bytecode.I32_STORE_8_U8:
             case Bytecode.I32_STORE_8_I32: {
                 final int value = popInt(frame, stackPointer);
-                memory.store_i32_8(this, address, (byte) value);
+                memoryLib.store_i32_8(memory, this, address, (byte) value);
                 break;
             }
             case Bytecode.I32_STORE_16:
             case Bytecode.I32_STORE_16_U8:
             case Bytecode.I32_STORE_16_I32: {
                 final int value = popInt(frame, stackPointer);
-                memory.store_i32_16(this, address, (short) value);
+                memoryLib.store_i32_16(memory, this, address, (short) value);
                 break;
             }
             case Bytecode.I64_STORE_8:
             case Bytecode.I64_STORE_8_U8:
             case Bytecode.I64_STORE_8_I32: {
                 final long value = popLong(frame, stackPointer);
-                memory.store_i64_8(this, address, (byte) value);
+                memoryLib.store_i64_8(memory, this, address, (byte) value);
                 break;
             }
             case Bytecode.I64_STORE_16:
             case Bytecode.I64_STORE_16_U8:
             case Bytecode.I64_STORE_16_I32: {
                 final long value = popLong(frame, stackPointer);
-                memory.store_i64_16(this, address, (short) value);
+                memoryLib.store_i64_16(memory, this, address, (short) value);
                 break;
             }
             case Bytecode.I64_STORE_32:
             case Bytecode.I64_STORE_32_U8:
             case Bytecode.I64_STORE_32_I32: {
                 final long value = popLong(frame, stackPointer);
-                memory.store_i64_32(this, address, (int) value);
+                memoryLib.store_i64_32(memory, this, address, (int) value);
                 break;
             }
             default:
@@ -2091,7 +2090,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         memory_fill(instance, n, val, dst, memoryIndex);
     }
 
-    private int executeAtomic(VirtualFrame frame, int stackPointer, int opcode, WasmMemory memory, long memOffset, int indexType64) {
+    private int executeAtomic(VirtualFrame frame, int stackPointer, int opcode, WasmMemory memory, WasmMemoryLibrary memoryLib, long memOffset, int indexType64) {
         switch (opcode) {
             case Bytecode.ATOMIC_NOTIFY:
             case Bytecode.ATOMIC_I32_RMW_ADD:
@@ -2143,7 +2142,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     baseAddress = popLong(frame, stackPointer - 2);
                 }
                 final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                executeAtomicAtAddress(memory, frame, stackPointer - 1, opcode, address);
+                executeAtomicAtAddress(memory, memoryLib, frame, stackPointer - 1, opcode, address);
                 return 1;
             }
             case Bytecode.ATOMIC_WAIT32:
@@ -2162,7 +2161,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     baseAddress = popLong(frame, stackPointer - 3);
                 }
                 final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                executeAtomicAtAddress(memory, frame, stackPointer - 1, opcode, address);
+                executeAtomicAtAddress(memory, memoryLib, frame, stackPointer - 1, opcode, address);
                 return 2;
             }
             case Bytecode.ATOMIC_I32_LOAD:
@@ -2179,7 +2178,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     baseAddress = popLong(frame, stackPointer - 1);
                 }
                 final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                executeAtomicAtAddress(memory, frame, stackPointer - 1, opcode, address);
+                executeAtomicAtAddress(memory, memoryLib, frame, stackPointer - 1, opcode, address);
                 return 0;
             }
             case Bytecode.ATOMIC_I32_STORE:
@@ -2196,7 +2195,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     baseAddress = popLong(frame, stackPointer - 2);
                 }
                 final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                executeAtomicAtAddress(memory, frame, stackPointer - 1, opcode, address);
+                executeAtomicAtAddress(memory, memoryLib, frame, stackPointer - 1, opcode, address);
                 return 2;
             }
             default:
@@ -2204,396 +2203,396 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void executeAtomicAtAddress(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, long address) {
+    private void executeAtomicAtAddress(WasmMemory memory, WasmMemoryLibrary memoryLib, VirtualFrame frame, int stackPointer, int opcode, long address) {
         switch (opcode) {
             case Bytecode.ATOMIC_NOTIFY: {
                 final int count = popInt(frame, stackPointer);
-                final int waitersNotified = memory.atomic_notify(this, address, count);
+                final int waitersNotified = memoryLib.atomic_notify(memory, this, address, count);
                 pushInt(frame, stackPointer - 1, waitersNotified);
                 break;
             }
             case Bytecode.ATOMIC_WAIT32: {
                 final long timeout = popLong(frame, stackPointer);
                 final int expected = popInt(frame, stackPointer - 1);
-                final int status = memory.atomic_wait32(this, address, expected, timeout);
+                final int status = memoryLib.atomic_wait32(memory, this, address, expected, timeout);
                 pushInt(frame, stackPointer - 2, status);
                 break;
             }
             case Bytecode.ATOMIC_WAIT64: {
                 final long timeout = popLong(frame, stackPointer);
                 final long expected = popLong(frame, stackPointer - 1);
-                final int status = memory.atomic_wait64(this, address, expected, timeout);
+                final int status = memoryLib.atomic_wait64(memory, this, address, expected, timeout);
                 pushInt(frame, stackPointer - 2, status);
                 break;
             }
             case Bytecode.ATOMIC_I32_LOAD: {
-                final int value = memory.atomic_load_i32(this, address);
+                final int value = memoryLib.atomic_load_i32(memory, this, address);
                 pushInt(frame, stackPointer, value);
                 break;
             }
             case Bytecode.ATOMIC_I64_LOAD: {
-                final long value = memory.atomic_load_i64(this, address);
+                final long value = memoryLib.atomic_load_i64(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.ATOMIC_I32_LOAD8_U: {
-                final int value = memory.atomic_load_i32_8u(this, address);
+                final int value = memoryLib.atomic_load_i32_8u(memory, this, address);
                 pushInt(frame, stackPointer, value);
                 break;
             }
             case Bytecode.ATOMIC_I32_LOAD16_U: {
-                final int value = memory.atomic_load_i32_16u(this, address);
+                final int value = memoryLib.atomic_load_i32_16u(memory, this, address);
                 pushInt(frame, stackPointer, value);
                 break;
             }
             case Bytecode.ATOMIC_I64_LOAD8_U: {
-                final long value = memory.atomic_load_i64_8u(this, address);
+                final long value = memoryLib.atomic_load_i64_8u(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.ATOMIC_I64_LOAD16_U: {
-                final long value = memory.atomic_load_i64_16u(this, address);
+                final long value = memoryLib.atomic_load_i64_16u(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.ATOMIC_I64_LOAD32_U: {
-                final long value = memory.atomic_load_i64_32u(this, address);
+                final long value = memoryLib.atomic_load_i64_32u(memory, this, address);
                 pushLong(frame, stackPointer, value);
                 break;
             }
             case Bytecode.ATOMIC_I32_STORE: {
                 final int value = popInt(frame, stackPointer);
-                memory.atomic_store_i32(this, address, value);
+                memoryLib.atomic_store_i32(memory, this, address, value);
                 break;
             }
             case Bytecode.ATOMIC_I64_STORE: {
                 final long value = popLong(frame, stackPointer);
-                memory.atomic_store_i64(this, address, value);
+                memoryLib.atomic_store_i64(memory, this, address, value);
                 break;
             }
             case Bytecode.ATOMIC_I32_STORE8: {
                 final int value = popInt(frame, stackPointer);
-                memory.atomic_store_i32_8(this, address, (byte) value);
+                memoryLib.atomic_store_i32_8(memory, this, address, (byte) value);
                 break;
             }
             case Bytecode.ATOMIC_I32_STORE16: {
                 final int value = popInt(frame, stackPointer);
-                memory.atomic_store_i32_16(this, address, (short) value);
+                memoryLib.atomic_store_i32_16(memory, this, address, (short) value);
                 break;
             }
             case Bytecode.ATOMIC_I64_STORE8: {
                 final long value = popLong(frame, stackPointer);
-                memory.atomic_store_i64_8(this, address, (byte) value);
+                memoryLib.atomic_store_i64_8(memory, this, address, (byte) value);
                 break;
             }
             case Bytecode.ATOMIC_I64_STORE16: {
                 final long value = popLong(frame, stackPointer);
-                memory.atomic_store_i64_16(this, address, (short) value);
+                memoryLib.atomic_store_i64_16(memory, this, address, (short) value);
                 break;
             }
             case Bytecode.ATOMIC_I64_STORE32: {
                 final long value = popLong(frame, stackPointer);
-                memory.atomic_store_i64_32(this, address, (int) value);
+                memoryLib.atomic_store_i64_32(memory, this, address, (int) value);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW_ADD: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_add_i32(this, address, value);
+                final int result = memoryLib.atomic_rmw_add_i32(memory, this, address, value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW_ADD: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_add_i64(this, address, value);
+                final long result = memoryLib.atomic_rmw_add_i64(memory, this, address, value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW8_U_ADD: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_add_i32_8u(this, address, (byte) value);
+                final int result = memoryLib.atomic_rmw_add_i32_8u(memory, this, address, (byte) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW16_U_ADD: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_add_i32_16u(this, address, (short) value);
+                final int result = memoryLib.atomic_rmw_add_i32_16u(memory, this, address, (short) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW8_U_ADD: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_add_i64_8u(this, address, (byte) value);
+                final long result = memoryLib.atomic_rmw_add_i64_8u(memory, this, address, (byte) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW16_U_ADD: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_add_i64_16u(this, address, (short) value);
+                final long result = memoryLib.atomic_rmw_add_i64_16u(memory, this, address, (short) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW32_U_ADD: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_add_i64_32u(this, address, (int) value);
+                final long result = memoryLib.atomic_rmw_add_i64_32u(memory, this, address, (int) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW_SUB: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_sub_i32(this, address, value);
+                final int result = memoryLib.atomic_rmw_sub_i32(memory, this, address, value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW_SUB: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_sub_i64(this, address, value);
+                final long result = memoryLib.atomic_rmw_sub_i64(memory, this, address, value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW8_U_SUB: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_sub_i32_8u(this, address, (byte) value);
+                final int result = memoryLib.atomic_rmw_sub_i32_8u(memory, this, address, (byte) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW16_U_SUB: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_sub_i32_16u(this, address, (short) value);
+                final int result = memoryLib.atomic_rmw_sub_i32_16u(memory, this, address, (short) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW8_U_SUB: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_sub_i64_8u(this, address, (byte) value);
+                final long result = memoryLib.atomic_rmw_sub_i64_8u(memory, this, address, (byte) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW16_U_SUB: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_sub_i64_16u(this, address, (short) value);
+                final long result = memoryLib.atomic_rmw_sub_i64_16u(memory, this, address, (short) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW32_U_SUB: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_sub_i64_32u(this, address, (int) value);
+                final long result = memoryLib.atomic_rmw_sub_i64_32u(memory, this, address, (int) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW_AND: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_and_i32(this, address, value);
+                final int result = memoryLib.atomic_rmw_and_i32(memory, this, address, value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW_AND: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_and_i64(this, address, value);
+                final long result = memoryLib.atomic_rmw_and_i64(memory, this, address, value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW8_U_AND: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_and_i32_8u(this, address, (byte) value);
+                final int result = memoryLib.atomic_rmw_and_i32_8u(memory, this, address, (byte) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW16_U_AND: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_and_i32_16u(this, address, (short) value);
+                final int result = memoryLib.atomic_rmw_and_i32_16u(memory, this, address, (short) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW8_U_AND: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_and_i64_8u(this, address, (byte) value);
+                final long result = memoryLib.atomic_rmw_and_i64_8u(memory, this, address, (byte) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW16_U_AND: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_and_i64_16u(this, address, (short) value);
+                final long result = memoryLib.atomic_rmw_and_i64_16u(memory, this, address, (short) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW32_U_AND: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_and_i64_32u(this, address, (int) value);
+                final long result = memoryLib.atomic_rmw_and_i64_32u(memory, this, address, (int) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW_OR: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_or_i32(this, address, value);
+                final int result = memoryLib.atomic_rmw_or_i32(memory, this, address, value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW_OR: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_or_i64(this, address, value);
+                final long result = memoryLib.atomic_rmw_or_i64(memory, this, address, value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW8_U_OR: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_or_i32_8u(this, address, (byte) value);
+                final int result = memoryLib.atomic_rmw_or_i32_8u(memory, this, address, (byte) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW16_U_OR: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_or_i32_16u(this, address, (short) value);
+                final int result = memoryLib.atomic_rmw_or_i32_16u(memory, this, address, (short) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW8_U_OR: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_or_i64_8u(this, address, (byte) value);
+                final long result = memoryLib.atomic_rmw_or_i64_8u(memory, this, address, (byte) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW16_U_OR: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_or_i64_16u(this, address, (short) value);
+                final long result = memoryLib.atomic_rmw_or_i64_16u(memory, this, address, (short) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW32_U_OR: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_or_i64_32u(this, address, (int) value);
+                final long result = memoryLib.atomic_rmw_or_i64_32u(memory, this, address, (int) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW_XOR: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_xor_i32(this, address, value);
+                final int result = memoryLib.atomic_rmw_xor_i32(memory, this, address, value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW_XOR: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_xor_i64(this, address, value);
+                final long result = memoryLib.atomic_rmw_xor_i64(memory, this, address, value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW8_U_XOR: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_xor_i32_8u(this, address, (byte) value);
+                final int result = memoryLib.atomic_rmw_xor_i32_8u(memory, this, address, (byte) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW16_U_XOR: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_xor_i32_16u(this, address, (short) value);
+                final int result = memoryLib.atomic_rmw_xor_i32_16u(memory, this, address, (short) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW8_U_XOR: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_xor_i64_8u(this, address, (byte) value);
+                final long result = memoryLib.atomic_rmw_xor_i64_8u(memory, this, address, (byte) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW16_U_XOR: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_xor_i64_16u(this, address, (short) value);
+                final long result = memoryLib.atomic_rmw_xor_i64_16u(memory, this, address, (short) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW32_U_XOR: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_xor_i64_32u(this, address, (int) value);
+                final long result = memoryLib.atomic_rmw_xor_i64_32u(memory, this, address, (int) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW_XCHG: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_xchg_i32(this, address, value);
+                final int result = memoryLib.atomic_rmw_xchg_i32(memory, this, address, value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW_XCHG: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_xchg_i64(this, address, value);
+                final long result = memoryLib.atomic_rmw_xchg_i64(memory, this, address, value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW8_U_XCHG: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_xchg_i32_8u(this, address, (byte) value);
+                final int result = memoryLib.atomic_rmw_xchg_i32_8u(memory, this, address, (byte) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW16_U_XCHG: {
                 final int value = popInt(frame, stackPointer);
-                final int result = memory.atomic_rmw_xchg_i32_16u(this, address, (short) value);
+                final int result = memoryLib.atomic_rmw_xchg_i32_16u(memory, this, address, (short) value);
                 pushInt(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW8_U_XCHG: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_xchg_i64_8u(this, address, (byte) value);
+                final long result = memoryLib.atomic_rmw_xchg_i64_8u(memory, this, address, (byte) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW16_U_XCHG: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_xchg_i64_16u(this, address, (short) value);
+                final long result = memoryLib.atomic_rmw_xchg_i64_16u(memory, this, address, (short) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW32_U_XCHG: {
                 final long value = popLong(frame, stackPointer);
-                final long result = memory.atomic_rmw_xchg_i64_32u(this, address, (int) value);
+                final long result = memoryLib.atomic_rmw_xchg_i64_32u(memory, this, address, (int) value);
                 pushLong(frame, stackPointer - 1, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW_CMPXCHG: {
                 final int replacement = popInt(frame, stackPointer);
                 final int expected = popInt(frame, stackPointer - 1);
-                final int result = memory.atomic_rmw_cmpxchg_i32(this, address, expected, replacement);
+                final int result = memoryLib.atomic_rmw_cmpxchg_i32(memory, this, address, expected, replacement);
                 pushInt(frame, stackPointer - 2, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW_CMPXCHG: {
                 final long replacement = popLong(frame, stackPointer);
                 final long expected = popLong(frame, stackPointer - 1);
-                final long result = memory.atomic_rmw_cmpxchg_i64(this, address, expected, replacement);
+                final long result = memoryLib.atomic_rmw_cmpxchg_i64(memory, this, address, expected, replacement);
                 pushLong(frame, stackPointer - 2, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG: {
                 final int replacement = popInt(frame, stackPointer);
                 final int expected = popInt(frame, stackPointer - 1);
-                final int result = memory.atomic_rmw_cmpxchg_i32_8u(this, address, (byte) expected, (byte) replacement);
+                final int result = memoryLib.atomic_rmw_cmpxchg_i32_8u(memory, this, address, (byte) expected, (byte) replacement);
                 pushInt(frame, stackPointer - 2, result);
                 break;
             }
             case Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG: {
                 final int replacement = popInt(frame, stackPointer);
                 final int expected = popInt(frame, stackPointer - 1);
-                final int result = memory.atomic_rmw_cmpxchg_i32_16u(this, address, (short) expected, (short) replacement);
+                final int result = memoryLib.atomic_rmw_cmpxchg_i32_16u(memory, this, address, (short) expected, (short) replacement);
                 pushInt(frame, stackPointer - 2, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG: {
                 final long replacement = popLong(frame, stackPointer);
                 final long expected = popLong(frame, stackPointer - 1);
-                final long result = memory.atomic_rmw_cmpxchg_i64_8u(this, address, (byte) expected, (byte) replacement);
+                final long result = memoryLib.atomic_rmw_cmpxchg_i64_8u(memory, this, address, (byte) expected, (byte) replacement);
                 pushLong(frame, stackPointer - 2, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG: {
                 final long replacement = popLong(frame, stackPointer);
                 final long expected = popLong(frame, stackPointer - 1);
-                final long result = memory.atomic_rmw_cmpxchg_i64_16u(this, address, (short) expected, (short) replacement);
+                final long result = memoryLib.atomic_rmw_cmpxchg_i64_16u(memory, this, address, (short) expected, (short) replacement);
                 pushLong(frame, stackPointer - 2, result);
                 break;
             }
             case Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
                 final long replacement = popLong(frame, stackPointer);
                 final long expected = popLong(frame, stackPointer - 1);
-                final long result = memory.atomic_rmw_cmpxchg_i64_32u(this, address, (int) expected, (int) replacement);
+                final long result = memoryLib.atomic_rmw_cmpxchg_i64_32u(memory, this, address, (int) expected, (int) replacement);
                 pushLong(frame, stackPointer - 2, result);
                 break;
             }
@@ -2644,7 +2643,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                 final WasmMemory memory = memory(instance, memoryIndex);
-                loadVector(memory, frame, stackPointer++, vectorOpcode, address);
+                loadVector(memory, memoryLib(memoryIndex), frame, stackPointer++, vectorOpcode, address);
                 break;
             }
             case Bytecode.VECTOR_V128_STORE: {
@@ -2670,7 +2669,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                 final WasmMemory memory = memory(instance, memoryIndex);
-                storeVector(memory, address, value);
+                storeVector(memory, memoryLib(memoryIndex), address, value);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD8_LANE:
@@ -2701,7 +2700,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                 final WasmMemory memory = memory(instance, memoryIndex);
-                loadVectorLane(memory, frame, stackPointer++, vectorOpcode, address, laneIndex, vec);
+                loadVectorLane(memory, memoryLib(memoryIndex), frame, stackPointer++, vectorOpcode, address, laneIndex, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_STORE8_LANE:
@@ -2732,7 +2731,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 final long address = effectiveMemoryAddress64(memOffset, baseAddress);
                 final WasmMemory memory = memory(instance, memoryIndex);
-                storeVectorLane(memory, vectorOpcode, address, laneIndex, vec);
+                storeVectorLane(memory, memoryLib(memoryIndex), vectorOpcode, address, laneIndex, vec);
                 break;
             }
             case Bytecode.VECTOR_V128_CONST: {
@@ -3133,16 +3132,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return offset;
     }
 
-    private void loadVector(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address) {
+    private void loadVector(WasmMemory memory, WasmMemoryLibrary memoryLib, VirtualFrame frame, int stackPointer, int vectorOpcode, long address) {
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_LOAD: {
-                final Vector128 value = memory.load_i128(this, address);
+                final Vector128 value = memoryLib.load_i128(memory, this, address);
                 pushVector128(frame, stackPointer, value);
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD8X8_S:
             case Bytecode.VECTOR_V128_LOAD8X8_U: {
-                final long value = memory.load_i64(this, address);
+                final long value = memoryLib.load_i64(memory, this, address);
                 byte[] bytes = new byte[8];
                 CompilerDirectives.ensureVirtualized(bytes);
                 ByteArraySupport.littleEndian().putLong(bytes, 0, value);
@@ -3162,7 +3161,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             }
             case Bytecode.VECTOR_V128_LOAD16X4_S:
             case Bytecode.VECTOR_V128_LOAD16X4_U: {
-                final long value = memory.load_i64(this, address);
+                final long value = memoryLib.load_i64(memory, this, address);
                 byte[] bytes = new byte[8];
                 CompilerDirectives.ensureVirtualized(bytes);
                 ByteArraySupport.littleEndian().putLong(bytes, 0, value);
@@ -3182,7 +3181,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             }
             case Bytecode.VECTOR_V128_LOAD32X2_S:
             case Bytecode.VECTOR_V128_LOAD32X2_U: {
-                final long value = memory.load_i64(this, address);
+                final long value = memoryLib.load_i64(memory, this, address);
                 byte[] bytes = new byte[8];
                 CompilerDirectives.ensureVirtualized(bytes);
                 ByteArraySupport.littleEndian().putLong(bytes, 0, value);
@@ -3201,7 +3200,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD8_SPLAT: {
-                final byte value = (byte) memory.load_i32_8s(this, address);
+                final byte value = (byte) memoryLib.load_i32_8s(memory, this, address);
                 byte[] resultBytes = new byte[Vector128.BYTES];
                 Arrays.fill(resultBytes, value);
                 final Vector128 vec = new Vector128(resultBytes);
@@ -3209,7 +3208,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD16_SPLAT: {
-                final short value = (short) memory.load_i32_16s(this, address);
+                final short value = (short) memoryLib.load_i32_16s(memory, this, address);
                 byte[] resultBytes = new byte[Vector128.BYTES];
                 for (int i = 0; i < Vector128.SHORT_LENGTH; i++) {
                     ByteArraySupport.littleEndian().putShort(resultBytes, i * Short.BYTES, value);
@@ -3219,7 +3218,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD32_SPLAT: {
-                final int value = memory.load_i32(this, address);
+                final int value = memoryLib.load_i32(memory, this, address);
                 byte[] resultBytes = new byte[Vector128.BYTES];
                 for (int i = 0; i < Vector128.INT_LENGTH; i++) {
                     ByteArraySupport.littleEndian().putInt(resultBytes, i * Integer.BYTES, value);
@@ -3229,7 +3228,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD64_SPLAT: {
-                final long value = memory.load_i64(this, address);
+                final long value = memoryLib.load_i64(memory, this, address);
                 byte[] resultBytes = new byte[Vector128.BYTES];
                 for (int i = 0; i < Vector128.LONG_LENGTH; i++) {
                     ByteArraySupport.littleEndian().putLong(resultBytes, i * Long.BYTES, value);
@@ -3239,7 +3238,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD32_ZERO: {
-                final int value = memory.load_i32(this, address);
+                final int value = memoryLib.load_i32(memory, this, address);
                 byte[] resultBytes = new byte[Vector128.BYTES];
                 ByteArraySupport.littleEndian().putInt(resultBytes, 0, value);
                 final Vector128 vec = new Vector128(resultBytes);
@@ -3247,7 +3246,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD64_ZERO: {
-                final long value = memory.load_i64(this, address);
+                final long value = memoryLib.load_i64(memory, this, address);
                 byte[] resultBytes = new byte[Vector128.BYTES];
                 ByteArraySupport.littleEndian().putLong(resultBytes, 0, value);
                 final Vector128 vec = new Vector128(resultBytes);
@@ -3259,35 +3258,35 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void storeVector(WasmMemory memory, long address, Vector128 value) {
-        memory.store_i128(this, address, value);
+    private void storeVector(WasmMemory memory, WasmMemoryLibrary memoryLib, long address, Vector128 value) {
+        memoryLib.store_i128(memory, this, address, value);
     }
 
-    private void loadVectorLane(WasmMemory memory, VirtualFrame frame, int stackPointer, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
+    private void loadVectorLane(WasmMemory memory, WasmMemoryLibrary memoryLib, VirtualFrame frame, int stackPointer, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_LOAD8_LANE: {
-                final byte value = (byte) memory.load_i32_8s(this, address);
+                final byte value = (byte) memoryLib.load_i32_8s(memory, this, address);
                 byte[] resultBytes = Arrays.copyOf(vec.getBytes(), Vector128.BYTES);
                 resultBytes[laneIndex] = value;
                 pushVector128(frame, stackPointer, new Vector128(resultBytes));
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD16_LANE: {
-                final short value = (short) memory.load_i32_16s(this, address);
+                final short value = (short) memoryLib.load_i32_16s(memory, this, address);
                 byte[] resultBytes = Arrays.copyOf(vec.getBytes(), Vector128.BYTES);
                 ByteArraySupport.littleEndian().putShort(resultBytes, laneIndex * Short.BYTES, value);
                 pushVector128(frame, stackPointer, new Vector128(resultBytes));
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD32_LANE: {
-                final int value = memory.load_i32(this, address);
+                final int value = memoryLib.load_i32(memory, this, address);
                 byte[] resultBytes = Arrays.copyOf(vec.getBytes(), Vector128.BYTES);
                 ByteArraySupport.littleEndian().putInt(resultBytes, laneIndex * Integer.BYTES, value);
                 pushVector128(frame, stackPointer, new Vector128(resultBytes));
                 break;
             }
             case Bytecode.VECTOR_V128_LOAD64_LANE: {
-                final long value = memory.load_i64(this, address);
+                final long value = memoryLib.load_i64(memory, this, address);
                 byte[] resultBytes = Arrays.copyOf(vec.getBytes(), Vector128.BYTES);
                 ByteArraySupport.littleEndian().putLong(resultBytes, laneIndex * Long.BYTES, value);
                 pushVector128(frame, stackPointer, new Vector128(resultBytes));
@@ -3298,26 +3297,26 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void storeVectorLane(WasmMemory memory, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
+    private void storeVectorLane(WasmMemory memory, WasmMemoryLibrary memoryLib, int vectorOpcode, long address, int laneIndex, Vector128 vec) {
         switch (vectorOpcode) {
             case Bytecode.VECTOR_V128_STORE8_LANE: {
                 byte value = vec.getBytes()[laneIndex];
-                memory.store_i32_8(this, address, value);
+                memoryLib.store_i32_8(memory, this, address, value);
                 break;
             }
             case Bytecode.VECTOR_V128_STORE16_LANE: {
                 short value = ByteArraySupport.littleEndian().getShort(vec.getBytes(), laneIndex * Short.BYTES);
-                memory.store_i32_16(this, address, value);
+                memoryLib.store_i32_16(memory, this, address, value);
                 break;
             }
             case Bytecode.VECTOR_V128_STORE32_LANE: {
                 int value = ByteArraySupport.littleEndian().getInt(vec.getBytes(), laneIndex * Integer.BYTES);
-                memory.store_i32(this, address, value);
+                memoryLib.store_i32(memory, this, address, value);
                 break;
             }
             case Bytecode.VECTOR_V128_STORE64_LANE: {
                 long value = ByteArraySupport.littleEndian().getLong(vec.getBytes(), laneIndex * Long.BYTES);
-                memory.store_i64(this, address, value);
+                memoryLib.store_i64(memory, this, address, value);
                 break;
             }
             default:
@@ -4484,14 +4483,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         final WasmMemory memory = memory(instance, memoryIndex);
         final int dataOffset = instance.dataInstanceOffset(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
-        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
+        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memoryLib(memoryIndex).byteSize(memory))) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
         if (length == 0) {
             return;
         }
-        memory.initialize(codeEntry.bytecode(), dataOffset + source, destination, length);
+        memoryLib(memoryIndex).initialize(memory, codeEntry.bytecode(), dataOffset + source, destination, length);
     }
 
     @TruffleBoundary
@@ -4499,14 +4498,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         final WasmMemory memory = memory(instance, memoryIndex);
         final long dataAddress = instance.dataInstanceAddress(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
-        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
+        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memoryLib(memoryIndex).byteSize(memory))) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
         if (length == 0) {
             return;
         }
-        memory.initializeUnsafe(dataAddress, source, destination, length);
+        memoryLib(memoryIndex).initializeUnsafe(memory, dataAddress, source, destination, length);
     }
 
     @TruffleBoundary
@@ -4522,28 +4521,28 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @TruffleBoundary
     private void memory_fill(WasmInstance instance, long length, int value, long offset, int memoryIndex) {
         final WasmMemory memory = memory(instance, memoryIndex);
-        if (checkOutOfBounds(offset, length, memory.byteSize())) {
+        if (checkOutOfBounds(offset, length, memoryLib(memoryIndex).byteSize(memory))) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
         if (length == 0L) {
             return;
         }
-        memory.fill(offset, length, (byte) value);
+        memoryLib(memoryIndex).fill(memory, offset, length, (byte) value);
     }
 
     @TruffleBoundary
     private void memory_copy(WasmInstance instance, long length, long source, long destination, int destMemoryIndex, int srcMemoryIndex) {
         final WasmMemory destMemory = memory(instance, destMemoryIndex);
         final WasmMemory srcMemory = memory(instance, srcMemoryIndex);
-        if (checkOutOfBounds(source, length, srcMemory.byteSize()) || checkOutOfBounds(destination, length, destMemory.byteSize())) {
+        if (checkOutOfBounds(source, length, memoryLib(srcMemoryIndex).byteSize(srcMemory)) || checkOutOfBounds(destination, length, memoryLib(destMemoryIndex).byteSize(destMemory))) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
         if (length == 0L) {
             return;
         }
-        destMemory.copyFrom(srcMemory, source, destination, length);
+        memoryLib(destMemoryIndex).copyFrom(destMemory, srcMemory, source, destination, length);
     }
 
     // Checkstyle: resume method name check
@@ -4554,18 +4553,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private static boolean checkOutOfBounds(int offset, int length, int size) {
         return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;
-    }
-
-    @TruffleBoundary
-    public void resolveCallNode(WasmInstance instance, int callNodeIndex, int bytecodeOffset) {
-        Node unresolvedCallNode = callNodes[callNodeIndex];
-        if (unresolvedCallNode instanceof WasmCallStubNode) {
-            final WasmFunction function = ((WasmCallStubNode) unresolvedCallNode).function();
-            final CallTarget target = instance.target(function.index());
-            callNodes[callNodeIndex] = insert(WasmDirectCallNode.create(target, bytecodeOffset));
-        } else {
-            assert unresolvedCallNode instanceof WasmIndirectCallNode : unresolvedCallNode;
-        }
     }
 
     @ExplodeLoop

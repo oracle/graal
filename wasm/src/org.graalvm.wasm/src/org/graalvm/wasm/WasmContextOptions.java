@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ public class WasmContextOptions {
 
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
+    @CompilationFinal private boolean directByteBufferMemoryAccess;
 
     @CompilationFinal private String debugCompDirectory;
     private final OptionValues optionValues;
@@ -88,12 +89,19 @@ public class WasmContextOptions {
         this.simd = readBooleanOption(WasmOptions.SIMD);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
+        // Temporary: Default DirectByteBufferMemoryAccess to true when UseUnsafeMemory is set to
+        // true. After GraalNode.js starts setting DirectByteBufferMemoryAccess, we can default
+        // DirectByteBufferMemoryAccess to false.
+        this.directByteBufferMemoryAccess = WasmOptions.DirectByteBufferMemoryAccess.hasBeenSet(optionValues) ? readBooleanOption(WasmOptions.DirectByteBufferMemoryAccess) : unsafeMemory;
         this.debugCompDirectory = readStringOption(WasmOptions.DebugCompDirectory);
     }
 
     private void checkOptionDependencies() {
         if (memory64 && !unsafeMemory) {
             failDependencyCheck("Memory64", "UseUnsafeMemory");
+        }
+        if (directByteBufferMemoryAccess && !unsafeMemory) {
+            failDependencyCheck("DirectByteBufferMemoryAccess", "UseUnsafeMemory");
         }
     }
 
@@ -157,6 +165,10 @@ public class WasmContextOptions {
         return constantRandomGet;
     }
 
+    public boolean directByteBufferMemoryAccess() {
+        return directByteBufferMemoryAccess;
+    }
+
     public String debugCompDirectory() {
         return debugCompDirectory;
     }
@@ -175,6 +187,7 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.simd ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
+        hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
         hash = 53 * hash + (this.debugCompDirectory.hashCode());
         return hash;
     }
@@ -225,6 +238,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.constantRandomGet != other.constantRandomGet) {
+            return false;
+        }
+        if (this.directByteBufferMemoryAccess != other.directByteBufferMemoryAccess) {
             return false;
         }
         if (!this.debugCompDirectory.equals(other.debugCompDirectory)) {

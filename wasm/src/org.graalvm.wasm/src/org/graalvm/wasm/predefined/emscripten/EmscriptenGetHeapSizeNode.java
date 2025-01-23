@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ public class EmscriptenGetHeapSizeNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         WasmMemory memory = memory(frame);
-        final long byteSize = memory.byteSize();
+        final long byteSize = memoryLib.byteSize(memory);
         return (int) byteSize;
     }
 

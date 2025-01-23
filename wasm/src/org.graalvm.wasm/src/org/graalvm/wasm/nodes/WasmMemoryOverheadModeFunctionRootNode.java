@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,10 @@ package org.graalvm.wasm.nodes;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.WasmOptions;
@@ -56,10 +58,11 @@ import org.graalvm.wasm.WasmOptions;
  * {@link WasmOptions#MemoryOverheadMode}, since memories, tables, etc. are not initialized and code
  * execution would lead to unexpected results.
  */
-public class WasmMemoryOverheadModeRootNode extends WasmRootNode {
+public class WasmMemoryOverheadModeFunctionRootNode extends WasmFunctionRootNode {
 
-    public WasmMemoryOverheadModeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode functionNode) {
-        super(language, frameDescriptor, functionNode);
+    public WasmMemoryOverheadModeFunctionRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmModule module, WasmFixedMemoryImplFunctionNode functionNode,
+                    WasmCodeEntry codeEntry) {
+        super(language, frameDescriptor, module, functionNode, codeEntry);
     }
 
     @Override

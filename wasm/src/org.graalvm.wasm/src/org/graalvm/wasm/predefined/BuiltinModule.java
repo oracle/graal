@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -139,9 +139,10 @@ public abstract class BuiltinModule {
 
     protected void defineMemory(WasmContext context, WasmModule module, String memoryName, int initSize, int maxSize, boolean is64Bit, boolean isShared) {
         final boolean useUnsafeMemory = context.getContextOptions().useUnsafeMemory();
+        final boolean directByteBufferMemoryAccess = context.getContextOptions().directByteBufferMemoryAccess();
         int index = module.symbolTable().memoryCount();
         // set multiMemory flag to true, since spectest module has multiple memories
-        module.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true, useUnsafeMemory);
+        module.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true, useUnsafeMemory, directByteBufferMemoryAccess);
         module.symbolTable().exportMemory(index, memoryName);
     }
 
@@ -153,9 +154,8 @@ public abstract class BuiltinModule {
 
     protected void importMemory(WasmContext context, WasmModule module, String importModuleName, String memoryName, int initSize, long maxSize, boolean is64Bit, boolean isShared) {
         final boolean multiMemory = context.getContextOptions().supportMultiMemory();
-        final boolean useUnsafeMemory = context.getContextOptions().useUnsafeMemory();
         int index = module.symbolTable().memoryCount();
-        module.symbolTable().importMemory(importModuleName, memoryName, index, initSize, maxSize, is64Bit, isShared, multiMemory, useUnsafeMemory);
+        module.symbolTable().importMemory(importModuleName, memoryName, index, initSize, maxSize, is64Bit, isShared, multiMemory);
     }
 
     protected static byte[] types(byte... args) {
