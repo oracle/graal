@@ -66,34 +66,37 @@ public final class LocationOpener implements Openable, Trackable {
         if (toOpen == null) {
             return;
         }
-        int line = location.getLine();
+        int lineNumber = location.getLine();
         int[] offsets = location.getOffsetsOrNull();
         EditorCookie cake = toOpen.getLookup().lookup(EditorCookie.class);
         if (cake.getDocument() != null && offsets != null) {
-            line = NbDocument.findLineNumber(cake.getDocument(), offsets[0]);
+            lineNumber = NbDocument.findLineNumber(cake.getDocument(), offsets[0]);
         }
 
         Task task = cake.prepareDocument();
+        Line line = findLine(cake, lineNumber);
 
         TaskListener[] whenShowing = new TaskListener[1];
         whenShowing[0] = (ev) -> {
             task.removeTaskListener(whenShowing[0]);
             Mutex.EVENT.postReadRequest(() -> {
-                if (offsets == null) {
-                    StatusDisplayer.getDefault().setStatusText(Bundle.ERR_LineNotFound());
-                } else {
+                if (offsets != null) {
                     for (JEditorPane p : cake.getOpenedPanes()) {
                         p.select(offsets[0], offsets[1]);
                     }
+                    return;
+                }
+                if (line == null) {
+                    // neither line nor offsets
+                    StatusDisplayer.getDefault().setStatusText(Bundle.ERR_LineNotFound());
                 }
             });
         };
 
-        Line l = findLine(cake, line);
-        if (l == null) {
+        if (line == null) {
             cake.open();
         } else {
-            l.show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT);
+            line.show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT);
         }
         task.addTaskListener(whenShowing[0]);
     }
