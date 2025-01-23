@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
@@ -195,10 +196,11 @@ public abstract class BytecodeParser {
                 // Reading of the data segment is called after linking, so initialize the memory
                 // directly.
                 final WasmMemory memory = instance.memory(memoryIndex);
+                WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
 
-                Assert.assertUnsignedLongLessOrEqual(offsetAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                Assert.assertUnsignedLongLessOrEqual(offsetAddress + dataLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                memory.initialize(module.bytecode(), effectiveOffset, offsetAddress, dataLength);
+                Assert.assertUnsignedLongLessOrEqual(offsetAddress, memoryLib.byteSize(memory), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                Assert.assertUnsignedLongLessOrEqual(offsetAddress + dataLength, memoryLib.byteSize(memory), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
+                memoryLib.initialize(memory, module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
                 if (unsafeMemory) {
                     final int length = switch (bytecode[effectiveOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) {

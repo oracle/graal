@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,12 @@ import java.io.OutputStream;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.api.Vector128;
+import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -60,14 +63,18 @@ import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
 
+@ExportLibrary(WasmMemoryLibrary.class)
 final class NativeWasmMemory extends WasmMemory {
 
     private long startAddress;
     private long size;
 
+    public static final long MAX_ALLOWED_SIZE = Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
+
     private static final Unsafe unsafe;
     private static final VarHandle SIZE_FIELD;
 
+    @TruffleBoundary
     private NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
         this.size = declaredMinSize;
@@ -75,8 +82,9 @@ final class NativeWasmMemory extends WasmMemory {
         this.startAddress = allocate(byteSize);
     }
 
-    NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long maxAllowedSize, boolean indexType64, boolean shared) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize, indexType64, shared);
+    @TruffleBoundary
+    NativeWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, WasmMath.minUnsigned(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64, shared);
     }
 
     private static long allocate(long byteSize) {
@@ -89,26 +97,26 @@ final class NativeWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public long size() {
         return (long) SIZE_FIELD.getVolatile(this);
     }
 
-    @Override
+    @ExportMessage
     public long byteSize() {
         return size * MEMORY_PAGE_SIZE;
     }
 
     @TruffleBoundary
-    @Override
+    @ExportMessage
     public synchronized long grow(long extraPageSize) {
         final long previousSize = size();
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return previousSize;
-        } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && Long.compareUnsigned(previousSize + extraPageSize, maxAllowedSize) <= 0) {
-            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
-            // computation of targetByteSize does not overflow.
+        } else if (Long.compareUnsigned(extraPageSize, maxAllowedSize()) <= 0 && Long.compareUnsigned(previousSize + extraPageSize, maxAllowedSize()) <= 0) {
+            // Condition above and limit on maxAllowedSize (see NativeWasmMemory#MAX_ALLOWED_SIZE)
+            // ensure computation of targetByteSize does not overflow.
             final long targetByteSize = Math.multiplyExact(Math.addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
             final long updatedSize = previousSize + extraPageSize;
             try {
@@ -126,7 +134,7 @@ final class NativeWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public void reset() {
         free();
@@ -152,91 +160,92 @@ final class NativeWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    // Checkstyle: stop
+    @ExportMessage
     public int load_i32(Node node, long address) {
         validateAddress(node, address, 4);
         return unsafe.getInt(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long load_i64(Node node, long address) {
         validateAddress(node, address, 8);
         return unsafe.getLong(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public float load_f32(Node node, long address) {
         validateAddress(node, address, 4);
         return unsafe.getFloat(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public double load_f64(Node node, long address) {
         validateAddress(node, address, 8);
         return unsafe.getDouble(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public int load_i32_8s(Node node, long address) {
         validateAddress(node, address, 1);
         return unsafe.getByte(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public int load_i32_8u(Node node, long address) {
         validateAddress(node, address, 1);
         return 0x0000_00ff & unsafe.getByte(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public int load_i32_16s(Node node, long address) {
         validateAddress(node, address, 2);
         return unsafe.getShort(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public int load_i32_16u(Node node, long address) {
         validateAddress(node, address, 2);
         return 0x0000_ffff & unsafe.getShort(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_8s(Node node, long address) {
         validateAddress(node, address, 1);
         return unsafe.getByte(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_8u(Node node, long address) {
         validateAddress(node, address, 1);
         return 0x0000_0000_0000_00ffL & unsafe.getByte(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_16s(Node node, long address) {
         validateAddress(node, address, 2);
         return unsafe.getShort(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_16u(Node node, long address) {
         validateAddress(node, address, 2);
         return 0x0000_0000_0000_ffffL & unsafe.getShort(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_32s(Node node, long address) {
         validateAddress(node, address, 4);
         return unsafe.getInt(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long load_i64_32u(Node node, long address) {
         validateAddress(node, address, 4);
         return 0x0000_0000_ffff_ffffL & unsafe.getInt(startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public Vector128 load_i128(Node node, long address) {
         validateAddress(node, address, Vector128.BYTES);
         byte[] bytes = new byte[Vector128.BYTES];
@@ -244,165 +253,165 @@ final class NativeWasmMemory extends WasmMemory {
         return new Vector128(bytes);
     }
 
-    @Override
+    @ExportMessage
     public void store_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         unsafe.putLong(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_f32(Node node, long address, float value) {
         validateAddress(node, address, 4);
         unsafe.putFloat(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_f64(Node node, long address, double value) {
         validateAddress(node, address, 8);
         unsafe.putDouble(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_i32_8(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         unsafe.putByte(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_i32_16(Node node, long address, short value) {
         validateAddress(node, address, 2);
         unsafe.putShort(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_i64_8(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         unsafe.putByte(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_i64_16(Node node, long address, short value) {
         validateAddress(node, address, 2);
         unsafe.putShort(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_i64_32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         unsafe.putInt(startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void store_i128(Node node, long address, Vector128 value) {
         validateAddress(node, address, 16);
         unsafe.copyMemory(value.getBytes(), Unsafe.ARRAY_BYTE_BASE_OFFSET, null, startAddress + address, 16);
     }
 
-    @Override
+    @ExportMessage
     public int atomic_load_i32(Node node, long address) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         return unsafe.getIntVolatile(null, startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long atomic_load_i64(Node node, long address) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         return unsafe.getLongVolatile(null, startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public int atomic_load_i32_8u(Node node, long address) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
         return 0x0000_00ff & unsafe.getByteVolatile(null, startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public int atomic_load_i32_16u(Node node, long address) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
         return 0x0000_ffff & unsafe.getShortVolatile(null, startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long atomic_load_i64_8u(Node node, long address) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
         return 0x0000_0000_0000_00ffL & unsafe.getByteVolatile(null, startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long atomic_load_i64_16u(Node node, long address) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
         return 0x0000_0000_0000_ffffL & unsafe.getShortVolatile(null, startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public long atomic_load_i64_32u(Node node, long address) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         return 0x0000_0000_ffff_ffffL & unsafe.getIntVolatile(null, startAddress + address);
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         unsafe.putIntVolatile(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         unsafe.putLongVolatile(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i32_8(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
         unsafe.putByteVolatile(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i32_16(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
         unsafe.putShortVolatile(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i64_8(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
         unsafe.putByteVolatile(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i64_16(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
         unsafe.putShortVolatile(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public void atomic_store_i64_32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         unsafe.putIntVolatile(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_add_i32_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -413,7 +422,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_00ff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_add_i32_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -424,14 +433,14 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_ffff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_add_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         return unsafe.getAndAddInt(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_add_i64_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -442,7 +451,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_00ffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_add_i64_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -453,7 +462,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_add_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -461,14 +470,14 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_ffff_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_add_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         return unsafe.getAndAddLong(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_sub_i32_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -479,7 +488,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_00ff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_sub_i32_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -490,14 +499,14 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_ffff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_sub_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         return unsafe.getAndAddInt(null, startAddress + address, -value);
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_sub_i64_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -508,7 +517,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_00ffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_sub_i64_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -519,7 +528,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_sub_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -527,14 +536,14 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_ffff_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_sub_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         return unsafe.getAndAddLong(null, startAddress + address, -value);
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_and_i32_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -545,7 +554,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_00ff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_and_i32_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -556,7 +565,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_ffff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_and_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -567,7 +576,7 @@ final class NativeWasmMemory extends WasmMemory {
         return v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_and_i64_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -578,7 +587,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_00ffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_and_i64_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -589,7 +598,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_and_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -600,7 +609,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_ffff_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_and_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
@@ -611,7 +620,7 @@ final class NativeWasmMemory extends WasmMemory {
         return v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_or_i32_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -622,7 +631,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_00ff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_or_i32_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -633,7 +642,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_ffff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_or_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -644,7 +653,7 @@ final class NativeWasmMemory extends WasmMemory {
         return v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_or_i64_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -655,7 +664,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_00ffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_or_i64_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -666,7 +675,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_or_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -677,7 +686,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_ffff_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_or_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
@@ -688,7 +697,7 @@ final class NativeWasmMemory extends WasmMemory {
         return v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xor_i32_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -699,7 +708,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_00ff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xor_i32_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -710,7 +719,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_ffff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xor_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -721,7 +730,7 @@ final class NativeWasmMemory extends WasmMemory {
         return v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xor_i64_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -732,7 +741,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_00ffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xor_i64_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -743,7 +752,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xor_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -754,7 +763,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_ffff_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xor_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
@@ -765,7 +774,7 @@ final class NativeWasmMemory extends WasmMemory {
         return v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xchg_i32_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -776,7 +785,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_00ff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xchg_i32_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -787,14 +796,14 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_ffff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_xchg_i32(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         return unsafe.getAndSetInt(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xchg_i64_8u(Node node, long address, byte value) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -805,7 +814,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_00ffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xchg_i64_16u(Node node, long address, short value) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -816,7 +825,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xchg_i64_32u(Node node, long address, int value) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -824,14 +833,14 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_ffff_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_xchg_i64(Node node, long address, long value) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         return unsafe.getAndSetLong(null, startAddress + address, value);
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_cmpxchg_i32_8u(Node node, long address, byte expected, byte replacement) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -839,7 +848,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_00ff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_cmpxchg_i32_16u(Node node, long address, short expected, short replacement) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -847,14 +856,14 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_ffff & v;
     }
 
-    @Override
+    @ExportMessage
     public int atomic_rmw_cmpxchg_i32(Node node, long address, int expected, int replacement) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
         return UnsafeUtilities.compareAndExchangeInt(startAddress, address, expected, replacement);
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_cmpxchg_i64_8u(Node node, long address, byte expected, byte replacement) {
         validateAddress(node, address, 1);
         validateAtomicAddress(node, address, 1);
@@ -862,7 +871,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_00ffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_cmpxchg_i64_16u(Node node, long address, short expected, short replacement) {
         validateAddress(node, address, 2);
         validateAtomicAddress(node, address, 2);
@@ -870,7 +879,7 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_0000_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_cmpxchg_i64_32u(Node node, long address, int expected, int replacement) {
         validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
@@ -878,14 +887,14 @@ final class NativeWasmMemory extends WasmMemory {
         return 0x0000_0000_ffff_ffffL & v;
     }
 
-    @Override
+    @ExportMessage
     public long atomic_rmw_cmpxchg_i64(Node node, long address, long expected, long replacement) {
         validateAddress(node, address, 8);
         validateAtomicAddress(node, address, 8);
         return UnsafeUtilities.compareAndExchangeLong(startAddress, address, expected, replacement);
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public int atomic_notify(Node node, long address, int count) {
         validateAddress(node, address, 4);
@@ -896,7 +905,7 @@ final class NativeWasmMemory extends WasmMemory {
         return invokeNotifyCallback(node, address, count);
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public int atomic_wait32(Node node, long address, int expected, long timeout) {
         validateAddress(node, address, 4);
@@ -907,7 +916,7 @@ final class NativeWasmMemory extends WasmMemory {
         return invokeWaitCallback(node, address, expected, timeout, false);
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public int atomic_wait64(Node node, long address, long expected, long timeout) {
         validateAddress(node, address, 8);
@@ -917,32 +926,33 @@ final class NativeWasmMemory extends WasmMemory {
         }
         return invokeWaitCallback(node, address, expected, timeout, true);
     }
+    // Checkstyle: resume
 
-    @Override
+    @ExportMessage
     public WasmMemory duplicate() {
         final NativeWasmMemory other = new NativeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize, indexType64, shared);
         unsafe.copyMemory(this.startAddress, other.startAddress, this.byteSize());
         return other;
     }
 
-    @Override
+    @ExportMessage
     public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
         for (int i = 0; i < length; i++) {
             unsafe.putByte(startAddress + destinationOffset + i, source[sourceOffset + i]);
         }
     }
 
-    @Override
+    @ExportMessage
     public void initializeUnsafe(long sourceAddress, int sourceOffset, long destinationOffset, int length) {
         unsafe.copyMemory(sourceAddress + sourceOffset, startAddress + destinationOffset, length);
     }
 
-    @Override
+    @ExportMessage
     public void fill(long offset, long length, byte value) {
         unsafe.setMemory(startAddress + offset, length, value);
     }
 
-    @Override
+    @ExportMessage
     public void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length) {
         assert source instanceof NativeWasmMemory;
         final NativeWasmMemory s = (NativeWasmMemory) source;
@@ -961,19 +971,22 @@ final class NativeWasmMemory extends WasmMemory {
         size = 0;
     }
 
-    @Override
+    @ExportMessage
     public void close() {
         if (!freed()) {
             free();
         }
     }
 
-    @Override
-    public ByteBuffer asByteBuffer() {
-        return null;
+    private boolean outOfBounds(int offset, int length) {
+        return length < 0 || offset < 0 || offset > byteSize() - length;
     }
 
-    @Override
+    private boolean outOfBounds(long offset, long length) {
+        return length < 0 || offset < 0 || offset > byteSize() - length;
+    }
+
+    @ExportMessage
     @TruffleBoundary
     public int copyFromStream(Node node, InputStream stream, int offset, int length) throws IOException {
         if (outOfBounds(offset, length)) {
@@ -994,7 +1007,7 @@ final class NativeWasmMemory extends WasmMemory {
         return totalBytesRead;
     }
 
-    @Override
+    @ExportMessage
     @TruffleBoundary
     public void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException {
         if (outOfBounds(offset, length)) {
@@ -1006,7 +1019,7 @@ final class NativeWasmMemory extends WasmMemory {
         }
     }
 
-    @Override
+    @ExportMessage
     public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
         if (outOfBounds(srcOffset, length)) {
             throw trapOutOfBounds(node, srcOffset, length);

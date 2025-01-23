@@ -61,7 +61,6 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
@@ -84,6 +83,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -540,7 +540,7 @@ public class WebAssembly extends Dictionary {
         if (!refTypes && elemKind == TableKind.externref) {
             throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Element type must be anyfunc. Enable reference types to support externref");
         }
-        final int maxAllowedSize = WasmMath.minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
+        final int maxAllowedSize = minUnsigned(maximum, JS_LIMITS.tableInstanceSizeLimit());
         return new WasmTable(initial, maximum, maxAllowedSize, elemKind.byteValue(), initialValue);
     }
 
@@ -714,14 +714,15 @@ public class WebAssembly extends Dictionary {
     }
 
     public static WasmMemory memAlloc(int initial, int maximum, boolean shared) {
+        final WasmContext context = WasmContext.get(null);
+        boolean useUnsafeMemory = context.getContextOptions().useUnsafeMemory();
+        boolean directByteBufferMemoryAccess = context.getContextOptions().directByteBufferMemoryAccess();
         if (compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds max memory size");
-        } else if (Long.compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
+        } else if (Long.compareUnsigned(initial, WasmMemoryFactory.getMaximumAllowedSize(shared, useUnsafeMemory, directByteBufferMemoryAccess)) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds implementation limit");
         }
-        final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
-        final WasmContext context = WasmContext.get(null);
-        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, shared, context.getContextOptions().useUnsafeMemory());
+        return WasmMemoryFactory.createMemory(initial, maximum, false, shared, useUnsafeMemory, directByteBufferMemoryAccess);
     }
 
     private static Object memGrow(Object[] args) {
@@ -738,9 +739,11 @@ public class WebAssembly extends Dictionary {
     }
 
     public static long memGrow(WasmMemory memory, int delta) {
-        final long previousSize = memory.grow(delta);
+        WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
+        final long previousSize = memoryLib.grow(memory, delta);
         if (previousSize == -1) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Cannot grow memory above max limit");
+            throw new WasmJsApiException(WasmJsApiException.Kind.RangeError,
+                            Math.addExact(memoryLib.size(memory), delta) <= memory.declaredMaxSize() ? "Cannot grow memory above implementation limit" : "Cannot grow memory above max limit");
         }
         return previousSize;
     }
@@ -865,7 +868,7 @@ public class WebAssembly extends Dictionary {
         checkArgumentCount(args, 1);
         if (args[0] instanceof WasmMemory) {
             WasmMemory memory = (WasmMemory) args[0];
-            ByteBuffer buffer = memory.asByteBuffer();
+            ByteBuffer buffer = WasmMemoryLibrary.getUncached().asByteBuffer(memory);
             if (buffer != null) {
                 return WasmContext.get(null).environment().asGuestValue(buffer);
             }

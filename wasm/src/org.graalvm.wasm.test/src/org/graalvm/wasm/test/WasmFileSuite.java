@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,6 +83,7 @@ import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.test.options.WasmTestOptions;
 import org.graalvm.wasm.utils.WasmBinaryTools;
 import org.graalvm.wasm.utils.cases.WasmCase;
@@ -235,7 +236,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
                     if (reinitMemory) {
                         for (int j = 0; j < wasmContext.memories().count(); ++j) {
-                            wasmContext.memories().memory(j).reset();
+                            WasmMemoryLibrary.getUncached().reset(wasmContext.memories().memory(j));
                         }
                         for (int j = 0; j < wasmContext.tables().tableCount(); ++j) {
                             wasmContext.tables().table(j).reset();
@@ -602,11 +603,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             if (expectedMemory == null) {
                 Assert.assertNull("Memory should be null", actualMemory);
             } else {
+                WasmMemoryLibrary memories = WasmMemoryLibrary.getUncached();
                 Assert.assertNotNull("Memory should not be null", actualMemory);
-                Assert.assertEquals("Mismatch in memory lengths", expectedMemory.byteSize(), actualMemory.byteSize());
-                for (int ptr = 0; ptr < expectedMemory.byteSize(); ptr++) {
-                    byte expectedByte = (byte) expectedMemory.load_i32_8s(null, ptr);
-                    byte actualByte = (byte) actualMemory.load_i32_8s(null, ptr);
+                Assert.assertEquals("Mismatch in memory lengths", memories.byteSize(expectedMemory), memories.byteSize(actualMemory));
+                for (int ptr = 0; ptr < memories.byteSize(expectedMemory); ptr++) {
+                    byte expectedByte = (byte) memories.load_i32_8s(expectedMemory, null, ptr);
+                    byte actualByte = (byte) memories.load_i32_8s(actualMemory, null, ptr);
                     Assert.assertEquals("Memory mismatch at offset " + ptr + ",", expectedByte, actualByte);
                 }
             }

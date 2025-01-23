@@ -54,8 +54,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
@@ -63,13 +63,10 @@ import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 public class WasmImplementationLimitationsSuite {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> data() {
-        return Arrays.asList(
+        return Collections.singletonList(
                         stringCase("Table instance - initial size out of bounds",
                                         "table instance size exceeds limit: 2147483648 should be <= 10000000",
-                                        "(table $table1 2147483648 funcref)", Failure.Type.TRAP),
-                        stringCase("Memory instance - initial size out of bounds",
-                                        "memory instance size exceeds limit: 32768 should be <= 32767",
-                                        "(memory $memory1 32768)", Failure.Type.TRAP));
+                                        "(table $table1 2147483648 funcref)", Failure.Type.TRAP));
     }
 
     private final String expectedErrorMessage;

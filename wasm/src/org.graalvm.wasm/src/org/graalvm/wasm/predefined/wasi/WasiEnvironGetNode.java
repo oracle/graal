@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,10 +72,10 @@ public final class WasiEnvironGetNode extends WasmBuiltinRootNode {
         int envPointer = envInitialPointer;
         final Map<String, String> env = getContext().environment().getEnvironment();
         for (final Map.Entry<String, String> entry : env.entrySet()) {
-            memory.store_i32(this, envPointer, bufPointer);
+            memoryLib.store_i32(memory, this, envPointer, bufPointer);
             envPointer += 4;
             bufPointer += memory.writeString(this, entry.getKey() + "=" + entry.getValue(), bufPointer);
-            memory.store_i32_8(this, bufPointer, (byte) 0);
+            memoryLib.store_i32_8(memory, this, bufPointer, (byte) 0);
             ++bufPointer;
         }
 
