@@ -232,6 +232,8 @@ public interface MethodRef {
      */
     boolean hasActiveHook();
 
+    void disposeHooks();
+
     /**
      * Determine if this method is obsolete. A method is obsolete if it has been replaced by a
      * non-equivalent method using the RedefineClasses command. The original and redefined methods

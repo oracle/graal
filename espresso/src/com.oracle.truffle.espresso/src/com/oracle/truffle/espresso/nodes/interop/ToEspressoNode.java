@@ -241,6 +241,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         public static Object doTypeConverter(Object value, EspressoType targetType,
                         @Bind Node node,
                         @Cached LookupTypeConverterNode lookupTypeConverter,
+                        @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached InlinedBranchProfile error) throws UnsupportedTypeException {
             try {
@@ -254,7 +255,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                     if (targetType instanceof ParameterizedEspressoType parameterizedEspressoType) {
                         EspressoLanguage.get(node).getTypeArgumentProperty().setObject(foreignWrapper, parameterizedEspressoType.getTypeArguments());
                     }
-                    return converter.convert(foreignWrapper);
+                    StaticObject result = (StaticObject) converter.convert(foreignWrapper);
+                    if (instanceOf.execute(result.getKlass(), targetType.getRawType())) {
+                        return result;
+                    }
                 }
             } catch (UnsupportedMessageException e) {
                 // no meta object, fall through to throw unsupported type
@@ -297,13 +301,28 @@ public abstract class ToEspressoNode extends EspressoNode {
         })
         public static Object doBuiltinCollectionMapped(Object value, EspressoType targetType,
                         @Bind Node node,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached ProxyInstantiateNode proxyInstantiateNode,
+                        @Cached InstanceOf.Dynamic instanceOf,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InlinedBranchProfile converterProfile,
                         @Cached InlinedBranchProfile errorProfile) throws UnsupportedTypeException {
             try {
                 Object metaObject = interop.getMetaObject(value);
                 String metaName = getMetaName(metaObject, interop);
+                // first check if there's a user-defined custom type converter defined
+                PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
+                if (converter != null) {
+                    converterProfile.enter(node);
+                    EspressoContext context = EspressoContext.get(node);
+                    StaticObject foreignWrapper = StaticObject.createForeign(context.getLanguage(), context.getMeta().java_lang_Object, value, interop);
+                    StaticObject result = (StaticObject) converter.convert(foreignWrapper);
+                    if (instanceOf.execute(result.getKlass(), targetType.getRawType())) {
+                        return result;
+                    }
+                }
+                // then check if there's a type-mapped interface
                 WrappedProxyKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, targetType.getRawType());
                 if (proxyKlass != null) {
                     return proxyInstantiateNode.execute(proxyKlass, value, targetType);

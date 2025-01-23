@@ -98,6 +98,7 @@ public final class JDWPContextImpl implements JDWPContext {
     private RedefinitionPluginHandler redefinitionPluginHandler;
     private final ArrayList<ReloadingAction> classInitializerActions = new ArrayList<>(1);
     private DebuggerController controller;
+    private VMEventListenerImpl vmEventListener;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
@@ -105,19 +106,28 @@ public final class JDWPContextImpl implements JDWPContext {
         this.innerClassRedefiner = new InnerClassRedefiner(context);
     }
 
-    public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl vmEventListener) {
+    public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl eventListener) {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
         this.controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
-        vmEventListener.activate(mainThread, controller, this);
-        controller.initialize(debugger, context.getEspressoEnv().JDWPOptions, this, mainThread, vmEventListener);
+        vmEventListener = eventListener;
+        eventListener.activate(mainThread, controller, this);
+        controller.initialize(debugger, context.getEspressoEnv().JDWPOptions, this, mainThread, eventListener);
         redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
         classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
         if (context.getEspressoEnv().JDWPOptions != null) {
-            controller.disposeDebugger(false);
+            if (controller != null) { // in case we exited before initializing the controller field
+                controller.disposeDebugger(false);
+            }
         }
+    }
+
+    @Override
+    public void replaceController(DebuggerController newController) {
+        this.controller = newController;
+        vmEventListener.replaceController(newController);
     }
 
     @Override

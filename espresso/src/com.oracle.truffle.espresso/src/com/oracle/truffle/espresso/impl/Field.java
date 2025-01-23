@@ -926,9 +926,14 @@ public class Field extends Member<Type> implements FieldRef {
                     // remove index 1, but keep info at index 0
                     temp[0] = infos[0];
                     infos = temp;
-                    return;
                 }
         }
+    }
+
+    @Override
+    public void disposeFieldBreakpoint() {
+        hasActiveBreakpoints.set(false);
+        infos = null;
     }
 
     public void setCompatibleField(@SuppressWarnings("unused") Field field) {
