@@ -28,21 +28,31 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public abstract class AbstractStickyFailure implements StickyFallible {
-    private final ObjectKlass exceptionType;
-    private final StaticObject message;
-    private final StaticObject cause;
+    private final EspressoException originalWrappedException;
 
     public AbstractStickyFailure(EspressoException failure) {
-        StaticObject exception = failure.getGuestException();
-        exceptionType = (ObjectKlass) exception.getKlass();
-        message = EspressoException.getGuestMessage(exception);
-        cause = EspressoException.getGuestCause(exception);
+        originalWrappedException = failure;
     }
 
     @Override
     public final void checkFail(Meta meta) {
-        StaticObject exception = Meta.initExceptionWithMessage(exceptionType, message);
-        meta.java_lang_Throwable_cause.set(exception, cause);
-        throw meta.throwException(exception);
+        StaticObject originalException = originalWrappedException.getGuestException();
+        ObjectKlass exceptionType = (ObjectKlass) originalException.getKlass();
+        if (StaticObject.isNull(exceptionType.getDefiningClassLoader())) {
+            StaticObject message = EspressoException.getGuestMessage(originalException);
+            StaticObject cause = EspressoException.getGuestCause(originalException);
+            StaticObject exception;
+            if (StaticObject.notNull(message)) {
+                exception = Meta.initExceptionWithMessage(exceptionType, message);
+            } else {
+                exception = Meta.initException(exceptionType);
+            }
+            if (StaticObject.notNull(cause)) {
+                meta.java_lang_Throwable_initCause.invokeDirectVirtual(exception, cause);
+            }
+            throw meta.throwException(exception);
+        } else {
+            throw originalWrappedException;
+        }
     }
 }

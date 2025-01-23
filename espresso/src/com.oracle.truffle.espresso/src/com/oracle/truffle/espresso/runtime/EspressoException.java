@@ -77,8 +77,11 @@ public final class EspressoException extends AbstractTruffleException {
     }
 
     public static StaticObject getGuestCause(StaticObject e) {
-        // this is used in toString, too dangerous to call a method
-        return (StaticObject) e.getKlass().getMeta().java_lang_Throwable_cause.get(e);
+        StaticObject cause = (StaticObject) e.getKlass().getMeta().java_lang_Throwable_cause.get(e);
+        if (cause == e) {
+            return StaticObject.NULL;
+        }
+        return cause;
     }
 
     public static String getMessage(StaticObject e) {
