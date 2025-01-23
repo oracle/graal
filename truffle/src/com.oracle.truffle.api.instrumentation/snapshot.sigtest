@@ -405,6 +405,7 @@ meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.Contex
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth protected org.graalvm.options.OptionDescriptors getContextOptionDescriptors()
 meth protected org.graalvm.options.OptionDescriptors getOptionDescriptors()
+meth protected org.graalvm.options.OptionDescriptors getSourceOptionDescriptors()
 meth protected void onDispose(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 meth protected void onFinalize(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 supr java.lang.Object
@@ -461,13 +462,14 @@ meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(com.or
 meth public long calculateContextHeapSize(com.oracle.truffle.api.TruffleContext,long,java.util.concurrent.atomic.AtomicBoolean)
 meth public org.graalvm.options.OptionValues getOptions()
 meth public org.graalvm.options.OptionValues getOptions(com.oracle.truffle.api.TruffleContext)
+meth public org.graalvm.options.OptionValues getOptions(com.oracle.truffle.api.source.Source)
 meth public org.graalvm.polyglot.SandboxPolicy getSandboxPolicy()
 meth public org.graalvm.polyglot.io.MessageEndpoint startServer(java.net.URI,org.graalvm.polyglot.io.MessageEndpoint) throws java.io.IOException,org.graalvm.polyglot.io.MessageTransport$VetoException
 meth public void registerService(java.lang.Object)
 meth public void setAsynchronousStackDepth(int)
 supr java.lang.Object
 hfds err,in,instrumenter,messageTransport,options,out,polyglotInstrument,services
-hcls GuardedExecutableNode,MessageTransportProxy
+hcls MessageTransportProxy
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.TruffleInstrument$Registration
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument

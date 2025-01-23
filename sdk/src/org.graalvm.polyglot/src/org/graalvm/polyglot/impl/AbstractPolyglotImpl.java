@@ -559,9 +559,9 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public Object buildSource(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding, URL url,
-                    String path)
+                    String path, Map<String, String> options)
                     throws IOException {
-        return getNext().buildSource(language, origin, uri, name, mimeType, content, interactive, internal, cached, encoding, url, path);
+        return getNext().buildSource(language, origin, uri, name, mimeType, content, interactive, internal, cached, encoding, url, path, options);
     }
 
     public String findLanguage(File file) throws IOException {
@@ -707,6 +707,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getMimeType(Object impl);
 
         public abstract String getLanguage(Object impl);
+
+        public abstract Map<String, String> getOptions(Object impl);
 
     }
 
@@ -939,6 +941,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions(Object receiver);
 
+        public abstract OptionDescriptors getSourceOptions(Object receiver);
+
         public abstract String getVersion(Object receiver);
 
         public abstract <T> T lookup(Object receiver, Class<T> type);
@@ -970,6 +974,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getId(Object receiver);
 
         public abstract OptionDescriptors getOptions(Object receiver);
+
+        public abstract OptionDescriptors getSourceOptions(Object receiver);
 
         public abstract Set<String> getMimeTypes(Object receiver);
 

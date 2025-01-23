@@ -151,6 +151,13 @@ final class InstrumentAccessor extends Accessor {
             return validateOptions(requiredGroup, instrumenter, descriptors);
         }
 
+        @Override
+        public OptionDescriptors describeSourceOptions(Object instrumentationHandler, Object key, String requiredGroup) {
+            InstrumentClientInstrumenter instrumenter = (InstrumentClientInstrumenter) ((InstrumentationHandler) instrumentationHandler).instrumenterMap.get(key);
+            OptionDescriptors descriptors = instrumenter.instrument.getSourceOptionDescriptors();
+            return validateOptions(requiredGroup, instrumenter, descriptors);
+        }
+
         private static OptionDescriptors validateOptions(String requiredGroup, InstrumentClientInstrumenter instrumenter, OptionDescriptors descriptors) {
             if (descriptors == null) {
                 return OptionDescriptors.EMPTY;

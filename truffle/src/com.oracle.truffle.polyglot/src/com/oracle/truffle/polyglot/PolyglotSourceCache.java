@@ -47,12 +47,18 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.SandboxPolicy;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 
 final class PolyglotSourceCache {
 
@@ -109,7 +115,7 @@ final class PolyglotSourceCache {
 
     private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
         validateSource(context, source);
-        CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, null, argumentNames);
+        CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, context.parseSourceOptions(source, null), null, argumentNames);
         if (parsedTarget == null) {
             throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));
         }
@@ -180,6 +186,61 @@ final class PolyglotSourceCache {
                 }
             }
         }
+    }
+
+    static Map<String, OptionValuesImpl> parseSourceOptions(PolyglotEngineImpl engine, Map<String, String> options, String groupOnly, SandboxPolicy policy, boolean allowExperimentalOptions) {
+        if (options.isEmpty()) {
+            // fast-path
+            return Map.of();
+        }
+        Map<String, OptionValuesImpl> optionsById = new LinkedHashMap<>();
+        for (String optionKey : options.keySet()) {
+            String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
+            if (groupOnly != null && !groupOnly.equals(group)) {
+                continue;
+            }
+            String optionValue = options.get(optionKey);
+            try {
+                VMObject object = findComponentForSourceOption(engine, optionKey, group);
+                String id;
+                OptionDescriptors descriptors;
+                if (object instanceof PolyglotLanguage) {
+                    PolyglotLanguage language = (PolyglotLanguage) object;
+                    id = language.getId();
+                    descriptors = language.getSourceOptionsInternal();
+                } else if (object instanceof PolyglotInstrument) {
+                    PolyglotInstrument instrument = (PolyglotInstrument) object;
+                    id = instrument.getId();
+                    descriptors = instrument.getSourceOptionsInternal();
+                } else {
+                    throw new AssertionError("invalid vm object");
+                }
+
+                OptionValuesImpl targetOptions = optionsById.get(id);
+                if (targetOptions == null) {
+                    targetOptions = new OptionValuesImpl(descriptors, policy, false, true);
+                    optionsById.put(id, targetOptions);
+                }
+
+                targetOptions.put(optionKey, optionValue, allowExperimentalOptions, engine::getAllSourceOptions);
+            } catch (PolyglotEngineException e) {
+                throw PolyglotEngineException.illegalArgument(String.format("Failed to parse source option '%s=%s': %s",
+                                optionKey, optionValue, e.e.getMessage()), e.e);
+            }
+        }
+        return optionsById;
+    }
+
+    private static VMObject findComponentForSourceOption(PolyglotEngineImpl engine, final String optionKey, String group) {
+        PolyglotLanguage language = engine.idToLanguage.get(group);
+        if (language == null) {
+            PolyglotInstrument instrument = engine.idToInstrument.get(group);
+            if (instrument != null) {
+                return instrument;
+            }
+            throw OptionValuesImpl.failNotFound(engine.getAllSourceOptions(), optionKey);
+        }
+        return language;
     }
 
     private abstract static class Cache {

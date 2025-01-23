@@ -45,6 +45,7 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.util.Map;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
@@ -217,6 +218,12 @@ final class PolyglotSourceDispatch extends AbstractSourceDispatch {
     public boolean hasCharacters(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
         return source.hasCharacters();
+    }
+
+    @Override
+    public Map<String, String> getOptions(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return EngineAccessor.SOURCE.getSourceOptions(source);
     }
 
 }
