@@ -579,10 +579,6 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         throw sneakyThrow(new VerificationException(s, VerificationException.Kind.Verify));
     }
 
-    static RuntimeException failNoClassDefFound(String s) {
-        throw sneakyThrow(new VerificationException(s, VerificationException.Kind.NoClassDefFound));
-    }
-
     @SuppressWarnings("unchecked")
     private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
         throw (T) ex;

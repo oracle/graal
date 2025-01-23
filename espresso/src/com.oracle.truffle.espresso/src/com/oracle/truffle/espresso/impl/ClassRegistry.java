@@ -498,7 +498,7 @@ public abstract class ClassRegistry {
                 if (chain.contains(superKlassType)) {
                     throw EspressoClassLoadingException.classCircularityError();
                 }
-                superKlass = loadKlassRecursively(context, superKlassType, true);
+                superKlass = loadKlassRecursively(context, superKlassType, true, type);
             }
 
             final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
@@ -515,7 +515,7 @@ public abstract class ClassRegistry {
                 if (chain.contains(superInterfacesTypes[i])) {
                     throw EspressoClassLoadingException.classCircularityError();
                 }
-                ObjectKlass interf = loadKlassRecursively(context, superInterfacesTypes[i], false);
+                ObjectKlass interf = loadKlassRecursively(context, superInterfacesTypes[i], false, type);
                 superInterfaces[i] = interf;
                 linkedInterfaces[i] = interf.getLinkedKlass();
             }
@@ -624,13 +624,12 @@ public abstract class ClassRegistry {
         }
     }
 
-    private ObjectKlass loadKlassRecursively(EspressoContext context, Symbol<Type> type, boolean notInterface) throws EspressoClassLoadingException {
-        ClassLoadingEnv env = context.getClassLoadingEnv();
+    private ObjectKlass loadKlassRecursively(EspressoContext context, Symbol<Type> type, boolean notInterface, Symbol<Type> root) throws EspressoClassLoadingException {
         Klass klass;
         try {
             klass = loadKlass(context, type, StaticObject.NULL);
         } catch (EspressoException e) {
-            throw EspressoClassLoadingException.wrapClassNotFoundGuestException(env, e);
+            throw EspressoClassLoadingException.wrapClassNotFoundGuestException(context.getMeta(), e, root);
         }
         assert klass != null;
         if (notInterface == klass.isInterface()) {

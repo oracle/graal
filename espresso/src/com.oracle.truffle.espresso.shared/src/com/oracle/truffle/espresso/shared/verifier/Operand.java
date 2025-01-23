@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.shared.verifier;
 
 import static com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTypes;
-import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failNoClassDefFound;
 import static com.oracle.truffle.espresso.shared.verifier.MethodVerifier.failVerify;
 import static com.oracle.truffle.espresso.shared.verifier.VerifierError.fatal;
 
@@ -32,7 +31,6 @@ import java.util.ArrayList;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
-import com.oracle.truffle.espresso.shared.meta.ClassLoadingException;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
@@ -257,23 +255,14 @@ class ReferenceOperand<R extends RuntimeAccess<C, M, F>, C extends TypeAccess<C,
     @Override
     C getKlass(MethodVerifier<R, C, M, F> methodVerifier) {
         if (klass == null) {
-            try {
-                if (getType() == methodVerifier.getThisKlass().getSymbolicType()) {
-                    klass = methodVerifier.getThisKlass();
-                } else if (cpi != CPI_UNKNOWN) {
-                    klass = methodVerifier.getThisKlass().resolveClassConstantInPool(cpi);
-                } else {
-                    klass = methodVerifier.runtime.lookupOrLoadType(type, methodVerifier.getThisKlass());
-                }
-            } catch (ClassLoadingException e) {
-                if (e.isClassNotFoundException()) {
-                    throw failNoClassDefFound(type.toString());
-                }
-                throw e.getException();
+            if (getType() == methodVerifier.getThisKlass().getSymbolicType()) {
+                klass = methodVerifier.getThisKlass();
+            } else if (cpi != CPI_UNKNOWN) {
+                klass = methodVerifier.getThisKlass().resolveClassConstantInPool(cpi);
+            } else {
+                klass = methodVerifier.runtime.lookupOrLoadType(type, methodVerifier.getThisKlass());
             }
-            if (klass == null) {
-                throw failNoClassDefFound(type.toString());
-            }
+            assert klass != null;
         }
         return klass;
     }
