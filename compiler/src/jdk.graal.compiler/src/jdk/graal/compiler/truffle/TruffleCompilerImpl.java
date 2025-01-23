@@ -511,6 +511,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             if (wrapper.listener != null) {
                 wrapper.listener.onSuccess(wrapper.compilable, task, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), task.tier());
             }
+            wrapper.compilable.onCompilationSuccess(task.tier(), !task.hasNextTier());
 
             // Partial evaluation and installation are included in
             // compilation time and memory usage reported by printer
