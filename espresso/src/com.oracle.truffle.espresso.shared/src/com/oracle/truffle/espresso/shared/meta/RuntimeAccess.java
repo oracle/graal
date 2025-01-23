@@ -60,16 +60,10 @@ public interface RuntimeAccess<C extends TypeAccess<C, M, F>, M extends MethodAc
      * Performs class loading on behalf of the given accessing class.
      * <p>
      * Its defining class loader is the one to be used for loading.
-     * <p>
-     * Any exception that arises during class loading must be wrapped into a
-     * {@link ClassLoadingException}, correctly specifying if the original exception is this
-     * runtime's equivalent of {@link ClassNotFoundException}.
      *
      * @return The loaded class.
-     *
-     * @throws ClassLoadingException If any exception is thrown during loading
      */
-    C lookupOrLoadType(Symbol<Type> type, C accessingClass) throws ClassLoadingException;
+    C lookupOrLoadType(Symbol<Type> type, C accessingClass);
 
     /**
      * Obtains and returns an object containing certain VM-known classes.

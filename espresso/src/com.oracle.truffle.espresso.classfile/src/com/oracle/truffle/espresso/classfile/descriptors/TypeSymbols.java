@@ -127,12 +127,10 @@ public final class TypeSymbols {
     }
 
     public static ByteSequence hiddenClassName(Symbol<Type> type, long id) {
-        assert type.byteAt(0) == 'L';
-        assert type.byteAt(type.length() - 1) == ';';
+        ByteSequence name = typeToName(type);
         int idSize = ByteSequence.positiveLongStringSize(id);
         int length = type.length() - 2 + 1 + idSize;
         byte[] newBytes = new byte[length];
-        ByteSequence name = type.substring(1, type.length() - 1);
         name.writeTo(newBytes, 0);
         int sepIndex = name.length();
         newBytes[sepIndex] = '+';
@@ -140,6 +138,12 @@ public final class TypeSymbols {
         ByteSequence result = wrap(newBytes, 0, length);
         assert Validation.validModifiedUTF8(result) : String.format("Not valid anymore: %s + %d -> %s", type.toHexString(), id, result.toHexString());
         return result;
+    }
+
+    public static ByteSequence typeToName(Symbol<Type> type) {
+        assert type.byteAt(0) == 'L';
+        assert type.byteAt(type.length() - 1) == ';';
+        return type.substring(1, type.length() - 1);
     }
 
     @TruffleBoundary
@@ -340,7 +344,7 @@ public final class TypeSymbols {
         if (isPrimitive(type)) {
             return getJavaKind(type).getJavaName();
         }
-        return type.substring(1, type.length() - 1).toString().replace('/', '.');
+        return typeToName(type).toString().replace('/', '.');
     }
 
     @SuppressWarnings("unchecked")

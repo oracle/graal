@@ -145,13 +145,6 @@ public final class Resolution {
 
                 return new ResolvedClassConstant(klass);
 
-            } catch (EspressoException e) {
-                CompilerDirectives.transferToInterpreter();
-                Meta meta = pool.getContext().getMeta();
-                if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, meta.toGuestString(klassName));
-                }
-                throw e;
             } catch (VirtualMachineError e) {
                 // Comment from Hotspot:
                 // Just throw the exception and don't prevent these classes from
@@ -488,24 +481,14 @@ public final class Resolution {
 
         StaticObject[] ptypes = new StaticObject[pcount];
         StaticObject rtype;
-        try {
-            for (int i = 0; i < pcount; i++) {
-                Symbol<Type> paramType = SignatureSymbols.parameterType(signature, i);
-                ptypes[i] = meta.resolveSymbolAndAccessCheck(paramType, accessingKlass).mirror();
-            }
-        } catch (EspressoException e) {
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getGuestMessage());
-            }
-            throw e;
+        for (int i = 0; i < pcount; i++) {
+            Symbol<Type> paramType = SignatureSymbols.parameterType(signature, i);
+            ptypes[i] = meta.resolveSymbolAndAccessCheck(paramType, accessingKlass).mirror();
         }
         try {
             rtype = meta.resolveSymbolAndAccessCheck(rt, accessingKlass).mirror();
         } catch (EspressoException e) {
             EspressoException rethrow = e;
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
-                rethrow = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getGuestMessage()), meta);
-            }
             if (failWithBME) {
                 rethrow = EspressoException.wrap(Meta.initExceptionWithCause(meta.java_lang_BootstrapMethodError, rethrow.getGuestException()), meta);
             }

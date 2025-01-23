@@ -41,6 +41,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -262,7 +263,7 @@ public final class JavaAgents extends ContextAccessImpl {
                     StaticObject protectionDomain,
                     byte[] bytes) {
         // get the guest class internal class name once outside the loop
-        StaticObject className = typeOrNull == null ? StaticObject.NULL : getMeta().toGuestString(typeOrNull.substring(1, typeOrNull.length() - 1));
+        StaticObject className = typeOrNull == null ? StaticObject.NULL : getMeta().toGuestString(TypeSymbols.typeToName(typeOrNull));
         StaticObject wrappedBytes = StaticObject.wrap(bytes, getMeta());
         // transform bytes in sequence
         for (JavaAgent agent : agents) {
