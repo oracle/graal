@@ -148,12 +148,14 @@ public final class IsolatedCompileContext extends IsolatedCompilationExceptionDi
         }
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static ClientHandle<String> createStringInClient0(@SuppressWarnings("unused") ClientIsolateThread client, CCharPointer cstr) {
         return IsolatedCompileClient.get().hand(CTypeConversion.toJavaString(cstr));
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static ClientHandle<String[]> createStringArrayInClient0(@SuppressWarnings("unused") ClientIsolateThread client, int length, CCharPointerPointer ptrs) {
         String[] array = new String[length];
         for (int i = 0; i < length; i++) {

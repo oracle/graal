@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle.isolated;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -38,8 +36,10 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.graal.isolated.ClientHandle;
@@ -108,7 +108,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                     eventContext = new IsolatedEventContext(listener, compilable, task);
                 }
                 ClientHandle<TruffleCompilationIdentifier> compilationIdentifier = client.hand(delegate.createCompilationIdentifier(task, compilable));
-                ClientHandle<String> thrownException = doCompile0(context,
+                doCompile0(context,
                                 (ClientIsolateThread) CurrentIsolate.getCurrentThread(),
                                 ImageHeapObjects.ref(delegate),
                                 client.hand(task),
@@ -116,11 +116,6 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                                 compilationIdentifier,
                                 client.hand(eventContext),
                                 firstCompilation.getAndSet(false));
-
-                String exception = client.unhand(thrownException);
-                if (exception != null) {
-                    throw new RuntimeException("Method doCompile threw: " + exception);
-                }
             } finally {
                 IsolatedCompileClient.set(null);
             }
@@ -170,7 +165,8 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         }
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileContext.VoidExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileContext.ExceptionRethrowCallerEpilogue.class)
     protected static void compilerIsolateThreadShutdown(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context) {
         VMRuntime.shutdown();
     }
@@ -180,8 +176,9 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         Isolates.detachThread(context);
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static ClientHandle<String> doCompile0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context,
+    @CEntryPoint(exceptionHandler = IsolatedCompileContext.ResetContextWordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(epilogue = IsolatedCompileContext.ExitCompilationEpilogue.class, callerEpilogue = IsolatedCompileContext.ExceptionRethrowCallerEpilogue.class)
+    private static WordBase doCompile0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context,
                     ClientIsolateThread client,
                     ImageHeapRef<SubstrateTruffleCompilerImpl> delegateRef,
                     ClientHandle<TruffleCompilationTask> taskHandle,
@@ -189,7 +186,10 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                     ClientHandle<TruffleCompilationIdentifier> compilationIdentifier,
                     ClientHandle<IsolatedEventContext> eventContextHandle,
                     boolean firstCompilation) {
+
         IsolatedCompileContext.set(new IsolatedCompileContext(client));
+        // The context is cleared in the CEntryPointOptions.epilogue (also in case of an exception)
+
         try {
             SubstrateTruffleCompilerImpl delegate = ImageHeapObjects.deref(delegateRef);
             IsolatedCompilableTruffleAST compilable = new IsolatedCompilableTruffleAST(compilableHandle);
@@ -210,22 +210,19 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                 compilation.setCompilationId(new IsolatedTruffleCompilationIdentifier(compilationIdentifier, task, compilable));
                 delegate.doCompile(compilation, listener);
             }
-            return IsolatedHandles.nullHandle(); // no exception
-        } catch (Throwable t) {
-            StringWriter writer = new StringWriter();
-            t.printStackTrace(new PrintWriter(writer));
-            return IsolatedCompileContext.get().createStringInClient(writer.toString());
         } finally {
             /*
-             * Compilation isolate do not use a dedicated reference handler thread, so we trigger
+             * Compilation isolates do not use a dedicated reference handler thread, so we trigger
              * the reference handling manually when a compilation finishes.
              */
             Heap.getHeap().doReferenceHandling();
-            IsolatedCompileContext.set(null);
         }
+
+        return Word.zero();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.VoidExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static void copyEncodedOptions(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread client, ClientHandle<byte[]> encodedOptionsHandle, PointerBase buffer) {
         byte[] encodedOptions = IsolatedCompileClient.get().unhand(encodedOptionsHandle);
         CTypeConversion.asByteBuffer(buffer, encodedOptions.length).put(encodedOptions);
