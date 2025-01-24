@@ -31,6 +31,9 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDKLatest;
+
 @CContext(JvmtiDirectives.class)
 @CStruct(value = "jvmtiInterface_1_", addStructKeyword = true)
 public interface JvmtiInterface extends PointerBase {
@@ -428,7 +431,12 @@ public interface JvmtiInterface extends PointerBase {
     void setGetMethodModifiers(CFunctionPointer value);
 
     @CField
-    CFunctionPointer reserved67();
+    @TargetElement(onlyWith = JDKLatest.class)
+    CFunctionPointer getClearAllFramePops();
+
+    @CField
+    @TargetElement(onlyWith = JDKLatest.class)
+    void setClearAllFramePops(CFunctionPointer value);
 
     @CField
     CFunctionPointer getGetMaxLocals();

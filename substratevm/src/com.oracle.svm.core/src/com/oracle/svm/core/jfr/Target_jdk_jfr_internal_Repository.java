@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -36,16 +37,19 @@ import com.oracle.svm.core.jdk.JDKLatest;
 import jdk.jfr.internal.Repository;
 
 @TargetClass(value = Repository.class, onlyWith = {HasJfrSupport.class, JDKLatest.class})
+@SuppressWarnings("unused")
 public final class Target_jdk_jfr_internal_Repository {
 
+    // Checkstyle: stop
     @Delete //
     private static Path JAVA_IO_TMPDIR;
+    // Checkstyle: resume
 
     @Alias //
     private Path baseLocation;
 
     @Alias //
-    public synchronized native void setBasePath(Path baseLocation) throws Exception;
+    public native void setBasePath(Path baseLocation) throws IOException;
 
     @Substitute
     synchronized void ensureRepository() throws Exception {
@@ -57,17 +61,18 @@ public final class Target_jdk_jfr_internal_Repository {
 }
 
 @TargetClass(value = Repository.class, onlyWith = {HasJfrSupport.class, JDK21OrEarlier.class})
+@SuppressWarnings("unused")
 final class Target_jdk_jfr_internal_Repository_JDK21 {
     @Alias //
-    private Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocation;
+    private Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 baseLocation;
 
     @Alias //
-    public synchronized native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath baseLocation) throws Exception;
+    public native void setBasePath(Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 baseLocation) throws IOException;
 
     @Substitute
     synchronized void ensureRepository() throws Exception {
         if (baseLocation == null) {
-            Target_jdk_jfr_internal_SecuritySupport_SafePath path = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("java.io.tmpdir", null);
+            Target_jdk_jfr_internal_SecuritySupport_SafePath_JDK21 path = Target_jdk_jfr_internal_SecuritySupport_JDK21.getPathInProperty("java.io.tmpdir", null);
             setBasePath(path);
         }
     }
@@ -76,5 +81,5 @@ final class Target_jdk_jfr_internal_Repository_JDK21 {
 @TargetClass(className = "jdk.jfr.internal.util.Utils", onlyWith = {HasJfrSupport.class, JDKLatest.class})
 final class Target_jdk_jfr_internal_util_Utils {
     @Alias
-    public native static Path getPathInProperty(String prop, String subPath);
+    public static native Path getPathInProperty(String prop, String subPath);
 }
