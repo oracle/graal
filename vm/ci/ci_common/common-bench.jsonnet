@@ -19,7 +19,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     capabilities+: ['tmpfs25g'],
   },
 
-  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_21 + vm_common.svm_common + vm_common.sulong + vm.custom_vm + self.vm_bench_common + {
+  vm_bench_js_linux_amd64(bench_suite=null): vm.vm_java_Latest + vm_common.svm_common + vm_common.sulong + vm.custom_vm + self.vm_bench_common + {
     cmd_base:: vm_common.mx_vm_common + ['--dynamicimports', 'js-benchmarks', 'benchmark', '--results-file', self.result_file],
     config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}'],
     setup+: [
@@ -29,7 +29,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
     ],
     run+:
       if (bench_suite != null) then [
-        self.cmd_base + [bench_suite + ':*', '--'] + self.config_base + ['--jvm-config=jvm'],
+        self.cmd_base + [bench_suite + ':*', '--'] + self.config_base + ['--jvm-config=jvm', '--vm.Xss24m'],
         $.vm_bench_common.upload,
         self.cmd_base + [bench_suite + ':*', '--'] + self.config_base + ['--jvm-config=native'],
         $.vm_bench_common.upload,
@@ -251,6 +251,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       ] + xms + xmx + [
         "--experimental-options",
         "--engine.CompilationFailureAction=ExitVM",
+        "--engine.MaximumCompilations=200", # GR-61670
         "-Djdk.graal.DumpOnError=true",
         "-Djdk.graal.PrintGraph=File",
         "--js-vm=graal-js",
@@ -271,13 +272,13 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
   local builds = [
     # We used to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('octane')     + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-octane-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('jetstream')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('jetstream2') + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('micro')      + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-micro-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('v8js')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-v8js-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('misc')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-misc-java' + self.jdk_version + '-linux-amd64'},
-    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('npm-regex')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-java' + self.jdk_version + '-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('octane')     + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-octane-' + self.jdk_name + '-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('jetstream')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-' + self.jdk_name + '-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('jetstream2') + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-' + self.jdk_name + '-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('micro')      + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-micro-' + self.jdk_name + '-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('v8js')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-v8js-' + self.jdk_name + '-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('misc')       + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-misc-' + self.jdk_name + '-linux-amd64'},
+    vm_common.vm_base('linux', 'amd64', 'ondemand', bench=true) + self.vm_bench_js_linux_amd64('npm-regex')  + {name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-' + self.jdk_name + '-linux-amd64'},
 
     vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_interpreter     + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-linux-amd64', notify_groups:: ['polybench']},
     vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux-amd64', notify_groups:: ['polybench']},
@@ -300,8 +301,8 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
     vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_21 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java21-linux-amd64', notify_groups:: ['polybench']},
 
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.js_bench_compilation_throughput(true) + vm.vm_java_21 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-pgo-throughput-js-typescript-java' + self.jdk_version + '-linux-amd64' },
-    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.js_bench_compilation_throughput(false) + vm.vm_java_21 + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-java' + self.jdk_version + '-linux-amd64' },
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.js_bench_compilation_throughput(true) + vm.vm_java_Latest + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-pgo-throughput-js-typescript-' + self.jdk_name + '-linux-amd64' },
+    vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.js_bench_compilation_throughput(false) + vm.vm_java_Latest + { name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-libgraal-no-pgo-throughput-js-typescript-' + self.jdk_name + '-linux-amd64' },
 
     vm_common.vm_base('linux', 'amd64', 'daily', bench=true) + self.vm_bench_js_linux_amd64() + {
       # Override `self.vm_bench_js_linux_amd64.run`
@@ -312,7 +313,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
         $.vm_bench_common.upload,
       ],
       timelimit: '45:00',
-      name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-java' + self.jdk_version + '-linux-amd64',
+      name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-' + self.jdk_name + '-linux-amd64',
       notify_groups:: ['javascript'],
     },
 
