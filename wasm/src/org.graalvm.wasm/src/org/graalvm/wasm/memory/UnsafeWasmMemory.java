@@ -1011,7 +1011,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @ExportMessage
     @TruffleBoundary
     public ByteBuffer asByteBuffer() {
-        return buffer.duplicate();
+        return buffer.slice(0, Math.toIntExact(byteSize()));
     }
 
     private boolean outOfBounds(int offset, int length) {
