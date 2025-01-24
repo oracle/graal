@@ -46,8 +46,8 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import com.oracle.truffle.compiler.TruffleCompilationSupport;
 import com.oracle.truffle.compiler.TruffleCompiler;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor;
-import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.compiler.TruffleCompilerOptionDescriptor.Type;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntime;
 import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope.DetachAction;
 
@@ -70,6 +70,11 @@ public final class LibGraalTruffleCompilationSupport implements TruffleCompilati
 
     public static void initializeIsolate(long isolateThreadId) {
         runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+        try {
+            runtime().registerNativeMethods(TruffleToLibGraalCalls2.class);
+        } catch (UnsatisfiedLinkError e) {
+            // deliberately ignored, the entry points might not be there
+        }
         TruffleToLibGraalCalls.initializeIsolate(isolateThreadId, LibGraalTruffleCompilationSupport.class);
     }
 

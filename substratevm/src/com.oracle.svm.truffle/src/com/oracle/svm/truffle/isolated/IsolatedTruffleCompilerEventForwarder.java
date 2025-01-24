@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.truffle.isolated;
 
-import com.oracle.svm.graal.isolated.IsolatedHandles;
+import java.util.function.Supplier;
+
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -40,13 +41,12 @@ import com.oracle.svm.graal.isolated.CompilerHandle;
 import com.oracle.svm.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
+import com.oracle.svm.graal.isolated.IsolatedHandles;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 import com.oracle.truffle.compiler.TruffleCompilerListener.CompilationResultInfo;
 import com.oracle.truffle.compiler.TruffleCompilerListener.GraphInfo;
-
-import java.util.function.Supplier;
 
 final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerListener {
     private final ClientHandle<IsolatedEventContext> contextHandle;
@@ -69,6 +69,7 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     public void onSuccess(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph, CompilationResultInfo info, int tier) {
         IsolatedCompilationResultData data = StackValue.get(IsolatedCompilationResultData.class);
         data.setOriginalObjectHandle(IsolatedCompileContext.get().hand(info));
+        data.setCompilationId(info.getCompilationId());
         data.setTargetCodeSize(info.getTargetCodeSize());
         data.setTotalFrameSize(info.getTotalFrameSize());
         data.setExceptionHandlersCount(info.getExceptionHandlersCount());
@@ -170,6 +171,7 @@ final class IsolatedGraphInfo implements GraphInfo {
 
 final class IsolatedCompilationResultInfo implements CompilationResultInfo {
     private CompilerHandle<CompilationResultInfo> originalObjectHandle;
+    private final long compilationId;
     private final int targetCodeSize;
     private final int totalFrameSize;
     private final int exceptionHandlersCount;
@@ -179,12 +181,18 @@ final class IsolatedCompilationResultInfo implements CompilationResultInfo {
 
     IsolatedCompilationResultInfo(IsolatedCompilationResultData data) {
         originalObjectHandle = data.getOriginalObjectHandle();
+        compilationId = data.getCompilationId();
         targetCodeSize = data.getTargetCodeSize();
         totalFrameSize = data.getTotalFrameSize();
         exceptionHandlersCount = data.getExceptionHandlersCount();
         infopointsCount = data.getInfopointsCount();
         marksCount = data.getMarksCount();
         dataPatchesCount = data.getDataPatchesCount();
+    }
+
+    @Override
+    public long getCompilationId() {
+        return compilationId;
     }
 
     @Override
@@ -237,6 +245,12 @@ interface IsolatedCompilationResultData extends PointerBase {
 
     @RawField
     void setOriginalObjectHandle(CompilerHandle<CompilationResultInfo> value);
+
+    @RawField
+    long getCompilationId();
+
+    @RawField
+    void setCompilationId(long compilationId);
 
     @RawField
     int getTargetCodeSize();
