@@ -58,6 +58,7 @@ public class WasmContextOptions {
     @CompilationFinal private boolean unsafeMemory;
     @CompilationFinal private boolean threads;
     @CompilationFinal private boolean simd;
+    @CompilationFinal private boolean relaxedSimd;
 
     @CompilationFinal private boolean memoryOverheadMode;
     @CompilationFinal private boolean constantRandomGet;
@@ -87,6 +88,7 @@ public class WasmContextOptions {
         this.threads = readBooleanOption(WasmOptions.Threads);
         this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
         this.simd = readBooleanOption(WasmOptions.SIMD);
+        this.relaxedSimd = readBooleanOption(WasmOptions.RelaxedSIMD);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
         this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
         // Temporary: Default DirectByteBufferMemoryAccess to true when UseUnsafeMemory is set to
@@ -157,6 +159,10 @@ public class WasmContextOptions {
         return simd;
     }
 
+    public boolean supportRelaxedSIMD() {
+        return relaxedSimd;
+    }
+
     public boolean memoryOverheadMode() {
         return memoryOverheadMode;
     }
@@ -185,6 +191,7 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.multiMemory ? 1 : 0);
         hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.simd ? 1 : 0);
+        hash = 53 * hash + (this.relaxedSimd ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
         hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
         hash = 53 * hash + (this.directByteBufferMemoryAccess ? 1 : 0);
@@ -232,6 +239,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.simd != other.simd) {
+            return false;
+        }
+        if (this.relaxedSimd != other.relaxedSimd) {
             return false;
         }
         if (this.memoryOverheadMode != other.memoryOverheadMode) {

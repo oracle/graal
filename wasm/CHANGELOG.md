@@ -6,6 +6,7 @@ This changelog summarizes major changes to the WebAssembly engine implemented in
 
 * Updated developer metadata of Maven artifacts.
 * Deprecated the `--wasm.AsyncParsingBinarySize` and `--wasm.AsyncParsingStackSize` options. These options no longer have any effect and will be removed in a future release.
+* Implemented the [Relaxed SIMD](https://github.com/WebAssembly/relaxed-simd) proposal. This feature can be enabled with the options `--wasm.RelaxedSIMD`.
 
 ## Version 24.1.0
 
