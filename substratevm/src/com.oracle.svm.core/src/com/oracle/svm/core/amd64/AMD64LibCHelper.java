@@ -310,6 +310,10 @@ public class AMD64LibCHelper {
         @AllowNarrowingCast
         @CField
         boolean fSHA512();
+
+        @AllowNarrowingCast
+        @CField
+        boolean fAVX512_FP16();
     }
     // Checkstyle: resume
 }
