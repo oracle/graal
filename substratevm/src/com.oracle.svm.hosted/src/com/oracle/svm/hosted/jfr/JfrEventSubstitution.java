@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.jfr;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,7 +45,9 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.MetadataRepository;
 import jdk.jfr.internal.SecuritySupport;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -171,7 +174,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
                 }
             }
 
-            SecuritySupport.registerEvent(newEventClass);
+            registerEventInMetadataRepository(newEventClass);
 
             JfrJavaEvents.registerEventClass(newEventClass);
             // the reflection registration for the event handler field is delayed to the JfrFeature
@@ -184,6 +187,14 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             return Boolean.TRUE;
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    private static void registerEventInMetadataRepository(Class<? extends Event> newEventClass) throws IllegalAccessException, InvocationTargetException {
+        if (JavaVersionUtil.JAVA_SPEC == 21) {
+            ReflectionUtil.lookupMethod(SecuritySupport.class, "registerEvent", Class.class).invoke(null, newEventClass);
+        } else {
+            ReflectionUtil.lookupMethod(MetadataRepository.class, "register", Class.class).invoke(MetadataRepository.getInstance(), newEventClass);
         }
     }
 
