@@ -39,8 +39,14 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_0;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETFIELD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.GETSTATIC;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.INVOKEDYNAMIC;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.JSR_W;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.MONITORENTER;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.MONITOREXIT;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.PUTSTATIC;
+import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RET;
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.RETURN;
 
 import java.io.PrintStream;
@@ -1407,6 +1413,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      * new MethodVersion object.
      */
     public final class MethodVersion implements MethodRef, ModifiersProvider {
+        private static final int CODE_FLAGS_READY = 0x1;
+        private static final int CODE_FLAGS_HAS_JSR = 0x2;
+        private static final int CODE_FLAGS_USES_MONITORS = 0x4;
+        private static final int CODE_FLAGS_HAS_INDY = 0x8;
+
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
         private final LinkedMethod linkedMethod;
@@ -1421,6 +1432,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @CompilationFinal private int itableIndex = -1;
 
         @CompilationFinal private byte refKind;
+        @CompilationFinal private byte codeFlags;
 
         @CompilationFinal(dimensions = 1) //
         private ObjectKlass[] checkedExceptions;
@@ -1953,15 +1965,52 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public boolean usesMonitors() {
             // Whether we need to use an additional frame slot for monitor unlock on kill.
-            return isSynchronized() || codeAttribute != null && codeAttribute.usesMonitors();
+            return isSynchronized() || (getCodeFlags() & CODE_FLAGS_USES_MONITORS) != 0;
         }
 
+        /**
+         * Returns true if this method uses the JSR/RET bytecodes.
+         */
         public boolean hasJsr() {
-            return codeAttribute != null && codeAttribute.hasJsr();
+            return (getCodeFlags() & CODE_FLAGS_HAS_JSR) != 0;
         }
 
         public boolean usesIndy() {
-            return codeAttribute != null && codeAttribute.usesIndy();
+            return (getCodeFlags() & CODE_FLAGS_HAS_INDY) != 0;
+        }
+
+        private byte getCodeFlags() {
+            byte localFlags = codeFlags;
+            if (localFlags == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (codeAttribute == null) {
+                    localFlags = CODE_FLAGS_READY;
+                } else {
+                    localFlags = computeFlags(codeAttribute.getOriginalCode());
+                }
+                assert localFlags != 0;
+                codeFlags = localFlags;
+            }
+            return localFlags;
+        }
+
+        private static byte computeFlags(byte[] code) {
+            BytecodeStream bs = new BytecodeStream(code);
+            int bci = 0;
+            int flags = CODE_FLAGS_READY;
+            while (bci < bs.endBCI()) {
+                int opcode = bs.opcode(bci);
+                switch (opcode) {
+                    case JSR, JSR_W, RET ->
+                        flags |= CODE_FLAGS_HAS_JSR;
+                    case MONITORENTER, MONITOREXIT ->
+                        flags |= CODE_FLAGS_USES_MONITORS;
+                    case INVOKEDYNAMIC ->
+                        flags |= CODE_FLAGS_HAS_INDY;
+                }
+                bci = bs.nextBCI(bci);
+            }
+            return (byte) flags;
         }
 
         public int getRefKind() {
