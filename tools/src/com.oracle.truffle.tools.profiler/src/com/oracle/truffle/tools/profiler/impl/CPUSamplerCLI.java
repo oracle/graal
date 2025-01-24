@@ -369,7 +369,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             sample.put("self_tier_count", selfTierCount);
             int[] tierCount = new int[payload.getNumberOfTiers()];
             for (int i = 0; i < tierCount.length; i++) {
-                tierCount[i] = payload.getTierSelfCount(i);
+                tierCount[i] = payload.getTierTotalCount(i);
             }
             sample.put("tier_count", tierCount);
             sample.put("children", getSamplesRec(node.getChildren()));
