@@ -67,7 +67,14 @@ import sun.misc.Unsafe;
 final class NativeWasmMemory extends WasmMemory {
 
     private long startAddress;
+    /**
+     * The visible size of the Wasm linear memory.
+     */
     private long size;
+    /**
+     * The actual size of the memory buffer allocated by GraalWasm.
+     */
+    private long bufferSize;
 
     public static final long MAX_ALLOWED_SIZE = Sizes.MAX_MEMORY_64_INSTANCE_SIZE;
 
@@ -75,22 +82,23 @@ final class NativeWasmMemory extends WasmMemory {
     private static final VarHandle SIZE_FIELD;
 
     @TruffleBoundary
-    private NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
-        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
+    private NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, false);
         this.size = declaredMinSize;
-        final long byteSize = byteSize();
-        this.startAddress = allocate(byteSize);
+        final long initialBufferSize = byteSize();
+        this.startAddress = allocate(initialBufferSize);
+        this.bufferSize = initialBufferSize;
     }
 
     @TruffleBoundary
-    NativeWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, WasmMath.minUnsigned(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64, shared);
+    NativeWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, WasmMath.minUnsigned(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64);
     }
 
-    private static long allocate(long byteSize) {
+    private static long allocate(long newBufferSize) {
         try {
-            final long address = unsafe.allocateMemory(byteSize);
-            unsafe.setMemory(address, byteSize, (byte) 0);
+            final long address = unsafe.allocateMemory(newBufferSize);
+            unsafe.setMemory(address, newBufferSize, (byte) 0);
             return address;
         } catch (OutOfMemoryError error) {
             throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
@@ -118,13 +126,26 @@ final class NativeWasmMemory extends WasmMemory {
             // Condition above and limit on maxAllowedSize (see NativeWasmMemory#MAX_ALLOWED_SIZE)
             // ensure computation of targetByteSize does not overflow.
             final long targetByteSize = Math.multiplyExact(Math.addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
-            final long updatedSize = previousSize + extraPageSize;
-            try {
-                startAddress = unsafe.reallocateMemory(startAddress, targetByteSize);
-                unsafe.setMemory(startAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
-            } catch (OutOfMemoryError error) {
-                throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+            if (Long.compareUnsigned(targetByteSize, bufferSize) > 0) {
+                try {
+                    long newBufferSize = newBufferSize(targetByteSize);
+                    startAddress = unsafe.reallocateMemory(startAddress, newBufferSize);
+                    unsafe.setMemory(startAddress + bufferSize, newBufferSize - bufferSize, (byte) 0);
+                    bufferSize = newBufferSize;
+                } catch (OutOfMemoryError error) {
+                    // Over-allocating failed, so try to allocate at least the amount of memory that
+                    // was requested.
+                    try {
+                        long newBufferSize = targetByteSize;
+                        startAddress = unsafe.reallocateMemory(startAddress, newBufferSize);
+                        unsafe.setMemory(startAddress + bufferSize, newBufferSize - bufferSize, (byte) 0);
+                        bufferSize = newBufferSize;
+                    } catch (OutOfMemoryError errorAgain) {
+                        throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+                    }
+                }
             }
+            final long updatedSize = previousSize + extraPageSize;
             currentMinSize = updatedSize;
             SIZE_FIELD.setVolatile(this, updatedSize);
             invokeGrowCallback();
@@ -134,12 +155,21 @@ final class NativeWasmMemory extends WasmMemory {
         }
     }
 
+    public long newBufferSize(long targetByteSize) {
+        // bufferSize <= Sizes.MAX_MEMORY_64_INSTANCE_BYTE_SIZE, so this should not overflow
+        long prefBufferSize = Math.addExact(bufferSize, bufferSize >> 1);
+        // maxAllowedByteSize <= Sizes.MAX_MEMORY_64_INSTANCE_BYTE_SIZE, so no overflow
+        long maxAllowedByteSize = Math.multiplyExact(maxAllowedSize(), MEMORY_PAGE_SIZE);
+        return Math.max(targetByteSize, Math.min(prefBufferSize, maxAllowedByteSize));
+    }
+
     @ExportMessage
     @TruffleBoundary
     public void reset() {
         free();
         size = declaredMinSize;
-        startAddress = allocate(byteSize());
+        bufferSize = byteSize();
+        startAddress = allocate(bufferSize);
         currentMinSize = declaredMinSize;
     }
 
@@ -930,7 +960,7 @@ final class NativeWasmMemory extends WasmMemory {
 
     @ExportMessage
     public WasmMemory duplicate() {
-        final NativeWasmMemory other = new NativeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize, indexType64, shared);
+        final NativeWasmMemory other = new NativeWasmMemory(declaredMinSize, declaredMaxSize, size, maxAllowedSize, indexType64);
         unsafe.copyMemory(this.startAddress, other.startAddress, this.byteSize());
         return other;
     }
@@ -967,6 +997,7 @@ final class NativeWasmMemory extends WasmMemory {
     @TruffleBoundary
     private void free() {
         unsafe.freeMemory(startAddress);
+        bufferSize = 0;
         startAddress = 0;
         size = 0;
     }
