@@ -70,26 +70,26 @@ public final class VTableBuilder {
         private final boolean closedTypeWorld;
         private final boolean registerTrackedTypes;
         private final boolean registerAllTypes;
-        private final boolean filterVTableMethods;
 
         OpenTypeWorldHubLayoutUtils(HostedUniverse hUniverse) {
             closedTypeWorld = SubstrateOptions.useClosedTypeWorld();
-
-            /*
-             * We only filter vtable methods when we are building a non-layered image under the
-             * closed type world assumption. For layered builds, we must keep all vtable methods to
-             * ensure consistency across layers.
-             *
-             * With the closed type world assumption we can filter out methods that we know will be
-             * simplified to direct calls (i.e., when at most a single implementation exists for the
-             * given target). See generateDispatchTable for the use of this filter.
-             */
-            filterVTableMethods = closedTypeWorld && !ImageLayerBuildingSupport.buildingImageLayer();
 
             registerTrackedTypes = hUniverse.hostVM().enableTrackAcrossLayers();
             registerAllTypes = ImageLayerBuildingSupport.buildingApplicationLayer();
             assert !(registerTrackedTypes && registerAllTypes) : "We expect these flags to be mutually exclusive";
             assert (registerTrackedTypes || registerAllTypes) == ImageLayerBuildingSupport.buildingImageLayer() : "Type information must be registered during layered image builds";
+        }
+
+        /**
+         * We are allowed to filter vtables as long as we know the type layout does not need to
+         * match the layout of another layer.
+         *
+         * When filtering is allowed, we can filter out methods that we know will be simplified to
+         * direct calls (i.e., when at most a single implementation exists for the given target).
+         * See generateDispatchTable for the use of this filter.
+         */
+        private boolean filterVTableMethods(HostedType type) {
+            return closedTypeWorld && !type.getWrapped().isInBaseLayer();
         }
 
         private boolean shouldIncludeType(HostedType type) {
@@ -183,7 +183,7 @@ public final class VTableBuilder {
 
     private List<HostedMethod> generateDispatchTable(HostedType type, int startingIndex) {
         Predicate<HostedMethod> includeMethod;
-        if (openHubUtils.filterVTableMethods) {
+        if (openHubUtils.filterVTableMethods(type)) {
             // include only methods which will be indirect calls
             includeMethod = m -> {
                 assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
