@@ -98,7 +98,8 @@ jobs:
         include:
           # /compiler
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
+              TOOLS_JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
