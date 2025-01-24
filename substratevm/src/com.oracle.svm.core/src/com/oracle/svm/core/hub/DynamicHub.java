@@ -516,8 +516,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         writeObject(hub, dynamicHubOffsets.getCompanionOffset(), companion);
 
-        writeObject(hub, dynamicHubOffsets.getSignatureOffset(), signature);
-
         FinalFieldBarrierNode.finalFieldBarrier(hub);
 
         return hub;
