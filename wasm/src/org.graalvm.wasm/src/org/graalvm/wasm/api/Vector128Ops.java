@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,9 +82,12 @@ public class Vector128Ops {
             case Bytecode.VECTOR_F64X2_ABS, Bytecode.VECTOR_F64X2_NEG, Bytecode.VECTOR_F64X2_SQRT, Bytecode.VECTOR_F64X2_CEIL, Bytecode.VECTOR_F64X2_FLOOR, Bytecode.VECTOR_F64X2_TRUNC,
                             Bytecode.VECTOR_F64X2_NEAREST ->
                 f64x2_unop(x, vectorOpcode);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U -> i32x4_trunc_sat_f32x4(x, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U ->
+                i32x4_trunc_f32x4(x, vectorOpcode);
             case Bytecode.VECTOR_F32X4_CONVERT_I32X4_S, Bytecode.VECTOR_F32X4_CONVERT_I32X4_U -> f32x4_convert_i32x4(x, vectorOpcode);
-            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> i32x4_trunc_sat_f64x2_zero(x, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO,
+                            Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO ->
+                i32x4_trunc_f64x2_zero(x, vectorOpcode);
             case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_S, Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U -> f64x2_convert_low_i32x4(x, vectorOpcode);
             case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO -> f32x4_demote_f64x2_zero(x);
             case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4 -> f64x2_promote_low_f32x4(x);
@@ -94,7 +97,7 @@ public class Vector128Ops {
 
     public static byte[] binary(byte[] x, byte[] y, int vectorOpcode) {
         return switch (vectorOpcode) {
-            case Bytecode.VECTOR_I8X16_SWIZZLE -> i8x16_swizzle(x, y);
+            case Bytecode.VECTOR_I8X16_SWIZZLE, Bytecode.VECTOR_I8X16_RELAXED_SWIZZLE -> i8x16_swizzle(x, y, vectorOpcode);
             case Bytecode.VECTOR_V128_AND, Bytecode.VECTOR_V128_ANDNOT, Bytecode.VECTOR_V128_OR, Bytecode.VECTOR_V128_XOR -> v128_binop(x, y, vectorOpcode);
             case Bytecode.VECTOR_I8X16_EQ, Bytecode.VECTOR_I8X16_NE, Bytecode.VECTOR_I8X16_LT_S, Bytecode.VECTOR_I8X16_LT_U, Bytecode.VECTOR_I8X16_GT_S, Bytecode.VECTOR_I8X16_GT_U,
                             Bytecode.VECTOR_I8X16_LE_S, Bytecode.VECTOR_I8X16_LE_U, Bytecode.VECTOR_I8X16_GE_S, Bytecode.VECTOR_I8X16_GE_U ->
@@ -119,7 +122,7 @@ public class Vector128Ops {
             case Bytecode.VECTOR_I16X8_NARROW_I32X4_S, Bytecode.VECTOR_I16X8_NARROW_I32X4_U -> i16x8_narrow_i32x4(x, y, vectorOpcode);
             case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S, Bytecode.VECTOR_I16X8_ADD, Bytecode.VECTOR_I16X8_ADD_SAT_S, Bytecode.VECTOR_I16X8_ADD_SAT_U, Bytecode.VECTOR_I16X8_SUB,
                             Bytecode.VECTOR_I16X8_SUB_SAT_S, Bytecode.VECTOR_I16X8_SUB_SAT_U, Bytecode.VECTOR_I16X8_MUL, Bytecode.VECTOR_I16X8_MIN_S, Bytecode.VECTOR_I16X8_MIN_U,
-                            Bytecode.VECTOR_I16X8_MAX_S, Bytecode.VECTOR_I16X8_MAX_U, Bytecode.VECTOR_I16X8_AVGR_U ->
+                            Bytecode.VECTOR_I16X8_MAX_S, Bytecode.VECTOR_I16X8_MAX_U, Bytecode.VECTOR_I16X8_AVGR_U, Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S ->
                 i16x8_binop(x, y, vectorOpcode);
             case Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_S, Bytecode.VECTOR_I16X8_EXTMUL_LOW_I8X16_U -> i16x8_binop_extend_low_i8x16(x, y, vectorOpcode);
             case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_S, Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U -> i16x8_binop_extend_high_i8x16(x, y, vectorOpcode);
@@ -133,18 +136,24 @@ public class Vector128Ops {
             case Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_S, Bytecode.VECTOR_I64X2_EXTMUL_LOW_I32X4_U -> i64x2_binop_extend_low_i32x4(x, y, vectorOpcode);
             case Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_S, Bytecode.VECTOR_I64X2_EXTMUL_HIGH_I32X4_U -> i64x2_binop_extend_high_i32x4(x, y, vectorOpcode);
             case Bytecode.VECTOR_F32X4_ADD, Bytecode.VECTOR_F32X4_SUB, Bytecode.VECTOR_F32X4_MUL, Bytecode.VECTOR_F32X4_DIV, Bytecode.VECTOR_F32X4_MIN, Bytecode.VECTOR_F32X4_MAX,
-                            Bytecode.VECTOR_F32X4_PMIN, Bytecode.VECTOR_F32X4_PMAX ->
+                            Bytecode.VECTOR_F32X4_PMIN, Bytecode.VECTOR_F32X4_PMAX, Bytecode.VECTOR_F32X4_RELAXED_MIN, Bytecode.VECTOR_F32X4_RELAXED_MAX ->
                 f32x4_binop(x, y, vectorOpcode);
             case Bytecode.VECTOR_F64X2_ADD, Bytecode.VECTOR_F64X2_SUB, Bytecode.VECTOR_F64X2_MUL, Bytecode.VECTOR_F64X2_DIV, Bytecode.VECTOR_F64X2_MIN, Bytecode.VECTOR_F64X2_MAX,
-                            Bytecode.VECTOR_F64X2_PMIN, Bytecode.VECTOR_F64X2_PMAX ->
+                            Bytecode.VECTOR_F64X2_PMIN, Bytecode.VECTOR_F64X2_PMAX, Bytecode.VECTOR_F64X2_RELAXED_MIN, Bytecode.VECTOR_F64X2_RELAXED_MAX ->
                 f64x2_binop(x, y, vectorOpcode);
+            case Bytecode.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S -> i16x8_relaxed_dot_i8x16_i7x16_s(x, y);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
 
     public static byte[] ternary(byte[] x, byte[] y, byte[] z, int vectorOpcode) {
         return switch (vectorOpcode) {
-            case Bytecode.VECTOR_V128_BITSELECT -> v128_bitselect(x, y, z);
+            case Bytecode.VECTOR_V128_BITSELECT, Bytecode.VECTOR_I8X16_RELAXED_LANESELECT, Bytecode.VECTOR_I16X8_RELAXED_LANESELECT, Bytecode.VECTOR_I32X4_RELAXED_LANESELECT,
+                            Bytecode.VECTOR_I64X2_RELAXED_LANESELECT ->
+                bitselect(x, y, z, vectorOpcode);
+            case Bytecode.VECTOR_F32X4_RELAXED_MADD, Bytecode.VECTOR_F32X4_RELAXED_NMADD -> f32x4_ternop(x, y, z, vectorOpcode);
+            case Bytecode.VECTOR_F64X2_RELAXED_MADD, Bytecode.VECTOR_F64X2_RELAXED_NMADD -> f64x2_ternop(x, y, z, vectorOpcode);
+            case Bytecode.VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S -> i32x4_relaxed_dot_i8x16_i7x16_add_s(x, y, z);
             default -> throw CompilerDirectives.shouldNotReachHere();
         };
     }
@@ -259,7 +268,7 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i8x16_swizzle(byte[] values, byte[] indices) {
+    private static byte[] i8x16_swizzle(byte[] values, byte[] indices, @SuppressWarnings("unused") int vectorOpcode) {
         byte[] result = new byte[BYTES];
         for (int i = 0; i < BYTE_LENGTH; i++) {
             int index = Byte.toUnsignedInt(indices[i]);
@@ -339,7 +348,7 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] v128_bitselect(byte[] x, byte[] y, byte[] mask) {
+    private static byte[] bitselect(byte[] x, byte[] y, byte[] mask, @SuppressWarnings("unused") int vectorOpcode) {
         byte[] result = new byte[BYTES];
         for (int i = 0; i < BYTES; i++) {
             result[i] = (byte) (x[i] & mask[i] | (y[i] & ~mask[i]));
@@ -705,7 +714,7 @@ public class Vector128Ops {
             short x = byteArraySupport.getShort(vecX, i * Short.BYTES);
             short y = byteArraySupport.getShort(vecY, i * Short.BYTES);
             short result = (short) switch (vectorOpcode) {
-                case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S -> satS16((x * y + (1 << 14)) >> 15);
+                case Bytecode.VECTOR_I16X8_Q15MULR_SAT_S, Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S -> satS16((x * y + (1 << 14)) >> 15);
                 case Bytecode.VECTOR_I16X8_ADD -> x + y;
                 case Bytecode.VECTOR_I16X8_ADD_SAT_S -> satS16(x + y);
                 case Bytecode.VECTOR_I16X8_ADD_SAT_U -> satU16(Short.toUnsignedInt(x) + Short.toUnsignedInt(y));
@@ -752,6 +761,19 @@ public class Vector128Ops {
                 case Bytecode.VECTOR_I16X8_EXTMUL_HIGH_I8X16_U -> Byte.toUnsignedInt(x) * Byte.toUnsignedInt(y);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
+            byteArraySupport.putShort(vecResult, i * Short.BYTES, result);
+        }
+        return vecResult;
+    }
+
+    private static byte[] i16x8_relaxed_dot_i8x16_i7x16_s(byte[] vecX, byte[] vecY) {
+        byte[] vecResult = new byte[BYTES];
+        for (int i = 0; i < SHORT_LENGTH; i++) {
+            byte x1 = byteArraySupport.getByte(vecX, i * 2);
+            byte x2 = byteArraySupport.getByte(vecX, i * 2 + 1);
+            byte y1 = byteArraySupport.getByte(vecY, i * 2);
+            byte y2 = byteArraySupport.getByte(vecY, i * 2 + 1);
+            short result = satS16(x1 * y1 + x2 * y2);
             byteArraySupport.putShort(vecResult, i * Short.BYTES, result);
         }
         return vecResult;
@@ -926,6 +948,28 @@ public class Vector128Ops {
         return vecResult;
     }
 
+    private static byte[] i32x4_relaxed_dot_i8x16_i7x16_add_s(byte[] vecX, byte[] vecY, byte[] vecZ) {
+        byte[] vecResult = new byte[BYTES];
+        for (int i = 0; i < INT_LENGTH; i++) {
+            byte x1 = byteArraySupport.getByte(vecX, i * 4);
+            byte x2 = byteArraySupport.getByte(vecX, i * 4 + 1);
+            byte y1 = byteArraySupport.getByte(vecY, i * 4);
+            byte y2 = byteArraySupport.getByte(vecY, i * 4 + 1);
+            short dot1 = satS16(x1 * y1 + x2 * y2);
+
+            byte x3 = byteArraySupport.getByte(vecX, i * 4 + 2);
+            byte x4 = byteArraySupport.getByte(vecX, i * 4 + 3);
+            byte y3 = byteArraySupport.getByte(vecY, i * 4 + 2);
+            byte y4 = byteArraySupport.getByte(vecY, i * 4 + 3);
+            short dot2 = satS16(x3 * y3 + x4 * y4);
+
+            int addend = byteArraySupport.getInt(vecZ, i * Integer.BYTES);
+            int result = dot1 + dot2 + addend;
+            byteArraySupport.putInt(vecResult, i * Integer.BYTES, result);
+        }
+        return vecResult;
+    }
+
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] i64x2_extend_low_i32x4(byte[] vecX, int vectorOpcode) {
         byte[] vecResult = new byte[BYTES];
@@ -1092,8 +1136,8 @@ public class Vector128Ops {
                 case Bytecode.VECTOR_F32X4_SUB -> x - y;
                 case Bytecode.VECTOR_F32X4_MUL -> x * y;
                 case Bytecode.VECTOR_F32X4_DIV -> x / y;
-                case Bytecode.VECTOR_F32X4_MIN -> Math.min(x, y);
-                case Bytecode.VECTOR_F32X4_MAX -> Math.max(x, y);
+                case Bytecode.VECTOR_F32X4_MIN, Bytecode.VECTOR_F32X4_RELAXED_MIN -> Math.min(x, y);
+                case Bytecode.VECTOR_F32X4_MAX, Bytecode.VECTOR_F32X4_RELAXED_MAX -> Math.max(x, y);
                 case Bytecode.VECTOR_F32X4_PMIN -> y < x ? y : x;
                 case Bytecode.VECTOR_F32X4_PMAX -> x < y ? y : x;
                 default -> throw CompilerDirectives.shouldNotReachHere();
@@ -1104,10 +1148,27 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] f32x4_ternop(byte[] vecX, byte[] vecY, byte[] vecZ, int vectorOpcode) {
+        byte[] vecResult = new byte[BYTES];
+        for (int i = 0; i < FLOAT_LENGTH; i++) {
+            float x = byteArraySupport.getFloat(vecX, i * Float.BYTES);
+            float y = byteArraySupport.getFloat(vecY, i * Float.BYTES);
+            float z = byteArraySupport.getFloat(vecZ, i * Float.BYTES);
+            float result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F32X4_RELAXED_MADD -> x * y + z;
+                case Bytecode.VECTOR_F32X4_RELAXED_NMADD -> -x * y + z;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putFloat(vecResult, i * Float.BYTES, result);
+        }
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f64x2_unop(byte[] vecX, int vectorOpcode) {
         byte[] vecResult = new byte[BYTES];
-        for (int i = 0; i < LONG_LENGTH; i++) {
-            double x = byteArraySupport.getDouble(vecX, i * Long.BYTES);
+        for (int i = 0; i < DOUBLE_LENGTH; i++) {
+            double x = byteArraySupport.getDouble(vecX, i * Double.BYTES);
             double result = switch (vectorOpcode) {
                 case Bytecode.VECTOR_F64X2_ABS -> Math.abs(x);
                 case Bytecode.VECTOR_F64X2_NEG -> -x;
@@ -1118,7 +1179,7 @@ public class Vector128Ops {
                 case Bytecode.VECTOR_F64X2_NEAREST -> Math.rint(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
-            byteArraySupport.putDouble(vecResult, i * Long.BYTES, result);
+            byteArraySupport.putDouble(vecResult, i * Double.BYTES, result);
         }
         return vecResult;
     }
@@ -1126,33 +1187,50 @@ public class Vector128Ops {
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
     private static byte[] f64x2_binop(byte[] vecX, byte[] vecY, int vectorOpcode) {
         byte[] vecResult = new byte[BYTES];
-        for (int i = 0; i < LONG_LENGTH; i++) {
-            double x = byteArraySupport.getDouble(vecX, i * Long.BYTES);
-            double y = byteArraySupport.getDouble(vecY, i * Long.BYTES);
+        for (int i = 0; i < DOUBLE_LENGTH; i++) {
+            double x = byteArraySupport.getDouble(vecX, i * Double.BYTES);
+            double y = byteArraySupport.getDouble(vecY, i * Double.BYTES);
             double result = switch (vectorOpcode) {
                 case Bytecode.VECTOR_F64X2_ADD -> x + y;
                 case Bytecode.VECTOR_F64X2_SUB -> x - y;
                 case Bytecode.VECTOR_F64X2_MUL -> x * y;
                 case Bytecode.VECTOR_F64X2_DIV -> x / y;
-                case Bytecode.VECTOR_F64X2_MIN -> Math.min(x, y);
-                case Bytecode.VECTOR_F64X2_MAX -> Math.max(x, y);
+                case Bytecode.VECTOR_F64X2_MIN, Bytecode.VECTOR_F64X2_RELAXED_MIN -> Math.min(x, y);
+                case Bytecode.VECTOR_F64X2_MAX, Bytecode.VECTOR_F64X2_RELAXED_MAX -> Math.max(x, y);
                 case Bytecode.VECTOR_F64X2_PMIN -> y < x ? y : x;
                 case Bytecode.VECTOR_F64X2_PMAX -> x < y ? y : x;
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
-            byteArraySupport.putDouble(vecResult, i * Long.BYTES, result);
+            byteArraySupport.putDouble(vecResult, i * Double.BYTES, result);
         }
         return vecResult;
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i32x4_trunc_sat_f32x4(byte[] vecX, int vectorOpcode) {
+    private static byte[] f64x2_ternop(byte[] vecX, byte[] vecY, byte[] vecZ, int vectorOpcode) {
+        byte[] vecResult = new byte[BYTES];
+        for (int i = 0; i < DOUBLE_LENGTH; i++) {
+            double x = byteArraySupport.getDouble(vecX, i * Double.BYTES);
+            double y = byteArraySupport.getDouble(vecY, i * Double.BYTES);
+            double z = byteArraySupport.getDouble(vecZ, i * Double.BYTES);
+            double result = switch (vectorOpcode) {
+                case Bytecode.VECTOR_F64X2_RELAXED_MADD -> x * y + z;
+                case Bytecode.VECTOR_F64X2_RELAXED_NMADD -> -x * y + z;
+                default -> throw CompilerDirectives.shouldNotReachHere();
+            };
+            byteArraySupport.putDouble(vecResult, i * Double.BYTES, result);
+        }
+        return vecResult;
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
+    private static byte[] i32x4_trunc_f32x4(byte[] vecX, int vectorOpcode) {
         byte[] vecResult = new byte[BYTES];
         for (int i = 0; i < INT_LENGTH; i++) {
             float x = byteArraySupport.getFloat(vecX, i * Float.BYTES);
             int result = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S -> (int) x;
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U -> truncSatU32(x);
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_S, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S -> (int) x;
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F32X4_U, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U -> truncSatU32(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
             byteArraySupport.putInt(vecResult, i * Integer.BYTES, result);
@@ -1176,13 +1254,13 @@ public class Vector128Ops {
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_UNROLL)
-    private static byte[] i32x4_trunc_sat_f64x2_zero(byte[] vecX, int vectorOpcode) {
+    private static byte[] i32x4_trunc_f64x2_zero(byte[] vecX, int vectorOpcode) {
         byte[] vecResult = new byte[BYTES];
         for (int i = 0; i < DOUBLE_LENGTH; i++) {
             double x = byteArraySupport.getDouble(vecX, i * Double.BYTES);
             int result = switch (vectorOpcode) {
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO -> (int) x;
-                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO -> truncSatU32(x);
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_S_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO -> (int) x;
+                case Bytecode.VECTOR_I32X4_TRUNC_SAT_F64X2_U_ZERO, Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO -> truncSatU32(x);
                 default -> throw CompilerDirectives.shouldNotReachHere();
             };
             byteArraySupport.putInt(vecResult, i * Integer.BYTES, result);
