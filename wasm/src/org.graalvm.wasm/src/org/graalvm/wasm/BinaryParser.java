@@ -57,6 +57,7 @@ import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.WasmType.NULL_TYPE;
 import static org.graalvm.wasm.WasmType.V128_TYPE;
 import static org.graalvm.wasm.WasmType.VOID_TYPE;
+import static org.graalvm.wasm.constants.Bytecode.vectorOpcodeToBytecode;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
@@ -1827,6 +1828,9 @@ public class BinaryParser extends BinaryStreamParser {
                 checkSIMDSupport();
                 int vectorOpcode = readUnsignedInt32();
                 state.addVectorFlag();
+                if (vectorOpcode > 0xFF) {
+                    checkRelaxedSIMDSupport(vectorOpcode);
+                }
                 switch (vectorOpcode) {
                     case Instructions.VECTOR_V128_LOAD:
                         load(state, V128_TYPE, 128, longMultiResult);
@@ -1839,7 +1843,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_V128_LOAD32X2_S:
                     case Instructions.VECTOR_V128_LOAD32X2_U:
                         load(state, V128_TYPE, 64, longMultiResult);
-                        state.addExtendedMemoryInstruction(vectorOpcode, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        state.addExtendedMemoryInstruction(vectorOpcodeToBytecode(vectorOpcode), (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
                         break;
                     case Instructions.VECTOR_V128_LOAD8_SPLAT:
                         load(state, V128_TYPE, 8, longMultiResult);
@@ -1969,7 +1973,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(V128_TYPE);
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode, indices);
+                        state.addInstruction(Bytecode.VECTOR_I8X16_SHUFFLE, indices);
                         break;
                     }
                     case Instructions.VECTOR_I8X16_EXTRACT_LANE_S:
@@ -1987,7 +1991,7 @@ public class BinaryParser extends BinaryStreamParser {
                         }
                         state.popChecked(V128_TYPE);
                         state.push(shape.getUnpackedType());
-                        state.addVectorLaneInstruction(vectorOpcode, laneIndex);
+                        state.addVectorLaneInstruction(vectorOpcodeToBytecode(vectorOpcode), laneIndex);
                         break;
                     }
                     case Instructions.VECTOR_I8X16_REPLACE_LANE:
@@ -2004,7 +2008,7 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(shape.getUnpackedType());
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
-                        state.addVectorLaneInstruction(vectorOpcode, laneIndex);
+                        state.addVectorLaneInstruction(vectorOpcodeToBytecode(vectorOpcode), laneIndex);
                         break;
                     }
                     case Instructions.VECTOR_I8X16_SPLAT:
@@ -2016,7 +2020,7 @@ public class BinaryParser extends BinaryStreamParser {
                         Vector128Shape shape = Vector128Shape.ofInstruction(vectorOpcode);
                         state.popChecked(shape.getUnpackedType());
                         state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode);
+                        state.addInstruction(vectorOpcodeToBytecode(vectorOpcode));
                         break;
                     }
                     case Instructions.VECTOR_V128_ANY_TRUE:
@@ -2030,7 +2034,7 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_I64X2_BITMASK:
                         state.popChecked(V128_TYPE);
                         state.push(I32_TYPE);
-                        state.addInstruction(vectorOpcode);
+                        state.addInstruction(vectorOpcodeToBytecode(vectorOpcode));
                         break;
                     case Instructions.VECTOR_V128_NOT:
                     case Instructions.VECTOR_I8X16_ABS:
@@ -2082,9 +2086,13 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_F64X2_CONVERT_LOW_I32X4_U:
                     case Instructions.VECTOR_F32X4_DEMOTE_F64X2_ZERO:
                     case Instructions.VECTOR_F64X2_PROMOTE_LOW_F32X4:
+                    case Instructions.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S:
+                    case Instructions.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U:
+                    case Instructions.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO:
+                    case Instructions.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO:
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode);
+                        state.addInstruction(vectorOpcodeToBytecode(vectorOpcode));
                         break;
                     case Instructions.VECTOR_I8X16_SWIZZLE:
                     case Instructions.VECTOR_I8X16_EQ:
@@ -2206,10 +2214,17 @@ public class BinaryParser extends BinaryStreamParser {
                     case Instructions.VECTOR_F64X2_MAX:
                     case Instructions.VECTOR_F64X2_PMIN:
                     case Instructions.VECTOR_F64X2_PMAX:
+                    case Instructions.VECTOR_I8X16_RELAXED_SWIZZLE:
+                    case Instructions.VECTOR_F32X4_RELAXED_MIN:
+                    case Instructions.VECTOR_F32X4_RELAXED_MAX:
+                    case Instructions.VECTOR_F64X2_RELAXED_MIN:
+                    case Instructions.VECTOR_F64X2_RELAXED_MAX:
+                    case Instructions.VECTOR_I16X8_RELAXED_Q15MULR_S:
+                    case Instructions.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S:
                         state.popChecked(V128_TYPE);
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode);
+                        state.addInstruction(vectorOpcodeToBytecode(vectorOpcode));
                         break;
                     case Instructions.VECTOR_I8X16_SHL:
                     case Instructions.VECTOR_I8X16_SHR_S:
@@ -2226,14 +2241,23 @@ public class BinaryParser extends BinaryStreamParser {
                         state.popChecked(I32_TYPE);
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode);
+                        state.addInstruction(vectorOpcodeToBytecode(vectorOpcode));
                         break;
                     case Instructions.VECTOR_V128_BITSELECT:
+                    case Instructions.VECTOR_F32X4_RELAXED_MADD:
+                    case Instructions.VECTOR_F32X4_RELAXED_NMADD:
+                    case Instructions.VECTOR_F64X2_RELAXED_MADD:
+                    case Instructions.VECTOR_F64X2_RELAXED_NMADD:
+                    case Instructions.VECTOR_I8X16_RELAXED_LANESELECT:
+                    case Instructions.VECTOR_I16X8_RELAXED_LANESELECT:
+                    case Instructions.VECTOR_I32X4_RELAXED_LANESELECT:
+                    case Instructions.VECTOR_I64X2_RELAXED_LANESELECT:
+                    case Instructions.VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S:
                         state.popChecked(V128_TYPE);
                         state.popChecked(V128_TYPE);
                         state.popChecked(V128_TYPE);
                         state.push(V128_TYPE);
-                        state.addInstruction(vectorOpcode);
+                        state.addInstruction(vectorOpcodeToBytecode(vectorOpcode));
                         break;
                     default:
                         fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFD 0x%02x", vectorOpcode);
@@ -2269,6 +2293,10 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void checkSIMDSupport() {
         checkContextOption(wasmContext.getContextOptions().supportSIMD(), "Vector instructions are not enabled (opcode: 0x%02x)", Instructions.VECTOR);
+    }
+
+    private void checkRelaxedSIMDSupport(int vectorOpcode) {
+        checkContextOption(wasmContext.getContextOptions().supportRelaxedSIMD(), "Relaxed vector instructions are not enabled (opcode: 0x%02x 0x%x)", Instructions.VECTOR, vectorOpcode);
     }
 
     private void store(ParserState state, byte type, int n, long[] result) {
