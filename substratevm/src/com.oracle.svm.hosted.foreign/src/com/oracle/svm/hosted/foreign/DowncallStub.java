@@ -85,9 +85,9 @@ import jdk.vm.ci.meta.Signature;
  * the call state, which could happen if a safepoint was inserted between the downcall and the
  * capture.
  */
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+22/src/hotspot/share/prims/nativeEntryPoint.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/prims/nativeEntryPoint.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/cpu/x86/downcallLinker_x86_64.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/cpu/aarch64/downcallLinker_aarch64.cpp")
 class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return ResolvedSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
