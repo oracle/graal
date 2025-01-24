@@ -4646,45 +4646,54 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final int MAX_PROFILE_VALUE = 0x0000_00ff;
     private static final int MAX_TABLE_PROFILE_VALUE = 0x0000_ffff;
 
+    @SuppressWarnings("all") // "The parameter condition should not be assigned."
     private static boolean profileCondition(byte[] data, final int profileOffset, boolean condition) {
         int t = rawPeekU8(data, profileOffset);
         int f = rawPeekU8(data, profileOffset + 1);
-        boolean val = condition;
-        if (val) {
+        if (condition) {
             if (t == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            if (!CompilerDirectives.inInterpreter()) {
+            if (CompilerDirectives.inInterpreter()) {
+                if (t < MAX_PROFILE_VALUE) {
+                    t++;
+                } else {
+                    // halve count rounding up, must never go from 1 to 0.
+                    f = (f >>> 1) + (f & 0x1);
+                    t = (MAX_PROFILE_VALUE >>> 1) + 1;
+                    data[profileOffset + 1] = (byte) f;
+                }
+                data[profileOffset] = (byte) t;
+                return condition;
+            } else {
                 if (f == 0) {
                     // Make this branch fold during PE
-                    val = true;
-                }
-            } else {
-                if (t < MAX_PROFILE_VALUE) {
-                    data[profileOffset] = (byte) (t + 1);
+                    condition = true;
                 }
             }
         } else {
             if (f == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            if (!CompilerDirectives.inInterpreter()) {
+            if (CompilerDirectives.inInterpreter()) {
+                if (f < MAX_PROFILE_VALUE) {
+                    f++;
+                } else {
+                    // halve count rounding up, must never go from 1 to 0.
+                    t = (t >>> 1) + (t & 0x1);
+                    f = (MAX_PROFILE_VALUE >>> 1) + 1;
+                    data[profileOffset] = (byte) t;
+                }
+                data[profileOffset + 1] = (byte) f;
+                return condition;
+            } else {
                 if (t == 0) {
                     // Make this branch fold during PE
-                    val = false;
-                }
-            } else {
-                if (f < MAX_PROFILE_VALUE) {
-                    data[profileOffset + 1] = (byte) (f + 1);
+                    condition = false;
                 }
             }
         }
-        if (CompilerDirectives.inInterpreter()) {
-            return val;
-        } else {
-            int sum = t + f;
-            return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
-        }
+        return CompilerDirectives.injectBranchProbability((double) t / (double) (t + f), condition);
     }
 
     private static void updateBranchTableProfile(byte[] data, final int counterOffset, final int profileOffset) {
