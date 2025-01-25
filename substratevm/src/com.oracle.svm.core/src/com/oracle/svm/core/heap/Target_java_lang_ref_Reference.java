@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -156,6 +157,7 @@ public final class Target_java_lang_ref_Reference<T> {
 
     /** May be used by {@code JavaLangRefAccess} via {@code SharedSecrets}. */
     @Substitute
+    @TargetElement(onlyWith = JDK21OrEarlier.class)
     static boolean waitForReferenceProcessing() throws InterruptedException {
         return ReferenceInternals.waitForReferenceProcessing();
     }

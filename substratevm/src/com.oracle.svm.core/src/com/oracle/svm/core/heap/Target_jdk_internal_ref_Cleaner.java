@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.svm.core.heap;
 import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
 
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.NeverInline;
@@ -42,6 +41,7 @@ import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.internal.misc.InnocuousThread;
 
 @TargetClass(className = "jdk.internal.ref.Cleaner")
@@ -67,13 +67,6 @@ final class Target_jdk_internal_ref_CleanerFactory {
 final class Target_java_lang_ref_Cleaner {
     @Alias//
     public Target_jdk_internal_ref_CleanerImpl impl;
-}
-
-@TargetClass(className = "java.lang.ref.Cleaner$Cleanable")
-final class Target_java_lang_ref_Cleaner_Cleanable {
-    @AnnotateOriginal
-    @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
-    native void clean();
 }
 
 @TargetClass(className = "jdk.internal.ref.CleanerImpl")

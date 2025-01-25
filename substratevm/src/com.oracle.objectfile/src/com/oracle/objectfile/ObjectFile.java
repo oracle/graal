@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.objectfile;
 
 import java.io.IOException;
+import java.lang.ref.Cleaner.Cleanable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.FileChannel;
@@ -1320,9 +1321,19 @@ public abstract class ObjectFile {
                 writeBuffer(sortedObjectFileElements, buffer);
             } finally {
                 // unmap immediately
-                ((DirectBuffer) buffer).cleaner().clean();
+                if (Runtime.version().feature() == 21) {
+                    // ((DirectBuffer) buffer).cleaner().clean();
+                    Object cleaner = DirectBuffer.class.getMethod("cleaner").invoke(buffer);
+                    cleaner.getClass().getMethod("clean").invoke(cleaner);
+                } else {
+                    // ((DirectBuffer) buffer).cleanable().clean();
+                    // We use reflection here because DirectBuffer.cleanable does not exist in JDK21.
+                    // This can be replaced when JDK21 support is dropped.
+                    Cleanable cleanable = (Cleanable) DirectBuffer.class.getMethod("cleanable").invoke(buffer);
+                    cleanable.clean();
+                }
             }
-        } catch (IOException e) {
+        } catch (IOException | ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
