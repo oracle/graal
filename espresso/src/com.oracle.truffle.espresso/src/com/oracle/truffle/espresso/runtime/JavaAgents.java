@@ -55,8 +55,7 @@ public final class JavaAgents extends ContextAccessImpl {
 
     private JavaAgents(EspressoContext context, List<String> agentOptions) {
         super(context);
-        agents = new JavaAgent[agentOptions.size()];
-        initializeAgents(agentOptions);
+        agents = initializeAgents(agentOptions);
     }
 
     @TruffleBoundary
@@ -80,23 +79,27 @@ public final class JavaAgents extends ContextAccessImpl {
         return new JavaAgents(context, sortedOptions);
     }
 
-    private void initializeAgents(List<String> agentOptions) {
-        int index = 0;
+    private JavaAgent[] initializeAgents(List<String> agentOptions) {
+        List<JavaAgent> addedAgents = new ArrayList<>();
         for (String entry : agentOptions) {
             String[] agentOptionPair = entry.split("=", 2);
             if (agentOptionPair.length == 2) {
-                onLoad(agentOptionPair[0], agentOptionPair[1], index++);
+                onLoad(agentOptionPair[0], agentOptionPair[1], addedAgents);
             } else {
-                onLoad(entry, "", index++);
+                onLoad(entry, "", addedAgents);
             }
         }
+        return addedAgents.toArray(new JavaAgent[0]);
     }
 
-    public void onLoad(String javaAgentName, String agentOptions, int agentIndex) {
+    private void onLoad(String javaAgentName, String agentOptions, List<JavaAgent> addedAgents) {
         Path jarPath = Paths.get(javaAgentName);
         if (jarPath.isAbsolute()) {
             try {
-                agents[agentIndex] = addAgent(jarPath, agentOptions);
+                JavaAgent javaAgent = addAgent(jarPath, agentOptions);
+                if (javaAgent != null) {
+                    addedAgents.add(javaAgent);
+                }
             } catch (IOException e) {
                 throw getContext().abort("Error opening zip file or JAR manifest missing : " + jarPath + " due to: " + e.getMessage());
             }
@@ -115,25 +118,31 @@ public final class JavaAgents extends ContextAccessImpl {
          */
         JarFile jarFile = new JarFile(jarPath.toFile());
         Attributes mainAttributes = jarFile.getManifest().getMainAttributes();
-        // Premain-Class
-        String preMainClass = mainAttributes.getValue("Premain-Class");
-        if (preMainClass == null) {
-            throw getContext().abort("Failed to find Premain-Class manifest attribute in " + jarFile.getName());
-        }
+
+        // If we encounter any unsupported features, we don't enable the agent. Enabling agents with
+        // unsupported features might cause fatal runtime exceptions.
 
         // Can-Redefine-Classes
         if ("true".equals(mainAttributes.getValue("Can-Redefine-Classes"))) {
-            getContext().getLogger().warning("Espresso doesn't support redefining classes from Java agents. Can-Redefine-Classes attribute in " + jarFile.getName() + " is ignored");
+            getContext().getLogger().warning("Espresso doesn't support redefining classes from Java agents. Java agent: " + jarFile.getName() + " will not be enabled");
+            return null;
         }
 
         // Can-Retransform-Classes
         if ("true".equals(mainAttributes.getValue("Can-Retransform-Classes"))) {
-            getContext().getLogger().warning("Espresso doesn't support retransforming classes from Java agents. Can-Retransform-Classes attribute in " + jarFile.getName() + " is ignored");
+            getContext().getLogger().warning("Espresso doesn't support retransforming classes from Java agents. Java agent: " + jarFile.getName() + " will not be enabled");
+            return null;
         }
 
         // Can-Set-Native-Method-Prefix
         if ("true".equals(mainAttributes.getValue("Can-Set-Native-Method-Prefix"))) {
-            getContext().getLogger().warning("Espresso doesn't support setting native prefix defined in Java agents. Can-Set-Native-Method-Prefix attribute in " + jarFile.getName() + " is ignored");
+            getContext().getLogger().warning("Espresso doesn't support setting native prefix defined in Java agents. Java agent: " + jarFile.getName() + " will not be enabled");
+            return null;
+        }
+        // Premain-Class
+        String preMainClass = mainAttributes.getValue("Premain-Class");
+        if (preMainClass == null) {
+            throw getContext().abort("Failed to find Premain-Class manifest attribute in " + jarFile.getName());
         }
 
         // Boot-Class-Path
