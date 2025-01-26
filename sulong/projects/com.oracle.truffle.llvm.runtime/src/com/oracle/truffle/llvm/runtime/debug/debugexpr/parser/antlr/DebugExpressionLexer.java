@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,7 +44,7 @@ import org.graalvm.shadowed.org.antlr.v4.runtime.misc.*;
 
 @SuppressWarnings({"all", "this-escape"})
 public class DebugExpressionLexer extends Lexer {
-	static { RuntimeMetaData.checkVersion("4.12.0", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.13.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
