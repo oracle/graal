@@ -19,45 +19,34 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
     private Value value;
 
     public ConstantDomain() {
-        value = getDefaultValue();
-        kind = AbstractValueKind.BOT;
+        this.kind = AbstractValueKind.BOT;
+    }
+
+    public ConstantDomain(Value value) {
+        this.kind = AbstractValueKind.VAL;
+        this.value = value;
     }
 
     public ConstantDomain(AbstractValueKind kind) {
         this.kind = kind;
-    }
-
-    public ConstantDomain(Value value) {
-        this.value = value;
-        this.kind = AbstractValueKind.VAL;
-    }
-
-    public ConstantDomain(ConstantDomain<Value> other) {
-        this.value = other.value;
-        this.kind = other.kind;
-    }
-
-    public void incrementValue() {
-        if (isTop() || isBot()) {
-            return;
+        if (kind == AbstractValueKind.VAL) {
+            throw new IllegalArgumentException("Invalid kind for this constructor");
         }
-        value = increment(value);
-    }
-
-    public void decrementValue() {
-        if (isTop() || isBot()) {
-            return;
-        }
-        value = decrement(value);
     }
 
     public Value getValue() {
-        return value;
+        if (kind == AbstractValueKind.VAL) {
+            return value;
+        }
+        return null;
     }
 
-    @Override
-    public ConstantDomain<Value> copyOf() {
-        return new ConstantDomain<>(value);
+    public static <Value extends Number> ConstantDomain<Value> bottom() {
+        return new ConstantDomain<>(AbstractValueKind.BOT);
+    }
+
+    public static <Value extends Number> ConstantDomain<Value> top() {
+        return new ConstantDomain<>(AbstractValueKind.TOP);
     }
 
     @Override
@@ -68,6 +57,22 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
     @Override
     public boolean isTop() {
         return kind == AbstractValueKind.TOP;
+    }
+
+    public boolean isValue() {
+        return kind == AbstractValueKind.VAL;
+    }
+
+    @Override
+    public void setToBot() {
+        kind = AbstractValueKind.BOT;
+        value = null;
+    }
+
+    @Override
+    public void setToTop() {
+        kind = AbstractValueKind.TOP;
+        value = null;
     }
 
     @Override
@@ -89,26 +94,16 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
 
     @Override
     public boolean equals(ConstantDomain<Value> other) {
-        if (isBot()) {
-            return other.isBot();
+        if (isBot() && other.isBot()) {
+            return true;
         }
-        if (isTop()) {
-            return other.isTop();
+        if (isTop() && other.isTop()) {
+            return true;
         }
-        if (!other.isVal()) {
-            return false;
+        if (isValue() && other.isValue()) {
+            return value.equals(other.value);
         }
-        return value.equals(other.value);
-    }
-
-    @Override
-    public void setToBot() {
-        kind = AbstractValueKind.BOT;
-    }
-
-    @Override
-    public void setToTop() {
-        kind = AbstractValueKind.TOP;
+        return false;
     }
 
     @Override
@@ -121,11 +116,13 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
             return;
         }
         if (isBot()) {
+            kind = other.kind;
             value = other.value;
             return;
         }
-
-        kind = value.equals(other.value) ? AbstractValueKind.VAL : AbstractValueKind.TOP;
+        if (!value.equals(other.value)) {
+            setToTop();
+        }
     }
 
     @Override
@@ -135,7 +132,7 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
 
     @Override
     public void meetWith(ConstantDomain<Value> other) {
-        if (isTop() || other.isBot()) {
+        if (isBot() || other.isTop()) {
             return;
         }
         if (other.isBot()) {
@@ -143,55 +140,30 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
             return;
         }
         if (isTop()) {
+            kind = other.kind;
             value = other.value;
             return;
         }
+        if (!value.equals(other.value)) {
+            setToBot();
+        }
+    }
 
-        kind = value.equals(other.value) ? AbstractValueKind.VAL : AbstractValueKind.BOT;
+    @Override
+    public ConstantDomain<Value> copyOf() {
+        ConstantDomain<Value> copy = new ConstantDomain<>();
+        copy.kind = this.kind;
+        copy.value = this.value;
+        return copy;
     }
 
     @Override
     public String toString() {
-        return "ConstantDomain{" +
-                "kind=" + kind +
-                ", value=" + value +
-                '}';
-    }
-
-    private boolean isVal() {
-        return kind == AbstractValueKind.VAL;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Value getDefaultValue() {
-        return switch (value) {
-            case Integer i -> (Value) Integer.valueOf(0);
-            case Long l -> (Value) Long.valueOf(0);
-            case Float v -> (Value) Float.valueOf(0);
-            case Double v -> (Value) Double.valueOf(0);
-            case null, default -> null;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Value increment(Value value) {
-        return switch (value) {
-            case Integer i -> (Value) Integer.valueOf(i + 1);
-            case Long l -> (Value) Long.valueOf(l + 1);
-            case Float f -> (Value) Float.valueOf(f + 1);
-            case Double d -> (Value) Double.valueOf(d + 1);
-            case null, default -> value;
-        };
-    }
-
-    @SuppressWarnings("unchecked")
-    private Value decrement(Value value) {
-        return switch (value) {
-            case Integer i -> (Value) Integer.valueOf(i - 1);
-            case Long l -> (Value) Long.valueOf(l - 1);
-            case Float f -> (Value) Float.valueOf(f - 1);
-            case Double d -> (Value) Double.valueOf(d - 1);
-            case null, default -> value;
+        return switch (kind) {
+            case BOT -> "⊥";
+            case TOP -> "⊤";
+            case VAL -> value.toString();
+            default -> throw new IllegalStateException("Unexpected value: " + kind);
         };
     }
 }
