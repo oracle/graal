@@ -5,9 +5,8 @@ package com.oracle.svm.hosted.analysis.ai.domain;
  * Reverses the top and bottom elements of an abstract domain
  * and also reverses meet and join operations
  */
-public final class InvertedDomain<
-        Domain extends InvertedDomain<Domain>>
-        extends AbstractDomain<Domain> {
+public final class InvertedDomain<Domain extends AbstractDomain<Domain>>
+        extends AbstractDomain<InvertedDomain<Domain>> {
 
     private final Domain domain;
 
@@ -30,12 +29,12 @@ public final class InvertedDomain<
     }
 
     @Override
-    public boolean leq(Domain other) {
-        return other.equals(other.getDomain()) || !domain.leq(other.getDomain());
+    public boolean leq(InvertedDomain<Domain> other) {
+        return domain.equals(other.domain) || !domain.leq(other.domain);
     }
 
     @Override
-    public boolean equals(Domain other) {
+    public boolean equals(InvertedDomain<Domain> other) {
         return domain.equals(other.getDomain());
     }
 
@@ -50,21 +49,19 @@ public final class InvertedDomain<
     }
 
     @Override
-    public void joinWith(Domain other) {
+    public void joinWith(InvertedDomain<Domain> other) {
         domain.meetWith(other.getDomain());
     }
 
     @Override
-    public void widenWith(Domain other) {
-        /*
-            Since we do not have narrowing as a counterpart to widening,
-            we don't do anything here
-         */
+    public void widenWith(InvertedDomain<Domain> other) {
+        // Since we do not have narrowing as a counterpart to widening,
+        // we don't do anything here
     }
 
     @Override
-    public void meetWith(Domain other) {
-        other.joinWith(other.getDomain());
+    public void meetWith(InvertedDomain<Domain> other) {
+        domain.joinWith(other.getDomain());
     }
 
     @Override
@@ -74,13 +71,8 @@ public final class InvertedDomain<
                 '}';
     }
 
-    @SuppressWarnings("unchecked")
     @Override
-    public Domain copyOf() {
-        try {
-            return (Domain) this.getClass().getDeclaredConstructor(domain.getClass()).newInstance(domain.copyOf());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to copy InvertedDomain", e);
-        }
+    public InvertedDomain<Domain> copyOf() {
+        return new InvertedDomain<>(domain.copyOf());
     }
 }
