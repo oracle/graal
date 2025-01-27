@@ -44,9 +44,9 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * same for comparability.
  */
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+2/src/hotspot/share/gc/shared/adaptiveSizePolicy.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+6/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/gc/shared/adaptiveSizePolicy.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+1/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.hpp")
-@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+6/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
+@BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/gc/parallel/psAdaptiveSizePolicy.cpp")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+6/src/hotspot/share/gc/parallel/psParallelCompact.cpp#L959-L1180")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+6/src/hotspot/share/gc/parallel/psScavenge.cpp#L321-L637")
 @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+1/src/hotspot/share/gc/shared/gc_globals.hpp#L308-L420")
