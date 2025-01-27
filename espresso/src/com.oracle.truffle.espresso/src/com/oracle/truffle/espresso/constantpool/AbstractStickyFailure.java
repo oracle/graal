@@ -31,6 +31,7 @@ public abstract class AbstractStickyFailure implements StickyFallible {
     private final EspressoException originalWrappedException;
 
     public AbstractStickyFailure(EspressoException failure) {
+        assert failure.getGuestException().getKlass().getMeta().java_lang_LinkageError.isAssignableFrom(failure.getGuestException().getKlass());
         originalWrappedException = failure;
     }
 

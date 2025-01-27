@@ -561,7 +561,14 @@ public final class Resolution {
                 throw e;
             }
         } catch (EspressoException e) {
-            return new ResolvedFailDynamicConstant(e);
+            // Comment from Hotspot:
+            // Just throw the exception and don't prevent these classes from being loaded for
+            // virtual machine errors like StackOverflow and OutOfMemoryError, etc.
+            // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
+            if (meta.java_lang_LinkageError.isAssignableFrom(e.getGuestException().getKlass())) {
+                return new ResolvedFailDynamicConstant(e);
+            }
+            throw e;
         }
     }
 
