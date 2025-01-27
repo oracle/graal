@@ -525,6 +525,19 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
+    public static final class InvokeRecursive {
+        @Specialization(guards = "true")
+        public static Object doRootNode(@Variadic Object[] args, @Cached("create($rootNode.getCallTarget())") DirectCallNode callNode) {
+            return callNode.call(args);
+        }
+
+        @Specialization(replaces = {"doRootNode"})
+        public static Object doRootNodeUncached(@Variadic Object[] args, @Bind BasicInterpreter root, @Shared @Cached IndirectCallNode callNode) {
+            return callNode.call(root.getCallTarget(), args);
+        }
+    }
+
+    @Operation
     public static final class MaterializeFrame {
         @Specialization
         public static MaterializedFrame materialize(VirtualFrame frame) {
