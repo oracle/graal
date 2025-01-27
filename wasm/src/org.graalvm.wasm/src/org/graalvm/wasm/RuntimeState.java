@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -301,7 +301,16 @@ public abstract class RuntimeState {
         }
         final int bytecodeOffset = dataInstances[index];
         final byte[] bytecode = module().bytecode();
-        return bytecodeOffset + (bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) + 1;
+        final int encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
+        final int lengthLength = switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
+            default -> throw CompilerDirectives.shouldNotReachHere();
+        };
+        return bytecodeOffset + 1 + lengthLength;
     }
 
     public int dataInstanceLength(int index) {
