@@ -279,6 +279,11 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         }
     }
 
+    @Override
+    public boolean isMarkedForBuildTimeInitialization(String className) {
+        return InitKind.BUILD_TIME == classInitializationConfiguration.lookupKind(className).getLeft();
+    }
+
     static boolean isClassListedInStringOption(AccumulatingLocatableMultiOptionValue.Strings option, Class<?> clazz) {
         return option.values().contains(clazz.getName());
     }
