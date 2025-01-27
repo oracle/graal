@@ -9,7 +9,7 @@ public final class ParityDomain extends FiniteAbstractDomain<Parity> {
     }
 
     public ParityDomain(Parity parity) {
-        super(parity, AbstractValueKind.VAL);
+        super(parity, parity == Parity.BOT ? AbstractValueKind.BOT : parity == Parity.TOP ? AbstractValueKind.TOP : AbstractValueKind.VAL);
     }
 
     public ParityDomain(ParityDomain ParityDomain) {
