@@ -309,7 +309,7 @@ public class WasmInstantiator {
             } else {
                 final int dataBytecodeOffset = effectiveOffset;
                 linkActions.add((context, instance, imports) -> {
-                    context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataBytecodeOffset, dataLength);
+                    context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataBytecodeOffset);
                 });
             }
         }

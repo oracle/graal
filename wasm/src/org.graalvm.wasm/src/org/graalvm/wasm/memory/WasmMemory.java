@@ -579,18 +579,10 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return WebAssembly.invokeMemWaitCallback(node, this, address, expected, timeout, is64);
     }
 
-    public boolean freed() {
-        return true;
-    }
-
     public final WasmMemory checkSize(WasmMemoryLibrary memoryLib, long initialSize) {
         if (memoryLib.byteSize(this) < initialSize * Sizes.MEMORY_PAGE_SIZE) {
             throw CompilerDirectives.shouldNotReachHere("Memory size must not be less than initial size");
         }
         return this;
-    }
-
-    public boolean isUnsafe() {
-        return false;
     }
 }

@@ -1109,4 +1109,9 @@ final class ByteArrayWasmMemory extends WasmMemory {
             throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
         }
     }
+
+    @ExportMessage
+    public static boolean freed(@SuppressWarnings("unused") ByteArrayWasmMemory memory) {
+        return true;
+    }
 }

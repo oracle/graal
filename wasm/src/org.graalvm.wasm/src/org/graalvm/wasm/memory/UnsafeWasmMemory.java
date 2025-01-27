@@ -958,15 +958,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     @ExportMessage
     public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
-        for (int i = 0; i < length; i++) {
-            unsafe.putByte(startAddress + destinationOffset + i, source[sourceOffset + i]);
-        }
-    }
-
-    @ExportMessage
-    public void initializeUnsafe(long sourceAddress, int sourceOffset, long destinationOffset, int length) {
         assert destinationOffset + length <= byteSize();
-        unsafe.copyMemory(sourceAddress + sourceOffset, startAddress + destinationOffset, length);
+        unsafe.copyMemory(source, Unsafe.ARRAY_BYTE_BASE_OFFSET + sourceOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, null, startAddress + destinationOffset, length);
     }
 
     @ExportMessage
@@ -996,7 +989,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
         size = 0;
     }
 
-    @Override
+    @ExportMessage
     public boolean freed() {
         return startAddress == 0;
     }
@@ -1061,11 +1054,6 @@ public final class UnsafeWasmMemory extends WasmMemory {
             throw trapOutOfBounds(node, srcOffset, length);
         }
         unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
-    }
-
-    @Override
-    public boolean isUnsafe() {
-        return true;
     }
 
     @SuppressWarnings("deprecation"/* JDK-8277863 */)

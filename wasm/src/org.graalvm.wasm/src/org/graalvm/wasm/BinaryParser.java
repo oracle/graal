@@ -119,8 +119,6 @@ public class BinaryParser extends BinaryStreamParser {
     private final boolean threads;
     private final boolean simd;
 
-    private final boolean unsafeMemory;
-
     @TruffleBoundary
     public BinaryParser(WasmModule module, WasmContext context, byte[] data) {
         super(data);
@@ -135,7 +133,6 @@ public class BinaryParser extends BinaryStreamParser {
         this.multiMemory = context.getContextOptions().supportMultiMemory();
         this.threads = context.getContextOptions().supportThreads();
         this.simd = context.getContextOptions().supportSIMD();
-        this.unsafeMemory = context.getContextOptions().useUnsafeMemory();
     }
 
     @TruffleBoundary
@@ -1350,19 +1347,11 @@ public class BinaryParser extends BinaryStreamParser {
                         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
                             state.popChecked(I64_TYPE);
                             state.addMiscFlag();
-                            if (unsafeMemory) {
-                                state.addInstruction(Bytecode.MEMORY64_INIT_UNSAFE, dataIndex, memoryIndex);
-                            } else {
-                                state.addInstruction(Bytecode.MEMORY64_INIT, dataIndex, memoryIndex);
-                            }
+                            state.addInstruction(Bytecode.MEMORY64_INIT, dataIndex, memoryIndex);
                         } else {
                             state.popChecked(I32_TYPE);
                             state.addMiscFlag();
-                            if (unsafeMemory) {
-                                state.addInstruction(Bytecode.MEMORY_INIT_UNSAFE, dataIndex, memoryIndex);
-                            } else {
-                                state.addInstruction(Bytecode.MEMORY_INIT, dataIndex, memoryIndex);
-                            }
+                            state.addInstruction(Bytecode.MEMORY_INIT, dataIndex, memoryIndex);
                         }
                         break;
                     }
@@ -1371,11 +1360,7 @@ public class BinaryParser extends BinaryStreamParser {
                         final int dataIndex = readUnsignedInt32();
                         module.checkDataSegmentIndex(dataIndex);
                         state.addMiscFlag();
-                        if (unsafeMemory) {
-                            state.addInstruction(Bytecode.DATA_DROP_UNSAFE, dataIndex);
-                        } else {
-                            state.addInstruction(Bytecode.DATA_DROP, dataIndex);
-                        }
+                        state.addInstruction(Bytecode.DATA_DROP, dataIndex);
                         break;
                     }
                     case Instructions.MEMORY_COPY: {
@@ -2920,8 +2905,8 @@ public class BinaryParser extends BinaryStreamParser {
             final int headerOffset = bytecode.location();
             if (mode == SegmentMode.ACTIVE) {
                 checkMemoryIndex(memoryIndex);
+                bytecode.addDataHeader(byteLength, offsetBytecode, offsetAddress, memoryIndex);
                 final long currentOffsetAddress = offsetAddress;
-                bytecode.addDataHeader(byteLength, offsetBytecode, currentOffsetAddress, memoryIndex);
                 final int bytecodeOffset = bytecode.location();
                 module.setDataInstance(currentDataSegmentId, headerOffset);
                 module.addLinkAction((context, instance, imports) -> {
@@ -2931,10 +2916,10 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 bytecode.addDataHeader(mode, byteLength);
                 final int bytecodeOffset = bytecode.location();
-                bytecode.addDataRuntimeHeader(byteLength, unsafeMemory);
+                bytecode.addDataRuntimeHeader(byteLength);
                 module.setDataInstance(currentDataSegmentId, headerOffset);
                 module.addLinkAction((context, instance, imports) -> {
-                    context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset, byteLength);
+                    context.linker().resolvePassiveDataSegment(context, instance, currentDataSegmentId, bytecodeOffset);
                 });
             }
             // Add the data section to the bytecode.

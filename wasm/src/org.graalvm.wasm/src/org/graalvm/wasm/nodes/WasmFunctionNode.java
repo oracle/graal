@@ -1565,9 +1565,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             i64_trunc_sat_f64_u(frame, stackPointer);
                             break;
                         case Bytecode.MEMORY_INIT:
-                        case Bytecode.MEMORY_INIT_UNSAFE:
-                        case Bytecode.MEMORY64_INIT:
-                        case Bytecode.MEMORY64_INIT_UNSAFE: {
+                        case Bytecode.MEMORY64_INIT: {
                             final int dataIndex = rawPeekI32(bytecode, offset);
                             final int memoryIndex = rawPeekI32(bytecode, offset + 4);
                             executeMemoryInit(instance, frame, stackPointer, miscOpcode, memoryIndex, dataIndex);
@@ -1657,12 +1655,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int i = popInt(frame, stackPointer - 3);
                             table_fill(context, instance, n, val, i, tableIndex);
                             stackPointer -= 3;
-                            offset += 4;
-                            break;
-                        }
-                        case Bytecode.DATA_DROP_UNSAFE: {
-                            final int dataIndex = rawPeekI32(bytecode, offset);
-                            data_drop_unsafe(instance, dataIndex);
                             offset += 4;
                             break;
                         }
@@ -2011,20 +2003,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 src = popInt(frame, stackPointer - 2);
                 dst = popLong(frame, stackPointer - 3);
                 memory_init(instance, n, src, dst, dataIndex, memoryIndex);
-                break;
-            }
-            case Bytecode.MEMORY_INIT_UNSAFE: {
-                n = popInt(frame, stackPointer - 1);
-                src = popInt(frame, stackPointer - 2);
-                dst = popInt(frame, stackPointer - 3);
-                memory_init_unsafe(instance, n, src, dst, dataIndex, memoryIndex);
-                break;
-            }
-            case Bytecode.MEMORY64_INIT_UNSAFE: {
-                n = popInt(frame, stackPointer - 1);
-                src = popInt(frame, stackPointer - 2);
-                dst = popLong(frame, stackPointer - 3);
-                memory_init_unsafe(instance, n, src, dst, dataIndex, memoryIndex);
                 break;
             }
             default:
@@ -4501,41 +4479,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @TruffleBoundary
     private void memory_init(WasmInstance instance, int length, int source, long destination, int dataIndex, int memoryIndex) {
         final WasmMemory memory = memory(instance, memoryIndex);
+        final WasmMemoryLibrary memoryLib = memoryLib(memoryIndex);
         final int dataOffset = instance.dataInstanceOffset(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
-        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memoryLib(memoryIndex).byteSize(memory))) {
+        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memoryLib.byteSize(memory))) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
         if (length == 0) {
             return;
         }
-        memoryLib(memoryIndex).initialize(memory, codeEntry.bytecode(), dataOffset + source, destination, length);
-    }
-
-    @TruffleBoundary
-    private void memory_init_unsafe(WasmInstance instance, int length, int source, long destination, int dataIndex, int memoryIndex) {
-        final WasmMemory memory = memory(instance, memoryIndex);
-        final long dataAddress = instance.dataInstanceAddress(dataIndex);
-        final int dataLength = instance.dataInstanceLength(dataIndex);
-        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memoryLib(memoryIndex).byteSize(memory))) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-        }
-        if (length == 0) {
-            return;
-        }
-        memoryLib(memoryIndex).initializeUnsafe(memory, dataAddress, source, destination, length);
+        memoryLib.initialize(memory, codeEntry.bytecode(), dataOffset + source, destination, length);
     }
 
     @TruffleBoundary
     private static void data_drop(WasmInstance instance, int dataIndex) {
         instance.dropDataInstance(dataIndex);
-    }
-
-    @TruffleBoundary
-    private static void data_drop_unsafe(WasmInstance instance, int dataIndex) {
-        instance.dropUnsafeDataInstance(dataIndex);
     }
 
     @TruffleBoundary

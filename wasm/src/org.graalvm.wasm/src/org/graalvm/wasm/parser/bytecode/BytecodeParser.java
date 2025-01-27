@@ -63,7 +63,6 @@ import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
 import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.parser.ir.CallNode;
@@ -96,14 +95,8 @@ public abstract class BytecodeParser {
      * Reset the state of the memory in a module that had already been parsed and linked.
      */
     public static void resetMemoryState(WasmContext context, WasmModule module, WasmInstance instance) {
-        final boolean unsafeMemory = context.getContextOptions().useUnsafeMemory();
         final byte[] bytecode = module.bytecode();
         for (int i = 0; i < module.dataInstanceCount(); i++) {
-            if (unsafeMemory) {
-                // free all memory allocated for data instances
-                instance.dropUnsafeDataInstance(i);
-            }
-
             final int dataOffset = module.dataInstanceOffset(i);
             final int flags = bytecode[dataOffset];
             int effectiveOffset = dataOffset + 1;
@@ -202,18 +195,6 @@ public abstract class BytecodeParser {
                 Assert.assertUnsignedLongLessOrEqual(offsetAddress + dataLength, memoryLib.byteSize(memory), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
                 memoryLib.initialize(memory, module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
-                if (unsafeMemory) {
-                    final int length = switch (bytecode[effectiveOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) {
-                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
-                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
-                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
-                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    };
-                    final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(bytecode,
-                                    effectiveOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length + BytecodeBitEncoding.DATA_SEG_RUNTIME_UNSAFE_ADDRESS_LENGTH, dataLength);
-                    BinaryStreamParser.writeI64(bytecode, effectiveOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length, instanceAddress);
-                }
                 instance.setDataInstance(i, effectiveOffset);
             }
         }
@@ -789,9 +770,7 @@ public abstract class BytecodeParser {
                             break;
                         }
                         case Bytecode.MEMORY_INIT:
-                        case Bytecode.MEMORY_INIT_UNSAFE:
                         case Bytecode.MEMORY64_INIT:
-                        case Bytecode.MEMORY64_INIT_UNSAFE:
                         case Bytecode.MEMORY_COPY:
                         case Bytecode.MEMORY64_COPY_D32_S64:
                         case Bytecode.MEMORY64_COPY_D64_S32:

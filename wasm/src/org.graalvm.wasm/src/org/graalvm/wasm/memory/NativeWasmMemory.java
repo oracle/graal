@@ -967,14 +967,7 @@ final class NativeWasmMemory extends WasmMemory {
 
     @ExportMessage
     public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
-        for (int i = 0; i < length; i++) {
-            unsafe.putByte(startAddress + destinationOffset + i, source[sourceOffset + i]);
-        }
-    }
-
-    @ExportMessage
-    public void initializeUnsafe(long sourceAddress, int sourceOffset, long destinationOffset, int length) {
-        unsafe.copyMemory(sourceAddress + sourceOffset, startAddress + destinationOffset, length);
+        unsafe.copyMemory(source, Unsafe.ARRAY_BYTE_BASE_OFFSET + sourceOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, null, startAddress + destinationOffset, length);
     }
 
     @ExportMessage
@@ -989,7 +982,7 @@ final class NativeWasmMemory extends WasmMemory {
         unsafe.copyMemory(s.startAddress + sourceOffset, this.startAddress + destinationOffset, length);
     }
 
-    @Override
+    @ExportMessage
     public boolean freed() {
         return startAddress == 0;
     }
@@ -1056,11 +1049,6 @@ final class NativeWasmMemory extends WasmMemory {
             throw trapOutOfBounds(node, srcOffset, length);
         }
         unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
-    }
-
-    @Override
-    public boolean isUnsafe() {
-        return true;
     }
 
     static {
