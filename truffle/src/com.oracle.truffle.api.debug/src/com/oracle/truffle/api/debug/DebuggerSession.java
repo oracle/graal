@@ -60,6 +60,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -1514,7 +1515,20 @@ public final class DebuggerSession implements Closeable {
             if (!info.isInteractive()) {
                 throw new IllegalStateException("Can not evaluate in a non-interactive language.");
             }
-            return Debugger.ACCESSOR.evalInContext(source, node, frame);
+            try {
+                CallTarget target = ev.getSession().getDebugger().getEnv().parse(source);
+                if (target instanceof RootCallTarget) {
+                    RootNode exec = ((RootCallTarget) target).getRootNode();
+                    return exec.execute(frame);
+                } else {
+                    throw new IllegalStateException("" + target);
+                }
+            } catch (Exception ex) {
+                if (ex instanceof RuntimeException) {
+                    throw (RuntimeException) ex;
+                }
+                throw new RuntimeException(ex);
+            }
         }
     }
 

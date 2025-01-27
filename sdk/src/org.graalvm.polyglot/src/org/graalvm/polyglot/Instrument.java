@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,6 +100,17 @@ public final class Instrument {
      */
     public OptionDescriptors getOptions() {
         return dispatch.getOptions(receiver);
+    }
+
+    /**
+     * Returns the source options descriptors available for sources of this instrument.
+     *
+     * @see #getOptions()
+     * @see Source.Builder#option(String, String)
+     * @since 25.0
+     */
+    public OptionDescriptors getSourceOptions() {
+        return dispatch.getSourceOptions(receiver);
     }
 
     /**

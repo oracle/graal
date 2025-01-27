@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.URI;
@@ -130,8 +131,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * Example usage:
  *
- * {@snippet file="com/oracle/truffle/api/debug/Breakpoint.java"
- * region="BreakpointSnippets#example"}
+ * {@snippet file = "com/oracle/truffle/api/debug/Breakpoint.java" region =
+ * "BreakpointSnippets#example"}
  *
  * @since 0.9
  */
@@ -1671,7 +1672,12 @@ public class Breakpoint {
                 conditionSnippet = insert(snippet);
                 notifyInserted(snippet);
             } else {
-                CallTarget callTarget = Debugger.ACCESSOR.parse(conditionSource, instrumentedNode, new String[0]);
+                CallTarget callTarget;
+                try {
+                    callTarget = breakpoint.debugger.getEnv().parse(conditionSource);
+                } catch (IOException e) {
+                    throw new IllegalStateException("Error parsing condition.", e);
+                }
                 conditionCallNode = insert(Truffle.getRuntime().createDirectCallNode(callTarget));
             }
         }

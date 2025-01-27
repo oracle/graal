@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -80,6 +81,15 @@ final class OptionValuesImpl implements OptionValues {
         this.values = new HashMap<>();
         this.unparsedValues = preserveUnparsedValues ? new HashMap<>() : null;
         this.trackDeprecatedOptions = trackDeprecatedOptions;
+    }
+
+    private OptionValuesImpl(OptionValuesImpl copy) {
+        this.values = new HashMap<>(copy.values);
+        this.descriptors = copy.descriptors;
+        this.sandboxPolicy = copy.sandboxPolicy;
+        this.unparsedValues = copy.unparsedValues;
+        this.usedDeprecatedDescriptors = copy.usedDeprecatedDescriptors;
+        this.trackDeprecatedOptions = copy.trackDeprecatedOptions;
     }
 
     @Override
@@ -144,14 +154,14 @@ final class OptionValuesImpl implements OptionValues {
         return true;
     }
 
-    public void putAll(PolyglotEngineImpl engine, Map<String, String> providedValues, boolean allowExperimentalOptions) {
+    public void putAll(Map<String, String> providedValues, boolean allowExperimentalOptions, Supplier<OptionDescriptors> allOptionsSupplier) {
         for (String key : providedValues.keySet()) {
-            put(engine, key, providedValues.get(key), allowExperimentalOptions);
+            put(key, providedValues.get(key), allowExperimentalOptions, allOptionsSupplier);
         }
     }
 
-    public OptionDescriptor put(PolyglotEngineImpl engine, String key, String value, boolean allowExperimentalOptions) {
-        OptionDescriptor descriptor = findDescriptor(engine, key, allowExperimentalOptions);
+    public OptionDescriptor put(String key, String value, boolean allowExperimentalOptions, Supplier<OptionDescriptors> allOptionsSupplier) {
+        OptionDescriptor descriptor = findDescriptor(key, allowExperimentalOptions, allOptionsSupplier);
         if (sandboxPolicy != SandboxPolicy.TRUSTED) {
             SandboxPolicy optionSandboxPolicy = descriptors instanceof TruffleOptionDescriptors ? ((TruffleOptionDescriptors) descriptors).getSandboxPolicy(key) : SandboxPolicy.TRUSTED;
             if (sandboxPolicy.isStricterThan(optionSandboxPolicy)) {
@@ -194,15 +204,6 @@ final class OptionValuesImpl implements OptionValues {
             unparsedValues.put(descriptor.getKey(), value);
         }
         return descriptor;
-    }
-
-    private OptionValuesImpl(OptionValuesImpl copy) {
-        this.values = new HashMap<>(copy.values);
-        this.descriptors = copy.descriptors;
-        this.sandboxPolicy = copy.sandboxPolicy;
-        this.unparsedValues = copy.unparsedValues;
-        this.usedDeprecatedDescriptors = copy.usedDeprecatedDescriptors;
-        this.trackDeprecatedOptions = copy.trackDeprecatedOptions;
     }
 
     private <T> boolean contains(OptionKey<T> optionKey) {
@@ -281,10 +282,10 @@ final class OptionValuesImpl implements OptionValues {
         return unparsedValues.get(key);
     }
 
-    private OptionDescriptor findDescriptor(PolyglotEngineImpl engine, String key, boolean allowExperimentalOptions) {
+    private OptionDescriptor findDescriptor(String key, boolean allowExperimentalOptions, Supplier<OptionDescriptors> allOptionsSupplier) {
         OptionDescriptor descriptor = descriptors.get(key);
         if (descriptor == null) {
-            throw failNotFound(engine, key);
+            throw failNotFound(key, allOptionsSupplier);
         }
         if (!allowExperimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
             throw failExperimental(key);
@@ -298,11 +299,11 @@ final class OptionValuesImpl implements OptionValues {
         return PolyglotEngineException.illegalArgument(message);
     }
 
-    private RuntimeException failNotFound(PolyglotEngineImpl engine, String key) {
+    private RuntimeException failNotFound(String key, Supplier<OptionDescriptors> allOptionsSupplier) {
         OptionDescriptors allOptions;
         Exception errorOptions = null;
         try {
-            allOptions = engine == null ? this.descriptors : engine.getAllOptions();
+            allOptions = allOptionsSupplier == null ? this.descriptors : allOptionsSupplier.get();
         } catch (Exception e) {
             errorOptions = e;
             allOptions = this.descriptors;
