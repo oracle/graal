@@ -2562,6 +2562,69 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testTransitionToCachedRecursive() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("transitionToCachedRecursive", b -> {
+            // function f(x) { return 0 < x ? x + f(x-1) : 0 }
+            b.beginRoot();
+            b.beginIfThenElse();
+            b.beginLess();
+            b.emitLoadConstant(0L);
+            b.emitLoadArgument(0);
+            b.endLess();
+
+            b.beginReturn();
+            b.beginAdd();
+            b.emitLoadArgument(0);
+            b.beginInvokeRecursive();
+            b.beginAddConstantOperation(-1L);
+            b.emitLoadArgument(0);
+            b.endAddConstantOperation();
+            b.endInvokeRecursive();
+            b.endAdd();
+            b.endReturn();
+
+            b.beginReturn();
+            b.emitLoadConstant(0L);
+            b.endReturn();
+
+            b.endIfThenElse();
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(22);
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        assertEquals(20 * 21 / 2L, node.getCallTarget().call(20L)); // 21 calls
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        node.getBytecodeNode().setUncachedThreshold(21);
+        assertEquals(20 * 21 / 2L, node.getCallTarget().call(20L)); // 21 calls
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+    }
+
+    @Test
+    public void testTransitionToCachedYield() {
+        assumeTrue(run.hasUncachedInterpreter());
+        BasicInterpreter node = parseNode("transitionToCachedYield", b -> {
+            b.beginRoot();
+            for (int i = 0; i < 20; i++) {
+                b.beginYield();
+                b.emitLoadNull();
+                b.endYield();
+            }
+            b.endRoot();
+        });
+
+        node.getBytecodeNode().setUncachedThreshold(16);
+        assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+        ContinuationResult cont = (ContinuationResult) node.getCallTarget().call();
+        for (int i = 1; i < 16; i++) {
+            assertEquals(BytecodeTier.UNCACHED, node.getBytecodeNode().getTier());
+            cont = (ContinuationResult) cont.continueWith(null);
+        }
+        assertEquals(BytecodeTier.CACHED, node.getBytecodeNode().getTier());
+    }
+
+    @Test
     public void testInvalidDefaultUncachedThreshold() {
         assumeTrue(run.hasUncachedInterpreter());
 
