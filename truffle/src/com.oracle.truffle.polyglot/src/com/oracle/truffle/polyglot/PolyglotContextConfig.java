@@ -336,7 +336,8 @@ final class PolyglotContextConfig {
                 targetOptions = engineOptionValues.copy();
                 optionsById.put(id, targetOptions);
             }
-            OptionDescriptor d = targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
+
+            OptionDescriptor d = targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions, engine::getAllOptions);
             if (d != null && d.isDeprecated()) {
                 if (deprecatedOptions == null) {
                     deprecatedOptions = new ArrayList<>();

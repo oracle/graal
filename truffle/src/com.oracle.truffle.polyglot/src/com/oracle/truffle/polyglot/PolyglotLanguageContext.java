@@ -62,6 +62,7 @@ import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
@@ -583,6 +584,39 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     boolean isCreated() {
         return created;
+    }
+
+    OptionValuesImpl parseSourceOptions(Source source, String componentOnly) {
+        Map<String, String> rawOptions = EngineAccessor.SOURCE.getSourceOptions(source);
+        if (rawOptions.isEmpty()) {
+            // fast-path: no options
+            return language.getEmptySourceOptionsInternal();
+        }
+        PolyglotContextConfig config = context.config;
+        Map<String, OptionValuesImpl> options = PolyglotSourceCache.parseSourceOptions(getEngine(),
+                        rawOptions, componentOnly,
+                        config.sandboxPolicy,
+                        config.allowExperimentalOptions);
+        OptionValuesImpl languageOptions = options.get(componentOnly != null ? componentOnly : source.getLanguage());
+        if (languageOptions == null) {
+            return language.getEmptySourceOptionsInternal();
+        }
+        List<OptionDescriptor> deprecated = null;
+        for (OptionValuesImpl resolvedOptions : options.values()) {
+            Collection<OptionDescriptor> descriptors = resolvedOptions.getUsedDeprecatedDescriptors();
+            if (!descriptors.isEmpty()) {
+                if (deprecated == null) {
+                    deprecated = new ArrayList<>();
+                }
+                deprecated.addAll(descriptors);
+            }
+        }
+
+        if (deprecated != null) {
+            context.engine.printDeprecatedOptionsWarning(deprecated);
+        }
+
+        return languageOptions;
     }
 
     void ensureCreated(PolyglotLanguage accessingLanguage) {
@@ -1403,4 +1437,5 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
         }
     }
+
 }
