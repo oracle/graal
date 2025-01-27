@@ -68,14 +68,14 @@ final class ByteArrayWasmMemory extends WasmMemory {
     public static final long MAX_ALLOWED_SIZE = Integer.MAX_VALUE / MEMORY_PAGE_SIZE;
 
     @TruffleBoundary
-    private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
-        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
+    private ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, false);
         this.dynamicBuffer = allocateStatic(initialSize * MEMORY_PAGE_SIZE);
     }
 
     @TruffleBoundary
-    ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64, boolean shared) {
-        this(declaredMinSize, declaredMaxSize, declaredMinSize, Math.min(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64, shared);
+    ByteArrayWasmMemory(long declaredMinSize, long declaredMaxSize, boolean indexType64) {
+        this(declaredMinSize, declaredMaxSize, declaredMinSize, Math.min(declaredMaxSize, MAX_ALLOWED_SIZE), indexType64);
     }
 
     private byte[] buffer() {
@@ -1049,7 +1049,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
 
     @ExportMessage
     public WasmMemory duplicate() {
-        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, indexType64, shared);
+        final ByteArrayWasmMemory other = new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, size(), maxAllowedSize, indexType64);
         System.arraycopy(buffer(), 0, other.buffer(), 0, (int) byteSize());
         return other;
     }

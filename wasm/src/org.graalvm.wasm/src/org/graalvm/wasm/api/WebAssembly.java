@@ -866,14 +866,17 @@ public class WebAssembly extends Dictionary {
 
     private static Object memAsByteBuffer(Object[] args) {
         checkArgumentCount(args, 1);
-        if (args[0] instanceof WasmMemory) {
-            WasmMemory memory = (WasmMemory) args[0];
-            ByteBuffer buffer = WasmMemoryLibrary.getUncached().asByteBuffer(memory);
+        if (args[0] instanceof WasmMemory memory) {
+            ByteBuffer buffer = memAsByteBuffer(memory);
             if (buffer != null) {
                 return WasmContext.get(null).environment().asGuestValue(buffer);
             }
         }
         return WasmConstant.VOID;
+    }
+
+    public static ByteBuffer memAsByteBuffer(WasmMemory memory) {
+        return WasmMemoryLibrary.getUncached().asByteBuffer(memory);
     }
 
     private Object globalAlloc(Object[] args) {

@@ -43,6 +43,7 @@ package org.graalvm.wasm.test;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -2386,6 +2387,21 @@ public class WasmJsApiSuite {
                 }
             });
         }
+    }
+
+    @Test
+    public void testSharedMemoryGrow() throws IOException {
+        runTest(options -> options.option("wasm.UseUnsafeMemory", "true"), context -> {
+            WasmMemory sharedMemory = WebAssembly.memAlloc(1, 2, true);
+            ByteBuffer preGrowBuffer = WebAssembly.memAsByteBuffer(sharedMemory);
+            long previousSize = WebAssembly.memGrow(sharedMemory, 1);
+            Assert.assertEquals("Wrong previous size reported by mem.grow", 1, previousSize);
+            ByteBuffer postGrowBuffer = WebAssembly.memAsByteBuffer(sharedMemory);
+            preGrowBuffer.put(0, (byte) 42);
+            Assert.assertEquals("Value written to pre-grow buffer not seen in post-grow buffer", 42, postGrowBuffer.get(0));
+            postGrowBuffer.put(1, (byte) 21);
+            Assert.assertEquals("Value written to post-grow buffer not seen in pre-grow buffer", 21, preGrowBuffer.get(1));
+        });
     }
 
     private static void runMemoryTest(Consumer<WasmContext> testCase) throws IOException {

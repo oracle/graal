@@ -84,8 +84,11 @@ public final class UnsafeWasmMemory extends WasmMemory {
     private UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
         this.size = declaredMinSize;
-        final long byteSize = byteSize();
-        this.buffer = allocateBuffer(byteSize);
+        final long initialByteSize = byteSize();
+        final long maxAllowedByteSize = maxAllowedSize * MEMORY_PAGE_SIZE;
+        // For shared memories, we have to allocate the maximum allowed size in advance to avoid
+        // having to move the memory by reallocating.
+        this.buffer = allocateBuffer(shared ? maxAllowedByteSize : initialByteSize);
         this.startAddress = getBufferAddress(buffer);
     }
 
@@ -129,7 +132,9 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @TruffleBoundary
     public void reset() {
         size = declaredMinSize;
-        buffer = allocateBuffer(byteSize());
+        // For shared memories, we have to allocate the maximum allowed size in advance to avoid
+        // having to move the memory by reallocating.
+        buffer = allocateBuffer(shared ? maxAllowedSize * MEMORY_PAGE_SIZE : declaredMinSize * MEMORY_PAGE_SIZE);
         startAddress = getBufferAddress(buffer);
         currentMinSize = declaredMinSize;
     }
@@ -155,13 +160,15 @@ public final class UnsafeWasmMemory extends WasmMemory {
             // Condition above and limit on maxAllowedSize (see UnsafeWasmMemory#MAX_ALLOWED_SIZE)
             // ensure computation of targetByteSize does not overflow.
             final long targetByteSize = multiplyExact(addExact(previousSize, extraPageSize), MEMORY_PAGE_SIZE);
-            final long sourceByteSize = byteSize();
-            ByteBuffer updatedBuffer = allocateBuffer(targetByteSize);
-            final long updatedStartAddress = getBufferAddress(updatedBuffer);
+            if (compareUnsigned(targetByteSize, buffer.capacity()) > 0) {
+                final long sourceByteSize = byteSize();
+                ByteBuffer updatedBuffer = allocateBuffer(newBufferSize(targetByteSize));
+                final long updatedStartAddress = getBufferAddress(updatedBuffer);
+                unsafe.copyMemory(startAddress, updatedStartAddress, sourceByteSize);
+                buffer = updatedBuffer;
+                startAddress = updatedStartAddress;
+            }
             final long updatedSize = previousSize + extraPageSize;
-            unsafe.copyMemory(startAddress, updatedStartAddress, sourceByteSize);
-            buffer = updatedBuffer;
-            startAddress = updatedStartAddress;
             currentMinSize = updatedSize;
             SIZE_FIELD.setVolatile(this, updatedSize);
             invokeGrowCallback();
@@ -169,6 +176,14 @@ public final class UnsafeWasmMemory extends WasmMemory {
         } else {
             return -1;
         }
+    }
+
+    public long newBufferSize(long targetByteSize) {
+        // buffer.capacity() <= Integer.MAX_VALUE, so this cannot overflow
+        long prefBufferSize = addExact(buffer.capacity(), buffer.capacity() >> 1);
+        // maxAllowedByteSize <= Integer.MAX_VALUE, so no overflow
+        long maxAllowedByteSize = multiplyExact(maxAllowedSize(), MEMORY_PAGE_SIZE);
+        return Math.max(targetByteSize, Math.min(prefBufferSize, maxAllowedByteSize));
     }
 
     // Checkstyle: stop
@@ -996,7 +1011,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @ExportMessage
     @TruffleBoundary
     public ByteBuffer asByteBuffer() {
-        return buffer.duplicate();
+        return buffer.slice(0, Math.toIntExact(byteSize()));
     }
 
     private boolean outOfBounds(int offset, int length) {
