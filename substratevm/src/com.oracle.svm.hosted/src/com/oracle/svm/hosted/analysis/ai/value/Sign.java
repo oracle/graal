@@ -7,7 +7,7 @@ package com.oracle.svm.hosted.analysis.ai.value;
 public enum Sign {
     TOP,
     POS,
-    NEG,
     ZERO,
+    NEG,
     BOT
 }

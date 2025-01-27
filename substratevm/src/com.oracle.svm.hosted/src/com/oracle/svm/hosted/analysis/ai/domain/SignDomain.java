@@ -9,7 +9,7 @@ public final class SignDomain extends FiniteAbstractDomain<Sign> {
     }
 
     public SignDomain(Sign sign) {
-        super(sign, AbstractValueKind.VAL);
+        super(sign, sign == Sign.BOT ? AbstractValueKind.BOT : sign == Sign.TOP ? AbstractValueKind.TOP : AbstractValueKind.VAL);
     }
 
     public SignDomain(SignDomain signDomain) {
