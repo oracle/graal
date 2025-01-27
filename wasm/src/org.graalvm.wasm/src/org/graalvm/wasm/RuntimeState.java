@@ -41,7 +41,6 @@
 package org.graalvm.wasm;
 
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
-import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
@@ -296,14 +295,6 @@ public abstract class RuntimeState {
         dataInstances[index] = droppedDataInstanceOffset;
     }
 
-    public void dropUnsafeDataInstance(int index) {
-        final long address = dataInstanceAddress(index);
-        if (address != 0) {
-            NativeDataInstanceUtil.freeNativeInstance(address);
-        }
-        dataInstances[index] = droppedDataInstanceOffset;
-    }
-
     public int dataInstanceOffset(int index) {
         if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
             return 0;
@@ -339,28 +330,6 @@ public abstract class RuntimeState {
                 throw CompilerDirectives.shouldNotReachHere();
         }
         return length;
-    }
-
-    public long dataInstanceAddress(int index) {
-        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
-            return 0;
-        }
-        final int bytecodeOffset = dataInstances[index];
-        final byte[] bytecode = module().bytecode();
-        final byte encoding = bytecode[bytecodeOffset];
-        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
-        switch (lengthEncoding) {
-            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 1);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 2);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 3);
-            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32:
-                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 5);
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
     }
 
     public int droppedDataInstanceOffset() {

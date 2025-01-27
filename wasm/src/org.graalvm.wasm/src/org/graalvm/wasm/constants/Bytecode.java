@@ -353,9 +353,7 @@ public class Bytecode {
     public static final int I64_TRUNC_SAT_F64_U = 0x07;
 
     public static final int MEMORY_INIT = 0x08;
-    public static final int MEMORY_INIT_UNSAFE = 0x09;
     public static final int MEMORY64_INIT = 0x0A;
-    public static final int MEMORY64_INIT_UNSAFE = 0x0B;
     public static final int DATA_DROP = 0x0C;
     public static final int DATA_DROP_UNSAFE = 0x0D;
     public static final int MEMORY_COPY = 0x0E;

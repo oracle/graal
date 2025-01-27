@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm.memory;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
@@ -91,26 +90,8 @@ public abstract class WasmMemoryLibrary extends Library {
      * @param sourceOffset The offset in the source data segment
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
-     *
-     * @throws UnsupportedOperationException If this method is called on an unsafe wasm memory.
      */
     public abstract void initialize(WasmMemory memory, byte[] source, int sourceOffset, long destinationOffset, int length);
-
-    /**
-     * Initializes the content of an unsafe wasm memory with the given date instance.
-     *
-     * @param sourceAddress The address of the memory portion that should be copied to the memory
-     * @param sourceOffset The offset from the data instance address
-     * @param destinationOffset The offset in the memory
-     * @param length The number of bytes that should be copied
-     *
-     * @throws UnsupportedOperationException If the method is called on a byte array based memory
-     */
-    @TruffleBoundary
-    @SuppressWarnings("unused")
-    public void initializeUnsafe(WasmMemory memory, long sourceAddress, int sourceOffset, long destinationOffset, int length) {
-        throw new UnsupportedOperationException();
-    }
 
     /**
      * Fills the memory with the given value.
@@ -366,4 +347,6 @@ public abstract class WasmMemoryLibrary extends Library {
     }
 
     public abstract WasmMemory duplicate(WasmMemory memory);
+
+    public abstract boolean freed(WasmMemory memory);
 }
