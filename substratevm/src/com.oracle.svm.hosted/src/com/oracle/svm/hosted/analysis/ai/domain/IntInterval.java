@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
+import java.util.Objects;
+
 /**
  * Represents an interval domain of integer values
  */
@@ -254,8 +256,6 @@ public final class IntInterval
      * for [-inf, 3] returns [4, inf]
      * for [5, inf] returns [-inf, 4]
      * for [-inf, inf] returns [1, 0] (any bot is ok)
-     * <p>
-     * <p>
      * Note: only works for interval that are unbounded from at least one side
      */
     public void inverse() {
@@ -286,6 +286,4 @@ public final class IntInterval
         result.inverse();
         return result;
     }
-
-
 }
