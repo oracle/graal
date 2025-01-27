@@ -323,10 +323,15 @@ public abstract class BasicInterpreter extends DebugBytecodeRootNode implements 
     }
 
     @Operation
-    static final class VeryComplexOperation {
+    static final class VariadicOperation {
         @Specialization
-        public static long bla(long a1, @Variadic Object[] a2) {
+        public static long doLong(long a1, @Variadic Object[] a2) {
             return a1 + a2.length;
+        }
+
+        @Fallback
+        public static long doOther(@SuppressWarnings("unused") Object a1, @Variadic Object[] a2) {
+            return a2.length;
         }
     }
 

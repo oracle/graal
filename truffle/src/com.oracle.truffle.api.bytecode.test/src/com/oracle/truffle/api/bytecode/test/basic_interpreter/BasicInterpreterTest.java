@@ -1857,15 +1857,15 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicZeroVarargs() {
-        // return veryComplex(7);
+        // return variadicOperation(7);
 
         RootCallTarget root = parse("variadicZeroVarargs", b -> {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(7L);
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endRoot();
@@ -1876,16 +1876,16 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicOneVarargs() {
-        // return veryComplex(7, "foo");
+        // return variadicOperation(7, "foo");
 
         RootCallTarget root = parse("variadicOneVarargs", b -> {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(7L);
             b.emitLoadConstant("foo");
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endRoot();
@@ -1896,18 +1896,18 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicFewVarargs() {
-        // return veryComplex(7, "foo", "bar", "baz");
+        // return variadicOperation(7, "foo", "bar", "baz");
 
         RootCallTarget root = parse("variadicFewVarargs", b -> {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(7L);
             b.emitLoadConstant("foo");
             b.emitLoadConstant("bar");
             b.emitLoadConstant("baz");
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endRoot();
@@ -1918,18 +1918,18 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
 
     @Test
     public void testVariadicManyVarargs() {
-        // return veryComplex(7, [1330 args]);
+        // return variadicOperation(7, [1330 args]);
 
         RootCallTarget root = parse("variadicManyVarArgs", b -> {
             b.beginRoot();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(7L);
             for (int i = 0; i < 1330; i++) {
                 b.emitLoadConstant("test");
             }
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endRoot();
@@ -1938,15 +1938,36 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
         assertEquals(1337L, root.call());
     }
 
+    public void testVariadicFallback() {
+        // return variadicOperation(arg0, arg1, arg2);
+
+        RootCallTarget root = parse("variadicFallback", b -> {
+            b.beginRoot();
+
+            b.beginReturn();
+            b.beginVariadicOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.emitLoadArgument(2);
+            b.endVariadicOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call(40L, "foo", "bar"));
+        assertEquals(2L, root.call("foo", "bar", "baz"));
+    }
+
     @Test
     public void testVariadicTooFewArguments() {
-        assertThrowsWithMessage("Operation VeryComplexOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
+        assertThrowsWithMessage("Operation VariadicOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.", IllegalStateException.class, () -> {
             parse("variadicTooFewArguments", b -> {
                 b.beginRoot();
 
                 b.beginReturn();
-                b.beginVeryComplexOperation();
-                b.endVeryComplexOperation();
+                b.beginVariadicOperation();
+                b.endVariadicOperation();
                 b.endReturn();
 
                 b.endRoot();
