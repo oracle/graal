@@ -124,7 +124,8 @@ public abstract class TruffleSafepoint {
      * Guest language exceptions may be thrown by this method. If
      * {@link #setAllowSideEffects(boolean) side-effects} are allowed then also guest language
      * exceptions may be thrown. Otherwise only internal or {@link ThreadDeath thread-death}
-     * exceptions may be thrown. This method is safe to be used on compiled code paths.
+     * exceptions may be thrown. This method is safe to be used on compiled code paths. Polling may
+     * be performed on threads without entered polyglot context, polls are ignored there.
      * <p>
      * Example usage with an unbounded loop sum behind a {@link TruffleBoundary}.
      *
@@ -238,7 +239,7 @@ public abstract class TruffleSafepoint {
      * TruffleSafepoint sp = TruffleSafepoint.getCurrent();
      * sp.setBlocked(location, Interrupter.THREAD_INTERRUPT, ReentrantLock::lockInterruptibly, lock, null, null);
      * </pre>
-     * 
+     *
      * @see TruffleSafepoint
      * @since 22.1
      * @deprecated Use
@@ -318,7 +319,7 @@ public abstract class TruffleSafepoint {
      * The same as
      * {@link #setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)}.
      * The only difference is that the interruptible functional method does not return anything.
-     * 
+     *
      * @since 23.1
      */
     public abstract <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt,
@@ -433,10 +434,15 @@ public abstract class TruffleSafepoint {
      * Important: The result of this method must not be stored or used on a different thread than
      * the current thread.
      *
+     * @throws IllegalStateException if the current thread is not entered with a polyglot context.
      * @since 21.1
      */
     public static TruffleSafepoint getCurrent() {
-        return HANDSHAKE.getCurrent();
+        TruffleSafepoint t = HANDSHAKE.getCurrent();
+        if (t == null) {
+            throw new IllegalStateException("The TruffleSafepoint mechanism is not initialized on this thread. Did you call getCurrent() while a polyglot context is not entered?");
+        }
+        return t;
     }
 
     /**
