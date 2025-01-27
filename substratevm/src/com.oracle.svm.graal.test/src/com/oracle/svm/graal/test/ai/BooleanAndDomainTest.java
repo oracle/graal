@@ -107,7 +107,7 @@ public class BooleanAndDomainTest {
 
     @Test
     public void testLeq() {
-        /* false > true,
+        /*  false > true,
          *  this holds because of the way join is defined on BooleanAndDomain
          *  false.joinWith(true) = false, therefore false >= true
          */

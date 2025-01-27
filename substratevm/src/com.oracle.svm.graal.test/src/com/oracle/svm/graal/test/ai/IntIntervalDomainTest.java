@@ -37,6 +37,33 @@ public class IntIntervalDomainTest {
     }
 
     @Test
+    public void testLeq() {
+        IntInterval interval1 = new IntInterval(1, 5);
+        IntInterval interval2 = new IntInterval(3, 7);
+        IntInterval interval3 = new IntInterval(1, 10);
+        Assert.assertFalse(interval1.leq(interval2));
+        Assert.assertTrue(interval1.leq(interval3));
+        Assert.assertTrue(interval2.leq(interval3));
+    }
+
+    @Test
+    public void testCopyOf() {
+        IntInterval interval = new IntInterval(1, 5);
+        IntInterval copy = interval.copyOf();
+        Assert.assertTrue(interval.equals(copy));
+        Assert.assertNotSame(interval, copy);
+    }
+
+    @Test
+    public void testEquals() {
+        IntInterval interval1 = new IntInterval(1, 5);
+        IntInterval interval2 = new IntInterval(1, 5);
+        IntInterval interval3 = new IntInterval(2, 6);
+        Assert.assertTrue(interval1.equals(interval2));
+        Assert.assertFalse(interval1.equals(interval3));
+    }
+
+    @Test
     public void testJoin() {
         /* Classic joining of two intervals */
         IntInterval interval1 = new IntInterval(1, 5);
