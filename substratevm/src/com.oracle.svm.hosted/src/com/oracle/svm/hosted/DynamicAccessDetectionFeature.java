@@ -161,24 +161,23 @@ public final class DynamicAccessDetectionFeature implements InternalFeature {
 
     private void dumpReportForEntry(String entry) {
         try {
-            Path outputDirectory = getOrCreateDirectory(NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(OUTPUT_DIR_NAME));
-            Path targetPath = outputDirectory.resolve(getEntryName(entry) + ".json");
-            try (var writer = new JsonPrettyWriter(targetPath)) {
-                try (JsonBuilder.ObjectBuilder dynamicAccessBuilder = writer.objectBuilder()) {
-                    MethodsByType methodsByType = getMethodsByType(entry);
-                    for (String methodType : methodsByType.getMethodTypes()) {
-                        try (JsonBuilder.ObjectBuilder methodsByTypeBuilder = dynamicAccessBuilder.append(methodType).object()) {
-                            for (String methodName : methodsByType.getCallLocationsByMethod(methodType).getMethods()) {
-                                try (JsonBuilder.ArrayBuilder methodCallLocationBuilder = methodsByTypeBuilder.append(methodName).array()) {
-                                    for (String methodLocation : methodsByType.getCallLocationsByMethod(methodType).getMethodCallLocations(methodName)) {
-                                        methodCallLocationBuilder.append(methodLocation);
-                                    }
+            Path reportDirectory = getOrCreateDirectory(NativeImageGenerator.generatedFiles(HostedOptionValues.singleton()).resolve(OUTPUT_DIR_NAME));
+            MethodsByType methodsByType = getMethodsByType(entry);
+            for (String methodType : methodsByType.getMethodTypes()) {
+                Path entryDirectory = getOrCreateDirectory(reportDirectory.resolve(getEntryName(entry)));
+                Path targetPath = entryDirectory.resolve(methodType + "_calls.json");
+                try (var writer = new JsonPrettyWriter(targetPath)) {
+                    try (JsonBuilder.ObjectBuilder dynamicAccessBuilder = writer.objectBuilder()) {
+                        for (String methodName : methodsByType.getCallLocationsByMethod(methodType).getMethods()) {
+                            try (JsonBuilder.ArrayBuilder methodCallLocationBuilder = dynamicAccessBuilder.append(methodName).array()) {
+                                for (String methodLocation : methodsByType.getCallLocationsByMethod(methodType).getMethodCallLocations(methodName)) {
+                                    methodCallLocationBuilder.append(methodLocation);
                                 }
                             }
                         }
                     }
+                    BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, targetPath);
                 }
-                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.BUILD_INFO, targetPath);
             }
         } catch (IOException e) {
             System.out.println("Failed to dump report for entry " + entry + ":");
