@@ -177,7 +177,7 @@ final class NativeWasmMemory extends WasmMemory {
         assert length >= 1;
         long byteSize = byteSize();
         assert byteSize >= 0;
-        if (address < 0 || Long.compareUnsigned(address, byteSize - length) > 0) {
+        if (address < 0 || address > byteSize - length) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw trapOutOfBounds(node, address, length);
         }
