@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 @EspressoSubstitutions
 public final class Target_jdk_internal_util_ArraysSupport {
 
-    @Substitution(versionFilter = VersionFilter.Java9OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java9OrLater.class)
     abstract static class VectorizedMismatch extends SubstitutionNode {
 
         static final int LIMIT = 5;

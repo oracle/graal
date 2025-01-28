@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 @EspressoSubstitutions
 public final class Target_sun_misc_ProxyGenerator {
 
-    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
+    @Substitution(languageFilter = VersionFilter.Java8OrEarlier.class)
     abstract static class GenerateProxyClass extends SubstitutionNode {
 
         abstract @JavaType(byte[].class) StaticObject execute(

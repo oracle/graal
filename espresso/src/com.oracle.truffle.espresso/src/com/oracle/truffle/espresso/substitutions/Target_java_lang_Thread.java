@@ -100,7 +100,7 @@ public final class Target_java_lang_Thread {
         return language.getCurrentVirtualThread();
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java19OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java19OrLater.class)
     public static void setCurrentThread(@JavaType(Thread.class) StaticObject self, @JavaType(Thread.class) StaticObject thread, @Inject EspressoLanguage language) {
         assert self == EspressoContext.get(null).getCurrentPlatformThread();
         assert self == thread; // real virtual threads are not supported yet.
@@ -179,7 +179,7 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @Substitution(isTrivial = true, versionFilter = VersionFilter.Java18OrEarlier.class)
+    @Substitution(isTrivial = true, languageFilter = VersionFilter.Java18OrEarlier.class)
     public static void yield() {
         Thread.yield();
     }
@@ -203,7 +203,7 @@ public final class Target_java_lang_Thread {
         hostThread.setPriority(newPriority);
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java18OrEarlier.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java18OrEarlier.class)
     public static boolean isAlive(@JavaType(Thread.class) StaticObject self,
                     @Inject EspressoContext context) {
         return context.getThreadAccess().isAlive(self);
@@ -225,13 +225,13 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @Substitution(versionFilter = VersionFilter.Java18OrEarlier.class)
+    @Substitution(languageFilter = VersionFilter.Java18OrEarlier.class)
     public static void sleep(long amount, @Inject Meta meta, @Inject SubstitutionProfiler location) {
         sleep0(amount, meta, location);
     }
 
     @TruffleBoundary
-    @Substitution(versionFilter = VersionFilter.Java19OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java19OrLater.class)
     @SuppressWarnings("try")
     public static void sleep0(long amount, @Inject Meta meta, @Inject SubstitutionProfiler location) {
         if (amount < 0) {
@@ -280,7 +280,7 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java13OrEarlier.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java13OrEarlier.class)
     public static boolean isInterrupted(@JavaType(Thread.class) StaticObject self, boolean clear,
                     @Inject EspressoContext context) {
         return context.getThreadAccess().isInterrupted(self, clear);
@@ -320,7 +320,7 @@ public final class Target_java_lang_Thread {
         hostThread.setName(meta.toHostString(name));
     }
 
-    @Substitution(versionFilter = VersionFilter.Java19OrLater.class, hasReceiver = true)
+    @Substitution(languageFilter = VersionFilter.Java19OrLater.class, hasReceiver = true)
     abstract static class GetStackTrace0 extends SubstitutionNode {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Thread.class) StaticObject self);
 
@@ -385,19 +385,19 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    @Substitution(versionFilter = VersionFilter.Java20OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java20OrLater.class)
     public static @JavaType(Object[].class) StaticObject scopedValueCache(@Inject EspressoContext context) {
         StaticObject platformThread = context.getCurrentPlatformThread();
         return context.getThreadAccess().getScopedValueCache(platformThread);
     }
 
-    @Substitution(versionFilter = VersionFilter.Java20OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java20OrLater.class)
     public static void setScopedValueCache(@JavaType(Object[].class) StaticObject cache, @Inject EspressoContext context) {
         StaticObject platformThread = context.getCurrentPlatformThread();
         context.getThreadAccess().setScopedValueCache(platformThread, cache);
     }
 
-    @Substitution(versionFilter = VersionFilter.Java20OrLater.class, isTrivial = true)
+    @Substitution(languageFilter = VersionFilter.Java20OrLater.class, isTrivial = true)
     public static void ensureMaterializedForStackWalk(@JavaType(Object.class) StaticObject obj) {
         CompilerDirectives.blackhole(obj);
     }

@@ -36,7 +36,7 @@ public final class Target_java_lang_StackStreamFactory_AbstractStackWalker {
      * the native linking of these methods to their 'JVM_*' counterparts.
      */
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java19OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java19OrLater.class)
     public static @JavaType(Object.class) StaticObject callStackWalk(
                     @JavaType(internalName = "Ljava/lang/StackStreamFactory$AbstractStackWalker;") StaticObject stackStream,
                     long mode, int skipframes,

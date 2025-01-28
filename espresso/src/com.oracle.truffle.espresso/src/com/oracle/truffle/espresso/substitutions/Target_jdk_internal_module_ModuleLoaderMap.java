@@ -42,7 +42,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 @EspressoSubstitutions
 final class Target_jdk_internal_module_ModuleLoaderMap {
 
-    @Substitution(versionFilter = VersionFilter.Java11OrEarlier.class)
+    @Substitution(languageFilter = VersionFilter.Java11OrEarlier.class)
     abstract static class BootModules extends SubstitutionNode {
 
         abstract @JavaType(Set.class) StaticObject execute();
@@ -56,7 +56,7 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
         }
     }
 
-    @Substitution(versionFilter = VersionFilter.Java11OrEarlier.class)
+    @Substitution(languageFilter = VersionFilter.Java11OrEarlier.class)
     abstract static class PlatformModules extends SubstitutionNode {
 
         abstract @JavaType(Set.class) StaticObject execute();

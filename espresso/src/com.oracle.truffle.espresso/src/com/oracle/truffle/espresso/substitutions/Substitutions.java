@@ -254,7 +254,7 @@ public final class Substitutions extends ContextAccessImpl {
         // Look into the static substitutions.
         MethodRef key = getMethodKey(method);
         JavaSubstitution.Factory staticSubstitutionFactory = STATIC_SUBSTITUTIONS.get(key);
-        if (staticSubstitutionFactory != null && staticSubstitutionFactory.isValidFor(method.getJavaVersion())) {
+        if (staticSubstitutionFactory != null && staticSubstitutionFactory.isValidFor(method.getLanguage())) {
             EspressoRootNode root = createRootNodeFromSubstitution(method, staticSubstitutionFactory);
             if (root != null) {
                 return root;

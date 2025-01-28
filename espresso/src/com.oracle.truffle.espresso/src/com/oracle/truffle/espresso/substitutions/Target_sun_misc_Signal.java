@@ -40,7 +40,7 @@ public final class Target_sun_misc_Signal {
 
     // Avoid going through JVM_FindSignal which has a char* argument
     @SuppressWarnings("unused")
-    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
+    @Substitution(languageFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
     public static int findSignal(@JavaType(String.class) StaticObject name,
                     @Inject Meta meta) {
@@ -55,7 +55,7 @@ public final class Target_sun_misc_Signal {
     }
 
     @SuppressWarnings("unused")
-    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
+    @Substitution(languageFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
     public static void raise(@JavaType(Signal.class) StaticObject signal,
                     @Inject Meta meta) {
@@ -84,7 +84,7 @@ public final class Target_sun_misc_Signal {
     }
 
     @SuppressWarnings("unused")
-    @Substitution(versionFilter = VersionFilter.Java8OrEarlier.class)
+    @Substitution(languageFilter = VersionFilter.Java8OrEarlier.class)
     @TruffleBoundary
     public static @JavaType(SignalHandler.class) StaticObject handle(@JavaType(Signal.class) StaticObject signal, @JavaType(SignalHandler.class) StaticObject handler,
                     @Inject Meta meta) {

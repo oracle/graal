@@ -59,8 +59,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private TypeElement javaType;
     // NoProvider.class
     private TypeElement noProvider;
-    // NoFilter.class
-    private TypeElement noFilter;
+    // AlwaysValid.class
+    private TypeElement alwaysValid;
 
     // InlinedMethodPredicate.class
     private TypeElement noPredicate;
@@ -74,15 +74,15 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String INLINE_IN_BYTECODE = SUBSTITUTION_PACKAGE + "." + "InlineInBytecode";
     private static final String JAVA_TYPE = SUBSTITUTION_PACKAGE + "." + "JavaType";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
-    private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
+    private static final String ALWAYS_VALID = SUBSTITUTION_PACKAGE + "." + "LanguageFilter" + "." + "AlwaysValid";
 
     private static final String SUBSTITUTOR = "JavaSubstitution";
 
     private static final String GET_METHOD_NAME = "getMethodNames";
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
-    private static final String VERSION_FILTER_METHOD = "isValidFor";
+    private static final String LANGUAGE_FILTER_METHOD = "isValidFor";
     private static final String INLINE_IN_BYTECODE_METHOD = "inlineInBytecode";
-    private static final String JAVA_VERSION = "com.oracle.truffle.espresso.classfile.JavaVersion";
+    private static final String ESPRESSO_LANGUAGE = "com.oracle.truffle.espresso.EspressoLanguage";
 
     private static final String INSTANCE = "INSTANCE";
 
@@ -105,12 +105,12 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         final String returnType;
         final boolean hasReceiver;
         final TypeMirror nameProvider;
-        final TypeMirror versionFilter;
+        final TypeMirror languageFilter;
         final boolean inlineInBytecode;
         final TypeMirror guardValue;
 
         SubstitutorHelper(EspressoProcessor processor, Element target, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
-                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter, boolean inlineInBytecode, TypeMirror guardValue, TypeElement substitutionClass) {
+                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror languageFilter, boolean inlineInBytecode, TypeMirror guardValue, TypeElement substitutionClass) {
             super(processor, target, processor.getTypeElement(SUBSTITUTION), substitutionClass);
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
@@ -118,7 +118,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             this.returnType = returnType;
             this.hasReceiver = hasReceiver;
             this.nameProvider = nameProvider;
-            this.versionFilter = versionFilter;
+            this.languageFilter = languageFilter;
             this.inlineInBytecode = inlineInBytecode;
             this.guardValue = guardValue;
         }
@@ -337,7 +337,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             TypeMirror nameProvider = getNameProvider(subst);
             nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
-            TypeMirror versionFilter = getVersionFilter(subst);
+            TypeMirror versionFilter = getLanguageFilter(subst);
 
             TypeMirror encodedInlineGuard = getInlineValue(classWideInline, element);
             boolean inlineInBytecode = encodedInlineGuard != null ||
@@ -371,10 +371,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return null;
     }
 
-    private TypeMirror getVersionFilter(AnnotationMirror annotation) {
-        TypeMirror versionFilter = getAnnotationValue(annotation, "versionFilter", TypeMirror.class);
+    private TypeMirror getLanguageFilter(AnnotationMirror annotation) {
+        TypeMirror versionFilter = getAnnotationValue(annotation, "languageFilter", TypeMirror.class);
         if (versionFilter != null) {
-            if (!processingEnv.getTypeUtils().isSameType(versionFilter, noFilter.asType())) {
+            if (!processingEnv.getTypeUtils().isSameType(versionFilter, alwaysValid.asType())) {
                 return versionFilter;
             }
         }
@@ -573,11 +573,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         this.inlineInBytecodeAnnotation = getTypeElement(INLINE_IN_BYTECODE);
         this.javaType = getTypeElement(JAVA_TYPE);
         this.noProvider = getTypeElement(NO_PROVIDER);
-        this.noFilter = getTypeElement(NO_FILTER);
+        this.alwaysValid = getTypeElement(ALWAYS_VALID);
         this.noPredicate = getTypeElement(INLINED_METHOD_PREDICATE_IMPORT);
 
         verifyAnnotationMembers(espressoSubstitutions, "value", "nameProvider");
-        verifyAnnotationMembers(substitutionAnnotation, "methodName", "nameProvider", "versionFilter");
+        verifyAnnotationMembers(substitutionAnnotation, "methodName", "nameProvider", "languageFilter");
         verifyAnnotationMembers(inlineInBytecodeAnnotation, "guard");
         verifyAnnotationMembers(javaType, "value", "internalName");
 
@@ -644,7 +644,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             factoryBuilder.withMethod(generateSubstitutionClassNames(h));
         }
 
-        if (h.versionFilter != null) {
+        if (h.languageFilter != null) {
             factoryBuilder.withMethod(generateIsValidFor(h));
         }
 
@@ -685,13 +685,13 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     }
 
     private static MethodBuilder generateIsValidFor(SubstitutorHelper h) {
-        String versionFilter = h.versionFilter.toString();
-        MethodBuilder generateIsValidForMethod = new MethodBuilder(VERSION_FILTER_METHOD) //
+        String versionFilter = h.languageFilter.toString();
+        MethodBuilder generateIsValidForMethod = new MethodBuilder(LANGUAGE_FILTER_METHOD) //
                         .withOverrideAnnotation() //
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withReturnType("boolean") //
-                        .withParams(JAVA_VERSION + " version") //
-                        .addBodyLine("return ", versionFilter, '.', INSTANCE, '.', VERSION_FILTER_METHOD, "(version);");
+                        .withParams(ESPRESSO_LANGUAGE + " language") //
+                        .addBodyLine("return ", versionFilter, '.', INSTANCE, '.', LANGUAGE_FILTER_METHOD, "(language);");
         return generateIsValidForMethod;
     }
 

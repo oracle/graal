@@ -73,7 +73,7 @@ import java.lang.annotation.Target;
 
     Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
 
-    Class<? extends VersionFilter> versionFilter() default VersionFilter.NoFilter.class;
+    Class<? extends LanguageFilter> languageFilter() default LanguageFilter.AlwaysValid.class;
 
     /**
      * If the substitution is trivial.

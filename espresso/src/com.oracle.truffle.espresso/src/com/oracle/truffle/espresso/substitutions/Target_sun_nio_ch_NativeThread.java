@@ -51,7 +51,7 @@ public final class Target_sun_nio_ch_NativeThread {
         }
     }
 
-    @Substitution(versionFilter = Java21OrLater.class)
+    @Substitution(languageFilter = Java21OrLater.class)
     abstract static class IsNativeThread extends SubstitutionNode {
         abstract boolean execute(long tid);
 
@@ -69,7 +69,7 @@ public final class Target_sun_nio_ch_NativeThread {
         }
     }
 
-    @Substitution(versionFilter = Java21OrLater.class)
+    @Substitution(languageFilter = Java21OrLater.class)
     abstract static class Current0 extends SubstitutionNode {
         abstract long execute();
 
@@ -86,7 +86,7 @@ public final class Target_sun_nio_ch_NativeThread {
         }
     }
 
-    @Substitution(versionFilter = Java17OrEarlier.class)
+    @Substitution(languageFilter = Java17OrEarlier.class)
     abstract static class Signal extends SubstitutionNode {
         abstract void execute(long nt);
 

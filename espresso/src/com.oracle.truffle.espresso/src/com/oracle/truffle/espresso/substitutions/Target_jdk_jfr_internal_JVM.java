@@ -30,60 +30,60 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 public final class Target_jdk_jfr_internal_JVM {
     private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, "jdk.jfr.internal.JVM");
 
-    @Substitution(versionFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java11OrLater.class)
     public static void registerNatives() {
         LOGGER.warning("Ignoring jdk.jfr.internal.JVM initialization, JFR is not supported in Espresso");
     }
 
-    @Substitution(versionFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(languageFilter = VersionFilter.Java11OrLater.class)
     @SuppressWarnings("unused")
     public static void subscribeLogLevel(@JavaType(internalName = "Ljdk/jfr/internal/LogTag;") StaticObject lt, int tagSetId) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
     @SuppressWarnings("unused")
     public static void setFileNotification(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long delta) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
     @SuppressWarnings("unused")
     public static void setMemorySize(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long size) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
     @SuppressWarnings("unused")
     public static void setGlobalBufferSize(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long size) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
     @SuppressWarnings("unused")
     public static void setGlobalBufferCount(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long count) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java21OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java21OrLater.class)
     @SuppressWarnings("unused")
     public static void setDumpPath(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, @JavaType(String.class) StaticObject dumpPathText) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
     @SuppressWarnings("unused")
     public static void setStackDepth(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, int depth) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java11OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java11OrLater.class)
     @SuppressWarnings("unused")
     public static void setThreadBufferSize(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self, long size) {
         // ignore this
     }
 
-    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java21OrLater.class)
+    @Substitution(hasReceiver = true, languageFilter = VersionFilter.Java21OrLater.class)
     @SuppressWarnings("unused")
     public static boolean isContainerized(@JavaType(internalName = "Ljdk/jfr/internal/JVM;") StaticObject self) {
         return false;

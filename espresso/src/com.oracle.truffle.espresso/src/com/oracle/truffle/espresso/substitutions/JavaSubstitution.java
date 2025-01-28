@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.JavaVersion;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedFrameAccess;
 import com.oracle.truffle.espresso.nodes.quick.invoke.inline.InlinedMethodPredicate;
@@ -68,7 +68,7 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
             return hasReceiver;
         }
 
-        public boolean isValidFor(@SuppressWarnings("unused") JavaVersion version) {
+        public boolean isValidFor(@SuppressWarnings("unused") EspressoLanguage version) {
             return true;
         }
 
