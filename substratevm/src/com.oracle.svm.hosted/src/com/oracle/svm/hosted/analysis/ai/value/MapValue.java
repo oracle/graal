@@ -27,6 +27,11 @@ public final class MapValue<
         this.initialDomain = initialDomain;
     }
 
+    public MapValue(MapValue<Key, Domain> other) {
+        this.map = new HashMap<>(other.map);
+        this.initialDomain = other.initialDomain;
+    }
+
     public MapValue(Map<Key, Domain> other, Domain initialDomain) {
         this.map = new HashMap<>(other);
         this.initialDomain = initialDomain;
@@ -38,6 +43,8 @@ public final class MapValue<
 
     @Override
     public AbstractValueKind getKind() {
+        // TODO, returning TOP is more correct because every get() will yield a TOP value,
+        // but then the empty map is top and join won't change it at all
         return map.isEmpty() ? AbstractValueKind.BOT : AbstractValueKind.VAL;
     }
 
@@ -53,7 +60,7 @@ public final class MapValue<
 
     @Override
     public boolean equals(MapValue<Key, Domain> other) {
-        return map.equals(other.map);
+        return leq(other) && other.leq(this);
     }
 
     @Override
@@ -102,6 +109,7 @@ public final class MapValue<
         return map.size();
     }
 
+    /* Return TOP value of the {@link AbstractDomain}, when the key is not found */
     public Domain getDomainAtKey(Key key) {
         return map.getOrDefault(key, AbstractDomain.createTop(initialDomain));
     }
@@ -110,9 +118,8 @@ public final class MapValue<
         map.put(key, value);
     }
 
-    public MapValue<Key, Domain> remove(Key key) {
+    public void remove(Key key) {
         map.remove(key);
-        return this;
     }
 
     public void visit(Function<Map.Entry<Key, Domain>, Void> visitor) {
@@ -121,46 +128,38 @@ public final class MapValue<
         }
     }
 
-    public MapValue<Key, Domain> filter(Predicate<Map.Entry<Key, Domain>> predicate) {
+    public void filter(Predicate<Map.Entry<Key, Domain>> predicate) {
         map.entrySet().removeIf(entry -> !predicate.test(entry));
-        return this;
     }
 
     public boolean eraseAllMatching(Key key) {
         return map.keySet().removeIf(k -> (k.hashCode() & key.hashCode()) != 0);
     }
 
-    public MapValue<Key, Domain> update(Function<Domain, Domain> operation, Key key) {
+    public void update(Function<Domain, Domain> operation, Key key) {
         map.put(key, operation.apply(map.get(key)));
-        return this;
     }
 
-    public boolean transform(Function<Domain, Domain> function) {
-        for (Map.Entry<Key, Domain> entry : map.entrySet()) {
-            map.put(entry.getKey(), function.apply(entry.getValue()));
-        }
-        return true;
+    public void transform(Function<Domain, Domain> function) {
+        map.replaceAll((k, v) -> function.apply(v));
     }
 
-    public MapValue<Key, Domain> unionWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
+    public void unionWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
         for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
             map.merge(entry.getKey(), entry.getValue(), combine);
         }
-        return this;
     }
 
-    public MapValue<Key, Domain> intersectionWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
+    public void intersectionWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
         map.entrySet().removeIf(entry -> !other.map.containsKey(entry.getKey()));
         for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
             map.merge(entry.getKey(), entry.getValue(), combine);
         }
-        return this;
     }
 
-    public MapValue<Key, Domain> differenceWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
+    public void differenceWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
         for (Map.Entry<Key, Domain> entry : other.map.entrySet()) {
             map.merge(entry.getKey(), entry.getValue(), combine);
         }
-        return this;
     }
 }
