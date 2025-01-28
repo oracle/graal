@@ -402,9 +402,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         if (helper.isNodeTarget()) {
             expectedImports.add(helper.getNodeTarget().getQualifiedName().toString());
         }
-        if (helper.hasProfileInjection) {
-            expectedImports.add(IMPORT_PROFILE);
-        }
         if (parameterTypeName.contains("String")) {
             expectedImports.add(IMPORT_INTEROP_LIBRARY);
         }

@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.processor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -220,14 +219,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         if (injectMirror == null) {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
                             headerMessage + " must be annotated with @Inject", element);
-        }
-
-        List<TypeElement> allowedTypes = Arrays.asList(espressoLanguage, meta, substitutionProfiler, espressoContext);
-        boolean unsupportedType = allowedTypes.stream().noneMatch(allowedType -> env().getTypeUtils().isSameType(typeMirror, allowedType.asType()));
-        if (unsupportedType) {
-            String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                            headerMessage + " type not supported, allowed types: " + allowedNames, element);
         }
     }
 
