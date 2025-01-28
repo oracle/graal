@@ -68,7 +68,7 @@ public class JfrAllocationEvents {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ObjectAllocationInNewTLAB);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationInNewTLAB, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationInNewTLAB));
             JfrNativeEventWriter.putClass(data, DynamicHub.toClass(hub));
             JfrNativeEventWriter.putLong(data, allocationSize.rawValue());
             JfrNativeEventWriter.putLong(data, tlabSize.rawValue());
@@ -88,7 +88,7 @@ public class JfrAllocationEvents {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ObjectAllocationSample);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationSample, 0));
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationSample));
             JfrNativeEventWriter.putClass(data, DynamicHub.toClass(hub));
             JfrNativeEventWriter.putLong(data, weight);
             JfrNativeEventWriter.endSmallEvent(data);
