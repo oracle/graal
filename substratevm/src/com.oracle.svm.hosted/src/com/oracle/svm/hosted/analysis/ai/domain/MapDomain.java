@@ -2,7 +2,6 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.value.MapValue;
-import jdk.vm.ci.meta.Value;
 
 import java.util.Map;
 import java.util.function.Function;

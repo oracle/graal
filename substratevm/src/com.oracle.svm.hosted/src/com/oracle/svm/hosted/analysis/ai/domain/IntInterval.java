@@ -1,7 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import java.util.Objects;
-
 /**
  * Represents an interval domain of integer values
  */
