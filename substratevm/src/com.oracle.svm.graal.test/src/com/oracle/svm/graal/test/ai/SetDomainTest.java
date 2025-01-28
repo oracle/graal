@@ -86,7 +86,7 @@ public class SetDomainTest {
         SetDomain<String> setDomain = new SetDomain<>();
         setDomain.add("element");
         SetDomain<String> copy = setDomain.copyOf();
-        Assert.assertTrue(setDomain.equals(copy));
+        Assert.assertEquals(setDomain, copy);
         Assert.assertNotSame(setDomain, copy);
     }
 
@@ -96,7 +96,7 @@ public class SetDomainTest {
         setDomain1.add("element");
         SetDomain<String> setDomain2 = new SetDomain<>();
         setDomain2.add("element");
-        Assert.assertTrue(setDomain1.equals(setDomain2));
+        Assert.assertEquals(setDomain1, setDomain2);
     }
 
     @Test
