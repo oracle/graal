@@ -80,10 +80,10 @@ public class SignDomainTest {
     public void testEquals() {
         SignDomain signDomain1 = new SignDomain(Sign.POS);
         SignDomain signDomain2 = new SignDomain(Sign.POS);
-        Assert.assertTrue(signDomain1.equals(signDomain2));
+        Assert.assertEquals(signDomain1, signDomain2);
 
         signDomain2 = new SignDomain(Sign.NEG);
-        Assert.assertFalse(signDomain1.equals(signDomain2));
+        Assert.assertNotEquals(signDomain1, signDomain2);
     }
 
     @Test
