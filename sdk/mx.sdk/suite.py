@@ -998,6 +998,7 @@ suite = {
           "org.graalvm.shadowed.org.jline.reader.impl.history",
           "org.graalvm.shadowed.org.jline.terminal",
           "org.graalvm.shadowed.org.jline.terminal.impl",
+          "org.graalvm.shadowed.org.jline.terminal.impl.exec",
           "org.graalvm.shadowed.org.jline.terminal.spi",
           "org.graalvm.shadowed.org.jline.utils",
         ],
