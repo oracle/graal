@@ -26,10 +26,8 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-@EspressoSubstitutions(nameProvider = Target_java_lang_StackStreamFactory_AbstractStackWalker.Provider.class)
+@EspressoSubstitutions(type = "Ljava/lang/StackStreamFactory$AbstractStackWalker;")
 public final class Target_java_lang_StackStreamFactory_AbstractStackWalker {
-    private static final String[] TARGET_NAME = {"Target_java_lang_StackStreamFactory$AbstractStackWalker"};
-
     private Target_java_lang_StackStreamFactory_AbstractStackWalker() {
     }
 
@@ -49,14 +47,5 @@ public final class Target_java_lang_StackStreamFactory_AbstractStackWalker {
                     @Inject EspressoLanguage language,
                     @Inject Meta meta) {
         return meta.getContext().getVM().JVM_CallStackWalk19(stackStream, mode, skipframes, contScope, cont, batchSize, startIndex, frames, language, meta);
-    }
-
-    static class Provider extends SubstitutionNamesProvider {
-        public static Provider INSTANCE = new Provider();
-
-        @Override
-        public String[] substitutionClassNames() {
-            return TARGET_NAME;
-        }
     }
 }

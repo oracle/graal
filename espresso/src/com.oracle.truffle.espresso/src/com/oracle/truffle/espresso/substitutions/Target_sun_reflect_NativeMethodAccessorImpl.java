@@ -54,9 +54,9 @@ import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
 @EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeMethodAccessorImpl.SharedNativeMetohdAccessorImpl.class)
 public final class Target_sun_reflect_NativeMethodAccessorImpl {
     private static final String[] NAMES = {
-                    "Target_sun_reflect_NativeMethodAccessorImpl",
-                    "Target_jdk_internal_reflect_NativeMethodAccessorImpl",
-                    "Target_jdk_internal_reflect_DirectMethodHandleAccessor$NativeAccessor"
+                    "Lsun/reflect/NativeMethodAccessorImpl;",
+                    "Ljdk/internal/reflect/NativeMethodAccessorImpl;",
+                    "Ljdk/internal/reflect/DirectMethodHandleAccessor$NativeAccessor;"
     };
 
     private Target_sun_reflect_NativeMethodAccessorImpl() {

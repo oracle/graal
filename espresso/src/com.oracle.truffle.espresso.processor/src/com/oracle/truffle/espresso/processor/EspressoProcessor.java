@@ -267,11 +267,11 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String IMPORT_COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
 
     static final String ESPRESSO_LANGUAGE_SIMPLE_NAME = "EspressoLanguage";
-    static final String ESPRESSO_CONTEX_SIMPLE_NAME = "EspressoContext";
+    static final String ESPRESSO_CONTEXT_SIMPLE_NAME = "EspressoContext";
     static final String META_SIMPLE_NAME = "Meta";
 
     static final String ESPRESSO_CONTEXT_VAR = "context";
-    static final String ESPRESSO_CONTEXT_SETTER = String.format("%s %s = getContext();", ESPRESSO_CONTEX_SIMPLE_NAME, ESPRESSO_CONTEXT_VAR);
+    static final String ESPRESSO_CONTEXT_SETTER = String.format("%s %s = getContext();", ESPRESSO_CONTEXT, ESPRESSO_CONTEXT_VAR);
 
     static final String GET_ESPRESSO_LANGUAGE = "getLanguage()";
     static final String META_FROM_ESPRESSO_CONTEXT = String.format("%s.getMeta()", ESPRESSO_CONTEXT_VAR);
@@ -562,7 +562,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         }
     }
 
-    private static JavadocBuilder generateGeneratedBy(String className, List<String> parameterTypes, SubstitutionHelper helper) {
+    private static JavadocBuilder generateGeneratedBy(List<String> parameterTypes, SubstitutionHelper helper) {
         JavadocBuilder javadocBuilder = new JavadocBuilder();
 
         if (helper.isNodeTarget()) {
@@ -570,7 +570,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
             return javadocBuilder;
         }
 
-        SignatureBuilder linkSignature = new SignatureBuilder().withName(className + "#" + helper.getMethodTarget().getSimpleName());
+        SignatureBuilder linkSignature = new SignatureBuilder().withName(helper.getEnclosingClass().getQualifiedName().toString() + "#" + helper.getMethodTarget().getSimpleName());
 
         for (String param : parameterTypes) {
             linkSignature.addParam(param);
@@ -584,7 +584,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                     linkSignature.addParam(META_SIMPLE_NAME);
                     break;
                 case CONTEXT:
-                    linkSignature.addParam(ESPRESSO_CONTEX_SIMPLE_NAME);
+                    linkSignature.addParam(ESPRESSO_CONTEXT_SIMPLE_NAME);
                     break;
                 case PROFILE:
                     linkSignature.addParam(PROFILE_CLASS);
@@ -753,7 +753,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
         ClassBuilder substitutorClass = new ClassBuilder(substitutorName) //
                         .withSuperClass(substitutor) //
-                        .withJavaDoc(generateGeneratedBy(className, parameterTypeName, helper)) //
+                        .withJavaDoc(generateGeneratedBy(parameterTypeName, helper)) //
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withInnerClass(generateFactory(className, substitutorName, targetMethodName, parameterTypeName, helper));
 

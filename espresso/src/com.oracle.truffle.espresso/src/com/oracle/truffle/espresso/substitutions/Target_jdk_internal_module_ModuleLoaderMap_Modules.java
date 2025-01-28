@@ -39,10 +39,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-@EspressoSubstitutions(nameProvider = Target_jdk_internal_module_ModuleLoaderMap_Modules.Provider.class)
+@EspressoSubstitutions(type = "Ljdk/internal/module/ModuleLoaderMap$Modules;")
 public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
-    private static final String[] TARGET_NAME = {"Target_jdk_internal_module_ModuleLoaderMap$Modules"};
-
     @Substitution(methodName = "<clinit>")
     public abstract static class Clinit extends SubstitutionNode {
 
@@ -85,15 +83,6 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
                 moduleNames.add(moduleExtension.moduleName());
             }
             field.setObject(staticStorage, meta.extendedStringSet(originalResult, moduleNames));
-        }
-    }
-
-    public static class Provider extends SubstitutionNamesProvider {
-        public static final Provider INSTANCE = new Provider();
-
-        @Override
-        public String[] substitutionClassNames() {
-            return TARGET_NAME;
         }
     }
 }

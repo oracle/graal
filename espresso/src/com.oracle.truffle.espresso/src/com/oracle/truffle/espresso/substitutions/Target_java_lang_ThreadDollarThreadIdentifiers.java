@@ -24,26 +24,11 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
-@EspressoSubstitutions(nameProvider = Target_java_lang_ThreadDollarThreadIdentifiers.ECJHack.class)
+@EspressoSubstitutions(type = "Ljava/lang/Thread$ThreadIdentifiers;")
 public final class Target_java_lang_ThreadDollarThreadIdentifiers {
 
     @Substitution
     public static long next(@Inject EspressoContext context) {
         return context.nextThreadId();
     }
-
-    /* It works with javac, but ECJ trips over '$' in the class name */
-    public static class ECJHack extends SubstitutionNamesProvider {
-        private static String[] NAMES = {
-                        TARGET_JAVA_LANG_THREAD_THREADIDENTIFIERS
-        };
-        public static SubstitutionNamesProvider INSTANCE = new ECJHack();
-
-        @Override
-        public String[] substitutionClassNames() {
-            return NAMES;
-        }
-    }
-
-    private static final String TARGET_JAVA_LANG_THREAD_THREADIDENTIFIERS = "Target_java_lang_Thread$ThreadIdentifiers";
 }

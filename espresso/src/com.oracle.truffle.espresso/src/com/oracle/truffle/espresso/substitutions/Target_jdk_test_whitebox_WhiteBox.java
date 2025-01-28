@@ -252,8 +252,8 @@ public final class Target_jdk_test_whitebox_WhiteBox {
 
     public static class WhiteBoxNameProvider extends SubstitutionNamesProvider {
         private static final String[] NAMES = {
-                        "Target_jdk_test_whitebox_WhiteBox",
-                        "Target_sun_hotspot_WhiteBox"
+                        "Ljdk/test/whitebox/WhiteBox;",
+                        "Lsun/hotspot/WhiteBox;"
         };
         public static SubstitutionNamesProvider INSTANCE = new WhiteBoxNameProvider();
 

@@ -209,8 +209,8 @@ public final class Substitutions extends ContextAccessImpl {
         String[] classNames = substitutorFactory.substitutionClassNames();
         String[] methodNames = substitutorFactory.getMethodNames();
         for (int i = 0; i < classNames.length; i++) {
-            assert classNames[i].startsWith("Target_");
-            Symbol<Type> classType = EspressoSymbols.SYMBOLS.putType("L" + classNames[i].substring("Target_".length()).replace('_', '/') + ";");
+            String internalName = classNames[i];
+            Symbol<Type> classType = EspressoSymbols.SYMBOLS.putType(internalName);
             Symbol<Name> methodName = EspressoSymbols.SYMBOLS.putName(methodNames[i]);
             registerStaticSubstitution(classType, methodName, signature, substitutorFactory, true);
         }

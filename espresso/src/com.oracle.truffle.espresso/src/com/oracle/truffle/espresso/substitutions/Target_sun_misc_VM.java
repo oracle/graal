@@ -46,8 +46,8 @@ public final class Target_sun_misc_VM {
 
     public static class SharedVM extends SubstitutionNamesProvider {
         private static String[] NAMES = new String[]{
-                        "Target_sun_misc_VM",
-                        "Target_jdk_internal_misc_VM"
+                        "Lsun/misc/VM;",
+                        "Ljdk/internal/misc/VM;"
         };
         public static SubstitutionNamesProvider INSTANCE = new SharedVM();
 

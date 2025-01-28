@@ -81,8 +81,8 @@ public final class Target_sun_misc_Unsafe {
     private static final int SAFETY_STATIC_FIELD_OFFSET = 3456789;
     private static final int ALLOWED_HIDDEN_FIELDS = 0x1000;
 
-    private static final String TARGET_JDK_INTERNAL_MISC_UNSAFE = "Target_jdk_internal_misc_Unsafe";
-    private static final String TARGET_SUN_MISC_UNSAFE = "Target_sun_misc_Unsafe";
+    private static final String JDK_INTERNAL_MISC_UNSAFE = "Ljdk/internal/misc/Unsafe;";
+    private static final String SUN_MISC_UNSAFE = "Lsun/misc/Unsafe;";
 
     static {
         Unsafe unsafe = UnsafeAccess.get();
@@ -3253,8 +3253,8 @@ public final class Target_sun_misc_Unsafe {
 
     public static class SharedUnsafe extends SubstitutionNamesProvider {
         private static final String[] NAMES = {
-                        TARGET_SUN_MISC_UNSAFE,
-                        TARGET_JDK_INTERNAL_MISC_UNSAFE
+                        SUN_MISC_UNSAFE,
+                        JDK_INTERNAL_MISC_UNSAFE
         };
         public static SubstitutionNamesProvider INSTANCE = new SharedUnsafe();
 
@@ -3275,9 +3275,9 @@ public final class Target_sun_misc_Unsafe {
 
     public static class SharedUnsafeObjectAccessToReference extends SubstitutionNamesProvider {
         private static final String[] NAMES = {
-                        TARGET_SUN_MISC_UNSAFE,
-                        TARGET_JDK_INTERNAL_MISC_UNSAFE,
-                        TARGET_JDK_INTERNAL_MISC_UNSAFE
+                        SUN_MISC_UNSAFE,
+                        JDK_INTERNAL_MISC_UNSAFE,
+                        JDK_INTERNAL_MISC_UNSAFE
         };
         public static SubstitutionNamesProvider INSTANCE = new SharedUnsafeObjectAccessToReference();
 
@@ -3298,7 +3298,7 @@ public final class Target_sun_misc_Unsafe {
 
     public static class Unsafe8 extends SubstitutionNamesProvider {
         private static final String[] NAMES = {
-                        TARGET_SUN_MISC_UNSAFE
+                        SUN_MISC_UNSAFE
         };
         public static SubstitutionNamesProvider INSTANCE = new Unsafe8();
 
@@ -3310,7 +3310,7 @@ public final class Target_sun_misc_Unsafe {
 
     public static class Unsafe11 extends SubstitutionNamesProvider {
         private static final String[] NAMES = {
-                        TARGET_JDK_INTERNAL_MISC_UNSAFE
+                        JDK_INTERNAL_MISC_UNSAFE
         };
         public static SubstitutionNamesProvider INSTANCE = new Unsafe11();
 

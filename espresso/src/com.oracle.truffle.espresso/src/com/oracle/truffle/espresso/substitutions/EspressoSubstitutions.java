@@ -30,9 +30,24 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface EspressoSubstitutions {
-    // TODO: Correctly wire it up when provided and remove hack in
-    // com.oracle.truffle.espresso.substitutions.Target_java_lang_ThreadDollarThreadIdentifiers
-    JavaType value() default @JavaType;
+    /**
+     * The class to substitute. If it is not accessible (eg: private jdk class), use either
+     * {@link #type()} or {@link #nameProvider()}.
+     */
+    Class<?> value() default EspressoSubstitutions.class;
 
+    /**
+     * Refers to an internal type name (Of the {@code La/b/C;} form.
+     * <p>
+     * If specified, {@link #value()} will be ignored.
+     * 
+     */
+    String type() default "";
+
+    /**
+     * Points to a {@link SubstitutionNamesProvider}.
+     * <p>
+     * If specified, both {@link #value()} and {@link #type()} will be ignored.
+     */
     Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
 }

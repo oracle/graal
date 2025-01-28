@@ -76,6 +76,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     // @Handle
     private TypeElement handleAnnotation;
 
+    private TypeElement envClass;
     private String envPackage;
     private String envClassName;
 
@@ -86,6 +87,8 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     private TypeElement generateIntrinsification;
 
     private static final class IntrinsificationTarget {
+        // The class annotated with @GenerateNativeEnv
+        private final TypeElement envClass;
         // The package for the target intrinsified native env.
         private final String envPackage;
         // The simple name of the target intrisified class.
@@ -93,7 +96,8 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         // The annotation supported by the target intrinsified class.
         private final TypeElement intrinsicAnnotation;
 
-        IntrinsificationTarget(String envPackage, String envClassName, TypeElement intrinsicAnnotation) {
+        IntrinsificationTarget(TypeElement envClass, String envPackage, String envClassName, TypeElement intrinsicAnnotation) {
+            this.envClass = envClass;
             this.envPackage = envPackage;
             this.envClassName = envClassName;
             this.intrinsicAnnotation = intrinsicAnnotation;
@@ -113,13 +117,14 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         public IntrinsincsHelper(EspressoProcessor processor,
                         Element element,
                         TypeElement implAnnotation,
+                        TypeElement envClass,
                         NativeType[] jniNativeSignature,
                         List<Boolean> referenceTypes,
                         boolean isStatic,
                         boolean prependEnv,
                         boolean needsHandlify,
                         boolean reachableForAutoSubstitution) {
-            super(processor, element, implAnnotation);
+            super(processor, element, implAnnotation, envClass);
             this.jniNativeSignature = jniNativeSignature;
             this.referenceTypes = referenceTypes;
             this.isStatic = isStatic;
@@ -152,6 +157,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     }
 
     private void initClosure(IntrinsificationTarget target) {
+        this.envClass = target.envClass;
         this.envPackage = target.envPackage;
         this.envClassName = target.envClassName;
 
@@ -175,7 +181,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             packageName = "";
             className = qualifiedName;
         }
-        targets.add(new IntrinsificationTarget(packageName, className, asTypeElement(targetAnnotation)));
+        targets.add(new IntrinsificationTarget(c, packageName, className, asTypeElement(targetAnnotation)));
     }
 
     void processElement(Element element, TypeElement implAnnotation) {
@@ -194,7 +200,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         checkIntrinsicElement(element);
 
         // Obtain the name of the method to be substituted in.
-        String substitutedMethodName = getSubstutitutedMethodName(element);
+        String substitutedMethodName = element.getSimpleName().toString();
 
         // This is the actual method that will be called by the substitution.
         ExecutableElement targetMethod = getTargetMethod(element);
@@ -211,7 +217,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         // Check if we need to call an instance method
         boolean isStatic = element.getKind() == ElementKind.METHOD && targetMethod.getModifiers().contains(Modifier.STATIC);
         // Spawn helper
-        IntrinsincsHelper h = new IntrinsincsHelper(this, element, implAnnotation, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify, reachableForAutoSubstitution);
+        IntrinsincsHelper h = new IntrinsincsHelper(this, element, implAnnotation, envClass, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify, reachableForAutoSubstitution);
         // Create the contents of the source file
         String classFile = spawnSubstitutor(
                         substitutorName,

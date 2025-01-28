@@ -36,9 +36,9 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 @EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeConstructorAccessorImpl.SharedNativeConstructorAccessorImpl.class)
 public final class Target_sun_reflect_NativeConstructorAccessorImpl {
     private static final String[] NAMES = {
-                    "Target_sun_reflect_NativeConstructorAccessorImpl",
-                    "Target_jdk_internal_reflect_NativeConstructorAccessorImpl",
-                    "Target_jdk_internal_reflect_DirectConstructorHandleAccessor$NativeAccessor"
+                    "Lsun/reflect/NativeConstructorAccessorImpl;",
+                    "Ljdk/internal/reflect/NativeConstructorAccessorImpl;",
+                    "Ljdk/internal/reflect/DirectConstructorHandleAccessor$NativeAccessor;"
     };
 
     @Substitution(methodName = "newInstance0")

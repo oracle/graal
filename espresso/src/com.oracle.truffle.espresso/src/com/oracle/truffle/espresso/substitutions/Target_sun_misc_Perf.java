@@ -97,8 +97,8 @@ public final class Target_sun_misc_Perf {
 
     public static class SharedPerf extends SubstitutionNamesProvider {
         private static String[] NAMES = new String[]{
-                        TARGET_SUN_MISC_PERF,
-                        TARGET_JDK_INTERNAL_PERF_PERF
+                        SUN_MISC_PERF,
+                        JDK_INTERNAL_PERF_PERF
         };
         public static SubstitutionNamesProvider INSTANCE = new SharedPerf();
 
@@ -108,6 +108,6 @@ public final class Target_sun_misc_Perf {
         }
     }
 
-    private static final String TARGET_SUN_MISC_PERF = "Target_sun_misc_Perf";
-    private static final String TARGET_JDK_INTERNAL_PERF_PERF = "Target_jdk_internal_perf_Perf";
+    private static final String SUN_MISC_PERF = "Lsun/misc/Perf;";
+    private static final String JDK_INTERNAL_PERF_PERF = "Ljdk/internal/perf/Perf;";
 }
