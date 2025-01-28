@@ -86,31 +86,34 @@ public abstract class WasmMemoryLibrary extends Library {
     /**
      * Initializes the content of a byte array based memory with the given data instance.
      *
+     * @param node the node used for errors
      * @param source The source data instance that should be copied to the memory
      * @param sourceOffset The offset in the source data segment
      * @param destinationOffset The offset in the memory
      * @param length The number of bytes that should be copied
      */
-    public abstract void initialize(WasmMemory memory, byte[] source, int sourceOffset, long destinationOffset, int length);
+    public abstract void initialize(WasmMemory memory, Node node, byte[] source, int sourceOffset, long destinationOffset, int length);
 
     /**
      * Fills the memory with the given value.
      *
+     * @param node the node used for errors
      * @param offset The offset in the memory
      * @param length The number of bytes that should be filled
      * @param value The value that should be used for filling the memory
      */
-    public abstract void fill(WasmMemory memory, long offset, long length, byte value);
+    public abstract void fill(WasmMemory memory, Node node, long offset, long length, byte value);
 
     /**
      * Copies data from another memory into this memory.
      *
+     * @param node the node used for errors
      * @param source The source memory
      * @param sourceOffset The offset in the source memory
      * @param destinationOffset The offset in this memory
      * @param length The number of bytes that should be copied
      */
-    public abstract void copyFrom(WasmMemory memory, WasmMemory source, long sourceOffset, long destinationOffset, long length);
+    public abstract void copyFrom(WasmMemory memory, Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length);
 
     /**
      * Copy data from an input stream into memory.

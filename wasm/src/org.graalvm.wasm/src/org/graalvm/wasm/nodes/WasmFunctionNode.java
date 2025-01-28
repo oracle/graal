@@ -4482,14 +4482,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         final WasmMemoryLibrary memoryLib = memoryLib(memoryIndex);
         final int dataOffset = instance.dataInstanceOffset(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
-        if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memoryLib.byteSize(memory))) {
+        if (checkOutOfBounds(source, length, dataLength)) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
         }
-        if (length == 0) {
-            return;
-        }
-        memoryLib.initialize(memory, codeEntry.bytecode(), dataOffset + source, destination, length);
+        memoryLib.initialize(memory, null, codeEntry.bytecode(), dataOffset + source, destination, length);
     }
 
     @TruffleBoundary
@@ -4500,35 +4497,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @TruffleBoundary
     private void memory_fill(WasmInstance instance, long length, int value, long offset, int memoryIndex) {
         final WasmMemory memory = memory(instance, memoryIndex);
-        if (checkOutOfBounds(offset, length, memoryLib(memoryIndex).byteSize(memory))) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-        }
-        if (length == 0L) {
-            return;
-        }
-        memoryLib(memoryIndex).fill(memory, offset, length, (byte) value);
+        memoryLib(memoryIndex).fill(memory, this, offset, length, (byte) value);
     }
 
     @TruffleBoundary
     private void memory_copy(WasmInstance instance, long length, long source, long destination, int destMemoryIndex, int srcMemoryIndex) {
         final WasmMemory destMemory = memory(instance, destMemoryIndex);
         final WasmMemory srcMemory = memory(instance, srcMemoryIndex);
-        if (checkOutOfBounds(source, length, memoryLib(srcMemoryIndex).byteSize(srcMemory)) || checkOutOfBounds(destination, length, memoryLib(destMemoryIndex).byteSize(destMemory))) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-        }
-        if (length == 0L) {
-            return;
-        }
-        memoryLib(destMemoryIndex).copyFrom(destMemory, srcMemory, source, destination, length);
+        memoryLib(destMemoryIndex).copyFrom(destMemory, this, srcMemory, source, destination, length);
     }
 
     // Checkstyle: resume method name check
-
-    private static boolean checkOutOfBounds(long offset, long length, long size) {
-        return offset < 0L || length < 0L || offset + length < 0L || offset + length > size;
-    }
 
     private static boolean checkOutOfBounds(int offset, int length, int size) {
         return offset < 0 || length < 0 || offset + length < 0 || offset + length > size;

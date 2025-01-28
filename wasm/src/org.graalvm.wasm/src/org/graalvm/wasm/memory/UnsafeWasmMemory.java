@@ -111,21 +111,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
         return unsafe.getLong(buffer, addressOffset);
     }
 
-    private void validateAddress(Node node, long address, int length) {
-        assert length >= 1;
-        long byteSize = byteSize();
-        assert byteSize >= 0;
-        if (address < 0 || address > byteSize - length) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw trapOutOfBounds(node, address, length);
-        }
-    }
-
-    private static void validateAtomicAddress(Node node, long address, int length) {
-        if ((address & (length - 1)) != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw trapUnalignedAtomic(node, address, length);
-        }
+    private void validateAddress(Node node, long address, long length) {
+        validateAddress(node, address, length, byteSize());
     }
 
     @ExportMessage
@@ -957,22 +944,30 @@ public final class UnsafeWasmMemory extends WasmMemory {
     // Checkstyle: resume
 
     @ExportMessage
-    public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
-        assert destinationOffset + length <= byteSize();
+    public void initialize(Node node, byte[] source, int sourceOffset, long destinationOffset, int length) {
+        validateLength(node, length);
+        validateAddress(node, destinationOffset, length);
+        if (sourceOffset < 0 || sourceOffset > source.length - length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapOutOfBoundsBuffer(node, sourceOffset, length, source.length);
+        }
         unsafe.copyMemory(source, Unsafe.ARRAY_BYTE_BASE_OFFSET + sourceOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, null, startAddress + destinationOffset, length);
     }
 
     @ExportMessage
-    public void fill(long offset, long length, byte value) {
-        assert offset + length <= byteSize();
+    public void fill(Node node, long offset, long length, byte value) {
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         unsafe.setMemory(startAddress + offset, length, value);
     }
 
     @ExportMessage
-    public void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length) {
+    public void copyFrom(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
         assert source instanceof UnsafeWasmMemory;
-        assert destinationOffset + length < byteSize();
         final UnsafeWasmMemory s = (UnsafeWasmMemory) source;
+        validateLength(node, length);
+        s.validateAddress(node, sourceOffset, length);
+        validateAddress(node, destinationOffset, length);
         unsafe.copyMemory(s.startAddress + sourceOffset, this.startAddress + destinationOffset, length);
     }
 
@@ -1007,20 +1002,11 @@ public final class UnsafeWasmMemory extends WasmMemory {
         return buffer.slice(0, Math.toIntExact(byteSize()));
     }
 
-    private boolean outOfBounds(int offset, int length) {
-        return length < 0 || offset < 0 || offset > byteSize() - length;
-    }
-
-    private boolean outOfBounds(long offset, long length) {
-        return length < 0 || offset < 0 || offset > byteSize() - length;
-    }
-
     @ExportMessage
     @TruffleBoundary
     public int copyFromStream(Node node, InputStream stream, int offset, int length) throws IOException {
-        if (outOfBounds(offset, length)) {
-            throw trapOutOfBounds(node, offset, length);
-        }
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         int totalBytesRead = 0;
         for (int i = 0; i < length; i++) {
             int byteRead = stream.read();
@@ -1039,9 +1025,8 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @ExportMessage
     @TruffleBoundary
     public void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException {
-        if (outOfBounds(offset, length)) {
-            throw trapOutOfBounds(node, offset, length);
-        }
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         for (int i = 0; i < length; i++) {
             byte b = unsafe.getByte(startAddress + offset + i);
             stream.write(b & 0x0000_00ff);
@@ -1050,8 +1035,11 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     @ExportMessage
     public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
-        if (outOfBounds(srcOffset, length)) {
-            throw trapOutOfBounds(node, srcOffset, length);
+        validateLength(node, length);
+        validateAddress(node, srcOffset, length);
+        if (dstOffset < 0 || dstOffset > dst.length - length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapOutOfBoundsBuffer(node, dstOffset, length, dst.length);
         }
         unsafe.copyMemory(null, startAddress + srcOffset, dst, Unsafe.ARRAY_BYTE_BASE_OFFSET + (long) dstOffset * Unsafe.ARRAY_BYTE_INDEX_SCALE, length);
     }

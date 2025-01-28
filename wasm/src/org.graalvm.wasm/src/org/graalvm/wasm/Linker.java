@@ -765,10 +765,8 @@ public class Linker {
             }
 
             WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
-            Assert.assertUnsignedLongLessOrEqual(baseAddress, memoryLib.byteSize(memory), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-            Assert.assertUnsignedLongLessOrEqual(baseAddress + byteLength, memoryLib.byteSize(memory), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
             final byte[] bytecode = instance.module().bytecode();
-            memoryLib.initialize(memory, bytecode, bytecodeOffset, baseAddress, byteLength);
+            memoryLib.initialize(memory, null, bytecode, bytecodeOffset, baseAddress, byteLength);
             instance.setDataInstance(dataSegmentId, droppedDataInstanceOffset);
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();

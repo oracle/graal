@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -696,7 +696,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 main.execute();
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out-of-bounds") && e.getMessage().contains("memory access"));
             }
         });
     }
@@ -741,7 +741,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 main.execute();
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out-of-bounds") && e.getMessage().contains("memory access"));
             }
         });
     }
@@ -764,7 +764,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 main.execute();
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out-of-bounds") && e.getMessage().contains("memory access"));
             }
         });
     }
@@ -787,7 +787,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 main.execute();
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out-of-bounds") && e.getMessage().contains("memory access"));
             }
         });
     }
@@ -825,7 +825,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 main.execute();
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out-of-bounds") && e.getMessage().contains("memory access"));
             }
         });
     }
@@ -846,7 +846,7 @@ public class ReferenceTypesValidationSuite extends AbstractBinarySuite {
                 main.execute();
                 Assert.fail("Should have thrown");
             } catch (PolyglotException e) {
-                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out of bounds memory access"));
+                Assert.assertTrue("Expected out of bounds error", e.getMessage().contains("out-of-bounds") && e.getMessage().contains("memory access"));
             }
         });
     }
