@@ -2450,6 +2450,21 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     }
 
     /**
+     * C6.2.30 Bitfield insert.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null, stackpointer or zero-register.
+     * @param src general purpose register. May not be null, stackpointer or zero-register.
+     * @param lsb start index of target register to override with bits from src register.
+     * @param width number of bits to copy from src register.
+     */
+    public void bfi(int size, Register dst, Register src, int lsb, int width) {
+        assert verifySizeAndRegistersRR(size, dst, src);
+
+        bfm(size, dst, src, ((size - lsb) & (size - 1)), (width - 1));
+    }
+
+    /**
      * C6.2.337 Unsigned bitfield move.
      *
      * @param size register size. Has to be 32 or 64.
