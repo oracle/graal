@@ -116,6 +116,24 @@ public class MapDomainTest {
     }
 
     @Test
+    public void testRemove() {
+        MapDomain<String, IntInterval> mapDomain = new MapDomain<>(new IntInterval());
+        mapDomain.put("x", new IntInterval(1, 5));
+        mapDomain.remove("x");
+        Assert.assertTrue(mapDomain.isBot());
+    }
+
+    @Test
+    public void testUpdate() {
+        MapDomain<String, IntInterval> mapDomain = new MapDomain<>(new IntInterval());
+        mapDomain.put("x", new IntInterval(1, 5));
+        mapDomain.update(interval -> new IntInterval(interval.getLowerBound() + 1, interval.getUpperBound() + 1), "x");
+        Assert.assertEquals(new IntInterval(2, 6), mapDomain.get("x"));
+    }
+
+
+
+    @Test
     public void testTransform() {
         Map<String, BooleanAndDomain> map = new HashMap<>();
         map.put("key1", new BooleanAndDomain(true));
