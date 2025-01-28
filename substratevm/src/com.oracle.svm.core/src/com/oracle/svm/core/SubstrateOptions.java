@@ -1271,6 +1271,10 @@ public class SubstrateOptions {
                     deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 23.0 and will be removed in a future release")//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
+    @Option(help = "Initialize JDK classes at build time the same way it was done before GraalVM 25.", type = OptionType.Debug, //
+                    deprecated = true, deprecationMessage = "This option was introduced to simplify migration to GraalVM 25 and will be removed in a future release")//
+    public static final HostedOptionKey<Boolean> InitializeJDKAtBuildTimeMigration = new HostedOptionKey<>(false);
+
     @APIOption(name = "exact-reachability-metadata", defaultValue = "")//
     @Option(help = "file:doc-files/ExactReachabilityMetadataHelp.txt")//
     public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
