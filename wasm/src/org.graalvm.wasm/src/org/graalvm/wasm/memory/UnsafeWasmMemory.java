@@ -83,7 +83,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     @TruffleBoundary
     private UnsafeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64, boolean shared) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, shared);
-        this.size = declaredMinSize;
+        this.size = initialSize;
         final long initialByteSize = byteSize();
         final long maxAllowedByteSize = maxAllowedSize * MEMORY_PAGE_SIZE;
         // For shared memories, we have to allocate the maximum allowed size in advance to avoid

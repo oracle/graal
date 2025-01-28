@@ -84,7 +84,7 @@ final class NativeWasmMemory extends WasmMemory {
     @TruffleBoundary
     private NativeWasmMemory(long declaredMinSize, long declaredMaxSize, long initialSize, long maxAllowedSize, boolean indexType64) {
         super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize, indexType64, false);
-        this.size = declaredMinSize;
+        this.size = initialSize;
         final long initialBufferSize = byteSize();
         this.startAddress = allocate(initialBufferSize);
         this.bufferSize = initialBufferSize;
