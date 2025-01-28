@@ -27,61 +27,102 @@ package jdk.graal.compiler.libgraal.truffle;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaConstant;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JByteArray;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativebridge.BinaryInput;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-final class HSTruffleCompilationTask extends HSIndirectHandle implements TruffleCompilationTask {
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddInlinedTarget;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetDebugProperties;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCounts;
+import static org.graalvm.jniutils.JNIMethodScope.env;
 
-    HSTruffleCompilationTask(Object hsHandle) {
-        super(hsHandle);
+final class HSTruffleCompilationTask extends HSObject implements TruffleCompilationTask {
+
+    private final TruffleFromLibGraalCalls calls;
+
+    HSTruffleCompilationTask(JNIMethodScope scope, JObject handle, HSTruffleCompilerRuntime runtime) {
+        super(scope, handle);
+        this.calls = runtime.calls;
     }
 
+    @TruffleFromLibGraal(IsCancelled)
     @Override
     public boolean isCancelled() {
-        return TruffleFromLibGraalStartPoints.isCancelled(hsHandle);
+        return HSTruffleCompilationTaskGen.callIsCancelled(calls, env(), getHandle());
     }
 
+    @TruffleFromLibGraal(IsLastTier)
     @Override
     public boolean isLastTier() {
-        return TruffleFromLibGraalStartPoints.isLastTier(hsHandle);
+        return HSTruffleCompilationTaskGen.callIsLastTier(calls, env(), getHandle());
     }
 
+    @TruffleFromLibGraal(HasNextTier)
     @Override
     public boolean hasNextTier() {
-        return TruffleFromLibGraalStartPoints.hasNextTier(hsHandle);
+        return HSTruffleCompilationTaskGen.callHasNextTier(calls, env(), getHandle());
     }
 
+    @TruffleFromLibGraal(GetPosition)
     @Override
     public TruffleSourceLanguagePosition getPosition(JavaConstant node) {
         long nodeHandle = HotSpotJVMCIRuntime.runtime().translate(node);
-        Object positionHsHandle = TruffleFromLibGraalStartPoints.getPosition(hsHandle, nodeHandle);
-        if (positionHsHandle == null) {
+        JObject res = HSTruffleCompilationTaskGen.callGetPosition(calls, env(), getHandle(), nodeHandle);
+        if (res.isNull()) {
             return null;
-        } else {
-            return new HSTruffleSourceLanguagePosition(positionHsHandle);
         }
+        return new HSTruffleSourceLanguagePosition(JNIMethodScope.scope(), res, calls);
     }
 
+    @TruffleFromLibGraal(AddTargetToDequeue)
     @Override
     public void addTargetToDequeue(TruffleCompilable target) {
-        TruffleFromLibGraalStartPoints.addTargetToDequeue(hsHandle, ((HSTruffleCompilable) target).hsHandle);
+        JObject hsCompilable = ((HSTruffleCompilable) target).getHandle();
+        HSTruffleCompilationTaskGen.callAddTargetToDequeue(calls, env(), getHandle(), hsCompilable);
     }
 
+    @TruffleFromLibGraal(SetCallCounts)
     @Override
     public void setCallCounts(int total, int inlined) {
-        TruffleFromLibGraalStartPoints.setCallCounts(hsHandle, total, inlined);
+        HSTruffleCompilationTaskGen.callSetCallCounts(calls, env(), getHandle(), total, inlined);
     }
 
+    @TruffleFromLibGraal(AddInlinedTarget)
     @Override
     public void addInlinedTarget(TruffleCompilable target) {
-        TruffleFromLibGraalStartPoints.addInlinedTarget(hsHandle, ((HSTruffleCompilable) target).hsHandle);
+        JObject hsCompilable = ((HSTruffleCompilable) target).getHandle();
+        HSTruffleCompilationTaskGen.callAddInlinedTarget(calls, env(), getHandle(), hsCompilable);
     }
 
+    @TruffleFromLibGraal(GetDebugProperties)
     @Override
     public Map<String, Object> getDebugProperties(JavaConstant node) {
         long nodeHandle = HotSpotJVMCIRuntime.runtime().translate(node);
-        return TruffleFromLibGraalStartPoints.getDebugProperties(hsHandle, nodeHandle);
+        JNIEnv env = JNIMethodScope.env();
+        byte[] bytes = JNIUtil.createArray(env, (JByteArray) HSTruffleCompilationTaskGen.callGetDebugProperties(calls, env, getHandle(), nodeHandle));
+        BinaryInput in = BinaryInput.create(bytes);
+        Map<String, Object> result = new LinkedHashMap<>();
+        int size = in.readInt();
+        for (int i = 0; i < size; i++) {
+            String key = in.readUTF();
+            Object value = in.readTypedValue();
+            result.put(key, value);
+        }
+        return result;
     }
 }
