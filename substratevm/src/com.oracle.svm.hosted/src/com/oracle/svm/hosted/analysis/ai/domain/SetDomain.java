@@ -23,15 +23,16 @@ public final class SetDomain<Element> extends LatticeDomain<SetValue<Element>, S
 
     public SetDomain(SetDomain<Element> other) {
         super(() -> new SetValue<>(other.getValue()));
-        this.kind = other.kind;
     }
 
     public void add(Element element) {
         getValue().add(element);
+        updateKind();
     }
 
     public void remove(Element element) {
         getValue().remove(element);
+        updateKind();
     }
 
     @Override
