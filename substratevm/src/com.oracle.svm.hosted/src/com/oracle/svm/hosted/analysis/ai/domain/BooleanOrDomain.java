@@ -72,4 +72,14 @@ public final class BooleanOrDomain extends AbstractDomain<BooleanOrDomain> {
     public BooleanOrDomain copyOf() {
         return new BooleanOrDomain(this.value);
     }
+
+    public void negate() {
+        this.value = !this.value;
+    }
+
+    public BooleanOrDomain getNegated() {
+        BooleanOrDomain copy = this.copyOf();
+        copy.negate();
+        return copy;
+    }
 }

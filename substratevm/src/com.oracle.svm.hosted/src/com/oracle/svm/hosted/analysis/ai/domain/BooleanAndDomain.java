@@ -72,4 +72,14 @@ public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
     public BooleanAndDomain copyOf() {
         return new BooleanAndDomain(this.value);
     }
+
+    public void negate() {
+        this.value = !this.value;
+    }
+
+    public BooleanAndDomain getNegated() {
+        BooleanAndDomain copy = this.copyOf();
+        copy.negate();
+        return copy;
+    }
 }
