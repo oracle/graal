@@ -3,6 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValue;
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 
+import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
@@ -86,11 +87,16 @@ public class LatticeDomain<
         return value.leq(other.getValue());
     }
 
-    public boolean equals(Domain other) {
-        if (isBot()) return other.isBot();
-        if (isTop()) return other.isTop();
-        checkKind();
-        return value.equals(other.getValue());
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        LatticeDomain<?, ?> that = (LatticeDomain<?, ?>) o;
+        return kind == that.kind && Objects.equals(value, that.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(kind, value);
     }
 
     public void joinWith(Domain other) {

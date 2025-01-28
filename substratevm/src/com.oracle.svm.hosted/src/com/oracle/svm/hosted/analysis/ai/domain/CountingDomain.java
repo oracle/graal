@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
+import java.util.Objects;
+
 /**
  * Represents a basic counting domain.
  */
@@ -50,8 +52,15 @@ public final class CountingDomain extends AbstractDomain<CountingDomain> {
     }
 
     @Override
-    public boolean equals(CountingDomain other) {
-        return this.value == other.value;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        CountingDomain that = (CountingDomain) o;
+        return value == that.value;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(value);
     }
 
     @Override

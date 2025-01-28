@@ -36,8 +36,13 @@ public final class EmptyDomain extends AbstractDomain<EmptyDomain> {
     }
 
     @Override
-    public boolean equals(EmptyDomain other) {
-        return other != null;
+    public boolean equals(Object other) {
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
     }
 
     @Override

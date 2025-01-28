@@ -4,6 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -59,8 +60,15 @@ public final class MapValue<
     }
 
     @Override
-    public boolean equals(MapValue<Key, Domain> other) {
-        return leq(other) && other.leq(this);
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        MapValue<?, ?> mapValue = (MapValue<?, ?>) o;
+        return Objects.equals(map, mapValue.map) && Objects.equals(initialDomain, mapValue.initialDomain);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(map, initialDomain);
     }
 
     @Override

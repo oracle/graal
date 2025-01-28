@@ -2,6 +2,8 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 
+import java.util.Objects;
+
 /**
  * A generic wrapper class for handling domains with finitely many states.
  * For example SignDomain, ParityDomain, etc.
@@ -53,8 +55,15 @@ public abstract class FiniteAbstractDomain<State> extends AbstractDomain<FiniteA
     }
 
     @Override
-    public boolean equals(FiniteAbstractDomain<State> other) {
-        return state.equals(other.state) && kind == other.kind;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        FiniteAbstractDomain<?> that = (FiniteAbstractDomain<?>) o;
+        return Objects.equals(state, that.state) && kind == that.kind;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(state, kind);
     }
 
     @Override

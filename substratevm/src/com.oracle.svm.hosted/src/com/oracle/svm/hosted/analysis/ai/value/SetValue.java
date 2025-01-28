@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.value;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -39,8 +40,15 @@ public final class SetValue<Element>
     }
 
     @Override
-    public boolean equals(SetValue<Element> other) {
-        return set.equals(other.set);
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        SetValue<?> setValue = (SetValue<?>) o;
+        return Objects.equals(set, setValue.set);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(set);
     }
 
     @Override

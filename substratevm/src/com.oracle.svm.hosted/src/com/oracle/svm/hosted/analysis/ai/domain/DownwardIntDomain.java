@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
+import java.util.Objects;
+
 public final class DownwardIntDomain extends AbstractDomain<DownwardIntDomain> {
     private int value;
     private static final int MAX_COUNT = Integer.MAX_VALUE;
@@ -40,8 +42,15 @@ public final class DownwardIntDomain extends AbstractDomain<DownwardIntDomain> {
     }
 
     @Override
-    public boolean equals(DownwardIntDomain other) {
-        return this.value == other.value;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        DownwardIntDomain that = (DownwardIntDomain) o;
+        return value == that.value;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(value);
     }
 
     @Override

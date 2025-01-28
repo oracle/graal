@@ -2,11 +2,14 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /*
-    This abstract domain represents a product of other abstract domains.
+    This abstract domain represents a cartesian product of other abstract domains.
+    Future improvement could be implementing reduced product domain.
  */
 public final class ProductDomain extends AbstractDomain<ProductDomain> {
+
     private final List<AbstractDomain<?>> domains;
 
     public ProductDomain() {
@@ -57,16 +60,15 @@ public final class ProductDomain extends AbstractDomain<ProductDomain> {
     }
 
     @Override
-    public boolean equals(ProductDomain other) {
-        if (domains.size() != other.domains.size()) {
-            return false;
-        }
-        for (int i = 0; i < domains.size(); i++) {
-            if (!domains.get(i).equals(other.domains.get(i))) {
-                return false;
-            }
-        }
-        return true;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        ProductDomain that = (ProductDomain) o;
+        return Objects.equals(domains, that.domains);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(domains);
     }
 
     @Override
@@ -100,7 +102,6 @@ public final class ProductDomain extends AbstractDomain<ProductDomain> {
             if (thisDomain.getClass() != otherDomain.getClass()) {
                 throw new RuntimeException("Cannot widen domains of different types");
             }
-
             widenDomains(thisDomain, otherDomain);
         }
     }

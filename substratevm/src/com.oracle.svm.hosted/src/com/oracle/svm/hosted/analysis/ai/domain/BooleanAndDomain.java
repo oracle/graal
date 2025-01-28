@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
+import java.util.Objects;
+
 /**
  * Represents the boolean and domain in the abstract domain.
  */
@@ -34,8 +36,15 @@ public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
     }
 
     @Override
-    public boolean equals(BooleanAndDomain other) {
-        return this.value == other.value;
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        BooleanAndDomain that = (BooleanAndDomain) o;
+        return value == that.value;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(value);
     }
 
     @Override

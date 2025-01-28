@@ -30,7 +30,7 @@ public interface AbstractValue<Derived extends AbstractValue<Derived>> {
      * @param other the other value to compare with
      * @return true if this value is equal to the other value, false otherwise
      */
-    boolean equals(Derived other);
+    boolean equals(Object other);
 
     /**
      * Joins this value with another value.

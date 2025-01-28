@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
+import java.util.Objects;
+
 /**
  * Represents an interval domain of integer values
  */
@@ -54,7 +56,15 @@ public final class IntInterval
         return isBot() || (other.lowerBound <= lowerBound && upperBound <= other.upperBound);
     }
 
-    public boolean equals(IntInterval other) {
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        IntInterval other = (IntInterval) obj;
         if (isBot() && other.isBot()) {
             return true;
         }
@@ -62,6 +72,11 @@ public final class IntInterval
             return true;
         }
         return lowerBound == other.lowerBound && upperBound == other.upperBound;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(lowerBound, upperBound);
     }
 
     public void setToBot() {
@@ -254,7 +269,7 @@ public final class IntInterval
      * for [-inf, 3] returns [4, inf]
      * for [5, inf] returns [-inf, 4]
      * for [-inf, inf] returns [1, 0] (any bot is ok)
-     * Note: only works for interval that are unbounded from at least one side
+     * NOTE: only works for interval that are unbounded from at least one side
      */
     public void inverse() {
         if (isTop()) {

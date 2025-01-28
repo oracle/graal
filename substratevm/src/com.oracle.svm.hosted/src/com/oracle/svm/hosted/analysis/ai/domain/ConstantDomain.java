@@ -2,6 +2,8 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 
 import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 
+import java.util.Objects;
+
 /**
  * Abstract domain for flat lattice, also known as a 3 level lattice.
  * For domains that can be represented as a constant value and have infinite ascending and descending chains.
@@ -93,17 +95,17 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
     }
 
     @Override
-    public boolean equals(ConstantDomain<Value> other) {
-        if (isBot() && other.isBot()) {
-            return true;
-        }
-        if (isTop() && other.isTop()) {
-            return true;
-        }
-        if (isValue() && other.isValue()) {
-            return value.equals(other.value);
-        }
-        return false;
+    @SuppressWarnings("unchecked")
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ConstantDomain<?> that = (ConstantDomain<?>) o;
+        return equals((ConstantDomain<Value>) that);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(kind, value);
     }
 
     @Override
@@ -165,5 +167,18 @@ public final class ConstantDomain<Value extends Number> extends AbstractDomain<C
             case VAL -> value.toString();
             default -> throw new IllegalStateException("Unexpected value: " + kind);
         };
+    }
+
+    private boolean equals(ConstantDomain<Value> other) {
+        if (isBot() && other.isBot()) {
+            return true;
+        }
+        if (isTop() && other.isTop()) {
+            return true;
+        }
+        if (isValue() && other.isValue()) {
+            return value.equals(other.value);
+        }
+        return false;
     }
 }

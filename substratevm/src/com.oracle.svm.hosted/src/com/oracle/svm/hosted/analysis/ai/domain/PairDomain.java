@@ -1,7 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
+import java.util.Objects;
+
 /**
  * Represents a pair of two abstract domains.
+ * Implemented using the cartesian product of the two abstract domains.
  *
  * @param <First> the type of the first abstract domain
  * @param <Second> the type of the second abstract domain
@@ -43,8 +46,15 @@ public final class PairDomain<
     }
 
     @Override
-    public boolean equals(PairDomain<First, Second> other) {
-        return first.equals(other.first) && second.equals(other.second);
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        PairDomain<?, ?> that = (PairDomain<?, ?>) o;
+        return Objects.equals(first, that.first) && Objects.equals(second, that.second);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(first, second);
     }
 
     @Override

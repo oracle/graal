@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
+import java.util.Objects;
+
 /**
  * Reverse Adaptor of an {@link AbstractDomain}
  * Reverses the top and bottom elements of an abstract domain
@@ -34,8 +36,15 @@ public final class InvertedDomain<Domain extends AbstractDomain<Domain>>
     }
 
     @Override
-    public boolean equals(InvertedDomain<Domain> other) {
-        return domain.equals(other.getDomain());
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        InvertedDomain<?> that = (InvertedDomain<?>) o;
+        return Objects.equals(domain, that.domain);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(domain);
     }
 
     @Override

@@ -47,7 +47,7 @@ public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
      * @param other domain to compare with
      * @return true if the domain is equal to the other domain
      */
-    public abstract boolean equals(Derived other);
+    public abstract boolean equals(Object other);
 
     /**
      * Sets the domain to the bottom element
