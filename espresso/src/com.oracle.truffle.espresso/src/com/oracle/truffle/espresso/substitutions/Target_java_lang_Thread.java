@@ -48,7 +48,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -137,7 +137,7 @@ public final class Target_java_lang_Thread {
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_Thread_exit.getCallTarget())") DirectCallNode threadExit,
                         @Cached("create(context.getMeta().java_lang_Thread_dispatchUncaughtException.getCallTarget())") DirectCallNode dispatchUncaught) {
-            ThreadsAccess threadAccess = context.getThreadAccess();
+            ThreadAccess threadAccess = context.getThreadAccess();
             if (context.multiThreadingEnabled()) {
                 // Thread.start() is synchronized.
                 if (threadAccess.terminateIfStillborn(self)) {

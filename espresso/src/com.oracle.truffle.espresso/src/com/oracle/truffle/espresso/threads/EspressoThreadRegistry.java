@@ -484,7 +484,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         synchronized (activeThreadLock) {
             // see ThreadService::find_deadlocks_at_safepoint
             // in share/services/threadService.cpp
-            ThreadsAccess threadAccess = getThreadAccess();
+            ThreadAccess threadAccess = getThreadAccess();
             StaticObject[] threads = activeThreads();
             for (StaticObject thread : threads) {
                 if (!threadAccess.isVirtualOrCarrierThread(thread)) {

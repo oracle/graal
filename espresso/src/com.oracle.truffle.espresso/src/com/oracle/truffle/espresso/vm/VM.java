@@ -159,7 +159,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.threads.State;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.npe.ExtendedNPEMessage;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
@@ -3367,7 +3367,7 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public @JavaType(Thread[].class) StaticObject JVM_GetAllThreads(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused) {
-        ThreadsAccess threadAccess = getThreadAccess();
+        ThreadAccess threadAccess = getThreadAccess();
         StaticObject[] threads = getContext().getActiveThreads();
         int numThreads = threads.length;
         int i = 0;

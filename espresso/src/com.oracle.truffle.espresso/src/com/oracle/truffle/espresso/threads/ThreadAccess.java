@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 /**
  * Provides bridges to guest world thread implementation.
  */
-public final class ThreadsAccess extends ContextAccessImpl implements GuestInterrupter<StaticObject> {
+public final class ThreadAccess extends ContextAccessImpl implements GuestInterrupter<StaticObject> {
 
     public static final long ALIVE_EETOP = 0XCAFEBABEL;
     private final Meta meta;
@@ -72,7 +72,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         return getContext().getCurrentPlatformThread();
     }
 
-    public ThreadsAccess(Meta meta) {
+    public ThreadAccess(Meta meta) {
         super(meta.getContext());
         this.meta = meta;
     }
@@ -561,7 +561,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             SuspendLock lock = this.suspendLock;
             if (lock == null) {
                 synchronized (this) {
-                    lock = new SuspendLock(ThreadsAccess.this, thread);
+                    lock = new SuspendLock(ThreadAccess.this, thread);
                     this.suspendLock = lock;
                 }
             }

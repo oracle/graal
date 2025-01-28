@@ -114,7 +114,7 @@ import com.oracle.truffle.espresso.shared.meta.KnownTypes;
 import com.oracle.truffle.espresso.shared.meta.RuntimeAccess;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.ThreadAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
@@ -149,7 +149,7 @@ public final class EspressoContext
     // endregion Runtime
 
     // region Helpers
-    @CompilationFinal private ThreadsAccess threads;
+    @CompilationFinal private ThreadAccess threads;
     @CompilationFinal private BlockingSupport<StaticObject> blockingSupport;
     @CompilationFinal private EspressoShutdownHandler shutdownManager;
     // endregion Helpers
@@ -440,7 +440,7 @@ public final class EspressoContext
             }
             this.classLoadingEnv.setMeta(meta);
             this.metaInitialized = true;
-            this.threads = new ThreadsAccess(meta);
+            this.threads = new ThreadAccess(meta);
             this.blockingSupport = BlockingSupport.create(threads);
             this.shutdownManager = new EspressoShutdownHandler(this, espressoEnv.getThreadRegistry(), espressoEnv.getReferenceDrainer(), espressoEnv.SoftExit);
 
@@ -907,7 +907,7 @@ public final class EspressoContext
 
     // region Thread management
 
-    public ThreadsAccess getThreadAccess() {
+    public ThreadAccess getThreadAccess() {
         return threads;
     }
 
