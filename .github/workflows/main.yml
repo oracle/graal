@@ -230,6 +230,7 @@ jobs:
     timeout-minutes: 60
     env:
       MX_PYTHON: 'python'
+      PYTHONIOENCODING: 'utf-8'
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4
