@@ -12,7 +12,10 @@ public class PairDomainTest {
     public void testDefaultConstructor() {
         IntInterval interval = new IntInterval();
         BooleanAndDomain booleanDomain = new BooleanAndDomain();
+        interval.setToBot();
+        booleanDomain.setToBot();
         PairDomain<IntInterval, BooleanAndDomain> pairDomain = new PairDomain<>(interval, booleanDomain);
+        Assert.assertTrue(pairDomain.isBot());
     }
 
     @Test
@@ -76,8 +79,8 @@ public class PairDomainTest {
         BooleanAndDomain booleanDomain = new BooleanAndDomain(true);
         PairDomain<IntInterval, BooleanAndDomain> pairDomain = new PairDomain<>(interval, booleanDomain);
         PairDomain<IntInterval, BooleanAndDomain> copy = pairDomain.copyOf();
-        Assert.assertTrue(pairDomain.getFirst().equals(copy.getFirst()));
-        Assert.assertTrue(pairDomain.getSecond().equals(copy.getSecond()));
+        Assert.assertEquals(pairDomain.getFirst(), copy.getFirst());
+        Assert.assertEquals(pairDomain.getSecond(), copy.getSecond());
     }
 
     @Test
@@ -88,7 +91,7 @@ public class PairDomainTest {
         BooleanAndDomain booleanDomain2 = new BooleanAndDomain(true);
         PairDomain<IntInterval, BooleanAndDomain> pairDomain1 = new PairDomain<>(interval1, booleanDomain1);
         PairDomain<IntInterval, BooleanAndDomain> pairDomain2 = new PairDomain<>(interval2, booleanDomain2);
-        Assert.assertTrue(pairDomain1.equals(pairDomain2));
+        Assert.assertEquals(pairDomain1, pairDomain2);
     }
 
     @Test

@@ -25,7 +25,7 @@ public class MapDomainTest {
     public void testPutAndGet() {
         MapDomain<String, IntInterval> mapDomain = new MapDomain<>(new IntInterval());
         mapDomain.put("x", new IntInterval(1, 5));
-        Assert.assertTrue(new IntInterval(1, 5).equals(mapDomain.get("x")));
+        Assert.assertEquals(new IntInterval(1, 5), mapDomain.get("x"));
     }
 
     @Test
@@ -46,7 +46,7 @@ public class MapDomainTest {
         Assert.assertEquals(AbstractValueKind.VAL, mapDomain1.getKind());
         Assert.assertEquals(AbstractValueKind.VAL, mapDomain2.getKind());
         mapDomain1.joinWith(mapDomain2);
-        Assert.assertTrue(new IntInterval(1, 7).equals(mapDomain1.get("x")));
+        Assert.assertEquals(new IntInterval(1, 7), mapDomain1.get("x"));
     }
 
     @Test
@@ -58,8 +58,8 @@ public class MapDomainTest {
         Assert.assertEquals(AbstractValueKind.VAL, mapDomain1.getKind());
         Assert.assertEquals(AbstractValueKind.VAL, mapDomain2.getKind());
         mapDomain1.joinWith(mapDomain2);
-        Assert.assertTrue(new IntInterval(1, 5).equals(mapDomain1.get("x")));
-        Assert.assertTrue(new IntInterval(3, 7).equals(mapDomain1.get("y")));
+        Assert.assertEquals(new IntInterval(1, 5), mapDomain1.get("x"));
+        Assert.assertEquals(new IntInterval(3, 7), mapDomain1.get("y"));
     }
 
     @Test
@@ -71,7 +71,7 @@ public class MapDomainTest {
         Assert.assertEquals(AbstractValueKind.VAL, mapDomain1.getKind());
         Assert.assertEquals(AbstractValueKind.VAL, mapDomain2.getKind());
         mapDomain1.meetWith(mapDomain2);
-        Assert.assertTrue(new IntInterval(3, 5).equals(mapDomain1.get("x")));
+        Assert.assertEquals(new IntInterval(3, 5), mapDomain1.get("x"));
     }
 
     @Test
@@ -82,7 +82,7 @@ public class MapDomainTest {
         map2.put("x", new IntInterval(1, 5));
         MapDomain<String, IntInterval> mapDomain1 = new MapDomain<>(map1, new IntInterval());
         MapDomain<String, IntInterval> mapDomain2 = new MapDomain<>(map2, new IntInterval());
-        Assert.assertTrue(mapDomain1.equals(mapDomain2));
+        Assert.assertEquals(mapDomain1, mapDomain2);
     }
 
     @Test
@@ -100,7 +100,7 @@ public class MapDomainTest {
         MapDomain<String, IntInterval> mapDomain = new MapDomain<>(new IntInterval());
         mapDomain.put("x", new IntInterval(1, 5));
         MapDomain<String, IntInterval> copy = mapDomain.copyOf();
-        Assert.assertTrue(mapDomain.equals(copy));
+        Assert.assertEquals(mapDomain, copy);
         Assert.assertNotSame(mapDomain, copy);
     }
 

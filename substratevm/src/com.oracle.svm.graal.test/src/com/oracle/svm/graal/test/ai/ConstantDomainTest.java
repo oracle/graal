@@ -60,13 +60,13 @@ public class ConstantDomainTest {
     public void testEquals() {
         ConstantDomain<Integer> domain1 = new ConstantDomain<>(5);
         ConstantDomain<Integer> domain2 = new ConstantDomain<>(5);
-        Assert.assertTrue(domain1.equals(domain2));
+        Assert.assertEquals(domain1, domain2);
 
         domain2 = new ConstantDomain<>(10);
-        Assert.assertFalse(domain1.equals(domain2));
+        Assert.assertNotEquals(domain1, domain2);
 
         domain2 = new ConstantDomain<>(AbstractValueKind.TOP);
-        Assert.assertFalse(domain1.equals(domain2));
+        Assert.assertNotEquals(domain1, domain2);
     }
 
     @Test
@@ -109,6 +109,6 @@ public class ConstantDomainTest {
     public void testCopyOf() {
         ConstantDomain<Integer> domain1 = new ConstantDomain<>(5);
         ConstantDomain<Integer> copy = domain1.copyOf();
-        Assert.assertTrue(domain1.equals(copy));
+        Assert.assertEquals(domain1, copy);
     }
 }

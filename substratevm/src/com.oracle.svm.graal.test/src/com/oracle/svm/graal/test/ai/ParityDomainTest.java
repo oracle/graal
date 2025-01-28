@@ -79,10 +79,10 @@ public class ParityDomainTest {
     public void testEquals() {
         ParityDomain parityDomain1 = new ParityDomain(Parity.ODD);
         ParityDomain parityDomain2 = new ParityDomain(Parity.ODD);
-        Assert.assertTrue(parityDomain1.equals(parityDomain2));
+        Assert.assertEquals(parityDomain1, parityDomain2);
 
         parityDomain2 = new ParityDomain(Parity.EVEN);
-        Assert.assertFalse(parityDomain1.equals(parityDomain2));
+        Assert.assertNotEquals(parityDomain1, parityDomain2);
     }
 
     @Test

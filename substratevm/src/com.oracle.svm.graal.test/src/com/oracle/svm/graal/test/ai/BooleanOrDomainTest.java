@@ -99,11 +99,11 @@ public class BooleanOrDomainTest {
 
         domain1 = new BooleanOrDomain(true);
         domain2 = new BooleanOrDomain(false);
-        Assert.assertFalse(domain1.equals(domain2));
+        Assert.assertNotEquals(domain1, domain2);
 
         domain1 = new BooleanOrDomain(false);
         domain2 = new BooleanOrDomain(true);
-        Assert.assertFalse(domain1.equals(domain2));
+        Assert.assertNotEquals(domain1, domain2);
     }
 
     @Test

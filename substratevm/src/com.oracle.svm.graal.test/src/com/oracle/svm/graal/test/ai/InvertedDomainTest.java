@@ -75,7 +75,7 @@ public class InvertedDomainTest {
         IntInterval interval2 = new IntInterval(5, 10);
         InvertedDomain<IntInterval> invertedDomain1 = new InvertedDomain<>(interval1);
         InvertedDomain<IntInterval> invertedDomain2 = new InvertedDomain<>(interval2);
-        Assert.assertTrue(invertedDomain1.equals(invertedDomain2));
+        Assert.assertEquals(invertedDomain1, invertedDomain2);
     }
 
     @Test

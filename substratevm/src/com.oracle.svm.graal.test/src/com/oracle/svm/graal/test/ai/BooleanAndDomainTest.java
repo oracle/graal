@@ -90,19 +90,19 @@ public class BooleanAndDomainTest {
     public void testEquals() {
         BooleanAndDomain domain1 = new BooleanAndDomain(true);
         BooleanAndDomain domain2 = new BooleanAndDomain(true);
-        Assert.assertTrue(domain1.equals(domain2));
+        Assert.assertEquals(domain1, domain2);
 
         domain1 = new BooleanAndDomain(false);
         domain2 = new BooleanAndDomain(false);
-        Assert.assertTrue(domain1.equals(domain2));
+        Assert.assertEquals(domain1, domain2);
 
         domain1 = new BooleanAndDomain(true);
         domain2 = new BooleanAndDomain(false);
-        Assert.assertFalse(domain1.equals(domain2));
+        Assert.assertNotEquals(domain1, domain2);
 
         domain1 = new BooleanAndDomain(false);
         domain2 = new BooleanAndDomain(true);
-        Assert.assertFalse(domain1.equals(domain2));
+        Assert.assertNotEquals(domain1, domain2);
     }
 
     @Test

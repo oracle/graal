@@ -50,7 +50,7 @@ public class IntIntervalDomainTest {
     public void testCopyOf() {
         IntInterval interval = new IntInterval(1, 5);
         IntInterval copy = interval.copyOf();
-        Assert.assertTrue(interval.equals(copy));
+        Assert.assertEquals(interval, copy);
         Assert.assertNotSame(interval, copy);
     }
 
@@ -59,8 +59,8 @@ public class IntIntervalDomainTest {
         IntInterval interval1 = new IntInterval(1, 5);
         IntInterval interval2 = new IntInterval(1, 5);
         IntInterval interval3 = new IntInterval(2, 6);
-        Assert.assertTrue(interval1.equals(interval2));
-        Assert.assertFalse(interval1.equals(interval3));
+        Assert.assertEquals(interval1, interval2);
+        Assert.assertNotEquals(interval1, interval3);
     }
 
     @Test
