@@ -44,8 +44,6 @@ public final class MapValue<
 
     @Override
     public AbstractValueKind getKind() {
-        // TODO, returning TOP is more correct because every get() will yield a TOP value,
-        // but then the empty map is top and join won't change it at all
         return map.isEmpty() ? AbstractValueKind.BOT : AbstractValueKind.VAL;
     }
 
@@ -140,8 +138,8 @@ public final class MapValue<
         map.entrySet().removeIf(entry -> !predicate.test(entry));
     }
 
-    public boolean eraseAllMatching(Key key) {
-        return map.keySet().removeIf(k -> (k.hashCode() & key.hashCode()) != 0);
+    public void eraseAllMatching(Key key) {
+        map.keySet().removeIf(k -> (k.hashCode() & key.hashCode()) != 0);
     }
 
     public void update(Function<Domain, Domain> operation, Key key) {
