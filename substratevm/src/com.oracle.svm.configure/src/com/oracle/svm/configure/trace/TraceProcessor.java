@@ -56,18 +56,18 @@ public class TraceProcessor extends AbstractProcessor {
     public void process(Reader reader, ConfigurationSet configurationSet) throws IOException {
         setInLivePhase(false);
         JsonParser parser = new JsonParser(reader);
-        List<EconomicMap<String, ?>> trace = (List<EconomicMap<String, ?>>) parser.parse();
+        List<EconomicMap<String, Object>> trace = (List<EconomicMap<String, Object>>) parser.parse();
         processTrace(trace, configurationSet);
     }
 
-    private void processTrace(List<EconomicMap<String, ?>> trace, ConfigurationSet configurationSet) {
-        for (EconomicMap<String, ?> entry : trace) {
+    private void processTrace(List<EconomicMap<String, Object>> trace, ConfigurationSet configurationSet) {
+        for (EconomicMap<String, Object> entry : trace) {
             processEntry(entry, configurationSet);
         }
     }
 
     @Override
-    public void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
+    public void processEntry(EconomicMap<String, Object> entry, ConfigurationSet configurationSet) {
         try {
             String tracer = (String) entry.get("tracer");
             switch (tracer) {

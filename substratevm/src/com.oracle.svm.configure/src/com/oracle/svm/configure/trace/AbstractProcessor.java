@@ -36,7 +36,7 @@ public abstract class AbstractProcessor {
     AbstractProcessor() {
     }
 
-    abstract void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet);
+    abstract void processEntry(EconomicMap<String, Object> entry, ConfigurationSet configurationSet);
 
     void setInLivePhase(@SuppressWarnings("unused") boolean live) {
     }
@@ -58,5 +58,18 @@ public abstract class AbstractProcessor {
             return (byte[]) obj;
         }
         return Base64.getDecoder().decode((String) obj);
+    }
+
+    /**
+     * Returns a fresh copy of the trace entry with an additional key-value pair identifying it.
+     * Useful when logging entries to the access advisor.
+     */
+    protected EconomicMap<String, Object> copyWithUniqueEntry(EconomicMap<String, Object> entry, String key, Object value) {
+        if (entry.containsKey(key)) {
+            throw new AssertionError(String.format("Tried to set unique identifier %s but field already exists: %s%n", key, entry));
+        }
+        EconomicMap<String, Object> result = EconomicMap.create(entry);
+        result.put(key, value);
+        return result;
     }
 }

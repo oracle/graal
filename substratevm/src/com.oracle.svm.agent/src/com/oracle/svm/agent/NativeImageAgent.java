@@ -74,7 +74,6 @@ import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
 import com.oracle.svm.configure.filters.ComplexFilter;
-import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
@@ -137,6 +136,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     protected int onLoadCallback(JNIJavaVM vm, JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, String options) {
         String traceOutputFile = null;
         String configOutputDir = null;
+        String ignoredEntriesFile = null;
         ConfigurationFileCollection mergeConfigs = new ConfigurationFileCollection();
         ConfigurationFileCollection omittedConfigs = new ConfigurationFileCollection();
         boolean builtinCallerFilter = true;
@@ -170,6 +170,13 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 if (token.startsWith("config-merge-dir=")) {
                     mergeConfigs.addDirectory(Paths.get(configOutputDir));
                 }
+            } else if (token.startsWith("experimental-ignored-entries-output=")) {
+                if (ignoredEntriesFile != null) {
+                    return usage("cannot specify ignored-entries-output= more than once.");
+                }
+                warn("Ignored entries logging (enabled by the \"experimental-ignored-entries-output\" argument) is " +
+                                "experimental and will be removed in the future. Do not rely on this feature.");
+                ignoredEntriesFile = getTokenValue(token);
             } else if (token.startsWith("config-to-omit=")) {
                 String omittedConfigDir = getTokenValue(token);
                 omittedConfigDir = transformPath(omittedConfigDir);
@@ -308,7 +315,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 if (experimentalOmitClasspathConfig) {
                     ignoreConfigFromClasspath(jvmti, omittedConfigs);
                 }
-                AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
+                AccessAdvisor advisor = new AccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter, ignoredEntriesFile);
                 TraceProcessor processor = new TraceProcessor(advisor);
                 ConfigurationSet omittedConfiguration = new ConfigurationSet();
                 Predicate<String> shouldExcludeClassesWithHash = null;
@@ -450,18 +457,6 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                             vmVersion, agentVersion));
         }
         return true;
-    }
-
-    private static AccessAdvisor createAccessAdvisor(boolean builtinHeuristicFilter, ConfigurationFilter callerFilter, ConfigurationFilter accessFilter) {
-        AccessAdvisor advisor = new AccessAdvisor();
-        advisor.setHeuristicsEnabled(builtinHeuristicFilter);
-        if (callerFilter != null) {
-            advisor.setCallerFilterTree(callerFilter);
-        }
-        if (accessFilter != null) {
-            advisor.setAccessFilterTree(accessFilter);
-        }
-        return advisor;
     }
 
     private static int parseIntegerOrNegative(String number) {

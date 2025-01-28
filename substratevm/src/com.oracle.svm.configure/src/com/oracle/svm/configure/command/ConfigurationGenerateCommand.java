@@ -282,15 +282,7 @@ public class ConfigurationGenerateCommand extends ConfigurationCommand {
         }
 
         if (!traceInputs.isEmpty()) {
-            AccessAdvisor advisor = new AccessAdvisor();
-            advisor.setHeuristicsEnabled(builtinHeuristicFilter);
-            if (callersFilter != null) {
-                advisor.setCallerFilterTree(callersFilter);
-            }
-            if (accessFilter != null) {
-                advisor.setAccessFilterTree(accessFilter);
-            }
-
+            AccessAdvisor advisor = new AccessAdvisor(builtinHeuristicFilter, callersFilter, accessFilter, null);
             TraceProcessor processor = new TraceProcessor(advisor);
             for (URI uri : traceInputs) {
                 try (Reader reader = Files.newBufferedReader(Paths.get(uri))) {

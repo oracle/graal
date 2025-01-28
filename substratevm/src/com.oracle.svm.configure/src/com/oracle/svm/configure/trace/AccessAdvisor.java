@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.configure.trace;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Set;
 import java.util.regex.Pattern;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
@@ -34,8 +38,7 @@ import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.phases.common.LazyValue;
 
 /**
- * Decides if a recorded access should be included in a configuration. Also advises the agent's
- * {@code AccessVerifier} classes which accesses to ignore when the agent is in restriction mode.
+ * Decides if a recorded access should be included in a configuration.
  */
 public final class AccessAdvisor {
     /**
@@ -160,61 +163,79 @@ public final class AccessAdvisor {
         return internalAccessFilter.copy();
     }
 
-    private ConfigurationFilter callerFilter = internalCallerFilter;
-    private ConfigurationFilter accessFilter = internalAccessFilter;
-    private boolean heuristicsEnabled = true;
+    private final boolean heuristicsEnabled;
+    private final ConfigurationFilter callerFilter;
+    private final ConfigurationFilter accessFilter;
+
+    private final JsonFileWriter ignoredEntriesTracer;
+
     private boolean isInLivePhase = false;
     private int launchPhase = 0;
 
-    public void setHeuristicsEnabled(boolean enable) {
-        heuristicsEnabled = enable;
-    }
+    public AccessAdvisor(boolean heuristicsEnabled, ConfigurationFilter callerFilter, ConfigurationFilter accessFilter, String ignoredEntriesFile) {
+        this.heuristicsEnabled = heuristicsEnabled;
+        this.callerFilter = callerFilter == null ? internalCallerFilter : callerFilter;
+        this.accessFilter = accessFilter == null ? internalAccessFilter : accessFilter;
 
-    public void setCallerFilterTree(ConfigurationFilter rootNode) {
-        callerFilter = rootNode;
-    }
-
-    public void setAccessFilterTree(ConfigurationFilter rootNode) {
-        accessFilter = rootNode;
+        JsonFileWriter ignoredEntriesTracerLocal = null;
+        if (ignoredEntriesFile != null) {
+            try {
+                ignoredEntriesTracerLocal = new JsonFileWriter(Path.of(ignoredEntriesFile));
+            } catch (IOException ex) {
+                System.err.printf("%s: could not open file \"%s\" to log ignored entries. No logging will be performed.%n", AccessAdvisor.class.getName(), ignoredEntriesFile);
+            }
+        }
+        this.ignoredEntriesTracer = ignoredEntriesTracerLocal;
     }
 
     public void setInLivePhase(boolean live) {
+        if (isInLivePhase && !live && ignoredEntriesTracer != null) {
+            ignoredEntriesTracer.close();
+        }
         isInLivePhase = live;
     }
 
-    public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass, boolean useLambdaHeuristics) {
+    public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass, boolean useLambdaHeuristics, EconomicMap<String, Object> entry) {
         if (heuristicsEnabled && !isInLivePhase) {
+            logIgnoredEntry("not in live phase", entry);
             return true;
         }
         String qualifiedCaller = callerClass.get();
         assert qualifiedCaller == null || qualifiedCaller.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
         if (qualifiedCaller != null && !callerFilter.includes(qualifiedCaller)) {
+            logIgnoredEntry("excluded by caller filter", entry);
             return true;
         }
         // NOTE: queriedClass can be null for non-class accesses like resources
         if (callerClass.get() == null && queriedClass.get() != null && !accessWithoutCallerFilter.includes(queriedClass.get())) {
+            logIgnoredEntry("excluded by caller-less access filter", entry);
             return true;
         }
         if (accessFilter != null && queriedClass.get() != null && !accessFilter.includes(queriedClass.get())) {
+            logIgnoredEntry("excluded by access filter", entry);
             return true;
         }
         if (heuristicsEnabled && queriedClass.get() != null) {
-            return (useLambdaHeuristics && queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) ||
-                            PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches();
+            if (useLambdaHeuristics && queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                logIgnoredEntry("lambda class", entry);
+                return true;
+            } else if (PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches()) {
+                logIgnoredEntry("proxy class", entry);
+                return true;
+            }
         }
         return false;
     }
 
-    public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
-        return shouldIgnore(queriedClass, callerClass, true);
+    public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass, EconomicMap<String, Object> entry) {
+        return shouldIgnore(queriedClass, callerClass, true, entry);
     }
 
     record JNICallDescriptor(String jniFunction, String declaringClass, String name, String signature, boolean required) {
         public boolean matches(String otherJniFunction, String otherDeclaringClass, String otherName, String otherSignature) {
             return jniFunction.equals(otherJniFunction) &&
                             (declaringClass == null || declaringClass.equals(otherDeclaringClass)) &&
-                            (otherName == null || name.equals(otherName)) &&
-                            (otherSignature == null || signature.equals(otherSignature));
+                            name.equals(otherName) && signature.equals(otherSignature);
         }
     }
 
@@ -235,9 +256,10 @@ public final class AccessAdvisor {
      * calls, we ignore calls until an expected sequence of calls ({@link #JNI_STARTUP_SEQUENCE}) is
      * observed.
      */
-    public boolean shouldIgnoreJniLookup(String jniFunction, LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
-        if (shouldIgnore(queriedClass, callerClass)) {
-            throw new AssertionError("shouldIgnore must have been checked before shouldIgnoreJniLookup");
+    public boolean shouldIgnoreJniLookup(String jniFunction, LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass,
+                    EconomicMap<String, Object> entry) {
+        if (shouldIgnore(queriedClass, callerClass, entry)) {
+            throw new AssertionError("Must check shouldIgnore before shouldIgnoreJniLookup");
         }
         if (!heuristicsEnabled || launchPhase >= JNI_STARTUP_COMPLETE) {
             // Startup sequence completed (or we're not using the startup heuristics).
@@ -245,6 +267,7 @@ public final class AccessAdvisor {
         }
         if (!"GetStaticMethodID".equals(jniFunction) && !"GetMethodID".equals(jniFunction)) {
             // Ignore function calls for functions not tracked by the startup sequence.
+            logIgnoredEntry("JNI startup sequence not completed", entry);
             return true;
         }
 
@@ -252,12 +275,14 @@ public final class AccessAdvisor {
         while (!expectedCall.matches(jniFunction, queriedClass.get(), name.get(), signature.get())) {
             if ("sun.launcher.LauncherHelper".equals(queriedClass.get())) {
                 // Ignore mismatched calls from sun.launcher.LauncherHelper.
+                logIgnoredEntry("calls from sun.launcher.LauncherHelper are ignored", entry);
                 return true;
             }
 
             if (expectedCall.required) {
                 // Mismatch on a required call. Mark startup as complete and start tracing JNI
                 // calls. (We prefer to emit extraneous configuration than to lose configuration).
+                System.err.printf("%s: Warning: Observed unexpected JNI call to %s (%s). Tracing all subsequent JNI accesses.%n", AccessAdvisor.class.getName(), jniFunction, entry);
                 launchPhase = JNI_STARTUP_MISMATCH_COMPLETE;
                 return false;
             }
@@ -266,15 +291,24 @@ public final class AccessAdvisor {
             launchPhase++;
             expectedCall = JNI_STARTUP_SEQUENCE[launchPhase];
         }
+
+        launchPhase++;
+        logIgnoredEntry(String.format("method %d in JNI startup sequence", launchPhase), entry);
         return true;
     }
 
-    public static boolean shouldIgnoreResourceLookup(LazyValue<String> resource) {
-        return Set.of("META-INF/services/jdk.vm.ci.services.JVMCIServiceLocator", "META-INF/services/java.lang.System$LoggerFinder").contains(resource.get());
+    public boolean shouldIgnoreResourceLookup(LazyValue<String> resource, EconomicMap<String, Object> entry) {
+        boolean result = Set.of("META-INF/services/jdk.vm.ci.services.JVMCIServiceLocator", "META-INF/services/java.lang.System$LoggerFinder").contains(resource.get());
+        if (result) {
+            logIgnoredEntry("blocklisted resource", entry);
+        }
+        return result;
     }
 
-    public boolean shouldIgnoreLoadClass(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
-        assert !shouldIgnore(queriedClass, callerClass) : "must have been checked before";
+    public boolean shouldIgnoreLoadClass(LazyValue<String> queriedClass, LazyValue<String> callerClass, EconomicMap<String, Object> entry) {
+        if (shouldIgnore(queriedClass, callerClass, entry)) {
+            throw new AssertionError("Must check shouldIgnore before shouldIgnoreLoadClass");
+        }
         if (!heuristicsEnabled) {
             return false;
         }
@@ -284,6 +318,20 @@ public final class AccessAdvisor {
          * configuration. The class loader could also have been called via JNI in a manually
          * attached native thread without Java frames, but that is unusual.
          */
-        return callerClass.get() == null;
+        boolean result = callerClass.get() == null;
+        if (result) {
+            logIgnoredEntry("class load without a caller", entry);
+        }
+        return result;
+    }
+
+    private void logIgnoredEntry(String reason, EconomicMap<String, Object> entry) {
+        if (ignoredEntriesTracer != null) {
+            if (entry.containsKey("reason")) {
+                throw new AssertionError("Entry has unexpected \"reason\" key: " + entry);
+            }
+            entry.put("reason", reason);
+            ignoredEntriesTracer.printObject(entry);
+        }
     }
 }
