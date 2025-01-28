@@ -475,6 +475,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                 if (imageLayerLoader != null) {
                     imageLayerLoader.loadPriorStrengthenedGraphAnalysisElements(this);
                 }
+                ConcurrentLightHashSet.forEach(this, allImplementationsUpdater, AnalysisMethod::setReachableInCurrentLayer);
             });
         }
     }
