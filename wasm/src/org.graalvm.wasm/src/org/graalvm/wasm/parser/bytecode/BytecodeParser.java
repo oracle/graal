@@ -51,7 +51,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
@@ -62,7 +61,6 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
-import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.parser.ir.CallNode;
@@ -191,9 +189,7 @@ public abstract class BytecodeParser {
                 final WasmMemory memory = instance.memory(memoryIndex);
                 WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
 
-                Assert.assertUnsignedLongLessOrEqual(offsetAddress, memoryLib.byteSize(memory), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                Assert.assertUnsignedLongLessOrEqual(offsetAddress + dataLength, memoryLib.byteSize(memory), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                memoryLib.initialize(memory, module.bytecode(), effectiveOffset, offsetAddress, dataLength);
+                memoryLib.initialize(memory, null, module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
                 instance.setDataInstance(i, effectiveOffset);
             }

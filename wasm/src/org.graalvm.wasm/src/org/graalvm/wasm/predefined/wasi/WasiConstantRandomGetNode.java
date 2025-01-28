@@ -75,7 +75,7 @@ public class WasiConstantRandomGetNode extends WasmBuiltinRootNode {
     private int randomGet(WasmMemory memory, int buf, int size) {
         byte[] randomData = new byte[size];
         new Random(SEED).nextBytes(randomData);
-        memoryLib.initialize(memory, randomData, 0, buf, size);
+        memoryLib.initialize(memory, null, randomData, 0, buf, size);
         return Errno.Success.ordinal();
     }
 
