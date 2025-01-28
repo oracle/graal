@@ -4,6 +4,7 @@ import com.oracle.svm.hosted.analysis.ai.value.AbstractValueKind;
 import com.oracle.svm.hosted.analysis.ai.value.MapValue;
 
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -11,10 +12,10 @@ import java.util.function.Predicate;
  * This abstract domain maps elements (variables, memory locations, etc.) to a common
  * abstract domain.
  * One example could be mapping variables to intervals, signs, etc.
- * In order to minimize the size of the used Map,
+ * In order to minimize the size of the used map,
  * if a Key is not present, we return TOP value of the {@link AbstractDomain}
  */
-public final class MapDomain<
+public class MapDomain<
         Key,
         Domain extends AbstractDomain<Domain>>
         extends LatticeDomain<MapValue<Key, Domain>, MapDomain<Key, Domain>> {
@@ -37,6 +38,7 @@ public final class MapDomain<
         this.initialDomain = initialDomain;
     }
 
+    // TODO we get this-escape warning here, think of ways to perhaps avoid this.
     public MapDomain(Map<Key, Domain> map, Domain initialDomain) {
         super(() -> new MapValue<>(initialDomain));
         this.initialDomain = initialDomain.copyOf();
@@ -69,6 +71,31 @@ public final class MapDomain<
 
     public void put(Key key, Domain value) {
         getValue().insertOrAssign(key, value);
+        updateKind();
+    }
+
+    public void remove(Key key) {
+        getValue().remove(key);
+        updateKind();
+    }
+
+    public void eraseAllMatching(Key key) {
+        getValue().eraseAllMatching(key);
+        updateKind();
+    }
+
+    public void unionWith(MapDomain<Key, Domain> other) {
+        getValue().unionWith(Domain::join, other.getValue());
+        updateKind();
+    }
+
+    public void intersectionWith(MapDomain<Key, Domain> other) {
+        getValue().intersectionWith(Domain::meet, other.getValue());
+        updateKind();
+    }
+
+    public void differenceWith(BiFunction<Domain, Domain, Domain> combine, MapValue<Key, Domain> other) {
+        getValue().differenceWith(combine, other);
         updateKind();
     }
 
