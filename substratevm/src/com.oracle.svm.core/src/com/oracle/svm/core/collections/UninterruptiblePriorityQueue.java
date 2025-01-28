@@ -52,6 +52,11 @@ public class UninterruptiblePriorityQueue {
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public boolean add(UninterruptibleComparable e) {
         return offer(e);
     }

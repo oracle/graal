@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
@@ -102,6 +103,7 @@ public final class JfrOldObjectRepository implements JfrRepository {
         }
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/checkpoint/objectSampleDescription.cpp#L124-L142")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void writeDescription(Object obj, JfrNativeEventWriterData data) {
         if (obj instanceof ThreadGroup group) {
@@ -116,6 +118,7 @@ public final class JfrOldObjectRepository implements JfrRepository {
         }
     }
 
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+26/src/hotspot/share/jfr/leakprofiler/checkpoint/objectSampleDescription.cpp#L50-L68")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static void writeDescription(JfrNativeEventWriterData data, String prefix, String text) {
         if (text == null || text.isEmpty()) {

@@ -31,6 +31,8 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
+import org.graalvm.word.WordFactory;
+
 /**
  * Helper class that holds methods related to {@link SamplerSampleWriterData}.
  */
@@ -45,15 +47,28 @@ public final class SamplerSampleWriterDataAccess {
      */
     @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
     public static boolean initialize(SamplerSampleWriterData data, int skipCount, boolean allowBufferAllocation) {
-        SamplerBuffer buffer = JfrThreadLocal.getSamplerBuffer();
-        if (buffer.isNull()) {
-            buffer = SubstrateJVM.getSamplerBufferPool().acquireBuffer(allowBufferAllocation);
+        return initialize(data, skipCount, allowBufferAllocation, WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
+    public static boolean initialize(SamplerSampleWriterData data, int skipCount, boolean allowBufferAllocation, SamplerBuffer rawStackTraceData) {
+        SamplerBuffer buffer;
+        // Use the supplied buffer if one is provided by the leak profiler.
+        if (rawStackTraceData.isNonNull()) {
+            buffer = rawStackTraceData;
+            data.setLeakProfiler(true);
+        } else {
+            buffer = JfrThreadLocal.getSamplerBuffer();
             if (buffer.isNull()) {
-                /* No buffer available. */
-                JfrThreadLocal.increaseMissedSamples();
-                return false;
+                buffer = SubstrateJVM.getSamplerBufferPool().acquireBuffer(allowBufferAllocation);
+                if (buffer.isNull()) {
+                    /* No buffer available. */
+                    JfrThreadLocal.increaseMissedSamples();
+                    return false;
+                }
+                JfrThreadLocal.setSamplerBuffer(buffer);
             }
-            JfrThreadLocal.setSamplerBuffer(buffer);
+            data.setLeakProfiler(false);
         }
         initialize0(data, buffer, skipCount, SubstrateJVM.getStackTraceRepo().getStackTraceDepth(), allowBufferAllocation);
         return true;
