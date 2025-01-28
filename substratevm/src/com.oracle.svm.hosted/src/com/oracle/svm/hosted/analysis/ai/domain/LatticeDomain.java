@@ -14,8 +14,8 @@ import java.util.function.Supplier;
  * <p>
  * public final class CustomAbstractDomain extends LatticeDomain<CustomAbstractValue, CustomAbstractDomain> {}
  * <p>
- * This way, we only have to implement domain specific methods inside CustomAbstractDomain
- * without writing boilerplate code for handling methods from AbstractDomain.
+ * This way, we only have to implement specific methods for a more complicated abstract domain
+ * without writing boilerplate code for methods enforced by {@link AbstractDomain}
  *
  * @param <Value>  the type of derived {@link AbstractValue}
  * @param <Domain> the type of derived {@link AbstractDomain}
@@ -25,13 +25,23 @@ public class LatticeDomain<
         Domain extends LatticeDomain<Value, Domain>>
         extends AbstractDomain<Domain> {
 
-    protected AbstractValueKind kind;
+    private AbstractValueKind kind;
     private Value value;
 
+    /**
+     * Supply the value directly, and deduce the kind from the value
+     * @param valueSupplier the supplier of the value
+     */
     public LatticeDomain(Supplier<Value> valueSupplier) {
         this.value = valueSupplier.get();
+        this.kind = value.getKind();
     }
 
+    /**
+     * Supply the kind and the value
+     * @param kind the kind of the domain
+     * @param valueSupplier the supplier of the value
+     */
     public LatticeDomain(AbstractValueKind kind, Supplier<Value> valueSupplier) {
         this.kind = kind;
         this.value = valueSupplier.get();
@@ -42,23 +52,24 @@ public class LatticeDomain<
     }
 
     public AbstractValueKind getKind() {
-        return value.getKind();
+        return kind;
     }
 
     public boolean isBot() {
-        return value.getKind() == AbstractValueKind.BOT;
+        return kind == AbstractValueKind.BOT;
     }
 
     public boolean isTop() {
-        return value.getKind() == AbstractValueKind.TOP;
+        return kind == AbstractValueKind.TOP;
     }
 
     public boolean isVal() {
-        return getKind() == AbstractValueKind.VAL;
+        return kind == AbstractValueKind.VAL;
     }
 
     public void setToBot() {
         kind = AbstractValueKind.BOT;
+        value.clear();
     }
 
     public void setToTop() {
@@ -131,7 +142,9 @@ public class LatticeDomain<
     }
 
     /**
+     * NOTE:
      * This method is used for keeping the kind in a consistent state after performing operations
+     * Use this in the derived domain in every method that somehow modifies the internal state
      */
     protected void updateKind() {
         kind = value.getKind();
