@@ -51,12 +51,22 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.language.TCKSmokeTestLanguage.TCKSmokeTestLanguageContext;
 import sun.misc.Unsafe;
 
+import java.io.Closeable;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ServiceLoader;
 
 @Registration(id = TCKSmokeTestLanguage.ID, name = TCKSmokeTestLanguage.ID, characterMimeTypes = TCKSmokeTestLanguage.MIME)
 final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageContext> {
@@ -118,6 +128,21 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
 
     private static final class PrivilegedCallNode extends BaseNode {
 
+        private static final Method READ_FILE_METHOD;
+        private static final Constructor<? extends Closeable> FILE_INPUT_STREAM_CONSTRUCTOR;
+        private static final MethodHandle READ_FILE_HANDLE;
+
+        static {
+            try {
+                READ_FILE_METHOD = Files.class.getMethod("readAllBytes", Path.class);
+                FILE_INPUT_STREAM_CONSTRUCTOR = FileInputStream.class.getConstructor(String.class);
+                MethodType methodSignature = MethodType.methodType(byte[].class, Path.class);
+                READ_FILE_HANDLE = MethodHandles.lookup().findStatic(Files.class, "readAllBytes", methodSignature);
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError(e);
+            }
+        }
+
         private final Thread otherThread;
         private final URL url;
 
@@ -132,6 +157,10 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
             doBehindBoundaryPrivilegedCall();
             doInterrupt();
             doPolymorphicCall();
+            callMethodReflectively();
+            callConstructorReflectively();
+            callMethodHandle();
+            testService();
         }
 
         @SuppressWarnings("deprecation" /* JEP-411 */)
@@ -160,6 +189,39 @@ final class TCKSmokeTestLanguage extends TruffleLanguage<TCKSmokeTestLanguageCon
             } catch (IOException ioe) {
                 throw new RuntimeException(ioe);
             }
+        }
+
+        @TruffleBoundary
+        static void callMethodReflectively() {
+            try {
+                READ_FILE_METHOD.invoke(null, Path.of("test"));
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        @TruffleBoundary
+        static void callConstructorReflectively() {
+            try {
+                Closeable closeable = FILE_INPUT_STREAM_CONSTRUCTOR.newInstance("test");
+                closeable.close();
+            } catch (ReflectiveOperationException | IOException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        @TruffleBoundary
+        static void callMethodHandle() {
+            try {
+                READ_FILE_HANDLE.invoke(Path.of("test"));
+            } catch (Throwable t) {
+                throw new AssertionError(t);
+            }
+        }
+
+        @TruffleBoundary
+        static void testService() {
+            ServiceLoader.load(Service.class).iterator().next().execute();
         }
     }
 

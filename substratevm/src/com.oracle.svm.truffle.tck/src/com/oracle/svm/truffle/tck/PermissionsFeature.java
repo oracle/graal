@@ -28,6 +28,9 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
+import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
 import java.net.InetAddress;
@@ -73,7 +76,6 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ClassUtil;
@@ -92,7 +94,6 @@ import jdk.graal.compiler.nodes.java.NewInstanceNode;
 import jdk.graal.compiler.nodes.spi.TrackedUnsafeAccess;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ModifiersProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -247,7 +248,7 @@ public class PermissionsFeature implements Feature {
         BigBang bb = accessImpl.getBigBang();
         contextFilters = new HashSet<>();
         Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
-                        new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()), new SafeSetThreadNameRecognizer(bb));
+                        new SafeReflectionRecognizer(bb), new SafeSetThreadNameRecognizer(bb));
 
         /*
          * Ensure methods which are either deniedMethods or on the allow list are never inlined into
@@ -304,6 +305,11 @@ public class PermissionsFeature implements Feature {
         // JDK 19 introduced BigInteger.parallelMultiply that uses the ForkJoinPool.
         // We deny this method but explicitly allow non-parallel multiply (cf. jre.json).
         deniedMethods.addAll(findMethods(bb, BigInteger.class, (m) -> m.getName().startsWith("parallel")));
+        // Reflective calls
+        deniedMethods.addAll(findMethods(bb, Method.class, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().length == 2));
+        deniedMethods.addAll(findMethods(bb, Constructor.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 1));
+        deniedMethods.addAll(findMethods(bb, MethodHandle.class, (m) -> m.getName().startsWith("invoke") && m.isPublic()));
+        deniedMethods.addAll(findMethods(bb, Class.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 0));
         if (inlinedUnsafeCall != null) {
             deniedMethods.add(inlinedUnsafeCall);
         }
@@ -363,14 +369,6 @@ public class PermissionsFeature implements Feature {
                     default -> throw new AssertionError(Options.TruffleTCKUnusedAllowListEntriesAction.getValue());
                 }
             }
-        }
-    }
-
-    private static Class<?> loadClassOrFail(String className) {
-        try {
-            return Class.forName(className);
-        } catch (ClassNotFoundException e) {
-            throw JVMCIError.shouldNotReachHere(e);
         }
     }
 
@@ -885,67 +883,55 @@ public class PermissionsFeature implements Feature {
         }
     }
 
-    private static final class SafeServiceLoaderRecognizer implements CallGraphFilter {
+    /**
+     * Filters out reflection done by JRE or by code in safe packages.
+     */
+    private static final class SafeReflectionRecognizer implements CallGraphFilter {
 
-        private final AnalysisMethodNode providerImplGet;
-        private final ImageClassLoader imageClassLoader;
+        private final Set<AnalysisMethodNode> inspectedMethods;
 
-        SafeServiceLoaderRecognizer(BigBang bb, ImageClassLoader imageClassLoader) {
-            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType(loadClassOrFail("java.util.ServiceLoader$ProviderImpl"));
-            Set<AnalysisMethodNode> methods = findMethods(bb, serviceLoaderIterator, (m) -> m.getName().equals("get"));
+        SafeReflectionRecognizer(BigBang bb) {
+            inspectedMethods = new HashSet<>();
+            AnalysisType method = bb.getMetaAccess().lookupJavaType(Method.class);
+            Set<AnalysisMethodNode> methods = findMethods(bb, method, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().length == 2);
             if (methods.size() != 1) {
-                throw new IllegalStateException("Failed to lookup ServiceLoader$ProviderImpl.get().");
+                throw new IllegalStateException("Failed to lookup Method.invoke(Object,Object...).");
             }
-            this.providerImplGet = methods.iterator().next();
-            this.imageClassLoader = imageClassLoader;
+            inspectedMethods.addAll(methods);
+
+            AnalysisType constructor = bb.getMetaAccess().lookupJavaType(Constructor.class);
+            methods = findMethods(bb, constructor, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 1);
+            if (methods.size() != 1) {
+                throw new IllegalStateException("Failed to lookup Constructor.newInstance(Object...).");
+            }
+            inspectedMethods.addAll(methods);
+
+            AnalysisType clazz = bb.getMetaAccess().lookupJavaType(Class.class);
+            methods = findMethods(bb, clazz, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 0);
+            if (methods.size() != 1) {
+                throw new IllegalStateException("Failed to lookup Class.newInstance().");
+            }
+            inspectedMethods.addAll(methods);
+
+            AnalysisType methodHandle = bb.getMetaAccess().lookupJavaType(MethodHandle.class);
+            methods = findMethods(bb, methodHandle, (m) -> m.getName().startsWith("invoke") && m.isPublic());
+            if (methods.isEmpty()) {
+                throw new IllegalStateException("Failed to lookup MethodHandle.invoke methods.");
+            }
+            inspectedMethods.addAll(methods);
         }
 
         @Override
         public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
-            if (providerImplGet.equals(methodNode)) {
-                ResolvedJavaType instantiatedType = findInstantiatedType(trace);
-                return instantiatedType != null && !isRegisteredInServiceLoader(instantiatedType);
-            }
-            return false;
-        }
-
-        /**
-         * Finds last constructor invocation.
-         */
-        private static ResolvedJavaType findInstantiatedType(List<BaseMethodNode> trace) {
-            ResolvedJavaType res = null;
-            for (BaseMethodNode mNode : trace) {
-                AnalysisMethod m = mNode.getMethod();
-                if (m != null && "<init>".equals(m.getName())) {
-                    res = m.getDeclaringClass();
-                }
-            }
-            return res;
-        }
-
-        /**
-         * Finds if the given type may be instantiated by ServiceLoader.
-         */
-        private boolean isRegisteredInServiceLoader(ResolvedJavaType type) {
-            String resource = String.format("META-INF/services/%s", type.toClassName());
-            if (imageClassLoader.getClassLoader().getResource(resource) != null) {
-                return true;
-            }
-            for (ResolvedJavaType ifc : type.getInterfaces()) {
-                if (isRegisteredInServiceLoader(ifc)) {
-                    return true;
-                }
-            }
-            ResolvedJavaType superClz = type.getSuperclass();
-            if (superClz != null) {
-                return isRegisteredInServiceLoader(superClz);
+            if (inspectedMethods.contains(methodNode)) {
+                return isSystemOrSafeClass(callerNode);
             }
             return false;
         }
 
         @Override
         public Collection<AnalysisMethod> getInspectedMethods() {
-            return Set.of(providerImplGet.getMethod());
+            return inspectedMethods.stream().map(AnalysisMethodNode::getMethod).toList();
         }
     }
 

@@ -691,10 +691,14 @@ def gate_truffle_native_tck_smoke_test(tasks):
                     mx.abort("Expected failure, log:\n" + result)
 
                 expected_methods = [
+                    'PrivilegedCallNode.callConstructorReflectively',
+                    'PrivilegedCallNode.callMethodHandle',
+                    'PrivilegedCallNode.callMethodReflectively',
                     'PrivilegedCallNode.doBehindBoundaryPrivilegedCall',
                     'PrivilegedCallNode.doInterrupt',
                     'PrivilegedCallNode.doPolymorphicCall',
                     'PrivilegedCallNode.execute',
+                    'ServiceImpl.execute',
                     'UnsafeCallNode.doBehindBoundaryUnsafeAccess',
                     'UnsafeCallNode.doUnsafeAccess',
                 ]
