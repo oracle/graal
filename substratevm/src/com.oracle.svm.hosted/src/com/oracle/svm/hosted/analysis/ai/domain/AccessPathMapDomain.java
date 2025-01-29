@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
 import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
+import com.oracle.svm.hosted.analysis.ai.value.MapValue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -9,10 +10,11 @@ import java.util.Map;
  * An abstract domain for tracking properties of access paths by leveraging the existing MapDomain.
  * This implementation maps AccessPath objects to some abstract domain Value, using MapDomain
  * to handle the core lattice operations. We should also be able to create and resolve aliases
- * @param <Domain> type of the derived {@link AbstractDomain} we are mapping access paths to, for example {@link IntInterval}
+ *
+ * @param <Domain> type of the derived {@link AbstractDomain} we are mapping access paths to
  */
 public final class AccessPathMapDomain<Domain extends AbstractDomain<Domain>>
-        extends MapDomain<AccessPath, Domain> {
+        extends MapDomain<AccessPath, Domain, AccessPathMapDomain<Domain>> {
 
     private final Map<AccessPath, AccessPath> aliasMap;
 
