@@ -5,8 +5,7 @@ import java.util.Objects;
 /**
  * Represents an interval domain of integer values
  */
-public final class IntInterval
-        extends AbstractDomain<IntInterval> {
+public final class IntInterval extends AbstractDomain<IntInterval> {
 
     public static final long MIN = Long.MIN_VALUE;
     public static final long MAX = Long.MAX_VALUE;
