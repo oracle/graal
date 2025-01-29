@@ -263,27 +263,6 @@
                 "name" : "atomic_rmw_xchg_i64",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
-                "name" : "atomic_rmw_cmpxchg_i32_8u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i32_16u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i32",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i64_8u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i64_16u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i64_32u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i64",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
                 "name" : "initialize",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
@@ -306,9 +285,6 @@
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "copyToBuffer",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "getObjectFieldOffset",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }
         ]
@@ -563,27 +539,6 @@
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "atomic_rmw_xchg_i64",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i32_8u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i32_16u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i32",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i64_8u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i64_16u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i64_32u",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "atomic_rmw_cmpxchg_i64",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "duplicate",
