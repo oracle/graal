@@ -15,10 +15,11 @@ import java.util.function.Predicate;
  * In order to minimize the size of the used map,
  * if a Key is not present, we return TOP value of the {@link AbstractDomain}
  */
-public class MapDomain<
+public abstract class MapDomain<
         Key,
-        Domain extends AbstractDomain<Domain>>
-        extends LatticeDomain<MapValue<Key, Domain>, MapDomain<Key, Domain>> {
+        Domain extends AbstractDomain<Domain>,
+        Self extends MapDomain<Key, Domain, Self>>
+        extends LatticeDomain<MapValue<Key, Domain>, Self> {
 
     private final Domain initialDomain;
 
@@ -27,8 +28,7 @@ public class MapDomain<
         this.initialDomain = initialDomain;
     }
 
-    public MapDomain(AbstractValueKind kind,
-                     Domain initialDomain) {
+    public MapDomain(AbstractValueKind kind, Domain initialDomain) {
         super(kind, () -> new MapValue<>(initialDomain));
         this.initialDomain = initialDomain;
     }
@@ -45,7 +45,7 @@ public class MapDomain<
         map.forEach(this::put);
     }
 
-    public MapDomain(MapDomain<Key, Domain> other) {
+    public MapDomain(MapDomain<Key, Domain, Self> other) {
         super(() -> new MapValue<>(other.getValue()));
         this.initialDomain = other.initialDomain.copyOf();
     }
@@ -84,12 +84,12 @@ public class MapDomain<
         updateKind();
     }
 
-    public void unionWith(MapDomain<Key, Domain> other) {
+    public void unionWith(MapDomain<Key, Domain, Self> other) {
         getValue().unionWith(Domain::join, other.getValue());
         updateKind();
     }
 
-    public void intersectionWith(MapDomain<Key, Domain> other) {
+    public void intersectionWith(MapDomain<Key, Domain, Self> other) {
         getValue().intersectionWith(Domain::meet, other.getValue());
         updateKind();
     }
@@ -111,8 +111,7 @@ public class MapDomain<
                 '}';
     }
 
+    // NOTE: implement this in derived classes
     @Override
-    public MapDomain<Key, Domain> copyOf() {
-        return new MapDomain<>(this);
-    }
+    public abstract Self copyOf();
 }
