@@ -15,7 +15,7 @@ package com.oracle.svm.hosted.analysis.ai.domain;
  * ...
  * }
  *
- * @param <Derived> type of the derived AbstractDomain
+ * @param <Derived> type of the derived {@link AbstractDomain}
  */
 public abstract class AbstractDomain<Derived extends AbstractDomain<Derived>> {
 
