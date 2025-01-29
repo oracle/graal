@@ -49,10 +49,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.hosted.code.FactoryMethod;
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -110,6 +112,12 @@ public class PermissionsFeature implements Feature {
 
     private static final String CONFIG = "truffle-language-permissions-config.json";
 
+    public enum ActionKind {
+        Ignore,
+        Warn,
+        Throw
+    }
+
     public static class Options {
         @Option(help = "Path to file where to store report of Truffle language privilege access.")//
         public static final HostedOptionKey<String> TruffleTCKPermissionsReportFile = new HostedOptionKey<>(null);
@@ -124,6 +132,13 @@ public class PermissionsFeature implements Feature {
 
         @Option(help = "Maximum number of erroneous privileged accesses reported.", type = OptionType.Expert)//
         public static final HostedOptionKey<Integer> TruffleTCKPermissionsMaxErrors = new HostedOptionKey<>(100);
+
+        @Option(help = {"Specifies how unused methods in the language allow list should be handled.",
+                        "Available options are:",
+                        "  \"Ignore\": Do not report unused methods in the allow list.",
+                        "  \"Warn\": Log a warning message to stderr.",
+                        "  \"Throw\" (default): Throw an exception and abort the native-image build process."}, type = OptionType.Expert)//
+        public static final HostedOptionKey<ActionKind> TruffleTCKUnusedAllowListEntriesAction = new HostedOptionKey<>(ActionKind.Throw);
     }
 
     /**
@@ -178,7 +193,7 @@ public class PermissionsFeature implements Feature {
     /**
      * Methods which should not be found.
      */
-    private Set<BaseMethodNode> deniedMethods = new HashSet<>();
+    private final Set<BaseMethodNode> deniedMethods = new HashSet<>();
 
     /**
      * Path to store report into.
@@ -186,9 +201,14 @@ public class PermissionsFeature implements Feature {
     private Path reportFilePath;
 
     /**
-     * Methods which are allowed to do privileged calls without being reported.
+     * JDK methods which are allowed to do privileged calls without being reported.
      */
-    private Set<? extends BaseMethodNode> whiteList;
+    private Set<? extends BaseMethodNode> platformAllowList;
+
+    /**
+     * Language methods which are allowed to do privileged calls without being reported.
+     */
+    private Map<BaseMethodNode, Boolean> languageAllowList;
 
     private Set<CallGraphFilter> contextFilters;
 
@@ -229,12 +249,13 @@ public class PermissionsFeature implements Feature {
                         new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()), new SafeSetThreadNameRecognizer(bb));
 
         /*
-         * Ensure methods which are either deniedMethods or on the whiteList are never inlined into
+         * Ensure methods which are either deniedMethods or on the allow list are never inlined into
          * methods. These methods are important for identifying violations.
          */
         Set<AnalysisMethod> preventInlineBeforeAnalysis = new HashSet<>();
         deniedMethods.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
-        whiteList.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
+        platformAllowList.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
+        languageAllowList.keySet().stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
         contextFilters.stream().map(CallGraphFilter::getInspectedMethods).forEach(preventInlineBeforeAnalysis::addAll);
 
         accessImpl.getHostVM().registerNeverInlineTrivialHandler((caller, callee) -> {
@@ -257,14 +278,19 @@ public class PermissionsFeature implements Feature {
         if (sunMiscUnsafe != null) {
             inlinedUnsafeCall = new InlinedUnsafeMethodNode(bb.getMetaAccess().lookupJavaType(sunMiscUnsafe));
         }
-        WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
-                        accessImpl.getImageClassLoader(),
-                        ClassUtil.getUnqualifiedName(getClass()),
-                        Options.TruffleTCKPermissionsExcludeFiles,
-                        new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
-                        CONFIG);
-        whiteList = parser.getLoadedWhiteList();
+        String featureName = ClassUtil.getUnqualifiedName(getClass());
+        AllowListParser parser = new AllowListParser(accessImpl.getImageClassLoader(), bb);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, accessImpl.getImageClassLoader(), featureName,
+                        CONFIG,
+                        List.of(),
+                        List.of(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"));
+        platformAllowList = parser.getLoadedAllowList();
+        parser = new AllowListParser(accessImpl.getImageClassLoader(), bb);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, accessImpl.getImageClassLoader(), featureName,
+                        CONFIG,
+                        Options.TruffleTCKPermissionsExcludeFiles.getValue().values(),
+                        List.of());
+        languageAllowList = parser.getLoadedAllowList().stream().collect(Collectors.toMap(Function.identity(), key -> false));
         deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
         if (sunMiscUnsafe != null) {
             deniedMethods.addAll(findMethods(bb, sunMiscUnsafe, ModifiersProvider::isPublic));
@@ -320,6 +346,21 @@ public class PermissionsFeature implements Feature {
                                     }
                                     pw.print(builder);
                                 });
+            }
+            List<BaseMethodNode> unusedLanguageAllowListEntries = languageAllowList.entrySet().stream().filter((e) -> !e.getValue()).map(Map.Entry::getKey).toList();
+            if (!unusedLanguageAllowListEntries.isEmpty()) {
+                StringBuilder errorMessageBuilder = new StringBuilder(
+                                "The following methods in the language allow list were not statically reachable during points-to analysis. " + "Please review and remove them from the allow list:\n");
+                for (BaseMethodNode unused : unusedLanguageAllowListEntries) {
+                    errorMessageBuilder.append(" - ").append(unused.getMethod().format("%H.%n(%p)")).append("\n");
+                }
+                switch (Options.TruffleTCKUnusedAllowListEntriesAction.getValue()) {
+                    case Ignore -> {
+                    }
+                    case Warn -> LogUtils.warning("[%s] %s", ClassUtil.getUnqualifiedName(getClass()), errorMessageBuilder);
+                    case Throw -> throw UserError.abort(errorMessageBuilder.toString());
+                    default -> throw new AssertionError(Options.TruffleTCKUnusedAllowListEntriesAction.getValue());
+                }
             }
         }
     }
@@ -533,7 +574,7 @@ public class PermissionsFeature implements Feature {
             if (isSafeClass(mNode)) {
                 return numReports;
             }
-            // The denied method can be excluded by a white list
+            // The denied method can be excluded by a allow list
             if (isExcludedClass(mNode)) {
                 return numReports;
             }
@@ -618,12 +659,15 @@ public class PermissionsFeature implements Feature {
     }
 
     /**
-     * Tests if the given {@link BaseMethodNode} is excluded by white list.
+     * Tests if the given {@link BaseMethodNode} is excluded by allow list.
      *
      * @param methodNode the {@link BaseMethodNode} to check
      */
     private boolean isExcludedClass(BaseMethodNode methodNode) {
-        return whiteList.contains(methodNode);
+        if (platformAllowList.contains(methodNode)) {
+            return true;
+        }
+        return languageAllowList.computeIfPresent(methodNode, (n, v) -> true) != null;
     }
 
     /**
@@ -783,7 +827,7 @@ public class PermissionsFeature implements Feature {
                     if (args.isEmpty()) {
                         return false;
                     }
-                    ValueNode arg0 = args.get(0);
+                    ValueNode arg0 = args.getFirst();
                     ResolvedJavaType newType = null;
                     if (arg0 instanceof NewInstanceNode newInstanceNode) {
                         newType = newInstanceNode.instanceClass();
@@ -938,7 +982,7 @@ public class PermissionsFeature implements Feature {
             for (Invoke invoke : graph.getInvokes()) {
                 if (method.equals(invoke.callTarget().targetMethod())) {
                     NodeInputList<ValueNode> args = invoke.callTarget().arguments();
-                    ValueNode arg0 = args.get(0);
+                    ValueNode arg0 = args.getFirst();
                     boolean isTruffleThread = false;
                     if (arg0 instanceof PiNode piNode) {
                         arg0 = piNode.getOriginalNode();
@@ -959,16 +1003,6 @@ public class PermissionsFeature implements Feature {
             set.addAll(envCreateSystemThread);
             set.add(threadSetName.getMethod());
             return set;
-        }
-    }
-
-    /**
-     * Options facade for a resource containing the JRE white list.
-     */
-    private static final class ResourceAsOptionDecorator extends HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> {
-
-        ResourceAsOptionDecorator(String defaultValue) {
-            super(AccumulatingLocatableMultiOptionValue.Strings.buildWithDefaults(defaultValue));
         }
     }
 
