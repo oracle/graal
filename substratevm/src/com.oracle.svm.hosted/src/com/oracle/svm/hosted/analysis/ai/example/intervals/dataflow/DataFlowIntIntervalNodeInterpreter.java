@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.example.intervals.dataflow;
+package com.oracle.svm.hosted.analysis.ai.example.intervals.dataflow;
 
 import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;

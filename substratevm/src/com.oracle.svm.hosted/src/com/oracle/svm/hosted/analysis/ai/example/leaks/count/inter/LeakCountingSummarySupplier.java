@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.example.leaks.count.inter;
+package com.oracle.svm.hosted.analysis.ai.example.leaks.count.inter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;

@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.example.leaks.set;
+package com.oracle.svm.hosted.analysis.ai.example.leaks.set;
 
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;

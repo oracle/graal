@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.example.leaks.set;
+package com.oracle.svm.hosted.analysis.ai.example.leaks.set;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.context.filter.SkipJavaLangMethodFilter;
