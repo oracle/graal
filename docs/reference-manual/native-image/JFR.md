@@ -127,6 +127,12 @@ This is primarily for advanced users, and most people should be fine with the de
 Leak profiling implemented using the `jdk.OldObjectSample` event is partially available.
 Specifically, old object tracking is possible, but the path to the GC root information is unavailable.
 
+### Using JFR with JCMD
+
+JFR can be controlled using the Java Diagnostic Command utility (`jcmd`).
+To enable this functionality, `jcmd` support must be configured at build time.
+The following JFR commands are available with `jcmd`: `JFR.start`, `JFR.stop`, `JFR.check`, and `JFR.dump`.
+
 ### Built-In Events
 
 Many of the VM-level built-in events are available in Native Image.
@@ -136,58 +142,64 @@ Such events include file I/O and exception built-in events.
 The following table lists JFR Events that can be collected with Native Image.
 Some of the events are available with [Serial GC](MemoryManagement.md) only, the default garbage collector in Native Image.
  
-| Event Name                          | 
-|-------------------------------------|
-| `jdk.ActiveRecording`               |
-| `jdk.ActiveSetting`                 |
-| `jdk.AllocationRequiringGC` <a href="#footnote-1">1)</a> |
-| `jdk.ClassLoadingStatistics`        |
-| `jdk.ContainerCPUThrottling`        |
-| `jdk.ContainerCPUUsage`             |
-| `jdk.ContainerConfiguration`        |
-| `jdk.ContainerIOUsage`              |
-| `jdk.ContainerMemoryUsage`          |
-| `jdk.DataLoss`                      |
-| `jdk.ExecutionSample`               |
-| `jdk.ExecuteVMOperation`            |
-| `jdk.GarbageCollection` <a href="#footnote-1">1)</a>         |
-| `jdk.GCHeapSummary` <a href="#footnote-1">1)</a>             |
-| `jdk.GCPhasePause` <a href="#footnote-1">1)</a>              |
-| `jdk.GCPhasePauseLevel1` <a href="#footnote-1">1)</a>        |
-| `jdk.GCPhasePauseLevel2` <a href="#footnote-1">1)</a>        |
-| `jdk.GCPhasePauseLevel3` <a href="#footnote-1">1)</a>        |
-| `jdk.GCPhasePauseLevel4` <a href="#footnote-1">1)</a>        |
-| `jdk.InitialEnvironmentVariable`    |
-| `jdk.InitialSystemProperty`         |
-| `jdk.JavaMonitorEnter`              |
-| `jdk.JavaMonitorInflate`            |
-| `jdk.JavaMonitorWait`               |
-| `jdk.JavaThreadStatistics`          |
-| `jdk.JVMInformation`                |
-| `jdk.ObjectAllocationSample` <a href="#footnote-1">1)</a>    |
-| `jdk.ObjectAllocationInNewTLAB` <a href="#footnote-1">1)</a> |
-| `jdk.OldObjectSample` <a href="#footnote-1">2)</a>           |
-| `jdk.OSInformation`                 |
-| `jdk.PhysicalMemory`                |
-| `jdk.SafepointBegin`                |
-| `jdk.SafepointEnd`                  |
-| `jdk.SocketRead`                    |
-| `jdk.SocketWrite`                   |
-| `jdk.SystemGC`  <a href="#footnote-1">1)</a>                 |
-| `jdk.ThreadAllocationStatistics`    |
-| `jdk.ThreadCPULoad`                 |
-| `jdk.ThreadEnd`                     |
-| `jdk.ThreadPark`                    |
-| `jdk.ThreadSleep`                   |
-| `jdk.ThreadStart`                   |
-| `jdk.VirtualThreadEnd`              |
-| `jdk.VirtualThreadPinned`           |
-| `jdk.VirtualThreadStart`            |
+| Event Name                                                    | 
+|---------------------------------------------------------------|
+| `jdk.ActiveRecording`                                         |
+| `jdk.ActiveSetting`                                           |
+| `jdk.AllocationRequiringGC` <a href="#footnote-1">1)</a>      |
+| `jdk.ClassLoadingStatistics`                                  |
+| `jdk.ContainerCPUThrottling`                                  |
+| `jdk.ContainerCPUUsage`                                       |
+| `jdk.ContainerConfiguration`                                  |
+| `jdk.ContainerIOUsage`                                        |
+| `jdk.ContainerMemoryUsage`                                    |
+| `jdk.DataLoss`                                                |
+| `jdk.ExecutionSample`                                         |
+| `jdk.ExecuteVMOperation`                                      |
+| `jdk.GarbageCollection` <a href="#footnote-1">1)</a>          |
+| `jdk.GCHeapSummary` <a href="#footnote-1">1)</a>              |
+| `jdk.GCPhasePause` <a href="#footnote-1">1)</a>               |
+| `jdk.GCPhasePauseLevel1` <a href="#footnote-1">1)</a>         |
+| `jdk.GCPhasePauseLevel2` <a href="#footnote-1">1)</a>         |
+| `jdk.GCPhasePauseLevel3` <a href="#footnote-1">1)</a>         |
+| `jdk.GCPhasePauseLevel4` <a href="#footnote-1">1)</a>         |
+| `jdk.InitialEnvironmentVariable`                              |
+| `jdk.InitialSystemProperty`                                   |
+| `jdk.JavaMonitorEnter`                                        |
+| `jdk.JavaMonitorInflate`                                      |
+| `jdk.JavaMonitorWait`                                         |
+| `jdk.JavaThreadStatistics`                                    |
+| `jdk.JVMInformation`                                          |
+| `jdk.NativeMemoryUsage` <a href="#footnote-3">3)</a>          |
+| `jdk.NativeMemoryUsageTotal` <a href="#footnote-3">3)</a>     |
+| `jdk.NativeMemoryUsagePeak` <a href="#footnote-3">3)</a>      |
+| `jdk.NativeMemoryUsageTotalPeak` <a href="#footnote-3">3)</a> |
+| `jdk.ObjectAllocationSample` <a href="#footnote-1">1)</a>     |
+| `jdk.ObjectAllocationInNewTLAB` <a href="#footnote-1">1)</a>  |
+| `jdk.OldObjectSample` <a href="#footnote-1">2)</a>            |
+| `jdk.OSInformation`                                           |
+| `jdk.PhysicalMemory`                                          |
+| `jdk.SafepointBegin`                                          |
+| `jdk.SafepointEnd`                                            |
+| `jdk.SocketRead`                                              |
+| `jdk.SocketWrite`                                             |
+| `jdk.SystemGC`  <a href="#footnote-1">1)</a>                  |
+| `jdk.ThreadAllocationStatistics`                              |
+| `jdk.ThreadCPULoad`                                           |
+| `jdk.ThreadEnd`                                               |
+| `jdk.ThreadPark`                                              |
+| `jdk.ThreadSleep`                                             |
+| `jdk.ThreadStart`                                             |
+| `jdk.VirtualThreadEnd`                                        |
+| `jdk.VirtualThreadPinned`                                     |
+| `jdk.VirtualThreadStart`                                      |
 
 <p id="footnote-1" style="margin-bottom: 0;"><i>1) Available if Serial GC is used.</i></p>
 <p id="footnote-2" style="margin-bottom: 0;"><i>2) Partially available if Serial GC is used.</i></p>
+<p id="footnote-3" style="margin-bottom: 0;"><i>3) Available if Native Memory Tracking is used.</i></p>
 
 ### Further Reading
 
 - [Build and Run Native Executables with JFR](guides/build-and-run-native-executable-with-jfr.md)
 - [Use remote JMX with Native Image](guides/build-and-run-native-executable-with-remote-jmx.md)
+- [Java Diagnostic Command (jcmd) with Native Image](JCmd.md)
