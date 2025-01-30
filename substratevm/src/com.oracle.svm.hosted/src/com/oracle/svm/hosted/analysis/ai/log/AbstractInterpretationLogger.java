@@ -6,21 +6,29 @@ import jdk.graal.compiler.debug.DebugContext;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.UUID;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
- * A logger for abstract interpretation analysis.
+ * Represents a logger for abstract interpretation analysis.
  */
-
 public class AbstractInterpretationLogger {
 
     private final String fileName;
     private final PrintWriter fileWriter;
     private final DebugContext debugContext;
 
-    /* TODO the logger file name is created on random uuid, but we should add support for creating a custom file name */
     public AbstractInterpretationLogger(AnalysisMethod method, DebugContext debugContext) throws IOException {
-        this.fileName = method.getName() + "_" + UUID.randomUUID() + ".log";
+        this(method, debugContext, null);
+    }
+
+    public AbstractInterpretationLogger(AnalysisMethod method, DebugContext debugContext, String customFileName) throws IOException {
+        if (customFileName != null && !customFileName.isEmpty()) {
+            this.fileName = customFileName + ".log";
+        } else {
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            this.fileName = method.getName() + "_" + timeStamp + ".log";
+        }
         this.fileWriter = new PrintWriter(new FileWriter(fileName, true));
         this.debugContext = debugContext;
     }
