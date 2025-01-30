@@ -208,10 +208,11 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
 
     public void printStart(String imageName, NativeImageKind imageKind) {
         l().printHeadlineSeparator();
-        recordJsonMetric(GeneralInfo.IMAGE_NAME, imageName);
+        String outputFilename = imageKind.getOutputFilename(imageName);
+        recordJsonMetric(GeneralInfo.NAME, outputFilename);
         String imageKindName = imageKind.name().toLowerCase(Locale.ROOT).replace('_', ' ');
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
-                        .a(": Generating '").bold().a(imageName).reset().a("' (").doclink(imageKindName, "#glossary-imagekind").a(")...").println();
+                        .a(": Generating '").bold().a(outputFilename).reset().a("' (").doclink(imageKindName, "#glossary-imagekind").a(")...").println();
         l().printHeadlineSeparator();
         if (!linkStrategy.isTerminalSupported()) {
             l().a("For detailed information and explanations on the build output, visit:").println();
