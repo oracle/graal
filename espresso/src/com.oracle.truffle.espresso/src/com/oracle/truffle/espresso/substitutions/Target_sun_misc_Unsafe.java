@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+
 import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.security.ProtectionDomain;
@@ -181,7 +183,7 @@ public final class Target_sun_misc_Unsafe {
      * will be either 4 or 8. Note that the sizes of other primitive types (as stored in native
      * memory blocks) is determined fully by their information content.
      */
-    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class, isTrivial = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class, flags = {IsTrivial})
     public static int addressSize(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self) {
         return ADDRESS_SIZE;
     }
@@ -666,7 +668,7 @@ public final class Target_sun_misc_Unsafe {
         InterpreterToVM.monitorUnsafeExit(object.getLock(meta.getContext()));
     }
 
-    @Substitution(hasReceiver = true, isTrivial = true)
+    @Substitution(hasReceiver = true, flags = {IsTrivial})
     public static void throwException(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Throwable.class) StaticObject ee, @Inject Meta meta) {
         throw meta.throwException(ee);
     }

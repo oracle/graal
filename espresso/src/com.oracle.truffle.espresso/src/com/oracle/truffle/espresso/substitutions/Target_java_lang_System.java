@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -70,7 +72,7 @@ public final class Target_java_lang_System {
 
     // endregion Profile values
 
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static int identityHashCode(@JavaType(Object.class) StaticObject self, @Inject EspressoLanguage lang) {
         SYSTEM_IDENTITY_HASH_CODE_COUNT.inc();
         return VM.JVM_IHashCode(self, lang);
@@ -509,13 +511,13 @@ public final class Target_java_lang_System {
     }
 
     @TruffleBoundary(allowInlining = true)
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static long currentTimeMillis() {
         return System.currentTimeMillis();
     }
 
     @TruffleBoundary(allowInlining = true)
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static long nanoTime() {
         return System.nanoTime();
     }

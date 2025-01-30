@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
 import static com.oracle.truffle.espresso.threads.EspressoThreadRegistry.getThreadId;
 
 import java.util.Arrays;
@@ -95,7 +96,7 @@ public final class Target_java_lang_Thread {
         return atomicCounter.get();
     }
 
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static @JavaType(Thread.class) StaticObject currentThread(@Inject EspressoLanguage language) {
         return language.getCurrentVirtualThread();
     }
@@ -179,13 +180,13 @@ public final class Target_java_lang_Thread {
     }
 
     @TruffleBoundary
-    @Substitution(isTrivial = true, languageFilter = VersionFilter.Java18OrEarlier.class)
+    @Substitution(flags = {IsTrivial}, languageFilter = VersionFilter.Java18OrEarlier.class)
     public static void yield() {
         Thread.yield();
     }
 
     @TruffleBoundary
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static void yield0() {
         Thread.yield();
     }
@@ -397,7 +398,7 @@ public final class Target_java_lang_Thread {
         context.getThreadAccess().setScopedValueCache(platformThread, cache);
     }
 
-    @Substitution(languageFilter = VersionFilter.Java20OrLater.class, isTrivial = true)
+    @Substitution(languageFilter = VersionFilter.Java20OrLater.class, flags = {IsTrivial})
     public static void ensureMaterializedForStackWalk(@JavaType(Object.class) StaticObject obj) {
         CompilerDirectives.blackhole(obj);
     }

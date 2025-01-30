@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
@@ -52,7 +54,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static boolean isForeignObject(@JavaType(Object.class) StaticObject object) {
         return object.isForeignObject();
     }

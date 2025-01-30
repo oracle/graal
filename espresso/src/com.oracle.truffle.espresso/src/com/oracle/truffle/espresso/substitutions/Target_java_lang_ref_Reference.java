@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
@@ -181,7 +183,7 @@ public final class Target_java_lang_ref_Reference {
 
     }
 
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static void reachabilityFence(@JavaType(Object.class) StaticObject ref) {
         Reference.reachabilityFence(ref);
     }

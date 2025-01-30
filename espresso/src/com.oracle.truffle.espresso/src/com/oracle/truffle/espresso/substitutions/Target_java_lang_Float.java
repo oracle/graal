@@ -22,18 +22,20 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+
 /**
  * These substitutions are just for performance. Directly uses the optimized host intrinsics
  * avoiding expensive guest native calls.
  */
 @EspressoSubstitutions
 public final class Target_java_lang_Float {
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static int floatToRawIntBits(float value) {
         return Float.floatToRawIntBits(value);
     }
 
-    @Substitution(isTrivial = true)
+    @Substitution(flags = {IsTrivial})
     public static float intBitsToFloat(int bits) {
         return Float.intBitsToFloat(bits);
     }

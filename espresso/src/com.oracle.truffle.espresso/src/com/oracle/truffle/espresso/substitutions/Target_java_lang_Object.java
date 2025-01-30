@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Cached;
@@ -42,12 +43,12 @@ import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Object {
-    @Substitution(hasReceiver = true, isTrivial = true)
+    @Substitution(hasReceiver = true, flags = {IsTrivial})
     public static int hashCode(@JavaType(Object.class) StaticObject self, @Inject EspressoLanguage lang) {
         return VM.JVM_IHashCode(self, lang);
     }
 
-    @Substitution(hasReceiver = true, isTrivial = true)
+    @Substitution(hasReceiver = true, flags = {IsTrivial})
     public static @JavaType(Class.class) StaticObject getClass(@JavaType(Object.class) StaticObject self) {
         return self.getKlass().mirror();
     }
@@ -64,7 +65,7 @@ public final class Target_java_lang_Object {
 
     // TODO: Allow inlining this in bytecode (see GR-42697)
     // @InlineInBytecode(guard = InitGuard.class)
-    @Substitution(hasReceiver = true, methodName = "<init>", isTrivial = true)
+    @Substitution(hasReceiver = true, methodName = "<init>", flags = {IsTrivial})
     abstract static class Init extends SubstitutionNode {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);

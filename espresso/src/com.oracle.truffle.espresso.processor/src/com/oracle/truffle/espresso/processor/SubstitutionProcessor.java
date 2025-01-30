@@ -43,9 +43,11 @@ import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
 import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
 import com.oracle.truffle.espresso.processor.builders.IndentingStringBuilder;
 import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
 import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+import com.oracle.truffle.espresso.processor.builders.StatementBuilder;
 
 public final class SubstitutionProcessor extends EspressoProcessor {
     // @EspressoSubstitutions
@@ -59,8 +61,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private TypeElement javaType;
     // NoProvider.class
     private TypeElement noProvider;
-    // AlwaysValid.class
-    private TypeElement alwaysValid;
 
     // InlinedMethodPredicate.class
     private TypeElement noPredicate;
@@ -74,15 +74,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String INLINE_IN_BYTECODE = SUBSTITUTION_PACKAGE + "." + "InlineInBytecode";
     private static final String JAVA_TYPE = SUBSTITUTION_PACKAGE + "." + "JavaType";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
-    private static final String ALWAYS_VALID = SUBSTITUTION_PACKAGE + "." + "LanguageFilter" + "." + "AlwaysValid";
 
     private static final String SUBSTITUTOR = "JavaSubstitution";
 
     private static final String GET_METHOD_NAME = "getMethodNames";
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
-    private static final String LANGUAGE_FILTER_METHOD = "isValidFor";
-    private static final String INLINE_IN_BYTECODE_METHOD = "inlineInBytecode";
-    private static final String ESPRESSO_LANGUAGE = "com.oracle.truffle.espresso.EspressoLanguage";
 
     private static final String INSTANCE = "INSTANCE";
 
@@ -108,9 +104,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         final TypeMirror languageFilter;
         final boolean inlineInBytecode;
         final TypeMirror guardValue;
+        final byte flags;
 
         SubstitutorHelper(EspressoProcessor processor, Element target, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
-                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror languageFilter, boolean inlineInBytecode, TypeMirror guardValue, TypeElement substitutionClass) {
+                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror languageFilter, boolean inlineInBytecode, TypeMirror guardValue, TypeElement substitutionClass,
+                        byte flags) {
             super(processor, target, processor.getTypeElement(SUBSTITUTION), substitutionClass);
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
@@ -121,6 +119,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             this.languageFilter = languageFilter;
             this.inlineInBytecode = inlineInBytecode;
             this.guardValue = guardValue;
+            this.flags = flags;
         }
 
     }
@@ -337,18 +336,28 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             TypeMirror nameProvider = getNameProvider(subst);
             nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
-            TypeMirror versionFilter = getLanguageFilter(subst);
+            TypeMirror languageFilter = getLanguageFilter(subst);
+
+            List<Byte> flagsList = getAnnotationValueList(subst, "flags", Byte.class);
+            byte flags = 0;
+            for (Byte flag : flagsList) {
+                flags |= flag;
+            }
 
             TypeMirror encodedInlineGuard = getInlineValue(classWideInline, element);
             boolean inlineInBytecode = encodedInlineGuard != null ||
                             // Implicit inlining of trivial substitutions.
-                            isTrivial(element, substitutionAnnotation);
+                            isFlag(flags, SubstitutionFlag.IsTrivial);
             TypeMirror decodedInlineGuard = (encodedInlineGuard == null || processingEnv.getTypeUtils().isSameType(encodedInlineGuard, noPredicate.asType()))
                             ? null
                             : encodedInlineGuard;
 
-            SubstitutorHelper helper = new SubstitutorHelper(this, element, targetClassName, targetMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter,
-                            inlineInBytecode, decodedInlineGuard, substitutionClass);
+            if (inlineInBytecode) {
+                flags |= SubstitutionFlag.InlineInBytecode;
+            }
+
+            SubstitutorHelper helper = new SubstitutorHelper(this, element, targetClassName, targetMethodName, guestTypes, returnType, hasReceiver, nameProvider, languageFilter,
+                            inlineInBytecode, decodedInlineGuard, substitutionClass, flags);
 
             // Create the contents of the source file
             String classFile = spawnSubstitutor(
@@ -371,14 +380,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return null;
     }
 
-    private TypeMirror getLanguageFilter(AnnotationMirror annotation) {
-        TypeMirror versionFilter = getAnnotationValue(annotation, "languageFilter", TypeMirror.class);
-        if (versionFilter != null) {
-            if (!processingEnv.getTypeUtils().isSameType(versionFilter, alwaysValid.asType())) {
-                return versionFilter;
-            }
-        }
-        return null;
+    private static TypeMirror getLanguageFilter(AnnotationMirror annotation) {
+        return getAnnotationValue(annotation, "languageFilter", TypeMirror.class);
     }
 
     /**
@@ -573,7 +576,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         this.inlineInBytecodeAnnotation = getTypeElement(INLINE_IN_BYTECODE);
         this.javaType = getTypeElement(JAVA_TYPE);
         this.noProvider = getTypeElement(NO_PROVIDER);
-        this.alwaysValid = getTypeElement(ALWAYS_VALID);
         this.noPredicate = getTypeElement(INLINED_METHOD_PREDICATE_IMPORT);
 
         verifyAnnotationMembers(espressoSubstitutions, "value", "nameProvider");
@@ -611,9 +613,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             if (!parameterTypeName.isEmpty()) {
                 expectedImports.add(ESPRESSO_FRAME_IMPORT);
             }
-            if (h.guardValue != null) {
-                expectedImports.add(INLINED_METHOD_PREDICATE_IMPORT);
-            }
         }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("V")) {
             expectedImports.add(IMPORT_STATIC_OBJECT);
@@ -625,98 +624,41 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     }
 
     @Override
-    ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    FieldBuilder generateFactoryConstructor(FieldBuilder factoryBuilder, String substitutorName, String factoryType, String substitutorType, String targetMethodName, List<String> parameterTypeName,
+                    SubstitutionHelper helper) {
+        /*- Calls:
+            new Factory(Object methodName,
+                        Object substitutionClassName,
+                        String returnType,
+                        String[] parameterTypes,
+                        boolean hasReceiver,
+                        LanguageFilter filter,
+                        byte flags,
+                        InlinedMethodPredicate guard,
+                        Constructor<? extends JavaSubstitution> constructor);
+        }
+         */
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY) //
-                        .asConstructor() //
-                        .withModifiers(new ModifierBuilder().asPublic()) //
-                        .addBodyLine("super(") //
-                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.guestMethodName), ',') //
-                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.targetClassName), ',') //
-                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.returnType), ',') //
-                        .addIndentedBodyLine(1, generateParameterTypes(h.guestTypeNames, 4), ',') //
-                        .addIndentedBodyLine(1, h.hasReceiver) //
-                        .addBodyLine(");");
-        factoryBuilder.withMethod(factoryConstructor);
-
-        if (h.nameProvider != null) {
-            factoryBuilder.withMethod(generateGetMethodNames(h.guestMethodName, h));
-            factoryBuilder.withMethod(generateSubstitutionClassNames(h));
+        StatementBuilder declaration = new StatementBuilder();
+        declaration.addContent("new ", factoryType, "(").addLine().raiseIndent();
+        if (h.nameProvider == null) {
+            declaration.addContent(ProcessorUtils.stringify(h.guestMethodName), ',').addLine();
+            declaration.addContent(ProcessorUtils.stringify(h.targetClassName), ',').addLine();
+        } else {
+            declaration.addContent(h.nameProvider, '.', INSTANCE, '.', GET_METHOD_NAME, '(', ProcessorUtils.stringify(h.guestMethodName), "),").addLine();
+            declaration.addContent(h.nameProvider, '.', INSTANCE, '.', SUBSTITUTION_CLASS_NAMES, "(),").addLine();
         }
-
-        if (h.languageFilter != null) {
-            factoryBuilder.withMethod(generateIsValidFor(h));
-        }
+        declaration.addContent(ProcessorUtils.stringify(h.returnType), ",").addLine();
+        declaration.addContent(generateParameterTypes(h.guestTypeNames, 4), ',').addLine();
+        declaration.addContent(h.hasReceiver, ',').addLine();
+        declaration.addContent(h.languageFilter, '.', INSTANCE, ',').addLine();
+        declaration.addContent("(byte) ", h.flags, ',').addLine();
+        declaration.addContent(h.guardValue != null ? (h.guardValue + "." + INSTANCE) : "null", ',').addLine();
+        declaration.addContent(generateLookupConstructor(substitutorName, substitutorType)).addLine();
+        declaration.lowerIndent().addContent(")");
+        factoryBuilder.withDeclaration(declaration);
 
         return factoryBuilder;
-    }
-
-    @Override
-    protected ClassBuilder generateAdditionalFactoryMethods(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        super.generateAdditionalFactoryMethods(factoryBuilder, className, targetMethodName, parameterTypeName, helper);
-        SubstitutorHelper h = (SubstitutorHelper) helper;
-        if (h.inlineInBytecode) {
-            factoryBuilder.withMethod(generateInlinedInBytecode());
-            if (h.guardValue != null) {
-                factoryBuilder.withMethod(generateGuard(h.guardValue));
-            }
-        }
-        return factoryBuilder;
-    }
-
-    private static MethodBuilder generateGetMethodNames(String targetMethodName, SubstitutorHelper h) {
-        String nameProvider = h.nameProvider.toString();
-        MethodBuilder getMethodNamesMethod = new MethodBuilder(GET_METHOD_NAME) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withReturnType("String[]") //
-                        .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', GET_METHOD_NAME, '(', ProcessorUtils.stringify(targetMethodName), ");");
-        return getMethodNamesMethod;
-    }
-
-    private static MethodBuilder generateSubstitutionClassNames(SubstitutorHelper h) {
-        String nameProvider = h.nameProvider.toString();
-        MethodBuilder substitutionClassNamesMethod = new MethodBuilder(SUBSTITUTION_CLASS_NAMES) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withReturnType("String[]") //
-                        .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', SUBSTITUTION_CLASS_NAMES, "();");
-        return substitutionClassNamesMethod;
-    }
-
-    private static MethodBuilder generateIsValidFor(SubstitutorHelper h) {
-        String versionFilter = h.languageFilter.toString();
-        MethodBuilder generateIsValidForMethod = new MethodBuilder(LANGUAGE_FILTER_METHOD) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withReturnType("boolean") //
-                        .withParams(ESPRESSO_LANGUAGE + " language") //
-                        .addBodyLine("return ", versionFilter, '.', INSTANCE, '.', LANGUAGE_FILTER_METHOD, "(language);");
-        return generateIsValidForMethod;
-    }
-
-    /**
-     * Generates guard getter.
-     */
-    private static MethodBuilder generateGuard(TypeMirror guardValue) {
-        MethodBuilder guardMethod = new MethodBuilder(GUARD) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic()) //
-                        .withReturnType(INLINED_METHOD_PREDICATE) //
-                        .addBodyLine("return ", guardValue.toString(), ".", INSTANCE, ';');
-        return guardMethod;
-    }
-
-    /**
-     * Generates inlinedInBytecode method.
-     */
-    private static MethodBuilder generateInlinedInBytecode() {
-        MethodBuilder guardMethod = new MethodBuilder(INLINE_IN_BYTECODE_METHOD) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic()) //
-                        .withReturnType("boolean") //
-                        .addBodyLine("return true;");
-        return guardMethod;
     }
 
     @Override
@@ -812,5 +754,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         } else {
             return invocation;
         }
+    }
+
+    private static boolean isFlag(byte flags, byte flag) {
+        return (flags & flag) != 0;
     }
 }

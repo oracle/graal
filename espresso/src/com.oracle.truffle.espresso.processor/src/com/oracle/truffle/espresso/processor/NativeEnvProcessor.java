@@ -45,8 +45,10 @@ import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
 import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
 import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
 import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+import com.oracle.truffle.espresso.processor.builders.StatementBuilder;
 
 /**
  * Handles the generation of boilerplate code for native interface implementations.
@@ -439,18 +441,19 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     }
 
     @Override
-    ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    FieldBuilder generateFactoryConstructor(FieldBuilder factoryBuilder, String substitutorName, String factoryType, String substitutorType, String targetMethodName, List<String> parameterTypeName,
+                    SubstitutionHelper helper) {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY) //
-                        .asConstructor() //
-                        .withModifiers(new ModifierBuilder().asPublic()) //
-                        .addBodyLine("super(") //
-                        .addIndentedBodyLine(1, ProcessorUtils.stringify(targetMethodName), ',') //
-                        .addIndentedBodyLine(1, generateNativeSignature(h.jniNativeSignature), ',') //
-                        .addIndentedBodyLine(1, parameterTypeName.size(), ',') //
-                        .addIndentedBodyLine(1, h.prependEnv) //
-                        .addBodyLine(");");
-        factoryBuilder.withMethod(factoryConstructor);
+        StatementBuilder declaration = new StatementBuilder();
+        declaration.addContent("new ", factoryType, "(").addLine().raiseIndent();
+        declaration.addContent(ProcessorUtils.stringify(targetMethodName), ',').addLine();
+        declaration.addContent(generateNativeSignature(h.jniNativeSignature), ',').addLine();
+        declaration.addContent(parameterTypeName.size(), ',').addLine();
+        declaration.addContent(h.prependEnv, ',').addLine();
+        declaration.addContent(generateLookupConstructor(substitutorName, substitutorType)).addLine();
+        declaration.lowerIndent().addContent(")");
+        factoryBuilder.withDeclaration(declaration);
+
         return factoryBuilder;
     }
 

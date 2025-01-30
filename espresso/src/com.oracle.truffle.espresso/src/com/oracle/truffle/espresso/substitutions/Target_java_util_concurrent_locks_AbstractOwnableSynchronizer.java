@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -32,7 +34,7 @@ public final class Target_java_util_concurrent_locks_AbstractOwnableSynchronizer
     private Target_java_util_concurrent_locks_AbstractOwnableSynchronizer() {
     }
 
-    @Substitution(hasReceiver = true, isTrivial = true)
+    @Substitution(hasReceiver = true, flags = {IsTrivial})
     public static void setExclusiveOwnerThread(StaticObject self, @JavaType(Thread.class) StaticObject thread, @Inject Meta meta) {
         if (InterpreterToVM.instanceOf(self, meta.java_util_concurrent_locks_ReentrantLock_Sync) ||
                         InterpreterToVM.instanceOf(self, meta.java_util_concurrent_locks_ReentrantReadWriteLock_Sync)) {
