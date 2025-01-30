@@ -744,6 +744,10 @@ public class FeatureImpl {
             return image;
         }
 
+        public String getOutputFilename() {
+            return image.getImageKind().getOutputFilename(imageName);
+        }
+
         public RuntimeConfiguration getRuntimeConfiguration() {
             return runtimeConfig;
         }
