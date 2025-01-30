@@ -45,7 +45,7 @@ public class VolatileAccessReadEliminationTest extends GraalCompilerTest {
         arrayBaseOffset = UNSAFE.arrayBaseOffset(long[].class);
     }
 
-    private static int arrayBaseOffset;
+    private static long arrayBaseOffset;
 
     public static int testMethod1() {
         int v = field;
