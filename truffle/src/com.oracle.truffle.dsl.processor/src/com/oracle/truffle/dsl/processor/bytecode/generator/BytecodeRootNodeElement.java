@@ -385,6 +385,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         // Other root node overrides.
         this.add(createIsInstrumentable());
+        this.add(createPrepareForCall());
         this.addOptional(createPrepareForInstrumentation());
         this.addOptional(createPrepareForCompilation());
 
@@ -1619,6 +1620,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         } else {
             b.statement("return false");
         }
+        return ex;
+    }
+
+    private CodeExecutableElement createPrepareForCall() {
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "prepareForCall");
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("!this.nodes.isParsed()").end().startBlock();
+        emitThrowIllegalStateException(ex, b, "A call target cannot be created until bytecode parsing completes. Request a call target after the parse is complete instead.");
+        b.end();
         return ex;
     }
 
@@ -8393,6 +8403,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createGetParserImpl());
             this.add(createValidate());
             this.add(createGetLanguage());
+            this.add(createIsParsed());
 
             if (model.enableSerialization) {
                 this.add(createSerialize());
@@ -8615,6 +8626,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.typeLiteral(model.languageClass);
             b.end(2);
 
+            return ex;
+        }
+
+        public CodeExecutableElement createIsParsed() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "isParsed");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().string("nodes != null").end();
             return ex;
         }
 
