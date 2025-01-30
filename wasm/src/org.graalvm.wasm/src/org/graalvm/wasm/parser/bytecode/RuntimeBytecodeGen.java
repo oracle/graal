@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -639,9 +639,8 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds the runtime header of a data segment to the bytecode.
      * 
      * @param length The length of the data segment
-     * @param unsafeMemory If unsafe memory is enabled
      */
-    public void addDataRuntimeHeader(int length, boolean unsafeMemory) {
+    public void addDataRuntimeHeader(int length) {
         int location = location();
         add1(0);
         int flags = 0;
@@ -656,9 +655,6 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         } else {
             flags |= BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32;
             add4(length);
-        }
-        if (unsafeMemory) {
-            add8(0);
         }
         set(location, (byte) flags);
     }

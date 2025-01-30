@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -94,6 +95,8 @@ public class WasmPolyglotTestSuite {
         Source source = sourceBuilder.build();
         contextBuilder.allowExperimentalOptions(true);
         contextBuilder.option("wasm.UseUnsafeMemory", "true");
+        // Force use of UnsafeWasmMemory
+        contextBuilder.option("wasm.DirectByteBufferMemoryAccess", "true");
         Context context = contextBuilder.build();
         context.enter();
         context.eval(source);
@@ -101,9 +104,9 @@ public class WasmPolyglotTestSuite {
         mainModule.getMember("main").execute();
         final TruffleLanguage.Env env = WasmContext.get(null).environment();
         final UnsafeWasmMemory memory = (UnsafeWasmMemory) env.asGuestValue(mainModule.getMember("memory"));
-        Assert.assertFalse("Memory should have been allocated.", memory.freed());
+        Assert.assertFalse("Memory should have been allocated.", WasmMemoryLibrary.getUncached().freed(memory));
         context.close();
-        Assert.assertTrue("Memory should have been freed.", memory.freed());
+        Assert.assertTrue("Memory should have been freed.", WasmMemoryLibrary.getUncached().freed(memory));
     }
 
     @Test
