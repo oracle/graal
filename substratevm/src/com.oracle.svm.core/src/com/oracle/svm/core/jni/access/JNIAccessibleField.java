@@ -26,12 +26,12 @@ package com.oracle.svm.core.jni.access;
 
 import java.lang.reflect.Modifier;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public final class JNIAccessibleField extends JNIAccessibleMember {
     /* 10000000...0 */
-    private static final UnsignedWord ID_STATIC_FLAG = WordFactory.unsigned(-1L).unsignedShiftRight(1).add(1);
+    private static final UnsignedWord ID_STATIC_FLAG = Word.unsigned(-1L).unsignedShiftRight(1).add(1);
     /* 01000000...0 */
     private static final UnsignedWord ID_OBJECT_FLAG = ID_STATIC_FLAG.unsignedShiftRight(1);
     /* 00100000...0 */
@@ -86,13 +86,13 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
      * </ul>
      */
     @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    private UnsignedWord id = WordFactory.zero();
+    private UnsignedWord id = Word.zero();
 
     @Platforms(HOSTED_ONLY.class)
     public JNIAccessibleField(JNIAccessibleClass declaringClass, JavaKind kind, int modifiers) {
         super(declaringClass);
 
-        UnsignedWord bits = Modifier.isStatic(modifiers) ? ID_STATIC_FLAG : WordFactory.zero();
+        UnsignedWord bits = Modifier.isStatic(modifiers) ? ID_STATIC_FLAG : Word.zero();
         if (kind == null) {
             bits = bits.or(ID_NEGATIVE_FLAG);
         } else if (kind.isObject()) {

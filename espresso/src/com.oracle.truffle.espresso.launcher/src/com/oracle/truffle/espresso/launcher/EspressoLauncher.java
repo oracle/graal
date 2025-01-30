@@ -179,6 +179,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
         boolean isRelaxStaticObjectSafetyChecksSet = false;
+        int javaAgentIndex = 0;
 
         List<String> expandedArguments = expandAtFiles(arguments);
 
@@ -263,6 +264,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-Xshare:off":
                     // ignore
                     break;
+                case "-XX:+UseJVMCICompiler":
+                case "-XX:-UseJVMCICompiler":
+                    getError().println("Ignoring " + arg);
+                    break;
 
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;
@@ -297,7 +302,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                         espressoOptions.put("java.JDWPOptions", value);
                     } else if (arg.startsWith("-javaagent:")) {
                         String value = arg.substring("-javaagent:".length());
-                        espressoOptions.put(JAVA_AGENT, value);
+                        espressoOptions.put(JAVA_AGENT + "." + javaAgentIndex++, value);
                         mergeOption("java.AddModules", "java.instrument");
                     } else if (arg.startsWith("-agentlib:")) {
                         String[] split = splitEquals(arg.substring("-agentlib:".length()));
@@ -414,6 +419,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         }
     }
 
+    private static final Set<String> knownPassThroughOptions = Set.of(
+                    "WhiteBoxAPI",
+                    "EnableJVMCI");
+
     private void handleXXArg(String fullArg, ArrayList<String> unrecognized) {
         String arg = fullArg.substring("-XX:".length());
         String name;
@@ -430,9 +439,12 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             name = arg.substring(0, idx);
             value = arg.substring(idx + 1);
         }
+        if (knownPassThroughOptions.contains(name)) {
+            espressoOptions.put("java." + name, value);
+            return;
+        }
         switch (name) {
             case "UnlockDiagnosticVMOptions", "UnlockExperimentalVMOptions" -> unrecognized.add("--experimental-options=" + value);
-            case "WhiteBoxAPI" -> espressoOptions.put("java." + name, value);
             case "TieredStopAtLevel" -> {
                 if ("0".equals(value)) {
                     espressoOptions.put("engine.Compilation", "false");

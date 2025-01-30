@@ -28,11 +28,11 @@ package com.oracle.svm.core.posix.attach;
 
 import java.nio.charset.StandardCharsets;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.attach.AttachListenerThread;
 import com.oracle.svm.core.posix.PosixUtils;
@@ -40,11 +40,11 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 
 public final class PosixAttachListenerThread extends AttachListenerThread {
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/os/posix/attachListener_posix.cpp#L84") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/aix/attachListener_aix.cpp#L82") //
     private static final String PROTOCOL_VERSION = "1";
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/os/posix/attachListener_posix.cpp#L259") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/aix/attachListener_aix.cpp#L269") //
     private static final int VERSION_SIZE = 8;
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/os/posix/attachListener_posix.cpp#L87") //
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/aix/attachListener_aix.cpp#L85") //
     private static final int ATTACH_ERROR_BAD_VERSION = 101;
 
     /**
@@ -61,7 +61,7 @@ public final class PosixAttachListenerThread extends AttachListenerThread {
     }
 
     @Override
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/os/posix/attachListener_posix.cpp#L354-L411")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/posix/attachListener_posix.cpp#L254-L311")
     protected PosixAttachOperation dequeue() {
         while (true) {
             int socket = AttachHelper.waitForRequest(listener);
@@ -80,7 +80,7 @@ public final class PosixAttachListenerThread extends AttachListenerThread {
     }
 
     /** This method reads and processes a single request from the socket. */
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/os/posix/attachListener_posix.cpp#L258-L347")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/aix/attachListener_aix.cpp#L268-L359")
     private static PosixAttachOperation readRequest(int socket) {
         int strCount = 0;
         int[] stringEnds = new int[EXPECTED_STRING_COUNT];
@@ -145,10 +145,10 @@ public final class PosixAttachListenerThread extends AttachListenerThread {
         int start = index == 0 ? 0 : stringEnds[index - 1] + 1;
         int length = stringEnds[index] - start;
         assert length >= 0;
-        return CTypeConversion.toJavaString((CCharPointer) buf.add(start), WordFactory.unsigned(length), StandardCharsets.UTF_8);
+        return CTypeConversion.toJavaString((CCharPointer) buf.add(start), Word.unsigned(length), StandardCharsets.UTF_8);
     }
 
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+18/src/hotspot/os/posix/attachListener_posix.cpp#L436-L455")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+3/src/hotspot/os/posix/attachListener_posix.cpp#L321-L328")
     private static void complete(int socket, int code, String response) {
         /* Send the return code. */
         byte[] returnCodeData = Integer.toString(code).getBytes(StandardCharsets.UTF_8);

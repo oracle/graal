@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InvokeStatic;
@@ -39,7 +39,7 @@ public final class InvokeStaticQuickNode extends InvokeQuickNode {
         super(method, top, curBCI);
         assert method.isStatic();
         this.isDoPrivilegedCall = method.getMeta().java_security_AccessController.equals(method.getDeclaringKlass()) &&
-                        Name.doPrivileged.equals(method.getName());
+                        Names.doPrivileged.equals(method.getName());
         this.invokeStatic = insert(InvokeStaticNodeGen.create(method));
     }
 

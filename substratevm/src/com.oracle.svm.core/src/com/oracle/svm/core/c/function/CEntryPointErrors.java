@@ -36,12 +36,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -219,7 +219,7 @@ public final class CEntryPointErrors {
             }
             offset++;
         }
-        return WordFactory.nullPointer();
+        return Word.nullPointer();
     }
 
     private static final String[] DESCRIPTIONS;

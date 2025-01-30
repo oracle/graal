@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ package org.graalvm.wasm.predefined.wasi.types;
 
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /** Information about a pre-opened capability. */
 public final class Prestat {
@@ -59,13 +60,13 @@ public final class Prestat {
     public static final int CONTENTSOFFSET = 4;
 
     /** Reads union tag. */
-    public static Preopentype readTag(Node node, WasmMemory memory, int address) {
-        return Preopentype.fromValue((byte) memory.load_i32_8u(node, address + 0));
+    public static Preopentype readTag(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address) {
+        return Preopentype.fromValue((byte) memoryLib.load_i32_8u(memory, node, address + 0));
     }
 
     /** Writes union tag. */
-    public static void writeTag(Node node, WasmMemory memory, int address, Preopentype tag) {
-        memory.store_i32_8(node, address + 0, tag.toValue());
+    public static void writeTag(Node node, WasmMemoryLibrary memoryLib, WasmMemory memory, int address, Preopentype tag) {
+        memoryLib.store_i32_8(memory, node, address + 0, tag.toValue());
     }
 
 }

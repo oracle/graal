@@ -29,8 +29,8 @@ package com.oracle.svm.test.nmt;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 import org.junit.Test;
 
 import com.oracle.svm.core.memory.NativeMemory;
@@ -75,7 +75,7 @@ public class NativeMemoryTrackingTests {
         assertEquals(getUsedMemory(), 16 * K);
         assertTrue(getUsedMemory() > 0);
 
-        Pointer reallocPtr = NativeMemory.realloc(ptr, WordFactory.unsigned(8 * K), NmtCategory.Code);
+        Pointer reallocPtr = NativeMemory.realloc(ptr, Word.unsigned(8 * K), NmtCategory.Code);
         assertEquals(8 * K, getUsedMemory());
 
         NativeMemory.free(reallocPtr);
@@ -95,10 +95,10 @@ public class NativeMemoryTrackingTests {
         assertEquals(2 * M, peakUsed);
 
         NativeMemory.free(ptr1);
-        ptr1 = WordFactory.nullPointer();
+        ptr1 = Word.nullPointer();
 
         NativeMemory.free(ptr2);
-        ptr2 = WordFactory.nullPointer();
+        ptr2 = Word.nullPointer();
 
         assertEquals(0, getUsedMemory());
         assertEquals(2 * M, NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code));
@@ -108,7 +108,7 @@ public class NativeMemoryTrackingTests {
         assertEquals(3 * M, peakUsed);
 
         NativeMemory.free(ptr3);
-        ptr3 = WordFactory.nullPointer();
+        ptr3 = Word.nullPointer();
 
         assertEquals(0, getUsedMemory());
         assertEquals(3 * M, NativeMemoryTracking.singleton().getPeakMallocMemory(NmtCategory.Code));

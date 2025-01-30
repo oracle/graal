@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import jdk.graal.compiler.lir.aarch64.AArch64AddressValue;
 import jdk.graal.compiler.lir.aarch64.AArch64ArithmeticOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayCompareToOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayCopyWithConversionsOp;
+import jdk.graal.compiler.lir.aarch64.AArch64ArrayFillOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayEqualsOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
 import jdk.graal.compiler.lir.aarch64.AArch64ArrayRegionCompareToOp;
@@ -624,6 +625,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitArrayFill(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value arrayBaseOffset, Value length, Value value) {
+        append(new AArch64ArrayFillOp(kind, emitConvertNullToZero(array), asAllocatable(arrayBaseOffset), asAllocatable(length), asAllocatable(value)));
+    }
+
+    @Override
     public Variable emitArrayEquals(JavaKind kind, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         GraalError.guarantee(!kind.isNumericFloat(), "Float arrays comparison (bitwise_equal || both_NaN) isn't supported on AARCH64");
@@ -913,5 +919,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         emitMove(regAddress, address);
         emitMove(regLength, length);
         append(new AArch64ZeroMemoryOp(regAddress, regLength, isAligned, useDcZva, zvaLength));
+    }
+
+    public boolean supportsCPUFeature(AArch64.CPUFeature feature) {
+        return ((AArch64) target().arch).getFeatures().contains(feature);
+    }
+
+    public boolean useLSE() {
+        return supportsCPUFeature(AArch64.CPUFeature.LSE);
     }
 }

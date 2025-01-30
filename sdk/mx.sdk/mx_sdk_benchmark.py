@@ -50,7 +50,7 @@ import threading
 import json
 import argparse
 from enum import Enum
-from typing import List, Optional, Set, Collection, Union
+from typing import List, Optional, Set, Collection, Union, Iterable
 
 import mx
 import mx_benchmark
@@ -1186,6 +1186,7 @@ mx_benchmark.add_bm_suite(SpecJbb2015BenchmarkSuite())
 
 _baristaConfig = {
     "benchmarks": {
+        "vanilla-hello-world": {},
         "micronaut-hello-world": {},
         "micronaut-shopcart": {},
         "micronaut-similarity": {},
@@ -1194,6 +1195,10 @@ _baristaConfig = {
         "quarkus-tika": {},
         "spring-hello-world": {},
         "spring-petclinic": {},
+        "helidon-hello-world": {},
+        "vertx-hello-world": {},
+        "ktor-hello-world": {},
+        "play-scala-hello-world": {},
     },
     "latency_percentiles": [50.0, 75.0, 90.0, 99.0, 99.9, 99.99, 99.999, 100.0],
     "rss_percentiles": [100, 99, 98, 97, 96, 95, 90, 75, 50, 25],
@@ -1327,6 +1332,43 @@ class BaristaBenchmarkSuite(mx_benchmark.CustomHarnessBenchmarkSuite):
             "load-tester.id": ("<startup.id>", str),
             "load-tester.method-type": "requests"
         }, ["startup.id", "startup.measurements.iteration", "startup.measurements.response_time"]))
+        # copy the response_time with iteration 0 into time-to-first-response
+        class DeriveTimeToFirstResponseRule(mx_benchmark.JsonArrayStdOutFileRule):
+            def parse(self, text) -> Iterable[DataPoint]:
+                datapoints = super().parse(text)
+                iteration_0_datapoints = [datapoint for datapoint in datapoints if datapoint["metric.iteration"] == 0]
+                for datapoint in iteration_0_datapoints:
+                    del datapoint["metric.iteration"]
+                return iteration_0_datapoints
+        all_rules.append(DeriveTimeToFirstResponseRule(json_file_pattern, json_file_group_name, {
+            "benchmark": self.context.benchmark,
+            "metric.name": "time-to-first-response",
+            "metric.type": "numeric",
+            "metric.unit": "ms",
+            "metric.value": ("<startup.measurements.response_time>", float),
+            "metric.better": "lower",
+            "metric.iteration": ("<startup.measurements.iteration>", int),
+            "load-tester.id": ("<startup.id>", str),
+            "load-tester.method-type": "requests"
+        }, ["startup.id", "startup.measurements.iteration", "startup.measurements.response_time"]))
+        # copy the worst response_time into max-time
+        class DeriveMaxTimeRule(mx_benchmark.JsonArrayStdOutFileRule):
+            def parse(self, text) -> Iterable[DataPoint]:
+                datapoints = super().parse(text)
+                if len(datapoints) == 0:
+                    return []
+                max_value_datapoints = [max(datapoints, key=lambda x: x["metric.value"])]
+                return max_value_datapoints
+        all_rules.append(DeriveMaxTimeRule(json_file_pattern, json_file_group_name, {
+            "benchmark": self.context.benchmark,
+            "metric.name": "max-time",
+            "metric.type": "numeric",
+            "metric.unit": "ms",
+            "metric.value": ("<startup.measurements.response_time>", float),
+            "metric.better": "lower",
+            "load-tester.id": ("<startup.id>", str),
+            "load-tester.method-type": "requests"
+        }, ["startup.id", "startup.measurements.response_time"]))
 
         # Warmup
         all_rules.append(mx_benchmark.JsonArrayStdOutFileRule(json_file_pattern, json_file_group_name, {

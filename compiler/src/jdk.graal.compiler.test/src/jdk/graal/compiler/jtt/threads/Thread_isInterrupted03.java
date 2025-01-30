@@ -50,7 +50,7 @@ public class Thread_isInterrupted03 extends JTTTest {
         return result;
     }
 
-    private static class Thread1 extends java.lang.Thread {
+    private static final class Thread1 extends java.lang.Thread {
 
         private boolean interrupted = false;
 

@@ -39,6 +39,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Assembler;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -52,7 +53,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rsp;
@@ -516,7 +516,7 @@ public class AMD64InterpreterStubs {
                 case 5 -> p.getAbiGp5();
                 default -> {
                     StackSlot stackSlot = (StackSlot) ccArg;
-                    Pointer sp = WordFactory.pointer(p.getAbiSpReg());
+                    Pointer sp = Word.pointer(p.getAbiSpReg());
                     int spAdjustmentOnCall = ConfigurationValues.getTarget().wordSize;
                     int offset = stackSlot.getOffset(0) + spAdjustmentOnCall;
                     yield sp.readLong(offset);
@@ -542,7 +542,7 @@ public class AMD64InterpreterStubs {
             }
             StackSlot stackSlot = (StackSlot) ccArg;
 
-            Pointer sp = WordFactory.pointer(p.getAbiSpReg());
+            Pointer sp = Word.pointer(p.getAbiSpReg());
             int offset = stackSlot.getOffset(0);
             VMError.guarantee(sp.isNonNull());
             VMError.guarantee(offset < p.getStackSize());
@@ -583,7 +583,7 @@ public class AMD64InterpreterStubs {
                 }
             }
             StackSlot stackSlot = (StackSlot) ccArg;
-            Pointer sp = WordFactory.pointer(p.getAbiSpReg());
+            Pointer sp = Word.pointer(p.getAbiSpReg());
 
             int spAdjustmentOnCall = ConfigurationValues.getTarget().wordSize;
             int offset = stackSlot.getOffset(0) + spAdjustmentOnCall;
@@ -609,7 +609,7 @@ public class AMD64InterpreterStubs {
             } else {
                 StackSlot stackSlot = (StackSlot) ccArg;
 
-                Pointer sp = WordFactory.pointer(p.getAbiSpReg());
+                Pointer sp = Word.pointer(p.getAbiSpReg());
                 int offset = stackSlot.getOffset(0);
 
                 VMError.guarantee(sp.isNonNull());

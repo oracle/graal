@@ -93,7 +93,7 @@ public class SafeReplaceTest {
         assertFalse(oldChild.isSafelyReplaceableBy(wrongTypeNewChild));
     }
 
-    private static class TestNode extends Node {
+    private static final class TestNode extends Node {
 
         private int executed;
 
@@ -121,7 +121,7 @@ public class SafeReplaceTest {
         }
     }
 
-    private static class WrongTestNode extends Node {
+    private static final class WrongTestNode extends Node {
     }
 
 }

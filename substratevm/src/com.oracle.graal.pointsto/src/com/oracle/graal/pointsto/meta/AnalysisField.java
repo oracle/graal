@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.svm.common.meta.GuaranteeFolded;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.vm.ci.code.BytecodePosition;
@@ -217,6 +218,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public boolean registerAsAccessed(Object reason) {
+        checkGuaranteeFolded();
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as accessed needs to provide a valid reason.";
@@ -231,6 +233,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * @param reason the reason why this field is read, non-null
      */
     public boolean registerAsRead(Object reason) {
+        checkGuaranteeFolded();
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as read needs to provide a valid reason.";
@@ -250,6 +253,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      * @param reason the reason why this field is written, non-null
      */
     public boolean registerAsWritten(Object reason) {
+        checkGuaranteeFolded();
         getDeclaringClass().registerAsReachable(this);
 
         assert isValidReason(reason) : "Registering a field as written needs to provide a valid reason.";
@@ -264,6 +268,14 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         });
     }
 
+    public boolean isGuaranteeFolded() {
+        return getAnnotation(GuaranteeFolded.class) != null;
+    }
+
+    public void checkGuaranteeFolded() {
+        AnalysisError.guarantee(!isGuaranteeFolded(), "A field that is guaranteed to always be folded is seen as accessed: %s. ", this);
+    }
+
     public void registerAsFolded(Object reason) {
         getDeclaringClass().registerAsReachable(this);
 
@@ -275,6 +287,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public boolean registerAsUnsafeAccessed(Object reason) {
+        checkGuaranteeFolded();
         assert isValidReason(reason) : "Registering a field as unsafe accessed needs to provide a valid reason.";
         registerAsAccessed(reason);
         /*

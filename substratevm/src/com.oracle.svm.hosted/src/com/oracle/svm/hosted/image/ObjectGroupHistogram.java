@@ -105,8 +105,8 @@ public final class ObjectGroupHistogram {
          * order in which types are prcessed matters.
          */
         processType(DynamicHub.class, "DynamicHub", true, null, ObjectGroupHistogram::filterDynamicHubField);
-        processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.singleton().getReferenceMapEncoding()), "DynamicHub", true, null, null);
-        processObject(CodeInfoTable.getImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
+        processObject(NonmovableArrays.getHostedArray(DynamicHubSupport.currentLayer().getReferenceMapEncoding()), "DynamicHub", true, null, null);
+        processObject(CodeInfoTable.getCurrentLayerImageCodeCache(), "ImageCodeInfo", true, ObjectGroupHistogram::filterCodeInfoObjects, null);
 
         processObject(readTruffleRuntimeCompilationSupportField("graphEncoding"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);
         processObject(readTruffleRuntimeCompilationSupportField("graphObjects"), "CompressedGraph", true, ObjectGroupHistogram::filterGraalSupportObjects, null);

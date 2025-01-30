@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.meta.Meta;
 
 /**
@@ -48,7 +48,7 @@ public final class VirtualTable {
             tmp = new ArrayList<>();
         }
         for (Method.MethodVersion m : declaredMethods) {
-            if (!m.isPrivate() && !m.isStatic() && !Name._clinit_.equals(m.getName()) && !Name._init_.equals(m.getName())) {
+            if (!m.isPrivate() && !m.isStatic() && !Names._clinit_.equals(m.getName()) && !Names._init_.equals(m.getName())) {
                 // Do not bloat the vtable with methods that cannot be called through
                 // virtual invocation.
                 checkOverride(superKlass, m, tmp, thisKlass, overrides, isRedefinition);

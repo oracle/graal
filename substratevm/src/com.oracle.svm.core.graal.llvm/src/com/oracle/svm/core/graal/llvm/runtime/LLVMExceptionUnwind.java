@@ -115,7 +115,7 @@ public class LLVMExceptionUnwind {
         return exception;
     }
 
-    private static class IncludeForLLVMOnly implements BooleanSupplier {
+    private static final class IncludeForLLVMOnly implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             return SubstrateOptions.useLLVMBackend();

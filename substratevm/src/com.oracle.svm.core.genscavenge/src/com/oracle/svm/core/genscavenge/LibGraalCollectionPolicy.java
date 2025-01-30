@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,15 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.graal.compiler.options.Option;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 
 /**
  * A libgraal specific garbage collection policy that responds to GC hints and aggressively
@@ -52,15 +54,17 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
         public static final RuntimeOptionKey<Long> ExpectedEdenSize = new RuntimeOptionKey<>(32L * 1024L * 1024L);
     }
 
-    protected static final UnsignedWord INITIAL_HEAP_SIZE = WordFactory.unsigned(64L * 1024L * 1024L);
-    protected static final UnsignedWord FULL_GC_BONUS = WordFactory.unsigned(2L * 1024L * 1024L);
+    protected static final UnsignedWord INITIAL_HEAP_SIZE = Word.unsigned(64L * 1024L * 1024L);
+    protected static final UnsignedWord FULL_GC_BONUS = Word.unsigned(2L * 1024L * 1024L);
 
     /**
      * See class javadoc for rationale behind this 16G limit.
      */
-    protected static final UnsignedWord MAXIMUM_HEAP_SIZE = WordFactory.unsigned(16L * 1024L * 1024L * 1024L);
+    protected static final UnsignedWord MAXIMUM_HEAP_SIZE = Word.unsigned(16L * 1024L * 1024L * 1024L);
 
-    private UnsignedWord sizeBefore = WordFactory.zero();
+    protected static final UnsignedWord MAXIMUM_EDEN_SIZE = Word.unsigned(4L * 1024L * 1024L * 1024L);
+
+    private UnsignedWord sizeBefore = Word.zero();
     private GCCause lastGCCause = null;
 
     /**
@@ -83,7 +87,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
              */
             edenUsedBytes = edenUsedBytes.add(FULL_GC_BONUS);
         }
-        return edenUsedBytes.aboveOrEqual(WordFactory.unsigned(Options.ExpectedEdenSize.getValue())) ||
+        return edenUsedBytes.aboveOrEqual(Word.unsigned(Options.ExpectedEdenSize.getValue())) ||
                         (UnsignedUtils.toDouble(edenUsedBytes) / UnsignedUtils.toDouble(edenSize) >= Options.UsedEdenProportionThreshold.getValue());
     }
 
@@ -94,11 +98,13 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
 
     @Override
     public UnsignedWord getMaximumHeapSize() {
-        UnsignedWord initialSetup = super.getMaximumHeapSize();
-        if (initialSetup.aboveThan(MAXIMUM_HEAP_SIZE)) {
-            return MAXIMUM_HEAP_SIZE;
-        }
-        return initialSetup;
+        return UnsignedUtils.min(super.getMaximumHeapSize(), MAXIMUM_HEAP_SIZE);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public UnsignedWord getMaximumEdenSize() {
+        return UnsignedUtils.min(super.getMaximumEdenSize(), MAXIMUM_EDEN_SIZE);
     }
 
     @Override
@@ -110,7 +116,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
     @Override
     public void onCollectionEnd(boolean completeCollection, GCCause cause) {
         super.onCollectionEnd(completeCollection, cause);
-        sizeBefore = WordFactory.zero();
+        sizeBefore = Word.zero();
         lastGCCause = cause;
     }
 

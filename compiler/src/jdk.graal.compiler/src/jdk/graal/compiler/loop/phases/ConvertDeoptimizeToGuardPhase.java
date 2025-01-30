@@ -92,8 +92,15 @@ import jdk.vm.ci.meta.TriState;
  */
 public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> implements RecursivePhase {
 
+    private final boolean considerCountedExits;
+
     public ConvertDeoptimizeToGuardPhase(CanonicalizerPhase canonicalizer) {
+        this(canonicalizer, true);
+    }
+
+    public ConvertDeoptimizeToGuardPhase(CanonicalizerPhase canonicalizer, boolean considerCountedExits) {
         super(canonicalizer);
+        this.considerCountedExits = considerCountedExits;
     }
 
     @Override
@@ -116,20 +123,20 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                 continue;
             }
             try (DebugCloseable closable = d.withNodeSourcePosition()) {
-                propagateFixed(d, d, context, lazyLoops);
+                propagateFixed(d, d, context, lazyLoops, considerCountedExits);
             }
         }
         if (context != null) {
             for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.TYPE)) {
                 try (DebugCloseable closable = fixedGuard.withNodeSourcePosition()) {
-                    trySplitFixedGuard(fixedGuard, context, lazyLoops);
+                    trySplitFixedGuard(fixedGuard, context, lazyLoops, considerCountedExits);
                 }
             }
         }
         new DeadCodeEliminationPhase(Optional).apply(graph);
     }
 
-    private static void trySplitFixedGuard(FixedGuardNode fixedGuard, CoreProviders context, LazyValue<LoopsData> lazyLoops) {
+    private static void trySplitFixedGuard(FixedGuardNode fixedGuard, CoreProviders context, LazyValue<LoopsData> lazyLoops, boolean considerCountedExits) {
         LogicNode condition = fixedGuard.condition();
         if (condition instanceof CompareNode) {
             CompareNode compare = (CompareNode) condition;
@@ -139,14 +146,14 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                 ValueNode y = compare.getY();
                 ValuePhiNode yPhi = (y instanceof ValuePhiNode) ? (ValuePhiNode) y : null;
                 if (y instanceof ConstantNode || yPhi != null) {
-                    processFixedGuardAndPhis(fixedGuard, context, compare, x, xPhi, y, yPhi, lazyLoops);
+                    processFixedGuardAndPhis(fixedGuard, context, compare, x, xPhi, y, yPhi, lazyLoops, considerCountedExits);
                 }
             }
         }
     }
 
     private static void processFixedGuardAndPhis(FixedGuardNode fixedGuard, CoreProviders context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi,
-                    LazyValue<LoopsData> lazyLoops) {
+                    LazyValue<LoopsData> lazyLoops, boolean considerCountedExits) {
         AbstractBeginNode pred = AbstractBeginNode.prevBegin(fixedGuard);
         if (pred instanceof AbstractMergeNode) {
             AbstractMergeNode merge = (AbstractMergeNode) pred;
@@ -157,13 +164,13 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                 return;
             }
 
-            processFixedGuardAndMerge(fixedGuard, context, compare, x, xPhi, y, yPhi, merge, lazyLoops);
+            processFixedGuardAndMerge(fixedGuard, context, compare, x, xPhi, y, yPhi, merge, lazyLoops, considerCountedExits);
         }
     }
 
     @SuppressWarnings("try")
     private static void processFixedGuardAndMerge(FixedGuardNode fixedGuard, CoreProviders context, CompareNode compare, ValueNode x, ValuePhiNode xPhi, ValueNode y, ValuePhiNode yPhi,
-                    AbstractMergeNode merge, LazyValue<LoopsData> lazyLoops) {
+                    AbstractMergeNode merge, LazyValue<LoopsData> lazyLoops, boolean considerCountedExits) {
         List<EndNode> mergePredecessors = merge.cfgPredecessors().snapshot();
         for (AbstractEndNode mergePredecessor : mergePredecessors) {
             if (!mergePredecessor.isAlive()) {
@@ -186,7 +193,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                 TriState compareResult = compare.condition().foldCondition(compareStamp, xs, ys, context.getConstantReflection(), compare.unorderedIsTrue());
                 if (compareResult.isKnown() && compareResult.toBoolean() == fixedGuard.isNegated()) {
                     try (DebugCloseable position = fixedGuard.withNodeSourcePosition()) {
-                        propagateFixed(mergePredecessor, fixedGuard, context, lazyLoops);
+                        propagateFixed(mergePredecessor, fixedGuard, context, lazyLoops, considerCountedExits);
                     }
                 }
             }
@@ -194,7 +201,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
     }
 
     @SuppressWarnings("try")
-    public static void propagateFixed(FixedNode from, StaticDeoptimizingNode deopt, CoreProviders providers, LazyValue<LoopsData> lazyLoops) {
+    public static void propagateFixed(FixedNode from, StaticDeoptimizingNode deopt, CoreProviders providers, LazyValue<LoopsData> lazyLoops, boolean considerCountedExits) {
         Node current = from;
         while (current != null) {
             if (GraalOptions.GuardPriorities.getValue(from.getOptions()) && current instanceof FixedGuardNode) {
@@ -209,16 +216,16 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                     FixedNode next = mergeNode.next();
                     while (mergeNode.isAlive()) {
                         AbstractEndNode end = mergeNode.forwardEnds().first();
-                        propagateFixed(end, deopt, providers, lazyLoops);
+                        propagateFixed(end, deopt, providers, lazyLoops, considerCountedExits);
                     }
                     if (next.isAlive()) {
-                        propagateFixed(next, deopt, providers, lazyLoops);
+                        propagateFixed(next, deopt, providers, lazyLoops, considerCountedExits);
                     }
                     return;
                 } else if (current.predecessor() instanceof IfNode) {
                     AbstractBeginNode begin = (AbstractBeginNode) current;
                     IfNode ifNode = (IfNode) current.predecessor();
-                    if (isOsrLoopExit(begin) || isCountedLoopExit(ifNode, lazyLoops)) {
+                    if (isOsrLoopExit(begin) || (considerCountedExits && isCountedLoopExit(ifNode, lazyLoops))) {
                         moveAsDeoptAfter(begin, deopt);
                     } else {
                         if (begin instanceof LoopExitNode && ifNode.condition() instanceof IntegerEqualsNode) {

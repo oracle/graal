@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.jfr;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
@@ -153,7 +153,7 @@ public class JfrMethodRepository implements JfrRepository {
             table.teardown();
             unflushedEntries = 0;
             JfrBufferAccess.free(buffer);
-            buffer = WordFactory.nullPointer();
+            buffer = Word.nullPointer();
         }
     }
 }

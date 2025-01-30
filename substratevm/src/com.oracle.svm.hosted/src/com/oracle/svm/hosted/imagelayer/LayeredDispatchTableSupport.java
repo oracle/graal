@@ -61,9 +61,8 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.OpenTypeWorldFeature;
+import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.heap.SVMImageLayerWriter;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -496,7 +495,6 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
          * To reduce redundancy, we maintain a separate table of all methods we refer to within the
          * dispatch tables.
          */
-        SVMImageLayerWriter layerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
         Map<HostedMethod, Integer> methodToOffsetMap = new HashMap<>();
         List<Boolean> methodBooleans = new ArrayList<>();
         List<Integer> methodInts = new ArrayList<>();
@@ -508,7 +506,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
             } else {
                 offset = methodToOffsetMap.size();
                 methodToOffsetMap.put(hMethod, offset);
-                methodInts.add(layerWriter.isMethodPersisted(hMethod.getWrapped()) ? hMethod.wrapped.getId() : PriorDispatchMethod.UNKNOWN_ID);
+                methodInts.add(hMethod.getWrapped().isTrackedAcrossLayers() ? hMethod.wrapped.getId() : PriorDispatchMethod.UNKNOWN_ID);
                 methodInts.add(hMethod.hasVTableIndex() ? hMethod.getVTableIndex() : PriorDispatchMethod.UNKNOWN_VTABLE_IDX);
                 methodBooleans.add(virtualCallTargets.contains(hMethod));
                 methodStrings.add(NativeImage.localSymbolNameForMethod(hMethod));
@@ -526,7 +524,7 @@ public class LayeredDispatchTableSupport implements LayeredImageSingleton {
         List<String> dispatchSlotStrings = new ArrayList<>();
         int nextSlotIdx = 0;
         for (HostedDispatchTable info : typeToDispatchTable.values()) {
-            if (!layerWriter.isTypePersisted(info.type.getWrapped())) {
+            if (!info.type.getWrapped().isTrackedAcrossLayers()) {
                 // if a type contains target of a virtual call, then it should be persisted
                 assert Arrays.stream(info.locallyDeclaredSlots).noneMatch(virtualCallTargets::contains) : "Type should be persisted: " + info.type;
                 continue;
@@ -774,7 +772,8 @@ final class LayeredDispatchTableSupportFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        LayeredDispatchTableSupport.singleton().installBuilderModules(ImageSingletons.lookup(OpenTypeWorldFeature.class).getBuilderModules());
+    public void beforeCompilation(BeforeCompilationAccess a) {
+        BeforeCompilationAccessImpl access = (BeforeCompilationAccessImpl) a;
+        LayeredDispatchTableSupport.singleton().installBuilderModules(access.getImageClassLoader().getBuilderModules());
     }
 }

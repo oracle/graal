@@ -32,7 +32,7 @@ public class NeverPartOfCompilationTestNode extends AbstractTestNode {
     @Child private AbstractTestNode left;
     private final int value;
 
-    private static class ValueContainer {
+    private static final class ValueContainer {
         int value;
     }
 

@@ -34,7 +34,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.EspressoType;
@@ -102,7 +105,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     private static Klass lookupOrDefineInBindingsLoader(EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes, EspressoContext context) {
         ClassRegistry registry = context.getRegistries().getClassRegistry(context.getBindingsLoader());
 
-        Symbol<Symbol.Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
+        Symbol<Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
         Klass proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);
 
         if (proxyKlass != null) {
@@ -124,11 +127,11 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
         }
     }
 
-    private static void injectStaticGenericTypes(Klass proxyKlass, Map<Symbol<Symbol.Name>, EspressoType> staticGenericReturnTypes) {
-        for (Map.Entry<Symbol<Symbol.Name>, EspressoType> entry : staticGenericReturnTypes.entrySet()) {
-            Symbol<Symbol.Name> fieldName = entry.getKey();
+    private static void injectStaticGenericTypes(Klass proxyKlass, Map<Symbol<Name>, EspressoType> staticGenericReturnTypes) {
+        for (Map.Entry<Symbol<Name>, EspressoType> entry : staticGenericReturnTypes.entrySet()) {
+            Symbol<Name> fieldName = entry.getKey();
             EspressoType type = entry.getValue();
-            Field field = proxyKlass.lookupDeclaredField(fieldName, Symbol.Type.com_oracle_truffle_espresso_polyglot_TypeLiteral);
+            Field field = proxyKlass.lookupDeclaredField(fieldName, Types.com_oracle_truffle_espresso_polyglot_TypeLiteral);
             assert field != null;
             field.setObject(proxyKlass.getStatics(), type.getGuestTypeLiteral());
         }

@@ -28,10 +28,10 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 
 import java.util.Locale;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.Uninterruptible;
@@ -60,7 +60,7 @@ public class WindowsSignalHandlerSupport implements SignalHandlerSupport {
         assert MonitorSupport.singleton().isLockedByCurrentThread(Target_jdk_internal_misc_Signal.class);
         ensureInitialized();
 
-        return Jvm.JVM_RegisterSignal(sig, WordFactory.pointer(nativeH)).rawValue();
+        return Jvm.JVM_RegisterSignal(sig, Word.pointer(nativeH)).rawValue();
     }
 
     private void ensureInitialized() {

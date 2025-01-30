@@ -232,7 +232,7 @@ public final class NativeImageHeap implements ImageHeap {
         processAddObjectWorklist();
 
         HostedField hostedField = hMetaAccess.optionalLookupJavaField(StringInternSupport.getInternedStringsField());
-        boolean usesInternedStrings = hostedField != null && hostedField.isAccessed();
+        boolean usesInternedStrings = hostedField != null && hostedField.isReachable();
         if (usesInternedStrings) {
             /*
              * Ensure that the hub of the String[] array (used for the interned objects) is written.
@@ -257,7 +257,7 @@ public final class NativeImageHeap implements ImageHeap {
             } else {
                 imageInternedStrings = internedStrings.keySet().toArray(new String[0]);
                 Arrays.sort(imageInternedStrings);
-                ImageSingletons.lookup(StringInternSupport.class).setImageInternedStrings(imageInternedStrings);
+                StringInternSupport.setImageInternedStrings(imageInternedStrings);
             }
             /* Manually snapshot the interned strings array. */
             aUniverse.getHeapScanner().rescanObject(imageInternedStrings, OtherReason.LATE_SCAN);
@@ -647,9 +647,9 @@ public final class NativeImageHeap implements ImageHeap {
      * elements, we only want the JavaConstant -> ObjectInfo mapping for base layer constants that
      * are reachable from regular constants in this layer.
      */
-    private boolean processBaseLayerConstant(JavaConstant constant, ObjectInfo info) {
+    private static boolean processBaseLayerConstant(JavaConstant constant, ObjectInfo info) {
         if (((ImageHeapConstant) constant).isInBaseLayer()) {
-            info.setOffsetInPartition(aUniverse.getImageLayerLoader().getObjectOffset(constant));
+            info.setOffsetInPartition(HostedImageLayerBuildingSupport.singleton().getLoader().getObjectOffset(constant));
             info.setHeapPartition(BASE_LAYER_PARTITION);
             return true;
         }

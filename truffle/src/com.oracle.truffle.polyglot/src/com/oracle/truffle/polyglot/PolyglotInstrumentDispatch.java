@@ -77,6 +77,11 @@ final class PolyglotInstrumentDispatch extends AbstractInstrumentDispatch {
     }
 
     @Override
+    public OptionDescriptors getSourceOptions(Object receiver) {
+        return ((PolyglotInstrument) receiver).getSourceOptions();
+    }
+
+    @Override
     public String getWebsite(Object receiver) {
         return ((PolyglotInstrument) receiver).getWebsite();
     }

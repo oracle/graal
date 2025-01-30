@@ -308,10 +308,20 @@ public class SubstrateOptions {
             OptimizationLevel newLevel = parseOptimizationLevel(newValue);
 
             // `-g -O0` is recommended for a better debugging experience
-            GraalOptions.TrackNodeSourcePosition.update(values, newLevel == OptimizationLevel.O0);
-            SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
-            SubstrateOptions.SourceLevelDebug.update(values, newLevel == OptimizationLevel.O0);
-            SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
+            if (newLevel == OptimizationLevel.O0) {
+                // TrackNodeSourcePosition is needed as a prerequisite for the debuginfo generator
+                // to ensure the compiler provides node source positions in the first place
+                GraalOptions.TrackNodeSourcePosition.update(values, true);
+                // Needed for runtime compiled code (e.g. debuginfo for runtime compiled code,
+                // tracing deoptimizations)
+                SubstrateOptions.IncludeNodeSourcePositions.update(values, true);
+                // SourceLevelDebug persists info about local vars and methods for step-by-step
+                // debugging
+                SubstrateOptions.SourceLevelDebug.update(values, true);
+                // AOTTrivialInline turned off to ensure that trivial methods are not inlined and
+                // can be stepped into
+                SubstrateOptions.AOTTrivialInline.update(values, false);
+            }
 
             /*
              * We do not want to enable this optimization yet by default, because it reduces the
@@ -737,6 +747,8 @@ public class SubstrateOptions {
 
     @Option(help = "Internal option to forward the value of " + NATIVE_IMAGE_OPTIONS_ENV_VAR)//
     public static final HostedOptionKey<String> BuildOutputNativeImageOptionsEnvVarValue = new HostedOptionKey<>(null);
+
+    public static final String BUILD_MEMORY_USAGE_REASON_TEXT_PROPERTY = "svm.build.memoryUsageReasonText";
 
     /*
      * Object and array allocation options.
@@ -1228,7 +1240,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
 
     @Option(help = "Include a list of methods included in the image for runtime inspection.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(false);
 
     @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);

@@ -407,6 +407,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
 
         @Override
+        public long getCompilationId() {
+            return ((TruffleCompilationIdentifier) compResult.getCompilationId()).getTruffleCompilationId();
+        }
+
+        @Override
         public int getTargetCodeSize() {
             return compResult.getTargetCodeSize();
         }
@@ -511,6 +516,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             if (wrapper.listener != null) {
                 wrapper.listener.onSuccess(wrapper.compilable, task, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), task.tier());
             }
+            wrapper.compilable.onCompilationSuccess(task.tier(), !task.hasNextTier());
 
             // Partial evaluation and installation are included in
             // compilation time and memory usage reported by printer
@@ -902,7 +908,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         return config.snippetReflection();
     }
 
-    private class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
+    private final class TrufflePostCodeInstallationTaskFactory extends Backend.CodeInstallationTaskFactory {
 
         @Override
         public Backend.CodeInstallationTask create() {

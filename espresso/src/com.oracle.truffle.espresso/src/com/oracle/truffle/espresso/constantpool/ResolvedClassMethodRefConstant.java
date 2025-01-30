@@ -22,41 +22,11 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import java.util.Objects;
-
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassMethodRefConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
 
-public class ResolvedClassMethodRefConstant implements ClassMethodRefConstant, Resolvable.ResolvedConstant {
-    private final Method resolved;
-
+public class ResolvedClassMethodRefConstant extends ResolvedMethodRefConstant implements ClassMethodRefConstant {
     ResolvedClassMethodRefConstant(Method resolved) {
-        this.resolved = Objects.requireNonNull(resolved);
-    }
-
-    @Override
-    public final Method value() {
-        return resolved;
-    }
-
-    @Override
-    public final Symbol<Name> getHolderKlassName(ConstantPool pool) {
-        throw EspressoError.shouldNotReachHere("Method already resolved");
-    }
-
-    @Override
-    public final Symbol<Name> getName(ConstantPool pool) {
-        return resolved.getName();
-    }
-
-    @Override
-    public final Symbol<Signature> getDescriptor(ConstantPool pool) {
-        return resolved.getRawSignature();
+        super(resolved);
     }
 }

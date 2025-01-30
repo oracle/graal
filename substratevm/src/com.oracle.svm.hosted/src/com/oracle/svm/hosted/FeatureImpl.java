@@ -366,7 +366,7 @@ public class FeatureImpl {
             this.nativeLibraries = nativeLibraries;
             this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
             this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
-            this.classForNameSupport = ClassForNameSupport.singleton();
+            this.classForNameSupport = ClassForNameSupport.currentLayer();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -742,6 +742,10 @@ public class FeatureImpl {
 
         public AbstractImage getImage() {
             return image;
+        }
+
+        public String getOutputFilename() {
+            return image.getImageKind().getOutputFilename(imageName);
         }
 
         public RuntimeConfiguration getRuntimeConfiguration() {

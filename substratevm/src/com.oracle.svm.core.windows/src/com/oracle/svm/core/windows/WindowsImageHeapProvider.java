@@ -29,6 +29,7 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_RELOCATABLE_END;
 import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -38,7 +39,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -126,19 +126,19 @@ public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
         WCharPointer filePath = StackValue.get(WinBase.MAX_PATH, WCharPointer.class);
         int length = LibLoaderAPI.GetModuleFileNameW((HMODULE) IMAGE_BASE.get(), filePath, WinBase.MAX_PATH);
         if (length == 0 || length == WinBase.MAX_PATH) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         /* Open the file for mapping. */
         HANDLE fileHandle = FileAPI.CreateFileW(filePath, FileAPI.GENERIC_READ(), FileAPI.FILE_SHARE_READ() | FileAPI.FILE_SHARE_DELETE(),
-                        WordFactory.nullPointer(), FileAPI.OPEN_EXISTING(), 0, WordFactory.nullPointer());
+                        Word.nullPointer(), FileAPI.OPEN_EXISTING(), 0, Word.nullPointer());
         if (fileHandle.equal(WinBase.INVALID_HANDLE_VALUE())) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         /* Create the mapping and close the file. */
-        HANDLE fileMapping = MemoryAPI.CreateFileMappingW(fileHandle, WordFactory.nullPointer(), MemoryAPI.PAGE_READONLY(),
-                        0, 0, WordFactory.nullPointer());
+        HANDLE fileMapping = MemoryAPI.CreateFileMappingW(fileHandle, Word.nullPointer(), MemoryAPI.PAGE_READONLY(),
+                        0, 0, Word.nullPointer());
         WinBase.CloseHandle(fileHandle);
         return fileMapping;
     }
@@ -202,7 +202,7 @@ public class WindowsImageHeapProvider extends AbstractCopyingImageHeapProvider {
     @Uninterruptible(reason = "Called during isolate initialization.")
     private static UnsignedWord invokeRtlAddressInSectionTable(PointerBase ntHeader, int rva) {
         RtlAddressInSectionTable rtlAddressInSectionTable = WindowsUtils.getFunctionPointer(NTDLL_DLL.get(), RTL_ADDRESS_IN_SECTION_TABLE.get(), true);
-        UnsignedWord offset = (UnsignedWord) rtlAddressInSectionTable.invoke(ntHeader, WordFactory.nullPointer(), rva);
+        UnsignedWord offset = (UnsignedWord) rtlAddressInSectionTable.invoke(ntHeader, Word.nullPointer(), rva);
         if (offset.equal(0)) {
             CEntryPointActions.failFatally(ERROR_BAD_EXE_FORMAT, RTL_ADDRESS_IN_SECTION_TABLE.get());
         }

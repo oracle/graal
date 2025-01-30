@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.SetThreadAndHeapBasePrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -279,7 +278,7 @@ public class DebugHelper {
         @CEntryPoint(name = "svm_dbg_print_fatalErrorDiagnostics", include = IncludeDebugHelperMethods.class, publishAs = Publish.SymbolOnly)
         @CEntryPointOptions(prologue = SetThreadAndHeapBasePrologue.class, epilogue = NoEpilogue.class)
         public static void printFatalErrorDiagnostics(@SuppressWarnings("unused") IsolateThread thread, Pointer sp, CodePointer ip) {
-            SubstrateDiagnostics.printFatalError(Log.log(), sp, ip, WordFactory.nullPointer(), false);
+            SubstrateDiagnostics.printFatalError(Log.log(), sp, ip, Word.nullPointer(), false);
         }
 
         @Uninterruptible(reason = "Just to keep the verification happy.", calleeMustBe = false)
@@ -332,7 +331,7 @@ public class DebugHelper {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static class IncludeDebugHelperMethods implements BooleanSupplier {
+    private static final class IncludeDebugHelperMethods implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
             return SubstrateOptions.IncludeDebugHelperMethods.getValue();

@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.Uninterruptible;
@@ -85,14 +84,14 @@ public class ImageCodeInfo implements MultiLayeredImageSingleton, UnsavedSinglet
     }
 
     @Uninterruptible(reason = "Executes during isolate creation.")
-    CodeInfo prepareCodeInfo() {
+    static CodeInfo prepareCodeInfo() {
         ImageCodeInfo[] imageCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfo.class);
         ImageCodeInfoStorage[] runtimeCodeInfos = MultiLayeredImageSingleton.getAllLayers(ImageCodeInfoStorage.class);
         int size = imageCodeInfos.length;
         for (int i = 0; i < size; i++) {
             ImageCodeInfo imageCodeInfo = imageCodeInfos[i];
             CodeInfoImpl codeInfoImpl = runtimeCodeInfos[i].getData();
-            CodeInfoImpl nextCodeInfoImpl = i + 1 < size ? runtimeCodeInfos[i + 1].getData() : WordFactory.nullPointer();
+            CodeInfoImpl nextCodeInfoImpl = i + 1 < size ? runtimeCodeInfos[i + 1].getData() : Word.nullPointer();
 
             ImageCodeInfo.prepareCodeInfo0(imageCodeInfo, codeInfoImpl, nextCodeInfoImpl);
         }

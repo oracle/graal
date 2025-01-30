@@ -178,7 +178,7 @@ public class JFRPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     @Name("test.JFRPartialEvaluationTestEvent")
-    private static class TestEvent extends Event {
+    private static final class TestEvent extends Event {
     }
 
     private static MethodCallTargetNode findInvoke(StructuredGraph graph, ResolvedJavaMethod expectedMethod) {

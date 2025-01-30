@@ -30,12 +30,10 @@ import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
-import java.util.List;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
-import jdk.graal.compiler.nodes.PluginReplacementNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -47,16 +45,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link Fold}.
  */
 public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvocationPlugin {
-
-    private static List<Class<?>> foldNodePluginClasses = List.of(GeneratedFoldInvocationPlugin.class, PluginReplacementNode.ReplacementFunction.class);
-
-    public static void setFoldNodePluginClasses(List<Class<?>> customFoldNodePluginClasses) {
-        foldNodePluginClasses = customFoldNodePluginClasses;
-    }
-
-    public static List<Class<?>> getFoldNodePluginClasses() {
-        return foldNodePluginClasses;
-    }
 
     private ResolvedJavaMethod executeMethod;
 
@@ -84,12 +72,13 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
     }
 
     protected boolean checkInjectedArgument(GraphBuilderContext b, ValueNode arg, ResolvedJavaMethod foldAnnotatedMethod) {
-        if (arg.isNullConstant()) {
+        if (inImageRuntimeCode()) {
+            // In native image runtime compilation, there is no later stage where execution of the
+            // plugin can be deferred.
             return true;
         }
 
-        if (inImageRuntimeCode()) {
-            // The reflection here is problematic for SVM.
+        if (arg.isNullConstant()) {
             return true;
         }
 
@@ -98,39 +87,37 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
         }
 
         if (inImageBuildtimeCode()) {
-            // The use of this plugin in the plugin itself shouldn't be folded since that defeats
-            // the purpose of the fold.
-            for (Class<?> foldNodePluginClass : foldNodePluginClasses) {
-                ResolvedJavaType foldNodeClass = b.getMetaAccess().lookupJavaType(foldNodePluginClass);
-                if (foldNodeClass.isAssignableFrom(b.getMethod().getDeclaringClass())) {
-                    return false;
-                }
+            // Calls to the @Fold method from the generated fold plugin shouldn't be folded. This is
+            // detected by comparing the class names of the current plugin and the method being
+            // parsed. These might be in different class loaders so the classes can't be compared
+            // directly. Class.getName() and ResolvedJavaType.getName() return different formats so
+            // get the ResolvedJavaType for this plugin.
+            ResolvedJavaType thisClass = b.getMetaAccess().lookupJavaType(getClass());
+            if (thisClass.getName().equals(b.getMethod().getDeclaringClass().getName())) {
+                return false;
             }
         }
 
-        ResolvedJavaMethod thisExecuteMethod = getExecutedMethod(b);
+        ResolvedJavaMethod thisExecuteMethod = getExecuteMethod(b);
         if (b.getMethod().equals(thisExecuteMethod)) {
             return true;
         }
         throw new AssertionError("must pass null to injected argument of " + foldAnnotatedMethod.format("%H.%n(%p)") + ", not " + arg + " in " + b.getMethod().format("%H.%n(%p)"));
     }
 
-    private ResolvedJavaMethod getExecutedMethod(GraphBuilderContext b) {
+    private ResolvedJavaMethod getExecuteMethod(GraphBuilderContext b) {
         if (executeMethod == null) {
-            MetaAccessProvider metaAccess = b.getMetaAccess();
-            ResolvedJavaMethod baseMethod = metaAccess.lookupJavaMethod(getExecuteMethod());
-            ResolvedJavaType thisClass = metaAccess.lookupJavaType(getClass());
-            executeMethod = thisClass.resolveConcreteMethod(baseMethod, thisClass);
+            try {
+                MetaAccessProvider metaAccess = b.getMetaAccess();
+                Method result = GeneratedInvocationPlugin.class.getMethod("execute", GraphBuilderContext.class, ResolvedJavaMethod.class, Receiver.class, ValueNode[].class);
+                ResolvedJavaMethod baseMethod = metaAccess.lookupJavaMethod(result);
+                ResolvedJavaType thisClass = metaAccess.lookupJavaType(getClass());
+                executeMethod = thisClass.resolveConcreteMethod(baseMethod, thisClass);
+            } catch (NoSuchMethodException | SecurityException e) {
+                throw new GraalError(e);
+            }
         }
         return executeMethod;
-    }
-
-    private static Method getExecuteMethod() {
-        try {
-            return GeneratedInvocationPlugin.class.getMethod("execute", GraphBuilderContext.class, ResolvedJavaMethod.class, InvocationPlugin.Receiver.class, ValueNode[].class);
-        } catch (NoSuchMethodException | SecurityException e) {
-            throw new GraalError(e);
-        }
     }
 
     public final boolean isGeneratedFromFoldOrNodeIntrinsic() {

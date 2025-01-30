@@ -28,13 +28,13 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.lang.reflect.Method;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -89,7 +89,7 @@ public final class InvalidMethodPointerHandler {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
         Log log = Log.enterFatalContext(logHandler, callerIP, message, null);
         if (log != null) {
-            SubstrateDiagnostics.printFatalError(log, callerSP, callerIP, WordFactory.nullPointer(), true);
+            SubstrateDiagnostics.printFatalError(log, callerSP, callerIP, Word.nullPointer(), true);
             log.string(message).newline();
         }
         logHandler.fatalError();

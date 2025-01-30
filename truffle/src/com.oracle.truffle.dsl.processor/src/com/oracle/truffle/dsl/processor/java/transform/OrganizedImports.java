@@ -497,7 +497,7 @@ public final class OrganizedImports {
 
     }
 
-    private class ImportTypeReferenceVisitor extends TypeReferenceVisitor {
+    private final class ImportTypeReferenceVisitor extends TypeReferenceVisitor {
 
         @Override
         public void visitStaticFieldReference(Element enclosedType, TypeMirror type, String elementName) {

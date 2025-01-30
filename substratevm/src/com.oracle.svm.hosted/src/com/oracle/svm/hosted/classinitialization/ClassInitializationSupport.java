@@ -328,7 +328,7 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
         StringBuilder b = new StringBuilder();
 
         for (StackTraceElement stackTraceElement : trace) {
-            b.append("\tat ").append(stackTraceElement.toString()).append("\n");
+            b.append("\tat ").append(stackTraceElement.toString()).append(System.lineSeparator());
         }
 
         return b.toString();

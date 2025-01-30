@@ -158,6 +158,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private final Map<HostedType, Throwable> fieldLookupErrors = new HashMap<>();
     private final Map<HostedType, Throwable> methodLookupErrors = new HashMap<>();
     private final Map<HostedType, Throwable> constructorLookupErrors = new HashMap<>();
+    private final Map<HostedType, Throwable> recordComponentLookupErrors = new HashMap<>();
 
     private final Set<AccessibleObjectMetadata> heapData = new HashSet<>();
 
@@ -684,6 +685,13 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
         constructorLookupErrors.put(declaringClass, exception);
     }
 
+    @Override
+    public void addRecordComponentsLookupError(HostedType declaringClass, Throwable exception) {
+        addType(declaringClass);
+        registerError(exception);
+        recordComponentLookupErrors.put(declaringClass, exception);
+    }
+
     private static HostedType[] getParameterTypes(HostedMethod method) {
         HostedType[] parameterTypes = new HostedType[method.getSignature().getParameterCount(false)];
         for (int i = 0; i < parameterTypes.length; ++i) {
@@ -784,7 +792,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
             int fieldsIndex = encodeAndAddCollection(buf, getFields(declaringType), fieldLookupErrors.get(declaringType), this::encodeField, false);
             int methodsIndex = encodeAndAddCollection(buf, getMethods(declaringType), methodLookupErrors.get(declaringType), this::encodeExecutable, false);
             int constructorsIndex = encodeAndAddCollection(buf, getConstructors(declaringType), constructorLookupErrors.get(declaringType), this::encodeExecutable, false);
-            int recordComponentsIndex = encodeAndAddCollection(buf, classMetadata.recordComponents, this::encodeRecordComponent, true);
+            int recordComponentsIndex = encodeAndAddCollection(buf, classMetadata.recordComponents, recordComponentLookupErrors.get(declaringType), this::encodeRecordComponent, true);
             int classFlags = classMetadata.flags;
             if (anySet(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex) || classFlags != hub.getModifiers()) {
                 hub.setReflectionMetadata(fieldsIndex, methodsIndex, constructorsIndex, recordComponentsIndex, classFlags);
@@ -857,7 +865,7 @@ public class RuntimeMetadataEncoderImpl implements RuntimeMetadataEncoder {
     private static void install(UnsafeArrayTypeWriter encodingBuffer) {
         int encodingSize = TypeConversion.asS4(encodingBuffer.getBytesWritten());
         byte[] dataEncoding = new byte[encodingSize];
-        ImageSingletons.lookup(RuntimeMetadataEncoding.class).setEncoding(encodingBuffer.toArray(dataEncoding));
+        RuntimeMetadataEncoding.currentLayer().setEncoding(encodingBuffer.toArray(dataEncoding));
     }
 
     private static boolean anySet(int... indices) {

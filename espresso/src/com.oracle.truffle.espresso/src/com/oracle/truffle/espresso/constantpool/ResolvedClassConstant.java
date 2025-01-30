@@ -24,11 +24,8 @@ package com.oracle.truffle.espresso.constantpool;
 
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 
 public final class ResolvedClassConstant implements ClassConstant, Resolvable.ResolvedConstant {
@@ -36,11 +33,6 @@ public final class ResolvedClassConstant implements ClassConstant, Resolvable.Re
 
     public ResolvedClassConstant(Klass resolved) {
         this.resolved = Objects.requireNonNull(resolved);
-    }
-
-    @Override
-    public Symbol<Name> getName(ConstantPool pool) {
-        return resolved.getName();
     }
 
     @Override

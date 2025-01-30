@@ -1,6 +1,6 @@
 @0x9eb32e19f86ee174;
 using Java = import "/capnp/java.capnp";
-$Java.package("com.oracle.graal.pointsto.heap");
+$Java.package("com.oracle.svm.hosted.imagelayer");
 $Java.outerClassname("SharedLayerSnapshotCapnProtoSchemaHolder");
 
 using TypeId = Int32;
@@ -36,16 +36,17 @@ struct PersistedAnalysisType {
   staticFieldIds @22 :List(FieldId);
   annotationList @23 :List(Annotation);
   classInitializationInfo @24 :ClassInitializationInfo;
+  hasArrayType @25 :Bool;
   wrappedType :union {
-    none @25 :Void; # default
+    none @26 :Void; # default
     serializationGenerated :group {
-      rawDeclaringClass @26 :Text;
-      rawTargetConstructor @27 :Text;
+      rawDeclaringClass @27 :Text;
+      rawTargetConstructor @28 :Text;
     }
     lambda :group {
-      capturingClass @28 :Text;
+      capturingClass @29 :Text;
     }
-    proxyType @29 :Void;
+    proxyType @30 :Void;
   }
 }
 
@@ -255,6 +256,7 @@ struct SharedLayerSnapshot {
   singletonKeys @11 :List(ImageSingletonKey);
   singletonObjects @12 :List(ImageSingletonObject);
   fields @13 :List(PersistedAnalysisField);
+  nextLayerNumber @14 :Int32;
 }
 
 struct PrimitiveValue {

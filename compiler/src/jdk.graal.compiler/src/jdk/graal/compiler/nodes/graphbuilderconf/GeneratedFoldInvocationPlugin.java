@@ -24,11 +24,22 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
 
+import jdk.graal.compiler.api.replacements.Fold;
+
+/**
+ * A plugin generated from an {@link Fold @Fold} annotation.
+ */
 public abstract class GeneratedFoldInvocationPlugin extends GeneratedInvocationPlugin {
 
     public GeneratedFoldInvocationPlugin(String name, Type... argumentTypes) {
         super(name, argumentTypes);
+    }
+
+    @Override
+    public final Class<? extends Annotation> getSource() {
+        return Fold.class;
     }
 }

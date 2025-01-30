@@ -163,7 +163,6 @@ public class PluginGenerator {
         HashSet<String> extra = new HashSet<>();
 
         extra.add("jdk.vm.ci.meta.ResolvedJavaMethod");
-        extra.add("java.lang.annotation.Annotation");
         extra.add("jdk.graal.compiler.nodes.ValueNode");
         extra.add("jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext");
         extra.add("jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin");
@@ -176,8 +175,6 @@ public class PluginGenerator {
             extra.add("jdk.graal.compiler.nodes.graphbuilderconf." + plugin.pluginSuperclass());
             if (plugin.needsReplacement(processor)) {
                 extra.add("jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport");
-                extra.add("jdk.graal.compiler.graph.NodeInputList");
-                extra.add("jdk.graal.compiler.nodes.spi.Replacements");
                 if (plugin.isWithExceptionReplacement(processor)) {
                     extra.add("jdk.graal.compiler.nodes.PluginReplacementWithExceptionNode");
                 } else {

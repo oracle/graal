@@ -31,9 +31,10 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -61,20 +62,20 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
                 /*
                  * Spoof the statically stored boot module set.
                  */
-                spoofModules(Name.bootModules, meta, bootExtensions);
+                spoofModules(Names.bootModules, meta, bootExtensions);
             }
             ModuleExtension[] platformExtensions = ModuleExtension.getPlatformExtensions(context);
             if (platformExtensions.length > 0) {
                 /*
                  * Spoof the statically stored platform module set.
                  */
-                spoofModules(Name.platformModules, meta, platformExtensions);
+                spoofModules(Names.platformModules, meta, platformExtensions);
             }
         }
 
         @TruffleBoundary
         private static void spoofModules(Symbol<Name> fieldName, Meta meta, ModuleExtension[] toAdd) {
-            Field field = meta.jdk_internal_module_ModuleLoaderMap_Modules.lookupDeclaredField(fieldName, Type.java_util_Set);
+            Field field = meta.jdk_internal_module_ModuleLoaderMap_Modules.lookupDeclaredField(fieldName, Types.java_util_Set);
 
             StaticObject staticStorage = meta.jdk_internal_module_ModuleLoaderMap_Modules.tryInitializeAndGetStatics();
             @JavaType(Set.class)

@@ -57,6 +57,9 @@ from mx_unittest import _run_tests, _VMLauncher
 
 import sys
 
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
+
 suite = mx.suite('substratevm')
 svmSuites = [suite]
 
@@ -181,11 +184,15 @@ _vm_homes = {}
 
 def _vm_home(config):
     if config not in _vm_homes:
-        # get things initialized (e.g., cloning)
-        _run_graalvm_cmd(['graalvm-home'], config, out=mx.OutputCapture())
-        capture = mx.OutputCapture()
-        _run_graalvm_cmd(['graalvm-home'], config, out=capture, quiet=True)
-        _vm_homes[config] = capture.data.strip()
+        if config is None:
+            result = mx_sdk_vm.graalvm_home(fatalIfMissing=False)
+        else:
+            # get things initialized (e.g., cloning)
+            _run_graalvm_cmd(['graalvm-home'], config, out=mx.OutputCapture())
+            capture = mx.OutputCapture()
+            _run_graalvm_cmd(['graalvm-home'], config, out=capture, quiet=True)
+            result = capture.data.strip()
+        _vm_homes[config] = result
     return _vm_homes[config]
 
 
@@ -563,26 +570,28 @@ def conditional_config_task(native_image):
     agent_path = build_native_image_agent(native_image)
     conditional_config_filter_path = join(svmbuild_dir(), 'conditional-config-filter.json')
     with open(conditional_config_filter_path, 'w') as conditional_config_filter:
-        conditional_config_filter.write(
-'''
+        conditional_config_filter.write('''
 {
    "rules": [
         {"includeClasses": "com.oracle.svm.configure.test.conditionalconfig.**"}
    ]
 }
-'''
-        )
-
+''')
     run_agent_conditional_config_test(agent_path, conditional_config_filter_path)
-
     run_nic_conditional_config_test(agent_path, conditional_config_filter_path)
 
 
 def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
+    """
+    Invoke ConfigurationGenerator test methods across multiple runs to produce multiple partial traces,
+    use native-image-configure to compute the conditional configuration, then compare against the expected
+    configuration.
+    """
     test_cases = [
         "createConfigPartOne",
         "createConfigPartTwo",
         "createConfigPartThree",
+        "createConfigPartFour",
     ]
     config_directories = []
     nic_test_dir = join(svmbuild_dir(), 'nic-cond-config-test')
@@ -599,10 +608,11 @@ def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
                       'com.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator#' + test_case])
     config_output_dir = join(nic_test_dir, 'config-output')
     nic_exe = mx.cmd_suffix(join(mx.JDKConfig(home=mx_sdk_vm_impl.graalvm_output()).home, 'bin', 'native-image-configure'))
-    nic_command = [nic_exe, 'create-conditional'] \
-                  + ['--user-code-filter=' + conditional_config_filter_path] \
-                  + ['--input-dir=' + config_dir for config_dir in config_directories] \
-                  + ['--output-dir=' + config_output_dir]
+    nic_command = [nic_exe, 'generate-conditional',
+                   '--user-code-filter=' + conditional_config_filter_path,
+                   '--class-name-filter=' + conditional_config_filter_path,
+                   '--output-dir=' + config_output_dir] \
+                  + ['--input-dir=' + config_dir for config_dir in config_directories]
     mx.run(nic_command)
     jvm_unittest(
         ['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_output_dir,
@@ -616,7 +626,8 @@ def run_agent_conditional_config_test(agent_path, conditional_config_filter_path
         mx.rmtree(config_dir)
 
     agent_opts = ['config-output-dir=' + config_dir,
-                  'experimental-conditional-config-filter-file=' + conditional_config_filter_path]
+                  'experimental-conditional-config-filter-file=' + conditional_config_filter_path,
+                  'conditional-config-class-filter-file=' + conditional_config_filter_path]
     # This run generates the configuration from different test cases
     jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
                   '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator.enabled=true',
@@ -1613,6 +1624,20 @@ libsvmjdwp_build_args = [
     "-H:+PreserveFramePointer",
 ]
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+    suite=suite,
+    name='SubstrateVM JDWP Debugger Resident',
+    short_name='svmjdwp',
+    dir_name="svmjdwp",
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['SubstrateVM'],
+    builder_jar_distributions=['substratevm:SVM_JDWP_COMMON', 'substratevm:SVM_JDWP_RESIDENT'],
+    support_distributions=['substratevm:SVM_JDWP_RESIDENT_SUPPORT'],
+    stability="experimental",
+    jlink=False,
+))
+
 libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
     destination="<lib:svmjdwp>",
     jvm_library=True,
@@ -1627,19 +1652,20 @@ libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
 libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM JDWP Debugger',
-    short_name='svmjdwp',
+    short_name='svmjdwpserver',
     dir_name="svm",
     license_files=[],
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    builder_jar_distributions=['substratevm:SVM_JDWP_COMMON', 'substratevm:SVM_JDWP_RESIDENT'],
+    builder_jar_distributions=[],
     support_distributions=[],
     priority=1,
     library_configs=[libsvmjdwp_lib_config],
     stability="experimental",
     jlink=False,
 )
+
 mx_sdk_vm.register_graalvm_component(libsvmjdwp)
 
 def _native_image_configure_extra_jvm_args():
@@ -2478,7 +2504,7 @@ def capnp_compile(args):
     if capnpcjava_home is None or not exists(capnpcjava_home + '/capnpc-java'):
         mx.abort('Clone and build capnproto/capnproto-java from GitHub and point CAPNPROTOJAVA_HOME to its path.')
     srcdir = 'src/com.oracle.svm.hosted/resources/'
-    outdir = 'src/com.oracle.graal.pointsto/src/com/oracle/graal/pointsto/heap/'
+    outdir = 'src/com.oracle.svm.hosted/src/com/oracle/svm/hosted/imagelayer/'
     command = ['capnp', 'compile',
                '--import-path=' + capnpcjava_home + '/compiler/src/main/schema/',
                '--output=' + capnpcjava_home + '/capnpc-java:' + outdir,
@@ -2517,6 +2543,8 @@ def capnp_compile(args):
  */
 //@formatter:off
 //Checkstyle: stop
+// Generated via:
+//  $ mx capnp-compile
 """)
         for line in lines:
             if line.startswith("public final class "):

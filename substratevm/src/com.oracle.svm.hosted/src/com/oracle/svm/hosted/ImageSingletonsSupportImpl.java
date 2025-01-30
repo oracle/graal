@@ -44,8 +44,8 @@ import com.oracle.svm.core.layeredimagesingleton.LoadedLayeredImageSingletonInfo
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerSingletonLoader;
 
 public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport implements LayeredImageSingletonSupport {
 
@@ -56,12 +56,12 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
     @Override
     public <T> T lookup(Class<T> key) {
-        return HostedManagement.getAndAssertExists().doLookup(key, false);
+        return HostedManagement.getAndAssertExists().doLookup(key, false, false);
     }
 
     @Override
-    public <T> T runtimeLookup(Class<T> key) {
-        return HostedManagement.getAndAssertExists().doLookup(key, true);
+    public <T> T lookup(Class<T> key, boolean accessRuntimeOnly, boolean accessMultiLayer) {
+        return HostedManagement.getAndAssertExists().doLookup(key, accessRuntimeOnly, accessMultiLayer);
     }
 
     @Override
@@ -141,18 +141,18 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 singletonDuringImageBuild.doAddInternal(ImageLayerBuildingSupport.class, new ImageLayerBuildingSupport(false, false, false) {
                 });
             }
-            if (support != null && support.getLoader() != null) {
+            if (support != null && support.getSingletonLoader() != null) {
                 /*
                  * Note eventually this may need to be moved to a later point after the Options
                  * Image Singleton is installed.
                  */
-                singletonDuringImageBuild.installPriorSingletonInfo(support.getLoader());
+                singletonDuringImageBuild.installPriorSingletonInfo(support.getSingletonLoader());
             } else {
                 singletonDuringImageBuild.doAddInternal(LoadedLayeredImageSingletonInfo.class, new LoadedLayeredImageSingletonInfo(Set.of()));
             }
         }
 
-        private void installPriorSingletonInfo(SVMImageLayerLoader info) {
+        private void installPriorSingletonInfo(SVMImageLayerSingletonLoader info) {
             var result = info.loadImageSingletons(SINGLETON_INSTALLATION_FORBIDDEN);
             Set<Class<?>> installedKeys = new HashSet<>();
             for (var entry : result.entrySet()) {
@@ -249,7 +249,7 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             multiLayeredImageSingletonKeys = Set.copyOf(multiLayeredImageSingletonKeys);
         }
 
-        <T> T doLookup(Class<T> key, boolean stripRuntimeOnly) {
+        <T> T doLookup(Class<T> key, boolean stripRuntimeOnly, boolean allowMultiLayered) {
             checkKey(key);
             Object result = configObjects.get(key);
             if (result == null) {
@@ -263,6 +263,9 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
                 }
                 result = wrapper.wrappedObject();
 
+            }
+            if (!allowMultiLayered && result instanceof MultiLayeredImageSingleton) {
+                throw UserError.abort("Forbidden lookup of MultiLayeredImageSingleton. Use LayeredImageSingletonSupport.lookup if really necessary. Key: %s, object %s", key, result);
             }
             return key.cast(result);
         }

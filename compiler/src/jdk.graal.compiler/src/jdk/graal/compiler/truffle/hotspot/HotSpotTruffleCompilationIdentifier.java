@@ -24,12 +24,11 @@
  */
 package jdk.graal.compiler.truffle.hotspot;
 
-import jdk.graal.compiler.hotspot.HotSpotCompilationIdentifier;
-import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
-
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 
+import jdk.graal.compiler.hotspot.HotSpotCompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 
 /**
@@ -71,4 +70,8 @@ public final class HotSpotTruffleCompilationIdentifier extends HotSpotCompilatio
         return super.buildID(sb.append("Truffle"));
     }
 
+    @Override
+    public long getTruffleCompilationId() {
+        return getRequest().getId();
+    }
 }

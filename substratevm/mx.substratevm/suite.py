@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "7.33.1",
+    "mxversion": "7.38.0",
     "name": "substratevm",
     "version" : "25.0.0",
     "release" : False,
@@ -253,6 +253,36 @@ suite = {
             "jacoco" : "include",
         },
 
+        # This shaded ASM project is just a quickfix.
+        # Eventually, we should migrate to the Classfile API [JDK-8294982] (GR-61102).
+        "com.oracle.svm.shaded.org.objectweb.asm": {
+            # Shadowed ASM libraries (org.ow2.asm:asm,asm-tree)
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "javaCompliance" : "17+",
+            "spotbugsIgnoresGenerated" : True,
+            "shadedDependencies" : [
+                "compiler:ASM_9.7.1",
+                "compiler:ASM_TREE_9.7.1",
+            ],
+            "class" : "ShadedLibraryProject",
+            "shade" : {
+                "packages" : {
+                    "org.objectweb.asm" : "com.oracle.svm.shaded.org.objectweb.asm",
+                },
+                "exclude" : [
+                    "META-INF/MANIFEST.MF",
+                    "**/package.html",
+                ],
+            },
+            "description" : "ASM library shadowed for Native Iamge.",
+            # We need to force javac because the generated sources in this project produce warnings in JDT.
+            "forceJavac" : "true",
+            "javac.lint.overrides" : "none",
+            "jacoco" : "exclude",
+            "graalCompilerSourceEdition": "ignore",
+        },
+
         "com.oracle.svm.processor" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -277,6 +307,7 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.common",
+                "com.oracle.svm.shaded.org.objectweb.asm",
             ],
             "requires" : [
                 "java.compiler",
@@ -318,7 +349,6 @@ suite = {
                     "jdk.internal.vm",
                     "jdk.internal.vm.annotation",
                     "jdk.internal.util",
-                    "jdk.internal.org.objectweb.asm",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
@@ -347,7 +377,7 @@ suite = {
                 ],
             },
             "javaCompliance" : "21+",
-            "checkstyleVersion" : "10.7.0",
+            "checkstyleVersion" : "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -665,7 +695,6 @@ suite = {
                     "jdk.internal.loader",
                     "jdk.internal.misc",
                     "jdk.internal.vm.annotation",
-                    "jdk.internal.org.objectweb.asm",
                     "sun.net.www",
                     "sun.reflect.annotation",
                     "sun.security.jca",
@@ -709,7 +738,7 @@ suite = {
                 ],
             },
             "javaCompliance" : "21+",
-            "checkstyleVersion": "10.7.0",
+            "checkstyleVersion": "10.21.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -752,7 +781,8 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
-            "jacoco" : "include",
+            # disable coverage as long it cannot run on JDK latest [GR-59586]
+            "jacoco" : "exclude",
             # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
             "spotbugs" : "false",
         },
@@ -786,7 +816,8 @@ suite = {
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
-            "jacoco" : "include",
+            # disable coverage as long it cannot run on JDK latest [GR-59586]
+            "jacoco" : "exclude",
             # disable SpotBugs as long JDK 22 is unsupported [GR-49566]
             "spotbugs" : "false",
         },
@@ -972,6 +1003,9 @@ suite = {
                 "java.base" : [
                     "jdk.internal.jimage",
                 ],
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
+                ],
             },
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
@@ -1045,7 +1079,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.test",
-            "checkstyleVersion" : "10.7.0",
+            "checkstyleVersion" : "10.21.0",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1499,7 +1533,6 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
-                    "jdk.internal.org.objectweb.asm",
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
@@ -1552,6 +1585,7 @@ suite = {
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "21+",
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
 
         "com.oracle.svm.interpreter": {
@@ -1579,6 +1613,7 @@ suite = {
                 "substratevm:SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
 
         # Common project both jdwp.server and jdwp.resident.
@@ -1600,6 +1635,7 @@ suite = {
                 "substratevm:SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
 
         # JDWP server, should run on HotSpot and as a shared library e.g. libsvmjdwp.so
@@ -1624,6 +1660,7 @@ suite = {
                 "substratevm:SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
 
         # JDWP implementation bits that are included in the application.
@@ -1649,6 +1686,7 @@ suite = {
                 "substratevm:SVM_PROCESSOR",
             ],
             "workingSets": "SVM",
+            "jacoco": "exclude",
         },
     },
 
@@ -1769,7 +1807,6 @@ suite = {
                         "sun.security.ssl",
                         "com.sun.crypto.provider",
                         "sun.reflect.generics.repository",
-                        "jdk.internal.org.objectweb.asm",
                         "sun.util.locale.provider",
                         "sun.util.cldr",
                         "sun.util.resources",
@@ -2552,6 +2589,14 @@ suite = {
                     "com.oracle.svm.interpreter,com.oracle.svm.jdwp.resident to org.graalvm.nativeimage.builder",
                 ],
             }
+        },
+
+        "SVM_JDWP_RESIDENT_SUPPORT" : {
+            "native" : True,
+            "description" : "JDWP debugging support",
+            "layout" : {
+                "native-image.properties" : "file:mx.substratevm/macro-svmjdwp.properties",
+            },
         },
 
         "SVM_JDWP_SERVER": {

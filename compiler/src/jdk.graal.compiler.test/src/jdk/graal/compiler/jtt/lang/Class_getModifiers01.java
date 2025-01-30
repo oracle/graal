@@ -32,13 +32,13 @@ import jdk.graal.compiler.jtt.JTTTest;
 
 public final class Class_getModifiers01 extends JTTTest {
 
-    private static class PrivateStatic {
+    private static final class PrivateStatic {
     }
 
     private static final class PrivateStaticFinal {
     }
 
-    private static class Private {
+    private static final class Private {
     }
 
     public static int test(Class<?> c) {

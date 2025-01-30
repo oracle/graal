@@ -1210,17 +1210,4 @@ public final class FrameStateBuilder implements SideEffectsState {
                         new FrameState(null, new ResolvedJavaMethodBytecode(original), 0, newLocals, newStack, stackSize, null, null, locks, Collections.emptyList(), FrameState.StackState.BeforePop));
         return stateAfterStart;
     }
-
-    /**
-     * Sets monitorIds and lockedObjects of this FrameStateBuilder to the values in {@code from}.
-     */
-    public void setLocks(FrameStateBuilder from) {
-        lockedObjects = new ValueNode[from.lockedObjects.length];
-        monitorIds = new MonitorIdNode[from.lockedObjects.length];
-        for (int i = 0; i < from.lockedObjects.length; i++) {
-            lockedObjects[i] = from.lockedObjects[i];
-            monitorIds[i] = from.monitorIds[i];
-        }
-    }
-
 }

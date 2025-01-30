@@ -26,10 +26,10 @@ package com.oracle.svm.core.deopt;
 
 import java.lang.ref.WeakReference;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
@@ -247,7 +247,7 @@ public final class DeoptimizedFrame {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void write(Deoptimizer.TargetContent targetContent, Pointer newSp) {
-            targetContent.writeWord(offset, newSp.add(WordFactory.unsigned(valueRelativeToNewSp)));
+            targetContent.writeWord(offset, newSp.add(Word.unsigned(valueRelativeToNewSp)));
         }
     }
 
@@ -410,7 +410,7 @@ public final class DeoptimizedFrame {
             return;
         }
         ReturnAddress firstAddressEntry = topFrame.returnAddress;
-        CodePointer ip = WordFactory.pointer(firstAddressEntry.returnAddress);
+        CodePointer ip = Word.pointer(firstAddressEntry.returnAddress);
         CodeInfo info = CodeInfoTable.getImageCodeInfo(ip);
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
         CodeInfoAccess.lookupCodeInfo(info, ip, codeInfoQueryResult);
@@ -425,7 +425,7 @@ public final class DeoptimizedFrame {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Printing out error and then crashing.")
     private static void throwMissingExceptionHandler(CodeInfo info, ReturnAddress firstAddressEntry) {
         CodeInfoQueryResult detailedQueryResult = new CodeInfoQueryResult();
-        CodeInfoAccess.lookupCodeInfo(info, WordFactory.pointer(firstAddressEntry.returnAddress), detailedQueryResult);
+        CodeInfoAccess.lookupCodeInfo(info, Word.pointer(firstAddressEntry.returnAddress), detailedQueryResult);
         FrameInfoQueryResult frameInfo = detailedQueryResult.getFrameInfo();
         throw Deoptimizer.fatalDeoptimizationError("No exception handler registered for deopt target", frameInfo);
     }

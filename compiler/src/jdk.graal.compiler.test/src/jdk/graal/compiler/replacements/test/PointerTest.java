@@ -42,7 +42,6 @@ import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordCastNode;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -172,7 +171,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static byte readByte2(Object o, int offset) {
-        return Word.objectToTrackedPointer(o).readByte(WordFactory.signed(offset), ID);
+        return Word.objectToTrackedPointer(o).readByte(Word.signed(offset), ID);
     }
 
     @Snippet
@@ -187,7 +186,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static void writeByte2(Object o, int offset, byte value) {
-        Word.objectToTrackedPointer(o).writeByte(WordFactory.signed(offset), value, ID);
+        Word.objectToTrackedPointer(o).writeByte(Word.signed(offset), value, ID);
     }
 
     @Snippet
@@ -202,7 +201,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static char readChar2(Object o, int offset) {
-        return Word.objectToTrackedPointer(o).readChar(WordFactory.signed(offset), ID);
+        return Word.objectToTrackedPointer(o).readChar(Word.signed(offset), ID);
     }
 
     @Snippet
@@ -217,7 +216,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static void writeChar2(Object o, int offset, char value) {
-        Word.objectToTrackedPointer(o).writeChar(WordFactory.signed(offset), value, ID);
+        Word.objectToTrackedPointer(o).writeChar(Word.signed(offset), value, ID);
     }
 
     @Snippet
@@ -232,7 +231,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static short readShort2(Object o, int offset) {
-        return Word.objectToTrackedPointer(o).readShort(WordFactory.signed(offset), ID);
+        return Word.objectToTrackedPointer(o).readShort(Word.signed(offset), ID);
     }
 
     @Snippet
@@ -247,7 +246,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static void writeShort2(Object o, int offset, short value) {
-        Word.objectToTrackedPointer(o).writeShort(WordFactory.signed(offset), value, ID);
+        Word.objectToTrackedPointer(o).writeShort(Word.signed(offset), value, ID);
     }
 
     @Snippet
@@ -262,7 +261,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static int readInt2(Object o, int offset) {
-        return Word.objectToTrackedPointer(o).readInt(WordFactory.signed(offset), ID);
+        return Word.objectToTrackedPointer(o).readInt(Word.signed(offset), ID);
     }
 
     @Snippet
@@ -277,7 +276,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static void writeInt2(Object o, int offset, int value) {
-        Word.objectToTrackedPointer(o).writeInt(WordFactory.signed(offset), value, ID);
+        Word.objectToTrackedPointer(o).writeInt(Word.signed(offset), value, ID);
     }
 
     @Snippet
@@ -292,7 +291,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static long readLong2(Object o, int offset) {
-        return Word.objectToTrackedPointer(o).readLong(WordFactory.signed(offset), ID);
+        return Word.objectToTrackedPointer(o).readLong(Word.signed(offset), ID);
     }
 
     @Snippet
@@ -307,7 +306,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static void writeLong2(Object o, int offset, long value) {
-        Word.objectToTrackedPointer(o).writeLong(WordFactory.signed(offset), value, ID);
+        Word.objectToTrackedPointer(o).writeLong(Word.signed(offset), value, ID);
     }
 
     @Snippet
@@ -322,7 +321,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static float readFloat2(Object o, int offset) {
-        return Word.objectToTrackedPointer(o).readFloat(WordFactory.signed(offset), ID);
+        return Word.objectToTrackedPointer(o).readFloat(Word.signed(offset), ID);
     }
 
     @Snippet
@@ -337,7 +336,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static void writeFloat2(Object o, int offset, float value) {
-        Word.objectToTrackedPointer(o).writeFloat(WordFactory.signed(offset), value, ID);
+        Word.objectToTrackedPointer(o).writeFloat(Word.signed(offset), value, ID);
     }
 
     @Snippet
@@ -352,7 +351,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static double readDouble2(Object o, int offset) {
-        return Word.objectToTrackedPointer(o).readDouble(WordFactory.signed(offset), ID);
+        return Word.objectToTrackedPointer(o).readDouble(Word.signed(offset), ID);
     }
 
     @Snippet
@@ -367,7 +366,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static void writeDouble2(Object o, int offset, double value) {
-        Word.objectToTrackedPointer(o).writeDouble(WordFactory.signed(offset), value, ID);
+        Word.objectToTrackedPointer(o).writeDouble(Word.signed(offset), value, ID);
     }
 
     @Snippet
@@ -382,7 +381,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static Object readObject2(Object o, int offset) {
-        return Word.objectToTrackedPointer(o).readObject(WordFactory.signed(offset), ID);
+        return Word.objectToTrackedPointer(o).readObject(Word.signed(offset), ID);
     }
 
     @Snippet
@@ -397,7 +396,7 @@ public class PointerTest extends SnippetsTest {
 
     @Snippet
     public static void writeObject2(Object o, int offset, Object value) {
-        Word.objectToTrackedPointer(o).writeObject(WordFactory.signed(offset), value, ID);
+        Word.objectToTrackedPointer(o).writeObject(Word.signed(offset), value, ID);
     }
 
     @Snippet

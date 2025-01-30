@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
-import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUtf8;
+import com.oracle.truffle.espresso.classfile.descriptors.ModifiedUTF8;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 
 public class ImageStringsReader {
@@ -98,7 +98,7 @@ public class ImageStringsReader {
     static String stringFromByteBuffer(ByteBuffer buffer, int startOffset) {
         ByteBuffer raw = rawStringFromByteBuffer(buffer, startOffset);
         try {
-            return ModifiedUtf8.toJavaString(raw);
+            return ModifiedUTF8.toJavaString(raw);
         } catch (IOException e) {
             throw new InternalError(e);
         }

@@ -31,10 +31,10 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.JavaKind;
-import com.oracle.truffle.espresso.classfile.descriptors.Signatures;
+import com.oracle.truffle.espresso.classfile.descriptors.SignatureSymbols;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -265,7 +265,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         Method reflectedMethod = Method.getHostReflectiveMethodRoot(guestMethod, meta);
         Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass(meta);
 
-        if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
+        if ((klass == meta.java_lang_invoke_MethodHandle) && ((reflectedMethod.getName() == Names.invoke) || (reflectedMethod.getName() == Names.invokeExact))) {
             StaticObject cause = Meta.initExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot reflectively invoke MethodHandle.{invoke,invokeExact}");
             StaticObject invocationTargetException = Meta.initExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, cause);
             throw meta.throwException(invocationTargetException);
@@ -307,7 +307,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         } else {
             callSiteType = CallSiteType.Virtual;
         }
-        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSite(
+        ResolvedCall<Klass, Method, Field> resolvedCall = EspressoLinkResolver.resolveCallSiteOrThrow(
                         meta.getContext(),
                         null, // No current class.
                         reflectedMethod, callSiteType, klass);
@@ -366,7 +366,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         final Symbol<Type>[] signature = resolvedCall.getResolvedMethod().getParsedSignature();
 
         // Check number of arguments.
-        if (Signatures.parameterCount(signature) != argsLen) {
+        if (SignatureSymbols.parameterCount(signature) != argsLen) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "wrong number of arguments!");
         }
 

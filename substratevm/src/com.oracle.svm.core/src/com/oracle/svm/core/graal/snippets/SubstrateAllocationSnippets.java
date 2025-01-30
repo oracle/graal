@@ -36,12 +36,9 @@ import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import java.util.Arrays;
 import java.util.Map;
 
-import com.oracle.svm.core.graal.meta.KnownOffsets;
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
@@ -49,6 +46,7 @@ import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
@@ -76,6 +74,7 @@ import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
 import jdk.graal.compiler.api.replacements.Snippet.NonNullParameter;
 import jdk.graal.compiler.api.replacements.Snippet.VarargsParameter;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -142,7 +141,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData,
                     @ConstantParameter boolean withException) {
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), Word.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData, withException);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -347,7 +346,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new InstantiationException("Cannot allocate objects of special hybrid types: " + DynamicHub.toClass(hub).getTypeName());
         } else {
             if (hub.canUnsafeInstantiateAsInstanceSlowPath()) {
-                hub.getCompanion().setUnsafeAllocate();
+                hub.setCanUnsafeAllocate();
                 return hub;
             } else {
                 if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
@@ -404,7 +403,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     public Object formatStoredContinuation(Word objectHeader, UnsignedWord allocationSize, int arrayLength, Word memory, boolean emitMemoryBarrier, long ipOffset,
                     AllocationSnippetCounters snippetCounters) {
         Object result = formatArray(objectHeader, allocationSize, arrayLength, memory, FillContent.DO_NOT_FILL, false, false, false, false, snippetCounters);
-        memory.writeWord(WordFactory.unsigned(ipOffset), WordFactory.nullPointer(), LocationIdentity.init());
+        memory.writeWord(Word.unsigned(ipOffset), Word.nullPointer(), LocationIdentity.init());
         emitMemoryBarrierIf(emitMemoryBarrier);
         return result;
     }
@@ -763,7 +762,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             return GraalOptions.ReduceCodeSize.getValue(graph.getOptions());
         }
 
-        private class NewInstanceLowering implements NodeLoweringProvider<NewInstanceNode> {
+        private final class NewInstanceLowering implements NodeLoweringProvider<NewInstanceNode> {
             @Override
             public void lower(NewInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -790,7 +789,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewInstanceWithExceptionLowering implements NodeLoweringProvider<NewInstanceWithExceptionNode> {
+        private final class NewInstanceWithExceptionLowering implements NodeLoweringProvider<NewInstanceWithExceptionNode> {
             @Override
             public void lower(NewInstanceWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -816,7 +815,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewHybridInstanceLowering implements NodeLoweringProvider<SubstrateNewHybridInstanceNode> {
+        private final class NewHybridInstanceLowering implements NodeLoweringProvider<SubstrateNewHybridInstanceNode> {
             @Override
             public void lower(SubstrateNewHybridInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -853,7 +852,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewStoredContinuationLowering implements NodeLoweringProvider<NewStoredContinuationNode> {
+        private final class NewStoredContinuationLowering implements NodeLoweringProvider<NewStoredContinuationNode> {
             @Override
             public void lower(NewStoredContinuationNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -884,7 +883,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewArrayLowering implements NodeLoweringProvider<NewArrayNode> {
+        private final class NewArrayLowering implements NodeLoweringProvider<NewArrayNode> {
             @Override
             public void lower(NewArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -918,7 +917,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewArrayWithExceptionLowering implements NodeLoweringProvider<NewArrayWithExceptionNode> {
+        private final class NewArrayWithExceptionLowering implements NodeLoweringProvider<NewArrayWithExceptionNode> {
             @Override
             public void lower(NewArrayWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -953,7 +952,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewMultiArrayLowering implements NodeLoweringProvider<NewMultiArrayNode> {
+        private final class NewMultiArrayLowering implements NodeLoweringProvider<NewMultiArrayNode> {
             @Override
             public void lower(NewMultiArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -980,7 +979,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewMultiArrayWithExceptionLowering implements NodeLoweringProvider<NewMultiArrayWithExceptionNode> {
+        private final class NewMultiArrayWithExceptionLowering implements NodeLoweringProvider<NewMultiArrayWithExceptionNode> {
             @Override
             public void lower(NewMultiArrayWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1007,7 +1006,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class DynamicNewInstanceLowering implements NodeLoweringProvider<DynamicNewInstanceNode> {
+        private final class DynamicNewInstanceLowering implements NodeLoweringProvider<DynamicNewInstanceNode> {
             @Override
             public void lower(DynamicNewInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1029,7 +1028,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class DynamicNewInstanceWithExceptionLowering implements NodeLoweringProvider<DynamicNewInstanceWithExceptionNode> {
+        private final class DynamicNewInstanceWithExceptionLowering implements NodeLoweringProvider<DynamicNewInstanceWithExceptionNode> {
             @Override
             public void lower(DynamicNewInstanceWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1051,7 +1050,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class DynamicNewArrayLowering implements NodeLoweringProvider<DynamicNewArrayNode> {
+        private final class DynamicNewArrayLowering implements NodeLoweringProvider<DynamicNewArrayNode> {
             @Override
             public void lower(DynamicNewArrayNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1074,7 +1073,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class DynamicNewArrayWithExceptionLowering implements NodeLoweringProvider<DynamicNewArrayWithExceptionNode> {
+        private final class DynamicNewArrayWithExceptionLowering implements NodeLoweringProvider<DynamicNewArrayWithExceptionNode> {
             @Override
             public void lower(DynamicNewArrayWithExceptionNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1097,7 +1096,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class ValidateNewInstanceClassLowering implements NodeLoweringProvider<ValidateNewInstanceClassNode> {
+        private final class ValidateNewInstanceClassLowering implements NodeLoweringProvider<ValidateNewInstanceClassNode> {
             @Override
             public void lower(ValidateNewInstanceClassNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1109,7 +1108,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewPodInstanceLowering implements NodeLoweringProvider<NewPodInstanceNode> {
+        private final class NewPodInstanceLowering implements NodeLoweringProvider<NewPodInstanceNode> {
             @Override
             public void lower(NewPodInstanceNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
@@ -1136,7 +1135,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             }
         }
 
-        private class NewDynamicHubLowering implements NodeLoweringProvider<SubstrateNewDynamicHubNode> {
+        private final class NewDynamicHubLowering implements NodeLoweringProvider<SubstrateNewDynamicHubNode> {
             @Override
             public void lower(SubstrateNewDynamicHubNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();

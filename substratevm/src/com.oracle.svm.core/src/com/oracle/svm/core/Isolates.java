@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -70,7 +69,7 @@ public class Isolates {
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_PATCHED_BEGIN = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME);
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_PATCHED_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_PATCHED_END_SYMBOL_NAME);
-    public static final CGlobalData<Pointer> ISOLATE_COUNTER = CGlobalDataFactory.createWord((WordBase) WordFactory.unsigned(1));
+    public static final CGlobalData<Pointer> ISOLATE_COUNTER = CGlobalDataFactory.createWord((WordBase) Word.unsigned(1));
 
     /* Only used if SpawnIsolates is disabled. */
     private static final CGlobalData<Pointer> SINGLE_ISOLATE_ALREADY_CREATED = CGlobalDataFactory.createWord();
@@ -148,7 +147,7 @@ public class Isolates {
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, IsolateArguments arguments) {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            if (!SINGLE_ISOLATE_ALREADY_CREATED.get().logicCompareAndSwapWord(0, WordFactory.zero(), WordFactory.signed(1), NamedLocationIdentity.OFF_HEAP_LOCATION)) {
+            if (!SINGLE_ISOLATE_ALREADY_CREATED.get().logicCompareAndSwapWord(0, Word.zero(), Word.signed(1), NamedLocationIdentity.OFF_HEAP_LOCATION)) {
                 return CEntryPointErrors.SINGLE_ISOLATE_ALREADY_CREATED;
             }
         }
@@ -162,7 +161,7 @@ public class Isolates {
         Isolate isolate = heapBasePointer.read();
         result = checkIsolate(isolate);
         if (result != CEntryPointErrors.NO_ERROR) {
-            isolatePointer.write(WordFactory.nullPointer());
+            isolatePointer.write(Word.nullPointer());
             return result;
         }
 

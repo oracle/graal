@@ -29,6 +29,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 
 /**
  * Interface that defines required methods for a guest language when implementing JDWP.
@@ -500,4 +501,6 @@ public interface JDWPContext {
     Object allocateInstance(KlassRef klass);
 
     void steppingInProgress(Thread t, boolean value);
+
+    void replaceController(DebuggerController newController);
 }

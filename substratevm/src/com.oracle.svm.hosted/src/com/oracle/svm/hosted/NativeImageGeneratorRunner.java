@@ -184,7 +184,7 @@ public class NativeImageGeneratorRunner {
         if (verbose) {
             System.out.println(transitiveBuilderModules.stream()
                             .map(Module::getName)
-                            .collect(Collectors.joining("\n", "All builder modules: \n", "\n")));
+                            .collect(Collectors.joining(System.lineSeparator(), "All builder modules: " + System.lineSeparator(), System.lineSeparator())));
         }
 
         Set<Module> modulesBuilderDependsOn = new LinkedHashSet<>();
@@ -195,7 +195,7 @@ public class NativeImageGeneratorRunner {
         if (verbose) {
             System.out.println(modulesBuilderDependsOn.stream()
                             .map(Module::getName)
-                            .collect(Collectors.joining("\n", "All modules the builder modules depend on: \n", "\n")));
+                            .collect(Collectors.joining(System.lineSeparator(), "All modules the builder modules depend on: " + System.lineSeparator(), System.lineSeparator())));
         }
 
         Set<String> expectedBuilderDependencies = Set.of(
@@ -758,7 +758,6 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.org.objectweb.asm");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 /**
  * Represents an instrumentable Wasm function node. See {@link WasmFunctionNode} for a description
@@ -84,11 +85,14 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @Child private WasmFunctionNode functionNode;
     @Child private WasmInstrumentationSupportNode instrumentation;
 
-    public WasmInstrumentableFunctionNode(WasmModule module, WasmCodeEntry codeEntry, WasmFunctionNode functionNode, int functionSourceLocation) {
+    @Child private WasmMemoryLibrary zeroMemoryLib;
+
+    public WasmInstrumentableFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset, Node[] callNodes, WasmMemoryLibrary[] memoryLibs) {
         this.module = module;
         this.codeEntry = codeEntry;
-        this.functionNode = functionNode;
-        this.functionSourceLocation = functionSourceLocation;
+        this.functionNode = new WasmFunctionNode(module, codeEntry, bytecodeStartOffset, bytecodeEndOffset, callNodes, memoryLibs);
+        this.functionSourceLocation = module.functionSourceCodeStartOffset(codeEntry.functionIndex());
+        this.zeroMemoryLib = module.memoryCount() > 0 ? memoryLibs[0] : null;
     }
 
     protected WasmInstrumentableFunctionNode(WasmInstrumentableFunctionNode node) {
@@ -97,6 +101,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         this.functionNode = node.functionNode;
         this.functionSourceLocation = node.functionSourceLocation;
         this.instrumentation = node.instrumentation;
+        this.zeroMemoryLib = node.zeroMemoryLib;
     }
 
     private WasmInstance instance(VirtualFrame frame) {
@@ -104,50 +109,15 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     private WasmMemory memory0(MaterializedFrame frame) {
-        return module.memory(instance(frame), 0);
-    }
-
-    final WasmModule module() {
-        return module;
+        return instance(frame).memory(0);
     }
 
     int localCount() {
         return codeEntry.localCount();
     }
 
-    int resultCount() {
-        return codeEntry.resultCount();
-    }
-
     void execute(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         functionNode.execute(frame, context, instance);
-    }
-
-    void enterErrorBranch() {
-        codeEntry.errorBranch();
-    }
-
-    byte resultType(int index) {
-        return codeEntry.resultType(index);
-    }
-
-    int paramCount() {
-        return module.symbolTable().function(codeEntry.functionIndex()).paramCount();
-    }
-
-    byte localType(int index) {
-        return codeEntry.localType(index);
-    }
-
-    @TruffleBoundary
-    public String name() {
-        final DebugFunction function = debugFunction();
-        return function != null ? function.name() : codeEntry.function().name();
-    }
-
-    @TruffleBoundary
-    String qualifiedName() {
-        return codeEntry.function().moduleName() + "." + name();
     }
 
     @TruffleBoundary
@@ -319,50 +289,50 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     @Override
     public boolean isValidMemoryAddress(MaterializedFrame frame, long address, int length) {
         final WasmMemory memory = memory0(frame);
-        return address >= 0 && address + length < memory.byteSize();
+        return address >= 0 && address + length < zeroMemoryLib.byteSize(memory);
     }
 
     @TruffleBoundary
     public byte loadI8FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return (byte) memory.load_i32_8s(this, address);
+        return (byte) zeroMemoryLib.load_i32_8s(memory, this, address);
     }
 
     @TruffleBoundary
     public short loadI16FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return (short) memory.load_i32_16s(this, address);
+        return (short) zeroMemoryLib.load_i32_16s(memory, this, address);
     }
 
     @TruffleBoundary
     public int loadI32FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return memory.load_i32(this, address);
+        return zeroMemoryLib.load_i32(memory, this, address);
     }
 
     @TruffleBoundary
     public long loadI64FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return memory.load_i64(this, address);
+        return zeroMemoryLib.load_i64(memory, this, address);
     }
 
     @TruffleBoundary
     public float loadF32FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return memory.load_f32(this, address);
+        return zeroMemoryLib.load_f32(memory, this, address);
     }
 
     @TruffleBoundary
     public double loadF64FromMemory(MaterializedFrame frame, long address) {
         final WasmMemory memory = memory0(frame);
-        return memory.load_f64(this, address);
+        return zeroMemoryLib.load_f64(memory, this, address);
     }
 
     private byte[] loadByteArrayFromMemory(MaterializedFrame frame, long address, int length) {
         final WasmMemory memory = memory0(frame);
         byte[] dataArray = new byte[length];
         for (int i = 0; i < length; i++) {
-            dataArray[i] = (byte) memory.load_i32_8s(this, address + i);
+            dataArray[i] = (byte) zeroMemoryLib.load_i32_8s(memory, this, address + i);
         }
         return dataArray;
     }

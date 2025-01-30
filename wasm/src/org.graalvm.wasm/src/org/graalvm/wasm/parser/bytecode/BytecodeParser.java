@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
@@ -62,9 +61,8 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
@@ -95,14 +93,8 @@ public abstract class BytecodeParser {
      * Reset the state of the memory in a module that had already been parsed and linked.
      */
     public static void resetMemoryState(WasmContext context, WasmModule module, WasmInstance instance) {
-        final boolean unsafeMemory = context.getContextOptions().useUnsafeMemory();
         final byte[] bytecode = module.bytecode();
         for (int i = 0; i < module.dataInstanceCount(); i++) {
-            if (unsafeMemory) {
-                // free all memory allocated for data instances
-                instance.dropUnsafeDataInstance(i);
-            }
-
             final int dataOffset = module.dataInstanceOffset(i);
             final int flags = bytecode[dataOffset];
             int effectiveOffset = dataOffset + 1;
@@ -195,23 +187,10 @@ public abstract class BytecodeParser {
                 // Reading of the data segment is called after linking, so initialize the memory
                 // directly.
                 final WasmMemory memory = instance.memory(memoryIndex);
+                WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
 
-                Assert.assertUnsignedLongLessOrEqual(offsetAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                Assert.assertUnsignedLongLessOrEqual(offsetAddress + dataLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
-                memory.initialize(module.bytecode(), effectiveOffset, offsetAddress, dataLength);
+                memoryLib.initialize(memory, null, module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
-                if (unsafeMemory) {
-                    final int length = switch (bytecode[effectiveOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) {
-                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
-                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
-                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
-                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
-                        default -> throw CompilerDirectives.shouldNotReachHere();
-                    };
-                    final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(bytecode,
-                                    effectiveOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length + BytecodeBitEncoding.DATA_SEG_RUNTIME_UNSAFE_ADDRESS_LENGTH, dataLength);
-                    BinaryStreamParser.writeI64(bytecode, effectiveOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length, instanceAddress);
-                }
                 instance.setDataInstance(i, effectiveOffset);
             }
         }
@@ -787,9 +766,7 @@ public abstract class BytecodeParser {
                             break;
                         }
                         case Bytecode.MEMORY_INIT:
-                        case Bytecode.MEMORY_INIT_UNSAFE:
                         case Bytecode.MEMORY64_INIT:
-                        case Bytecode.MEMORY64_INIT_UNSAFE:
                         case Bytecode.MEMORY_COPY:
                         case Bytecode.MEMORY64_COPY_D32_S64:
                         case Bytecode.MEMORY64_COPY_D64_S32:
@@ -1158,6 +1135,26 @@ public abstract class BytecodeParser {
                         case Bytecode.VECTOR_F64X2_CONVERT_LOW_I32X4_U:
                         case Bytecode.VECTOR_F32X4_DEMOTE_F64X2_ZERO:
                         case Bytecode.VECTOR_F64X2_PROMOTE_LOW_F32X4:
+                        case Bytecode.VECTOR_I8X16_RELAXED_SWIZZLE:
+                        case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_S:
+                        case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F32X4_U:
+                        case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_S_ZERO:
+                        case Bytecode.VECTOR_I32X4_RELAXED_TRUNC_F64X2_U_ZERO:
+                        case Bytecode.VECTOR_F32X4_RELAXED_MADD:
+                        case Bytecode.VECTOR_F32X4_RELAXED_NMADD:
+                        case Bytecode.VECTOR_F64X2_RELAXED_MADD:
+                        case Bytecode.VECTOR_F64X2_RELAXED_NMADD:
+                        case Bytecode.VECTOR_I8X16_RELAXED_LANESELECT:
+                        case Bytecode.VECTOR_I16X8_RELAXED_LANESELECT:
+                        case Bytecode.VECTOR_I32X4_RELAXED_LANESELECT:
+                        case Bytecode.VECTOR_I64X2_RELAXED_LANESELECT:
+                        case Bytecode.VECTOR_F32X4_RELAXED_MIN:
+                        case Bytecode.VECTOR_F32X4_RELAXED_MAX:
+                        case Bytecode.VECTOR_F64X2_RELAXED_MIN:
+                        case Bytecode.VECTOR_F64X2_RELAXED_MAX:
+                        case Bytecode.VECTOR_I16X8_RELAXED_Q15MULR_S:
+                        case Bytecode.VECTOR_I16X8_RELAXED_DOT_I8X16_I7X16_S:
+                        case Bytecode.VECTOR_I32X4_RELAXED_DOT_I8X16_I7X16_ADD_S:
                             break;
                         default:
                             throw CompilerDirectives.shouldNotReachHere();

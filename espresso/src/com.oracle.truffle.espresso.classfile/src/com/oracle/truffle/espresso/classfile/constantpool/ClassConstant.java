@@ -26,8 +26,8 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
@@ -36,11 +36,11 @@ import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
  */
 public interface ClassConstant extends PoolConstant {
 
-    static ClassConstant create(int classNameIndex) {
+    static ImmutableClassConstant create(int classNameIndex) {
         return new Index(classNameIndex);
     }
 
-    static ClassConstant withString(Symbol<Name> name) {
+    static ImmutableClassConstant withString(Symbol<Name> name) {
         return new WithString(name);
     }
 
@@ -49,19 +49,29 @@ public interface ClassConstant extends PoolConstant {
         return Tag.CLASS;
     }
 
-    /**
-     * Gets the type descriptor of the class represented by this constant.
-     *
-     * @param pool container of this constant
-     */
-    Symbol<Name> getName(ConstantPool pool);
+    interface ImmutableClassConstant extends ClassConstant, ImmutablePoolConstant {
+        /**
+         * Gets the type descriptor of the class represented by this constant.
+         *
+         * @param pool container of this constant
+         */
+        Symbol<Name> getName(ConstantPool pool);
 
-    @Override
-    default String toString(ConstantPool pool) {
-        return getName(pool).toString();
+        @Override
+        default String toString(ConstantPool pool) {
+            return getName(pool).toString();
+        }
+
+        @Override
+        default boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+            if (!(other instanceof ImmutableClassConstant otherConstant)) {
+                return false;
+            }
+            return getName(thisPool) == otherConstant.getName(otherPool);
+        }
     }
 
-    final class Index implements ClassConstant, Resolvable {
+    final class Index implements ImmutableClassConstant, Resolvable {
         private final char classNameIndex;
 
         Index(int classNameIndex) {
@@ -70,7 +80,7 @@ public interface ClassConstant extends PoolConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return pool.symbolAt(classNameIndex);
+            return pool.symbolAtUnsafe(classNameIndex);
         }
 
         @Override
@@ -84,7 +94,7 @@ public interface ClassConstant extends PoolConstant {
         }
     }
 
-    final class WithString implements ClassConstant, Resolvable {
+    final class WithString implements ImmutableClassConstant, Resolvable {
         private final Symbol<Name> name;
 
         WithString(Symbol<Name> name) {

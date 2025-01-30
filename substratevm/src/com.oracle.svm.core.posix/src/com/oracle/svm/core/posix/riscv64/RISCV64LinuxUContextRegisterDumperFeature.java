@@ -26,10 +26,10 @@ package com.oracle.svm.core.posix.riscv64;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.Uninterruptible;
@@ -95,21 +95,21 @@ class RISCV64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getHeapBase(ucontext_t uContext) {
         GregsPointer regs = uContext.uc_mcontext_linux_riscv64().gregs();
-        return WordFactory.pointer(regs.read(27));
+        return Word.pointer(regs.read(27));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getThreadPointer(ucontext_t uContext) {
         GregsPointer regs = uContext.uc_mcontext_linux_riscv64().gregs();
-        return WordFactory.pointer(regs.read(23));
+        return Word.pointer(regs.read(23));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(ucontext_t uContext) {
         GregsPointer regs = uContext.uc_mcontext_linux_riscv64().gregs();
-        return WordFactory.pointer(regs.read(2));
+        return Word.pointer(regs.read(2));
     }
 
     @Override
@@ -117,6 +117,6 @@ class RISCV64LinuxUContextRegisterDumper implements UContextRegisterDumper {
     public PointerBase getIP(ucontext_t uContext) {
         // gregs[0] holds the program counter.
         GregsPointer regs = uContext.uc_mcontext_linux_riscv64().gregs();
-        return WordFactory.pointer(regs.read(0));
+        return Word.pointer(regs.read(0));
     }
 }

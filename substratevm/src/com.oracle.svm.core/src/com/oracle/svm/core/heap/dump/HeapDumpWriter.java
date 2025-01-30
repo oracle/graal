@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -459,7 +458,7 @@ public class HeapDumpWriter {
 
         assert f.isNull() || error || file().getUnflushedDataSize(f) == 0;
         file().free(f);
-        this.f = WordFactory.nullPointer();
+        this.f = Word.nullPointer();
 
         this.topLevelRecordBegin = -1;
         this.subRecordBegin = -1;
@@ -562,7 +561,7 @@ public class HeapDumpWriter {
     private void writeSymbol(FieldName fieldName) {
         startTopLevelRecord(HProfTopLevelRecord.UTF8);
         writeFieldNameId(fieldName);
-        write((Pointer) FieldNameAccess.getChars(fieldName), WordFactory.unsigned(FieldNameAccess.getLength(fieldName)));
+        write((Pointer) FieldNameAccess.getChars(fieldName), Word.unsigned(FieldNameAccess.getLength(fieldName)));
         endTopLevelRecord();
     }
 
@@ -774,7 +773,7 @@ public class HeapDumpWriter {
             writeLargeObjects(largeObjects);
         } finally {
             GrowableWordArrayAccess.freeData(largeObjects);
-            largeObjects = WordFactory.nullPointer();
+            largeObjects = Word.nullPointer();
         }
     }
 
@@ -968,8 +967,8 @@ public class HeapDumpWriter {
      */
     private static int calculateMaxArrayLength(Object array, int elementSize, int recordHeaderSize) {
         int length = ArrayLengthNode.arrayLength(array);
-        UnsignedWord lengthInBytes = WordFactory.unsigned(length).multiply(elementSize);
-        UnsignedWord maxBytes = WordFactory.unsigned(MAX_UNSIGNED_INT).subtract(recordHeaderSize);
+        UnsignedWord lengthInBytes = Word.unsigned(length).multiply(elementSize);
+        UnsignedWord maxBytes = Word.unsigned(MAX_UNSIGNED_INT).subtract(recordHeaderSize);
 
         if (lengthInBytes.belowOrEqual(maxBytes)) {
             return length;
@@ -993,7 +992,7 @@ public class HeapDumpWriter {
 
     private void writeU1ArrayData(Object array, int length, int arrayBaseOffset) {
         Pointer data = getArrayData(array, arrayBaseOffset);
-        write(data, WordFactory.unsigned(length));
+        write(data, Word.unsigned(length));
     }
 
     private void writeU2ArrayData(Object array, int length, int arrayBaseOffset) {
@@ -1377,10 +1376,10 @@ public class HeapDumpWriter {
                     elementSize = wordSize();
                 }
                 int length = ArrayLengthNode.arrayLength(obj);
-                return WordFactory.unsigned(length).multiply(elementSize);
+                return Word.unsigned(length).multiply(elementSize);
             } else {
                 ClassInfo classInfo = metadata.getClassInfo(obj.getClass());
-                return WordFactory.unsigned(classInfo.getInstanceFieldsDumpSize());
+                return Word.unsigned(classInfo.getInstanceFieldsDumpSize());
             }
         }
     }
@@ -1439,6 +1438,6 @@ public class HeapDumpWriter {
         }
     }
 
-    private static class UnknownClass {
+    private static final class UnknownClass {
     }
 }

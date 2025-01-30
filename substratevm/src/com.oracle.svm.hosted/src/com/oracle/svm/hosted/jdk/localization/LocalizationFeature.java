@@ -261,7 +261,7 @@ public class LocalizationFeature implements InternalFeature {
         allLocales = processLocalesOption();
         if (Options.DefaultLocale.hasBeenSet()) {
             LogUtils.warning("Option %s is deprecated and has no effect. The program's default locale is determined at run-time. " +
-                            "Use %s and %s to manage the locales included in the image.\n",
+                            "Use %s and %s to manage the locales included in the image.%n",
                             Options.DefaultLocale.getName(), Options.IncludeLocales.getName(), Options.IncludeAllLocales.getName());
         }
         String defaultCharsetOptionValue = Options.DefaultCharset.getValue();
@@ -564,6 +564,10 @@ public class LocalizationFeature implements InternalFeature {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareClassResourceBundle(String basename, String className) {
         Class<?> bundleClass = findClassByName.apply(className);
+        if (bundleClass == null) {
+            /* Unknown classes are ignored */
+            return;
+        }
         UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
         trace("Adding class based resource bundle: " + className + " " + bundleClass);
         support.registerRequiredReflectionAndResourcesForBundle(basename, Set.of(), false);

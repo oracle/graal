@@ -28,8 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.ImageHeap;
@@ -195,7 +195,7 @@ class ChunkedImageHeapAllocator {
 
     public long allocateUnalignedChunkForObject(ImageHeapObject obj, boolean writable) {
         assert currentAlignedChunk == null;
-        UnsignedWord objSize = WordFactory.unsigned(obj.getSize());
+        UnsignedWord objSize = Word.unsigned(obj.getSize());
         long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objSize).rawValue();
         long chunkBegin = allocateRaw(chunkSize);
         unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable));

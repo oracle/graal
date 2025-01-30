@@ -25,6 +25,11 @@
  */
 package jdk.graal.compiler.core.test;
 
+import java.util.List;
+import java.util.Random;
+
+import org.junit.Test;
+
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.FilteredNodeIterable;
@@ -32,10 +37,6 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.StructuredGraph.AllowAssumptions;
 import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.phases.common.ReassociationPhase;
-import org.junit.Test;
-
-import java.util.List;
-import java.util.Random;
 
 public class ReassociationTest extends GraalCompilerTest {
 
@@ -429,7 +430,7 @@ public class ReassociationTest extends GraalCompilerTest {
 
     public static int refLoopSnippet2() {
         for (int i = 0; i < LENGTH; i++) {
-            arr[i] = i * i * 8;
+            arr[i] = i * 8 * i;
             GraalDirectives.controlFlowAnchor();
         }
         return arr[100];
@@ -446,8 +447,8 @@ public class ReassociationTest extends GraalCompilerTest {
     }
 
     private void testFinalGraph(String testMethod, String refMethod) {
-        StructuredGraph expected = getFinalGraph(testMethod);
-        StructuredGraph actual = getFinalGraph(refMethod);
+        StructuredGraph actual = getFinalGraph(testMethod);
+        StructuredGraph expected = getFinalGraph(refMethod);
         assertEquals(expected, actual);
     }
 

@@ -299,7 +299,7 @@ public final class BuildTimeInterpreterUniverse {
                             continue;
                         }
                         if (!InterpreterFeature.callableByInterpreter(resolvedJavaMethod, metaAccessProvider)) {
-                            InterpreterUtil.log("[process invokes] cannot execute %s due to call-site (%s) @ bci=%s is not callable by interpreter\n", thiz.getName(), bci, method);
+                            InterpreterUtil.log("[process invokes] cannot execute %s due to call-site (%s) @ bci=%s is not callable by interpreter%n", thiz.getName(), bci, method);
                             thiz.setCode(null);
                             thiz.needMethodBody = false;
                             return;

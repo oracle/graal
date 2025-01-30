@@ -207,7 +207,7 @@ public class LocalizationSupport {
             if (bundleClass != null) {
                 registerNullaryConstructor(bundleClass);
             }
-            Resources.singleton().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
+            Resources.currentLayer().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
 
             if (jdkBundle) {
                 String otherBundleName = Bundles.toOtherBundleName(baseName, bundleWithLocale, locale);

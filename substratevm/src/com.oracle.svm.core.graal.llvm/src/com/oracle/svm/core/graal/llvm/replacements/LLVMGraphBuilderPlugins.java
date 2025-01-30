@@ -67,7 +67,7 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, Replacements replacements) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
-        Registration r = new Registration(plugins, declaringClass, replacements);
+        Registration r = new Registration(plugins, declaringClass, replacements).setAllowOverwrite(true);
         registerUnaryLLVMIntrinsic(r, "numberOfLeadingZeros", LLVMIntrinsicOperation.CTLZ, JavaKind.Int, kind.toJavaClass());
         registerUnaryLLVMIntrinsic(r, "numberOfTrailingZeros", LLVMIntrinsicOperation.CTTZ, JavaKind.Int, kind.toJavaClass());
         r.register(new InvocationPlugin("bitCount", kind.toJavaClass()) {

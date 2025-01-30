@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.posix.pthread;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.posix.PosixUtils;
@@ -78,7 +78,7 @@ public final class PthreadConditionUtils {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int initConditionWithAbsoluteTime(pthread_cond_t cond) {
-        return Pthread.pthread_cond_init(cond, WordFactory.nullPointer());
+        return Pthread.pthread_cond_init(cond, Word.nullPointer());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

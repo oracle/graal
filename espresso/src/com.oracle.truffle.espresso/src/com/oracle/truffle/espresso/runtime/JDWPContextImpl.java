@@ -49,7 +49,10 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -98,6 +101,7 @@ public final class JDWPContextImpl implements JDWPContext {
     private RedefinitionPluginHandler redefinitionPluginHandler;
     private final ArrayList<ReloadingAction> classInitializerActions = new ArrayList<>(1);
     private DebuggerController controller;
+    private VMEventListenerImpl vmEventListener;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
@@ -105,19 +109,28 @@ public final class JDWPContextImpl implements JDWPContext {
         this.innerClassRedefiner = new InnerClassRedefiner(context);
     }
 
-    public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl vmEventListener) {
+    public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl eventListener) {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
         this.controller = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
-        vmEventListener.activate(mainThread, controller, this);
-        controller.initialize(debugger, context.getEspressoEnv().JDWPOptions, this, mainThread, vmEventListener);
+        vmEventListener = eventListener;
+        eventListener.activate(mainThread, controller, this);
+        controller.initialize(debugger, context.getEspressoEnv().JDWPOptions, this, mainThread, eventListener);
         redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
         classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
         if (context.getEspressoEnv().JDWPOptions != null) {
-            controller.disposeDebugger(false);
+            if (controller != null) { // in case we exited before initializing the controller field
+                controller.disposeDebugger(false);
+            }
         }
+    }
+
+    @Override
+    public void replaceController(DebuggerController newController) {
+        this.controller = newController;
+        vmEventListener.replaceController(newController);
     }
 
     @Override
@@ -217,7 +230,7 @@ public final class JDWPContextImpl implements JDWPContext {
             } else {
                 // object type
                 String componentType = componentRawName.substring(1, componentRawName.length() - 1);
-                Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(componentType);
+                Symbol<Type> type = context.getTypes().fromClassGetName(componentType);
                 KlassRef[] klassRefs = context.getRegistries().findLoadedClassAny(type);
                 KlassRef[] result = new KlassRef[klassRefs.length];
                 for (int i = 0; i < klassRefs.length; i++) {
@@ -227,14 +240,14 @@ public final class JDWPContextImpl implements JDWPContext {
             }
         } else {
             // regular type
-            Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(slashName);
+            Symbol<Type> type = context.getTypes().fromClassGetName(slashName);
             return context.getRegistries().findLoadedClassAny(type);
         }
     }
 
     @Override
     public KlassRef[] getAllLoadedClasses() {
-        return context.getRegistries().getAllLoadedClasses();
+        return context.getRegistries().getAllLoadedClasses().toArray(new KlassRef[0]);
     }
 
     @Override
@@ -329,7 +342,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public KlassRef getReflectedType(Object classObject) {
         if (classObject instanceof StaticObject staticObject) {
-            if (staticObject.getKlass().getType() == Symbol.Type.java_lang_Class) {
+            if (staticObject.getKlass().getType() == Types.java_lang_Class) {
                 return (KlassRef) context.getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(staticObject);
             }
         }
@@ -340,11 +353,11 @@ public final class JDWPContextImpl implements JDWPContext {
     public KlassRef[] getNestedTypes(KlassRef klass) {
         if (klass instanceof ObjectKlass objectKlass) {
             ArrayList<KlassRef> result = new ArrayList<>();
-            List<Symbol<Symbol.Name>> nestedTypeNames = objectKlass.getNestedTypeNames();
+            List<Symbol<Name>> nestedTypeNames = objectKlass.getNestedTypeNames();
 
             StaticObject classLoader = objectKlass.getDefiningClassLoader();
-            for (Symbol<Symbol.Name> nestedType : nestedTypeNames) {
-                Symbol<Symbol.Type> type = context.getTypes().fromClassGetName(nestedType.toString());
+            for (Symbol<Name> nestedType : nestedTypeNames) {
+                Symbol<Type> type = context.getTypes().fromClassGetName(nestedType.toString());
                 KlassRef loadedKlass = context.getRegistries().findLoadedClass(type, classLoader);
                 if (loadedKlass != null && loadedKlass != klass) {
                     result.add(loadedKlass);
@@ -935,7 +948,7 @@ public final class JDWPContextImpl implements JDWPContext {
         redefinitionPluginHandler.registerExternalHotSwapHandler(handler);
     }
 
-    private static class HierarchyComparator implements Comparator<ChangePacket> {
+    private static final class HierarchyComparator implements Comparator<ChangePacket> {
         public int compare(ChangePacket packet1, ChangePacket packet2) {
             Klass k1 = packet1.info.getKlass();
             Klass k2 = packet2.info.getKlass();
@@ -964,7 +977,7 @@ public final class JDWPContextImpl implements JDWPContext {
         }
     }
 
-    private static class SubClassHierarchyComparator implements Comparator<ObjectKlass> {
+    private static final class SubClassHierarchyComparator implements Comparator<ObjectKlass> {
         public int compare(ObjectKlass k1, ObjectKlass k2) {
             // we need to do this check because isAssignableFrom is true in this case
             // and we would get an order that doesn't exist

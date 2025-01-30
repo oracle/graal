@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.heap.Heap;
@@ -59,16 +58,16 @@ import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
 
-import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.nodes.PauseNode;
 import jdk.graal.compiler.truffle.PartialEvaluator;
 import jdk.graal.compiler.truffle.TruffleCompilation;
+import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
 import jdk.graal.compiler.truffle.phases.TruffleTier;
 import jdk.graal.compiler.word.Word;
 
 public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
-    private static final Word ISOLATE_INITIALIZING = WordFactory.signed(-1);
+    private static final Word ISOLATE_INITIALIZING = Word.signed(-1);
 
     private final UninterruptibleUtils.AtomicWord<Isolate> sharedIsolate = new UninterruptibleUtils.AtomicWord<>();
 
@@ -108,7 +107,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                 if (listener != null) {
                     eventContext = new IsolatedEventContext(listener, compilable, task);
                 }
-                ClientHandle<CompilationIdentifier> compilationIdentifier = client.hand(delegate.createCompilationIdentifier(task, compilable));
+                ClientHandle<TruffleCompilationIdentifier> compilationIdentifier = client.hand(delegate.createCompilationIdentifier(task, compilable));
                 ClientHandle<String> thrownException = doCompile0(context,
                                 (ClientIsolateThread) CurrentIsolate.getCurrentThread(),
                                 ImageHeapObjects.ref(delegate),
@@ -133,7 +132,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     protected CompilerIsolateThread beforeCompilation() {
         Isolate isolate = getSharedIsolate();
         if (isolate.isNull()) {
-            if (sharedIsolate.compareAndSet(WordFactory.nullPointer(), (Isolate) ISOLATE_INITIALIZING)) {
+            if (sharedIsolate.compareAndSet(Word.nullPointer(), (Isolate) ISOLATE_INITIALIZING)) {
                 try {
                     /* Adding the shutdown hook may fail if a shutdown is already in progress. */
                     Runtime.getRuntime().addShutdownHook(new Thread(this::sharedIsolateShutdown));
@@ -143,7 +142,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                 } catch (Throwable e) {
                     /* Reset the value so that the teardown hook doesn't hang. */
                     assert sharedIsolate.get().equal(ISOLATE_INITIALIZING);
-                    sharedIsolate.set(WordFactory.nullPointer());
+                    sharedIsolate.set(Word.nullPointer());
                     throw e;
                 }
             }
@@ -187,7 +186,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                     ImageHeapRef<SubstrateTruffleCompilerImpl> delegateRef,
                     ClientHandle<TruffleCompilationTask> taskHandle,
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
-                    ClientHandle<CompilationIdentifier> compilationIdentifier,
+                    ClientHandle<TruffleCompilationIdentifier> compilationIdentifier,
                     ClientHandle<IsolatedEventContext> eventContextHandle,
                     boolean firstCompilation) {
         IsolatedCompileContext.set(new IsolatedCompileContext(client));

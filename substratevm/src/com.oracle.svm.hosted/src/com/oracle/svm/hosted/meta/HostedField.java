@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import com.oracle.graal.pointsto.heap.ImageLayerLoader;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -32,6 +31,8 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
+import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -64,6 +65,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     }
 
     protected void setLocation(int location) {
+        wrapped.checkGuaranteeFolded();
         assert this.location == LOC_UNINITIALIZED;
         assert location >= 0;
         this.location = location;
@@ -187,7 +189,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
         AnalysisUniverse universe = type.wrapped.getUniverse();
         boolean primitive = getStorageKind().isPrimitive();
         if (isInBaseLayer()) {
-            ImageLayerLoader imageLayerLoader = universe.getImageLayerLoader();
+            SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
             return primitive ? imageLayerLoader.getBaseLayerStaticPrimitiveFields() : imageLayerLoader.getBaseLayerStaticObjectFields();
         }
         return universe.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());

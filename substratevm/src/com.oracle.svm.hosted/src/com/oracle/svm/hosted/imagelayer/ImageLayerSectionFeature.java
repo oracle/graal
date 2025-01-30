@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
-import static org.graalvm.word.WordFactory.signed;
+import static jdk.graal.compiler.word.Word.signed;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
@@ -76,13 +75,12 @@ import jdk.vm.ci.meta.JavaConstant;
  *  |  8            | heap end                              |
  *  |  16           | heap relocatable begin                |
  *  |  24           | heap relocatable end                  |
- *  |  32           | heap any relocatable pointer          |
- *  |  40           | heap writable begin                   |
- *  |  48           | heap writable end                     |
- *  |  56           | heap writable patched begin           |
- *  |  64           | heap writable patched end             |
- *  |  72           | next layer section (0 if final layer) |
- *  |  80           | cross-layer singleton table start     |
+ *  |  32           | heap writable begin                   |
+ *  |  40           | heap writable end                     |
+ *  |  48           | heap writable patched begin           |
+ *  |  56           | heap writable patched end             |
+ *  |  64           | next layer section (0 if final layer) |
+ *  |  72           | cross-layer singleton table start     |
  *  | (after table) | heap relative patches                 |
  *  ---------------------------------------------------------
  * </pre>
@@ -96,13 +94,12 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
     private static final int HEAP_END_OFFSET = 8;
     private static final int HEAP_RELOCATABLE_BEGIN_OFFSET = 16;
     private static final int HEAP_RELOCATABLE_END_OFFSET = 24;
-    private static final int HEAP_ANY_RELOCATABLE_POINTER_OFFSET = 32;
-    private static final int HEAP_WRITABLE_BEGIN_OFFSET = 40;
-    private static final int HEAP_WRITABLE_END_OFFSET = 48;
-    private static final int HEAP_WRITABLE_PATCHED_BEGIN_OFFSET = 56;
-    private static final int HEAP_WRITABLE_PATCHED_END_OFFSET = 64;
-    private static final int NEXT_SECTION_OFFSET = 72;
-    private static final int STATIC_SECTION_SIZE = 80;
+    private static final int HEAP_WRITABLE_BEGIN_OFFSET = 32;
+    private static final int HEAP_WRITABLE_END_OFFSET = 40;
+    private static final int HEAP_WRITABLE_PATCHED_BEGIN_OFFSET = 48;
+    private static final int HEAP_WRITABLE_PATCHED_END_OFFSET = 56;
+    private static final int NEXT_SECTION_OFFSET = 64;
+    private static final int STATIC_SECTION_SIZE = 72;
 
     private static final String CACHED_IMAGE_FDS_NAME = "__svm_layer_cached_image_fds";
     private static final String CACHED_IMAGE_HEAP_OFFSETS_NAME = "__svm_layer_cached_image_heap_offsets";
@@ -154,8 +151,8 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
             cachedImageHeapRelocations = CGlobalDataFactory.forSymbol(CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
             cachedImageFDs = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, UNASSIGNED_FD), CACHED_IMAGE_FDS_NAME);
-            cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, WordFactory.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
-            cachedImageHeapRelocations = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, WordFactory.zero()), CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
+            cachedImageHeapOffsets = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_OFFSETS_NAME);
+            cachedImageHeapRelocations = CGlobalDataFactory.createBytes(() -> createWords(DynamicImageLayerInfo.singleton().numLayers, Word.zero()), CACHED_IMAGE_HEAP_RELOCATIONS_NAME);
         } else {
             cachedImageFDs = null;
             cachedImageHeapOffsets = null;
@@ -242,7 +239,6 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
         layeredSectionData.markRelocationSite(HEAP_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_END_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_RELOCATABLE_BEGIN_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_RELOCATABLE_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, 0);
-        layeredSectionData.markRelocationSite(HEAP_ANY_RELOCATABLE_POINTER_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_BEGIN_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_END_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, 0);
         layeredSectionData.markRelocationSite(HEAP_WRITABLE_PATCHED_BEGIN_OFFSET, ObjectFile.RelocationKind.DIRECT_8, Isolates.IMAGE_HEAP_WRITABLE_PATCHED_BEGIN_SYMBOL_NAME, 0);
@@ -306,7 +302,6 @@ public final class ImageLayerSectionFeature implements InternalFeature, FeatureS
                 case HEAP_END -> HEAP_END_OFFSET;
                 case HEAP_RELOCATABLE_BEGIN -> HEAP_RELOCATABLE_BEGIN_OFFSET;
                 case HEAP_RELOCATABLE_END -> HEAP_RELOCATABLE_END_OFFSET;
-                case HEAP_ANY_RELOCATABLE_POINTER -> HEAP_ANY_RELOCATABLE_POINTER_OFFSET;
                 case HEAP_WRITEABLE_BEGIN -> HEAP_WRITABLE_BEGIN_OFFSET;
                 case HEAP_WRITEABLE_END -> HEAP_WRITABLE_END_OFFSET;
                 case HEAP_WRITEABLE_PATCHED_BEGIN -> HEAP_WRITABLE_PATCHED_BEGIN_OFFSET;

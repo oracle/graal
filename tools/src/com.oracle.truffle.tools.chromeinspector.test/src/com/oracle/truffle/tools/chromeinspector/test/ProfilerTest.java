@@ -108,10 +108,10 @@ public class ProfilerTest {
         tester.finish();
     }
 
-    private static class TestNoSourceLanguage extends ProxyLanguage {
+    private static final class TestNoSourceLanguage extends ProxyLanguage {
 
         @Override
-        protected final CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+        protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             return new NoSourceRootNode(languageInstance).getCallTarget();
         }
 

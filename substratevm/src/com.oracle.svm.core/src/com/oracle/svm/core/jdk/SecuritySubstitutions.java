@@ -141,12 +141,13 @@ final class Target_java_security_AccessController {
     static AccessControlContext checkContext(AccessControlContext context, Class<?> caller) {
 
         if (context != null && context.equals(AccessControllerUtil.DISALLOWED_CONTEXT_MARKER)) {
-            VMError.shouldNotReachHere("Non-allowed AccessControlContext that was replaced with a blank one at build time was invoked without being reinitialized at run time.\n" +
-                            "This might be an indicator of improper build time initialization, or of a non-compatible JDK version.\n" +
-                            "In order to fix this you can either:\n" +
-                            "    * Annotate the offending context's field with @RecomputeFieldValue\n" +
-                            "    * Implement a custom runtime accessor and annotate said field with @InjectAccessors\n" +
-                            "    * If this context originates from the JDK, and it doesn't leak sensitive info, you can allow it in 'AccessControlContextReplacerFeature.duringSetup'");
+            VMError.shouldNotReachHere(
+                            "Non-allowed AccessControlContext that was replaced with a blank one at build time was invoked without being reinitialized at run time." + System.lineSeparator() +
+                                            "This might be an indicator of improper build time initialization, or of a non-compatible JDK version." + System.lineSeparator() +
+                                            "In order to fix this you can either:" + System.lineSeparator() +
+                                            "    * Annotate the offending context's field with @RecomputeFieldValue" + System.lineSeparator() +
+                                            "    * Implement a custom runtime accessor and annotate said field with @InjectAccessors" + System.lineSeparator() +
+                                            "    * If this context originates from the JDK, and it doesn't leak sensitive info, you can allow it in 'AccessControlContextReplacerFeature.duringSetup'");
         }
 
         // check if caller is authorized to create context

@@ -543,11 +543,8 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
 }
 
 abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
-    final Klass typeKlass;
-
     ObjectGetFieldNode(Field f) {
         super(f);
-        this.typeKlass = f.resolveTypeKlass();
         assert f.getKind() == JavaKind.Object;
     }
 
@@ -563,6 +560,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     abstract StaticObject executeGetField(StaticObject receiver);
 
     ToReference createToEspressoNode() {
+        Klass typeKlass = field.resolveTypeKlass();
         return ToReference.createToReference(typeKlass, typeKlass.getMeta());
     }
 
@@ -583,7 +581,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
             return toEspressoNode.execute(value);
         } catch (UnsupportedTypeException e) {
             error.enter();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to %s", fieldName, typeKlass.getName());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to %s", fieldName, field.resolveTypeKlass().getName());
         }
     }
 }

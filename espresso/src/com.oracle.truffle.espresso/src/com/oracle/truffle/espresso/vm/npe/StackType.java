@@ -139,8 +139,8 @@ import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.SIPUSH;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.JavaKind;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 enum StackType {
@@ -169,10 +169,10 @@ enum StackType {
     }
 
     static StackType forType(Symbol<Type> type) {
-        if (Types.isArray(type)) {
+        if (TypeSymbols.isArray(type)) {
             return ARRAY;
         }
-        return forJavaKind(Types.getJavaKind(type));
+        return forJavaKind(TypeSymbols.getJavaKind(type));
     }
 
     private static StackType forJavaKind(JavaKind javaKind) {

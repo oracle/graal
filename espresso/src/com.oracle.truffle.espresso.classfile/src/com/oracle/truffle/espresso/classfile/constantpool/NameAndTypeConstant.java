@@ -22,16 +22,17 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
-public interface NameAndTypeConstant extends PoolConstant {
+import java.nio.ByteBuffer;
+
+public interface NameAndTypeConstant extends ImmutablePoolConstant {
 
     static NameAndTypeConstant create(int nameIndex, int typeIndex) {
         return new Indexes(nameIndex, typeIndex);
@@ -83,12 +84,20 @@ public interface NameAndTypeConstant extends PoolConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return pool.symbolAt(nameIndex);
+            return pool.symbolAtUnsafe(nameIndex);
         }
 
         @Override
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
-            return pool.symbolAt(typeIndex);
+            return pool.symbolAtUnsafe(typeIndex);
+        }
+
+        @Override
+        public boolean isSame(ImmutablePoolConstant other, ConstantPool thisPool, ConstantPool otherPool) {
+            if (!(other instanceof Indexes otherConstant)) {
+                return false;
+            }
+            return getName(thisPool) == otherConstant.getName(otherPool) && getDescriptor(thisPool) == otherConstant.getDescriptor(otherPool);
         }
 
         @Override
@@ -105,8 +114,8 @@ public interface NameAndTypeConstant extends PoolConstant {
         @Override
         public void validateMethod(ConstantPool pool, boolean allowClinit, boolean checkVoidInitOrClinit) throws ValidationException {
             pool.utf8At(nameIndex).validateMethodName(allowClinit);
-            Symbol<?> symbol = pool.symbolAt(nameIndex);
-            boolean isInitOrClinit = checkVoidInitOrClinit && (Name._init_.equals(symbol) || Name._clinit_.equals(symbol));
+            Symbol<?> symbol = pool.symbolAtUnsafe(nameIndex);
+            boolean isInitOrClinit = checkVoidInitOrClinit && (ParserNames._init_.equals(symbol) || ParserNames._clinit_.equals(symbol));
             pool.utf8At(typeIndex).validateSignature(isInitOrClinit);
         }
 

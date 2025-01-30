@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,10 +66,10 @@ public class WasiRandomGetNode extends WasmBuiltinRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static int randomGet(WasmMemory memory, int buf, int size) {
+    private int randomGet(WasmMemory memory, int buf, int size) {
         byte[] randomData = new byte[size];
         ThreadLocalRandom.current().nextBytes(randomData);
-        memory.initialize(randomData, 0, buf, size);
+        memoryLib.initialize(memory, null, randomData, 0, buf, size);
         return Errno.Success.ordinal();
     }
 

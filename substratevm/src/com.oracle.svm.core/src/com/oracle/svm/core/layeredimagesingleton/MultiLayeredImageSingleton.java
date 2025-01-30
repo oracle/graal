@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
-import java.util.function.Function;
-
-import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 
 public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
+
+    int UNKNOWN_LAYER_NUMBER = 0;
 
     /**
      * Returns an array containing the image singletons installed for {@code key} within all layers.
@@ -41,26 +40,12 @@ public interface MultiLayeredImageSingleton extends LayeredImageSingleton {
     }
 
     /**
-     * Retrieve a specific layer from a MultiLayeredImageSingleton. Note if a
-     * MultiLayeredImageSingleton is not installed in all layers, then the singletons index will not
-     * match the layer number it was installed in.
+     * Retrieve a specific layer's singleton from a MultiLayeredImageSingleton. The index represents
+     * which layer number's singleton to retrieve. If a singleton was not installed in that layer
+     * (and this is allowed), then null is returned.
      */
     @SuppressWarnings("unused")
     static <T extends MultiLayeredImageSingleton> T getForLayer(Class<T> key, int index) {
         throw VMError.shouldNotReachHere("This can only be called during runtime");
-    }
-
-    default <T extends MultiLayeredImageSingleton, U> U getSingletonData(T singleton, T[] singletons, Function<T, U> getSingletonDataFunction) {
-        if (ImageLayerBuildingSupport.buildingImageLayer()) {
-            for (var layerSingleton : singletons) {
-                U result = getSingletonDataFunction.apply(layerSingleton);
-                if (result != null) {
-                    return result;
-                }
-            }
-            return null;
-        } else {
-            return getSingletonDataFunction.apply(singleton);
-        }
     }
 }

@@ -72,6 +72,7 @@ The accepted values are:
 - `--engine.FirstTierCompilationThreshold=[1, inf)` : Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load.Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 400).
 - `--engine.FirstTierMinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled in the first tier (default: 1)
 - `--engine.LastTierCompilationThreshold=[1, inf)` : Number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load.Might be reduced/increased when compilation load is low/high if DynamicCompilationThresholds is enabled. (default: 10000).
+- `--engine.MaximumCompilations=(-inf, inf)` : Maximum number of successful compilations for a single call target before a permanent bailout. Exceeding the limit will result in a compilation failure with the appropriate reason and there will be no further attempts to compile the call target. (negative integer means no limit, default: 100)
 - `--engine.MinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled (default: 3).
 - `--engine.Mode=latency|throughput` : Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.
 - `--engine.MultiTier=true|false` : Whether to use multiple Truffle compilation tiers by default. (default: true)

@@ -4,6 +4,12 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 25.0.0
 * GR-60636 Truffle now stops compiling when the code cache fills up on HotSpot. A warning is printed when that happens.
+* GR-51664 Improved `PolyglotException#toString` and `PolyglotException#printStackTrace`.
+  * The short description returned by `PolyglotException#toString` now starts with the qualified name of the metaobject of the guest exception, if the exception represents a guest exception that has a metaobject. Otherwise, it starts with the qualified name of the `PolyglotException` class.
+  * `PolyglotException#printStackTrace` now always starts with the string returned by `PolyglotException#toString()` like for regular Java Throwable objects.
+* GR-54673 Added the option `engine.MaximumCompilations` to protect against too many repeated compilations of the same call target. The default value is `100`.
+* GR-61448 Compilation id (`CompId`) was added to the `opt done` truffle compilation logs. This id matches the compilation id in the output of deoptimization, compilation and code cache logs on HotSpot and SubstrateVM.
+* GR-31495 Added the ability to specify language and instrument specific options using `Source.Builder.option(String, String)`. See the language and or tool specific documentation for available options. Available source options may also be reflected using `Instrument.getSourceOptions()` and `Language.getSourceOptions()`.
 
 ## Version 24.2.0
 * GR-54905 When using Truffle NFI with the Panama backend, native access must now be granted to the Truffle module instead of the NFI Panama module. Use the `--enable-native-access=org.graalvm.truffle` Java command line option to enable the native access for the NFI Panama backend.
@@ -14,6 +20,8 @@ For usages of the module-path pass the `--enable-native-access=org.graalvm.truff
 * GR-60022 Introduced the [FileSystem.newCompositeFileSystem](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html#newCompositeFileSystem(org.graalvm.polyglot.io.FileSystem,org.graalvm.polyglot.io.FileSystem.Selector...)) method, which creates a composite `FileSystem` delegating operations to the specified delegate FileSystem instances based on the provided selectors.
 * GR-60022 Introduced the [FileSystem.newDenyIOFileSystem](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html#newDenyIOFileSystem()) method, which creates a `FileSystem` that denies all file operations except for path parsing.
 * GR-57838 Added automatic inclusion of language and instrument resources for embedding Truffle languages in native image. We no longer produce a _resources_ folder next to the image by default. Documentation available [here](https://www.graalvm.org/reference-manual/embed-languages/#build-native-executables-from-polyglot-applications).
+* GR-61383 JLine3 upgrade from 3.23 to 3.28.
+* GR-59688 Added [Version#getComponent(int)](https://www.graalvm.org/truffle/javadoc/org/graalvm/home/Version.html#getComponent(int)) returning the numeric value of the version component at the specified index.
 
 ## Version 24.1.0
 * GR-51177 Enable random offsets of runtime compiled function entry points for the UNTRUSTED polyglot sandbox policy.

@@ -36,8 +36,8 @@ import com.oracle.svm.core.util.ConcurrentIdentityHashMap;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 @AutomaticallyRegisteredFeature
 public class CIsolateDataFeature implements InternalFeature {
@@ -62,13 +62,13 @@ public class CIsolateDataFeature implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        UnsignedWord offset = WordFactory.zero();
+        UnsignedWord offset = Word.zero();
         CIsolateData<?>[] entries = usedEntries.values().toArray(new CIsolateData<?>[0]);
         Arrays.sort(entries, Comparator.comparing(CIsolateData<?>::getSize).thenComparing(CIsolateData<?>::getName));
         for (CIsolateData<?> entry : entries) {
-            offset = UnsignedUtils.roundUp(offset, WordFactory.unsigned(CIsolateDataStorage.ALIGNMENT));
+            offset = UnsignedUtils.roundUp(offset, Word.unsigned(CIsolateDataStorage.ALIGNMENT));
             entry.setOffset(offset);
-            offset = offset.add(WordFactory.unsigned(entry.getSize()));
+            offset = offset.add(Word.unsigned(entry.getSize()));
         }
 
         CIsolateDataStorage.singleton().setSize(offset);

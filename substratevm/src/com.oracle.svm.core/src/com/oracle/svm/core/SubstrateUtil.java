@@ -45,8 +45,8 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.common.meta.GuaranteeFolded;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -60,6 +60,7 @@ import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.nodes.BreakpointNode;
 import jdk.graal.compiler.util.Digest;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -69,7 +70,7 @@ public class SubstrateUtil {
     /**
      * Field that is true during native image generation, but false at run time.
      */
-    public static final boolean HOSTED;
+    @GuaranteeFolded public static final boolean HOSTED;
 
     static {
         /*
@@ -82,17 +83,17 @@ public class SubstrateUtil {
 
     public static String getArchitectureName() {
         String arch = System.getProperty("os.arch");
-        switch (arch) {
-            case "x86_64":
-                arch = "amd64";
-                break;
-            case "arm64":
-                arch = "aarch64";
-                break;
-        }
-        return arch;
+        return switch (arch) {
+            case "x86_64" -> "amd64";
+            case "arm64" -> "aarch64";
+            default -> arch;
+        };
     }
 
+    /*
+     * [GR-55515]: Accessing isTerminal() reflectively only for 21 JDK compatibility. After dropping
+     * JDK 21, use it directly.
+     */
     private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");
 
     private static boolean isTTY() {
@@ -111,8 +112,12 @@ public class SubstrateUtil {
         }
     }
 
-    public static boolean isRunningInCI() {
-        return !isTTY() || System.getenv("CI") != null;
+    public static boolean isNonInteractiveTerminal() {
+        return isCISetToTrue() || !isTTY();
+    }
+
+    public static boolean isCISetToTrue() {
+        return Boolean.parseBoolean(System.getenv("CI"));
     }
 
     /**
@@ -184,7 +189,7 @@ public class SubstrateUtil {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord strlen(CCharPointer str) {
-        UnsignedWord n = WordFactory.zero();
+        UnsignedWord n = Word.zero();
         while (((Pointer) str).readByte(n) != 0) {
             n = n.add(1);
         }
@@ -203,7 +208,7 @@ public class SubstrateUtil {
                 return str.addressOf(index);
             }
             if (b == 0) {
-                return WordFactory.zero();
+                return Word.zero();
             }
             index += 1;
         }

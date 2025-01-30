@@ -78,6 +78,11 @@ final class PolyglotLanguageDispatch extends AbstractLanguageDispatch {
     }
 
     @Override
+    public OptionDescriptors getSourceOptions(Object receiver) {
+        return ((PolyglotLanguage) receiver).getSourceOptions();
+    }
+
+    @Override
     public OptionDescriptors getOptions(Object receiver) {
         return ((PolyglotLanguage) receiver).getOptions();
     }

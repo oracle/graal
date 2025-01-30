@@ -54,6 +54,7 @@ import jdk.graal.compiler.options.OptionKey;
  */
 public class SubstrateOptionsParser {
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public static final String HOSTED_OPTION_PREFIX = CommonOptionParser.HOSTED_OPTION_PREFIX;
     public static final String RUNTIME_OPTION_PREFIX = CommonOptionParser.RUNTIME_OPTION_PREFIX;
 

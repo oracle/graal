@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package org.graalvm.wasm.test;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -78,6 +79,7 @@ import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.globals.DefaultWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.junit.Assert;
 import org.junit.Test;
@@ -163,6 +165,7 @@ public class WasmJsApiSuite {
         runMemoryTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmMemory memory = WebAssembly.memAlloc(4, 8, false);
+            final WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
             final Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
@@ -171,9 +174,9 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithMemoryImport, importObject);
             try {
                 final Object initZero = WebAssembly.instanceExport(instance, "initZero");
-                Assert.assertEquals("Must be zero initially.", 0, memory.load_i32(null, 0));
+                Assert.assertEquals("Must be zero initially.", 0, memoryLib.load_i32(memory, null, 0));
                 InteropLibrary.getUncached(initZero).execute(initZero);
-                Assert.assertEquals("Must be 174 after initialization.", 174, memory.load_i32(null, 0));
+                Assert.assertEquals("Must be 174 after initialization.", 174, memoryLib.load_i32(memory, null, 0));
             } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
@@ -187,8 +190,9 @@ public class WasmJsApiSuite {
             WasmInstance instance = moduleInstantiate(wasm, binaryWithMemoryExport, null);
             try {
                 final WasmMemory memory = (WasmMemory) WebAssembly.instanceExport(instance, "memory");
+                final WasmMemoryLibrary memoryLib = WasmMemoryLibrary.getUncached();
                 final Object readZero = WebAssembly.instanceExport(instance, "readZero");
-                memory.store_i32(null, 0, 174);
+                memoryLib.store_i32(memory, null, 0, 174);
                 final Object result = InteropLibrary.getUncached(readZero).execute(readZero);
                 Assert.assertEquals("Must be 174.", 174, InteropLibrary.getUncached(result).asInt(result));
             } catch (InteropException e) {
@@ -835,13 +839,11 @@ public class WasmJsApiSuite {
             context.readModule(binaryWithMixedExports, limits);
 
             final int noLimit = Integer.MAX_VALUE;
-            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit,
-                            noLimit);
+            limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
             try {
-                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit,
-                                noLimit);
+                limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, 5, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
                 context.readModule(binaryWithMixedExports, limits);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
@@ -1432,13 +1434,12 @@ public class WasmJsApiSuite {
     }
 
     @Test
-    public void testInitialMemorySizeOutOfBounds() throws IOException {
+    public void testInitialMemoryOver2GB() throws IOException {
         runMemoryTest(context -> {
-            try {
-                WebAssembly.memAlloc(32768, 32770, false);
-                Assert.fail("Should have failed - initial memory size exceeds implementation limit");
-            } catch (WasmJsApiException e) {
-                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            // Unsafe memory required for memories of size >= 2GB
+            if (context.getContextOptions().useUnsafeMemory()) {
+                WasmMemory memory = WebAssembly.memAlloc(32769, 32770, false);
+                Assert.assertEquals("memory size >= 2GB supported", 32769, WasmMemoryLibrary.getUncached().size(memory));
             }
         });
     }
@@ -2382,6 +2383,21 @@ public class WasmJsApiSuite {
                 }
             });
         }
+    }
+
+    @Test
+    public void testSharedMemoryGrow() throws IOException {
+        runTest(options -> options.option("wasm.UseUnsafeMemory", "true"), context -> {
+            WasmMemory sharedMemory = WebAssembly.memAlloc(1, 2, true);
+            ByteBuffer preGrowBuffer = WebAssembly.memAsByteBuffer(sharedMemory);
+            long previousSize = WebAssembly.memGrow(sharedMemory, 1);
+            Assert.assertEquals("Wrong previous size reported by mem.grow", 1, previousSize);
+            ByteBuffer postGrowBuffer = WebAssembly.memAsByteBuffer(sharedMemory);
+            preGrowBuffer.put(0, (byte) 42);
+            Assert.assertEquals("Value written to pre-grow buffer not seen in post-grow buffer", 42, postGrowBuffer.get(0));
+            postGrowBuffer.put(1, (byte) 21);
+            Assert.assertEquals("Value written to post-grow buffer not seen in pre-grow buffer", 21, preGrowBuffer.get(1));
+        });
     }
 
     private static void runMemoryTest(Consumer<WasmContext> testCase) throws IOException {

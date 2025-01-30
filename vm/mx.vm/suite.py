@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "62bd18d72f7dac78a55cb40b27426a50bf00c7fd",
+                "version": "45a46c6cfa8992031a6d55ca040845eedc48c5d3",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,14 +42,14 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "62bd18d72f7dac78a55cb40b27426a50bf00c7fd",
+                "version": "45a46c6cfa8992031a6d55ca040845eedc48c5d3",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "ef17fc70d102c6707d8eb71b3dfba977533a0e71",
+                "version": "99080c574f91bf008ad6bd4c16f5804116168c64",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "56ee8b4c03d6880d17e22602bd4041c15d0ef6ed",
+                "version": "fc7097456c0472454c9d73b348fc704ad1983898",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "16c70c62830d45b45cbc32e22881199505b55beb",
+                "version": "69e88ef2ee37c1372a17cfb560dc51dafebab299",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -88,7 +88,7 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "17+",
             "license" : "GPLv2-CPE",
-            "checkstyleVersion" : "10.7.0",
+            "checkstyleVersion" : "10.21.0",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "sdk:POLYGLOT",

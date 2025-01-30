@@ -28,7 +28,6 @@ import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
@@ -50,9 +49,9 @@ public class UnsafeSnippets implements Snippets {
     @SuppressWarnings("unused")
     @Snippet
     static void copyMemory(Object receiver, Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        Word srcAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(srcBase, srcOffset));
-        Word dstAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(destBase, destOffset));
-        Word size = WordFactory.signed(bytes);
+        Word srcAddr = Word.unsigned(ComputeObjectAddressNode.get(srcBase, srcOffset));
+        Word dstAddr = Word.unsigned(ComputeObjectAddressNode.get(destBase, destOffset));
+        Word size = Word.signed(bytes);
         Word javaThread = CurrentJavaThreadNode.get();
         int offset = HotSpotReplacementsUtil.doingUnsafeAccessOffset(INJECTED_VMCONFIG);
         LocationIdentity any = LocationIdentity.any();
@@ -67,8 +66,8 @@ public class UnsafeSnippets implements Snippets {
     @SuppressWarnings("unused")
     @Snippet
     static void setMemory(Object receiver, Object objBase, long objOffset, long bytes, byte value) {
-        Word objAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(objBase, objOffset));
-        Word size = WordFactory.signed(bytes);
+        Word objAddr = Word.unsigned(ComputeObjectAddressNode.get(objBase, objOffset));
+        Word size = Word.signed(bytes);
         Word javaThread = CurrentJavaThreadNode.get();
         int offset = HotSpotReplacementsUtil.doingUnsafeAccessOffset(INJECTED_VMCONFIG);
         LocationIdentity any = LocationIdentity.any();

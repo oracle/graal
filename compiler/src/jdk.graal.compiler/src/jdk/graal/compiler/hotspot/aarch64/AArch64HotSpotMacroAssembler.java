@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,5 +133,15 @@ public class AArch64HotSpotMacroAssembler extends AArch64MacroAssembler {
         GraalError.guarantee(config.useCompactObjectHeaders, "Load class pointer from markWord only when UseCompactObjectHeaders is on");
         ldr(64, result, makeAddress(64, receiver, config.markOffset));
         lsr(64, result, result, config.markWordKlassShift);
+    }
+
+    @Override
+    public boolean useLSE() {
+        return config.useLSE;
+    }
+
+    @Override
+    public boolean avoidUnalignedAccesses() {
+        return config.avoidUnalignedAccesses;
     }
 }

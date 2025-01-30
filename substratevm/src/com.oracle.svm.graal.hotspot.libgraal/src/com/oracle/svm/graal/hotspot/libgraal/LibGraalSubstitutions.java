@@ -30,6 +30,7 @@ import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
@@ -44,7 +45,6 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -203,7 +203,7 @@ public class LibGraalSubstitutions {
      * instance at image build-time. This FieldValueTransformer ensures that.
      */
     @Platforms(HOSTED_ONLY.class)
-    private static class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
+    private static final class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
             long initialValue;
@@ -212,7 +212,7 @@ public class LibGraalSubstitutions {
             } catch (Throwable e) {
                 throw VMError.shouldNotReachHere(e);
             }
-            return CGlobalDataFactory.createWord(WordFactory.unsigned(initialValue), null, true);
+            return CGlobalDataFactory.createWord(Word.unsigned(initialValue), null, true);
         }
     }
 

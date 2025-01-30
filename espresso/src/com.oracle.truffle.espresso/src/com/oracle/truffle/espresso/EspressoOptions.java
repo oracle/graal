@@ -596,10 +596,10 @@ public final class EspressoOptions {
     @Option(help = "Load a Java programming language agent for the given jar file. \\n" +
                     "Keys represent the jar path, values are the corresponding agent options.\\n" +
                     "Agents are not fully implemented yet.", //
-                    category = OptionCategory.INTERNAL, //
+                    category = OptionCategory.USER, //
                     stability = OptionStability.EXPERIMENTAL, //
-                    usageSyntax = "<agent>") //
-    public static final OptionKey<String> JavaAgent = new OptionKey<>("");
+                    usageSyntax = "<agent>=<agentOptions>") //
+    public static final OptionKey<OptionMap<String>> JavaAgent = OptionKey.mapOf(String.class);
 
     @Option(help = "Used internally to keep track of the command line arguments given to the vm in order to support VM.getRuntimeArguments().\\n" +
                     "Setting this option is the responsibility of the context creator if such support is required.\\n" +
@@ -627,7 +627,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> EnableAgents = new OptionKey<>(false);
+    public static final OptionKey<Boolean> EnableNativeAgents = new OptionKey<>(false);
 
     @Option(help = "Maximum bytecode size (in bytes) for a method to be considered trivial.", //
                     category = OptionCategory.EXPERT, //
@@ -673,6 +673,12 @@ public final class EspressoOptions {
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
+
+    @Option(help = "Enables the JVMCI API inside the context.", //
+                    category = OptionCategory.INTERNAL, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> EnableJVMCI = new OptionKey<>(false);
 
     public enum GuestFieldOffsetStrategyEnum {
         safety,

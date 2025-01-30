@@ -913,7 +913,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
-    private static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, AnnotatedElement annotatedElement) {
+    public static boolean isIncluded(TargetElement targetElementAnnotation, Class<?> originalClass, AnnotatedElement annotatedElement) {
+        if (targetElementAnnotation == null) {
+            return true;
+        }
+
         for (Class<?> onlyWithClass : targetElementAnnotation.onlyWith()) {
             Object onlyWithProvider;
             try {

@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -50,6 +49,8 @@ import com.oracle.svm.core.posix.linux.LinuxLibCHelper;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.graal.compiler.word.Word;
 
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
@@ -70,11 +71,11 @@ public final class PosixVMThreads extends VMThreads {
     protected OSThreadId getCurrentOSThreadId() {
         if (Platform.includedIn(Platform.DARWIN.class)) {
             Pthread.pthread_t pthread = Pthread.pthread_self();
-            return WordFactory.unsigned(DarwinPthread.pthread_mach_thread_np(pthread));
+            return Word.unsigned(DarwinPthread.pthread_mach_thread_np(pthread));
         } else if (Platform.includedIn(Platform.LINUX.class)) {
             int result = LinuxLibCHelper.getThreadId();
             VMError.guarantee(result != -1, "SYS_gettid failed");
-            return WordFactory.signed(result);
+            return Word.signed(result);
         } else {
             throw VMError.unsupportedFeature("PosixVMThreads.getCurrentOSThreadId() on unexpected OS: " + ImageSingletons.lookup(Platform.class).getOS());
         }
@@ -84,7 +85,7 @@ public final class PosixVMThreads extends VMThreads {
     @Override
     protected void joinNoTransition(OSThreadHandle osThreadHandle) {
         Pthread.pthread_t pthread = (Pthread.pthread_t) osThreadHandle;
-        PosixUtils.checkStatusIs0(Pthread.pthread_join_no_transition(pthread, WordFactory.nullPointer()), "Pthread.joinNoTransition");
+        PosixUtils.checkStatusIs0(Pthread.pthread_join_no_transition(pthread, Word.nullPointer()), "Pthread.joinNoTransition");
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -93,7 +94,7 @@ public final class PosixVMThreads extends VMThreads {
         timespec ts = StackValue.get(timespec.class);
         ts.set_tv_sec(milliseconds / TimeUtils.millisPerSecond);
         ts.set_tv_nsec((milliseconds % TimeUtils.millisPerSecond) * TimeUtils.nanosPerMilli);
-        Time.NoTransitions.nanosleep(ts, WordFactory.nullPointer());
+        Time.NoTransitions.nanosleep(ts, Word.nullPointer());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -118,7 +119,7 @@ public final class PosixVMThreads extends VMThreads {
     private static native int fprintfSD(FILE stream, CCharPointer format, CCharPointer arg0, int arg1);
 
     private static final CGlobalData<CCharPointer> FAIL_FATALLY_FDOPEN_MODE = CGlobalDataFactory.createCString("w");
-    private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)\n");
+    private static final CGlobalData<CCharPointer> FAIL_FATALLY_MESSAGE_FORMAT = CGlobalDataFactory.createCString("Fatal error: %s (code %d)" + System.lineSeparator());
 
     @Uninterruptible(reason = "Thread state not set up.")
     @Override

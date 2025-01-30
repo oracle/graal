@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -406,7 +406,9 @@ public final class Context implements AutoCloseable {
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it.
      * @throws IllegalArgumentException if the language of the given source is not installed or the
-     *             {@link Source#getMimeType() MIME type} is not supported with the language.
+     *             {@link Source#getMimeType() MIME type} is not supported with the language or the
+     *             validation of a {@link Source.Builder#option(String, String) source option}
+     *             failed.
      * @return the evaluation result. The returned instance is never <code>null</code>, but the
      *         result might represent a {@link Value#isNull() null} value.
      * @since 19.0
@@ -495,7 +497,10 @@ public final class Context implements AutoCloseable {
      *
      * @param source a source object to parse
      * @throws PolyglotException in case the guest language code parsing or validation failed.
-     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalArgumentException if the language of the given source is not installed or the
+     *             {@link Source#getMimeType() MIME type} is not supported with the language or the
+     *             validation of a {@link Source.Builder#option(String, String) source option}
+     *             failed.
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it, or if the given language is not installed.
      * @since 20.2

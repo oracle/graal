@@ -72,6 +72,7 @@ class VmGateTasks:
     truffle_native_tck_sl = 'truffle-native-tck-sl'
     truffle_native_tck_js = 'truffle-native-tck-js'
     truffle_native_tck_python = 'truffle-native-tck-python'
+    truffle_native_tck_wasm = 'truffle-native-tck-wasm'
     truffle_jvm = 'truffle-jvm'
     truffle_native = 'truffle-native'
     truffle_native_quickbuild = 'truffle-native-quickbuild'
@@ -154,24 +155,6 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         mx.run([join(graalvm_home, 'bin', 'jlink'), f'--output={libgraal_jre}', '--add-modules=java.base'])
         jres.append(('LibGraal JRE', libgraal_jre, []))
         atexit.register(mx.rmtree, libgraal_jre)
-
-    # Tests that dropping libgraal into OracleJDK works
-    oraclejdk = mx.get_env('ORACLEJDK_JAVA_HOME')
-    if oraclejdk:
-        oraclejdk_confg = mx.JDKConfig(oraclejdk)
-        # Only run this test if JAVA_HOME and ORACLEJDK_JAVA_HOME have
-        # the same major Java version. Even then there's a chance of incompatibility
-        # if labsjdk is based on a different OracleJDK build.
-        if graalvm_jdk.javaCompliance.value >= 22 and graalvm_jdk.javaCompliance.value == oraclejdk_confg.javaCompliance.value:
-            libjvmci = libgraal_location
-            assert exists(libjvmci), ('missing', libjvmci)
-            oraclejdk_libgraal = abspath('oraclejdk_libgraal')
-            if exists(oraclejdk_libgraal):
-                mx.rmtree(oraclejdk_libgraal)
-            shutil.copytree(oraclejdk, oraclejdk_libgraal)
-            shutil.copy(libjvmci, join(oraclejdk_libgraal, 'bin' if mx.get_os() == 'windows' else 'lib'))
-            jres.append(('OracleJDK+libgraal', oraclejdk_libgraal, ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler']))
-            atexit.register(mx.rmtree, oraclejdk_libgraal)
 
     expect = r"Using compiler configuration '[^']+' \(\"[^\"]+\"\) provided by [\.\w]+ loaded from a[ \w]* Native Image shared library"
     compiler_log_file = abspath('graal-compiler.log')
@@ -566,6 +549,7 @@ def gate_body(args, tasks):
     gate_truffle_native_tck_sl(tasks)
     gate_truffle_native_tck_js(tasks)
     gate_truffle_native_tck_python(tasks)
+    gate_truffle_native_tck_wasm(tasks)
     gate_truffle_jvm(tasks)
     gate_truffle_native(tasks)
     gate_truffle_native(tasks, quickbuild=True)
@@ -668,6 +652,7 @@ def _svm_truffle_tck(native_image, language_id, language_distribution=None, fail
         options = mx.get_runtime_jvm_args(dists, exclude_names=['substratevm:SVM']) + [
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
         ] + mx_sdk_vm_impl.svm_experimental_options([
+            '-H:TruffleTCKUnusedAllowListEntriesAction=Warn', # GR-61487: Clean JavaScript allow list
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-H:-FoldSecurityManagerGetter',
@@ -704,16 +689,18 @@ def gate_truffle_native_tck_smoke_test(tasks):
                 result = _svm_truffle_tck(native_image, 'TCKSmokeTestLanguage', test_language_dist, False)
                 if not 'Failed: Language TCKSmokeTestLanguage performs following privileged calls' in result:
                     mx.abort("Expected failure, log:\n" + result)
-                if not 'UnsafeCallNode.doUnsafeAccess' in result:
-                    mx.abort("Missing UnsafeCallNode.doUnsafeAccess call in the log, log:\n" + result)
-                if not 'UnsafeCallNode.doBehindBoundaryUnsafeAccess' in result:
-                    mx.abort("Missing UnsafeCallNode.doBehindBoundaryUnsafeAccess call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.execute' in result:
-                    mx.abort("Missing PrivilegedCallNode.execute call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doBehindBoundaryPrivilegedCall' in result:
-                    mx.abort("Missing PrivilegedCallNode.doBehindBoundaryPrivilegedCall call in the log, log:\n" + result)
-                if not 'PrivilegedCallNode.doInterrupt' in result:
-                    mx.abort("Missing PrivilegedCallNode.doInterrupt call in the log, log:\n" + result)
+
+                expected_methods = [
+                    'PrivilegedCallNode.doBehindBoundaryPrivilegedCall',
+                    'PrivilegedCallNode.doInterrupt',
+                    'PrivilegedCallNode.doPolymorphicCall',
+                    'PrivilegedCallNode.execute',
+                    'UnsafeCallNode.doBehindBoundaryUnsafeAccess',
+                    'UnsafeCallNode.doUnsafeAccess',
+                ]
+                for expected_method in expected_methods:
+                    if expected_method not in result:
+                        mx.abort(f"Missing {expected_method} call in the log.\nLog content:\n" + result)
 
 
 def gate_truffle_native_tck_js(tasks):
@@ -736,6 +723,17 @@ def gate_truffle_native_tck_python(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, 'python', py_language)
+
+
+def gate_truffle_native_tck_wasm(tasks):
+    with Task('GraalWasm Truffle Native TCK', tasks, tags=[VmGateTasks.truffle_native_tck_wasm]) as t:
+        if t:
+            wasm_language = mx.distribution('wasm:WASM', fatalIfMissing=False)
+            if not wasm_language:
+                mx.abort("Cannot resolve the `wasm:WASM` language distribution. To resolve this, import the wasm suite using `--dynamicimports /wasm`.")
+            native_image_context, svm = graalvm_svm()
+            with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
+                _svm_truffle_tck(native_image, 'wasm', wasm_language)
 
 def gate_truffle_jvm(tasks):
     truffle_suite = mx.suite('truffle')

@@ -32,7 +32,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.classfile.descriptors.Types;
+import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -87,7 +87,7 @@ public final class Target_java_lang_reflect_Array {
             throw meta.throwNullPointerException();
         }
         Klass component = componentType.getMirrorKlass(meta);
-        if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
+        if (component == meta._void || TypeSymbols.getArrayDimensions(component.getType()) >= 255) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         AllocationChecks.checkCanAllocateArray(meta, length);
@@ -135,7 +135,7 @@ public final class Target_java_lang_reflect_Array {
         final int[] dimensions = dimensionsArray.unwrap(language);
         int finalDimensions = dimensions.length;
         if (component.isArray()) {
-            finalDimensions += Types.getArrayDimensions(component.getType());
+            finalDimensions += TypeSymbols.getArrayDimensions(component.getType());
         }
         if (dimensions.length == 0 || finalDimensions > 255) {
             throw meta.throwException(meta.java_lang_IllegalArgumentException);

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.sampler;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -31,7 +32,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
 import com.oracle.svm.core.Isolates;
@@ -86,7 +86,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     @Uninterruptible(reason = "The isolate teardown is in progress.")
     public void onIsolateTeardown() {
         ThreadLocalKey oldKey = keyForNativeThreadLocal;
-        keyForNativeThreadLocal = WordFactory.nullPointer();
+        keyForNativeThreadLocal = Word.nullPointer();
         PlatformThreads.singleton().deleteUnmanagedThreadLocal(oldKey);
     }
 
@@ -119,7 +119,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         /* Wait until all threads exited the signal handler and cleanup no longer needed data. */
         disallowThreadsInSamplerCode();
         try {
-            setSignalHandlerIsolate(WordFactory.nullPointer());
+            setSignalHandlerIsolate(Word.nullPointer());
         } finally {
             allowThreadsInSamplerCode();
         }
@@ -180,7 +180,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
              * Invalidate thread-local area. Once this value is set to null, the signal handler
              * can't interrupt this thread anymore.
              */
-            storeIsolateThreadInNativeThreadLocal(WordFactory.nullPointer());
+            storeIsolateThreadInNativeThreadLocal(Word.nullPointer());
             ExecutionSamplerInstallation.uninstalled(thread);
             uninstall0(thread);
         }

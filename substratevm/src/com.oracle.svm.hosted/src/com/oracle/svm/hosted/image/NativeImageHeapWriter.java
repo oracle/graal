@@ -55,6 +55,7 @@ import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.code.CEntryPointLiteralFeature;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -111,6 +112,8 @@ public final class NativeImageHeapWriter {
                     continue;
                 }
                 writeObject(info, buffer);
+
+                DeadlockWatchdog.singleton().recordActivity();
             }
 
             // Only static fields that are writable get written to the native image heap,
@@ -122,6 +125,7 @@ public final class NativeImageHeapWriter {
         return sectionOffsetOfARelocatablePointer;
     }
 
+    @SuppressWarnings("resource")
     private void writeStaticFields(RelocatableBuffer buffer) {
         /*
          * Write the values of static fields. The arrays for primitive and object fields are empty
@@ -141,6 +145,8 @@ public final class NativeImageHeapWriter {
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
                 writeField(buffer, fields, field, null, null);
             }
+
+            DeadlockWatchdog.singleton().recordActivity();
         }
     }
 

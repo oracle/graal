@@ -71,7 +71,7 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
         this(type, hostedObject, length, -1, -1);
     }
 
-    ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, int length, int identityHashCode, int id) {
+    public ImageHeapObjectArray(AnalysisType type, JavaConstant hostedObject, int length, int identityHashCode, int id) {
         super(new ObjectArrayData(type, hostedObject, null, length, identityHashCode, id), false);
     }
 
@@ -92,7 +92,7 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
         return (ObjectArrayData) super.getConstantData();
     }
 
-    void setElementValues(Object[] elementValues) {
+    public void setElementValues(Object[] elementValues) {
         boolean success = elementsHandle.compareAndSet(constantData, null, elementValues);
         AnalysisError.guarantee(success, "Unexpected field values reference for constant %s", this);
     }

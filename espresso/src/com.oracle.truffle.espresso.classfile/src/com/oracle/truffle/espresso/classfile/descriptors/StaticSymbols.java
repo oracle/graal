@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,50 +22,65 @@
  */
 package com.oracle.truffle.espresso.classfile.descriptors;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Type;
-
 /**
- * Global symbols for Espresso.
- * 
- * <p>
  * To be populated in static initializers, always before the first runtime symbol table is spawned.
  *
+ * <p>
  * Once the first runtime symbol table is created, this table is frozen and no more symbols can be
  * added. The frozen symbols are used as seed to create new runtime symbol tables.
  */
 public final class StaticSymbols {
 
-    private StaticSymbols() {
-        /* no instances */
+    private boolean frozen = false;
+    private final Symbols symbols;
+
+    public StaticSymbols(StaticSymbols seed) {
+        this.symbols = new Symbols(seed.freeze());
     }
 
-    private static boolean frozen = false;
-    private static final Symbols symbols = new Symbols();
-
-    public static Symbol<Name> putName(String name) {
-        ErrorUtil.guarantee(!isFrozen(), "static symbols are frozen");
-        ErrorUtil.guarantee(!name.isEmpty(), "empty name");
-        return symbols.symbolify(ByteSequence.create(name));
+    public StaticSymbols() {
+        this.symbols = new Symbols();
     }
 
-    public static Symbol<Type> putType(String internalName) {
+    public Symbol<Name> putName(String nameString) {
+        ErrorUtil.guarantee(!nameString.isEmpty(), "empty name");
+        ByteSequence byteSequence = ByteSequence.create(nameString);
+        Symbol<Name> name = symbols.lookup(byteSequence);
+        if (name != null) {
+            return name;
+        }
         ErrorUtil.guarantee(!isFrozen(), "static symbols are frozen");
-        return symbols.symbolify(ByteSequence.create(Types.checkType(internalName)));
+        return symbols.symbolify(byteSequence);
+    }
+
+    public Symbol<Type> putType(String internalName) {
+        ByteSequence byteSequence = ByteSequence.create(internalName);
+        ErrorUtil.guarantee(Validation.validTypeDescriptor(byteSequence, true), "invalid type");
+        Symbol<Type> type = symbols.lookup(byteSequence);
+        if (type != null) {
+            return type;
+        }
+        ErrorUtil.guarantee(!isFrozen(), "static symbols are frozen");
+        return symbols.symbolify(byteSequence);
     }
 
     @SafeVarargs
-    public static Symbol<Signature> putSignature(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
+    public final Symbol<Signature> putSignature(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
+        ByteSequence signatureBytes = SignatureSymbols.createSignature(returnType, parameterTypes);
+        ErrorUtil.guarantee(Validation.validSignatureDescriptor(signatureBytes, false), "invalid signature");
+        Symbol<Signature> signature = symbols.lookup(signatureBytes);
+        if (signature != null) {
+            return signature;
+        }
         ErrorUtil.guarantee(!isFrozen(), "static symbols are frozen");
-        return symbols.symbolify(ByteSequence.wrap(Signatures.buildSignatureBytes(returnType, parameterTypes)));
+        return symbols.symbolify(signatureBytes);
     }
 
-    public static boolean isFrozen() {
+    public boolean isFrozen() {
         return frozen;
     }
 
-    public static Symbols freeze() {
+    public Symbols freeze() {
         frozen = true;
         return symbols;
     }

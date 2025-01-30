@@ -53,7 +53,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.ResolvedSignature;
@@ -108,6 +107,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -216,7 +216,7 @@ public class JNIAccessFeature implements Feature {
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName());
     }
 
-    private class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry
+    private final class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry
                     implements RuntimeJNIAccessSupport {
 
         @Override
@@ -393,7 +393,7 @@ public class JNIAccessFeature implements Feature {
         });
         newNegativeFieldLookups.clear();
 
-        JNIReflectionDictionary.singleton().addLinkages(newLinkages);
+        JNIReflectionDictionary.currentLayer().addLinkages(newLinkages);
         newLinkages.clear();
 
         access.requireAnalysisIteration();
@@ -406,7 +406,7 @@ public class JNIAccessFeature implements Feature {
         if (SubstitutionReflectivityFilter.shouldExclude(classObj, access.getMetaAccess(), access.getUniverse())) {
             return null;
         }
-        return JNIReflectionDictionary.singleton().addClassIfAbsent(classObj, c -> {
+        return JNIReflectionDictionary.currentLayer().addClassIfAbsent(classObj, c -> {
             AnalysisType analysisClass = access.getMetaAccess().lookupJavaType(classObj);
             if (analysisClass.isInterface() || (analysisClass.isInstanceClass() && analysisClass.isAbstract())) {
                 analysisClass.registerAsReachable("is accessed via JNI");
@@ -418,7 +418,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static void addNegativeClassLookup(String className) {
-        JNIReflectionDictionary.singleton().addNegativeClassLookupIfAbsent(className);
+        JNIReflectionDictionary.currentLayer().addNegativeClassLookupIfAbsent(className);
     }
 
     public void addMethod(Executable method, DuringAnalysisAccessImpl access) {
@@ -435,7 +435,7 @@ public class JNIAccessFeature implements Feature {
             JNIJavaCallWrapperMethod.Factory factory = ImageSingletons.lookup(JNIJavaCallWrapperMethod.Factory.class);
             AnalysisMethod aTargetMethod = universe.lookup(targetMethod);
             if (!targetMethod.isConstructor() || factory.canInvokeConstructorOnObject(targetMethod, originalMetaAccess)) {
-                access.registerAsRoot(aTargetMethod, false, "JNI method, registered in " + JNIAccessFeature.class);
+                access.registerAsRoot(aTargetMethod, targetMethod.isConstructor(), "JNI method, registered in " + JNIAccessFeature.class);
             } // else: function pointers will be an error stub
 
             ResolvedJavaMethod newObjectMethod = null;
@@ -532,7 +532,7 @@ public class JNIAccessFeature implements Feature {
         int numClasses = 0;
         int numFields = 0;
         int numMethods = 0;
-        for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
+        for (JNIAccessibleClass clazz : JNIReflectionDictionary.currentLayer().getClasses()) {
             numClasses++;
             var fieldsCursor = clazz.getFields();
             while (fieldsCursor.advance()) {
@@ -561,7 +561,7 @@ public class JNIAccessFeature implements Feature {
 
         CompilationAccessImpl access = (CompilationAccessImpl) a;
         DynamicHubLayout dynamicHubLayout = DynamicHubLayout.singleton();
-        for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
+        for (JNIAccessibleClass clazz : JNIReflectionDictionary.currentLayer().getClasses()) {
             UnmodifiableMapCursor<CharSequence, JNIAccessibleField> cursor = clazz.getFields();
             while (cursor.advance()) {
                 String name = (String) cursor.getKey();
@@ -574,22 +574,31 @@ public class JNIAccessFeature implements Feature {
         }
     }
 
+    private static boolean isStaticallyBound(HostedMethod hTarget) {
+        if (hTarget.isConstructor()) {
+            /*
+             * Constructors are always statically bound.
+             */
+            return true;
+        } else if (hTarget.canBeStaticallyBound()) {
+            return true;
+        }
+
+        return false;
+    }
+
     private static void finishMethodBeforeCompilation(JNICallableJavaMethod method, CompilationAccessImpl access) {
         HostedUniverse hUniverse = access.getUniverse();
         AnalysisUniverse aUniverse = access.getUniverse().getBigBang().getUniverse();
         HostedMethod hTarget = hUniverse.lookup(aUniverse.lookup(method.targetMethod));
         int vtableOffset;
         int interfaceTypeID;
-        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
+        if (isStaticallyBound(hTarget)) {
+            vtableOffset = JNIAccessibleMethod.STATICALLY_BOUND_METHOD;
             interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
-            if (hTarget.canBeStaticallyBound()) {
-                vtableOffset = JNIAccessibleMethod.STATICALLY_BOUND_METHOD;
-            } else {
-                vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex(), true);
-            }
         } else {
-            if (hTarget.canBeStaticallyBound()) {
-                vtableOffset = JNIAccessibleMethod.STATICALLY_BOUND_METHOD;
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
+                vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex(), true);
                 interfaceTypeID = JNIAccessibleMethod.INTERFACE_TYPEID_UNNEEDED;
             } else {
                 vtableOffset = KnownOffsets.singleton().getVTableOffset(hTarget.getVTableIndex(), false);
@@ -603,7 +612,7 @@ public class JNIAccessFeature implements Feature {
             newObjectTarget = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.newObjectMethod)));
         } else if (method.targetMethod.isConstructor()) {
             assert method.targetMethod.getDeclaringClass().isAbstract();
-            newObjectTarget = WordFactory.signed(JNIAccessibleMethod.NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE);
+            newObjectTarget = Word.signed(JNIAccessibleMethod.NEW_OBJECT_INVALID_FOR_ABSTRACT_TYPE);
         }
         CodePointer callWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.callWrapper)));
         CodePointer varargs = new MethodPointer(hUniverse.lookup(aUniverse.lookup(method.variantWrappers.varargs)));

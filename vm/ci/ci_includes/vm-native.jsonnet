@@ -48,6 +48,16 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     name: self.targets[0] + '-vm-truffle-native-tck-labs' + self.jdk_name + '-linux-amd64',
   },
 
+  local truffle_native_tck_wasm = vm_common.svm_common  + {
+    run+: [
+      ['mx', '--env', 'ce', '--dynamicimports', '/wasm', '--native-images=lib:jvmcicompiler', 'gate', '--tags', 'build,truffle-native-tck-wasm'],
+    ],
+    notify_groups: ["wasm"],
+    components+: ["truffletck"],
+    timelimit: '35:00',
+    name: self.targets[0] + '-vm-truffle-native-tck-wasm-labs' + self.jdk_name + '-linux-amd64',
+  },
+
   local truffle_maven_downloader = vm_common.svm_common + vm_common.sulong + {
     run+: [
       ['export', 'SVM_SUITE=' + vm.svm_suite],
@@ -83,7 +93,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + {
       gate_tag_suffix: '-quickbuild',
     } + truffle_native,
-    vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'gate') + truffle_native_tck,
+    vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_native_tck,
+    vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_native_tck_wasm,
     vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'daily') + truffle_jvm,
     vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_jvm,
     vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'daily') + truffle_maven_downloader,

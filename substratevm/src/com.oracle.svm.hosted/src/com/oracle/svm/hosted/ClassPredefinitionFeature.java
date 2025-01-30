@@ -25,9 +25,9 @@
  */
 package com.oracle.svm.hosted;
 
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_FINAL;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static jdk.internal.org.objectweb.asm.Opcodes.ACC_STATIC;
+import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_FINAL;
+import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_PUBLIC;
+import static com.oracle.svm.shaded.org.objectweb.asm.Opcodes.ACC_STATIC;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -56,16 +56,15 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassReader;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.ClassWriter;
+import com.oracle.svm.shaded.org.objectweb.asm.FieldVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.MethodVisitor;
+import com.oracle.svm.shaded.org.objectweb.asm.Opcodes;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.graal.compiler.util.Digest;
-import jdk.internal.org.objectweb.asm.ClassReader;
-import jdk.internal.org.objectweb.asm.ClassVisitor;
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.FieldVisitor;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
 
 @AutomaticallyRegisteredFeature
 public class ClassPredefinitionFeature implements InternalFeature {
@@ -97,7 +96,6 @@ public class ClassPredefinitionFeature implements InternalFeature {
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
                         ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
                         ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, PredefinedClassesSupport.class, false, "java.base", "jdk.internal.org.objectweb.asm");
     }
 
     @Override
@@ -152,7 +150,7 @@ public class ClassPredefinitionFeature implements InternalFeature {
         }
     }
 
-    private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
+    private final class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
         @Override
         public void add(String nameInfo, String providedHash, URI baseUri) {
             if (!PredefinedClassesSupport.supportsBytecodes()) {

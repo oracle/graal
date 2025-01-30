@@ -25,9 +25,9 @@
 
 package com.oracle.svm.core.sampler;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 
@@ -71,7 +71,7 @@ public class SamplerBufferStack {
             SamplerBuffer result = head;
             if (result.isNonNull()) {
                 head = head.getNext();
-                result.setNext(WordFactory.nullPointer());
+                result.setNext(Word.nullPointer());
             }
             return result;
         } finally {

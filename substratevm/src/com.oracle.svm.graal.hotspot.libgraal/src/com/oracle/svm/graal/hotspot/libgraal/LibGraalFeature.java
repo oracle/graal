@@ -72,7 +72,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.CompilerConfigurationFactory;
 import jdk.graal.compiler.hotspot.libgraal.BuildTime;
 import jdk.graal.compiler.hotspot.libgraal.LibGraalClassLoaderBase;
-import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.serviceprovider.LibGraalService;
@@ -187,7 +186,7 @@ public final class LibGraalFeature implements Feature {
 
         libGraalClassLoader = createHostedLibGraalClassLoader(access);
         loader = libGraalClassLoader.getClassLoader();
-        ImageSingletons.lookup(ClassForNameSupport.class).setLibGraalLoader(loader);
+        ClassForNameSupport.currentLayer().setLibGraalLoader(loader);
 
         buildTimeClass = loadClassOrFail("jdk.graal.compiler.hotspot.libgraal.BuildTime");
 
@@ -402,8 +401,6 @@ public final class LibGraalFeature implements Feature {
             Consumer<Class<?>> registerAsInHeap = nodeClass -> impl.getMetaAccess().lookupJavaType(nodeClass)
                             .registerAsInstantiated("All NodeClass classes are marked as instantiated eagerly.");
 
-            Consumer<List<Class<?>>> hostedGraalSetFoldNodePluginClasses = GeneratedInvocationPlugin::setFoldNodePluginClasses;
-
             List<Class<?>> guestServiceClasses = new ArrayList<>();
             List<Class<?>> serviceClasses = impl.getImageClassLoader().findAnnotatedClasses(LibGraalService.class, false);
             serviceClasses.stream().map(c -> loadClassOrFail(c.getName())).forEach(guestServiceClasses::add);
@@ -417,7 +414,6 @@ public final class LibGraalFeature implements Feature {
                                             String.class, // arch
                                             List.class, // guestServiceClasses
                                             Consumer.class, // registerAsInHeap
-                                            Consumer.class, // hostedGraalSetFoldNodePluginClasses
                                             String.class, // nativeImageLocationQualifier
                                             byte[].class // encodedGuestObjects
                             ));
@@ -434,7 +430,6 @@ public final class LibGraalFeature implements Feature {
             configureGraalForLibGraal.invoke(arch,
                             guestServiceClasses,
                             registerAsInHeap,
-                            hostedGraalSetFoldNodePluginClasses,
                             nativeImageLocationQualifier,
                             configResult.encodedConfig());
 

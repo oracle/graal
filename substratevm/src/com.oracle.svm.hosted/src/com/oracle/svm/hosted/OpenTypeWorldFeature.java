@@ -69,12 +69,6 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
     }
 
-    public Set<Module> getBuilderModules() {
-        Module m0 = ImageSingletons.lookup(VMFeature.class).getClass().getModule();
-        Module m1 = SVMHost.class.getModule();
-        return m0.equals(m1) ? Set.of(m0) : Set.of(m0, m1);
-    }
-
     private final Set<AnalysisType> triggeredTypes = new HashSet<>();
     private final Set<AnalysisMethod> triggeredMethods = new HashSet<>();
 
@@ -164,7 +158,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
         }
     }
 
-    private static class LayerTypeCheckInfo implements LayeredImageSingleton {
+    private static final class LayerTypeCheckInfo implements LayeredImageSingleton {
         Map<Integer, TypeCheckInfo> identifierToTypeInfo = new HashMap<>();
         int maxTypeID = 0;
 
@@ -226,7 +220,7 @@ public class OpenTypeWorldFeature implements InternalFeature {
              */
             var typeIdentifierIds = identifierToTypeInfo.keySet().stream().sorted().toList();
             writer.writeIntList("typeIdentifierIds", typeIdentifierIds);
-            writer.writeInt("maxTypeID", DynamicHubSupport.singleton().getMaxTypeId());
+            writer.writeInt("maxTypeID", DynamicHubSupport.currentLayer().getMaxTypeId());
 
             for (int identifierID : typeIdentifierIds) {
                 var typeInfo = identifierToTypeInfo.get(identifierID);

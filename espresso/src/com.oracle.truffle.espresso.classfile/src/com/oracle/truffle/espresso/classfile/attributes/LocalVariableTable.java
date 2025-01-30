@@ -26,8 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 /**
  * Describes the {@link Local}s for a Java method.
@@ -36,8 +37,8 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
  */
 public final class LocalVariableTable extends Attribute implements LocalVariableTableRef {
 
-    public static final LocalVariableTable EMPTY_LVT = new LocalVariableTable(Name.LocalVariableTable, Local.EMPTY_ARRAY);
-    public static final LocalVariableTable EMPTY_LVTT = new LocalVariableTable(Name.LocalVariableTypeTable, Local.EMPTY_ARRAY);
+    public static final LocalVariableTable EMPTY_LVT = new LocalVariableTable(ParserNames.LocalVariableTable, Local.EMPTY_ARRAY);
+    public static final LocalVariableTable EMPTY_LVTT = new LocalVariableTable(ParserNames.LocalVariableTypeTable, Local.EMPTY_ARRAY);
 
     @CompilationFinal(dimensions = 1) //
     private final Local[] locals;

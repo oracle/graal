@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,9 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.wasm.api.JsConstants;
 import org.graalvm.wasm.api.WebAssembly;
+import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 import com.oracle.truffle.api.CallTarget;
@@ -69,19 +71,18 @@ import com.oracle.truffle.api.source.SourceSection;
 @Registration(id = WasmLanguage.ID, //
                 name = WasmLanguage.NAME, //
                 defaultMimeType = WasmLanguage.WASM_MIME_TYPE, //
-                byteMimeTypes = WasmLanguage.WASM_MIME_TYPE, //
+                byteMimeTypes = {WasmLanguage.WASM_MIME_TYPE}, //
                 contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false, //
-                website = "https://www.graalvm.org/")
+                website = "https://www.graalvm.org/webassembly/")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public static final String ID = "wasm";
     public static final String NAME = "WebAssembly";
     public static final String WASM_MIME_TYPE = "application/wasm";
     public static final String WASM_SOURCE_NAME_SUFFIX = ".wasm";
-    public static final String PARSE_JS_MODULE_MARKER = "js_module_decode";
-    public static final String[] PARSE_JS_MODULE_ARGS = {PARSE_JS_MODULE_MARKER};
+    public static final String MODULE_DECODE = "module_decode";
 
     private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
 
@@ -124,10 +125,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final Source source = request.getSource();
         final String moduleName = source.getName();
         final byte[] data = source.getBytes().toByteArray();
-        ModuleLimits moduleLimits = null;
-        if (!request.getArgumentNames().isEmpty() && PARSE_JS_MODULE_MARKER.equals(request.getArgumentNames().get(0))) {
-            moduleLimits = JsConstants.JS_LIMITS;
-        }
+        ModuleLimits moduleLimits = JsConstants.JS_LIMITS;
         final WasmModule module = context.readModule(moduleName, data, moduleLimits);
         return new ParsedWasmModuleRootNode(this, module, source).getCallTarget();
     }
@@ -142,14 +140,36 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             this.source = source;
         }
 
+        /**
+         * The CallTarget returned by {@code parse} supports two calling conventions:
+         *
+         * <ol>
+         * <li>(default) zero arguments provided: on the first call, instantiates the decoded module
+         * and puts it in the context's module instance map; then returns the {@link WasmInstance}.
+         * <li>first argument is {@code "module_decode"}: returns the decoded {@link WasmModule}
+         * (i.e. behaves like {@link WebAssembly#moduleDecode module_decode}). Used by the JS API.
+         * </ol>
+         */
         @Override
-        public WasmInstance execute(VirtualFrame frame) {
-            final WasmContext context = WasmContext.get(this);
-            WasmInstance instance = context.lookupModuleInstance(module);
-            if (instance == null) {
-                instance = context.readInstance(module);
+        public Object execute(VirtualFrame frame) {
+            if (frame.getArguments().length == 0) {
+                final WasmContext context = WasmContext.get(this);
+                WasmInstance instance = context.lookupModuleInstance(module);
+                if (instance == null) {
+                    instance = context.readInstance(module);
+                }
+                return instance;
+            } else {
+                if (frame.getArguments()[0] instanceof String mode) {
+                    if (mode.equals(MODULE_DECODE)) {
+                        return module;
+                    } else {
+                        throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Unsupported first argument: '%s'", mode);
+                    }
+                } else {
+                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "First argument must be a string");
+                }
             }
-            return instance;
         }
 
         @Override
@@ -185,7 +205,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         super.finalizeContext(context);
         for (int i = 0; i < context.memories().count(); ++i) {
             final WasmMemory memory = context.memories().memory(i);
-            memory.close();
+            WasmMemoryLibrary.getUncached().close(memory);
         }
         try {
             context.fdManager().close();

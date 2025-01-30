@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ name: GraalVM Gate
 on:
   push:
     branches:
-      - 'master'
       - 'release/**'
     paths-ignore:
       - '.devcontainer/**'
@@ -58,6 +57,8 @@ on:
       - '**.md'
       - '**.jsonnet'
       - '**.libjsonnet'
+  schedule:
+  - cron: '30 0 * * 1'
   # Enable manual dispatch of the workflow
   # see https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
   workflow_dispatch:
@@ -77,6 +78,7 @@ concurrency:
 
 env:
   JAVA_HOME: ${{ github.workspace }}/jdk
+  TOOLS_JAVA_HOME_LOCATION: ${{ github.workspace }}/tools-jdk
   LANG: en_US.UTF-8
   MX_GIT_CACHE: refcache
   MX_PATH: ${{ github.workspace }}/mx
@@ -98,7 +100,8 @@ jobs:
         include:
           # /compiler
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
+              TOOLS_JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
@@ -112,7 +115,8 @@ jobs:
               PRIMARY: "espresso"
           # /substratevm
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
+              TOOLS_JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
@@ -179,17 +183,16 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.8'
-    - name: Update mx cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.mx
-        key: ${{ runner.os }}-mx-${{ hashFiles('**/suite.py') }}
-        restore-keys: ${{ runner.os }}-mx-
     - name: Fetch LabsJDK
       env: ${{ matrix.env }}
       run: |
         mkdir jdk-dl
         ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${JDK_VERSION} --to jdk-dl --alias ${JAVA_HOME}
+    - name: Fetch Tools JDK
+      env: ${{ matrix.env }}
+      if: ${{ matrix.env.TOOLS_JDK_VERSION != '' }}
+      run: |
+        ${MX_PATH}/mx --java-home= fetch-jdk --jdk-id labsjdk-ce-${TOOLS_JDK_VERSION} --to jdk-dl --alias ${TOOLS_JAVA_HOME_LOCATION}
     - name: Update dependency cache
       if: ${{ env.MX_RUNS_DEBUG == 'true' || env.MX_RUNS_STYLE == 'true' }}
       run: sudo apt update
@@ -218,7 +221,7 @@ jobs:
       run: rm -rf .git
     - name: Build GraalVM and run gate with tags
       env: ${{ matrix.env }}
-      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode ${{ matrix.env.GATE_OPTS }} --tags ${GATE_TAGS}
+      run: ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --java-home=${JAVA_HOME} --tools-java-home=${{ matrix.env.TOOLS_JDK_VERSION != '' && env.TOOLS_JAVA_HOME_LOCATION || '' }} gate --strict-mode ${{ matrix.env.GATE_OPTS }} --tags ${GATE_TAGS}
       if: ${{ matrix.env.GATE_TAGS != '' }}
     - name: Build GraalVM and run gate without tags
       env: ${{ matrix.env }}
@@ -230,6 +233,7 @@ jobs:
     timeout-minutes: 60
     env:
       MX_PYTHON: 'python'
+      PYTHONIOENCODING: 'utf-8'
     steps:
     - name: Checkout oracle/graal
       uses: actions/checkout@v4

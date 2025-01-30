@@ -32,7 +32,6 @@ import static jdk.graal.compiler.nodes.CompressionNode.CompressionOp.Compress;
 import java.lang.ref.Reference;
 
 import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
@@ -525,7 +524,7 @@ public class HotSpotReplacementsUtil {
 
     public static void initializeObjectHeader(Word memory, Word markWord, KlassPointer hub) {
         if (useCompactObjectHeaders(INJECTED_VMCONFIG)) {
-            Word compressedHub = WordFactory.unsigned(compress(Compress, hub, klassEncoding(INJECTED_VMCONFIG)).asInt());
+            Word compressedHub = Word.unsigned(compress(Compress, hub, klassEncoding(INJECTED_VMCONFIG)).asInt());
             Word hubInPlace = compressedHub.shiftLeft(markWordKlassShift(INJECTED_VMCONFIG));
             Word newMarkWord = markWord.or(hubInPlace);
             memory.writeWord(markOffset(INJECTED_VMCONFIG), newMarkWord, MARK_WORD_LOCATION);

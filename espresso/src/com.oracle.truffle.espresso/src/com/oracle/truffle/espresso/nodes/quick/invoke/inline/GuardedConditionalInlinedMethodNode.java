@@ -64,7 +64,7 @@ public final class GuardedConditionalInlinedMethodNode extends InlinedMethodNode
             }
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex, method.getMethod());
+            return getBytecodeNode().reQuickenInvoke(frame, top, opcode, getCallerBCI(), statementIndex);
         }
     }
 

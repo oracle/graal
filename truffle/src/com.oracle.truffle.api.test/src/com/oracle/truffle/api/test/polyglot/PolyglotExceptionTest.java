@@ -53,7 +53,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.io.Serial;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -106,6 +108,114 @@ import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static class TestGuestErrorWithMetaObject extends AbstractTruffleException {
+
+        @Serial private static final long serialVersionUID = -7127537039713589511L;
+
+        private final String exceptionMessage;
+        private final transient Object metaObject;
+
+        TestGuestErrorWithMetaObject(String exceptionMessage) {
+            super(exceptionMessage);
+            this.exceptionMessage = exceptionMessage;
+            this.metaObject = new TestMetaObject(this, "MetaObjectName", "metaobject.MetaObjectName");
+        }
+
+        @ExportMessage
+        boolean hasExceptionMessage() {
+            return exceptionMessage != null;
+        }
+
+        @ExportMessage
+        Object getExceptionMessage() throws UnsupportedMessageException {
+            if (exceptionMessage != null) {
+                return exceptionMessage;
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @ExportMessage
+        boolean hasMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMetaObject() {
+            return metaObject;
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class TestMetaObject implements TruffleObject {
+
+        private final Object original;
+        private final String name;
+        private final String qualifiedName;
+
+        TestMetaObject(Object original, String name, String qualifiedName) {
+            this.original = original;
+            this.name = name;
+            this.qualifiedName = qualifiedName;
+        }
+
+        @ExportMessage
+        boolean isMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMetaQualifiedName() {
+            return qualifiedName;
+        }
+
+        @ExportMessage
+        Object getMetaSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        boolean isMetaInstance(Object instance) {
+            return original.equals(instance);
+        }
+    }
+
+    @Test
+    public void testExceptionPrinting() throws IOException {
+        try (Context context1 = Context.create()) {
+            TestGuestError testGuestError = new TestGuestError();
+            testGuestError.exceptionMessage = "Test exception message";
+            PolyglotException pe = context1.asValue(testGuestError).as(PolyglotException.class);
+            assertStackTraceStart(pe, PolyglotException.class.getName() + ": Test exception message");
+            TestGuestErrorWithMetaObject testGuestErrorWithMetaObject = new TestGuestErrorWithMetaObject("Test exception message");
+            pe = context1.asValue(testGuestErrorWithMetaObject).as(PolyglotException.class);
+            assertStackTraceStart(pe, "metaobject.MetaObjectName: Test exception message");
+            pe = Assert.assertThrows("ExceptionMessage", PolyglotException.class, () -> context1.eval("instrumentation-test-language", "THROW(NPE, ExceptionMessage)"));
+            assertStackTraceStart(pe, "NPE: ExceptionMessage");
+
+            context1.close(true);
+            pe = Assert.assertThrows("Context execution was cancelled.", PolyglotException.class, () -> context1.eval("instrumentation-test-language", "STATEMENT"));
+            assertStackTraceStart(pe, PolyglotException.class.getName() + ": Context execution was cancelled.");
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
+        }
+    }
+
+    private static void assertStackTraceStart(PolyglotException pe, String expected) throws IOException {
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(); PrintStream printStream = new PrintStream(byteArrayOutputStream)) {
+            pe.printStackTrace(printStream);
+            String stackTrace = byteArrayOutputStream.toString();
+            Assert.assertEquals(expected, stackTrace.substring(0, stackTrace.indexOf(System.lineSeparator())));
+        }
+    }
 
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("serial")

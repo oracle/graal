@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.regist
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.FileSystems;
@@ -52,7 +53,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 
-import com.oracle.svm.hosted.substitute.DynamicHubPlugin;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
@@ -90,8 +90,6 @@ import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.HostedValuesProvider;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
-import com.oracle.graal.pointsto.heap.ImageLayerSnapshotUtil;
-import com.oracle.graal.pointsto.heap.ImageLayerWriter;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisFactory;
@@ -127,8 +125,6 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
-import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
@@ -170,7 +166,6 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.riscv64.RISCV64CPUFeatureAccess;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
@@ -224,8 +219,6 @@ import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 import com.oracle.svm.hosted.heap.ObservableImageHeapMapProviderImpl;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.hosted.heap.SVMImageHeapVerifier;
-import com.oracle.svm.hosted.heap.SVMImageLayerLoader;
-import com.oracle.svm.hosted.heap.SVMImageLayerWriter;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
@@ -233,6 +226,9 @@ import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.imagelayer.LoadImageSingletonFeature;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerSnapshotUtil;
+import com.oracle.svm.hosted.imagelayer.SVMImageLayerWriter;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -253,6 +249,7 @@ import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
+import com.oracle.svm.hosted.substitute.DynamicHubPlugin;
 import com.oracle.svm.hosted.substitute.SubstitutionInvocationPlugins;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
@@ -469,19 +466,25 @@ public class NativeImageGenerator {
                     }
                 }
             }
-            AMD64 architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
+            // Graal backend does not use the second argument `flags' passed to the AMD64
+            // constructor. Instead, it tests CPU feature directly.
+            AMD64 architecture = new AMD64(features, null);
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
             EnumSet<AArch64.CPUFeature> features = CPUTypeAArch64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(AArch64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), AArch64.CPUFeature.values()));
-            AArch64 architecture = new AArch64(features, AArch64CPUFeatureAccess.enabledAArch64Flags());
+            // Graal backend does not use the second argument `flags' passed to the AArch64
+            // constructor. Instead, it tests CPU feature directly.
+            AArch64 architecture = new AArch64(features, null);
             // runtime checked features are the same as static features on AArch64 for now
             EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.RISCV64.class)) {
             EnumSet<RISCV64.CPUFeature> features = CPUTypeRISCV64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(RISCV64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), RISCV64.CPUFeature.values()));
-            RISCV64 architecture = new RISCV64(features, RISCV64CPUFeatureAccess.enabledRISCV64Flags());
+            // Graal backend does not use the second argument `flags' passed to the RISCV64
+            // constructor. Instead, it tests CPU feature directly.
+            RISCV64 architecture = new RISCV64(features, null);
             // runtime checked features are the same as static features on RISCV64 for now
             EnumSet<RISCV64.CPUFeature> runtimeCheckedFeatures = architecture.getFeatures().clone();
             return new SubstrateTargetDescription(architecture, true, 16, 0, runtimeCheckedFeatures);
@@ -568,11 +571,6 @@ public class NativeImageGenerator {
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
                 return;
-            }
-
-            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
-                HostedImageLayerBuildingSupport.singleton().getWriter().persistAnalysisParsedGraphs();
             }
 
             NativeImageHeap heap;
@@ -809,6 +807,9 @@ public class NativeImageGenerator {
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
                     ImageSingletons.lookup(LoadImageSingletonFeature.class).processRegisteredSingletons(aUniverse);
                 }
+                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
+                    HostedImageLayerBuildingSupport.singleton().getWriter().initializeExternalValues();
+                }
             }
 
             try (ReporterClosable c = ProgressReporter.singleton().printAnalysis(bb.getUniverse(), nativeLibraries.getLibraries())) {
@@ -899,9 +900,6 @@ public class NativeImageGenerator {
                     SubstitutionProcessor harnessSubstitutions, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = TimerCollection.createTimerAndStart(TimerCollection.Registry.SETUP)) {
-                if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    HostedImageLayerBuildingSupport.setupImageLayerArtifacts(imageName);
-                }
                 SubstrateTargetDescription target = createTarget();
                 ImageSingletons.add(Platform.class, loader.platform);
                 ImageSingletons.add(SubstrateTargetDescription.class, target);
@@ -944,6 +942,8 @@ public class NativeImageGenerator {
                 featureHandler.registerFeatures(loader, debug);
                 BuildPhaseProvider.markFeatureRegistrationFinished();
 
+                loader.initBuilderModules();
+
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
                 setDefaultLibCIfMissing();
@@ -954,21 +954,23 @@ public class NativeImageGenerator {
 
                 setDefaultConfiguration();
 
-                ImageLayerSnapshotUtil imageLayerSnapshotUtil = null;
+                SVMImageLayerSnapshotUtil imageLayerSnapshotUtil = null;
                 if (ImageLayerBuildingSupport.buildingImageLayer()) {
                     imageLayerSnapshotUtil = HostedConfiguration.instance().createSVMImageLayerSnapshotUtil(loader);
                 }
 
+                Boolean useSharedLayerGraphs = SubstrateOptions.UseSharedLayerGraphs.getValue();
+                Boolean useSharedLayerStrengthenedGraphs = SubstrateOptions.UseSharedLayerStrengthenedGraphs.getValue();
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    SVMImageLayerWriter imageLayerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
-                    imageLayerWriter.setImageLayerSnapshotUtil(imageLayerSnapshotUtil);
-                    imageLayerWriter.setImageLayerWriterHelper(HostedConfiguration.instance().createSVMImageLayerWriterHelper(imageLayerWriter));
+                    SVMImageLayerWriter imageLayerWriter = HostedConfiguration.instance().createSVMImageLayerWriter(imageLayerSnapshotUtil, useSharedLayerGraphs, useSharedLayerStrengthenedGraphs);
+                    HostedImageLayerBuildingSupport.singleton().setWriter(imageLayerWriter);
+                    HostedImageLayerBuildingSupport.setupImageLayerArtifacts(imageName);
                 }
 
                 if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-                    SVMImageLayerLoader imageLayerLoader = HostedImageLayerBuildingSupport.singleton().getLoader();
-                    imageLayerLoader.setImageLayerSnapshotUtil(imageLayerSnapshotUtil);
-                    imageLayerLoader.setImageLayerLoaderHelper(HostedConfiguration.instance().createSVMImageLayerLoaderHelper());
+                    HostedImageLayerBuildingSupport imageLayerBuildingSupport = HostedImageLayerBuildingSupport.singleton();
+                    SVMImageLayerLoader imageLayerLoader = HostedConfiguration.instance().createSVMImageLayerLoader(imageLayerSnapshotUtil, imageLayerBuildingSupport, useSharedLayerGraphs);
+                    imageLayerBuildingSupport.setLoader(imageLayerLoader);
                 }
 
                 AnnotationSubstitutionProcessor annotationSubstitutions = createAnnotationSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
@@ -977,7 +979,7 @@ public class NativeImageGenerator {
                                 classInitializationSupport, Collections.singletonList(harnessSubstitutions), missingRegistrationSupport);
 
                 if (ImageLayerBuildingSupport.buildingSharedLayer()) {
-                    ImageLayerWriter imageLayerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
+                    SVMImageLayerWriter imageLayerWriter = HostedImageLayerBuildingSupport.singleton().getWriter();
                     aUniverse.setImageLayerWriter(imageLayerWriter);
                     imageLayerWriter.setAnalysisUniverse(aUniverse);
                 }
@@ -1657,17 +1659,17 @@ public class NativeImageGenerator {
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
                 if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {
-                    checkName(method.format("%H.%n(%p)"), method, bb);
+                    checkName(bb, method);
                 }
             }
             for (AnalysisField field : aUniverse.getFields()) {
                 if (field.isAccessed()) {
-                    checkName(field.format("%H.%n"), null, bb);
+                    checkName(bb, field);
                 }
             }
             for (AnalysisType type : aUniverse.getTypes()) {
                 if (type.isReachable()) {
-                    checkName(type.toJavaName(true), null, bb);
+                    checkName(bb, type);
                 }
             }
         }
@@ -1699,32 +1701,47 @@ public class NativeImageGenerator {
         // the unsupported features are reported after checkUniverse is invoked
     }
 
-    public static void checkName(String name, AnalysisMethod method, BigBang bb) {
+    public static void checkName(BigBang bb, AnalysisMethod method) {
+        String format = method.format("%H.%n(%p)");
+        checkName(bb, method, format);
+    }
+
+    public static void checkName(BigBang bb, AnalysisField field) {
+        String format = field.format("%H.%n");
+        checkName(bb, null, format);
+    }
+
+    public static void checkName(BigBang bb, Field field) {
+        String format = field.getType().getName() + "." + field.getName();
+        checkName(bb, null, format);
+    }
+
+    public static void checkName(BigBang bb, AnalysisType type) {
+        String format = type.toJavaName(true);
+        checkName(bb, null, format);
+    }
+
+    private static void checkName(BigBang bb, AnalysisMethod method, String format) {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
          * The same holds for "host VM" elements, which come from the hosting VM, unless they are
          * JDK internal types.
          */
-        String message = checkName(name);
-        if (message != null) {
-            if (bb != null) {
-                bb.getUnsupportedFeatures().addMessage(name, method, message);
-            } else {
-                throw new UnsupportedFeatureException(message);
-            }
+        String lformat = format.toLowerCase(Locale.ROOT);
+        if (lformat.contains("hosted")) {
+            report(bb, format, method, "Hosted element used at run time: " + format + ".");
+        } else if (!lformat.startsWith("jdk.internal") && lformat.contains("hotspot")) {
+            report(bb, format, method, "HotSpot element used at run time: " + format + ".");
         }
     }
 
-    public static String checkName(String name) {
-        String lname = name.toLowerCase(Locale.ROOT);
-        String message = null;
-        if (lname.contains("hosted")) {
-            message = "Hosted element used at run time: " + name;
-        } else if (!name.startsWith("jdk.internal") && lname.contains("hotspot")) {
-            message = "HotSpot element used at run time: " + name;
+    private static void report(BigBang bb, String key, AnalysisMethod method, String message) {
+        if (bb != null) {
+            bb.getUnsupportedFeatures().addMessage(key, method, message);
+        } else {
+            throw new UnsupportedFeatureException(message);
         }
-        return message;
     }
 
     @SuppressWarnings("try")

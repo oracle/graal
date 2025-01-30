@@ -615,6 +615,27 @@ public class NativeImage {
                 builderJavaArgs.add("-XX:+UseJVMCINativeLibrary");
             } else if (getHostFlags().hasUseJVMCICompiler()) {
                 builderJavaArgs.add("-XX:-UseJVMCICompiler");
+
+                if (JavaVersionUtil.JAVA_SPEC == 21) {
+                    Runtime.Version version = Runtime.version();
+                    if (version.interim() == 0 && version.update() < 4) {
+                        /*
+                         * Native Image regularly crashes due to JDK-8328702. In JDK 21, the fix
+                         * only landed in 20.0.4 so in earlier JDK 21 versions, disable C2. This
+                         * workaround can be removed when GR-55515, GR-60648 or GR-60669 is
+                         * resolved.
+                         */
+                        builderJavaArgs.add("-XX:TieredStopAtLevel=1");
+
+                        /*
+                         * From the java man page section on ReservedCodeCacheSize: "the default
+                         * maximum code cache size is 240 MB; if you disable tiered compilation ...
+                         * then the default size is 48 MB". Experience shows that Native Image needs
+                         * the larger code cache, even when C2 is disabled.
+                         */
+                        builderJavaArgs.add("-XX:ReservedCodeCacheSize=240M");
+                    }
+                }
             }
 
             return builderJavaArgs;
@@ -758,6 +779,7 @@ public class NativeImage {
                 }
                 forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
                 forEachPropertyValue(properties.get("Args"), args, resolver);
+                forEachPropertyValue(properties.get("ProvidedHostedOptions"), apiOptionHandler::injectKnownHostedOption, resolver);
             } else {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
@@ -1037,12 +1059,12 @@ public class NativeImage {
             char boolPrefix = option.length() > oH.length() ? option.charAt(oH.length()) : 0;
             if (boolPrefix == '-' || boolPrefix == '+') {
                 if (eqIndex != -1) {
-                    showError("Invalid boolean native-image hosted-option " + option + " at " + origin);
+                    showError("Malformed boolean native-image hosted-option '" + option + "' (boolean option with extraneous '=') from " + OptionOrigin.from(origin) + ".");
                 }
                 return option + optionOriginSeparator + origin;
             } else {
                 if (eqIndex == -1) {
-                    showError("Invalid native-image hosted-option " + option + " at " + origin);
+                    showError("Malformed native-image hosted-option '" + option + "' ('=' missing after option name) from " + OptionOrigin.from(origin) + ".");
                 }
                 String front = option.substring(0, eqIndex);
                 String back = option.substring(eqIndex);
@@ -1957,14 +1979,14 @@ public class NativeImage {
         environment.putAll(restrictedEnvironment);
     }
 
-    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = NativeImage::new;
+    protected static Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = NativeImage::new;
 
     public static void main(String[] args) {
         performBuild(new BuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);
     }
 
     public static List<String> translateAPIOptions(List<String> arguments) {
-        var handler = new APIOptionHandler(new NativeImage(new BuildConfiguration(arguments)));
+        var handler = new APIOptionHandler(defaultNativeImageProvider.apply(new BuildConfiguration(arguments)));
         var argumentQueue = new ArgumentQueue(OptionOrigin.originDriver);
         handler.nativeImage.config.args.forEach(argumentQueue::add);
         List<String> translatedOptions = new ArrayList<>();
@@ -2483,12 +2505,12 @@ public class NativeImage {
     }
 
     private static boolean hasColorSupport() {
-        return !isDumbTerm() && !SubstrateUtil.isRunningInCI() && OS.getCurrent() != OS.WINDOWS &&
+        return !isDumbTerm() && !SubstrateUtil.isNonInteractiveTerminal() && OS.getCurrent() != OS.WINDOWS &&
                         System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
     }
 
     private static boolean hasProgressSupport(List<String> imageBuilderArgs) {
-        if (isDumbTerm() || SubstrateUtil.isRunningInCI()) {
+        if (isDumbTerm() || SubstrateUtil.isNonInteractiveTerminal()) {
             return false;
         }
 
@@ -2537,8 +2559,10 @@ public class NativeImage {
         return useColorfulOutput;
     }
 
+    static final String MANY_SPACES_REGEX = "\\s+";
+
     static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver) {
-        return forEachPropertyValue(propertyValue, target, resolver, "\\s+");
+        return forEachPropertyValue(propertyValue, target, resolver, MANY_SPACES_REGEX);
     }
 
     static boolean forEachPropertyValue(String propertyValue, Consumer<String> target, Function<String, String> resolver, String separatorRegex) {

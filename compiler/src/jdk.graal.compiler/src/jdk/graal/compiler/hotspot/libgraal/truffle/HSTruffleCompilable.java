@@ -24,19 +24,20 @@
  */
 package jdk.graal.compiler.hotspot.libgraal.truffle;
 
-import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.HotSpotGraalServices;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.SpeculationLog;
+import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
 
 import java.lang.invoke.MethodHandle;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.SpeculationLog;
 
 final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompilable {
 
@@ -123,6 +124,11 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
         } catch (Throwable t) {
             throw handleException(t);
         }
+    }
+
+    @Override
+    public void onCompilationSuccess(int compilationTier, boolean lastTier) {
+        NativeImageHostCalls.onCompilationSuccess(hsHandle, compilationTier, lastTier);
     }
 
     @Override

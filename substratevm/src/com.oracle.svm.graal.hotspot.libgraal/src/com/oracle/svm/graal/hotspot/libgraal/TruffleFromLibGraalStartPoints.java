@@ -95,11 +95,12 @@ import org.graalvm.nativebridge.BinaryInput;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * JNI calls to HotSpot called by guest Graal using method handles.
@@ -300,6 +301,29 @@ public final class TruffleFromLibGraalStartPoints {
                         suppressed, bailout, permanentBailout, graphTooBig);
     }
 
+    private static volatile JNIMethod onCompilationSuccessMethod;
+
+    private static JNIMethod findOnCompilationSuccessMethod(JNIEnv env) {
+        JNIMethod res = onCompilationSuccessMethod;
+        if (res == null) {
+            res = findJNIMethod(env, "onCompilationSuccess", void.class, Object.class, int.class, boolean.class);
+            onCompilationSuccessMethod = res;
+        }
+        return res.getJMethodID().isNonNull() ? res : null;
+    }
+
+    public static void onCompilationSuccess(Object hsHandle, int compilationTier, boolean lastTier) {
+        JNIEnv env = JNIMethodScope.env();
+        JNIMethod methodOrNull = findOnCompilationSuccessMethod(env);
+        if (methodOrNull != null) {
+            JValue args = StackValue.get(3, JValue.class);
+            args.addressOf(0).setJObject(((HSObject) hsHandle).getHandle());
+            args.addressOf(1).setInt(compilationTier);
+            args.addressOf(2).setBoolean(lastTier);
+            calls.getJNICalls().callStaticVoid(env, calls.getPeer(), methodOrNull, args);
+        }
+    }
+
     @TruffleFromLibGraal(Id.GetCompilableName)
     public static String getCompilableName(Object hsHandle) {
         JNIEnv env = JNIMethodScope.env();
@@ -340,7 +364,7 @@ public final class TruffleFromLibGraalStartPoints {
     public static boolean isSameOrSplit(Object hsHandle, Object otherHsHandle) {
         JNIEnv env = JNIMethodScope.env();
         return callIsSameOrSplit(calls, env, ((HSObject) hsHandle).getHandle(),
-                        otherHsHandle == null ? WordFactory.nullPointer() : ((HSObject) otherHsHandle).getHandle());
+                        otherHsHandle == null ? Word.nullPointer() : ((HSObject) otherHsHandle).getHandle());
     }
 
     @TruffleFromLibGraal(Id.GetKnownCallSiteCount)
@@ -353,7 +377,7 @@ public final class TruffleFromLibGraalStartPoints {
     public static void consumeOptimizedAssumptionDependency(Object hsHandle, Object compilableHsHandle, long installedCode) {
         JNIEnv env = JNIMethodScope.env();
         callConsumeOptimizedAssumptionDependency(calls, env, ((HSObject) hsHandle).getHandle(),
-                        compilableHsHandle == null ? WordFactory.nullPointer() : ((HSObject) compilableHsHandle).getHandle(),
+                        compilableHsHandle == null ? Word.nullPointer() : ((HSObject) compilableHsHandle).getHandle(),
                         installedCode);
     }
 

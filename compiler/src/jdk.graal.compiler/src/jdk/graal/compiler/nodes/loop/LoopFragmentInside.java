@@ -420,9 +420,21 @@ public class LoopFragmentInside extends LoopFragment {
         }
     }
 
-    public static ValueNode patchProxyAtPhi(PhiNode phi, LoopExitNode lex, ValueNode proxyInput) {
+    public static ProxyNode patchProxyAtPhi(PhiNode phi, LoopExitNode lex, ValueNode proxyInput) {
+        return patchProxyAtPhi(phi, lex, proxyInput, false);
+    }
+
+    public static ProxyNode patchProxyAtPhi(PhiNode phi, LoopExitNode lex, ValueNode proxyInput, boolean unrestrictedStamp) {
         if (phi instanceof ValuePhiNode) {
-            return phi.graph().addOrUnique(new ValueProxyNode(proxyInput, lex));
+            if (unrestrictedStamp) {
+                /*
+                 * Delay precise stamp injection to the first time #inferStamp is called on the
+                 * value proxy.
+                 */
+                return phi.graph().addOrUnique(new ValueProxyNode(proxyInput.stamp(NodeView.DEFAULT).unrestricted(), proxyInput, lex));
+            } else {
+                return phi.graph().addOrUnique(new ValueProxyNode(proxyInput, lex));
+            }
         } else if (phi instanceof MemoryPhiNode) {
             return phi.graph().addOrUnique(new MemoryProxyNode((MemoryKill) proxyInput, lex, ((MemoryPhiNode) phi).getLocationIdentity()));
         } else if (phi instanceof GuardPhiNode) {

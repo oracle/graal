@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -40,7 +41,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.OS;
@@ -145,7 +145,7 @@ public class ForeignFunctionsRuntime {
             return;
         }
 
-        Pointer trampolinePointer = WordFactory.pointer(trampolineAddress);
+        Pointer trampolinePointer = Word.pointer(trampolineAddress);
         Pointer trampolineSetBase = TrampolineSet.getAllocationBase(trampolinePointer);
         TrampolineSet trampolineSet = trampolines.get(trampolineSetBase.rawValue());
         if (trampolineSet == null) {
@@ -174,7 +174,7 @@ public class ForeignFunctionsRuntime {
 
     void freeTrampoline(long addr) {
         synchronized (trampolines) {
-            long base = TrampolineSet.getAllocationBase(WordFactory.pointer(addr)).rawValue();
+            long base = TrampolineSet.getAllocationBase(Word.pointer(addr)).rawValue();
             TrampolineSet trampolineSet = trampolines.get(base);
             if (trampolineSet.tryFree()) {
                 trampolines.remove(base);
@@ -224,7 +224,7 @@ public class ForeignFunctionsRuntime {
      */
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-23+12/src/hotspot/share/prims/downcallLinker.cpp")
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+7/src/hotspot/share/prims/downcallLinker.cpp")
     public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
         assert statesToCapture != 0;
         assert captureBuffer.isNonNull();

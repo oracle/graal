@@ -41,6 +41,12 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.util.ClassUtil;
+import com.oracle.svm.util.StringUtil;
+
 import jdk.graal.compiler.options.EnumMultiOptionKey;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionDescriptors;
@@ -48,12 +54,13 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionsParser;
 
-import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.StringUtil;
-
 public class CommonOptionParser {
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public static final String HOSTED_OPTION_PREFIX = "-H:";
     public static final String RUNTIME_OPTION_PREFIX = "-R:";
+    public static final char PLUS_MINUS_BOOLEAN_OPTION_PREFIX = '\u00b1';
+    public static final String MISMATCH_BOOLEAN_OPTION = "Boolean option %s must have " + PLUS_MINUS_BOOLEAN_OPTION_PREFIX + " prefix. Use '" + PLUS_MINUS_BOOLEAN_OPTION_PREFIX + "%s' format.";
+    public static final String MISMATCH_NON_BOOLEAN_OPTION = "Non-boolean option %s can not use " + PLUS_MINUS_BOOLEAN_OPTION_PREFIX + " prefix. Use '%s=<value>' format.";
 
     public static final int PRINT_OPTION_INDENTATION = 2;
     public static final int PRINT_OPTION_WIDTH = 45;
@@ -239,7 +246,7 @@ public class CommonOptionParser {
 
         if (value == null) {
             if (optionType == Boolean.class && booleanOptionFormat == BooleanOptionFormat.PLUS_MINUS) {
-                return OptionParseResult.error("Boolean option " + current + " must have +/- prefix");
+                return OptionParseResult.error(MISMATCH_BOOLEAN_OPTION.formatted(current, current.name));
             }
             if (valueString == null) {
                 return OptionParseResult.error("Missing value for option " + current);
@@ -254,7 +261,7 @@ public class CommonOptionParser {
             }
         } else {
             if (optionType != Boolean.class) {
-                return OptionParseResult.error("Non-boolean option " + current + " can not use +/- prefix. Use '" + current.name + "=<value>' format");
+                return OptionParseResult.error(MISMATCH_NON_BOOLEAN_OPTION.formatted(current, current.name));
             }
         }
 
@@ -542,7 +549,7 @@ public class CommonOptionParser {
                         helpMsg += "Default: - (disabled).";
                     }
                 }
-                printOption(out, prefix + "\u00b1" + descriptor.getName(), helpMsg + verboseHelp, verbose, wrapWidth);
+                printOption(out, prefix + PLUS_MINUS_BOOLEAN_OPTION_PREFIX + descriptor.getName(), helpMsg + verboseHelp, verbose, wrapWidth);
             } else { // print all other options
                 if (defaultValue == null) {
                     if (helpLen != 0) {

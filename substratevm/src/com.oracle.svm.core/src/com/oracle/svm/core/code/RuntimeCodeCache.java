@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
+import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -35,7 +36,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
@@ -113,7 +113,7 @@ public class RuntimeCodeCache {
         lookupMethodCount.inc();
         assert verifyTable();
         if (numCodeInfos == 0) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         int idx = binarySearch(codeInfos, 0, numCodeInfos, ip);
@@ -126,14 +126,14 @@ public class RuntimeCodeCache {
         if (insertionPoint == 0) {
             /* ip is below the first method, so no hit. */
             assert ((UnsignedWord) ip).belowThan((UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(NonmovableArrays.getWord(codeInfos, 0)));
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         UntetheredCodeInfo info = NonmovableArrays.getWord(codeInfos, insertionPoint - 1);
         assert ((UnsignedWord) ip).aboveThan((UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(info));
         if (((UnsignedWord) ip).subtract((UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(info)).aboveOrEqual(UntetheredCodeInfoAccess.getCodeSize(info))) {
             /* ip is not within the range of a method. */
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
 
         return info;
@@ -255,7 +255,7 @@ public class RuntimeCodeCache {
         assert idx >= 0 : "info must be in table";
         NonmovableArrays.arraycopy(codeInfos, idx + 1, codeInfos, idx, numCodeInfos - (idx + 1));
         numCodeInfos--;
-        NonmovableArrays.setWord(codeInfos, numCodeInfos, WordFactory.nullPointer());
+        NonmovableArrays.setWord(codeInfos, numCodeInfos, Word.nullPointer());
 
         RuntimeCodeInfoAccess.markAsInvalidated(info);
         assert verifyTable();

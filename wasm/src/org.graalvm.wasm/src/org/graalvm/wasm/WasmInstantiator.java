@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,16 +50,13 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
 import org.graalvm.wasm.constants.SegmentMode;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
+import org.graalvm.wasm.nodes.WasmFixedMemoryImplFunctionNode;
+import org.graalvm.wasm.nodes.WasmFunctionRootNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
-import org.graalvm.wasm.nodes.WasmInstrumentableFunctionNode;
-import org.graalvm.wasm.nodes.WasmMemoryOverheadModeRootNode;
-import org.graalvm.wasm.nodes.WasmRootNode;
+import org.graalvm.wasm.nodes.WasmMemoryOverheadModeFunctionRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
@@ -74,22 +71,6 @@ import com.oracle.truffle.api.nodes.Node;
  * Creates wasm instances by converting parser nodes into Truffle nodes.
  */
 public class WasmInstantiator {
-    private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
-    private static final int MAX_DEFAULT_ASYNC_STACK_SIZE = 10_000_000;
-
-    private static class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
-        private Throwable parsingException = null;
-
-        @Override
-        public void uncaughtException(Thread t, Throwable e) {
-            this.parsingException = e;
-        }
-
-        public Throwable parsingException() {
-            return parsingException;
-        }
-    }
-
     private final WasmLanguage language;
 
     @TruffleBoundary
@@ -101,30 +82,7 @@ public class WasmInstantiator {
     public WasmInstance createInstance(WasmContext context, WasmModule module, TruffleContext truffleContext) {
         WasmInstance instance = new WasmInstance(context, module, truffleContext);
         instance.createLinkActions();
-        int binarySize = instance.module().bytecodeLength();
-        final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
-        if (binarySize < asyncParsingBinarySize || !context.environment().isCreateThreadAllowed()) {
-            instantiateCodeEntries(context, instance);
-        } else {
-            final Runnable parsing = () -> instantiateCodeEntries(context, instance);
-            final String name = "wasm-parsing-thread(" + instance.name() + ")";
-            final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
-            final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
-            final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
-            final Thread parsingThread = context.environment().newTruffleThreadBuilder(parsing).stackSize(stackSize).build();
-            parsingThread.setName(name);
-            final ParsingExceptionHandler handler = new ParsingExceptionHandler();
-            parsingThread.setUncaughtExceptionHandler(handler);
-            parsingThread.start();
-            try {
-                parsingThread.join();
-                if (handler.parsingException() != null) {
-                    throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Asynchronous parsing failed.");
-                }
-            } catch (InterruptedException e) {
-                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Asynchronous parsing interrupted.");
-            }
-        }
+        instantiateCodeEntries(context, instance);
         return instance;
     }
 
@@ -235,10 +193,9 @@ public class WasmInstantiator {
             } else {
                 linkActions.add((context, instance, imports) -> {
                     final ModuleLimits limits = instance.module().limits();
-                    final long maxAllowedSize = WasmMath.minUnsigned(memoryMaxSize, limits.memoryInstanceSizeLimit());
                     limits.checkMemoryInstanceSize(memoryMinSize, memoryIndexType64);
-                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, maxAllowedSize, memoryIndexType64, memoryShared,
-                                    context.getContextOptions().useUnsafeMemory());
+                    final WasmMemory wasmMemory = WasmMemoryFactory.createMemory(memoryMinSize, memoryMaxSize, memoryIndexType64, memoryShared,
+                                    context.getContextOptions().useUnsafeMemory(), context.getContextOptions().directByteBufferMemoryAccess());
                     final int address = context.memories().register(wasmMemory);
                     final WasmMemory allocatedMemory = context.memories().memory(address);
                     instance.setMemory(memoryIndex, allocatedMemory);
@@ -352,7 +309,7 @@ public class WasmInstantiator {
             } else {
                 final int dataBytecodeOffset = effectiveOffset;
                 linkActions.add((context, instance, imports) -> {
-                    context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataBytecodeOffset, dataLength);
+                    context.linker().resolvePassiveDataSegment(context, instance, dataIndex, dataBytecodeOffset);
                 });
             }
         }
@@ -498,12 +455,13 @@ public class WasmInstantiator {
         }
         final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes(), codeEntry.usesMemoryZero());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
-        final WasmInstrumentableFunctionNode functionNode = instantiateFunctionNode(module, instance, wasmCodeEntry, codeEntry);
-        final WasmRootNode rootNode;
+        final Node[] callNodes = setupCallNodes(module, instance, codeEntry);
+        final WasmFixedMemoryImplFunctionNode functionNode = WasmFixedMemoryImplFunctionNode.create(module, wasmCodeEntry, codeEntry.bytecodeStartOffset(), codeEntry.bytecodeEndOffset(), callNodes);
+        final WasmFunctionRootNode rootNode;
         if (context.getContextOptions().memoryOverheadMode()) {
-            rootNode = new WasmMemoryOverheadModeRootNode(language, frameDescriptor, functionNode);
+            rootNode = new WasmMemoryOverheadModeFunctionRootNode(language, frameDescriptor, module, functionNode, wasmCodeEntry);
         } else {
-            rootNode = new WasmRootNode(language, frameDescriptor, functionNode);
+            rootNode = new WasmFunctionRootNode(language, frameDescriptor, module, functionNode, wasmCodeEntry);
         }
         var callTarget = rootNode.getCallTarget();
         if (context.language().isMultiContext()) {
@@ -514,8 +472,7 @@ public class WasmInstantiator {
         return callTarget;
     }
 
-    private static WasmInstrumentableFunctionNode instantiateFunctionNode(WasmModule module, WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
-        final WasmFunctionNode currentFunction = new WasmFunctionNode(module, codeEntry, entry.bytecodeStartOffset(), entry.bytecodeEndOffset());
+    private static Node[] setupCallNodes(WasmModule module, WasmInstance instance, CodeEntry entry) {
         List<CallNode> childNodeList = entry.callNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;
@@ -540,13 +497,11 @@ public class WasmInstantiator {
                 }
                 final int stubIndex = childIndex;
                 instance.addLinkAction((ctx, inst, imports) -> {
-                    ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, bytecodeIndex, resolvedFunction);
+                    ctx.linker().resolveCallsite(inst, callNodes, entry.bytecodeStartOffset(), stubIndex, bytecodeIndex, resolvedFunction);
                 });
             }
             callNodes[childIndex++] = child;
         }
-        currentFunction.initializeCallNodes(callNodes);
-        final int sourceCodeLocation = module.functionSourceCodeStartOffset(codeEntry.functionIndex());
-        return new WasmInstrumentableFunctionNode(module, codeEntry, currentFunction, sourceCodeLocation);
+        return callNodes;
     }
 }

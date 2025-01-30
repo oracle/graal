@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -369,7 +369,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             sample.put("self_tier_count", selfTierCount);
             int[] tierCount = new int[payload.getNumberOfTiers()];
             for (int i = 0; i < tierCount.length; i++) {
-                tierCount[i] = payload.getTierSelfCount(i);
+                tierCount[i] = payload.getTierTotalCount(i);
             }
             sample.put("tier_count", tierCount);
             sample.put("children", getSamplesRec(node.getChildren()));
@@ -718,7 +718,10 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         private void calculateMaxValuesRec(ProfilerNode<CPUSampler.Payload> node, int depth) {
             maxNameLength = Math.max(maxNameLength, node.getRootName().length() + OutputEntry.computeIndentSize(depth));
-            tiers.add(node.getPayload().getNumberOfTiers() - 1);
+            int numberOfTiers = node.getPayload().getNumberOfTiers();
+            for (int i = 0; i < numberOfTiers; i++) {
+                tiers.add(i);
+            }
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
                 calculateMaxValuesRec(child, depth + 1);
             }
@@ -759,7 +762,10 @@ class CPUSamplerCLI extends ProfilerCLI {
 
         private CallTreeOutputEntry makeEntry(ProfilerNode<CPUSampler.Payload> node, int depth) {
             maxNameLength = Math.max(maxNameLength, node.getRootName().length() + OutputEntry.computeIndentSize(depth));
-            tiers.add(node.getPayload().getNumberOfTiers() - 1);
+            int numberOfTiers = node.getPayload().getNumberOfTiers();
+            for (int i = 0; i < numberOfTiers; i++) {
+                tiers.add(i);
+            }
             CallTreeOutputEntry entry = new CallTreeOutputEntry(node);
             for (ProfilerNode<CPUSampler.Payload> child : node.getChildren()) {
                 entry.children.add(makeEntry(child, depth + 1));

@@ -24,14 +24,15 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
+import com.oracle.truffle.espresso.classfile.descriptors.Descriptor;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Descriptor;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 public interface ClassMethodRefConstant extends MethodRefConstant {
 
-    static ClassMethodRefConstant create(int classIndex, int nameAndTypeIndex) {
+    static Indexes create(int classIndex, int nameAndTypeIndex) {
         return new Indexes(classIndex, nameAndTypeIndex);
     }
 
@@ -53,7 +54,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
             // initialization method (&sect;2.9). The return type of such a method must be void.
             pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false, true);
             Symbol<Name> name = pool.nameAndTypeAt(nameAndTypeIndex).getName(pool);
-            if (Name._init_.equals(name)) {
+            if (ParserNames._init_.equals(name)) {
                 Symbol<? extends Descriptor> descriptor = pool.nameAndTypeAt(nameAndTypeIndex).getDescriptor(pool);
                 int len = descriptor.length();
                 if (len <= 2 || (descriptor.byteAt(len - 2) != ')' || descriptor.byteAt(len - 1) != 'V')) {

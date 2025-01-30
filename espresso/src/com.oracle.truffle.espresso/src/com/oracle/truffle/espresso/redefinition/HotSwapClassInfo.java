@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.redefinition;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
@@ -36,8 +37,8 @@ public final class HotSwapClassInfo extends ClassInfo {
     private byte[] bytes;
     private byte[] patchedBytes;
     private final StaticObject classLoader;
-    private final Symbol<Symbol.Name> originalName;
-    private Symbol<Symbol.Name> newName;
+    private final Symbol<Name> originalName;
+    private Symbol<Name> newName;
 
     // below fields constitute the "fingerprint" of the class relevant for matching
     private String classFingerprint;
@@ -54,7 +55,7 @@ public final class HotSwapClassInfo extends ClassInfo {
     private HotSwapClassInfo outerClassInfo;
     private int nextNewClass = 1;
 
-    HotSwapClassInfo(ObjectKlass klass, Symbol<Symbol.Name> originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint,
+    HotSwapClassInfo(ObjectKlass klass, Symbol<Name> originalName, StaticObject classLoader, String classFingerprint, String methodFingerprint, String fieldFingerprint,
                     String enclosingMethodFingerprint,
                     ArrayList<HotSwapClassInfo> inners, byte[] bytes, boolean isEnumSwitchmapHelper, boolean isNewInnerTestKlass) {
         super(isEnumSwitchmapHelper, isNewInnerTestKlass);
@@ -88,15 +89,15 @@ public final class HotSwapClassInfo extends ClassInfo {
     }
 
     @Override
-    public Symbol<Symbol.Name> getName() {
+    public Symbol<Name> getName() {
         return originalName;
     }
 
-    public Symbol<Symbol.Name> getNewName() {
+    public Symbol<Name> getNewName() {
         return newName != null ? newName : originalName;
     }
 
-    public void rename(Symbol<Symbol.Name> name) {
+    public void rename(Symbol<Name> name) {
         this.newName = name;
     }
 
@@ -114,7 +115,7 @@ public final class HotSwapClassInfo extends ClassInfo {
         inner.setOuterClass(this);
     }
 
-    public boolean knowsInnerClass(Symbol<Symbol.Name> innerName) {
+    public boolean knowsInnerClass(Symbol<Name> innerName) {
         for (ClassInfo innerClass : innerClasses) {
             if (innerName.equals(innerClass.getName())) {
                 return true;

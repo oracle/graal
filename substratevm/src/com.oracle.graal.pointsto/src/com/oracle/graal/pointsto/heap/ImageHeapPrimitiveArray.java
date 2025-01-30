@@ -60,7 +60,7 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
         this(type, hostedObject, array, length, -1, -1);
     }
 
-    ImageHeapPrimitiveArray(AnalysisType type, JavaConstant hostedObject, Object array, int length, int identityHashCode, int id) {
+    public ImageHeapPrimitiveArray(AnalysisType type, JavaConstant hostedObject, Object array, int length, int identityHashCode, int id) {
         super(new PrimitiveArrayData(type, hostedObject,
                         /* We need a clone of the hosted array so that we have a stable snapshot. */
                         getClone(type.getComponentType().getJavaKind(), array),

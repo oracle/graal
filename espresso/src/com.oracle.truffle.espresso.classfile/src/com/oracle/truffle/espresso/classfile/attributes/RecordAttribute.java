@@ -24,11 +24,12 @@
 package com.oracle.truffle.espresso.classfile.attributes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol.Name;
 
 public class RecordAttribute extends Attribute {
-    public static final Symbol<Name> NAME = Name.Record;
+    public static final Symbol<Name> NAME = ParserNames.Record;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) //
     private final RecordComponentInfo[] components;

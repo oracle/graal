@@ -24,7 +24,8 @@
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -113,21 +114,21 @@ public final class ExceptionDispatch extends ContextAccessImpl {
 
     @CompilerDirectives.TruffleBoundary
     private static void doFullInit(StaticObject ex, ObjectKlass klass, StaticObject message, StaticObject cause) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String_Throwable).invokeDirectSpecial(ex, message, cause);
+        klass.lookupDeclaredMethod(Names._init_, Signatures._void_String_Throwable).invokeDirectSpecial(ex, message, cause);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doCauseInit(StaticObject ex, ObjectKlass klass, StaticObject cause) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_Throwable).invokeDirectSpecial(ex, cause);
+        klass.lookupDeclaredMethod(Names._init_, Signatures._void_Throwable).invokeDirectSpecial(ex, cause);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doMessageInit(StaticObject ex, ObjectKlass klass, StaticObject message) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void_String).invokeDirectSpecial(ex, message);
+        klass.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(ex, message);
     }
 
     @CompilerDirectives.TruffleBoundary
     private static void doInit(StaticObject ex, ObjectKlass klass) {
-        klass.lookupDeclaredMethod(Symbol.Name._init_, Symbol.Signature._void).invokeDirectSpecial(ex);
+        klass.lookupDeclaredMethod(Names._init_, Signatures._void).invokeDirectSpecial(ex);
     }
 }

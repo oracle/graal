@@ -28,7 +28,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
+import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
@@ -62,7 +63,7 @@ public class ThrowableInterop extends EspressoInterop {
     public static boolean hasExceptionCause(StaticObject object) {
         object.checkNotForeign();
         Meta meta = object.getKlass().getMeta();
-        Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getCause, Symbol.Signature.Throwable);
+        Method resolvedMessageMethod = object.getKlass().lookupMethod(Names.getCause, Signatures.Throwable);
         if (resolvedMessageMethod == meta.java_lang_Throwable_getCause) {
             // not overridden, then we can trust the field value
             StaticObject guestCause = meta.java_lang_Throwable_cause.getObject(object);
@@ -86,14 +87,14 @@ public class ThrowableInterop extends EspressoInterop {
         if (!hasExceptionCause(object)) {
             throw UnsupportedMessageException.create();
         }
-        return object.getKlass().lookupMethod(Symbol.Name.getCause, Symbol.Signature.Throwable).invokeDirect(object);
+        return object.getKlass().lookupMethod(Names.getCause, Signatures.Throwable).invokeDirect(object);
     }
 
     @ExportMessage
     public static boolean hasExceptionMessage(StaticObject object) {
         object.checkNotForeign();
         Meta meta = object.getKlass().getMeta();
-        Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String);
+        Method resolvedMessageMethod = object.getKlass().lookupMethod(Names.getMessage, Signatures.String);
         if (resolvedMessageMethod == meta.java_lang_Throwable_getMessage) {
             // not overridden, then we can trust the field value
             return StaticObject.notNull(meta.java_lang_Throwable_detailMessage.getObject(object));
@@ -115,6 +116,6 @@ public class ThrowableInterop extends EspressoInterop {
         if (!hasExceptionMessage(object)) {
             throw UnsupportedMessageException.create();
         }
-        return object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String).invokeDirect(object);
+        return object.getKlass().lookupMethod(Names.getMessage, Signatures.String).invokeDirect(object);
     }
 }

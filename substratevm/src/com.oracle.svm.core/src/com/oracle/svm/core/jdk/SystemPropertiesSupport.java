@@ -63,6 +63,7 @@ import jdk.graal.compiler.debug.GraalError;
 public abstract class SystemPropertiesSupport implements RuntimeSystemPropertiesSupport {
 
     /** System properties that are taken from the VM hosting the image generator. */
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private static final String[] HOSTED_PROPERTIES = {
                     "java.version",
                     "java.version.date",

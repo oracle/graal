@@ -97,7 +97,7 @@ public class WasiOptionsSuite {
         };
     }
 
-    private static class TestFileSystem implements FileSystem {
+    private static final class TestFileSystem implements FileSystem {
 
         @Override
         public Path parsePath(URI uri) {

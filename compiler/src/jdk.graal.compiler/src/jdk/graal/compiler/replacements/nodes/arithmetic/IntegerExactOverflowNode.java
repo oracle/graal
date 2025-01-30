@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,9 +31,12 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 import java.util.List;
 
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.GuardNode;
 import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
@@ -63,6 +66,14 @@ public abstract class IntegerExactOverflowNode extends LogicNode implements Cano
     @Override
     public ValueNode getY() {
         return y;
+    }
+
+    @Override
+    protected boolean verifyNode() {
+        for (Node usage : usages()) {
+            assertTrue(usage instanceof GuardNode || usage instanceof FixedGuardNode || usage instanceof IfNode, "exact overflow node must only be used by guards or ifs, found: %s", usage);
+        }
+        return super.verifyNode();
     }
 
     /**
@@ -118,6 +129,13 @@ public abstract class IntegerExactOverflowNode extends LogicNode implements Cano
             ifNode.replaceAndDelete(split);
 
             coupledNodes.forEach(n -> n.replaceAndDelete(split));
+        }
+        if (hasNoUsages()) {
+            /*
+             * We don't want GVN during canonicalization to find this node and give it usages again,
+             * since the canonicalizer would not call this simplify method again.
+             */
+            safeDelete();
         }
     }
 }
