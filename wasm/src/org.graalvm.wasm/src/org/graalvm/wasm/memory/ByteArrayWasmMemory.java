@@ -122,6 +122,14 @@ final class ByteArrayWasmMemory extends WasmMemory {
         currentMinSize = declaredMinSize;
     }
 
+    private void validateAddress(Node node, long address, long length) {
+        validateAddress(node, address, length, byteSize());
+    }
+
+    private WasmException trapOutOfBounds(Node node, long address, long length) {
+        return trapOutOfBounds(node, address, length, byteSize());
+    }
+
     // Checkstyle: stop
     @ExportMessage
     public int load_i32(Node node, long address) {
@@ -346,13 +354,6 @@ final class ByteArrayWasmMemory extends WasmMemory {
             System.arraycopy(value.getBytes(), 0, buffer(), (int) address, 16);
         } else {
             throw trapOutOfBounds(node, address, 16);
-        }
-    }
-
-    private static void validateAtomicAddress(Node node, long address, int length) {
-        if ((address & (length - 1)) != 0) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw trapUnalignedAtomic(node, address, length);
         }
     }
 
@@ -989,10 +990,8 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @ExportMessage
     @TruffleBoundary
     public int atomic_notify(Node node, long address, int count) {
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        if (outOfBounds(address, 4)) {
-            throw trapOutOfBounds(node, address, 4);
-        }
         if (!this.isShared()) {
             return 0;
         }
@@ -1002,10 +1001,8 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @ExportMessage
     @TruffleBoundary
     public int atomic_wait32(Node node, long address, int expected, long timeout) {
+        validateAddress(node, address, 4);
         validateAtomicAddress(node, address, 4);
-        if (outOfBounds(address, 4)) {
-            throw trapOutOfBounds(node, address, 4);
-        }
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
@@ -1015,10 +1012,8 @@ final class ByteArrayWasmMemory extends WasmMemory {
     @ExportMessage
     @TruffleBoundary
     public int atomic_wait64(Node node, long address, long expected, long timeout) {
+        validateAddress(node, address, 4, 8);
         validateAtomicAddress(node, address, 8);
-        if (outOfBounds(address, 8)) {
-            throw trapOutOfBounds(node, address, 8);
-        }
         if (!this.isShared()) {
             throw trapUnsharedMemory(node);
         }
@@ -1027,23 +1022,31 @@ final class ByteArrayWasmMemory extends WasmMemory {
     // Checkstyle: resume
 
     @ExportMessage
-    public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
-        assert destinationOffset + length <= byteSize();
+    public void initialize(Node node, byte[] source, int sourceOffset, long destinationOffset, int length) {
+        validateLength(node, length);
+        validateAddress(node, destinationOffset, length);
+        if (sourceOffset < 0 || sourceOffset > source.length - length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapOutOfBoundsBuffer(node, sourceOffset, length, source.length);
+        }
         System.arraycopy(source, sourceOffset, buffer(), (int) destinationOffset, length);
     }
 
     @ExportMessage
     @TruffleBoundary
-    public void fill(long offset, long length, byte value) {
-        assert offset + length <= byteSize();
+    public void fill(Node node, long offset, long length, byte value) {
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         Arrays.fill(buffer(), (int) offset, (int) (offset + length), value);
     }
 
     @ExportMessage
-    public void copyFrom(WasmMemory source, long sourceOffset, long destinationOffset, long length) {
+    public void copyFrom(Node node, WasmMemory source, long sourceOffset, long destinationOffset, long length) {
         assert source instanceof ByteArrayWasmMemory;
-        assert destinationOffset < byteSize();
         ByteArrayWasmMemory s = (ByteArrayWasmMemory) source;
+        validateLength(node, length);
+        s.validateAddress(node, sourceOffset, length);
+        validateAddress(node, destinationOffset, length);
         System.arraycopy(s.buffer(), (int) sourceOffset, buffer(), (int) destinationOffset, (int) length);
     }
 
@@ -1059,36 +1062,29 @@ final class ByteArrayWasmMemory extends WasmMemory {
         dynamicBuffer = null;
     }
 
-    private boolean outOfBounds(int offset, int length) {
-        return length < 0 || offset < 0 || offset > byteSize() - length;
-    }
-
-    private boolean outOfBounds(long offset, long length) {
-        return length < 0 || offset < 0 || offset > byteSize() - length;
-    }
-
     @ExportMessage
     @TruffleBoundary
     public int copyFromStream(Node node, InputStream stream, int offset, int length) throws IOException {
-        if (outOfBounds(offset, length)) {
-            throw trapOutOfBounds(node, offset, length);
-        }
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         return stream.read(buffer(), offset, length);
     }
 
     @ExportMessage
     @TruffleBoundary
     public void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException {
-        if (outOfBounds(offset, length)) {
-            throw trapOutOfBounds(node, offset, length);
-        }
+        validateLength(node, length);
+        validateAddress(node, offset, length);
         stream.write(buffer(), offset, length);
     }
 
     @ExportMessage
     public void copyToBuffer(Node node, byte[] dst, long srcOffset, int dstOffset, int length) {
-        if (outOfBounds(srcOffset, length)) {
-            throw trapOutOfBounds(node, srcOffset, length);
+        validateLength(node, length);
+        validateAddress(node, srcOffset, length);
+        if (dstOffset < 0 || dstOffset > dst.length - length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapOutOfBoundsBuffer(node, dstOffset, length, dst.length);
         }
         System.arraycopy(buffer(), (int) srcOffset, dst, dstOffset, length);
     }
@@ -1108,5 +1104,10 @@ final class ByteArrayWasmMemory extends WasmMemory {
         } catch (OutOfMemoryError error) {
             throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
         }
+    }
+
+    @ExportMessage
+    public static boolean freed(@SuppressWarnings("unused") ByteArrayWasmMemory memory) {
+        return true;
     }
 }
