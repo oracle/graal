@@ -188,23 +188,97 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     }
 
     @TruffleBoundary
-    protected final WasmException trapOutOfBounds(Node node, long address, int length) {
+    protected static final WasmException trapOutOfBounds(Node node, long address, long length, long byteSize) {
         final String message = String.format("%d-byte memory access at address 0x%016X (%d) is out-of-bounds (memory size %d bytes).",
-                        length, address, address, WasmMemoryLibrary.getUncached().byteSize(this));
+                        length, address, address, byteSize);
         return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
     }
 
     @TruffleBoundary
-    protected static WasmException trapUnalignedAtomic(Node node, long address, int length) {
+    protected static final WasmException trapUnalignedAtomic(Node node, long address, int length) {
         final String message = String.format("%d-byte atomic memory access at address 0x%016X (%d) is unaligned.",
                         length, address, address);
         return WasmException.create(Failure.UNALIGNED_ATOMIC, node, message);
     }
 
     @TruffleBoundary
-    protected WasmException trapUnsharedMemory(Node node) {
+    protected static final WasmException trapNegativeLength(Node node, long length) {
+        final String message = String.format("memory access of negative length %d.", length);
+        return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
+    }
+
+    @TruffleBoundary
+    protected static final WasmException trapUnsharedMemory(Node node) {
         final String message = "Atomic wait operator can only be used on shared memories.";
         return WasmException.create(Failure.EXPECTED_SHARED_MEMORY, node, message);
+    }
+
+    @TruffleBoundary
+    protected static final WasmException trapOutOfBoundsBuffer(Node node, long offset, long length, long bufferSize) {
+        final String message = String.format("%d-byte buffer access at offset %d is out-of-bounds (buffer size %d bytes).",
+                        length, offset, bufferSize);
+        return WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS, node, message);
+    }
+
+    /**
+     * Validates that the region starting at offset {@code address} and of length {@code length} is
+     * in bounds for a memory of size {@code byteSize}. If the region is not in bounds, then this
+     * traps (throws a {@link WasmException}).
+     * <p>
+     * Pre-conditions:
+     * <ul>
+     * <li>{@code length >= 0}, can be validated using {@link #validateLength(Node, long)}</li>
+     * <li>{@code byteSize >= 0}</li>
+     * </ul>
+     * </p>
+     *
+     * @param node the node used for errors
+     * @param address the offset at which the region to be validated starts
+     * @param length the length of the region to be validated, assumed to be non-negative
+     * @param byteSize the size of the memory in bytes, assumed to be non-negative
+     */
+    protected static final void validateAddress(Node node, long address, long length, long byteSize) {
+        assert length >= 0;
+        assert byteSize >= 0;
+        if (address < 0 || address > byteSize - length) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapOutOfBounds(node, address, length, byteSize);
+        }
+    }
+
+    /**
+     * Validates that the offset {@code address} is {@code length}-byte aligned, i.e., that
+     * {@code address} is a multiple of {@code length}.
+     *
+     * <p>
+     * Note that this will not validate that {@code address} and {@code length} form an in-bounds
+     * region. Use {@link #validateAddress(Node, long, long, long)} for that.
+     * </p>
+     *
+     * @param node the node used for errors
+     * @param address the offset whose alignment is to be validated
+     * @param length the alignment length to be enforced, must be a power of two
+     */
+    protected static final void validateAtomicAddress(Node node, long address, int length) {
+        assert length != 0 && ((length - 1) & length) == 0 : "alignment length must be a power of two";
+        if ((address & (length - 1)) != 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapUnalignedAtomic(node, address, length);
+        }
+    }
+
+    /**
+     * Validates that the argument {@code length} is non-negative. If {@code length} is negative,
+     * then this traps (throws {@link WasmException}).
+     *
+     * @param node the node used for errors
+     * @param length the region length to be validated
+     */
+    protected static final void validateLength(Node node, long length) {
+        if (length < 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw trapNegativeLength(node, length);
+        }
     }
 
     /**
@@ -579,18 +653,10 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return WebAssembly.invokeMemWaitCallback(node, this, address, expected, timeout, is64);
     }
 
-    public boolean freed() {
-        return true;
-    }
-
     public final WasmMemory checkSize(WasmMemoryLibrary memoryLib, long initialSize) {
         if (memoryLib.byteSize(this) < initialSize * Sizes.MEMORY_PAGE_SIZE) {
             throw CompilerDirectives.shouldNotReachHere("Memory size must not be less than initial size");
         }
         return this;
-    }
-
-    public boolean isUnsafe() {
-        return false;
     }
 }

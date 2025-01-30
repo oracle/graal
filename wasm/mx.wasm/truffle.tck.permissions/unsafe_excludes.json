@@ -1,16 +1,5 @@
 [
     {
-        "name" : "org.graalvm.wasm.memory.NativeDataInstanceUtil",
-        "methods" : [
-            {
-                "name" : "allocateNativeInstance",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "freeNativeInstance",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }
-        ]
-    }, {
         "name" : "org.graalvm.wasm.memory.UnsafeWasmMemory",
         "methods" : [
             {
@@ -264,9 +253,6 @@
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "initialize",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "initializeUnsafe",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "fill",
@@ -545,9 +531,6 @@
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "initialize",
-                "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
-            }, {
-                "name" : "initializeUnsafe",
                 "justification" : "Allow using sun.misc.Unsafe methods behind the --wasm.UseUnsafeMemory flag."
             }, {
                 "name" : "fill",
