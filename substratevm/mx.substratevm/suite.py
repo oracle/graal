@@ -686,6 +686,7 @@ suite = {
             "requires" : [
                 "jdk.jfr",
                 "jdk.management",
+                "java.instrument",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -709,9 +710,6 @@ suite = {
                     "sun.util.cldr",
                     "sun.util.locale",
                     "sun.invoke.util",
-                ],
-                "java.instrument":[
-                    "java.lang.instrument"
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver", # Needed for javadoc links (MXBeanIntrospector,DefaultMXBeanMappingFactory, MXBeanProxy)
