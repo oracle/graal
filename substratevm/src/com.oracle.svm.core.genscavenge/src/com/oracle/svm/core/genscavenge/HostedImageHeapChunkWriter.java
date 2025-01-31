@@ -30,7 +30,6 @@ import java.util.List;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -40,6 +39,7 @@ import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
@@ -78,14 +78,10 @@ final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
     }
 
     @Override
-    public void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk, UnsignedWord objectSize) {
+    public void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk, long objectSize) {
         int chunkOffset = getChunkOffsetInBuffer(chunkPosition);
         writeHeader(chunkOffset, topOffset, endOffset, offsetToPreviousChunk, offsetToNextChunk);
-
-        // TODO-th change offset
-        // Also only needed when using a rememberedSet
-        long objectStartOffset = RememberedSet.get().calculateObjectStartOffset(objectSize).rawValue();
-        buffer.putLong(chunkOffset + topOffsetAt - 8, objectStartOffset);
+        UnalignedHeapChunk.initialize(new HostedByteBufferPointer(buffer, chunkOffset), Word.unsigned(objectSize));
     }
 
     private void writeHeader(int chunkOffset, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk) {
@@ -106,9 +102,9 @@ final class HostedImageHeapChunkWriter implements ImageHeapChunkWriter {
     }
 
     @Override
-    public void enableRememberedSetForUnalignedChunk(int chunkPosition, UnsignedWord objectSize) {
+    public void enableRememberedSetForUnalignedChunk(int chunkPosition, long objectSize) {
         int chunkOffset = getChunkOffsetInBuffer(chunkPosition);
-        rememberedSet.enableRememberedSetForUnalignedChunk(new HostedByteBufferPointer(buffer, chunkOffset), objectSize);
+        rememberedSet.enableRememberedSetForUnalignedChunk(new HostedByteBufferPointer(buffer, chunkOffset), Word.unsigned(objectSize));
     }
 
     static void putObjectReference(ByteBuffer buffer, int offset, long value) {

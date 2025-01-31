@@ -584,7 +584,7 @@ public final class Space {
         UnsignedWord result = Word.zero();
         UnalignedHeapChunk.UnalignedHeader uChunk = getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
-            UnsignedWord allocatedBytes = HeapChunk.getTopOffset(uChunk).subtract(RememberedSet.get().getObjectStartOffset(uChunk));
+            UnsignedWord allocatedBytes = HeapChunk.getTopOffset(uChunk).subtract(UnalignedHeapChunk.getObjectStartOffset(uChunk));
             result = result.add(allocatedBytes);
             uChunk = HeapChunk.getNext(uChunk);
         }

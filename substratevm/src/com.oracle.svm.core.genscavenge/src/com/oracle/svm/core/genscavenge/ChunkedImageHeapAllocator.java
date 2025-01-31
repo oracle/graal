@@ -27,10 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.word.UnsignedWord;
-
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -79,9 +76,9 @@ class ChunkedImageHeapAllocator {
     }
 
     static final class UnalignedChunk extends Chunk {
-        private final UnsignedWord objectSize;
+        private final long objectSize;
 
-        UnalignedChunk(long begin, long endOffset, boolean writable, UnsignedWord objectSize) {
+        UnalignedChunk(long begin, long endOffset, boolean writable, long objectSize) {
             super(begin, endOffset, writable);
             this.objectSize = objectSize;
         }
@@ -91,7 +88,7 @@ class ChunkedImageHeapAllocator {
             return getEndOffset();
         }
 
-        public UnsignedWord getObjectSize() {
+        public long getObjectSize() {
             return objectSize;
         }
     }
@@ -202,11 +199,11 @@ class ChunkedImageHeapAllocator {
 
     public long allocateUnalignedChunkForObject(ImageHeapObject obj, boolean writable) {
         assert currentAlignedChunk == null;
-        UnsignedWord objSize = Word.unsigned(obj.getSize());
-        long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(objSize).rawValue();
+        long objSize = obj.getSize();
+        long chunkSize = UnalignedHeapChunk.getChunkSizeForObject(Word.unsigned(objSize)).rawValue();
         long chunkBegin = allocateRaw(chunkSize);
         unalignedChunks.add(new UnalignedChunk(chunkBegin, chunkSize, writable, objSize));
-        return chunkBegin + UnsignedUtils.safeToInt(RememberedSet.get().calculateObjectStartOffset(objSize));
+        return chunkBegin + UnsignedUtils.safeToInt(UnalignedHeapChunk.calculateObjectStartOffset(Word.unsigned(objSize)));
     }
 
     public void maybeStartAlignedChunk() {

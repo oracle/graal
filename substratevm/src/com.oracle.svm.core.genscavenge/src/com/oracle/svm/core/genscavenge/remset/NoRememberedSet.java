@@ -39,6 +39,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
+import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
@@ -73,6 +74,7 @@ public final class NoRememberedSet implements RememberedSet {
         return getHeaderSizeOfUnalignedChunk();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static UnsignedWord getHeaderSizeOfUnalignedChunk() {
         UnsignedWord headerSize = Word.unsigned(SizeOf.get(UnalignedHeader.class));
         UnsignedWord alignment = Word.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
@@ -80,22 +82,25 @@ public final class NoRememberedSet implements RememberedSet {
     }
 
     @Override
-    public void setObjectStartOffset(UnalignedHeader chunk, UnsignedWord objectSize) {
-        // Nothing to do.
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setObjectStartOffsetOfUnalignedChunk(HostedByteBufferPointer chunk, UnsignedWord objectStartOffset) {
+        assert objectStartOffset.equal(getHeaderSizeOfUnalignedChunk());
     }
 
     @Override
-    public UnsignedWord calculateObjectStartOffset(UnsignedWord objectSize) {
+    public void setObjectStartOffsetOfUnalignedChunk(UnalignedHeader chunk, UnsignedWord objectStartOffset) {
+        assert objectStartOffset.equal(getHeaderSizeOfUnalignedChunk());
+    }
+
+    @Override
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public UnsignedWord getObjectStartOffsetOfUnalignedChunk(UnalignedHeader chunk) {
         return getHeaderSizeOfUnalignedChunk();
     }
 
     @Override
-    public UnsignedWord getObjectStartOffset(UnalignedHeader chunk) {
-        return getHeaderSizeOfUnalignedChunk();
-    }
-
-    @Override
-    public UnsignedWord getObjectStartOffset(Pointer objPtr) {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public UnsignedWord getOffsetForObjectInUnalignedChunk(Pointer objPtr) {
         return getHeaderSizeOfUnalignedChunk();
     }
 
@@ -157,14 +162,20 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void dirtyCardForUnalignedObject(Object object, boolean verifyOnly) {
+    public void dirtyCardForUnalignedObject(Object object, Pointer address, boolean verifyOnly) {
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void dirtyCardRangeForUnalignedObject(Object object, Pointer startAddress, Pointer endAddress) {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void dirtyCardIfNecessary(Object holderObject, Object object) {
+    public void dirtyCardIfNecessary(Object holderObject, Object object, Pointer objRef) {
         // Nothing to do.
     }
 
@@ -176,7 +187,8 @@ public final class NoRememberedSet implements RememberedSet {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor, boolean clean) {
+    public void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor,
+                    UninterruptibleObjectReferenceVisitor refVisitor, boolean clean) {
         throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -193,5 +205,10 @@ public final class NoRememberedSet implements RememberedSet {
     @Override
     public boolean verify(UnalignedHeader firstUnalignedHeapChunk, UnalignedHeader lastUnalignedHeapChunk) {
         return true;
+    }
+
+    @Override
+    public boolean usePreciseCardMarking(Object obj) {
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 }

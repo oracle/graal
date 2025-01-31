@@ -34,8 +34,8 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
-import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.UninterruptibleObjectReferenceVisitor;
 
 import jdk.graal.compiler.word.Word;
 
@@ -43,7 +43,7 @@ import jdk.graal.compiler.word.Word;
  * Updates each reference after marking and before compaction to point to the referenced object's
  * future location.
  */
-public final class ObjectRefFixupVisitor implements ObjectReferenceVisitor {
+public final class ObjectRefFixupVisitor implements UninterruptibleObjectReferenceVisitor {
     @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)

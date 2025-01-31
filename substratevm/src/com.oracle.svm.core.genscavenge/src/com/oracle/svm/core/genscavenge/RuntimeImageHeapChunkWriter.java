@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
@@ -64,7 +63,7 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
     }
 
     @Override
-    public void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk, UnsignedWord objectSize) {
+    public void initializeUnalignedChunk(int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk, long objectSize) {
         UnalignedHeapChunk.UnalignedHeader header = (UnalignedHeapChunk.UnalignedHeader) getChunkPointerInBuffer(chunkPosition);
         header.setTopOffset(Word.unsigned(topOffset));
         header.setEndOffset(Word.unsigned(endOffset));
@@ -73,7 +72,7 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
         header.setOffsetToNextChunk(Word.unsigned(offsetToNextChunk));
         header.setIdentityHashSalt(Word.zero(), IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION);
 
-        RememberedSet.get().setObjectStartOffset(header, RememberedSet.get().calculateObjectStartOffset(objectSize));
+        UnalignedHeapChunk.initializeObjectStartOffset(header, Word.unsigned(objectSize));
     }
 
     @Override
@@ -83,7 +82,7 @@ public class RuntimeImageHeapChunkWriter implements ImageHeapChunkWriter {
     }
 
     @Override
-    public void enableRememberedSetForUnalignedChunk(int chunkPosition, UnsignedWord objectSize) {
+    public void enableRememberedSetForUnalignedChunk(int chunkPosition, long objectSize) {
         UnalignedHeapChunk.UnalignedHeader header = (UnalignedHeapChunk.UnalignedHeader) getChunkPointerInBuffer(chunkPosition);
         RememberedSet.get().enableRememberedSetForChunk(header);
     }

@@ -33,7 +33,6 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -88,7 +87,7 @@ public final class ImageHeapWalker {
         Pointer base = Heap.getHeap().getImageHeapStart();
         Pointer offset = current.subtract(base);
         UnsignedWord chunkOffset = alignedChunks ? UnsignedUtils.roundDown(offset, HeapParameters.getAlignedHeapChunkAlignment())
-                        : offset.subtract(RememberedSet.get().getObjectStartOffset(current));
+                        : offset.subtract(UnalignedHeapChunk.getOffsetForObject(current));
         HeapChunk.Header<?> currentChunk = (HeapChunk.Header<?>) chunkOffset.add(base);
 
         // Assumption: the order of chunks in their linked list is the same order as in memory,

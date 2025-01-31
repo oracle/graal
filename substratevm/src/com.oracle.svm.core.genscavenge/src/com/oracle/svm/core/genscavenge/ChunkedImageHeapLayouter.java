@@ -243,9 +243,9 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
                 writer.initializeAlignedChunk(chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
                 writer.enableRememberedSetForAlignedChunk(chunkPosition, aligned.getObjects());
             } else {
-                assert current instanceof UnalignedChunk;
-                writer.initializeUnalignedChunk(chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext, ((UnalignedChunk) current).getObjectSize());
-                writer.enableRememberedSetForUnalignedChunk(chunkPosition, ((UnalignedChunk) current).getObjectSize());
+                UnalignedChunk unalignedChunk = (UnalignedChunk) current;
+                writer.initializeUnalignedChunk(chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext, unalignedChunk.getObjectSize());
+                writer.enableRememberedSetForUnalignedChunk(chunkPosition, unalignedChunk.getObjectSize());
             }
         }
     }
