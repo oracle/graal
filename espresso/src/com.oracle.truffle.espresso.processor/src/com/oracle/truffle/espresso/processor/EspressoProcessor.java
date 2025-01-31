@@ -660,7 +660,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                         .withJavaDoc(generateGeneratedBy(parameterTypeName, helper)) //
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withAnnotation(new AnnotationBuilder(COLLECT).withLineBreak() //
-                                        .withValue("value", helper.getImplAnnotation().getQualifiedName().toString() + ".class", false) //
+                                        .withValue("value", helper.getCollectTarget().toString() + ".class", false) //
                                         .withValue("getter", GET_FACTORY)) //
                         .withField(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper)) //
                         .withMethod(new MethodBuilder(GET_FACTORY).withModifiers(new ModifierBuilder().asPublic().asStatic().asFinal()) //

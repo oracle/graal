@@ -105,10 +105,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         final boolean inlineInBytecode;
         final TypeMirror guardValue;
         final byte flags;
+        final TypeMirror group;
 
         SubstitutorHelper(EspressoProcessor processor, Element target, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
                         boolean hasReceiver, TypeMirror nameProvider, TypeMirror languageFilter, boolean inlineInBytecode, TypeMirror guardValue, TypeElement substitutionClass,
-                        byte flags) {
+                        byte flags, TypeMirror group) {
             super(processor, target, processor.getTypeElement(SUBSTITUTION), substitutionClass);
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
@@ -120,8 +121,13 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             this.inlineInBytecode = inlineInBytecode;
             this.guardValue = guardValue;
             this.flags = flags;
+            this.group = group;
         }
 
+        @Override
+        public TypeMirror getCollectTarget() {
+            return group;
+        }
     }
 
     private String extractInvocation(int nParameters, SubstitutorHelper helper) {
@@ -192,8 +198,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Get the name provider. Will override the previously obtained target class name.
         TypeMirror defaultNameProvider = getNameProvider(annotation);
 
+        // Thr group to be used for the @Collect annotation
+        TypeMirror group = getAnnotationValue(annotation, "group", TypeMirror.class);
+
         for (Element element : substitution.getEnclosedElements()) {
-            processSubstitution(element, className, defaultNameProvider, targetClassName, typeElement);
+            processSubstitution(element, className, defaultNameProvider, targetClassName, typeElement, group);
         }
     }
 
@@ -293,7 +302,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return name;
     }
 
-    void processSubstitution(Element element, String className, TypeMirror defaultNameProvider, String targetClassName, TypeElement substitutionClass) {
+    void processSubstitution(Element element, String className, TypeMirror defaultNameProvider, String targetClassName, TypeElement substitutionClass, TypeMirror group) {
         assert element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CLASS;
         TypeElement declaringClass = (TypeElement) element.getEnclosingElement();
         String targetPackage = env().getElementUtils().getPackageOf(declaringClass).getQualifiedName().toString();
@@ -357,7 +366,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             }
 
             SubstitutorHelper helper = new SubstitutorHelper(this, element, targetClassName, targetMethodName, guestTypes, returnType, hasReceiver, nameProvider, languageFilter,
-                            inlineInBytecode, decodedInlineGuard, substitutionClass, flags);
+                            inlineInBytecode, decodedInlineGuard, substitutionClass, flags, group);
 
             // Create the contents of the source file
             String classFile = spawnSubstitutor(

@@ -27,6 +27,7 @@ import java.util.List;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.espresso.processor.EspressoProcessor.InjectableType;
 
@@ -55,6 +56,10 @@ public class SubstitutionHelper {
 
     public ExecutableElement getMethodTarget() {
         return (ExecutableElement) target;
+    }
+
+    public TypeMirror getCollectTarget() {
+        return implAnnotation.asType();
     }
 
     @SuppressWarnings("this-escape")
