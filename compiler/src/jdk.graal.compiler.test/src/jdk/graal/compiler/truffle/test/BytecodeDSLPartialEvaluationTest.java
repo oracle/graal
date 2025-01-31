@@ -384,12 +384,12 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
             b.beginBlock();
 
             b.beginReturn();
-            b.beginVeryComplexOperation();
+            b.beginVariadicOperation();
             b.emitLoadConstant(3L);
             for (int i = 0; i < numVariadic; i++) {
                 b.emitLoadNull();
             }
-            b.endVeryComplexOperation();
+            b.endVariadicOperation();
             b.endReturn();
 
             b.endBlock();
