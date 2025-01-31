@@ -50,7 +50,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 
 public final class VMInspectionOptions {
-    private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
+    public static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
     private static final String MONITORING_DEFAULT_NAME = "<deprecated-default>";
     private static final String MONITORING_ALL_NAME = "all";
     private static final String MONITORING_HEAPDUMP_NAME = "heapdump";
@@ -146,6 +146,10 @@ public final class VMInspectionOptions {
 
     private static boolean hasAllOrKeywordMonitoringSupport(String keyword) {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
+        return includesAllOrKeywordMonitoringSupport(enabledFeatures, keyword);
+    }
+
+    public static boolean includesAllOrKeywordMonitoringSupport(Set<String> enabledFeatures, String keyword) {
         return enabledFeatures.contains(MONITORING_ALL_NAME) || enabledFeatures.contains(MONITORING_DEFAULT_NAME) || enabledFeatures.contains(keyword);
     }
 

@@ -25,14 +25,21 @@
 package com.oracle.svm.driver;
 
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
@@ -54,6 +61,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
     private static final String VERBOSE_SERVER_OPTION = "--verbose-server";
     private static final String SERVER_OPTION_PREFIX = "--server-";
+    private static final String ENABLE_MONITORING_OPTION = "--" + VMInspectionOptions.ENABLE_MONITORING_OPTION;
 
     private static final String LAUNCHER_NAME = "native-image";
 
@@ -188,6 +196,21 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 System.exit(ExitStatus.OK.getValue());
             }
             return true;
+        }
+
+        if (headArg.startsWith(ENABLE_MONITORING_OPTION)) {
+            String argValue;
+            if (headArg.length() == ENABLE_MONITORING_OPTION.length()) {
+                assert ENABLE_MONITORING_OPTION.equals(headArg);
+                argValue = "all";
+            } else {
+                argValue = args.peek().substring(ENABLE_MONITORING_OPTION.length() + 1);
+            }
+            Set<String> monitoringArg = Set.of(argValue.split(","));
+            if (VMInspectionOptions.includesAllOrKeywordMonitoringSupport(monitoringArg, "jfr")) {
+                args.add("--macro:svmjfr");
+            }
+            return false;
         }
 
         return false;
