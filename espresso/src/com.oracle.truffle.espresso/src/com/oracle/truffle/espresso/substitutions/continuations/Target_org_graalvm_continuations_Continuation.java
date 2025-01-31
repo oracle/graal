@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,9 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso.substitutions.continuations;
 
-import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.Substitution;
 
-public abstract class SubstitutionNode extends EspressoNode {
+@EspressoSubstitutions
+public final class Target_org_graalvm_continuations_Continuation {
+    @Substitution
+    static boolean isSupported0(@Inject Meta meta) {
+        return meta.continuum != null;
+    }
 }

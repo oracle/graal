@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,9 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso.substitutions.standard;
 
-import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.Substitution;
 
-public abstract class SubstitutionNode extends EspressoNode {
+@EspressoSubstitutions
+public final class Target_jdk_internal_foreign_abi_UpcallStubs {
+    @Substitution
+    public static void registerNatives() {
+        /* nop */
+    }
+
+    @Substitution
+    public static boolean freeUpcallStub0(long addr, @Inject EspressoContext context) {
+        return context.getUpcallStubs().freeStub(addr);
+    }
 }

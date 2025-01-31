@@ -116,7 +116,7 @@ public abstract class JavaSubstitution extends SubstitutionProfiler {
             return (flags & flag) != 0;
         }
 
-        private String[] decodeNames(Object encodedNames) {
+        private static String[] decodeNames(Object encodedNames) {
             if (encodedNames instanceof String singleName) {
                 return new String[]{singleName};
             } else if (encodedNames instanceof String[] names) {

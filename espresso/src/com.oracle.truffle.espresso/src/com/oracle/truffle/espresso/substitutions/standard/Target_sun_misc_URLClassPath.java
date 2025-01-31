@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,9 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso.substitutions.standard;
 
-import com.oracle.truffle.espresso.nodes.EspressoNode;
+import java.net.URL;
 
-public abstract class SubstitutionNode extends EspressoNode {
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.substitutions.Substitution;
+
+@EspressoSubstitutions
+public final class Target_sun_misc_URLClassPath {
+    /**
+     * These ... new JVM_ functions uses hotspot internals to improve sun.misc.URLClassPath search
+     * time, a hack! http://mail.openjdk.java.net/pipermail/distro-pkg-dev/2015-December/034337.html
+     */
+    @SuppressWarnings("unused")
+    @Substitution
+    public static @JavaType(URL[].class) StaticObject getLookupCacheURLs(@JavaType(ClassLoader.class) StaticObject classLoader) {
+        return StaticObject.NULL;
+    }
 }

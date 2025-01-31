@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,9 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso.substitutions.standard;
 
-import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Substitution;
 
-public abstract class SubstitutionNode extends EspressoNode {
+import static com.oracle.truffle.espresso.substitutions.SubstitutionFlag.IsTrivial;
+
+/**
+ * These substitutions are just for performance. Directly uses the optimized host intrinsics
+ * avoiding expensive guest native calls.
+ */
+@EspressoSubstitutions
+public final class Target_java_lang_Float {
+    @Substitution(flags = {IsTrivial})
+    public static int floatToRawIntBits(float value) {
+        return Float.floatToRawIntBits(value);
+    }
+
+    @Substitution(flags = {IsTrivial})
+    public static float intBitsToFloat(int bits) {
+        return Float.intBitsToFloat(bits);
+    }
 }

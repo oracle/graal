@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,9 +20,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso.substitutions.polyglot;
 
-import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
+import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.substitutions.Substitution;
 
-public abstract class SubstitutionNode extends EspressoNode {
+@EspressoSubstitutions
+public final class Target_com_oracle_truffle_espresso_polyglot_ForeignException {
+
+    @Substitution(hasReceiver = true)
+    public static @JavaType(Object.class) StaticObject getForeignExceptionObject(@JavaType(Object.class) StaticObject self, @Inject Meta meta) {
+        assert self != null;
+        return meta.java_lang_Throwable_backtrace.getObject(self);
+    }
 }
