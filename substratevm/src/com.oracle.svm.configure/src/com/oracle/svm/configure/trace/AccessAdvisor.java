@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.configure.trace;
 
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.oracle.svm.configure.filters.ConfigurationFilter;
@@ -266,7 +267,7 @@ public final class AccessAdvisor {
     }
 
     public static boolean shouldIgnoreResourceLookup(LazyValue<String> resource) {
-        return resource.get().equals("META-INF/services/jdk.vm.ci.services.JVMCIServiceLocator");
+        return Set.of("META-INF/services/jdk.vm.ci.services.JVMCIServiceLocator", "META-INF/services/java.lang.System$LoggerFinder").contains(resource.get());
     }
 
     public boolean shouldIgnoreLoadClass(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
