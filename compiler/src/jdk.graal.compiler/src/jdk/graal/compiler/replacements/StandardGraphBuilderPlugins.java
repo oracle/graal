@@ -2414,8 +2414,9 @@ public class StandardGraphBuilderPlugins {
             ResolvedJavaField embeddedCipherField = helper.getField(receiverType, "embeddedCipher");
             ValueNode embeddedCipher = b.nullCheckedValue(helper.loadField(receiver, embeddedCipherField));
             LogicNode typeCheck = InstanceOfNode.create(TypeReference.create(b.getAssumptions(), typeAESCrypt), embeddedCipher);
-            helper.doFallbackIfNot(typeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
-            return readFieldArrayStart(b, helper, typeAESCrypt, "K", embeddedCipher, JavaKind.Int);
+            GuardingNode guard = helper.doFallbackIfNot(typeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
+            ValueNode cast = b.add(PiNode.create(embeddedCipher, StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), typeAESCrypt)), guard.asNode()));
+            return readFieldArrayStart(b, helper, typeAESCrypt, "K", cast, JavaKind.Int);
         }
     }
 
