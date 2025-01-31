@@ -156,7 +156,7 @@ public class SpecializationSignatureParser {
                      * synthesize our own execute method that only takes Object arguments, fallback
                      * specializations with non-Object parameters are unsupported.
                      */
-                    if (!isObject(dynamicOperand.asType())) {
+                    if (!isObject(dynamicOperand.asType()) && !isVariadic(dynamicOperand)) {
                         if (errorTarget != null) {
                             errorTarget.addError(dynamicOperand, "Operands to @%s specializations of Operation nodes must have type %s.",
                                             getSimpleName(types.Fallback),
