@@ -306,15 +306,16 @@ public abstract class ArrayCopySnippets implements Snippets {
         long sourceOffset = arrayBaseOffset + srcPos * scale;
         long destOffset = arrayBaseOffset + destPos * scale;
 
-        GuardingNode anchor = SnippetAnchorNode.anchor();
         if (probability(FREQUENT_PROBABILITY, src == dest) && probability(NOT_FREQUENT_PROBABILITY, srcPos < destPos)) {
             // bad aliased case so we need to copy the array from back to front
             for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
+                GuardingNode anchor = SnippetAnchorNode.anchor();
                 Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
                 RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
         } else {
             for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
+                GuardingNode anchor = SnippetAnchorNode.anchor();
                 Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
                 RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
