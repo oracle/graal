@@ -1069,7 +1069,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         FPCR(0b11, 0b011, 0b0100, 0b0100, 0b000),
         FPSR(0b11, 0b011, 0b0100, 0b0100, 0b001),
         /* Counter-timer Virtual Count register */
-        CNTVCT_EL0(0b11, 0b011, 0b110, 0b0000, 0b010);
+        CNTVCT_EL0(0b11, 0b011, 0b1110, 0b0000, 0b010);
 
         SystemRegister(int op0, int op1, int crn, int crm, int op2) {
             this.op0 = op0;
