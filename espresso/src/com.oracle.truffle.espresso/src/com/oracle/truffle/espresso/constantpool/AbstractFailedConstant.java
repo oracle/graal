@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,21 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public final class CallSiteLinkingFailure extends RuntimeException {
-    private static final long serialVersionUID = 2567495832103023693L;
-
-    public final EspressoException cause;
-
-    public CallSiteLinkingFailure(EspressoException cause) {
-        this.cause = cause;
-    }
-
-    public FailInvokeDynamicConstant failConstant() {
-        return new FailInvokeDynamicConstant(cause);
+public abstract class AbstractFailedConstant extends AbstractStickyFailure implements Resolvable.ResolvedConstant {
+    public AbstractFailedConstant(EspressoException failure) {
+        super(failure);
     }
 
     @Override
-    @SuppressWarnings("sync-override")
-    public Throwable fillInStackTrace() {
-        return this;
+    public final Object value() {
+        throw fail();
+    }
+
+    @Override
+    public boolean isSuccess() {
+        return false;
     }
 }

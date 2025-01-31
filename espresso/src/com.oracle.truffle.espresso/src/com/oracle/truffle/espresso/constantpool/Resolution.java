@@ -113,78 +113,44 @@ public final class Resolution {
             assert accessingKlass != null;
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Symbol<Name> klassName = thiz.getName(pool);
-            try {
-                EspressoContext context = pool.getContext();
-                Symbol<Type> type = context.getTypes().fromClassNameEntry(klassName);
-                Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
-                Klass checkedKlass = klass.getElementalType();
-                if (!Klass.checkAccess(checkedKlass, accessingKlass, false)) {
-                    Meta meta = context.getMeta();
-                    context.getLogger().log(Level.FINE,
-                                    "Access check of: " + checkedKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                    StringBuilder errorMessage = new StringBuilder("failed to access class ");
-                    errorMessage.append(checkedKlass.getExternalName()).append(" from class ").append(accessingKlass.getExternalName());
-                    if (context.getJavaVersion().modulesEnabled()) {
-                        errorMessage.append(" (");
-                        if (accessingKlass.module() == checkedKlass.module()) {
-                            errorMessage.append(checkedKlass.getExternalName());
-                            errorMessage.append(" and ");
-                            ClassRegistry.classInModuleOfLoader(accessingKlass, true, errorMessage, meta);
-                        } else {
-                            // checkedKlass is not an array type (getElementalType) nor a
-                            // primitive
-                            // type (it would have passed the access checks)
-                            ClassRegistry.classInModuleOfLoader((ObjectKlass) checkedKlass, false, errorMessage, meta);
-                            errorMessage.append("; ");
-                            ClassRegistry.classInModuleOfLoader(accessingKlass, false, errorMessage, meta);
-                        }
-                        errorMessage.append(")");
-                    }
-                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, errorMessage.toString());
-                }
-
-                return new ResolvedClassConstant(klass);
-
-            } catch (VirtualMachineError e) {
-                // Comment from Hotspot:
-                // Just throw the exception and don't prevent these classes from
-                // being loaded for virtual machine errors like StackOverflow
-                // and OutOfMemoryError, etc.
-                // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
-                throw e;
-            }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    public static ResolvedClassConstant resolveClassConstant(PreResolvedClassConstant thiz, @SuppressWarnings("unused") RuntimeConstantPool pool, @SuppressWarnings("unused") int thisIndex,
-                    @SuppressWarnings("unused") ObjectKlass accessingKlass) {
-        return new ResolvedClassConstant(thiz.getResolved());
-    }
-
-    public static ResolvedClassConstant resolveClassConstant(ClassConstant.WithString thiz, RuntimeConstantPool pool, @SuppressWarnings("unused") int thisIndex, ObjectKlass accessingKlass) {
-        CLASS_RESOLVE_COUNT.inc();
-        assert accessingKlass != null;
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        Symbol<Name> klassName = thiz.getName(pool);
-        try {
             EspressoContext context = pool.getContext();
-            Meta meta = context.getMeta();
-            Klass klass = meta.resolveSymbolOrFail(context.getTypes().fromClassNameEntryUnsafe(klassName), accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
-            if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
+            Symbol<Type> type = context.getTypes().fromClassNameEntry(klassName);
+            Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), accessingKlass.protectionDomain());
+            Klass checkedKlass = klass.getElementalType();
+            if (!Klass.checkAccess(checkedKlass, accessingKlass, false)) {
+                Meta meta = context.getMeta();
                 context.getLogger().log(Level.FINE,
-                                "Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));
+                                "Access check of: " + checkedKlass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
+                StringBuilder errorMessage = new StringBuilder("failed to access class ");
+                errorMessage.append(checkedKlass.getExternalName()).append(" from class ").append(accessingKlass.getExternalName());
+                if (context.getJavaVersion().modulesEnabled()) {
+                    errorMessage.append(" (");
+                    if (accessingKlass.module() == checkedKlass.module()) {
+                        errorMessage.append(checkedKlass.getExternalName());
+                        errorMessage.append(" and ");
+                        ClassRegistry.classInModuleOfLoader(accessingKlass, true, errorMessage, meta);
+                    } else {
+                        // checkedKlass is not an array type (getElementalType) nor a
+                        // primitive type (it would have passed the access checks)
+                        ClassRegistry.classInModuleOfLoader((ObjectKlass) checkedKlass, false, errorMessage, meta);
+                        errorMessage.append("; ");
+                        ClassRegistry.classInModuleOfLoader(accessingKlass, false, errorMessage, meta);
+                    }
+                    errorMessage.append(")");
+                }
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, errorMessage.toString());
             }
-
-            return new ResolvedClassConstant(klass);
-
-        } catch (VirtualMachineError e) {
+            return new ResolvedFoundClassConstant(klass);
+        } catch (EspressoException e) {
+            CompilerDirectives.transferToInterpreter();
+            Meta meta = pool.getContext().getMeta();
             // Comment from Hotspot:
-            // Just throw the exception and don't prevent these classes from
-            // being loaded for virtual machine errors like StackOverflow
-            // and OutOfMemoryError, etc.
+            // Just throw the exception and don't prevent these classes from being loaded for
+            // virtual machine errors like StackOverflow and OutOfMemoryError, etc.
             // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
+            if (meta.java_lang_LinkageError.isAssignableFrom(e.getGuestException().getKlass())) {
+                return new ResolvedFailClassConstant(e);
+            }
             throw e;
         }
     }
@@ -595,7 +561,14 @@ public final class Resolution {
                 throw e;
             }
         } catch (EspressoException e) {
-            return new ResolvedFailDynamicConstant(e);
+            // Comment from Hotspot:
+            // Just throw the exception and don't prevent these classes from being loaded for
+            // virtual machine errors like StackOverflow and OutOfMemoryError, etc.
+            // Needs clarification to section 5.4.3 of the JVM spec (see 6308271)
+            if (meta.java_lang_LinkageError.isAssignableFrom(e.getGuestException().getKlass())) {
+                return new ResolvedFailDynamicConstant(e);
+            }
+            throw e;
         }
     }
 

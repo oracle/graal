@@ -588,6 +588,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> fillInStackTrace0 = SYMBOLS.putName("fillInStackTrace0");
         public static final Symbol<Name> getMessage = SYMBOLS.putName("getMessage");
         public static final Symbol<Name> getCause = SYMBOLS.putName("getCause");
+        public static final Symbol<Name> initCause = SYMBOLS.putName("initCause");
         public static final Symbol<Name> detailMessage = SYMBOLS.putName("detailMessage");
         public static final Symbol<Name> printStackTrace = SYMBOLS.putName("printStackTrace");
         public static final Symbol<Name> extendedMessageState = SYMBOLS.putName("extendedMessageState");
@@ -1019,6 +1020,7 @@ public class EspressoSymbols {
         public static final Symbol<Signature> _void_String_array = SYMBOLS.putSignature(Types._void, Types.java_lang_String_array);
         public static final Symbol<Signature> Class_String_boolean_ClassLoader = SYMBOLS.putSignature(Types.java_lang_Class, Types.java_lang_String, Types._boolean, Types.java_lang_ClassLoader);
         public static final Symbol<Signature> Throwable = SYMBOLS.putSignature(Types.java_lang_Throwable);
+        public static final Symbol<Signature> Throwable_Throwable = SYMBOLS.putSignature(Types.java_lang_Throwable, Types.java_lang_Throwable);
         public static final Symbol<Signature> _void_long_boolean_boolean = SYMBOLS.putSignature(Types._void, Types._long, Types._boolean, Types._boolean);
         public static final Symbol<Signature> _void_long_boolean_boolean_boolean = SYMBOLS.putSignature(Types._void, Types._long, Types._boolean, Types._boolean, Types._boolean);
         public static final Symbol<Signature> _byte_array_Module_ClassLoader_String_Class_ProtectionDomain_byte_array_boolean = SYMBOLS.putSignature(
