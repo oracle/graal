@@ -55,6 +55,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.svm.hosted.code.FactoryMethod;
 import com.oracle.svm.util.LogUtils;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
@@ -837,6 +838,8 @@ public class PermissionsFeature implements Feature {
                         if (targetMethod.wrapped instanceof FactoryMethod factoryMethod) {
                             newType = method.getUniverse().lookup(factoryMethod.getTargetConstructor().getDeclaringClass());
                         }
+                    } else if (arg0 instanceof AllocatedObjectNode allocatedObjectNode) {
+                        newType = allocatedObjectNode.getVirtualObject().type();
                     }
                     if (newType == null) {
                         return false;
