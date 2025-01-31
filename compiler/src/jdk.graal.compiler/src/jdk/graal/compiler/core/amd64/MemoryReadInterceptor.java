@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.amd64;
+package jdk.graal.compiler.core.amd64;
 
-import static jdk.vm.ci.amd64.AMD64.r14;
-import static jdk.vm.ci.amd64.AMD64.r15;
+import jdk.graal.compiler.asm.amd64.AMD64Address;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.ReservedRegisters;
-
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Register;
-
-public final class AMD64ReservedRegisters extends ReservedRegisters {
-
-    public static final Register THREAD_REGISTER = r15;
-    public static final Register HEAP_BASE_REGISTER_CANDIDATE = r14;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    AMD64ReservedRegisters() {
-        super(AMD64.rsp, THREAD_REGISTER, HEAP_BASE_REGISTER_CANDIDATE);
+/**
+ * Allows interception of all the operands that use a memory address as source operand during
+ * emission.
+ */
+public interface MemoryReadInterceptor {
+    default void interceptMemorySrcOperands(@SuppressWarnings("unused") AMD64Address addr) {
     }
 
-    @Override
-    public boolean isReservedRegister(Register reg) {
-        return super.isReservedRegister(reg) || reg.equals(AMD64.rip);
+    /**
+     * Returns the number of bytes that can be additionally emitted when intercepting the given
+     * memory operand.
+     *
+     * @param address is the address used as memory operand.
+     * @return the number of bytes emitted.
+     */
+    default int extraSourceAddressBytes(@SuppressWarnings("unused") AMD64Address address) {
+        return 0;
     }
 }
