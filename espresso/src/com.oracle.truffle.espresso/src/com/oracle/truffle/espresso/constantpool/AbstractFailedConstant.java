@@ -22,9 +22,7 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public abstract class AbstractFailedConstant extends AbstractStickyFailure implements Resolvable.ResolvedConstant {
@@ -34,8 +32,7 @@ public abstract class AbstractFailedConstant extends AbstractStickyFailure imple
 
     @Override
     public final Object value() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Exception should have been thrown earlier by calling checkFail.");
+        throw fail();
     }
 
     @Override

@@ -22,13 +22,8 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class FailedCallSiteLink extends AbstractStickyFailure implements CallSiteLink {
     private final Method method;
@@ -41,30 +36,7 @@ public final class FailedCallSiteLink extends AbstractStickyFailure implements C
     }
 
     @Override
-    public boolean isFailed() {
-        return true;
-    }
-
-    @Override
     public boolean matchesCallSite(Method siteMethod, int siteBci) {
         return bci == siteBci && method == siteMethod;
-    }
-
-    @Override
-    public StaticObject getMemberName() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Exception should have been thrown earlier by calling checkFail.");
-    }
-
-    @Override
-    public StaticObject getUnboxedAppendix() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Exception should have been thrown earlier by calling checkFail.");
-    }
-
-    @Override
-    public Symbol<Type>[] getParsedSignature() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Exception should have been thrown earlier by calling checkFail.");
     }
 }

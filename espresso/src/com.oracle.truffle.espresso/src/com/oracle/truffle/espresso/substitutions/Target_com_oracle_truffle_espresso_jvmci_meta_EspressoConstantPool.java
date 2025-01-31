@@ -77,6 +77,7 @@ import com.oracle.truffle.espresso.constantpool.ResolvedDynamicConstant;
 import com.oracle.truffle.espresso.constantpool.ResolvedInvokeDynamicConstant;
 import com.oracle.truffle.espresso.constantpool.ResolvedWithInvokerClassMethodRefConstant;
 import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
+import com.oracle.truffle.espresso.constantpool.SuccessfulCallSiteLink;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -241,11 +242,11 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
         if (opcode == INVOKEDYNAMIC) {
             LOGGER.finer(() -> "ECP.lookupResolvedMethod resolving indy in CP of %s at cpi=0x%08x".formatted(cpHolderKlass, cpi));
             CallSiteLink callSiteLink = getCallSiteLink(self, cpi, meta);
-            if (callSiteLink == null || callSiteLink.isFailed()) {
+            if (!(callSiteLink instanceof SuccessfulCallSiteLink successfulCallSiteLink)) {
                 LOGGER.fine(() -> "ECP.lookupResolvedMethod no call site link or failed link in CP of %s at cpi=0x%08x".formatted(cpHolderKlass, cpi));
                 return StaticObject.NULL;
             }
-            Method target = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(callSiteLink.getMemberName());
+            Method target = (Method) meta.HIDDEN_VMTARGET.getHiddenObject(successfulCallSiteLink.getMemberName());
             StaticObject holder = toJVMCIInstanceType(target.getDeclaringKlass(), meta);
             return toJVMCIMethod(target, holder, meta);
         }
@@ -586,10 +587,10 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoConstantPool {
             LOGGER.finer(() -> "ECP.lookupAppendix: Looking up CallSiteLink for index=" + Integer.toHexString(index) + " in " +
                             meta.jvmci.HIDDEN_OBJECTKLASS_MIRROR.getHiddenObject(meta.jvmci.EspressoConstantPool_holder.getObject(self)));
             CallSiteLink callSiteLink = getCallSiteLink(self, index, meta);
-            if (callSiteLink == null || callSiteLink.isFailed()) {
+            if (!(callSiteLink instanceof SuccessfulCallSiteLink successfulCallSiteLink)) {
                 return StaticObject.NULL;
             }
-            return wrapEspressoObjectConstant(callSiteLink.getUnboxedAppendix(), meta);
+            return wrapEspressoObjectConstant(successfulCallSiteLink.getUnboxedAppendix(), meta);
         } else {
             assert opcode == INVOKEVIRTUAL;
             StaticObject cpHolder = meta.jvmci.EspressoConstantPool_holder.getObject(self);

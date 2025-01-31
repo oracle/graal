@@ -27,7 +27,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public abstract class AbstractStickyFailure implements StickyFallible {
+public abstract class AbstractStickyFailure {
     private final EspressoException originalWrappedException;
 
     public AbstractStickyFailure(EspressoException failure) {
@@ -35,8 +35,7 @@ public abstract class AbstractStickyFailure implements StickyFallible {
         originalWrappedException = failure;
     }
 
-    @Override
-    public final void checkFail(Meta meta) {
+    public EspressoException fail() {
         StaticObject originalException = originalWrappedException.getGuestException();
         ObjectKlass exceptionType = (ObjectKlass) originalException.getKlass();
         if (StaticObject.isNull(exceptionType.getDefiningClassLoader())) {
@@ -48,6 +47,7 @@ public abstract class AbstractStickyFailure implements StickyFallible {
             } else {
                 exception = Meta.initException(exceptionType);
             }
+            Meta meta = exceptionType.getMeta();
             if (StaticObject.notNull(cause)) {
                 meta.java_lang_Throwable_initCause.invokeDirectVirtual(exception, cause);
             }

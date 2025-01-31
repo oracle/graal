@@ -26,7 +26,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class SuccessfulCallSiteLink implements CallSiteLink {
@@ -46,17 +45,14 @@ public final class SuccessfulCallSiteLink implements CallSiteLink {
         this.parsedSignature = parsedSignature;
     }
 
-    @Override
     public StaticObject getMemberName() {
         return memberName;
     }
 
-    @Override
     public StaticObject getUnboxedAppendix() {
         return unboxedAppendix;
     }
 
-    @Override
     public Symbol<Type>[] getParsedSignature() {
         return parsedSignature;
     }
@@ -64,14 +60,5 @@ public final class SuccessfulCallSiteLink implements CallSiteLink {
     @Override
     public boolean matchesCallSite(Method siteMethod, int siteBci) {
         return bci == siteBci && method == siteMethod;
-    }
-
-    @Override
-    public void checkFail(Meta meta) {
-    }
-
-    @Override
-    public boolean isFailed() {
-        return false;
     }
 }

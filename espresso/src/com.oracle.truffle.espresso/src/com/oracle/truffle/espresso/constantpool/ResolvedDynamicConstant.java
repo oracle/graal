@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public interface ResolvedDynamicConstant extends DynamicConstant, StickyFallible, Resolvable.ResolvedConstant {
+public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.ResolvedConstant {
     void putResolved(VirtualFrame frame, int top, BytecodeNode node);
 
     JavaKind getKind();
@@ -41,9 +41,5 @@ public interface ResolvedDynamicConstant extends DynamicConstant, StickyFallible
             return (StaticObject) value;
         }
         return Meta.box(meta, value);
-    }
-
-    @Override
-    default void checkFail(Meta meta) {
     }
 }

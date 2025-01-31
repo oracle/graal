@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.constantpool;
 import java.util.Objects;
 
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.Meta;
 
 public final class ResolvedFoundClassConstant implements ResolvedClassConstant {
     private final Klass resolved;
@@ -37,9 +36,5 @@ public final class ResolvedFoundClassConstant implements ResolvedClassConstant {
     @Override
     public Klass value() {
         return resolved;
-    }
-
-    @Override
-    public void checkFail(Meta meta) {
     }
 }

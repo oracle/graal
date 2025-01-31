@@ -149,7 +149,6 @@ public final class RuntimeConstantPool extends ConstantPool {
 
     public Klass resolvedKlassAt(ObjectKlass accessingKlass, int index) {
         ResolvedClassConstant resolved = (ResolvedClassConstant) resolvedAt(accessingKlass, index, "klass");
-        resolved.checkFail(getContext().getMeta());
         return (Klass) resolved.value();
     }
 
@@ -229,11 +228,13 @@ public final class RuntimeConstantPool extends ConstantPool {
         return (StaticObject) resolved.value();
     }
 
-    public CallSiteLink linkInvokeDynamic(ObjectKlass accessingKlass, int index, Method method, int bci) {
+    public SuccessfulCallSiteLink linkInvokeDynamic(ObjectKlass accessingKlass, int index, Method method, int bci) {
         ResolvedInvokeDynamicConstant indy = (ResolvedInvokeDynamicConstant) resolvedAt(accessingKlass, index, "indy");
         CallSiteLink link = indy.link(this, accessingKlass, index, method, bci);
-        link.checkFail(getContext().getMeta());
-        return link;
+        if (link instanceof FailedCallSiteLink failed) {
+            throw failed.fail();
+        }
+        return (SuccessfulCallSiteLink) link;
     }
 
     public ResolvedInvokeDynamicConstant peekResolvedInvokeDynamic(int index) {
@@ -242,7 +243,6 @@ public final class RuntimeConstantPool extends ConstantPool {
 
     public ResolvedDynamicConstant resolvedDynamicConstantAt(ObjectKlass accessingKlass, int index) {
         ResolvedDynamicConstant dynamicConstant = (ResolvedDynamicConstant) outOfLockResolvedAt(accessingKlass, index, "dynamic constant");
-        dynamicConstant.checkFail(getContext().getMeta());
         return dynamicConstant;
     }
 

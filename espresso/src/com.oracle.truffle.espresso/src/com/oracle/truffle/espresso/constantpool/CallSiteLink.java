@@ -22,19 +22,8 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public sealed interface CallSiteLink extends StickyFallible permits FailedCallSiteLink, SuccessfulCallSiteLink {
-    StaticObject getMemberName();
-
-    StaticObject getUnboxedAppendix();
-
-    Symbol<Type>[] getParsedSignature();
-
+public sealed interface CallSiteLink permits FailedCallSiteLink, SuccessfulCallSiteLink {
     boolean matchesCallSite(Method siteMethod, int siteBci);
-
-    boolean isFailed();
 }
