@@ -2513,6 +2513,28 @@ suite = {
             "maven" : False,
         },
 
+        "SVM_JFR": {
+            "subDir": "src",
+            "description" : "SubstrateVM support for the JFR",
+            "dependencies": [
+                "com.oracle.svm.hosted.foreign",
+            ],
+            "distDependencies": [
+                "compiler:GRAAL",
+                "SVM"
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.jfr",
+                "requires" : [
+                    "org.graalvm.nativeimage.builder"
+                ],
+                "exports" : [
+                    "* to org.graalvm.nativeimage.builder"
+                ],
+            },
+            "maven" : False,
+        },
+
         "SVM_LLVM" : {
             "subDir" : "src",
             "description" : "LLVM backend for Native Image",
