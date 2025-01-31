@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,40 +22,21 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import java.nio.ByteBuffer;
-
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
-public final class FailInvokeDynamicConstant implements LinkableInvokeDynamicConstant {
-    private final EspressoException failure;
+public final class FailedCallSiteLink extends AbstractStickyFailure implements CallSiteLink {
+    private final Method method;
+    private final int bci;
 
-    public FailInvokeDynamicConstant(EspressoException failure) {
-        this.failure = failure;
+    public FailedCallSiteLink(Method method, int bci, EspressoException failure) {
+        super(failure);
+        this.method = method;
+        this.bci = bci;
     }
 
     @Override
-    public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
-        throw failure;
-    }
-
-    @Override
-    public Object value() {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Use indy.link() rather than Resolved.value()");
-    }
-
-    @Override
-    public void dump(ByteBuffer buf) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw EspressoError.shouldNotReachHere("Invoke dynamic already resolved.");
-    }
-
-    @Override
-    public boolean isSuccess() {
-        return false;
+    public boolean matchesCallSite(Method siteMethod, int siteBci) {
+        return bci == siteBci && method == siteMethod;
     }
 }

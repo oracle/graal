@@ -22,33 +22,19 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.impl.Klass;
 
-/**
- * Constant Pool patching inserts already resolved constants in the constant pool. However, at the
- * time of patching, we do not have a Runtime CP. Therefore, we help the CP by inserting a
- * Pre-Resolved constant.
- * <p>
- * This is also used to Pre-resolve anonymous classes.
- */
-public final class PreResolvedClassConstant implements ClassConstant, Resolvable {
+public final class ResolvedFoundClassConstant implements ResolvedClassConstant {
     private final Klass resolved;
 
-    PreResolvedClassConstant(Klass resolved) {
+    public ResolvedFoundClassConstant(Klass resolved) {
         this.resolved = Objects.requireNonNull(resolved);
     }
 
-    public Klass getResolved() {
-        return resolved;
-    }
-
     @Override
-    public void dump(ByteBuffer buf) {
-        buf.putChar((char) 0);
+    public Klass value() {
+        return resolved;
     }
 }

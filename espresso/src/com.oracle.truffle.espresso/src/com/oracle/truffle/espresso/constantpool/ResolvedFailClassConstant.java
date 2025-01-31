@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,10 @@
  */
 package com.oracle.truffle.espresso.constantpool;
 
-import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
-interface LinkableInvokeDynamicConstant extends InvokeDynamicConstant, Resolvable.ResolvedConstant {
-    CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci);
+public final class ResolvedFailClassConstant extends AbstractFailedConstant implements ResolvedClassConstant {
+    public ResolvedFailClassConstant(EspressoException failure) {
+        super(failure);
+    }
 }

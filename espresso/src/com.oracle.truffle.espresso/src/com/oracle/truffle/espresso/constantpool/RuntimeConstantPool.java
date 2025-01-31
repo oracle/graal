@@ -148,7 +148,7 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public Klass resolvedKlassAt(ObjectKlass accessingKlass, int index) {
-        Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "klass");
+        ResolvedClassConstant resolved = (ResolvedClassConstant) resolvedAt(accessingKlass, index, "klass");
         return (Klass) resolved.value();
     }
 
@@ -228,18 +228,13 @@ public final class RuntimeConstantPool extends ConstantPool {
         return (StaticObject) resolved.value();
     }
 
-    public CallSiteLink linkInvokeDynamic(ObjectKlass accessingKlass, int index, Method method, int bci) {
-        LinkableInvokeDynamicConstant indy = (LinkableInvokeDynamicConstant) resolvedAt(accessingKlass, index, "indy");
-        try {
-            return indy.link(this, accessingKlass, index, method, bci);
-        } catch (CallSiteLinkingFailure failure) {
-            // On failure, shortcut subsequent linking operations.
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                resolvedConstants[index] = failure.failConstant();
-            }
-            throw failure.cause;
+    public SuccessfulCallSiteLink linkInvokeDynamic(ObjectKlass accessingKlass, int index, Method method, int bci) {
+        ResolvedInvokeDynamicConstant indy = (ResolvedInvokeDynamicConstant) resolvedAt(accessingKlass, index, "indy");
+        CallSiteLink link = indy.link(this, accessingKlass, index, method, bci);
+        if (link instanceof FailedCallSiteLink failed) {
+            throw failed.fail();
         }
+        return (SuccessfulCallSiteLink) link;
     }
 
     public ResolvedInvokeDynamicConstant peekResolvedInvokeDynamic(int index) {
@@ -248,7 +243,6 @@ public final class RuntimeConstantPool extends ConstantPool {
 
     public ResolvedDynamicConstant resolvedDynamicConstantAt(ObjectKlass accessingKlass, int index) {
         ResolvedDynamicConstant dynamicConstant = (ResolvedDynamicConstant) outOfLockResolvedAt(accessingKlass, index, "dynamic constant");
-        dynamicConstant.checkFail();
         return dynamicConstant;
     }
 
@@ -265,7 +259,7 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     public void setKlassAt(int index, ObjectKlass klass) {
-        resolvedConstants[index] = new ResolvedClassConstant(klass);
+        resolvedConstants[index] = new ResolvedFoundClassConstant(klass);
     }
 
     @Override
@@ -326,7 +320,6 @@ public final class RuntimeConstantPool extends ConstantPool {
     }
 
     Resolvable.ResolvedConstant resolve(Resolvable resolvable, int thisIndex, ObjectKlass accessingKlass) {
-
         switch (resolvable.tag()) {
             case STRING:
                 if (resolvable instanceof StringConstant.Index fromIndex) {
@@ -371,8 +364,6 @@ public final class RuntimeConstantPool extends ConstantPool {
             case CLASS:
                 if (resolvable instanceof ClassConstant.Index fromIndex) {
                     return Resolution.resolveClassConstant(fromIndex, this, thisIndex, accessingKlass);
-                } else if (resolvable instanceof ClassConstant.WithString fromString) {
-                    return Resolution.resolveClassConstant(fromString, this, thisIndex, accessingKlass);
                 }
                 break;
         }
