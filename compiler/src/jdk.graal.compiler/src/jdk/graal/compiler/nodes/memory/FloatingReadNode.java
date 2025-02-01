@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@ import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
  * relative location. This node does not null check the object.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public final class FloatingReadNode extends FloatingAccessNode implements LIRLowerableAccess, Canonicalizable {
+public class FloatingReadNode extends FloatingAccessNode implements LIRLowerableAccess, Canonicalizable {
     public static final NodeClass<FloatingReadNode> TYPE = NodeClass.create(FloatingReadNode.class);
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
@@ -68,7 +68,12 @@ public final class FloatingReadNode extends FloatingAccessNode implements LIRLow
     }
 
     public FloatingReadNode(AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard, BarrierType barrierType) {
-        super(TYPE, address, location, stamp, guard, barrierType);
+        this(TYPE, address, location, lastLocationAccess, stamp, guard, barrierType);
+    }
+
+    public FloatingReadNode(NodeClass<? extends FloatingAccessNode> c, AddressNode address, LocationIdentity location, MemoryKill lastLocationAccess, Stamp stamp, GuardingNode guard,
+                    BarrierType barrierType) {
+        super(c, address, location, stamp, guard, barrierType);
         this.lastLocationAccess = lastLocationAccess;
 
         // The input to floating reads must be always non-null or have at least a guard.
