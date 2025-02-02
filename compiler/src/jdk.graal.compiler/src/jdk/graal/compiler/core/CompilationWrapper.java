@@ -428,9 +428,9 @@ public abstract class CompilationWrapper<T> {
 
     // Global counters used to measure compilation failure rate over a
     // period of COMPILATION_FAILURE_DETECTION_PERIOD_MS
-    private static final GlobalAtomicLong totalCompilations = new GlobalAtomicLong(0L);
-    private static final GlobalAtomicLong failedCompilations = new GlobalAtomicLong(0L);
-    private static final GlobalAtomicLong compilationPeriodStart = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong totalCompilations = new GlobalAtomicLong("TOTAL_COMPILATIONS", 0L);
+    private static final GlobalAtomicLong failedCompilations = new GlobalAtomicLong("FAILED_COMPILATIONS", 0L);
+    private static final GlobalAtomicLong compilationPeriodStart = new GlobalAtomicLong("COMPILATION_PERIOD_START", 0L);
     private static final long COMPILATION_FAILURE_DETECTION_PERIOD_NS = TimeUnit.SECONDS.toNanos(2);
     private static final int MIN_COMPILATIONS_FOR_FAILURE_DETECTION = 25;
 

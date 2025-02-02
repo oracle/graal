@@ -88,7 +88,6 @@ import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -313,11 +312,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         for (Class<?> annotatedClass : annotatedClasses) {
             handleClass(annotatedClass);
-        }
-
-        List<Field> annotatedFields = imageClassLoader.findAnnotatedFields(NativeImageReinitialize.class);
-        for (Field annotatedField : annotatedFields) {
-            reinitializeField(annotatedField);
         }
     }
 
@@ -1050,11 +1044,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         } catch (ReflectionUtilError e) {
             throw UserError.abort("Could not find target field %s.%s for alias %s.", targetClass.getName(), targetName, annotated == null ? null : annotated.format("%H.%n"));
         }
-    }
-
-    protected void reinitializeField(Field annotatedField) {
-        ResolvedJavaField annotated = metaAccess.lookupJavaField(annotatedField);
-        fieldValueInterceptionSupport.registerFieldValueTransformer(annotated, ConstantValueFieldValueTransformer.defaultValueForField(annotated));
     }
 
     public Class<?> getTargetClass(Class<?> annotatedClass) {

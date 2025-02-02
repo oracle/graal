@@ -22,106 +22,86 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
 import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
 
-import java.lang.invoke.MethodHandle;
 import java.net.URI;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetDescription;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLanguage;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetLineNumber;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeClassName;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNodeId;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 
-final class HSTruffleSourceLanguagePosition extends HSIndirectHandle implements TruffleSourceLanguagePosition {
+final class HSTruffleSourceLanguagePosition extends HSObject implements TruffleSourceLanguagePosition {
 
-    private static final Handles HANDLES = new Handles();
+    private final TruffleFromLibGraalCalls calls;
 
-    HSTruffleSourceLanguagePosition(Object hsHandle) {
-        super(hsHandle);
+    HSTruffleSourceLanguagePosition(JNIMethodScope scope, JObject handle, TruffleFromLibGraalCalls calls) {
+        super(scope, handle);
+        this.calls = calls;
     }
 
+    @TruffleFromLibGraal(GetDescription)
     @Override
     public String getDescription() {
-        try {
-            return (String) HANDLES.getDescription.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        JNIEnv env = JNIMethodScope.env();
+        return JNIUtil.createString(env, HSTruffleSourceLanguagePositionGen.callGetDescription(calls, env, getHandle()));
     }
 
+    @TruffleFromLibGraal(GetOffsetEnd)
     @Override
     public int getOffsetEnd() {
-        try {
-            return (int) HANDLES.getOffsetEnd.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleSourceLanguagePositionGen.callGetOffsetEnd(calls, JNIMethodScope.env(), getHandle());
     }
 
+    @TruffleFromLibGraal(GetOffsetStart)
     @Override
     public int getOffsetStart() {
-        try {
-            return (int) HANDLES.getOffsetStart.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleSourceLanguagePositionGen.callGetOffsetStart(calls, JNIMethodScope.env(), getHandle());
     }
 
+    @TruffleFromLibGraal(GetLineNumber)
     @Override
     public int getLineNumber() {
-        try {
-            return (int) HANDLES.getLineNumber.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleSourceLanguagePositionGen.callGetLineNumber(calls, JNIMethodScope.env(), getHandle());
     }
 
+    @TruffleFromLibGraal(GetURI)
     @Override
     public URI getURI() {
-        String uri;
-        try {
-            uri = (String) HANDLES.getURI.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-        return uri == null ? null : URI.create(uri);
+        JNIEnv env = JNIMethodScope.env();
+        String stringifiedURI = JNIUtil.createString(env, HSTruffleSourceLanguagePositionGen.callGetURI(calls, env, getHandle()));
+        return stringifiedURI == null ? null : URI.create(stringifiedURI);
     }
 
+    @TruffleFromLibGraal(GetLanguage)
     @Override
     public String getLanguage() {
-        try {
-            return (String) HANDLES.getLanguage.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        JNIEnv env = JNIMethodScope.env();
+        return JNIUtil.createString(env, HSTruffleSourceLanguagePositionGen.callGetLanguage(calls, env, getHandle()));
     }
 
+    @TruffleFromLibGraal(GetNodeId)
     @Override
     public int getNodeId() {
-        try {
-            return (int) HANDLES.getNodeId.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleSourceLanguagePositionGen.callGetNodeId(calls, JNIMethodScope.env(), getHandle());
     }
 
+    @TruffleFromLibGraal(GetNodeClassName)
     @Override
     public String getNodeClassName() {
-        try {
-            return (String) HANDLES.getNodeClassName.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    private static final class Handles {
-        final MethodHandle getOffsetStart = getHostMethodHandleOrFail(Id.GetOffsetStart);
-        final MethodHandle getOffsetEnd = getHostMethodHandleOrFail(Id.GetOffsetEnd);
-        final MethodHandle getLineNumber = getHostMethodHandleOrFail(Id.GetLineNumber);
-        final MethodHandle getLanguage = getHostMethodHandleOrFail(Id.GetLanguage);
-        final MethodHandle getDescription = getHostMethodHandleOrFail(Id.GetDescription);
-        final MethodHandle getURI = getHostMethodHandleOrFail(Id.GetURI);
-        final MethodHandle getNodeClassName = getHostMethodHandleOrFail(Id.GetNodeClassName);
-        final MethodHandle getNodeId = getHostMethodHandleOrFail(Id.GetNodeId);
+        JNIEnv env = JNIMethodScope.env();
+        return JNIUtil.createString(env, HSTruffleSourceLanguagePositionGen.callGetNodeClassName(calls, env, getHandle()));
     }
 }

@@ -209,10 +209,8 @@ public final class FieldValueInterceptionSupport {
     public boolean isValueAvailable(AnalysisField field) {
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
-            if (transformation.getFieldValueTransformer() instanceof FieldValueTransformerWithAvailability transformerWithAvailability) {
-                if (!transformerWithAvailability.isAvailable()) {
-                    return false;
-                }
+            if (!transformation.getFieldValueTransformer().isAvailable()) {
+                return false;
             }
         } else if (interceptor instanceof FieldValueComputer computer) {
             if (!computer.isAvailable()) {

@@ -1368,16 +1368,12 @@ suite = {
     "com.oracle.truffle.libgraal.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:ANTLR4"
-      ],
       "requires" : [
         "java.compiler",
         "jdk.management"
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
-      "graalCompilerSourceEdition": "ignore",
     },
 
     "org.graalvm.shadowed.org.json" : {
@@ -2103,7 +2099,6 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
-      "graalCompilerSourceEdition": "ignore",
     },
 
     "TRUFFLE_SL" : {

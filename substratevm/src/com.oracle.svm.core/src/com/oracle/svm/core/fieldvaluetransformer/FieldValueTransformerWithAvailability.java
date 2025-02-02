@@ -38,6 +38,7 @@ public interface FieldValueTransformerWithAvailability extends FieldValueTransfo
     /**
      * Returns true when the value for this custom computation is available.
      */
+    @Override
     boolean isAvailable();
 
     /**

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
+package jdk.graal.compiler.libgraal.truffle;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.FromLibGraalId;
 import org.graalvm.jniutils.JNI.JClass;
@@ -31,6 +31,7 @@ import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JValue;
 import org.graalvm.jniutils.JNICalls;
+import org.graalvm.jniutils.JNICalls.JNIMethod;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -38,6 +39,10 @@ import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 
 import java.util.EnumMap;
 import java.util.function.Function;
+
+import static org.graalvm.jniutils.JNIUtil.ExceptionClear;
+import static org.graalvm.jniutils.JNIUtil.GetStaticMethodID;
+import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
 
 /**
  * Helpers for calling methods in HotSpot heap via JNI.
@@ -54,53 +59,37 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
         this.peer = peer;
     }
 
-    /**
-     * Describes a class and holds a reference to its {@linkplain #jclass JNI value}.
-     */
-    static final class JNIClass {
-        final String className;
-        final JClass jclass;
-
-        JNIClass(String className, JClass clazz) {
-            this.className = className;
-            this.jclass = clazz;
-        }
-    }
-
-    /**
-     * Describes a method in HotSpot peer class}.
-     */
-    static final class JNIMethodImpl<T extends Enum<T> & FromLibGraalId> implements JNICalls.JNIMethod {
-        final T hcId;
-        final JMethodID jniId;
-
-        JNIMethodImpl(T hcId, JMethodID jniId) {
-            this.hcId = hcId;
-            this.jniId = jniId;
-        }
-
-        @Override
-        public JMethodID getJMethodID() {
-            return jniId;
-        }
-
-        @Override
-        public String getDisplayName() {
-            return hcId.getName();
-        }
-
-        @Override
-        public String toString() {
-            return hcId + "[0x" + Long.toHexString(jniId.rawValue()) + ']';
-        }
-    }
-
     JClass getPeer() {
         return peer;
     }
 
     JNICalls getJNICalls() {
         return hotSpotCalls;
+    }
+
+    JNIMethod findJNIMethod(JNIEnv env, String methodName, Class<?> returnType, Class<?>... parameterTypes) {
+        try (CTypeConversion.CCharPointerHolder cname = toCString(methodName);
+                        CTypeConversion.CCharPointerHolder csig = toCString(FromLibGraalId.encodeMethodSignature(returnType, parameterTypes))) {
+            JMethodID jniId = GetStaticMethodID(env, getPeer(), cname.get(), csig.get());
+            if (jniId.isNull()) {
+                /*
+                 * The `onFailure` method with 7 arguments is not available in Truffle runtime 24.0,
+                 * clear pending NoSuchMethodError.
+                 */
+                ExceptionClear(env);
+            }
+            return new JNIMethod() {
+                @Override
+                public JMethodID getJMethodID() {
+                    return jniId;
+                }
+
+                @Override
+                public String getDisplayName() {
+                    return methodName;
+                }
+            };
+        }
     }
 
     public final void callVoid(JNIEnv env, T id, JValue args) {
@@ -152,4 +141,31 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
         }
     }
 
+    /**
+     * Describes a method in HotSpot peer class}.
+     */
+    private static final class JNIMethodImpl<T extends Enum<T> & FromLibGraalId> implements JNIMethod {
+        final T hcId;
+        final JMethodID jniId;
+
+        JNIMethodImpl(T hcId, JMethodID jniId) {
+            this.hcId = hcId;
+            this.jniId = jniId;
+        }
+
+        @Override
+        public JMethodID getJMethodID() {
+            return jniId;
+        }
+
+        @Override
+        public String getDisplayName() {
+            return hcId.getName();
+        }
+
+        @Override
+        public String toString() {
+            return hcId + "[0x" + Long.toHexString(jniId.rawValue()) + ']';
+        }
+    }
 }

@@ -22,27 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.core;
+package jdk.graal.compiler.hotspot;
 
 import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
- * This is a utility class for Threads started by the compiler itself. In certain execution
- * environments extra work must be done for these threads to execute correctly and this class
- * provides hooks for this work.
+ * This is a utility class for Threads started by the compiler itself. In libgraal, such threads
+ * must be attached and detached to the host JVM process.
  */
-public class GraalServiceThread extends Thread {
+public class HotSpotGraalServiceThread extends Thread {
     private final Runnable runnable;
 
-    public GraalServiceThread(String name, Runnable runnable) {
-        super(name);
+    public HotSpotGraalServiceThread(Runnable runnable) {
         this.runnable = runnable;
     }
 
     @Override
     public final void run() {
         try {
-            beforeRun();
+            if (GraalServices.isInLibgraal()) {
+                if (!HotSpotJVMCIRuntime.runtime().attachCurrentThread(isDaemon(), null)) {
+                    throw new InternalError("Couldn't attach to HotSpot runtime");
+                }
+            }
         } catch (InternalError t) {
             // There was a problem attaching this thread to the libgraal peer runtime.
             // Not much that can be done apart from terminating the thread.
@@ -52,7 +55,9 @@ public class GraalServiceThread extends Thread {
         try {
             runnable.run();
         } finally {
-            afterRun();
+            if (GraalServices.isInLibgraal()) {
+                HotSpotJVMCIRuntime.runtime().detachCurrentThread(false);
+            }
         }
     }
 
@@ -60,27 +65,14 @@ public class GraalServiceThread extends Thread {
      * Notifies of an error on attaching this thread to the libgraal peer runtime.
      *
      * The default implementation of this method is to print the stack trace for {@code error} if
-     * the {@code GraalServiceThread.verbose} system property is {@code "true"}.
+     * the {@code HotSpotGraalServiceThread.verbose} system property is {@code "true"}.
      *
      * @param error the error
      */
     protected void onAttachError(InternalError error) {
-        if (Boolean.parseBoolean(GraalServices.getSavedProperty("GraalServiceThread.verbose", "false"))) {
+        if (Boolean.parseBoolean(GraalServices.getSavedProperty("HotSpotGraalServiceThread.verbose", "false"))) {
             error.printStackTrace();
         }
     }
 
-    /**
-     * Substituted by {@code Target_jdk_graal_compiler_core_GraalServiceThread} to attach to the
-     * peer runtime if required.
-     */
-    private void afterRun() {
-    }
-
-    /**
-     * Substituted by {@code Target_jdk_graal_compiler_core_GraalServiceThread} to attach to the
-     * peer runtime if required.
-     */
-    private void beforeRun() {
-    }
 }

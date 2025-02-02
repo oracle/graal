@@ -26,8 +26,15 @@ package jdk.graal.compiler.serviceprovider;
 
 import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.nativeimage.LibGraalLoader;
+import jdk.graal.nativeimage.hosted.GlobalData;
 import jdk.internal.misc.Unsafe;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * A shareable long value in the JVM process that is updated atomically. The long value is stored in
@@ -44,12 +51,25 @@ public class GlobalAtomicLong {
     /**
      * Cleaner for freeing {@link #address}.
      */
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private static Cleaner cleaner;
+
+    /**
+     * Name of the global. This is only used for {@link #toString()} and is not guaranteed to be
+     * unique.
+     */
+    private final String name;
 
     /**
      * Address of native memory storing the long value.
      */
     private volatile long address;
+
+    /**
+     * Supplies the address of the global memory storing the global value. This field is transformed
+     * during native image building into a supplier backed by {@link GlobalData}
+     */
+    private final Supplier<Long> addressSupplier;
 
     /**
      * Value to which the value will be initialized.
@@ -61,8 +81,31 @@ public class GlobalAtomicLong {
      *
      * @param initialValue initial value to which the long is set when its memory is allocated
      */
-    public GlobalAtomicLong(long initialValue) {
+    public GlobalAtomicLong(String name, long initialValue) {
+        this.name = name;
         this.initialValue = initialValue;
+        if (ImageInfo.inImageRuntimeCode()) {
+            throw GraalError.shouldNotReachHere("Cannot create " + getClass().getName() + " objects in native image runtime");
+        } else {
+            if (ImageInfo.inImageBuildtimeCode() && GlobalAtomicLong.class.getClassLoader() instanceof LibGraalLoader) {
+                addressSupplier = GlobalData.createGlobal(initialValue);
+            } else {
+                addressSupplier = () -> {
+                    if (ImageInfo.inImageRuntimeCode()) {
+                        throw GraalError.shouldNotReachHere("The addressSupplier field value should have been replaced at image build time");
+                    }
+                    long addr = UNSAFE.allocateMemory(Long.BYTES);
+                    synchronized (GlobalAtomicLong.class) {
+                        if (cleaner == null) {
+                            cleaner = Cleaner.create();
+                        }
+                        cleaner.register(GlobalAtomicLong.this, () -> UNSAFE.freeMemory(addr));
+                    }
+                    UNSAFE.putLongVolatile(null, addr, initialValue);
+                    return addr;
+                };
+            }
+        }
     }
 
     public long getInitialValue() {
@@ -71,28 +114,18 @@ public class GlobalAtomicLong {
 
     @Override
     public String toString() {
-        long addr = getAddress();
-        if (addr == 0L) {
-            return String.valueOf(initialValue);
+        if (address == 0L) {
+            return name + ":" + initialValue;
         } else {
-            return String.format("%d (@0x%x)", get(), addr);
+            return String.format("%s:%d(@0x%x)", name, get(), address);
         }
     }
 
-    // Substituted by Target_jdk_graal_compiler_serviceprovider_GlobalAtomicLong
     private long getAddress() {
         if (address == 0L) {
             synchronized (this) {
                 if (address == 0L) {
-                    long addr = UNSAFE.allocateMemory(Long.BYTES);
-                    synchronized (GlobalAtomicLong.class) {
-                        if (cleaner == null) {
-                            cleaner = Cleaner.create();
-                        }
-                        cleaner.register(this, () -> UNSAFE.freeMemory(addr));
-                    }
-                    UNSAFE.putLongVolatile(null, addr, initialValue);
-                    address = addr;
+                    address = addressSupplier.get();
                 }
             }
         }

@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold.InjectedParameter;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -71,6 +72,12 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
         throw new GraalError("could not find method named \"execute\" in " + c.getName());
     }
 
+    /**
+     * Determines if the {@linkplain InjectedParameter} value in {@code arg} allows folding of a
+     * call to {@code foldAnnotatedMethod} in the compilation context represented by {@code b}.
+     *
+     * @return true if the folding being attempted by the caller can proceed
+     */
     protected boolean checkInjectedArgument(GraphBuilderContext b, ValueNode arg, ResolvedJavaMethod foldAnnotatedMethod) {
         if (inImageRuntimeCode()) {
             // In native image runtime compilation, there is no later stage where execution of the
@@ -86,6 +93,7 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
             return false;
         }
 
+        ResolvedJavaMethod thisExecuteMethod = getExecuteMethod(b);
         if (inImageBuildtimeCode()) {
             // Calls to the @Fold method from the generated fold plugin shouldn't be folded. This is
             // detected by comparing the class names of the current plugin and the method being
@@ -98,7 +106,6 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
             }
         }
 
-        ResolvedJavaMethod thisExecuteMethod = getExecuteMethod(b);
         if (b.getMethod().equals(thisExecuteMethod)) {
             return true;
         }

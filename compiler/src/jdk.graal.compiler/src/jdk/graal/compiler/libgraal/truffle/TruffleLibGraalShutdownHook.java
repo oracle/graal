@@ -22,17 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.services.JVMCIServiceLocator;
+import org.graalvm.jniutils.JNI.JClass;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JavaVM;
+import org.graalvm.jniutils.JNIUtil;
 
-import java.lang.invoke.MethodHandle;
-
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnIsolateShutdown;
 
 @ServiceProvider(JVMCIServiceLocator.class)
 public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
@@ -48,30 +50,29 @@ public class TruffleLibGraalShutdownHook extends JVMCIServiceLocator {
         return null;
     }
 
-    static void registerShutdownHook() {
-        registeredHook = new ShutdownHook();
+    static void registerShutdownHook(JNIEnv env, JClass runtimeClass) {
+        JavaVM vm = JNIUtil.GetJavaVM(env);
+        ShutdownHook hook = registeredHook;
+        assert hook == null || hook.javaVm.isNull() || hook.javaVm.equal(vm);
+        registeredHook = new ShutdownHook(vm, new TruffleFromLibGraalCalls(env, runtimeClass));
     }
 
     static class ShutdownHook implements HotSpotVMEventListener {
 
-        private static final Handles HANDLES = new Handles();
+        private final JavaVM javaVm;
+        private final TruffleFromLibGraalCalls calls;
 
-        ShutdownHook() {
+        ShutdownHook(JavaVM javaVm, TruffleFromLibGraalCalls calls) {
+            this.javaVm = javaVm;
+            this.calls = calls;
         }
 
         @Override
+        @TruffleFromLibGraal(OnIsolateShutdown)
         public void notifyShutdown() {
-            try {
-                HANDLES.onIsolateShutdown.invoke(IsolateUtil.getIsolateID());
-            } catch (RuntimeException | Error e) {
-                throw e;
-            } catch (Throwable t) {
-                throw new RuntimeException(t);
-            }
+            JNIEnv env = JNIUtil.GetEnv(javaVm);
+            assert env.isNonNull();
+            TruffleLibGraalShutdownHookGen.callOnIsolateShutdown(calls, env, IsolateUtil.getIsolateID());
         }
-    }
-
-    private static final class Handles {
-        final MethodHandle onIsolateShutdown = getHostMethodHandleOrFail(Id.OnIsolateShutdown);
     }
 }

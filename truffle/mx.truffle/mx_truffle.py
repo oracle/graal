@@ -680,7 +680,7 @@ def sl_jvm_gate_tests():
     _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=False, supports_optimization=False)
     _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=True, supports_optimization=False)
 
-    _sl_jvm_comiler_on_upgrade_module_path_gate_tests(mx.get_jdk(tag='default'))
+    _sl_jvm_compiler_on_upgrade_module_path_gate_tests(mx.get_jdk(tag='default'))
 
 
 def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
@@ -730,7 +730,7 @@ def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
         _run_sl_tests(run_jvm_no_enterprise_jvmci_disabled)
 
 
-def _sl_jvm_comiler_on_upgrade_module_path_gate_tests(jdk):
+def _sl_jvm_compiler_on_upgrade_module_path_gate_tests(jdk):
     if mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home) or mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(jdk.home):
         # Ignore tests for Truffle LTS gate using GraalVM as a base JDK
         mx.log(f'Ignoring SL JVM Optimized with Compiler on Upgrade Module Path on {jdk.home} because JDK is GraalVM')
@@ -739,6 +739,7 @@ def _sl_jvm_comiler_on_upgrade_module_path_gate_tests(jdk):
     vm_args = [
         '-XX:+UnlockExperimentalVMOptions',
         '-XX:+EnableJVMCI',
+        '-Djdk.graal.CompilationFailureAction=ExitVM',
         f'--upgrade-module-path={compiler.classpath_repr()}',
     ]
 

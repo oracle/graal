@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot;
+package jdk.graal.compiler.libgraal;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,27 +35,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
-
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
-
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.HotSpotGraalOptionValues;
-import jdk.graal.compiler.hotspot.libgraal.CompilerConfig;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.ObjectCopier;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Gets the map created in a JVM subprocess by running {@link CompilerConfig}.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public class GetCompilerConfig {
 
-    private static final boolean DEBUG = Boolean.getBoolean("debug." + GetCompilerConfig.class.getName());
+    private static final boolean DEBUG = Boolean.parseBoolean(GraalServices.getSavedProperty("debug." + GetCompilerConfig.class.getName()));
 
     /**
      * Result returned by {@link GetCompilerConfig#from}.
@@ -102,12 +95,9 @@ public class GetCompilerConfig {
      *
      * @param javaHome the value of the {@code java.home} system property reported by a Java
      *            installation directory that includes the Graal classes in its runtime image
-     * @param options the options passed to native-image
      */
-    public static Result from(Path javaHome, OptionValues options) {
+    public static Result from(Path javaHome) {
         Path javaExe = GetJNIConfig.getJavaExe(javaHome);
-        UnmodifiableEconomicMap<OptionKey<?>, Object> optionsMap = options.getMap();
-        UnmodifiableMapCursor<OptionKey<?>, Object> entries = optionsMap.getEntries();
         Map<String, Set<String>> opens = Map.of(
                         // Needed to reflect fields like
                         // java.util.ImmutableCollections.EMPTY
@@ -125,35 +115,25 @@ public class GetCompilerConfig {
                         "-XX:+UnlockExperimentalVMOptions",
                         "-XX:+EnableJVMCI",
                         "-XX:-UseJVMCICompiler", // avoid deadlock with jargraal
+
+                        // Required to use Modules class
+                        "--add-exports=java.base/jdk.internal.module=jdk.graal.compiler",
                         addExports,
-                        "-Djdk.vm.ci.services.aot=true",
+                        "-Djdk.vm.ci.services.aot=true", // Remove after JDK-8346781
                         "-D%s=%s".formatted(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME)));
 
-        Module module = ObjectCopier.class.getModule();
-        String target = module.isNamed() ? module.getName() : "ALL-UNNAMED";
         for (var e : opens.entrySet()) {
             for (String source : e.getValue()) {
-                command.add("--add-opens=%s/%s=%s".formatted(e.getKey(), source, target));
+                command.add("--add-opens=%s/%s=jdk.graal.compiler".formatted(e.getKey(), source));
             }
-        }
-
-        // Propagate compiler options
-        while (entries.advance()) {
-            OptionKey<?> key = entries.getKey();
-            if (key instanceof RuntimeOptionKey || key instanceof HostedOptionKey) {
-                // Ignore Native Image options
-                continue;
-            }
-            if (key.getDescriptor().getDeclaringClass().getModule().equals(PointstoOptions.class.getModule())) {
-                // Ignore points-to analysis options
-                continue;
-            }
-            command.add("-D%s%s=%s".formatted(HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX, key.getName(), entries.getValue()));
         }
 
         command.add(CompilerConfig.class.getName());
-        Path encodedConfigPath = Path.of(GetCompilerConfig.class.getSimpleName() + "_" + ProcessHandle.current().pid() + ".txt").toAbsolutePath();
+        String base = GetCompilerConfig.class.getSimpleName() + "_" + ProcessHandle.current().pid();
+        Path encodedConfigPath = Path.of(base + ".bin").toAbsolutePath();
+        Path debugPath = Path.of(base + ".txt").toAbsolutePath();
         command.add(encodedConfigPath.toString());
+        command.add(debugPath.toString());
 
         String quotedCommand = command.stream().map(e -> e.indexOf(' ') == -1 ? e : '\'' + e + '\'').collect(Collectors.joining(" "));
         ProcessBuilder pb = new ProcessBuilder(command);
@@ -178,8 +158,10 @@ public class GetCompilerConfig {
             if (DEBUG) {
                 System.out.printf("[%d] Executed: %s%n", p.pid(), quotedCommand);
                 System.out.printf("[%d] Output saved in %s%n", p.pid(), encodedConfigPath);
+                System.out.printf("[%d] Debug output saved in %s%n", p.pid(), debugPath);
             } else {
                 Files.deleteIfExists(encodedConfigPath);
+                Files.deleteIfExists(debugPath);
             }
             return new Result(encodedConfig, opens);
         } catch (IOException e) {

@@ -22,33 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package jdk.graal.compiler.core.common;
 
-package jdk.graal.compiler.hotspot.libgraal;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import java.util.Map;
-import java.util.Set;
-
-public interface LibGraalClassLoaderBase {
-
-    /**
-     * @return instance of ClassLoader that implements this interface.
-     */
-    ClassLoader getClassLoader();
+/**
+ * Implemented by classes that have logic specific to a {@link Feature}s.
+ */
+public interface FeatureComponent {
 
     /**
-     * @return instance of ClassLoader that should be seen at image-runtime if a class was loaded at
-     *         image-buildtime by this classloader.
+     * Called during analysis of {@code feature}.
+     *
+     * @see Feature#duringAnalysis(Feature.DuringAnalysisAccess)
      */
-    ClassLoader getRuntimeClassLoader();
-
-    /**
-     * Gets an unmodifiable map from the {@linkplain Class#forName(String) name} of a class to the
-     * name of its enclosing module.
-     */
-    Map<String, String> getModules();
-
-    /**
-     * Get unmodifiable set of fully qualified names of all classes this loader can load.
-     */
-    Set<String> getAllClassNames();
+    void duringAnalysis(Feature feature, Feature.DuringAnalysisAccess access);
 }

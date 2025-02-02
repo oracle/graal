@@ -1,12 +1,10 @@
-Specify the fully qualified class name of the LibGraalClassLoader implementation that gets used for building libgraal.
+Specify the fully qualified name of a class that implements jdk.graal.nativeimage.LibGraalLoader.
 
 This option is only supported for building the libgraal shared library.
-The given fully qualified class name has to be a subtype of
-jdk.graal.compiler.hotspot.libgraal.LibGraalClassLoaderBase.
 
-When building the libgraal shared library, this option is used to specify a custom loader
-the builder instantiates via default constructor, that affects image building as follows:
+The named class is instantiated via the default constructor.
+It affects image building as follows:
 
  1. The custom loader is used to lookup Feature implementations passed via the --features option.
- 2. All @CEntryPoint definitions from classes managed by the custom loader are processed.
- 3. All @TargetClass substitutions in classes managed by the custom loader are processed.
+ 2. All @CEntryPoint definitions in classes loaded by the custom loader are processed.
+ 3. All @TargetClass substitutions in classes loaded by the custom loader are processed.

@@ -22,27 +22,57 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
-
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
-
-import java.lang.invoke.MethodHandle;
-import java.util.Map;
-import java.util.function.Supplier;
+package jdk.graal.compiler.libgraal.truffle;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
-
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNI.JByteArray;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNICalls;
+import org.graalvm.jniutils.JNICalls.JNIMethod;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.nativebridge.BinaryInput;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.WordFactory;
 
-final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompilable {
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Supplier;
 
-    private static final Handles HANDLES = new Handles();
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CountDirectCallNodes;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.EngineId;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableCallCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilableName;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetCompilerOptions;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetFailedSpeculationsAddress;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetKnownCallSiteCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.GetNonTrivialNodeCount;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.PrepareForCompilation;
+import static org.graalvm.jniutils.JNIMethodScope.env;
+import static org.graalvm.jniutils.JNIUtil.createString;
 
+final class HSTruffleCompilable extends HSObject implements TruffleCompilable {
+
+    private static volatile JNIMethod prepareForCompilationNewMethod;
+    private static volatile JNIMethod onCompilationSuccessMethod;
+
+    private final TruffleFromLibGraalCalls calls;
     /**
      * Handle to {@code speculationLog} field of the {@code OptimizedCallTarget}.
      */
@@ -50,85 +80,125 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
     private volatile String cachedName;
     private volatile String cachedString;
 
-    HSTruffleCompilable(Object hsHandle) {
-        super(hsHandle);
+    HSTruffleCompilable(JNIMethodScope scope, JObject handle, HSTruffleCompilerRuntime runtime) {
+        super(scope, handle);
+        this.calls = runtime.calls;
     }
 
+    @TruffleFromLibGraal(GetFailedSpeculationsAddress)
     @Override
     public SpeculationLog getCompilationSpeculationLog() {
         Long res = cachedFailedSpeculationsAddress;
         if (res == null) {
-            try {
-                res = (long) HANDLES.getFailedSpeculationsAddress.invoke(hsHandle);
-                cachedFailedSpeculationsAddress = res;
-            } catch (Throwable t) {
-                throw handleException(t);
-            }
+            res = HSTruffleCompilableGen.callGetFailedSpeculationsAddress(calls, env(), getHandle());
+            cachedFailedSpeculationsAddress = res;
         }
         return HotSpotGraalServices.newHotSpotSpeculationLog(cachedFailedSpeculationsAddress);
     }
 
+    @TruffleFromLibGraal(GetCompilerOptions)
     @Override
-    @SuppressWarnings("unchecked")
     public Map<String, String> getCompilerOptions() {
-        try {
-            return (Map<String, String>) HANDLES.getCompilerOptions.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
+        JNIEnv env = JNIMethodScope.env();
+        JByteArray res = HSTruffleCompilableGen.callGetCompilerOptions(calls, env, getHandle());
+        BinaryInput in = BinaryInput.create(JNIUtil.createArray(env, res));
+        int size = in.readInt();
+        Map<String, String> map = new LinkedHashMap<>();
+        for (int i = 0; i < size; i++) {
+            String key = in.readUTF();
+            map.put(key, in.readUTF());
         }
+        return map;
     }
 
+    @TruffleFromLibGraal(EngineId)
     @Override
     public long engineId() {
-        try {
-            return (long) HANDLES.engineId.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleCompilableGen.callEngineId(calls, env(), getHandle());
     }
 
+    @TruffleFromLibGraal(PrepareForCompilation)
     @Override
     public boolean prepareForCompilation(boolean rootCompilation, int compilationTier, boolean lastTier) {
-        try {
-            return (boolean) HANDLES.prepareForCompilation.invoke(hsHandle, rootCompilation, compilationTier, lastTier);
-        } catch (Throwable t) {
-            throw handleException(t);
+        JNIEnv env = JNIMethodScope.env();
+        JNIMethod newMethod = findPrepareForCompilationNewMethod(env);
+        if (newMethod != null) {
+            return callPrepareForCompilationNew(newMethod, env, getHandle(), rootCompilation, compilationTier, lastTier);
+        } else {
+            HSTruffleCompilableGen.callPrepareForCompilation(calls, env(), getHandle());
+            return true;
         }
     }
 
+    private JNIMethod findPrepareForCompilationNewMethod(JNIEnv env) {
+        JNIMethod res = prepareForCompilationNewMethod;
+        if (res == null) {
+            res = calls.findJNIMethod(env, "prepareForCompilation", boolean.class, Object.class, boolean.class, int.class, boolean.class);
+            prepareForCompilationNewMethod = res;
+        }
+        return res.getJMethodID().isNonNull() ? res : null;
+    }
+
+    private boolean callPrepareForCompilationNew(JNIMethod method, JNIEnv env, JObject p0, boolean p1, int p2, boolean p3) {
+        JNI.JValue args = StackValue.get(4, JNI.JValue.class);
+        args.addressOf(0).setJObject(p0);
+        args.addressOf(1).setBoolean(p1);
+        args.addressOf(2).setInt(p2);
+        args.addressOf(3).setBoolean(p3);
+        return calls.getJNICalls().callStaticBoolean(env, calls.getPeer(), method, args);
+    }
+
+    @TruffleFromLibGraal(IsTrivial)
     @Override
     public boolean isTrivial() {
-        try {
-            return (boolean) HANDLES.isTrivial.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleCompilableGen.callIsTrivial(calls, env(), getHandle());
     }
 
+    @TruffleFromLibGraal(AsJavaConstant)
     @Override
     public JavaConstant asJavaConstant() {
-        long constantHandle;
-        try {
-            constantHandle = (long) HANDLES.asJavaConstant.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        long constantHandle = HSTruffleCompilableGen.callAsJavaConstant(calls, env(), getHandle());
         return HotSpotJVMCIRuntime.runtime().unhand(JavaConstant.class, constantHandle);
     }
 
+    @TruffleFromLibGraal(CreateStringSupplier)
+    @TruffleFromLibGraal(OnCompilationFailed)
     @Override
     public void onCompilationFailed(Supplier<String> serializedException, boolean suppressed, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
+        long serializedExceptionHandle = LibGraalObjectHandles.create(serializedException);
+        boolean success = false;
+        JNIEnv env = env();
         try {
-            Object serializedExceptionHsHandle = HANDLES.createStringSupplier.invoke(serializedException);
-            HANDLES.onCompilationFailed.invoke(hsHandle, serializedExceptionHsHandle, suppressed, bailout, permanentBailout, graphTooBig);
-        } catch (Throwable t) {
-            throw handleException(t);
+            JObject instance = HSTruffleCompilableGen.callCreateStringSupplier(calls, env, serializedExceptionHandle);
+            HSTruffleCompilableGen.callOnCompilationFailed(calls, env, getHandle(), instance, suppressed, bailout, permanentBailout, graphTooBig);
+            success = true;
+        } finally {
+            if (!success) {
+                LibGraalObjectHandles.remove(serializedExceptionHandle);
+            }
         }
     }
 
     @Override
     public void onCompilationSuccess(int compilationTier, boolean lastTier) {
-        NativeImageHostCalls.onCompilationSuccess(hsHandle, compilationTier, lastTier);
+        JNIEnv env = JNIMethodScope.env();
+        JNICalls.JNIMethod methodOrNull = findOnCompilationSuccessMethod(env);
+        if (methodOrNull != null) {
+            JNI.JValue args = StackValue.get(3, JNI.JValue.class);
+            args.addressOf(0).setJObject(getHandle());
+            args.addressOf(1).setInt(compilationTier);
+            args.addressOf(2).setBoolean(lastTier);
+            calls.getJNICalls().callStaticVoid(env, calls.getPeer(), methodOrNull, args);
+        }
+    }
+
+    private JNIMethod findOnCompilationSuccessMethod(JNIEnv env) {
+        JNIMethod res = onCompilationSuccessMethod;
+        if (res == null) {
+            res = calls.findJNIMethod(env, "onCompilationSuccess", void.class, Object.class, int.class, boolean.class);
+            onCompilationSuccessMethod = res;
+        }
+        return res.getJMethodID().isNonNull() ? res : null;
     }
 
     @Override
@@ -136,104 +206,65 @@ final class HSTruffleCompilable extends HSIndirectHandle implements TruffleCompi
         throw GraalError.shouldNotReachHere("Should not be reachable."); // ExcludeFromJacocoGeneratedReport
     }
 
+    @TruffleFromLibGraal(GetCompilableName)
     @Override
     public String getName() {
         String res = cachedName;
         if (res == null) {
-            try {
-                res = (String) HANDLES.getCompilableName.invoke(hsHandle);
-                cachedName = res;
-            } catch (Throwable t) {
-                throw handleException(t);
-            }
+            JNIEnv env = JNIMethodScope.env();
+            res = JNIUtil.createString(env, HSTruffleCompilableGen.callGetCompilableName(calls, env, getHandle()));
+            cachedName = res;
         }
         return res;
     }
 
+    @TruffleFromLibGraal(CompilableToString)
     @Override
     public String toString() {
         String res = cachedString;
         if (res == null) {
-            try {
-                res = (String) HANDLES.compilableToString.invoke(hsHandle);
-                cachedString = res;
-            } catch (Throwable t) {
-                throw handleException(t);
-            }
+            JNIEnv env = JNIMethodScope.env();
+            res = createString(env, HSTruffleCompilableGen.callCompilableToString(calls, env, getHandle()));
+            cachedString = res;
         }
         return res;
     }
 
+    @TruffleFromLibGraal(GetNonTrivialNodeCount)
     @Override
     public int getNonTrivialNodeCount() {
-        try {
-            return (int) HANDLES.getNonTrivialNodeCount.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleCompilableGen.callGetNonTrivialNodeCount(calls, env(), getHandle());
     }
 
+    @TruffleFromLibGraal(CountDirectCallNodes)
     @Override
     public int countDirectCallNodes() {
-        try {
-            return (int) HANDLES.countDirectCallNodes.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleCompilableGen.callCountDirectCallNodes(calls, env(), getHandle());
     }
 
+    @TruffleFromLibGraal(GetCompilableCallCount)
     @Override
     public int getCallCount() {
-        try {
-            return (int) HANDLES.getCompilableCallCount.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        return HSTruffleCompilableGen.callGetCompilableCallCount(calls, env(), getHandle());
     }
 
+    @TruffleFromLibGraal(CancelCompilation)
     @Override
     public boolean cancelCompilation(CharSequence reason) {
-        try {
-            return (boolean) HANDLES.cancelCompilation.invoke(hsHandle, reason);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        JNIEnv env = env();
+        return HSTruffleCompilableGen.callCancelCompilation(calls, env, getHandle(), JNIUtil.createHSString(env, reason.toString()));
     }
 
+    @TruffleFromLibGraal(IsSameOrSplit)
     @Override
     public boolean isSameOrSplit(TruffleCompilable ast) {
-        try {
-            return (boolean) HANDLES.isSameOrSplit.invoke(hsHandle, ast == null ? null : ((HSTruffleCompilable) ast).hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
+        JObject astHandle = ast == null ? WordFactory.nullPointer() : ((HSTruffleCompilable) ast).getHandle();
+        return HSTruffleCompilableGen.callIsSameOrSplit(calls, env(), getHandle(), astHandle);
     }
 
+    @TruffleFromLibGraal(GetKnownCallSiteCount)
     @Override
     public int getKnownCallSiteCount() {
-        try {
-            return (int) HANDLES.getKnownCallSiteCount.invoke(hsHandle);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    private static final class Handles {
-        final MethodHandle getFailedSpeculationsAddress = getHostMethodHandleOrFail(Id.GetFailedSpeculationsAddress);
-        final MethodHandle getCompilerOptions = getHostMethodHandleOrFail(Id.GetCompilerOptions);
-        final MethodHandle engineId = getHostMethodHandleOrFail(Id.EngineId);
-        final MethodHandle prepareForCompilation = getHostMethodHandleOrFail(Id.PrepareForCompilation);
-        final MethodHandle isTrivial = getHostMethodHandleOrFail(Id.IsTrivial);
-        final MethodHandle asJavaConstant = getHostMethodHandleOrFail(Id.AsJavaConstant);
-        final MethodHandle getCompilableName = getHostMethodHandleOrFail(Id.GetCompilableName);
-        final MethodHandle createStringSupplier = getHostMethodHandleOrFail(Id.CreateStringSupplier);
-        final MethodHandle onCompilationFailed = getHostMethodHandleOrFail(Id.OnCompilationFailed);
-        final MethodHandle getNonTrivialNodeCount = getHostMethodHandleOrFail(Id.GetNonTrivialNodeCount);
-        final MethodHandle countDirectCallNodes = getHostMethodHandleOrFail(Id.CountDirectCallNodes);
-        final MethodHandle getCompilableCallCount = getHostMethodHandleOrFail(Id.GetCompilableCallCount);
-        final MethodHandle compilableToString = getHostMethodHandleOrFail(Id.CompilableToString);
-        final MethodHandle cancelCompilation = getHostMethodHandleOrFail(Id.CancelCompilation);
-        final MethodHandle isSameOrSplit = getHostMethodHandleOrFail(Id.IsSameOrSplit);
-        final MethodHandle getKnownCallSiteCount = getHostMethodHandleOrFail(Id.GetKnownCallSiteCount);
+        return HSTruffleCompilableGen.callGetKnownCallSiteCount(calls, env(), getHandle());
     }
 }

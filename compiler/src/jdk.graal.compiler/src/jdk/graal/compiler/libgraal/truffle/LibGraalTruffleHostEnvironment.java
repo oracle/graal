@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
 import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;
@@ -30,6 +30,7 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 import jdk.graal.compiler.core.common.util.MethodKey;
 import jdk.graal.compiler.hotspot.CompilationContext;
 import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.truffle.TruffleCompilerImpl;
 import jdk.graal.compiler.truffle.TruffleElementCache;
 import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
@@ -131,10 +132,9 @@ final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
             try {
                 return MethodHandles.lookup().findConstructor(Class.forName("jdk.vm.ci.hotspot.CompilerThreadCanCallJavaScope"), MethodType.methodType(void.class, boolean.class));
             } catch (ReflectiveOperationException e) {
-// GR-58987: Uncomment when OpenJDK pull request is merged
-// if (Runtime.version().feature() >= 24) {
-// throw new InternalError(e);
-// }
+                if (JavaVersionUtil.JAVA_SPEC != 21) {
+                    throw new InternalError(e);
+                }
             }
             return null;
         }

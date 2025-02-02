@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -103,7 +104,6 @@ import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Assumptions.Assumption;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ProfilingInfo;
 
 /**
@@ -478,6 +478,15 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     }
 
     /**
+     * Gets a factory to use for creating the {@link CompilationWatchDog} watcher thread.
+     *
+     * @see CompilationWatchDog#watch
+     */
+    protected ThreadFactory getWatchDogThreadFactory() {
+        return null;
+    }
+
+    /**
      * Compiles a Truffle AST. If compilation succeeds, the AST will have compiled code associated
      * with it that can be executed instead of interpreting the AST.
      */
@@ -673,10 +682,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         return truffleTier;
     }
 
-    public TruffleCompilable asCompilableTruffleAST(JavaConstant constant) {
-        return config.snippetReflection().asObject(TruffleCompilable.class, constant);
-    }
-
     @Override
     public void onStuckCompilation(CompilationWatchDog watchDog, Thread watched, CompilationIdentifier compilation, StackTraceElement[] stackTrace, long stuckTime) {
         CompilationWatchDog.EventHandler.super.onStuckCompilation(watchDog, watched, compilation, stackTrace, stuckTime);
@@ -771,7 +776,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         @SuppressWarnings("try")
         @Override
         protected Void performCompilation(DebugContext debug) {
-            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this)) {
+            ThreadFactory factory = getWatchDogThreadFactory();
+            try (CompilationWatchDog watch = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, TruffleCompilerImpl.this, factory)) {
                 compileAST(this, debug);
                 return null;
             }

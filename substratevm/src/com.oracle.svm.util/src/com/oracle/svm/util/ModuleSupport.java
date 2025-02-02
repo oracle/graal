@@ -48,8 +48,17 @@ public final class ModuleSupport {
     public static final String PROPERTY_IMAGE_EXPLICITLY_LIMITED_MODULES = "svm.modulesupport.limitedModules";
     public static final boolean modulePathBuild = isModulePathBuild();
 
-    public static final Set<String> SYSTEM_MODULES = Set.of("org.graalvm.nativeimage.builder", "org.graalvm.nativeimage", "org.graalvm.nativeimage.base", "com.oracle.svm.svm_enterprise",
-                    "org.graalvm.word", "jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise");
+    public static final Set<String> SYSTEM_MODULES = Set.of(
+                    "com.oracle.graal.graal_enterprise",
+                    "com.oracle.svm.svm_enterprise",
+                    "jdk.graal.compiler",
+                    "jdk.graal.nativeimage",
+                    "jdk.internal.vm.ci",
+                    "org.graalvm.nativeimage",
+                    "org.graalvm.nativeimage.base",
+                    "org.graalvm.nativeimage.builder",
+                    "org.graalvm.truffle.compiler",
+                    "org.graalvm.word");
 
     private ModuleSupport() {
     }

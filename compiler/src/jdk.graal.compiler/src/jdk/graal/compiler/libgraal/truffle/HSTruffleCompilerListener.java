@@ -22,84 +22,87 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilationTask;
 import com.oracle.truffle.compiler.TruffleCompilerListener;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JString;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
 
-import java.lang.invoke.MethodHandle;
 import java.util.function.Supplier;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationRetry;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnFailure;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnGraalTierFinished;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnSuccess;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnTruffleTierFinished;
 
-final class HSTruffleCompilerListener extends HSIndirectHandle implements TruffleCompilerListener {
+final class HSTruffleCompilerListener extends HSObject implements TruffleCompilerListener {
 
-    private static final Handles HANDLES = new Handles();
+    private final TruffleFromLibGraalCalls calls;
 
-    HSTruffleCompilerListener(Object hsHandle) {
-        super(hsHandle);
+    HSTruffleCompilerListener(JNIMethodScope scope, JObject handle, HSTruffleCompilerRuntime runtime) {
+        super(scope, handle);
+        this.calls = runtime.calls;
     }
 
+    @TruffleFromLibGraal(OnSuccess)
     @Override
     public void onSuccess(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
-        Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
-        Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
-        try {
-            HANDLES.onSuccess.invoke(hsHandle, hsCompilable, hsTask, graphInfo, compilationResultInfo, tier);
-        } catch (Throwable t) {
-            throw handleException(t);
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
+        JObject hsTask = ((HSTruffleCompilationTask) task).getHandle();
+        JNIEnv env = JNIMethodScope.env();
+        try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graphInfo);
+                        LibGraalObjectHandleScope compilationResultInfoScope = LibGraalObjectHandleScope.forObject(compilationResultInfo)) {
+            HSTruffleCompilerListenerGen.callOnSuccess(calls, env, getHandle(), hsCompilable, hsTask, graphInfoScope.getHandle(), compilationResultInfoScope.getHandle(), tier);
         }
     }
 
+    @TruffleFromLibGraal(OnTruffleTierFinished)
     @Override
     public void onTruffleTierFinished(TruffleCompilable compilable, TruffleCompilationTask task, GraphInfo graph) {
-        Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
-        Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
-        try {
-            HANDLES.onTruffleTierFinished.invoke(hsHandle, hsCompilable, hsTask, graph);
-        } catch (Throwable t) {
-            throw handleException(t);
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
+        JObject hsTask = ((HSTruffleCompilationTask) task).getHandle();
+        JNIEnv env = JNIMethodScope.env();
+        try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graph)) {
+            HSTruffleCompilerListenerGen.callOnTruffleTierFinished(calls, env, getHandle(), hsCompilable, hsTask, graphInfoScope.getHandle());
         }
     }
 
+    @TruffleFromLibGraal(OnGraalTierFinished)
     @Override
     public void onGraalTierFinished(TruffleCompilable compilable, GraphInfo graph) {
-        Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
-        try {
-            HANDLES.onGraalTierFinished.invoke(hsHandle, hsCompilable, graph);
-        } catch (Throwable t) {
-            throw handleException(t);
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
+        JNIEnv env = JNIMethodScope.env();
+        try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graph)) {
+            HSTruffleCompilerListenerGen.callOnGraalTierFinished(calls, env, getHandle(), hsCompilable, graphInfoScope.getHandle());
         }
     }
 
+    @TruffleFromLibGraal(OnFailure)
     @Override
     public void onFailure(TruffleCompilable compilable, String reason, boolean bailout, boolean permanentBailout, int tier, Supplier<String> lazyStackTrace) {
-        Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
-        try {
-            HANDLES.onFailure.invoke(hsHandle, hsCompilable, reason, bailout, permanentBailout, tier, lazyStackTrace);
-        } catch (Throwable t) {
-            throw handleException(t);
+        try (LibGraalObjectHandleScope lazyStackTraceScope = lazyStackTrace != null ? LibGraalObjectHandleScope.forObject(lazyStackTrace) : null) {
+            JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
+            JNIEnv env = JNIMethodScope.env();
+            JString hsReason = JNIUtil.createHSString(env, reason);
+            HSTruffleCompilerListenerGen.callOnFailure(calls, env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier,
+                            lazyStackTraceScope != null ? lazyStackTraceScope.getHandle() : 0L);
         }
     }
 
+    @TruffleFromLibGraal(OnCompilationRetry)
     @Override
     public void onCompilationRetry(TruffleCompilable compilable, TruffleCompilationTask task) {
-        Object hsCompilable = ((HSTruffleCompilable) compilable).hsHandle;
-        Object hsTask = ((HSTruffleCompilationTask) task).hsHandle;
-        try {
-            HANDLES.onCompilationRetry.invoke(hsHandle, hsCompilable, hsTask);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    private static final class Handles {
-        final MethodHandle onSuccess = getHostMethodHandleOrFail(Id.OnSuccess);
-        final MethodHandle onTruffleTierFinished = getHostMethodHandleOrFail(Id.OnTruffleTierFinished);
-        final MethodHandle onGraalTierFinished = getHostMethodHandleOrFail(Id.OnGraalTierFinished);
-        final MethodHandle onFailure = getHostMethodHandleOrFail(Id.OnFailure);
-        final MethodHandle onCompilationRetry = getHostMethodHandleOrFail(Id.OnCompilationRetry);
+        JObject hsCompilable = ((HSTruffleCompilable) compilable).getHandle();
+        JObject hsTask = ((HSTruffleCompilationTask) task).getHandle();
+        JNIEnv env = JNIMethodScope.env();
+        HSTruffleCompilerListenerGen.callOnCompilationRetry(calls, env, getHandle(), hsCompilable, hsTask);
     }
 }

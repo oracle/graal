@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import jdk.graal.nativeimage.LibGraalLoader;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
@@ -189,6 +190,16 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * class initialization fails.
      */
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
+        LibGraalLoader libGraalLoader = loader.classLoaderSupport.getLibGraalLoader();
+        Thread thread = Thread.currentThread();
+        ClassLoader restoreCCL = null;
+        ClassLoader clazzLoader = clazz.getClassLoader();
+        if (libGraalLoader != null && (ClassLoader) libGraalLoader == clazzLoader) {
+            // Graal and JVMCI make use of ServiceLoader which uses the
+            // context class loader so it needs to be the libgraal loader.
+            restoreCCL = thread.getContextClassLoader();
+            thread.setContextClassLoader(clazz.getClassLoader());
+        }
         try {
             loader.watchdog.recordActivity();
             /*
@@ -233,6 +244,10 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
                 }
 
                 throw UserError.abort(t, "%s", msg);
+            }
+        } finally {
+            if (restoreCCL != null) {
+                thread.setContextClassLoader(restoreCCL);
             }
         }
     }

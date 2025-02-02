@@ -133,7 +133,7 @@ graalvm_sdk_component = mx_sdk_vm.GraalVmJreComponent(
 )
 mx_sdk_vm.register_graalvm_component(graalvm_sdk_component)
 
-# SDK modules included the compiler is included
+# SDK modules included if the compiler (jargraal) is included
 graal_sdk_compiler_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK Compiler',
@@ -143,7 +143,13 @@ graal_sdk_compiler_component = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:WORD', 'sdk:COLLECTIONS', 'sdk:NATIVEIMAGE'],
+    boot_jars=[
+        'sdk:WORD',
+        'sdk:COLLECTIONS',
+        'sdk:NATIVEIMAGE',
+        'sdk:NATIVEBRIDGE',
+        'sdk:JNIUTILS'
+    ],
     stability="supported",
 )
 mx_sdk_vm.register_graalvm_component(graal_sdk_compiler_component)
@@ -158,7 +164,7 @@ graalvm_sdk_native_image_component = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=['sdkc'],
     jar_distributions=[],
-    boot_jars=['sdk:NATIVEIMAGE'],
+    boot_jars=['sdk:NATIVEIMAGE', 'compiler:GRAAL_NATIVEIMAGE'],
     stability="supported",
 )
 mx_sdk_vm.register_graalvm_component(graalvm_sdk_native_image_component)

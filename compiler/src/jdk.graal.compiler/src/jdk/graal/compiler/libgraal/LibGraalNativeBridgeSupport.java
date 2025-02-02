@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.graal.hotspot.libgraal;
+package jdk.graal.compiler.libgraal;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.NativeBridgeSupport;
-
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.IsolateSupport;
 
 public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
 
@@ -63,14 +63,14 @@ public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
             inTrace.set(true);
             try {
                 StringBuilder sb = new StringBuilder();
-                long isolateID = ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
+                long isolateID = IsolateUtil.getIsolateID();
                 sb.append('[').append(isolateID).append(':').append(Thread.currentThread().getName()).append(']');
                 JNIMethodScope scope = JNIMethodScope.scopeOrNull();
                 if (scope != null) {
                     sb.append(" ".repeat(2 + (scope.depth() * 2)));
                 }
                 sb.append(message);
-                LibGraalEntryPoints.ttyPrintf("%s%n", sb);
+                TTY.printf("%s%n", sb);
             } finally {
                 inTrace.remove();
             }
@@ -80,12 +80,12 @@ public final class LibGraalNativeBridgeSupport implements NativeBridgeSupport {
     private int traceLevel() {
         int res = traceLevel.get();
         if (res == UNINITIALIZED_TRACE_LEVEL) {
-            String var = LibGraalEntryPoints.getSavedProperty(JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME);
+            String var = GraalServices.getSavedProperty(JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME);
             if (var != null) {
                 try {
                     res = Integer.parseInt(var);
                 } catch (NumberFormatException e) {
-                    LibGraalEntryPoints.ttyPrintf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME, e);
+                    TTY.printf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME, e);
                     res = 0;
                 }
             } else {

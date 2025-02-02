@@ -24,6 +24,10 @@
  */
 package jdk.graal.compiler.serviceprovider;
 
+import jdk.graal.nativeimage.LibGraalRuntime;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageInfo;
+
 /**
  * Utility methods that provide access to isolate details.
  */
@@ -33,7 +37,10 @@ public final class IsolateUtil {
      * Gets the address of the current isolate or 0 if this not an isolate-aware runtime.
      */
     public static long getIsolateAddress() {
-        return VMSupport.getIsolateAddress();
+        if (ImageInfo.inImageRuntimeCode()) {
+            return CurrentIsolate.getIsolate().rawValue();
+        }
+        return 0L;
     }
 
     /**
@@ -42,7 +49,10 @@ public final class IsolateUtil {
      * process.
      */
     public static long getIsolateID() {
-        return VMSupport.getIsolateID();
+        if (ImageInfo.inImageRuntimeCode()) {
+            return LibGraalRuntime.getIsolateID();
+        }
+        return 0L;
     }
 
     /**

@@ -1386,70 +1386,6 @@ suite = {
             "jacoco" : "exclude",
         },
 
-        "com.oracle.svm.graal.hotspot" : {
-            "subDir": "src",
-            "sourceDirs" : [
-                "src"
-            ],
-            "dependencies": [
-                "sdk:JNIUTILS",
-                "compiler:GRAAL",
-                "SVM",
-            ],
-            "requiresConcealed" : {
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.services",
-                    "jdk.vm.ci.runtime",
-                    "jdk.vm.ci.hotspot",
-                    "jdk.vm.ci.meta"
-                ],
-            },
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
-            "workingSets" : "SVM",
-            "jacoco" : "exclude",
-        },
-
-        "com.oracle.svm.graal.hotspot.libgraal" : {
-            "subDir": "src",
-            "sourceDirs" : [
-                "src",
-                "resources",
-            ],
-            "dependencies": [
-                "com.oracle.svm.graal.hotspot",
-                "sdk:NATIVEIMAGE",
-                "sdk:NATIVEBRIDGE",
-                "compiler:GRAAL",
-                "SVM",
-            ],
-            "requires": [
-                "java.management",
-                "jdk.management",
-            ],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.misc",
-                ],
-                "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.services",
-                    "jdk.vm.ci.runtime",
-                    "jdk.vm.ci.code"
-                ],
-            },
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
-            ],
-            "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "21+",
-            "workingSets" : "SVM",
-            "jacoco" : "exclude",
-        },
-
         "com.oracle.svm.configure": {
             "subDir": "src",
             "sourceDirs": [
@@ -1777,6 +1713,7 @@ suite = {
                     "transitive org.graalvm.nativeimage.pointsto",
                     "org.graalvm.collections",
                     "org.graalvm.truffle.compiler",
+                    "jdk.graal.nativeimage"
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
@@ -2034,21 +1971,6 @@ suite = {
             "native-image.properties" : "file:mx.substratevm/macro-truffle-svm.properties",
           },
           "maven" : False,
-        },
-
-        "LIBGRAAL_LIBRARY": {
-            "subDir": "src",
-            "description" : "LibGraal feature",
-            "javaCompliance" : "21+",
-            "dependencies": [
-                "com.oracle.svm.graal.hotspot.libgraal",
-            ],
-            "distDependencies": [
-                "SVM",
-                "sdk:JNIUTILS",
-                "sdk:NATIVEBRIDGE",
-            ],
-            "maven": False,
         },
 
         #

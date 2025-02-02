@@ -22,34 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot.libgraal.truffle;
+package jdk.graal.compiler.libgraal.truffle;
 
 import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
 import com.oracle.truffle.compiler.TruffleCompilable;
 import com.oracle.truffle.compiler.TruffleCompilerAssumptionDependency;
-import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id;
+import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.word.WordFactory;
 
-import java.lang.invoke.MethodHandle;
 import java.util.function.Consumer;
 
-import static jdk.graal.compiler.hotspot.libgraal.truffle.BuildTime.getHostMethodHandleOrFail;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
+import static org.graalvm.jniutils.JNIMethodScope.env;
 
-final class HSConsumer extends HSIndirectHandle implements Consumer<OptimizedAssumptionDependency> {
+final class HSConsumer extends HSObject implements Consumer<OptimizedAssumptionDependency> {
 
-    private static final Handles HANDLES = new Handles();
+    private final TruffleFromLibGraalCalls calls;
 
-    HSConsumer(Object hsHandle) {
-        super(hsHandle);
+    HSConsumer(JNIMethodScope scope, JObject handle, TruffleFromLibGraalCalls calls) {
+        super(scope, handle);
+        this.calls = calls;
     }
 
+    @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)
     @Override
     public void accept(OptimizedAssumptionDependency optimizedDependency) {
         TruffleCompilerAssumptionDependency dependency = (TruffleCompilerAssumptionDependency) optimizedDependency;
-        Object compilableHsHandle;
+        JObject compilable;
         long installedCode;
         if (dependency == null) {
-            compilableHsHandle = null;
+            compilable = WordFactory.nullPointer();
             installedCode = 0;
         } else {
             TruffleCompilable ast = dependency.getCompilable();
@@ -58,20 +64,12 @@ final class HSConsumer extends HSIndirectHandle implements Consumer<OptimizedAss
                  * Compilable may be null if the compilation was triggered by a libgraal host
                  * compilation.
                  */
-                compilableHsHandle = null;
+                compilable = WordFactory.nullPointer();
             } else {
-                compilableHsHandle = ((HSTruffleCompilable) dependency.getCompilable()).hsHandle;
+                compilable = ((HSTruffleCompilable) dependency.getCompilable()).getHandle();
             }
             installedCode = HotSpotJVMCIRuntime.runtime().translate(dependency.getInstalledCode());
         }
-        try {
-            HANDLES.consumeOptimizedAssumptionDependency.invoke(hsHandle, compilableHsHandle, installedCode);
-        } catch (Throwable t) {
-            throw handleException(t);
-        }
-    }
-
-    private static final class Handles {
-        final MethodHandle consumeOptimizedAssumptionDependency = getHostMethodHandleOrFail(Id.ConsumeOptimizedAssumptionDependency);
+        HSConsumerGen.callConsumeOptimizedAssumptionDependency(calls, env(), getHandle(), compilable, installedCode);
     }
 }
