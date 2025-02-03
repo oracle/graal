@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.domain.access;
+package com.oracle.svm.hosted.analysis.ai.access;
 
 /**
  * Represents an array access in an access path (e.g., [0], [i])
