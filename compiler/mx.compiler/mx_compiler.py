@@ -249,13 +249,16 @@ def _is_jvmci_enabled(vmargs):
 
 def _ctw_jvmci_export_args(arg_prefix='--'):
     """
-    Gets the VM args needed to export JVMCI API required by CTW.
+    Gets the VM args needed to export JVMCI API and HotSpot internals required by CTW.
     """
-    args = ['add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+    args = [
+        'add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
+        'add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
+    ]
     return [arg_prefix + arg for arg in args]
 
 def _ctw_system_properties_suffix():
@@ -518,7 +521,10 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         '-DCompileTheWorld.MultiThreaded=true', '-Djdk.graal.InlineDuringParsing=false', '-Djdk.graal.TrackNodeSourcePosition=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
-    ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Djdk.graal.PrintGraphStateDiff=true']
+    ctw_phaseplan_fuzzing_flags = [
+        '-DCompileTheWorld.FuzzPhasePlan=true',
+        '-Djdk.graal.PrintGraphStateDiff=true',
+    ]
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw, report=True) as t:
         if t:
             ctw(ctw_flags, _remove_empty_entries(extraVMarguments))

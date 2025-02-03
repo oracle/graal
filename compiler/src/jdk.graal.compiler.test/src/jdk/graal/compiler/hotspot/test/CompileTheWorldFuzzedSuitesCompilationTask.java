@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.hotspot;
+package jdk.graal.compiler.hotspot.test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -31,9 +31,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import jdk.graal.compiler.core.common.CancellationBailoutException;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
 import jdk.graal.compiler.core.phases.fuzzing.FuzzedSuites;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.hotspot.CompilationTask;
+import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
 import jdk.graal.compiler.hotspot.meta.HotSpotFuzzedSuitesProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequestResult;
@@ -53,15 +57,32 @@ public class CompileTheWorldFuzzedSuitesCompilationTask extends CompilationTask 
 
     private final class HotSpotFuzzedCompilationWrapper extends HotSpotCompilationWrapper {
 
+        private static boolean shouldIgnoreFailure(Throwable cause) {
+            if (cause instanceof CancellationBailoutException) {
+                /* Cancelled compilations are not failed compilations. */
+                return true;
+            }
+            if (cause instanceof PermanentBailoutException bailout) {
+                /* Some bailouts related to node intrinsics can be ignored in the context of CTW. */
+                return CompileTheWorld.shouldIgnoreFailure(bailout.getMessage());
+            }
+            return false;
+        }
+
         @Override
         protected HotSpotCompilationRequestResult handleFailure(DebugContext initialDebug, Throwable cause) {
-            if (!(cause instanceof CancellationBailoutException)) {
-                String dumpPath = initialDebug.getDumpPath("", false);
+            if (!shouldIgnoreFailure(cause)) {
+
+                String dumpPath = initialDebug.getDumpPath("", false, false);
 
                 HotSpotFuzzedSuitesProvider suitesProvider = (HotSpotFuzzedSuitesProvider) compiler.getGraalRuntime().getHostBackend().getProviders().getSuites();
                 FuzzedSuites phasePlan = suitesProvider.getLastSuitesForThread(initialDebug.getOptions());
                 phasePlan.saveFuzzedSuites(dumpPath);
                 try {
+                    final String logFileName = dumpPath + "_failure.log";
+                    TTY.println("CompileTheWorld : %s error compiling method: %s", cause.getClass(), this.toString());
+                    TTY.println("CompileTheWorld : Retry from seed with: -D%s=%s", HotSpotFuzzedSuitesProvider.SEED_SYSTEM_PROPERTY, suitesProvider.getLastSeed().get());
+                    TTY.println("CompileTheWorld : See the file %s for details.", logFileName);
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     try (PrintStream ps = new PrintStream(baos)) {
                         ps.printf("CompileTheWorld : %s error compiling method: %s%n%n", cause.getClass(), this.toString());
@@ -75,7 +96,7 @@ public class CompileTheWorldFuzzedSuitesCompilationTask extends CompilationTask 
                         ps.printf("The stack trace:%n");
                         cause.printStackTrace(ps);
                     }
-                    Files.write(Paths.get(dumpPath + "_failure.log"), baos.toByteArray());
+                    Files.write(Paths.get(logFileName), baos.toByteArray());
                 } catch (IOException e) {
                     GraalError.shouldNotReachHere(e, "Error saving log of failed phase plan to " + dumpPath + "_failure.log"); // ExcludeFromJacocoGeneratedReport
                 }
