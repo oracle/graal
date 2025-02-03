@@ -42,6 +42,11 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     }
 
     @Override
+    public boolean intact() {
+        return super.intact() && value.isAlive();
+    }
+
+    @Override
     public ValueNode valueNode() {
         return value;
     }

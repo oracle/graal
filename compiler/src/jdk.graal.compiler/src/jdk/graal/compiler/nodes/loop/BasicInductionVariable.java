@@ -222,4 +222,10 @@ public class BasicInductionVariable extends InductionVariable {
     public ValueNode entryTripValue() {
         return init;
     }
+
+    @Override
+    public boolean intact() {
+        return phi.isAlive() && init.isAlive() && rawStride.isAlive() && op.isAlive();
+    }
+
 }

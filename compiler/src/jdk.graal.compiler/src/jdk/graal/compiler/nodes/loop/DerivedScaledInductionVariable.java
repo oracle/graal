@@ -53,6 +53,11 @@ public class DerivedScaledInductionVariable extends DerivedInductionVariable {
         this.value = value;
     }
 
+    @Override
+    public boolean intact() {
+        return super.intact() && scale.isAlive() && value.isAlive();
+    }
+
     public ValueNode getScale() {
         return scale;
     }
