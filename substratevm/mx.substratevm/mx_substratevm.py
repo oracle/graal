@@ -1231,7 +1231,6 @@ svm = mx_sdk_vm.GraalVmJreComponent(
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:NATIVE_IMAGE_BASE',
-        'substratevm:SVM_JFR',
     ] + (['substratevm:SVM_FOREIGN'] if mx_sdk_vm.base_jdk().javaCompliance >= '22' else []),
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     extra_native_targets=['linux-default-glibc', 'linux-default-musl'] if mx.is_linux() and not mx.get_arch() == 'riscv64' else None,
@@ -1668,6 +1667,20 @@ libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
 )
 
 mx_sdk_vm.register_graalvm_component(libsvmjdwp)
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+    suite=suite,
+    name='SubstrateVM JFR Support',
+    short_name='svmjfr',
+    dir_name="svmjfr",
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['SubstrateVM'],
+    builder_jar_distributions=['substratevm:SVM_JFR'],
+    support_distributions=['substratevm:SVM_JFR_SUPPORT'],
+    stability="experimental",
+    jlink=False,
+))
 
 def _native_image_configure_extra_jvm_args():
     packages = ['jdk.graal.compiler/jdk.graal.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.graal.compiler/jdk.graal.compiler.core.common.util']

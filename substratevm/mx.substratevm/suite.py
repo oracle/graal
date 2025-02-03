@@ -2550,6 +2550,14 @@ suite = {
             "maven" : False,
         },
 
+        "SVM_JFR_SUPPORT" : {
+            "native" : True,
+            "description" : "JFR support",
+            "layout" : {
+                "native-image.properties" : "file:mx.substratevm/macro-svmjfr.properties",
+            },
+        },
+
         "SVM_LLVM" : {
             "subDir" : "src",
             "description" : "LLVM backend for Native Image",
