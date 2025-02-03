@@ -38,7 +38,6 @@ public abstract class MapDomain<
         this.initialDomain = initialDomain;
     }
 
-    // TODO we get this-escape warning here, think of ways to perhaps avoid this.
     public MapDomain(Map<Key, Domain> map, Domain initialDomain) {
         super(() -> new MapValue<>(initialDomain));
         this.initialDomain = initialDomain.copyOf();

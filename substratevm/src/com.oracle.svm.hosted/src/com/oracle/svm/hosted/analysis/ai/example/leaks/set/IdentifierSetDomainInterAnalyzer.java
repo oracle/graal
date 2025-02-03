@@ -9,7 +9,9 @@ import com.oracle.svm.hosted.analysis.ai.summary.SummarySupplier;
 import jdk.graal.compiler.debug.DebugContext;
 
 /**
- * This analyzer uses a set of identifiers to track the opened resources.
+ * This analyzer uses a set of identifiers to track the opened resources ( in this case instances of {@link java.io.FileInputStream}.
+ * The main idea is to globally track the set of opened resource.
+ * This is done by binding each opened FileInputStream with a unique identifier
  */
 public class IdentifierSetDomainInterAnalyzer {
 
