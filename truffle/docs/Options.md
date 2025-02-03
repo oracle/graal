@@ -170,6 +170,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.TraversingCompilationQueue=true|false` : Use a traversing compilation queue. (default: true)
 - `--engine.TraversingQueueFirstTierBonus=[0.0, inf)` : Controls how much of a priority should be given to first tier compilations (default 15.0).
 - `--engine.TraversingQueueFirstTierPriority` : Traversing queue gives first tier compilations priority.
+- `--engine.TraversingQueueInvalidatedBonus=[0.0, inf)` : Controls how much of a priority should be given to compilations after invalidations (default: 1.0, no bonus).
 - `--engine.TraversingQueueWeightingBothTiers=true|false` : Traversing queue uses rate as priority for both tier. (default: true)
 - `--compiler.DiagnoseFailure` : Forces diagnostics for compilation failures (default: false).
 - `--compiler.ExcludeAssertions` : Exclude assertion code from Truffle compilations (default: true)
