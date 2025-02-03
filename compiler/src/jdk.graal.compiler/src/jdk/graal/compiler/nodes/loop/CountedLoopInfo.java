@@ -151,6 +151,13 @@ public class CountedLoopInfo {
     }
 
     /**
+     * See {@link InductionVariable#intact()}
+     */
+    public boolean intact() {
+        return limitCheckedIV.intact() && limit.isAlive() && body.isAlive() && ifNode.isAlive();
+    }
+
+    /**
      * Returns the induction variable compared against the limit node. For a loop like
      *
      * <pre>
