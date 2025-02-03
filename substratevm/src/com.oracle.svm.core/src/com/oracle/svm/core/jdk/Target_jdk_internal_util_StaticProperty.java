@@ -24,211 +24,303 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.BooleanSupplier;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.internal.util.StaticProperty;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * This class provides JDK-internal access to values that are also available via system properties.
- * However, it must not return values changes by the user. We do not want to query the values during
- * VM startup, because doing that is expensive. So we perform lazy initialization by calling the
- * same methods also used to initialize the system properties.
+ * However, it must not return values changed by the user. We do not want to query the values during
+ * VM startup, because doing that is expensive. So we perform lazy initialization by accessing the
+ * corresponding system properties.
+ * <p>
+ * We {@link Substitute substitute} the whole class so that it is possible to use a custom static
+ * constructor at run-time.
+ * <p>
+ * Note for updating: use {@link Delete} for static fields that should be unreachable (e.g, because
+ * we substituted an accessor and the field is therefore unused). Use {@link Alias} for static
+ * fields that can be initialized in our custom static constructor. Use {@link Substitute} for
+ * methods that access expensive lazily initialized system properties (see
+ * {@link SystemPropertiesSupport} for a list of all lazily initialized properties). Use
+ * {@link KeepOriginal} for methods that we don't want to substitute.
  */
 @Substitute
 @TargetClass(jdk.internal.util.StaticProperty.class)
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "FieldCanBeLocal"})
 final class Target_jdk_internal_util_StaticProperty {
-
     // Checkstyle: stop
+    @Delete//
+    private static String JAVA_HOME;
+
+    @Delete//
+    private static String USER_HOME;
+
+    @Delete//
+    private static String USER_DIR;
+
+    @Delete//
+    private static String USER_NAME;
+
+    @Delete//
+    private static String JAVA_LIBRARY_PATH;
+
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String SUN_BOOT_LIBRARY_PATH;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String JDK_SERIAL_FILTER;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String JDK_SERIAL_FILTER_FACTORY;
+
+    @Delete//
+    private static String JAVA_IO_TMPDIR;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String NATIVE_ENCODING;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String FILE_ENCODING;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String JAVA_PROPERTIES_DATE;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String SUN_JNU_ENCODING;
+
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String JAVA_LOCALE_USE_OLD_ISO_CODES;
+
+    @Delete//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    private static String OS_NAME;
+
+    @Alias//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    private static String OS_ARCH;
+
+    @Delete//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    private static String OS_VERSION;
+
+    @Alias//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE_DISPLAY;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_LANGUAGE_FORMAT;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT_DISPLAY;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_SCRIPT_FORMAT;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY_DISPLAY;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_COUNTRY_FORMAT;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT_DISPLAY;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_VARIANT_FORMAT;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS_DISPLAY;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_EXTENSIONS_FORMAT;
 
     @Alias//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    @TargetElement(onlyWith = JDKLatest.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public static String USER_REGION;
     // Checkstyle: resume
 
+    /*
+     * This static constructor is executed at run-time. Be careful that it only initializes lazy
+     * system properties that are reasonably cheap to initialize (e.g., everything related to
+     * locale).
+     */
     static {
         if (!SubstrateUtil.HOSTED) {
-            USER_LANGUAGE = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_LANGUAGE, "en");
-            USER_LANGUAGE_DISPLAY = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_LANGUAGE_DISPLAY, USER_LANGUAGE);
-            USER_LANGUAGE_FORMAT = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_SCRIPT_FORMAT, USER_LANGUAGE);
-            USER_SCRIPT = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_SCRIPT, "");
-            USER_SCRIPT_DISPLAY = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_SCRIPT_DISPLAY, USER_SCRIPT);
-            USER_SCRIPT_FORMAT = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_SCRIPT_FORMAT, USER_SCRIPT);
-            USER_COUNTRY = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_COUNTRY, "");
-            USER_COUNTRY_DISPLAY = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_COUNTRY_DISPLAY, USER_COUNTRY);
-            USER_COUNTRY_FORMAT = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_COUNTRY_FORMAT, USER_COUNTRY);
-            USER_VARIANT = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_VARIANT, "");
-            USER_VARIANT_DISPLAY = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_VARIANT_DISPLAY, USER_VARIANT);
-            USER_VARIANT_FORMAT = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_VARIANT_FORMAT, USER_VARIANT);
-            USER_EXTENSIONS = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_EXTENSIONS, "");
-            USER_EXTENSIONS_DISPLAY = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_EXTENSIONS_DISPLAY, USER_EXTENSIONS);
-            USER_EXTENSIONS_FORMAT = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_EXTENSIONS_FORMAT, USER_EXTENSIONS);
-            USER_REGION = SystemPropertiesSupport.singleton().getSavedProperty(SystemPropertiesSupport.UserSystemProperty.USER_REGION, "");
+            SystemPropertiesSupport p = SystemPropertiesSupport.singleton();
+            SUN_BOOT_LIBRARY_PATH = p.getInitialProperty("sun.boot.library.path", "");
+            JDK_SERIAL_FILTER = p.getInitialProperty("jdk.serialFilter");
+            JDK_SERIAL_FILTER_FACTORY = p.getInitialProperty("jdk.serialFilterFactory");
+            NATIVE_ENCODING = p.getInitialProperty("native.encoding");
+            FILE_ENCODING = p.getInitialProperty("file.encoding");
+            JAVA_PROPERTIES_DATE = p.getInitialProperty("java.properties.date");
+            SUN_JNU_ENCODING = p.getInitialProperty("sun.jnu.encoding");
+            JAVA_LOCALE_USE_OLD_ISO_CODES = p.getInitialProperty("java.locale.useOldISOCodes", "");
+
+            if (JavaVersionUtil.JAVA_SPEC > 21) {
+                OS_ARCH = p.getInitialProperty("os.arch");
+
+                USER_LANGUAGE = p.getInitialProperty(UserSystemProperty.LANGUAGE, "en");
+                USER_LANGUAGE_DISPLAY = p.getInitialProperty(UserSystemProperty.LANGUAGE_DISPLAY, USER_LANGUAGE);
+                USER_LANGUAGE_FORMAT = p.getInitialProperty(UserSystemProperty.LANGUAGE_FORMAT, USER_LANGUAGE);
+                // for compatibility, check for old user.region property
+                USER_REGION = p.getInitialProperty(UserSystemProperty.REGION, "");
+                if (!USER_REGION.isEmpty()) {
+                    // region can be of form country, country_variant, or _variant
+                    int i = USER_REGION.indexOf('_');
+                    if (i >= 0) {
+                        USER_COUNTRY = USER_REGION.substring(0, i);
+                        USER_VARIANT = USER_REGION.substring(i + 1);
+                    } else {
+                        USER_COUNTRY = USER_REGION;
+                        USER_VARIANT = "";
+                    }
+                    USER_SCRIPT = "";
+                } else {
+                    USER_SCRIPT = p.getInitialProperty(UserSystemProperty.SCRIPT, "");
+                    USER_COUNTRY = p.getInitialProperty(UserSystemProperty.COUNTRY, "");
+                    USER_VARIANT = p.getInitialProperty(UserSystemProperty.VARIANT, "");
+                }
+                USER_SCRIPT_DISPLAY = p.getInitialProperty(UserSystemProperty.SCRIPT_DISPLAY, USER_SCRIPT);
+                USER_SCRIPT_FORMAT = p.getInitialProperty(UserSystemProperty.SCRIPT_FORMAT, USER_SCRIPT);
+                USER_COUNTRY_DISPLAY = p.getInitialProperty(UserSystemProperty.COUNTRY_DISPLAY, USER_COUNTRY);
+                USER_COUNTRY_FORMAT = p.getInitialProperty(UserSystemProperty.COUNTRY_FORMAT, USER_COUNTRY);
+                USER_VARIANT_DISPLAY = p.getInitialProperty(UserSystemProperty.VARIANT_DISPLAY, USER_VARIANT);
+                USER_VARIANT_FORMAT = p.getInitialProperty(UserSystemProperty.VARIANT_FORMAT, USER_VARIANT);
+                USER_EXTENSIONS = p.getInitialProperty(UserSystemProperty.EXTENSIONS, "");
+                USER_EXTENSIONS_DISPLAY = p.getInitialProperty(UserSystemProperty.EXTENSIONS_DISPLAY, USER_EXTENSIONS);
+                USER_EXTENSIONS_FORMAT = p.getInitialProperty(UserSystemProperty.EXTENSIONS_FORMAT, USER_EXTENSIONS);
+            }
         }
     }
 
     @Substitute
     private static String javaHome() {
-        /* Native images do not have a Java home directory. */
-        return null;
+        return SystemPropertiesSupport.singleton().getInitialProperty("java.home");
     }
 
     @Substitute
     private static String userHome() {
-        return SystemPropertiesSupport.singleton().userHome();
+        return SystemPropertiesSupport.singleton().getInitialProperty(UserSystemProperty.HOME);
     }
 
     @Substitute
     private static String userDir() {
-        return SystemPropertiesSupport.singleton().userDir();
+        return SystemPropertiesSupport.singleton().getInitialProperty(UserSystemProperty.DIR);
     }
 
     @Substitute
     private static String userName() {
-        return SystemPropertiesSupport.singleton().userName();
-    }
-
-    @Substitute
-    private static String javaIoTmpDir() {
-        return SystemPropertiesSupport.singleton().javaIoTmpDir();
+        return SystemPropertiesSupport.singleton().getInitialProperty(UserSystemProperty.NAME);
     }
 
     @Substitute
     private static String javaLibraryPath() {
-        return SystemPropertiesSupport.singleton().javaLibraryPath();
+        return SystemPropertiesSupport.singleton().getInitialProperty("java.library.path", "");
     }
 
     @Substitute
-    private static String sunBootLibraryPath() {
-        String value = SystemPropertiesSupport.singleton().savedProperties.get("sun.boot.library.path");
-        return value == null ? "" : value;
+    private static String javaIoTmpDir() {
+        return SystemPropertiesSupport.singleton().getInitialProperty("java.io.tmpdir");
     }
+
+    @KeepOriginal
+    public static native String sunBootLibraryPath();
+
+    @KeepOriginal
+    public static native String jdkSerialFilter();
+
+    @KeepOriginal
+    public static native String jdkSerialFilterFactory();
+
+    @KeepOriginal
+    public static native String nativeEncoding();
+
+    @KeepOriginal
+    public static native String fileEncoding();
+
+    @KeepOriginal
+    public static native String javaPropertiesDate();
+
+    @KeepOriginal
+    public static native String jnuEncoding();
+
+    @KeepOriginal
+    public static native String javaLocaleUseOldISOCodes();
 
     @Substitute
-    private static String jdkSerialFilter() {
-        return SystemPropertiesSupport.singleton().savedProperties.get("jdk.serialFilter");
+    @TargetElement(onlyWith = JDKLatest.class)//
+    public static String osName() {
+        return SystemPropertiesSupport.singleton().getInitialProperty("os.name");
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDKLatest.class)//
+    public static native String osArch();
 
     @Substitute
-    @TargetElement(onlyWith = StaticPropertyJdkSerialFilterFactoryAvailable.class)
-    private static String jdkSerialFilterFactory() {
-        return SystemPropertiesSupport.singleton().savedProperties.get("jdk.serialFilterFactory");
-    }
-
-    private abstract static class StaticPropertyMethodAvailable implements BooleanSupplier {
-
-        private final String methodName;
-
-        protected StaticPropertyMethodAvailable(String methodName) {
-            this.methodName = methodName;
-        }
-
-        @Override
-        public boolean getAsBoolean() {
-            return ReflectionUtil.lookupMethod(true, StaticProperty.class, methodName) != null;
-        }
-    }
-
-    /*
-     * Method jdkSerialFilterFactory is present in some versions of the JDK11 and not in the other.
-     * It is always present in the JDK17. We need to check if this method should be substituted by
-     * checking if it exists in the running JDK version.
-     */
-    private static class StaticPropertyJdkSerialFilterFactoryAvailable extends StaticPropertyMethodAvailable {
-        protected StaticPropertyJdkSerialFilterFactoryAvailable() {
-            super("jdkSerialFilterFactory");
-        }
-    }
-
-    @Substitute
-    public static String nativeEncoding() {
-        return SystemPropertiesSupport.singleton().savedProperties.get("native.encoding");
-    }
-
-    @Substitute
-    public static String fileEncoding() {
-        return SystemPropertiesSupport.singleton().savedProperties.get("file.encoding");
-    }
-
-    @Substitute
-    public static String javaPropertiesDate() {
-        return SystemPropertiesSupport.singleton().savedProperties.getOrDefault("java.properties.date", null);
-    }
-
-    @Substitute
-    public static String jnuEncoding() {
-        return SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding");
-    }
-
-    @Substitute
-    public static String javaLocaleUseOldISOCodes() {
-        return SystemPropertiesSupport.singleton().savedProperties.getOrDefault("java.locale.useOldISOCodes", "");
+    @TargetElement(onlyWith = JDKLatest.class)//
+    public static String osVersion() {
+        return SystemPropertiesSupport.singleton().getInitialProperty("os.version");
     }
 }
