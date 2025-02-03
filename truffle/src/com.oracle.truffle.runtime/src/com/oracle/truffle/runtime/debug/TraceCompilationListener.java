@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,7 +97,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     // @formatter:off
     private static final String QUEUED_FORMAT   = "opt queued " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|UTC %s|Src %s";
     private static final String UNQUEUED_FORMAT = "opt unque. " + TARGET_FORMAT + "|" + TIER_FORMAT + "|" + COUNT_THRESHOLD_FORMAT + "|" + QUEUE_FORMAT + "|UTC %s|Src %s|Reason %s";
-    private static final String START_FORMAT    = "opt start  " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Priority %9d|Rate %.6f|"         + QUEUE_FORMAT + "|UTC %s|Src %s";
+    private static final String START_FORMAT    = "opt start  " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Priority %9d|Rate %.6f|"         + QUEUE_FORMAT + "|UTC %s|Src %s|Bonuses %s";
     private static final String DONE_FORMAT     = "opt done   " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|AST %4d|Inlined %3dY %3dN|IR %6d/%6d|CodeSize %7d|Addr 0x%012x|CompId %-7s|UTC %s|Src %s";
     private static final String FAILED_FORMAT   = "opt failed " + TARGET_FORMAT + "|" + TIER_FORMAT + "|Time %18s|Reason: %s|UTC %s|Src %s";
     private static final String PADDING         = "                                                                                                                              ";
@@ -181,16 +181,19 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             long time;
             double rate;
             int queueChange;
+            String appliedBonuses;
             if (task instanceof CompilationTask t) {
                 weight = t.weight();
                 time = t.time();
                 rate = t.rate();
                 queueChange = t.queueChange();
+                appliedBonuses = String.join(", ", t.bonusDescriptors());
             } else {
                 weight = 0.0d;
                 time = 0;
                 rate = Double.NaN;
                 queueChange = 0;
+                appliedBonuses = "";
             }
             log(target, String.format(START_FORMAT,
                             target.engineId(),
@@ -205,7 +208,8 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                             FixedPointMath.toDouble(runtime.compilationThresholdScale()),
                             time / 1000,
                             TIME_FORMATTER.format(ZonedDateTime.now()),
-                            formatSourceSection(safeSourceSection(target))));
+                            formatSourceSection(safeSourceSection(target)),
+                            appliedBonuses));
         }
 
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
