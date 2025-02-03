@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -501,60 +502,227 @@ public abstract class LIRGenerator extends CoreProvidersDelegate implements LIRG
         }
     }
 
+    /**
+     * If we decide that the switch strategy is better in terms of throughput, do it, this means we
+     * consider an indirect jump to be JUMP_TABLE_THRESHOLD times as expensive as a compare and
+     * branch.
+     */
     private static final double JUMP_TABLE_THRESHOLD = 3;
 
+    /**
+     * Try to come up with a preferable way to execute a TableSwitch.
+     *
+     * <ol>
+     * <li>If a series of compare and branches is deemed better throughput-wise, then it should be a
+     * win both in terms of time and space. As a result, it would be chosen. Note that this is not
+     * absolutely true, though, as a typical direct jump table entry is 4 bytes while a compare and
+     * branch is often 8 bytes on A64 and 10 bytes on x64.</li>
+     * <li>Else if the table is dense enough or it is not too large, then we generate a direct jump
+     * table.</li>
+     * <li>Else we try to find a subset of keys that contains the majority of the jump targets by
+     * frequency. If there is such a subset that is dense enough or not too large, we generate a
+     * jump table for that subset, the remaining targets including the default one are reached with
+     * a series of compare and branches in a slowpath stub.</li>
+     * <li>Else we try to generate a hashed jump table, if the hashed jump table is dense enough
+     * then we choose it. Note that a hashed jump table is larger than a direct one so we do not
+     * need to consider its size now.</li>
+     * <li>Else we fall back to a series of compare and branches.</li>
+     * </ol>
+     */
     public void emitStrategySwitch(JavaConstant[] keyConstants, double[] keyProbabilities, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value) {
         SwitchStrategy strategy = SwitchStrategy.getBestStrategy(keyProbabilities, keyConstants, keyTargets);
 
-        int keyCount = keyConstants.length;
-        Optional<IntHasher> hasher = hasherFor(keyConstants);
-        double hashTableSwitchDensity = hasher.map(h -> (double) keyCount / h.cardinality).orElse(0d);
-        // The value range computation below may overflow, so compute it as a long.
-        long valueRange = (long) keyConstants[keyCount - 1].asInt() - (long) keyConstants[0].asInt() + 1;
-        double tableSwitchDensity = keyCount / (double) valueRange;
-
-        /*
-         * This heuristic tries to find a compromise between the effort for the best switch strategy
-         * and the density of a tableswitch. If the effort for the strategy is at least
-         * JUMP_TABLE_THRESHOLD, then a tableswitch is preferred if the density is larger than a
-         * certain value that gradually decreases as the aforementioned effort rises.
-         */
-        double minDensity = 1 / Math.sqrt(strategy.getAverageEffort());
-        if (strategy.getAverageEffort() < JUMP_TABLE_THRESHOLD || (tableSwitchDensity < minDensity && hashTableSwitchDensity < minDensity)) {
+        if (strategy.getAverageEffort() < JUMP_TABLE_THRESHOLD) {
             emitStrategySwitch(strategy, value, keyTargets, defaultTarget);
-        } else {
-            if (hashTableSwitchDensity > tableSwitchDensity) {
-                IntHasher h = hasher.get();
-                LabelRef[] targets = new LabelRef[h.cardinality];
-                JavaConstant[] keys = new JavaConstant[h.cardinality];
-                for (int i = 0; i < h.cardinality; i++) {
-                    keys[i] = JavaConstant.INT_0;
-                    targets[i] = defaultTarget;
-                }
-                for (int i = 0; i < keyCount; i++) {
-                    int idx = h.hash(keyConstants[i].asInt());
-                    keys[idx] = keyConstants[i];
-                    targets[idx] = keyTargets[i];
-                }
-                emitHashTableSwitch(h, keys, defaultTarget, targets, value);
-            } else {
-                int minValue = keyConstants[0].asInt();
-                assert valueRange < Integer.MAX_VALUE : valueRange;
-                LabelRef[] targets = new LabelRef[(int) valueRange];
-                for (int i = 0; i < valueRange; i++) {
-                    targets[i] = defaultTarget;
-                }
-                for (int i = 0; i < keyCount; i++) {
-                    targets[keyConstants[i].asInt() - minValue] = keyTargets[i];
-                }
-                emitRangeTableSwitch(minValue, defaultTarget, targets, value);
-            }
+            return;
         }
+
+        // If the density of the jump table would be larger than this value then we will emit one
+        double minDensity = 1 / Math.sqrt(strategy.getAverageEffort());
+
+        Subrange subrangeForDirectJump = findSubrangeForDirectJumpTable(keyConstants, keyProbabilities, minDensity);
+        if (subrangeForDirectJump != null) {
+            int loIdx = subrangeForDirectJump.loIdx;
+
+            // Micro-optimization, try to extend minValue to 0 so that we may avoid the subtraction
+            int minValue = keyConstants[loIdx].asInt();
+            if (minValue > 0) {
+                int extendedLoIdx = 0;
+                for (; extendedLoIdx <= loIdx; extendedLoIdx++) {
+                    if (keyConstants[extendedLoIdx].asInt() >= 0) {
+                        break;
+                    }
+                }
+                if (directJumpForSubrange(keyConstants, minDensity, 0, extendedLoIdx, subrangeForDirectJump.hiIdx)) {
+                    loIdx = extendedLoIdx;
+                    minValue = 0;
+                }
+            }
+
+            emitDirectJumpTableHelper(keyConstants, keyProbabilities, keyTargets, defaultTarget, value, minValue, loIdx, subrangeForDirectJump.hiIdx);
+            return;
+        }
+
+        // Try a hashed jump table
+        Optional<IntHasher> hasher = hasherFor(keyConstants);
+        if (hasher.isEmpty()) {
+            emitStrategySwitch(strategy, value, keyTargets, defaultTarget);
+            return;
+        }
+
+        IntHasher h = hasher.get();
+        double hashDensity = (double) keyConstants.length / Integer.toUnsignedLong(h.cardinality);
+        // No need to check for size since if this table is too big for a guaranteed direct jump
+        // then it is surely too big for a guaranteed hashed jump
+        if (hashDensity >= minDensity) {
+            emitHashedJumpTableHelper(keyConstants, keyTargets, defaultTarget, value, h);
+        } else {
+            emitStrategySwitch(strategy, value, keyTargets, defaultTarget);
+        }
+    }
+
+    /**
+     * A subrange of the keyConstants array.
+     */
+    private record Subrange(int loIdx, int hiIdx) {
+    }
+
+    /**
+     * The threshold at which a subrange is considered a common path and we will decide if a jump
+     * table for that subrange is acceptable.
+     */
+    private static final double MAJORITY_THRESHOLD = 0.99;
+
+    /**
+     * The general approach is to check the most frequent targets to see if we can emit a direct
+     * jump table with them, the default target will now check the other remaining targets. In the
+     * best case, our subrange will cover the whole range and there is no remaining target.
+     */
+    private static Subrange findSubrangeForDirectJumpTable(JavaConstant[] keyConstants, double[] keyProbabilities, double minDensity) {
+        if (directJumpForSubrange(keyConstants, minDensity, keyConstants[0].asInt(), 0, keyConstants.length - 1)) {
+            // If all cases can be fit into a jump table then ignore the probability
+            return new Subrange(0, keyConstants.length - 1);
+        }
+
+        // The probability of all key targets starting from loIdx
+        double loRangeProbability = 0;
+        // Since loIdx starts at 0, this is the combined probability of all key targets
+        for (int i = 0; i < keyConstants.length; i++) {
+            loRangeProbability += keyProbabilities[i];
+        }
+
+        // This loop nest simply traverses all the subranges
+        for (int loIdx = 0; loIdx < keyConstants.length; loIdx++) {
+            double subrangeProbability = loRangeProbability;
+            if (subrangeProbability < MAJORITY_THRESHOLD) {
+                break;
+            }
+
+            // Walk backward so we can have the largest subrange possible
+            for (int hiIdx = keyConstants.length - 1; hiIdx >= loIdx; hiIdx--) {
+                if (subrangeProbability < MAJORITY_THRESHOLD) {
+                    break;
+                }
+
+                if (directJumpForSubrange(keyConstants, minDensity, keyConstants[loIdx].asInt(), loIdx, hiIdx)) {
+                    return new Subrange(loIdx, hiIdx);
+                }
+
+                subrangeProbability -= keyProbabilities[hiIdx];
+            }
+
+            loRangeProbability -= keyProbabilities[loIdx];
+        }
+
+        // No preferable subrange found
+        return null;
+    }
+
+    private void emitDirectJumpTableHelper(JavaConstant[] keyConstants, double[] keyProbs, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value, int minValue, int loIdx, int hiIdx) {
+        int maxValue = keyConstants[hiIdx].asInt();
+        // This cannot overflow because we have ensured that above
+        int subrangeValueRange = maxValue - minValue + 1;
+        GraalError.guarantee(Integer.compareUnsigned(subrangeValueRange, Integer.MAX_VALUE) <= 0, "too large jump table: %s - %d - %d", Arrays.toString(keyConstants), minValue, maxValue);
+        LabelRef[] targets = new LabelRef[subrangeValueRange];
+        Arrays.fill(targets, defaultTarget);
+        for (int i = loIdx; i <= hiIdx; i++) {
+            targets[keyConstants[i].asInt() - minValue] = keyTargets[i];
+        }
+
+        // Use a switch strategy to process the remaining targets
+        int remainingKeyCount = keyConstants.length - (hiIdx - loIdx + 1);
+        SwitchStrategy remainingStrategy = null;
+        LabelRef[] remainingKeyTargets = null;
+        if (remainingKeyCount > 0) {
+            JavaConstant[] remainingKeyConstants = new JavaConstant[remainingKeyCount];
+            double[] remainingKeyProbabilities = new double[remainingKeyCount];
+            remainingKeyTargets = new LabelRef[remainingKeyCount];
+            int i = 0;
+            for (int j = 0; j < loIdx; j++) {
+                remainingKeyConstants[i] = keyConstants[j];
+                remainingKeyProbabilities[i] = keyProbs[j];
+                remainingKeyTargets[i] = keyTargets[j];
+                i++;
+            }
+            for (int j = hiIdx + 1; j < keyConstants.length; j++) {
+                remainingKeyConstants[i] = keyConstants[j];
+                remainingKeyProbabilities[i] = keyProbs[j];
+                remainingKeyTargets[i] = keyTargets[j];
+                i++;
+            }
+            remainingStrategy = SwitchStrategy.getBestStrategy(remainingKeyProbabilities, remainingKeyConstants, remainingKeyTargets);
+        }
+
+        emitRangeTableSwitch(minValue, defaultTarget, targets, remainingStrategy, remainingKeyTargets, value);
+    }
+
+    private void emitHashedJumpTableHelper(JavaConstant[] keyConstants, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue value, IntHasher h) {
+        LabelRef[] targets = new LabelRef[h.cardinality];
+        JavaConstant[] keys = new JavaConstant[h.cardinality];
+        for (int i = 0; i < h.cardinality; i++) {
+            keys[i] = JavaConstant.INT_0;
+            targets[i] = defaultTarget;
+        }
+        for (int i = 0; i < keyConstants.length; i++) {
+            int idx = h.hash(keyConstants[i].asInt());
+            keys[idx] = keyConstants[i];
+            targets[idx] = keyTargets[i];
+        }
+        emitHashTableSwitch(h, keys, defaultTarget, targets, value);
+    }
+
+    /**
+     * If the size of the jump table is smaller than this value then we emit one regardless the
+     * table density.
+     */
+    private static final int MAX_DIRECT_SIZE = 128;
+
+    /**
+     * Each label is 4 bytes in the direct jump table, so if the table is too sparse we may waste a
+     * lot of space. As a result, we emit a table if it is not too large, OR if it is dense enough.
+     */
+    private static boolean directJumpForSubrange(JavaConstant[] keyConstants, double minDensity, int minValue, int loIdx, int hiIdx) {
+        // Subtraction of 2 sorted signed values will not overflow the unsigned range
+        // Must not add 1 here because we can overflow -1 -> 0
+        int valueRangeMinus1 = keyConstants[hiIdx].asInt() - minValue;
+        if (Integer.compareUnsigned(valueRangeMinus1, Integer.MAX_VALUE) >= 0) {
+            // Too large range, reject to avoid weird edge cases
+            return false;
+        }
+        double density = (double) (hiIdx - loIdx + 1) / (Integer.toUnsignedLong(valueRangeMinus1) + 1);
+        return Integer.compareUnsigned(valueRangeMinus1, MAX_DIRECT_SIZE) < 0 || density >= minDensity;
     }
 
     public abstract void emitStrategySwitch(SwitchStrategy strategy, AllocatableValue key, LabelRef[] keyTargets, LabelRef defaultTarget);
 
-    protected abstract void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key);
+    /**
+     * Emit a direct jump table with {@code targets.length} consecutive keys starting at {@code
+     * lowKey}. If {@code remainingStrategy == null}, all other values of {@code key} will result in
+     * the control flow being transferred to {@code defaultTarget}. Otherwise, {@code
+     * remainingStrategy} will decide the jump destination among {@code remainingTargets} and {@code
+     * defaultTarget} when the value of {@code key} is not in the jump table.
+     */
+    protected abstract void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key);
 
     protected abstract void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash);
 
