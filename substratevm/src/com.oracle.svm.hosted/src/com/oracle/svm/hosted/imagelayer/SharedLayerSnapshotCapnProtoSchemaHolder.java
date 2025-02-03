@@ -1375,6 +1375,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             case 2 : return Which.OUTLINED_S_B;
             case 3 : return Which.C_ENTRY_POINT_CALL_STUB;
             case 4 : return Which.WRAPPED_MEMBER;
+            case 5 : return Which.POLYMORPHIC_SIGNATURE;
             default: return Which._NOT_IN_SCHEMA;
           }
         }
@@ -1448,6 +1449,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   return new PersistedAnalysisMethod.WrappedMethod.WrappedMember.Builder(segment, data, pointers, dataSize, pointerCount);
         }
 
+        public final boolean isPolymorphicSignature() {
+          return which() == PersistedAnalysisMethod.WrappedMethod.Which.POLYMORPHIC_SIGNATURE;
+        }
+        public final PolymorphicSignature.Builder getPolymorphicSignature() {
+          return new PersistedAnalysisMethod.WrappedMethod.PolymorphicSignature.Builder(segment, data, pointers, dataSize, pointerCount);
+        }
+        public final PolymorphicSignature.Builder initPolymorphicSignature() {
+          _setShortField(11, (short)PersistedAnalysisMethod.WrappedMethod.Which.POLYMORPHIC_SIGNATURE.ordinal());
+          _clearPointerField(10);
+  return new PersistedAnalysisMethod.WrappedMethod.PolymorphicSignature.Builder(segment, data, pointers, dataSize, pointerCount);
+        }
+
       }
 
       public static final class Reader extends org.capnproto.StructReader {
@@ -1462,6 +1475,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             case 2 : return Which.OUTLINED_S_B;
             case 3 : return Which.C_ENTRY_POINT_CALL_STUB;
             case 4 : return Which.WRAPPED_MEMBER;
+            case 5 : return Which.POLYMORPHIC_SIGNATURE;
             default: return Which._NOT_IN_SCHEMA;
           }
         }
@@ -1502,6 +1516,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           return new PersistedAnalysisMethod.WrappedMethod.WrappedMember.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
         }
 
+        public final boolean isPolymorphicSignature() {
+          return which() == PersistedAnalysisMethod.WrappedMethod.Which.POLYMORPHIC_SIGNATURE;
+        }
+        public PolymorphicSignature.Reader getPolymorphicSignature() {
+          return new PersistedAnalysisMethod.WrappedMethod.PolymorphicSignature.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+        }
+
       }
 
       public enum Which {
@@ -1510,6 +1531,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         OUTLINED_S_B,
         C_ENTRY_POINT_CALL_STUB,
         WRAPPED_MEMBER,
+        POLYMORPHIC_SIGNATURE,
         _NOT_IN_SCHEMA,
       }
       public static class FactoryMethod {
@@ -1889,6 +1911,65 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           JAVA_CALL_VARIANT_WRAPPER,
           _NOT_IN_SCHEMA,
         }
+      }
+
+
+      public static class PolymorphicSignature {
+        public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)5,(short)13);
+        public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
+          public Factory() {
+          }
+          public final Reader constructReader(org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+            return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+          }
+          public final Builder constructBuilder(org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+            return new Builder(segment, data, pointers, dataSize, pointerCount);
+          }
+          public final org.capnproto.StructSize structSize() {
+            return PersistedAnalysisMethod.WrappedMethod.PolymorphicSignature.STRUCT_SIZE;
+          }
+          public final Reader asReader(Builder builder) {
+            return builder.asReader();
+          }
+        }
+        public static final Factory factory = new Factory();
+        public static final org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+          new org.capnproto.StructList.Factory<Builder, Reader>(factory);
+        public static final class Builder extends org.capnproto.StructBuilder {
+          Builder(org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+            super(segment, data, pointers, dataSize, pointerCount);
+          }
+          public final Reader asReader() {
+            return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+          }
+          public final boolean hasCallers() {
+            return !_pointerFieldIsNull(10);
+          }
+          public final org.capnproto.PrimitiveList.Int.Builder getCallers() {
+            return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 10, null, 0);
+          }
+          public final void setCallers(org.capnproto.PrimitiveList.Int.Reader value) {
+            _setPointerField(org.capnproto.PrimitiveList.Int.factory, 10, value);
+          }
+          public final org.capnproto.PrimitiveList.Int.Builder initCallers(int size) {
+            return _initPointerField(org.capnproto.PrimitiveList.Int.factory, 10, size);
+          }
+        }
+
+        public static final class Reader extends org.capnproto.StructReader {
+          Reader(org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+            super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+          }
+
+          public final boolean hasCallers() {
+            return !_pointerFieldIsNull(10);
+          }
+          public final org.capnproto.PrimitiveList.Int.Reader getCallers() {
+            return _getPointerField(org.capnproto.PrimitiveList.Int.factory, 10, null, 0);
+          }
+
+        }
+
       }
 
 

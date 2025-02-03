@@ -127,12 +127,14 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.nodes.MethodHandleNode;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.internal.reflect.ReflectionFactory;
 import jdk.vm.ci.meta.JavaConstant;
@@ -171,6 +173,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     protected final Map<Integer, Long> objectOffsets = new ConcurrentHashMap<>();
     protected final Map<AnalysisField, Integer> fieldLocations = new ConcurrentHashMap<>();
     private final Map<Class<?>, Boolean> capturingClasses = new ConcurrentHashMap<>();
+    private final Map<ResolvedJavaMethod, Boolean> methodHandleCallers = new ConcurrentHashMap<>();
 
     /** Map from {@link SVMImageLayerSnapshotUtil#getTypeDescriptor} to base layer type ids. */
     private final Map<String, Integer> typeDescriptorToBaseLayerId = new HashMap<>();
@@ -399,6 +402,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             String capturingClassName = wrappedType.getLambda().getCapturingClass().toString();
             Class<?> capturingClass = imageLayerBuildingSupport.lookupClass(false, capturingClassName);
             loadLambdaTypes(capturingClass);
+            return types.containsKey(typeData.getId());
         } else if (wrappedType.isProxyType()) {
             Class<?>[] interfaces = Stream.of(typeData.getInterfaces()).flatMapToInt(r -> IntStream.range(0, r.size()).map(r::get))
                             .mapToObj(i -> getAnalysisTypeForBaseLayerId(i).getJavaClass()).toArray(Class<?>[]::new);
@@ -425,23 +429,46 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private static void loadLambdaTypes(ResolvedJavaMethod m, BigBang bigBang) {
+        StructuredGraph graph = getMethodGraph(m, bigBang);
+        if (graph != null) {
+            NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
+
+            for (ConstantNode cNode : constantNodes) {
+                Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
+
+                if (lambdaClass != null) {
+                    bigBang.getMetaAccess().lookupJavaType(lambdaClass);
+                }
+            }
+        }
+    }
+
+    private void loadMethodHandleTargets(ResolvedJavaMethod m, BigBang bigBang) {
+        methodHandleCallers.computeIfAbsent(m, method -> {
+            StructuredGraph graph = getMethodGraph(m, bigBang);
+            if (graph != null) {
+                for (Node node : graph.getNodes()) {
+                    if (node instanceof MethodHandleNode methodHandleNode) {
+                        bigBang.getUniverse().lookup(methodHandleNode.getTargetMethod());
+                    }
+                }
+            }
+            return true;
+        });
+    }
+
+    private static StructuredGraph getMethodGraph(ResolvedJavaMethod m, BigBang bigBang) {
+        if (m instanceof BaseLayerMethod) {
+            return null;
+        }
         StructuredGraph graph;
         try {
             graph = createMethodGraph(m, bigBang.getOptions());
         } catch (NoClassDefFoundError | BytecodeParser.BytecodeParserError e) {
             /* Skip the method if it refers to a missing class */
-            return;
+            return null;
         }
-
-        NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
-
-        for (ConstantNode cNode : constantNodes) {
-            Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
-
-            if (lambdaClass != null) {
-                bigBang.getMetaAccess().lookupJavaType(lambdaClass);
-            }
-        }
+        return graph;
     }
 
     private ResolvedJavaType getResolvedJavaTypeForBaseLayerId(int tid) {
@@ -735,6 +762,18 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 JNIAccessFeature.singleton().addMethod(member, (FeatureImpl.DuringAnalysisAccessImpl) universe.getConcurrentAnalysisAccess());
             }
             return true;
+        } else if (wrappedMethod.isPolymorphicSignature()) {
+            int id = methodData.getId();
+            WrappedMethod.PolymorphicSignature.Reader ps = wrappedMethod.getPolymorphicSignature();
+            var callers = ps.getCallers();
+            for (int i = 0; i < callers.size(); ++i) {
+                loadMethodHandleTargets(getAnalysisMethodForBaseLayerId(callers.get(i)).wrapped, universe.getBigbang());
+                if (methods.containsKey(id)) {
+                    return true;
+                }
+            }
+            LogUtils.warning("The PolymorphicSignature method %s.%s could not get loaded", methodData.getClassName().toString(), methodData.getName().toString());
+            return false;
         }
         return false;
     }
