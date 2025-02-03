@@ -423,7 +423,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     /**
      * Takes a Condition and returns the correct AArch64 specific ConditionFlag.
      */
-    private static ConditionFlag toIntConditionFlag(Condition cond) {
+    public static ConditionFlag toIntConditionFlag(Condition cond) {
         switch (cond) {
             case EQ:
                 return ConditionFlag.EQ;
@@ -566,8 +566,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
-        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, remainingStrategy, remainingTargets, key));
     }
 
     @Override

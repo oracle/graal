@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.CompilationResult.JumpTable.EntryFormat;
+import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
@@ -57,6 +58,7 @@ import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.SwitchStrategy;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -655,59 +657,98 @@ public class AMD64ControlFlow {
         }
     }
 
+    /**
+     * See {@code LIRGenerator::emitRangeTableSwitch}.
+     */
     public static final class RangeTableSwitchOp extends AMD64BlockEndOp {
         public static final LIRInstructionClass<RangeTableSwitchOp> TYPE = LIRInstructionClass.create(RangeTableSwitchOp.class);
         private final int lowKey;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
-        @LIRInstruction.Use protected Value index;
-        @LIRInstruction.Temp({LIRInstruction.OperandFlag.REG, LIRInstruction.OperandFlag.HINT}) protected Value idxScratch;
-        @LIRInstruction.Temp protected Value scratch;
+        private final SwitchStrategy remainingStrategy;
+        private final LabelRef[] remainingTargets;
+        @LIRInstruction.Use(OperandFlag.REG) protected AllocatableValue key;
+        @LIRInstruction.Temp(OperandFlag.REG) protected AllocatableValue scratch1;
+        @LIRInstruction.Temp(OperandFlag.REG) protected AllocatableValue scratch2;
 
-        public RangeTableSwitchOp(final int lowKey, final LabelRef defaultTarget, final LabelRef[] targets, Value index, Variable scratch, Variable idxScratch) {
+        public RangeTableSwitchOp(LIRGenerator gen, int lowKey, LabelRef defaultTarget, LabelRef[] targets, SwitchStrategy remainingStrategy, LabelRef[] remainingTargets, AllocatableValue key) {
             super(TYPE);
             this.lowKey = lowKey;
             assert defaultTarget != null;
             this.defaultTarget = defaultTarget;
             this.targets = targets;
-            this.index = index;
-            this.scratch = scratch;
-            this.idxScratch = idxScratch;
+            this.remainingStrategy = remainingStrategy;
+            this.remainingTargets = remainingTargets;
+            this.key = key;
+            this.scratch1 = gen.newVariable(LIRKind.value(AMD64Kind.DWORD));
+            this.scratch2 = gen.newVariable(LIRKind.value(AMD64Kind.DWORD));
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            Register indexReg = asRegister(index, AMD64Kind.DWORD);
-            Register idxScratchReg = asRegister(idxScratch, AMD64Kind.DWORD);
-            Register scratchReg = asRegister(scratch, AMD64Kind.QWORD);
-
-            if (!indexReg.equals(idxScratchReg)) {
-                masm.movl(idxScratchReg, indexReg);
+            Register keyReg = asRegister(key);
+            AllocatableValue scratch;
+            AllocatableValue idxScratch;
+            if (asRegister(scratch1).equals(keyReg)) {
+                // keyReg cannot alias with scratchReg but may alias with idxScratchReg
+                scratch = scratch2;
+                idxScratch = key;
+            } else {
+                scratch = scratch1;
+                idxScratch = scratch2;
             }
+            Register scratchReg = asRegister(scratch);
+            Register idxScratchReg = asRegister(idxScratch);
 
             // Compare index against jump table bounds
             int highKey = lowKey + targets.length - 1;
+            Register keyOffsetReg;
             if (lowKey != 0) {
                 // subtract the low value from the switch value
-                masm.subl(idxScratchReg, lowKey);
+                if (keyReg.equals(idxScratchReg)) {
+                    masm.addl(idxScratchReg, -lowKey);
+                } else {
+                    masm.lead(idxScratchReg, new AMD64Address(keyReg, -lowKey));
+                }
                 masm.cmpl(idxScratchReg, highKey - lowKey);
+                keyOffsetReg = idxScratchReg;
             } else {
-                masm.cmpl(idxScratchReg, highKey);
+                masm.cmpl(keyReg, highKey);
+                keyOffsetReg = keyReg;
             }
 
-            // Jump to default target if index is not within the jump table
-            masm.jcc(ConditionFlag.Above, defaultTarget.label());
+            Label outOfRangeLabel = defaultTarget.label();
+            if (remainingStrategy != null) {
+                Label remainingLabel = new Label();
+                outOfRangeLabel = remainingLabel;
+                boolean needsKeyRecover = lowKey != 0 && keyReg.equals(idxScratchReg);
 
-            emitJumpTable(crb, masm, scratchReg, idxScratchReg, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
+                crb.getLIR().addSlowPath(this, () -> {
+                    masm.bind(remainingLabel);
+                    if (needsKeyRecover) {
+                        masm.addl(keyReg, lowKey);
+                    }
+                    new StrategySwitchOp(remainingStrategy, remainingTargets, defaultTarget, key, scratch).emitCode(crb, masm);
+                });
+            }
+            masm.jcc(ConditionFlag.Above, outOfRangeLabel);
+
+            emitJumpTable(crb, masm, keyOffsetReg, scratchReg, idxScratchReg, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
         }
 
         public static void emitJumpTable(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register scratchReg, Register idxScratchReg, int lowKey, int highKey, Stream<Label> targets) {
+            emitJumpTable(crb, masm, idxScratchReg, scratchReg, idxScratchReg, lowKey, highKey, targets);
+        }
+
+        private static void emitJumpTable(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register keyReg, Register scratchReg, Register idxScratchReg, int lowKey, int highKey,
+                        Stream<Label> targets) {
+            GraalError.guarantee(!keyReg.equals(scratchReg), "must not alias");
             // Set scratch to address of jump table
             masm.leaq(scratchReg, new AMD64Address(AMD64.rip, 0));
             final int afterLea = masm.position();
 
             // Load jump table entry into scratch and jump to it
-            masm.movslq(idxScratchReg, new AMD64Address(scratchReg, idxScratchReg, Stride.S4, 0));
+            masm.movslq(idxScratchReg, new AMD64Address(scratchReg, keyReg, Stride.S4, 0));
             masm.addq(scratchReg, idxScratchReg);
             masm.jmp(scratchReg);
 
