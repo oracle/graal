@@ -27,6 +27,7 @@ package com.oracle.svm.graal.isolated;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -62,7 +63,8 @@ public final class IsolatedObjectConstant extends SubstrateObjectConstant {
         return cachedClass;
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.WordExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static ImageHeapRef<Class<?>> getObjectClass0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> h) {
         Object target = IsolatedCompileClient.get().unhand(h);
         return ImageHeapObjects.ref(target.getClass());
@@ -96,7 +98,8 @@ public final class IsolatedObjectConstant extends SubstrateObjectConstant {
         return h;
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = IsolatedCompileClient.IntExceptionHandler.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @CEntryPointOptions(callerEpilogue = IsolatedCompileClient.ExceptionRethrowCallerEpilogue.class)
     private static int getIdentityHashCode0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> h) {
         Object target = IsolatedCompileClient.get().unhand(h);
         return computeIdentityHashCode(target);
