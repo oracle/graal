@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,11 @@ public interface ProcessPropertiesSupport {
         return null;
     }
 
+    /**
+     * @deprecated in 25.0 without replacement. This method is inherently unsafe because
+     *             {@code setlocale(...)} is not thread-safe on the OS level.
+     */
+    @Deprecated
     String setLocale(String category, String locale);
 
     boolean destroy(long processID);
