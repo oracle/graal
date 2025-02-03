@@ -69,7 +69,7 @@ import com.oracle.truffle.espresso.processor.builders.SignatureBuilder;
 public abstract class EspressoProcessor extends BaseProcessor {
     /*- An example of a generated class is:
     
-    package com.oracle.truffle.espresso.substitutions.standard;
+    // package com.oracle.truffle.espresso.substitutions.standard;
     
     import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
     import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
