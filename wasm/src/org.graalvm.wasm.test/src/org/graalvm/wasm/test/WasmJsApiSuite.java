@@ -2400,6 +2400,63 @@ public class WasmJsApiSuite {
         });
     }
 
+    /**
+     * Setting option wasm.Builtins=wasi_snapshot_preview1 should not break imports via JS API.
+     */
+    @Test
+    public void testWasip1EnabledNoImports() throws IOException {
+        runTest(options -> options.option("wasm.Builtins", "testutil:testutil,wasi_snapshot_preview1"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Dictionary importObject = Dictionary.create(new Object[]{});
+            final WasmInstance instance = moduleInstantiate(wasm, binaryWithExports, importObject);
+            try {
+                final Object main = WebAssembly.instanceExport(instance, "main");
+                final Object result = InteropLibrary.getUncached(main).execute(main);
+                Assert.assertEquals(42, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
+        });
+    }
+
+    /**
+     * Setting option wasm.Builtins=wasi_snapshot_preview1 should not break imports via JS API.
+     */
+    @Test
+    public void testWasip1EnabledWithHostFunctionImport() throws IOException, InterruptedException {
+        byte[] binary = compileWat("binaryWithImportsAndExports", """
+                        (module
+                            (func $inc (import "host" "inc") (param i32) (result i32))
+                            (func $addPlusOne (param $lhs i32) (param $rhs i32) (result i32)
+                                local.get $lhs
+                                local.get $rhs
+                                i32.add
+                                call $inc
+                            )
+                            (memory 1 1)
+                            (export "addPlusOne" (func $addPlusOne))
+                            (export "memory" (memory 0)) ;; required for wasi_snapshot_preview1
+                        )
+                        """);
+
+        runTest(options -> options.option("wasm.Builtins", "testutil:testutil,wasi_snapshot_preview1"), context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final Dictionary importObject = Dictionary.create(new Object[]{
+                            "host", Dictionary.create(new Object[]{
+                                            "inc", new Executable(args -> ((int) args[0]) + 1)
+                            }),
+            });
+            final WasmInstance instance = moduleInstantiate(wasm, binary, importObject);
+            try {
+                final Object addPlusOne = WebAssembly.instanceExport(instance, "addPlusOne");
+                final Object result = InteropLibrary.getUncached(addPlusOne).execute(addPlusOne, 17, 3);
+                Assert.assertEquals("17 + 3 + 1 = 21.", 21, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
+        });
+    }
+
     private static void runMemoryTest(Consumer<WasmContext> testCase) throws IOException {
         runTest(null, testCase);
         runTest(options -> options.option("wasm.UseUnsafeMemory", "true"), testCase);
@@ -2411,10 +2468,10 @@ public class WasmJsApiSuite {
 
     private static void runTest(Consumer<Context.Builder> options, Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.Builtins", "testutil:testutil");
         if (options != null) {
             options.accept(contextBuilder);
         }
-        contextBuilder.option("wasm.Builtins", "testutil:testutil");
         try (Context context = contextBuilder.build()) {
             Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
             Source source = sourceBuilder.build();
