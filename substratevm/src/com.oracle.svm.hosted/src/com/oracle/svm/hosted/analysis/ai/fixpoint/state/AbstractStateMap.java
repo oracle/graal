@@ -47,7 +47,7 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
         state.setPostCondition(postCondition);
     }
 
-    public void setPrecondition(Node node, Domain preCondition) {
+    public void setPreCondition(Node node, Domain preCondition) {
         AbstractState<Domain> state = getState(node);
         state.setPreCondition(preCondition);
     }
