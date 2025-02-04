@@ -343,7 +343,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
         if runArgs is None:
             return []
-        totalIterations = int(runArgs[runArgs.index("-n") + 1])
         return [
             # Due to the non-determinism of DaCapo version printing, we only match the name.
             mx_benchmark.StdOutRule(
@@ -363,25 +362,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                     "metric.iteration": 0
                 }
             ),
+            # The warmup metric should capture all warmup iterations (which print 'completed warmup X') in addition to
+            # the last final iteration (which prints 'PASSED').
             mx_benchmark.StdOutRule(
-                r"===== DaCapo (?P<version>[^\n]+) (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "warmup",
-                    "metric.value": ("<time>", int),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": totalIterations - 1
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"===== DaCapo (?P<version>[^\n]+) (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>[^\n]+) (?P<benchmark>[a-zA-Z0-9_]+) ((completed warmup [0-9]+)|PASSED) in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
