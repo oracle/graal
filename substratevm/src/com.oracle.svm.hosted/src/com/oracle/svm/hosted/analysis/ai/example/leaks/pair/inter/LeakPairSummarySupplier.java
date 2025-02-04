@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.example.leaks.pair;
+package com.oracle.svm.hosted.analysis.ai.example.leaks.pair.inter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;

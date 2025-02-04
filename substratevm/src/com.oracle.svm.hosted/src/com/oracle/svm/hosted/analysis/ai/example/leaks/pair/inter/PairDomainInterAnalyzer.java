@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.example.leaks.pair;
+package com.oracle.svm.hosted.analysis.ai.example.leaks.pair.inter;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.context.filter.SkipJavaLangMethodFilter;
@@ -6,6 +6,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.inter.InterProceduralSequentia
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.PairDomain;
+import com.oracle.svm.hosted.analysis.ai.example.leaks.pair.LeaksPairDomainNodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.SummarySupplier;
 import jdk.graal.compiler.debug.DebugContext;

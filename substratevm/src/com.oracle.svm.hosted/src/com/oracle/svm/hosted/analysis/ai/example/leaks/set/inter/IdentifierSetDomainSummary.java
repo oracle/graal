@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.example.leaks.set;
+package com.oracle.svm.hosted.analysis.ai.example.leaks.set.inter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
@@ -28,5 +28,10 @@ public record IdentifierSetDomainSummary(SetDomain<String> preCondition,
     @Override
     public void applySummary(Invoke invoke, Node invokeNode, AbstractStateMap<SetDomain<String>> callerStateMap) {
         callerStateMap.setPostCondition(invokeNode, postCondition);
+    }
+
+    @Override
+    public void replaceFormalArgsWithActual(AbstractStateMap<SetDomain<String>> calleeMap) {
+        // NO-OP for this example
     }
 }

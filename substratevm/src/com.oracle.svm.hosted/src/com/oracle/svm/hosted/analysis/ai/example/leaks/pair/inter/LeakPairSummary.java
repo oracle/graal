@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.example.leaks.pair;
+package com.oracle.svm.hosted.analysis.ai.example.leaks.pair.inter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
@@ -34,5 +34,10 @@ public record LeakPairSummary(int summaryCount,
         BooleanOrDomain preReturns = preState.getPreCondition().getSecond().copyOf();
         CountingDomain newCount = new CountingDomain(preState.getPreCondition().getFirst().getValue() + summaryCount);
         callerStateMap.setPostCondition(invokeNode, new PairDomain<>(newCount, preReturns));
+    }
+
+    @Override
+    public void replaceFormalArgsWithActual(AbstractStateMap<PairDomain<CountingDomain, BooleanOrDomain>> calleeMap) {
+        // NO-OP for this example
     }
 }
