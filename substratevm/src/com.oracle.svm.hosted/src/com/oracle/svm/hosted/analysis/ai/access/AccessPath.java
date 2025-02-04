@@ -1,5 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.access;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
@@ -8,6 +10,7 @@ import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -90,10 +93,13 @@ public class AccessPath {
             // For static fields, use the declaring class as the base variable
             baseVariable = field.getDeclaringClass().toJavaName();
         } else {
-            // For instance fields, use the object as the base variable
-            ValueNode object = storeFieldNode.object();
-            baseVariable = object.toString();
+            String declaringClass = field.getDeclaringClass().toJavaName();
+            String nodeSourcePosition = storeFieldNode.object().getNodeSourcePosition().toString();
+            String[] lst = nodeSourcePosition.split(" ");
+            /* lst[ 0 ] = "at", lst[ 1 ] = "actual source position", lst[ 2 ] = bci */
+            baseVariable = declaringClass + "@" + lst[1];
         }
+
         return new AccessPath(baseVariable).appendField(field.getName());
     }
 
@@ -109,8 +115,11 @@ public class AccessPath {
         if (field.isStatic()) {
             baseVariable = field.getDeclaringClass().toJavaName();
         } else {
-            ValueNode object = loadFieldNode.object();
-            baseVariable = object.toString();
+            String declaringClass = field.getDeclaringClass().toJavaName();
+            String nodeSourcePosition = loadFieldNode.object().getNodeSourcePosition().toString();
+            String[] lst = nodeSourcePosition.split(" ");
+            /* lst[ 0 ] = "at", lst[ 1 ] = "actual source position", lst[ 2 ] = bci */
+            baseVariable = declaringClass + "@" + lst[1];
         }
         return new AccessPath(baseVariable).appendField(field.getName());
     }
