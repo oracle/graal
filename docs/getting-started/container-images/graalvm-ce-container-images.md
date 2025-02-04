@@ -14,7 +14,7 @@ To support container-based development, GraalVM Community Edition container imag
 
 There are different GraalVM Community Edition container images provided depending on the architecture and the Java version, and have `-community` as part of their names.
 These are: **native-image-community**, **jdk-community**, **truffleruby-community**, **nodejs-community**, and **graalpy-community**.
-The container images are multi-arch, for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9.
+The container images are multi-arch, for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 8 or 9.
 
 GraalVM is installed in _/usr/lib64/graalvm/graalvm-community-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `23`, and so on.
 For instance, GraalVM for JDK 23 is installed in _/usr/lib64/graalvm/graalvm-community-java23/_. 
@@ -38,11 +38,11 @@ The following tags are listed from the most-specific tag (at the top) to the lea
 The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
 For example:
 ```
-22.0.1-ol9-20240416
-22.0.1-ol9
-22.0.1
-22-ol9
-22
+23.0.1-ol9-20240416
+23.0.1-ol9
+23.0.1
+23-ol9
+23
 ```
 
 ## Pulling Images
@@ -102,8 +102,8 @@ For example:
 ## Oracle GraalVM Container Images 
 
 Oracle GraalVM container images are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/ocr/ba/graalvm) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html). 
-Learn more at the [Oracle Help Center](https://docs.oracle.com/en/graalvm/jdk/21/docs/getting-started/container-images/#oracle-graalvm-container-images).
+Learn more at the [Oracle Help Center](https://docs.oracle.com/en/graalvm/jdk/23/docs/getting-started/container-images/).
 
 ### Related Documentation
 
-- [Tiny Java Containers](https://github.com/graalvm/graalvm-demos/tree/master/tiny-java-containers): Learn how GraalVM Native Image can generate native executables ideal for containerization.
+- [Tiny Java Containers](https://github.com/graalvm/graalvm-demos/tree/master/native-image/containerize/tiny-java-containers): Learn how GraalVM Native Image can generate native executables ideal for containerization.
