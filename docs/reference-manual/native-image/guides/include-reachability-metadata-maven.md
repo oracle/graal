@@ -178,59 +178,30 @@ For other installation options, visit the [Downloads section](https://www.graalv
             <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.0.0-M5</version>
-                </plugin>
-
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.11.0</version>
-                </plugin>
-
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-jar-plugin</artifactId>
-                    <version>3.3.0</version>
+                    <artifactId>maven-assembly-plugin</artifactId>
+                    <version>3.7.0</version>
                     <configuration>
+                        <descriptorRefs>
+                            <descriptorRef>jar-with-dependencies</descriptorRef>
+                        </descriptorRefs>
                         <archive>
                             <manifest>
-                                <addClasspath>true</addClasspath>
                                 <mainClass>${mainClass}</mainClass>
                             </manifest>
                         </archive>
                     </configuration>
-                </plugin>
-
-                <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>exec-maven-plugin</artifactId>
-                    <version>3.1.1</version>
                     <executions>
                         <execution>
-                            <id>java</id>
+                            <id>assemble-all</id>
+                            <phase>package</phase>
                             <goals>
-                                <goal>java</goal>
+                                <goal>single</goal>
                             </goals>
-                            <configuration>
-                                <mainClass>${mainClass}</mainClass>
-                            </configuration>
-                        </execution>
-                        <execution>
-                            <id>native</id>
-                            <goals>
-                                <goal>exec</goal>
-                            </goals>
-                            <configuration>
-                                <executable>${project.build.directory}/${imageName}</executable>
-                                <workingDirectory>${project.build.directory}</workingDirectory>
-                            </configuration>
                         </execution>
                     </executions>
                 </plugin>
             </plugins>
         </build>
-
     </project>
     ```
     **1** Add a dependency on the [H2 Database](https://www.h2database.com/html/main.html), an open source SQL database for Java. The application interacts with this database through the JDBC driver.
@@ -333,7 +304,7 @@ In the `native` Maven profile section, add the `exec-maven-plugin` plugin:
 
 4. Build a native executable using configuration collected by the agent:
     ```shell
-    mvn -Pnative -DskipTests package exec:exec@native
+    mvn -Pnative -DskipTests package
     ```
     It generates a native executable for the platform in the _target/_ directory, called _h2example_.
 
