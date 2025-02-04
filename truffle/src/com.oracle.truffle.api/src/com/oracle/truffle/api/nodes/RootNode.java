@@ -475,6 +475,7 @@ public abstract class RootNode extends ExecutableNode {
         if (this.callTarget != null) {
             throw CompilerDirectives.shouldNotReachHere(message);
         }
+        prepareForCall();
         this.callTarget = callTarget;
 
         // Call notifyOnLoad() after the callTarget field is set, so the invariant that if a
@@ -501,6 +502,18 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected boolean isInstrumentable() {
         return true;
+    }
+
+    /**
+     * Prepares this {@link RootNode} to be called with a {@link CallTarget}. This method will be
+     * called exactly once when a {@link #getCallTarget() call target is requested} for the first
+     * time. This method can be used to lazily initialize parts of a root node, or to validate that
+     * a root node can be used as a call target.
+     * 
+     * @since 25.0
+     */
+    protected void prepareForCall() {
+        // no default implementation
     }
 
     /**
