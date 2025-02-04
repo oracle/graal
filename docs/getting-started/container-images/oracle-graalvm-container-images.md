@@ -16,9 +16,9 @@ Oracle GraalVM container images are published in two OCR repositories: **jdk** a
 | Repository       | Description |
 |------------------|-------------|
 | **jdk**          | Provides container images with Oracle GraalVM JDK (without the `native-image` utility) which can be used to both compile and deploy a Java application. Use the container image tags to select the appropriate Java version and Oracle Linux version. |
-| **native-image** | Provides Oracle GraalVM container images with the `native-image` utility along with all tools required to compile an application into a native Linux executables. These images are commonly used in multistage builds to compile an application into an executable that is then packaged in a lightweight container image. Use the container image tags to select the Java version and Oracle Linux version as well as variants that include the musl toolchain for the creation of a fully statically linked executable. |
+| **native-image** | Provides Oracle GraalVM container images with the `native-image` utility along with all tools required to compile an application into a native Linux executable. These images are commonly used in multistage builds to compile an application into an executable that is then packaged in a lightweight container image. Use the container image tags to select the Java version and Oracle Linux version as well as variants that include the `musl` toolchain for the creation of a fully statically linked executable. |
 
-Both repositories provide container images for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9.
+Both repositories provide container images for x64 and AArch64 processor architectures, with a choice of Oracle Linux versions 8 or 9.
 
 Oracle GraalVM is installed in _/usr/lib64/graalvm/graalvm-java&lt;$FeatureVersion&gt;/_ where `<$FeatureVersion>` is `17`, `21`, `23`, and so on.
 
@@ -36,11 +36,11 @@ $version[-muslib(for native image only)][-$platform][-$buildnumber]
 The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom). 
 The most-specific tag is unique and always points to the same container image, while the less-specific tags point to newer container image variants over time.
 ```
-22.0.1-ol9-20240504
-22.0.1-ol9
-22.0.1
-22-ol9
-22
+23.0.1-ol9-20240504
+23.0.1-ol9
+23.0.1
+23-ol9
+23
 ```
 
 ## Pulling Images
@@ -100,5 +100,4 @@ The most-specific tag is unique and always points to the same container image, w
 
 ### Related Documentation
 
-- [Tiny Java Containers](https://github.com/graalvm/graalvm-demos/tree/master/tiny-java-containers): Learn how GraalVM Native Image can generate native executables ideal for containerization.
-- [Announcement Blog: New Oracle GraalVM Container Images](https://blogs.oracle.com/java/post/new-oracle-graalvm-container-images)
+- [Tiny Java Containers](https://github.com/graalvm/graalvm-demos/tree/master/native-image/containerize/tiny-java-containers): Learn how GraalVM Native Image can generate native executables ideal for containerization.
