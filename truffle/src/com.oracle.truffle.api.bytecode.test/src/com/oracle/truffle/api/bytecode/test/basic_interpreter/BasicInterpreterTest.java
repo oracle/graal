@@ -3281,6 +3281,26 @@ public class BasicInterpreterTest extends AbstractBasicInterpreterTest {
     }
 
     @Test
+    public void testPrepareForCall() {
+        assertThrows(IllegalStateException.class, () -> parse("getCallTargetDuringParse", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            BasicInterpreter root = b.endRoot();
+            root.getCallTarget();
+        }));
+
+        assertTrue(parse("getCallTargetAfterParse", b -> {
+            b.beginRoot();
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+            b.endRoot();
+        }) != null);
+    }
+
+    @Test
     public void testCloneUninitializedAdd() {
         // return arg0 + arg1;
 
