@@ -28,17 +28,17 @@ public final class InterProceduralCallInterpreter<
 
     @Override
     public void execInvoke(Invoke invoke, Node invokeNode, AbstractStateMap<Domain> abstractStateMap) {
-        analysisContext.getLogger().logToFile("InterProceduralCallInterpreter::execInvoke invokeNode: " + invoke);
+        analysisContext.getLogger().logToFile("InterProceduralCallInterpreter::execInvoke invokeNode: " + invoke + "with arguments: " + invoke.callTarget().arguments());
         ResolvedJavaMethod targetMethod = invoke.getTargetMethod();
-        SummaryCache<Domain> summaryCache = analysisContext.getSummaryCache();
-        Summary<Domain> invokeSummary = analysisContext.getSummarySupplier().get(invoke, abstractStateMap.getState(invokeNode));
         AnalysisMethod targetAnalysisMethod = GraphUtils.getInvokeAnalysisMethod(analysisContext.getRoot(), invoke);
         if (analysisContext.getMethodFilter().shouldSkip(targetAnalysisMethod)) {
             abstractStateMap.getPostCondition(invokeNode).joinWith(abstractStateMap.getPreCondition(invokeNode));
             return;
         }
 
-        GraphUtils.printGraph(targetAnalysisMethod, analysisContext.getDebugContext());
+        SummaryCache<Domain> summaryCache = analysisContext.getSummaryCache();
+        Summary<Domain> invokeSummary = analysisContext.getSummarySupplier().get(invoke, abstractStateMap.getState(invokeNode));
+//        GraphUtils.printGraph(targetAnalysisMethod, analysisContext.getDebugContext());
         analysisContext.getLogger().logHighlightedDebugInfo("Analyzing AnalysisMethod: " + targetAnalysisMethod.getQualifiedName());
 
         /* If the summaryCache contains the summary for the target method, we can use it */

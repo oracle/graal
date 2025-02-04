@@ -68,7 +68,7 @@ public abstract class FixpointIteratorBase<
     }
 
     protected void setPrecondition(Node node, Domain domain) {
-        abstractStateMap.setPrecondition(node, domain);
+        abstractStateMap.setPreCondition(node, domain);
     }
 
     /**

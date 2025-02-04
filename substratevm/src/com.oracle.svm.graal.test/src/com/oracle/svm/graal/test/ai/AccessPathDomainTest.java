@@ -2,7 +2,7 @@ package com.oracle.svm.graal.test.ai;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AccessPathMapDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.IntInterval;
-import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
+import com.oracle.svm.hosted.analysis.ai.access.AccessPath;
 import org.junit.Assert;
 import org.junit.Test;
 

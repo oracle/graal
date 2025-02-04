@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Represents an AbstractValue that maps keys to a common abstract domain
@@ -92,9 +93,10 @@ public final class MapValue<
 
     @Override
     public String toString() {
-        return "MapValue{" +
-                "map=" + map +
-                '}';
+        return map.entrySet()
+                .stream()
+                .map(entry -> entry.getKey() + " : " + entry.getValue())
+                .collect(Collectors.joining("\n", "{\n", "\n}"));
     }
 
     @Override

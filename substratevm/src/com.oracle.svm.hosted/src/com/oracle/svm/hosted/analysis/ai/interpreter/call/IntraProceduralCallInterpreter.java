@@ -26,7 +26,6 @@ public final class IntraProceduralCallInterpreter<
     @Override
     public void execInvoke(Invoke invoke, Node invokeNode, AbstractStateMap<Domain> abstractStateMap) {
         analysisContext.getLogger().logToFile("IntraProceduralCallInterpreter::execInvoke invoke: " + invoke);
-        analysisContext.getLogger().logToFile("IntraProceduralCallInterpreter::execInvoke targetMethod: " + invoke.getTargetMethod());
         /* We set the post condition to top since we don't know the side effect of this call  */
         abstractStateMap.setPostCondition(invokeNode, AbstractDomain.createTop(analysisContext.getInitialDomain()));
     }

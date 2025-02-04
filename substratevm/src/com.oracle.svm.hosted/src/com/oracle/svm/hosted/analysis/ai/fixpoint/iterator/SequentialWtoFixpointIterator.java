@@ -54,7 +54,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
         logger.logToFile("Analyzing vertex: " + vertex);
         Node node = vertex.block().getBeginNode();
         if (node == cfgGraph.graph.start()) {
-            abstractStateMap.setPrecondition(node, initialDomain);
+            abstractStateMap.setPreCondition(node, initialDomain);
         }
 
         transferFunction.analyzeBlock(vertex.block(), abstractStateMap);

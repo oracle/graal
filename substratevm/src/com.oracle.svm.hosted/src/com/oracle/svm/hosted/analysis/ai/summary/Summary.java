@@ -32,7 +32,7 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     Domain getPostCondition();
 
     /**
-     * Checks if this summary covers the other summary.
+     * Check if this summary covers the other summary.
      * Covering in this case means that the precondition of this summary is more general than the precondition of the other summary.
      * We will be using this method to check if we can reuse the summary from {@link SummaryCache},
      * meaning that one summary does not have a calculated post-condition yet, therefore implementations
@@ -53,4 +53,11 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      * @param callerStateMap the state map of the caller
      */
     void applySummary(Invoke invoke, Node invokeNode, AbstractStateMap<Domain> callerStateMap);
+
+    /**
+     * Replace the formal parameters of the method with the actual arguments that the method was called with
+     * @param calleeMap the {@link AbstractStateMap} of the callee
+     */
+    void replaceFormalArgsWithActual(AbstractStateMap<Domain> calleeMap);
+
 }
