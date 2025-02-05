@@ -1,7 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
-import com.oracle.svm.hosted.analysis.ai.value.MapValue;
+import com.oracle.svm.hosted.analysis.ai.access.AccessPath;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -61,6 +60,6 @@ public final class AccessPathMapDomain<Domain extends AbstractDomain<Domain>>
 
     @Override
     public String toString() {
-        return "AccessPathMapDomain{" + getValue().toString() + "}";
+        return getValue().toString();
     }
 }
