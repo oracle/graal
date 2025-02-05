@@ -84,6 +84,7 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -2451,6 +2452,43 @@ public class WasmJsApiSuite {
                 final Object addPlusOne = WebAssembly.instanceExport(instance, "addPlusOne");
                 final Object result = InteropLibrary.getUncached(addPlusOne).execute(addPlusOne, 17, 3);
                 Assert.assertEquals("17 + 3 + 1 = 21.", 21, InteropLibrary.getUncached(result).asInt(result));
+            } catch (InteropException e) {
+                throw new AssertionError(e);
+            }
+        });
+    }
+
+    /**
+     * Trigger a {@link WasmException} during a call performed by an uncached
+     * {@link org.graalvm.wasm.nodes.WasmIndirectCallNode}, via an uncached {@link InteropLibrary},
+     * to test {@link org.graalvm.wasm.nodes.WasmIndirectCallNode#getBytecodeOffset()}.
+     */
+    @Test
+    public void testUncachedIndirectCallException() throws IOException, InterruptedException {
+        byte[] binary = compileWat("binaryWithImportsAndExports", """
+                        (module
+                            (memory 1 1)
+                            (func $trap (result i32)
+                                ;; deliberately trigger a trap
+                                unreachable
+                            )
+                            (export "trap" (func $trap))
+                        )
+                        """);
+
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WasmInstance instance = moduleInstantiate(wasm, binary, WasmConstant.NULL);
+            try {
+                final Object trap = WebAssembly.instanceExport(instance, "trap");
+                InteropLibrary.getUncached(trap).execute(trap);
+                Assert.fail("Expected a WasmException but none was thrown.");
+            } catch (WasmException e) {
+                var stackTrace = TruffleStackTrace.getStackTrace(e);
+                Assert.assertFalse(stackTrace.isEmpty());
+                for (var stackTraceElement : stackTrace) {
+                    Assert.assertEquals(-1, stackTraceElement.getBytecodeIndex());
+                }
             } catch (InteropException e) {
                 throw new AssertionError(e);
             }
