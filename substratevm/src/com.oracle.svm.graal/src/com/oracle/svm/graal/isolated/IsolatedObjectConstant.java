@@ -56,7 +56,7 @@ public final class IsolatedObjectConstant extends SubstrateObjectConstant {
         return provider.lookupJavaType(getObjectClass());
     }
 
-    private Class<?> getObjectClass() {
+    public Class<?> getObjectClass() {
         if (cachedClass == null) {
             cachedClass = ImageHeapObjects.deref(getObjectClass0(IsolatedCompileContext.get().getClient(), handle));
         }

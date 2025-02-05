@@ -92,6 +92,9 @@ final class IgvDumpChannel implements WritableByteChannel {
         }
     }
 
+    /**
+     * Guard for issuing warning about unsupported network dumping at most once per process.
+     */
     private static final GlobalAtomicLong NETWORK_DUMPING_UNSUPPORTED_WARNED = new GlobalAtomicLong("NETWORK_DUMPING_UNSUPPORTED_WARNED", 0L);
 
     WritableByteChannel channel() throws IOException {

@@ -68,7 +68,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
@@ -164,12 +163,12 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             HotSpotCompilationRequest hsRequest = (HotSpotCompilationRequest) request;
             CompilationTask task = new CompilationTask(jvmciRuntime, this, hsRequest, true, shouldRetainLocalVariables(hsRequest.getJvmciEnv()), shouldUsePreciseUnresolvedDeopts(), installAsDefault);
             OptionValues options = task.filterOptions(initialOptions);
-            int decompileCount = GraalServices.getDecompileCount(task.getMethod());
+            int decompileCount = HotSpotGraalServices.getDecompileCount(task.getMethod());
             if (decompileCount != -1) {
-                if (decompileCount >= CompilationTask.Options.MethodRecompilationLimit.getValue(options)) {
+                if (CompilationTask.Options.MethodRecompilationLimit.getValue(options) >= 0 && decompileCount >= CompilationTask.Options.MethodRecompilationLimit.getValue(options)) {
                     if (CompilationFailureAction.getValue(options) == CompilationWrapper.ExceptionAction.Diagnose) {
                         // If Diagnose is enabled then allow the compile to proceed and throw an
-                        // exception after wards to allow the retry machinery to capture a graph.
+                        // exception afterwards to allow the retry machinery to capture a graph.
                         task.checkRecompileCycle = true;
                     } else {
                         // Treat this as a permanent bailout. This is similar to HotSpots
@@ -180,7 +179,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                         return HotSpotCompilationRequestResult.failure("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info), false);
                     }
 
-                } else if (CompilationTask.Options.DetectRecompilationLimit.getValue(options) != -1 &&
+                } else if (CompilationTask.Options.DetectRecompilationLimit.getValue(options) >= 0 &&
                                 decompileCount >= CompilationTask.Options.DetectRecompilationLimit.getValue(options)) {
                     task.checkRecompileCycle = true;
                 }

@@ -68,10 +68,11 @@ import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
 import jdk.graal.compiler.phases.common.ForceDeoptSpeculationPhase;
+import jdk.graal.compiler.phases.schedule.SchedulePhase;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -100,9 +101,11 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                         If the value starts with a non-letter character, that
                         character is used as the separator between options instead of a space.""")//
         public static final OptionKey<String> PerMethodOptions = new OptionKey<>(null);
-        @Option(help = "Hard limit on the number of recompilations to avoid deopt loops", type = OptionType.Debug)//
-        public static final OptionKey<Integer> MethodRecompilationLimit = new OptionKey<>(15);
-        @Option(help = "Try to detect and report the source of deopt loops", type = OptionType.Debug)//
+        @Option(help = "Hard limit on the number of recompilations to avoid deopt loops. Exceeding the limit results in a permanent bailout. " + //
+                        "Negative value means the limit is disabled. The default is -1 (disabled).", type = OptionType.Debug)//
+        public static final OptionKey<Integer> MethodRecompilationLimit = new OptionKey<>(-1);
+        @Option(help = "When the number of recompilations exceeds the limit, enable the detection of repeated identical deopts and report the source of the deopt loop when detected. " + // +
+                        "Negative value means the limit is disabled. The default is -1 (disabled).", type = OptionType.Debug)//
         public static final OptionKey<Integer> DetectRecompilationLimit = new OptionKey<>(-1);
     }
 
@@ -295,7 +298,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
                 graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
                 Suites suites = compiler.getSuites(compiler.getGraalRuntime().getHostProviders(), debug.getOptions());
-                if (checkRecompileCycle && decompileCount < MethodRecompilationLimit.getValue(debug.getOptions())) {
+                if (checkRecompileCycle && (MethodRecompilationLimit.getValue(debug.getOptions()) < 0 || decompileCount < MethodRecompilationLimit.getValue(debug.getOptions()))) {
                     /*
                      * Disable DeoptimizationGroupingPhase to simplify the creation of the
                      * speculations for each deopt.
@@ -304,10 +307,14 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                     if (phase != null) {
                         phase.remove();
                     }
-                    suites.getLowTier().appendPhase(new ForceDeoptSpeculationPhase<>(decompileCount));
+                    ListIterator<BasePhase<? super LowTierContext>> lowTierPhasesIterator = suites.getLowTier().findPhase(SchedulePhase.FinalSchedulePhase.class);
+                    if (lowTierPhasesIterator != null) {
+                        lowTierPhasesIterator.previous();
+                        lowTierPhasesIterator.add(new ForceDeoptSpeculationPhase(decompileCount, null));
+                    }
                 }
                 result = compiler.compile(graph, shouldRetainLocalVariables, shouldUsePreciseUnresolvedDeopts, eagerResolving, compilationId, debug, suites);
-                if (checkRecompileCycle && decompileCount >= MethodRecompilationLimit.getValue(debug.getOptions())) {
+                if (checkRecompileCycle && (MethodRecompilationLimit.getValue(debug.getOptions()) >= 0 && decompileCount >= MethodRecompilationLimit.getValue(debug.getOptions()))) {
                     ProfilingInfo info = profileProvider.getProfilingInfo(method);
                     throw new ForceDeoptSpeculationPhase.TooManyDeoptimizationsError("too many decompiles: " + decompileCount + " " + ForceDeoptSpeculationPhase.getDeoptSummary(info));
                 }
@@ -372,7 +379,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         this.shouldUsePreciseUnresolvedDeopts = shouldUsePreciseUnresolvedDeopts;
         this.eagerResolving = eagerResolving;
         this.installAsDefault = installAsDefault;
-        this.decompileCount = GraalServices.getDecompileCount(request.getMethod());
+        this.decompileCount = HotSpotGraalServices.getDecompileCount(request.getMethod());
     }
 
     public void setTypeFilter(TypeFilter typeFilter) {

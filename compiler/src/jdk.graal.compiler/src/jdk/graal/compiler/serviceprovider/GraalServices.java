@@ -29,9 +29,6 @@ import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -48,8 +45,6 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.internal.misc.VM;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
-import jdk.vm.ci.meta.ProfilingInfo;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
@@ -72,10 +67,6 @@ public final class GraalServices {
             return null;
         }
     }
-
-    private static final Class<?> hotspotProfilingInfoClass;
-    private static final Method getDecompileCountMethod;
-    private static final Field methodDataField;
 
     /**
      * Gets a name for the current architecture that is compatible with
@@ -140,38 +131,7 @@ public final class GraalServices {
         }
     }
 
-    static {
-        try {
-            @SuppressWarnings("unchecked")
-            Class<?> hotspotMethodData = Class.forName("jdk.vm.ci.hotspot.HotSpotMethodData");
-            hotspotProfilingInfoClass = Class.forName("jdk.vm.ci.hotspot.HotSpotProfilingInfo");
-            methodDataField = hotspotProfilingInfoClass.getDeclaredField("methodData");
-            methodDataField.setAccessible(true);
-            getDecompileCountMethod = hotspotMethodData.getDeclaredMethod("getDecompileCount");
-            getDecompileCountMethod.setAccessible(true);
-        } catch (ClassNotFoundException | NoSuchMethodException | NoSuchFieldException e) {
-            throw new InternalError("decompile count isn't available", e);
-        }
-    }
-
     private GraalServices() {
-    }
-
-    /**
-     * Read the decompile count from the {@code HotSpotMethodData} and either bail out if the count
-     * is too high or enable some debugging logic to detect the cause of the cycle.
-     */
-    public static int getDecompileCount(ResolvedJavaMethod method) {
-        ProfilingInfo info = method.getProfilingInfo();
-        if (hotspotProfilingInfoClass.isAssignableFrom(info.getClass())) {
-            try {
-                Object methodData = methodDataField.get(info);
-                return (int) getDecompileCountMethod.invoke(methodData);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(info.toString(), e);
-            }
-        }
-        return -1;
     }
 
     /**

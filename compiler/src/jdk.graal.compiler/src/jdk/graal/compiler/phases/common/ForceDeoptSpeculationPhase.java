@@ -28,13 +28,17 @@ import static jdk.vm.ci.meta.SpeculationLog.NO_SPECULATION;
 
 import java.util.Optional;
 
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.DynamicDeoptimizeNode;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.ImplicitNullCheckNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.BasePhase;
 import jdk.graal.compiler.phases.util.GraphSignature;
@@ -46,15 +50,46 @@ import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.SpeculationLog;
 
 /**
- * Ensure every {@link DeoptimizeNode} has an associated speculation to detect deopt reocmpile
- * pathologies.
+ * Ensure every {@link DeoptimizeNode} has an associated speculation to detect deopt recompile
+ * pathologies. In case the deoptimize node has been already lowered to a foreign call, this phase
+ * looks for calls with the specified descriptor and updates the speculation in the arguments of the
+ * call. Because of the need to update foreign calls, this phase must run before the last schedule
+ * phase.
  */
-public class ForceDeoptSpeculationPhase<T extends CoreProviders> extends BasePhase<T> {
+public class ForceDeoptSpeculationPhase extends BasePhase<CoreProviders> {
 
+    /**
+     * The number of a times a missing speculation can recompile before an error is reported.
+     */
     final int recompileCount;
 
-    public ForceDeoptSpeculationPhase(int recompileCount) {
+    /**
+     * Specifies the descriptor of deoptimize calls that have a speculation as an argument. Those
+     * speculation arguments also have to be replaced if they are not proper speculations.
+     */
+    final ForeignCallDescriptor deoptimizeCallDescriptor;
+    final int deoptimizeCallSpeculationReasonArgumentIndex;
+
+    public ForceDeoptSpeculationPhase(int recompileCount, ForeignCallDescriptor deoptimizeCallDescriptor) {
         this.recompileCount = recompileCount;
+        int speculationReasonArgumentIndex = -1;
+        if (deoptimizeCallDescriptor != null) {
+            Class<?>[] argumentTypes = deoptimizeCallDescriptor.getArgumentTypes();
+            for (int i = 0; i < argumentTypes.length; i++) {
+                if (SpeculationLog.SpeculationReason.class.equals(argumentTypes[i])) {
+                    speculationReasonArgumentIndex = i;
+                    break;
+                }
+            }
+        }
+        if (speculationReasonArgumentIndex >= 0) {
+            this.deoptimizeCallDescriptor = deoptimizeCallDescriptor;
+            this.deoptimizeCallSpeculationReasonArgumentIndex = speculationReasonArgumentIndex;
+        } else {
+            this.deoptimizeCallDescriptor = null;
+            this.deoptimizeCallSpeculationReasonArgumentIndex = -1;
+        }
+
     }
 
     public static class TooManyDeoptimizationsError extends GraalError {
@@ -65,7 +100,7 @@ public class ForceDeoptSpeculationPhase<T extends CoreProviders> extends BasePha
         }
     }
 
-    public static final SpeculationReasonGroup VERIFY_SPECULATION = new SpeculationReasonGroup("VerifySpeculation", byte[].class, int.class);
+    public static final SpeculationReasonGroup VERIFY_SPECULATION = new SpeculationReasonGroup("VerifySpeculation", byte[].class, int.class, int.class);
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
@@ -73,22 +108,34 @@ public class ForceDeoptSpeculationPhase<T extends CoreProviders> extends BasePha
     }
 
     @Override
-    protected void run(StructuredGraph graph, T context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         SpeculationLog speculationLog = graph.getSpeculationLog();
         GraphSignature signature = new GraphSignature(graph);
         for (Node node : graph.getNodes()) {
             if (node instanceof DynamicDeoptimizeNode) {
                 throw new GraalError("%s must be disabled to use this phase", DynamicDeoptimizeNode.class.getSimpleName());
             }
-            if (node instanceof DeoptimizeNode) {
-                DeoptimizeNode deopt = (DeoptimizeNode) node;
+            if (node instanceof DeoptimizeNode deopt) {
                 if (deopt.getSpeculation().equals(NO_SPECULATION)) {
                     SpeculationLog.Speculation speculation = createSpeculation(graph, signature, deopt);
                     deopt.setSpeculation(speculation);
                 }
             }
-            if (node instanceof ImplicitNullCheckNode) {
-                ImplicitNullCheckNode implicitNullCheck = (ImplicitNullCheckNode) node;
+            if (deoptimizeCallDescriptor != null) {
+                if (node instanceof ForeignCallNode foreignCallNode && deoptimizeCallDescriptor.equals(foreignCallNode.getDescriptor())) {
+                    ValueNode speculationReasonArgument = foreignCallNode.getArguments().get(deoptimizeCallSpeculationReasonArgumentIndex);
+                    assert speculationReasonArgument.isJavaConstant() : "Speculation reason argument node is not a JavaConstant";
+                    SpeculationLog.Speculation originalSpeculation = context.getMetaAccess().decodeSpeculation((JavaConstant) ((ConstantNode) speculationReasonArgument).getValue(),
+                                    graph.getSpeculationLog());
+                    if (NO_SPECULATION.equals(originalSpeculation)) {
+                        SpeculationLog.Speculation newSpeculation = createSpeculation(graph, signature, foreignCallNode);
+                        JavaConstant speculationConstant = context.getMetaAccess().encodeSpeculation(newSpeculation);
+                        ConstantNode speculationNode = graph.addOrUnique(ConstantNode.forConstant(speculationConstant, context.getMetaAccess(), graph));
+                        ((ConstantNode) speculationReasonArgument).replace(graph, speculationNode);
+                    }
+                }
+            }
+            if (node instanceof ImplicitNullCheckNode implicitNullCheck) {
                 JavaConstant spec = implicitNullCheck.getDeoptSpeculation();
                 SpeculationLog.Speculation speculation = spec != null ? context.getMetaAccess().decodeSpeculation(spec, speculationLog) : NO_SPECULATION;
                 if (speculation.equals(NO_SPECULATION)) {
@@ -117,12 +164,29 @@ public class ForceDeoptSpeculationPhase<T extends CoreProviders> extends BasePha
         return sb.toString();
     }
 
-    private static SpeculationLog.Speculation createSpeculation(StructuredGraph graph, GraphSignature signature, Node deopt) {
-        SpeculationLog.SpeculationReason reason = VERIFY_SPECULATION.createSpeculationReason(signature.getSignature(), signature.getId(deopt));
-        if (graph.getSpeculationLog().maySpeculate(reason)) {
-            return graph.getSpeculationLog().speculate(reason);
-        } else {
-            throw new TooManyDeoptimizationsError("deopt taken too many times: " + deopt + " " + getDeoptSummary(graph.getProfilingInfo()));
+    /**
+     * Check that a synthetic speculation for this deopt didn't previously fail and throw an
+     * exception if it's happened too many times.
+     */
+    protected SpeculationLog.Speculation createSpeculation(StructuredGraph graph, GraphSignature signature, ValueNode deopt) {
+        for (int i = 0; i < getMaximumDeoptCount(graph); i++) {
+            SpeculationLog.SpeculationReason reason = VERIFY_SPECULATION.createSpeculationReason(signature.getSignature(), signature.getId(deopt), i);
+            if (graph.getSpeculationLog().maySpeculate(reason)) {
+                return graph.getSpeculationLog().speculate(reason);
+            }
         }
+        throw reportTooManySpeculationFailures(deopt);
+    }
+
+    @SuppressWarnings("unused")
+    protected int getMaximumDeoptCount(StructuredGraph graph) {
+        return recompileCount;
+    }
+
+    /**
+     * Report a deopt cycle.
+     */
+    protected GraalError reportTooManySpeculationFailures(ValueNode deopt) {
+        throw new TooManyDeoptimizationsError("deopt taken too many times: " + deopt + " " + getDeoptSummary(deopt.graph().getProfilingInfo()));
     }
 }

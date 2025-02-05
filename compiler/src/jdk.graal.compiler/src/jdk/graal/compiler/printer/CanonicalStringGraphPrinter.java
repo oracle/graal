@@ -272,7 +272,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
         return currentDirectory;
     }
 
-    private String getPath(DebugContext debug, StructuredGraph graph) {
+    private String getSignaturePath(DebugContext debug, StructuredGraph graph) {
         if (graph == currentGraph) {
             return currentDirectory;
         }
@@ -288,7 +288,7 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
             StructuredGraph structuredGraph = (StructuredGraph) graph;
             String title = String.format("%03d-%s.txt", id, String.format(format, simplifyClassArgs(args)));
             if (PrintCanonicalGraphStringFlavor.getValue(options) == 2) {
-                String filePath = getPath(debug, structuredGraph);
+                String filePath = getSignaturePath(debug, structuredGraph);
                 try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(PathUtilities.openOutputStream(filePath, true))))) {
                     GraphSignature signature = new GraphSignature(structuredGraph);
                     writer.print(signature.getSignatureString());
