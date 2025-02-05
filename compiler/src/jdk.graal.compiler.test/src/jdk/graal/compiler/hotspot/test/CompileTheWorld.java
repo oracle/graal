@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,7 +88,6 @@ import jdk.graal.compiler.debug.MethodFilter;
 import jdk.graal.compiler.debug.MetricKey;
 import jdk.graal.compiler.debug.TTY;
 import jdk.graal.compiler.hotspot.CompilationTask;
-import jdk.graal.compiler.hotspot.CompileTheWorldFuzzedSuitesCompilationTask;
 import jdk.graal.compiler.hotspot.GraalHotSpotVMConfig;
 import jdk.graal.compiler.hotspot.HotSpotBytecodeParser;
 import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
@@ -940,14 +939,20 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
         }
     }
 
+    /**
+     * Determine if the message describes a failure we should ignore in the context of CTW. Since in
+     * CTW we try to compile all methods as compilation roots indiscriminately, we may hit upon a
+     * helper method that expects to only be inlined into a snippet. Such compilations may fail with
+     * a well-known message complaining about node intrinsics used outside a snippet. We can ignore
+     * these failures.
+     */
+    public static boolean shouldIgnoreFailure(String failureMessage) {
+        return failureMessage.startsWith(HotSpotBytecodeParser.BAD_NODE_INTRINSIC_PLUGIN_CONTEXT);
+    }
+
     @Override
     protected void handleFailure(HotSpotCompilationRequestResult result) {
-        /*
-         * Ignore bailouts caused by calling node intrinsics outside a Snippet. Since in CTW we try
-         * to compile all methods as compilation roots indiscriminately, we may hit upon a helper
-         * method that expects to only be inlined into a snippet.
-         */
-        if (!result.getFailureMessage().startsWith(HotSpotBytecodeParser.BAD_NODE_INTRINSIC_PLUGIN_CONTEXT)) {
+        if (!shouldIgnoreFailure(result.getFailureMessage())) {
 
             if (Options.FuzzPhasePlan.getValue(harnessOptions)) {
                 HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();

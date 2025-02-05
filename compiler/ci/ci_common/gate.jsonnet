@@ -283,6 +283,7 @@
     "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
+      logs+: ["*/graal_dumps/*/*_failure.log"],
     },
 
     "weekly-compiler-test_vec16-labsjdk-latest-linux-amd64": {},
