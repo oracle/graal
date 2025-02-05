@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
@@ -12,7 +13,7 @@ import jdk.graal.compiler.graph.Node;
  */
 public interface NodeInterpreter<Domain extends AbstractDomain<Domain>> {
 
-    void execEdge(Node source, Node destination, AbstractStateMap<Domain> abstractStateMap);
+    Domain execEdge(Node source, Node destination, AbstractStateMap<Domain> abstractStateMap, AnalysisPayload<Domain> payload);
 
-    void execNode(Node node, AbstractStateMap<Domain> abstractStateMap);
+    Domain execNode(Node node, AbstractStateMap<Domain> abstractStateMap, AnalysisPayload<Domain> payload);
 }
