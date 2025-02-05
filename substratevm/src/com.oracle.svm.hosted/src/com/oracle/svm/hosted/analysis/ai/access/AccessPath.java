@@ -1,7 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.access;
 
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
@@ -10,7 +8,6 @@ import jdk.graal.compiler.nodes.java.StoreIndexedNode;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
