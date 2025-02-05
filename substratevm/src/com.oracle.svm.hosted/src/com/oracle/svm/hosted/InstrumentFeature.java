@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.PreMainSupport;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -46,6 +47,9 @@ import com.oracle.svm.hosted.reflect.ReflectionFeature;
 
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
+
+import java.io.IOException;
+import java.util.jar.JarFile;
 
 /**
  * This feature supports instrumentation in native image.
@@ -77,28 +81,50 @@ public class InstrumentFeature implements InternalFeature {
         PreMainSupport support = new PreMainSupport();
         ImageSingletons.add(PreMainSupport.class, support);
 
-        List<String> premainClasses = Options.PremainClasses.getValue().values();
-        for (String clazz : premainClasses) {
-            addPremainClass(support, cl, clazz);
+        List<String> agentOptions = SubstrateOptions.JavaAgent.getValue().values();
+        for (String agentOption : agentOptions) {
+            addPremainClass(support, cl, agentOption);
         }
     }
 
-    private static void addPremainClass(PreMainSupport support, ClassLoader cl, String premainClass) {
+    private static void addPremainClass(PreMainSupport support, ClassLoader cl, String javaagentOption) {
+        int separatorIndex = javaagentOption.indexOf("=");
+        String agent;
+        String premainClass = null;
+        String options = "";
+        // Get the agent file
+        if (separatorIndex == -1) {
+            agent = javaagentOption;
+        } else {
+            agent = javaagentOption.substring(0, separatorIndex);
+            options = javaagentOption.substring(separatorIndex + 1);
+        }
+        // Read MANIFEST in agent jar
+        try {
+            JarFile agentJarFile = new JarFile(agent);
+            premainClass = agentJarFile.getManifest().getMainAttributes().getValue("Premain-Class");
+        } catch (IOException e) {
+            // This should never happen because the image build process (HotSpot) already loaded the
+            // agent during startup.
+            throw UserError.abort(e, "Can't read the agent jar %s. Please check option %s", agent,
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.JavaAgent, ""));
+        }
+
         try {
             Class<?> clazz = Class.forName(premainClass, false, cl);
             Method premain = findPremainMethod(premainClass, clazz);
 
             List<Object> args = new ArrayList<>();
             /* The first argument contains the premain options, which will be set at runtime. */
-            args.add("");
+            args.add(options);
             if (premain.getParameterCount() == 2) {
                 args.add(new PreMainSupport.NativeImageNoOpRuntimeInstrumentation());
             }
 
             support.registerPremainMethod(premainClass, premain, args.toArray(new Object[0]));
         } catch (ClassNotFoundException e) {
-            UserError.abort("Could not register agent premain method because class %s was not found. Please check your %s setting.", premainClass,
-                            SubstrateOptionsParser.commandArgument(Options.PremainClasses, ""));
+            throw UserError.abort("Could not register agent premain method because class %s was not found. Please check your %s setting.", premainClass,
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.JavaAgent, ""));
         }
     }
 

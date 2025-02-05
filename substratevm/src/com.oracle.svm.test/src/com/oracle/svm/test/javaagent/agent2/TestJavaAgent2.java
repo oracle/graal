@@ -27,16 +27,11 @@
 package com.oracle.svm.test.javaagent.agent2;
 
 import com.oracle.svm.test.javaagent.AgentPremainHelper;
-import org.graalvm.nativeimage.ImageInfo;
 
 public class TestJavaAgent2 {
     public static void premain(String agentArgs) {
         AgentPremainHelper.parseOptions(agentArgs);
         System.setProperty("instrument.enable", "true");
-        if (!ImageInfo.inImageRuntimeCode()) {
-            // do class transformation
-        } else {
-            AgentPremainHelper.load(TestJavaAgent2.class);
-        }
+        AgentPremainHelper.load(TestJavaAgent2.class);
     }
 }
