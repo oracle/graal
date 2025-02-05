@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.EspressoSubstitutions;
 import com.oracle.truffle.espresso.substitutions.Inject;
+import com.oracle.truffle.espresso.substitutions.InlineInBytecode;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Substitution;
 import com.oracle.truffle.espresso.substitutions.SubstitutionNode;
@@ -70,8 +71,7 @@ public final class Target_java_lang_Object {
         }
     }
 
-    // TODO: Allow inlining this in bytecode (see GR-42697)
-    // @InlineInBytecode(guard = InitGuard.class)
+    @InlineInBytecode(guard = InitGuard.class)
     @Substitution(hasReceiver = true, methodName = "<init>", flags = {IsTrivial})
     abstract static class Init extends SubstitutionNode {
 
