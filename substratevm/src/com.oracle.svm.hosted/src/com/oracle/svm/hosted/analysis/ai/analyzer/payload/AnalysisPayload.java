@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.context;
+package com.oracle.svm.hosted.analysis.ai.analyzer.payload;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -12,12 +12,12 @@ import jdk.graal.compiler.debug.DebugContext;
 import java.io.IOException;
 
 /**
- * Represents the context of an abstract interpretation analysis,
+ * Represents the payload of an abstract interpretation analysis,
  * containing all the necessary information about the internal state of the analysis
  *
  * @param <Domain> the type of derived {@link AbstractDomain} the analysis is running on
  */
-public class AnalysisContext<Domain extends AbstractDomain<Domain>> {
+public abstract class AnalysisPayload<Domain extends AbstractDomain<Domain>> {
 
     protected final Domain initialDomain;
     protected final IteratorPolicy iteratorPolicy;
@@ -27,7 +27,7 @@ public class AnalysisContext<Domain extends AbstractDomain<Domain>> {
     protected final NodeInterpreter<Domain> nodeInterpreter;
     protected final CheckerManager checkerManager;
 
-    public AnalysisContext(
+    public AnalysisPayload(
             Domain initialDomain,
             IteratorPolicy iteratorPolicy,
             AnalysisMethod root,
@@ -35,7 +35,6 @@ public class AnalysisContext<Domain extends AbstractDomain<Domain>> {
             NodeInterpreter<Domain> nodeInterpreter,
             CheckerManager checkerManager
     ) {
-
         this.initialDomain = initialDomain;
         this.iteratorPolicy = iteratorPolicy;
         this.root = root;
@@ -71,5 +70,9 @@ public class AnalysisContext<Domain extends AbstractDomain<Domain>> {
 
     public NodeInterpreter<Domain> getNodeInterpreter() {
         return nodeInterpreter;
+    }
+
+    public CheckerManager getCheckerManager() {
+        return checkerManager;
     }
 }

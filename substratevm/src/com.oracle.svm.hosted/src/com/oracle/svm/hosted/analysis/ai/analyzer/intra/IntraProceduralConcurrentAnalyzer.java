@@ -2,7 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.intra;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.context.IntraProceduralAnalysisContext;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IntraProceduralAnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.ConcurrentWpoFixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
@@ -28,9 +28,9 @@ public class IntraProceduralConcurrentAnalyzer<Domain extends AbstractDomain<Dom
     @Override
     public void run(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
         IteratorPolicy policy = IteratorPolicy.DEFAULT_CONCURRENT;
-        IntraProceduralAnalysisContext<Domain> payload = new IntraProceduralAnalysisContext<>(initialDomain, policy, root, debug, nodeInterpreter, checkerManager);
+        IntraProceduralAnalysisPayload<Domain> payload = new IntraProceduralAnalysisPayload<>(initialDomain, policy, root, debug, nodeInterpreter, checkerManager);
         payload.getLogger().logHighlightedDebugInfo("Running intra-procedural concurrent analysis");
-        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, new IntraProceduralCallInterpreter<>(payload), payload.getLogger());
+        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, new IntraProceduralCallInterpreter<>(), payload);
         ConcurrentWpoFixpointIterator<Domain> iterator = new ConcurrentWpoFixpointIterator<>(payload, transferFunction);
         doRun(payload, iterator);
     }

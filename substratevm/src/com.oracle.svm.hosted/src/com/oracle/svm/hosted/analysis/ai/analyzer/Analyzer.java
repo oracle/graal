@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.context.AnalysisContext;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.checker.Checker;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
@@ -52,7 +52,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
      * @param payload               analyzer payload
      * @param iterator              fixpoint iterator
      */
-    protected void doRun(AnalysisContext<Domain> payload, FixpointIterator<Domain> iterator) {
+    protected void doRun(AnalysisPayload<Domain> payload, FixpointIterator<Domain> iterator) {
         payload.getLogger().logDebugInfo("Analysing method " + root);
         payload.getLogger().logDebugWarning("With provided checkers: " + checkerManager.getCheckers());
 

@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.context;
+package com.oracle.svm.hosted.analysis.ai.analyzer.payload;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
@@ -8,14 +8,14 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import jdk.graal.compiler.debug.DebugContext;
 
 /**
- * Represents the context of an intra-procedural abstract interpretation analysis.
+ * Represents the payload of an intra-procedural abstract interpretation analysis.
  *
  * @param <Domain> the type of derived {@link AbstractDomain} the analysis is running on
  */
-public class IntraProceduralAnalysisContext<Domain extends AbstractDomain<Domain>>
-        extends AnalysisContext<Domain> {
+public class IntraProceduralAnalysisPayload<Domain extends AbstractDomain<Domain>>
+        extends AnalysisPayload<Domain> {
 
-    public IntraProceduralAnalysisContext(
+    public IntraProceduralAnalysisPayload(
             Domain initialDomain,
             IteratorPolicy iteratorPolicy,
             AnalysisMethod root,

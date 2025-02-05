@@ -2,9 +2,9 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.inter;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.context.InterProceduralAnalysisContext;
-import com.oracle.svm.hosted.analysis.ai.analyzer.context.filter.DefaultMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.analyzer.context.filter.MethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.InterProceduralAnalysisPayload;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.DefaultMethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.MethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.SequentialWtoFixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
@@ -55,9 +55,9 @@ public class InterProceduralSequentialAnalyzer<Domain extends AbstractDomain<Dom
 
     @Override
     public void run(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
-        InterProceduralAnalysisContext<Domain> payload = new InterProceduralAnalysisContext<>(initialDomain, iteratorPolicy, root, debug, nodeInterpreter, summarySupplier, checkerManager, methodFilter);
+        InterProceduralAnalysisPayload<Domain> payload = new InterProceduralAnalysisPayload<>(initialDomain, iteratorPolicy, root, debug, nodeInterpreter, summarySupplier, checkerManager, methodFilter);
         payload.getLogger().logHighlightedDebugInfo("Running inter-procedural sequential analysis");
-        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, new InterProceduralCallInterpreter<>(payload), payload.getLogger());
+        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, new InterProceduralCallInterpreter<>(), payload);
         SequentialWtoFixpointIterator<Domain> iterator = new SequentialWtoFixpointIterator<>(payload, transferFunction);
         doRun(payload, iterator);
         payload.getLogger().logHighlightedDebugInfo("The computed summaries are: ");

@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.set;
 
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.SetDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
@@ -9,12 +10,19 @@ import jdk.graal.compiler.nodes.Invoke;
 public class IdentifierSetDomainNodeInterpreter implements NodeInterpreter<SetDomain<String>> {
 
     @Override
-    public void execEdge(Node source, Node destination, AbstractStateMap<SetDomain<String>> abstractStateMap) {
+    public SetDomain<String> execEdge(Node source,
+                                      Node destination,
+                                      AbstractStateMap<SetDomain<String>> abstractStateMap,
+                                      AnalysisPayload<SetDomain<String>> payload) {
         abstractStateMap.getPreCondition(destination).joinWith(abstractStateMap.getPostCondition(source));
+        return abstractStateMap.getPreCondition(destination);
     }
 
     @Override
-    public void execNode(Node node, AbstractStateMap<SetDomain<String>> abstractStateMap) {
+    public SetDomain<String> execNode(Node node,
+                                      AbstractStateMap<SetDomain<String>> abstractStateMap,
+                                      AnalysisPayload<SetDomain<String>> payload) {
+
         SetDomain<String> preCond = abstractStateMap.getPreCondition(node).copyOf();
         if (node instanceof Invoke invoke) {
             if (opensResource(invoke)) {
@@ -28,6 +36,8 @@ public class IdentifierSetDomainNodeInterpreter implements NodeInterpreter<SetDo
         } else {
             abstractStateMap.getPostCondition(node).joinWith(abstractStateMap.getPreCondition(node));
         }
+
+        return abstractStateMap.getPostCondition(node);
     }
 
     private boolean opensResource(Invoke invoke) {

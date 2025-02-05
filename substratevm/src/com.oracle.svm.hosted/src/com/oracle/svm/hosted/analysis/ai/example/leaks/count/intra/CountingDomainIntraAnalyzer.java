@@ -1,9 +1,9 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.count.intra;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.example.leaks.count.LeaksCountingDomainNodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.intra.IntraProceduralSequentialAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
+import com.oracle.svm.hosted.analysis.ai.example.leaks.count.LeaksCountingDomainNodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import jdk.graal.compiler.debug.DebugContext;
 

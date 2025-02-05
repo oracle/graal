@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.context.AnalysisContext;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
@@ -35,7 +35,7 @@ public final class ConcurrentWpoFixpointIterator<
     private final HIRBlock entry;
     private final Map<HIRBlock, WorkNode> nodeToWork = new ConcurrentHashMap<>();
 
-    public ConcurrentWpoFixpointIterator(AnalysisContext<Domain> context, TransferFunction<Domain> transferFunction) {
+    public ConcurrentWpoFixpointIterator(AnalysisPayload<Domain> context, TransferFunction<Domain> transferFunction) {
         super(context, transferFunction);
         this.weakPartialOrdering = new WeakPartialOrdering(cfgGraph);
         this.entry = cfgGraph.getStartBlock();

@@ -1,11 +1,11 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.context.filter.MethodFilter;
 import com.oracle.svm.hosted.analysis.ai.analyzer.inter.InterProceduralConcurrentAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.inter.InterProceduralSequentialAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.intra.IntraProceduralConcurrentAnalyzer;
 import com.oracle.svm.hosted.analysis.ai.analyzer.intra.IntraProceduralSequentialAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.MethodFilter;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.summary.SummarySupplier;
 import jdk.graal.compiler.debug.DebugContext;
