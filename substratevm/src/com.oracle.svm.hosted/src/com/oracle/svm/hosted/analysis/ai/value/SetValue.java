@@ -98,28 +98,25 @@ public final class SetValue<Element>
         set.add(element);
     }
 
-    public SetValue<Element> remove(Element element) {
+    public void remove(Element element) {
         set.remove(element);
-        return this;
     }
 
-    public SetValue<Element> filter(Predicate<Element> predicate) {
+
+    // TODO: this should not be called filter
+    public void filter(Predicate<Element> predicate) {
         set.removeIf(predicate.negate());
-        return this;
     }
 
-    public SetValue<Element> unionWith(SetValue<Element> other) {
+    public void unionWith(SetValue<Element> other) {
         set.addAll(other.set);
-        return this;
     }
 
-    public SetValue<Element> intersectionWith(SetValue<Element> other) {
+    public void intersectionWith(SetValue<Element> other) {
         set.retainAll(other.set);
-        return this;
     }
 
-    public SetValue<Element> differenceWith(SetValue<Element> other) {
+    public void differenceWith(SetValue<Element> other) {
         set.removeAll(other.set);
-        return this;
     }
 }

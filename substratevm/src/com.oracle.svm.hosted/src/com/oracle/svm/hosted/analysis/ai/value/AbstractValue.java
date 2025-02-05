@@ -9,6 +9,7 @@ package com.oracle.svm.hosted.analysis.ai.value;
  */
 
 public interface AbstractValue<Derived extends AbstractValue<Derived>> {
+
     /**
      * Returns the kind of this abstract value.
      *
