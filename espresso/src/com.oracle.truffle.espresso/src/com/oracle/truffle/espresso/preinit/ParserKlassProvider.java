@@ -52,9 +52,15 @@ public interface ParserKlassProvider {
         boolean loaderIsBootOrPlatform = env.loaderIsBootOrPlatform(loader);
         Meta meta = env.getMeta();
         try {
-            ParsingContext parsingContext = env.getParsingContext();
+            // Classes from trusted class loaders can create strongly referenced symbols directly
+            // during parsing.
+            boolean ensureStrongSymbols = env.loaderIsBootOrPlatform(loader) || env.loaderIsAppLoader(loader);
+            ParsingContext parsingContext = ClassLoadingEnv.createParsingContext(env, ensureStrongSymbols);
+
+            // Trusted classes do not need validation/verification.
+            boolean validate = verifiable;
             ParserKlass parserKlass = ClassfileParser.parse(parsingContext, new ClassfileStream(bytes, null), verifiable, loaderIsBootOrPlatform, typeOrNull, info.isHidden,
-                            info.forceAllowVMAnnotations);
+                            info.forceAllowVMAnnotations, validate);
             if (info.isHidden) {
                 Symbol<Type> requestedClassType = typeOrNull;
                 assert requestedClassType != null;

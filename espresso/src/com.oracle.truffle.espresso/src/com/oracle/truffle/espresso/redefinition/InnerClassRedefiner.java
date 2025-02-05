@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.classfile.ParserException;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -90,7 +91,7 @@ public final class InnerClassRedefiner {
             Iterator<RedefineInfo> it = unhandled.iterator();
             while (it.hasNext()) {
                 RedefineInfo redefineInfo = it.next();
-                Symbol<Name> klassName = ParserKlassProvider.getClassName(context.getMeta(), context.getClassLoadingEnv().getParsingContext(), redefineInfo.getClassBytes());
+                Symbol<Name> klassName = ParserKlassProvider.getClassName(context.getMeta(), ClassLoadingEnv.createParsingContext(context.getClassLoadingEnv(), false), redefineInfo.getClassBytes());
                 if (handled.containsKey(klassName)) {
                     ClassRedefinition.LOGGER.warning(() -> "Ignoring duplicate redefinition requests for name " + klassName);
                     it.remove();

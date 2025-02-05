@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.JavaKind;
@@ -53,8 +52,6 @@ import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserTyp
 public final class SignatureSymbols {
     private final TypeSymbols typeSymbols;
     private final Symbols symbols;
-
-    private final ConcurrentHashMap<Symbol<Signature>, Symbol<Type>[]> parsedSignatures = new ConcurrentHashMap<>();
 
     /**
      * Creates a new SignatureSymbols instance.
@@ -103,10 +100,24 @@ public final class SignatureSymbols {
      * @see Validation#validSignatureDescriptor(ByteSequence)
      */
     public Symbol<Signature> getOrCreateValidSignature(ByteSequence signatureBytes) {
+        return getOrCreateValidSignature(signatureBytes, false);
+    }
+
+    /**
+     * Creates or retrieves a valid method signature symbol from a byte sequence.
+     *
+     * @param ensureStrongReference if {@code true}, the returned symbol is guaranteed to be
+     *            strongly referenced by the symbol table
+     * @param signatureBytes The method signature bytes to create or retrieve
+     * @return The signature Symbol if valid, null otherwise
+     *
+     * @see Validation#validSignatureDescriptor(ByteSequence)
+     */
+    public Symbol<Signature> getOrCreateValidSignature(ByteSequence signatureBytes, boolean ensureStrongReference) {
         if (!Validation.validSignatureDescriptor(signatureBytes)) {
             return null;
         }
-        return symbols.symbolify(signatureBytes);
+        return symbols.getOrCreate(signatureBytes, ensureStrongReference);
     }
 
     /**
@@ -121,13 +132,13 @@ public final class SignatureSymbols {
     /**
      * Gets or computes the parsed form of a method signature. The parsed form is an array of Type
      * symbols where the last element is the return type and all preceding elements are parameter
-     * types. Results are cached for performance.
+     * types.
      *
      * @param signature The method signature to parse
      * @return Array of Type symbols representing parameter types followed by return type
      */
     public Symbol<Type>[] parsed(Symbol<Signature> signature) {
-        return parsedSignatures.computeIfAbsent(signature, key -> parse(SignatureSymbols.this.getTypes(), signature, 0));
+        return parse(SignatureSymbols.this.getTypes(), signature, 0);
     }
 
     /**
@@ -340,7 +351,7 @@ public final class SignatureSymbols {
 
     @SafeVarargs
     public final Symbol<Signature> makeRaw(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
-        return symbols.symbolify(createSignature(returnType, parameterTypes));
+        return symbols.getOrCreate(createSignature(returnType, parameterTypes));
     }
 
     @SafeVarargs

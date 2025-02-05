@@ -140,7 +140,7 @@ public final class Validation {
             while (i < bytes.length() && bytes.byteAt(i) != '/') {
                 ++i;
             }
-            if (!validUnqualifiedName(bytes.subSequence(prev, i - prev))) {
+            if (!validUnqualifiedName(bytes.subSequence(prev, i))) {
                 return false;
             }
             prev = i + 1;
@@ -223,14 +223,14 @@ public final class Validation {
                 return false;
             }
             // Arrays of void (V) are never allowed.
-            return validFieldDescriptor(bytes.subSequence(dimensions, bytes.length() - dimensions));
+            return validFieldDescriptor(bytes.subSequence(dimensions));
         }
         if (first == 'L') {
             char last = (char) bytes.byteAt(bytes.length() - 1);
             if (last != ';') {
                 return false;
             }
-            return validBinaryName(bytes.subSequence(1, bytes.length() - 2));
+            return validBinaryName(bytes.subSequence(1, bytes.length() - 1));
         }
         return false;
     }
@@ -290,7 +290,7 @@ public final class Validation {
                     return INVALID_SIGNATURE;
                 }
                 assert bytes.byteAt(index) == ';';
-                if (!validFieldDescriptor(bytes.subSequence(prev, index - prev + 1))) {
+                if (!validFieldDescriptor(bytes.subSequence(prev, index + 1))) {
                     return INVALID_SIGNATURE;
                 }
                 ++index; // skip ;
@@ -322,7 +322,7 @@ public final class Validation {
         if (isInitOrClinit) {
             return (bytes.byteAt(index + 1) == 'V' && bytes.length() == index + 2) ? slots : INVALID_SIGNATURE;
         } else {
-            return (validTypeDescriptor(bytes.subSequence(index + 1, bytes.length() - index - 1), true)) ? slots : INVALID_SIGNATURE;
+            return (validTypeDescriptor(bytes.subSequence(index + 1), true)) ? slots : INVALID_SIGNATURE;
         }
     }
 

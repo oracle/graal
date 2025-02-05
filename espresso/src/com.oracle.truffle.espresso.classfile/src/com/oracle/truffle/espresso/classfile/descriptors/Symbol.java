@@ -156,31 +156,6 @@ public final class Symbol<T> extends ByteSequence {
     }
 
     /**
-     * Returns a subsequence of this symbol from the specified index to the end.
-     *
-     * @param from The starting index (inclusive)
-     * @return A ByteSequence representing the subsequence
-     */
-    ByteSequence substring(int from) {
-        return substring(from, length());
-    }
-
-    /**
-     * Returns a subsequence of this symbol between the specified indices.
-     *
-     * @param from The starting index (inclusive)
-     * @param to The ending index (exclusive)
-     * @return A ByteSequence representing the subsequence
-     */
-    public ByteSequence substring(int from, int to) {
-        assert 0 <= from && from <= to && to <= length();
-        if (from == 0 && to == length()) {
-            return this;
-        }
-        return subSequence(from, to - from);
-    }
-
-    /**
      * Returns the byte at the specified index in this symbol.
      *
      * @param index The index of the byte to retrieve
@@ -212,9 +187,12 @@ public final class Symbol<T> extends ByteSequence {
         return 0;
     }
 
-    // Included to prevent Truffle complaining about block-listed Object#equals.
     @Override
-    public boolean equals(Object that) {
-        return this == that;
+    public boolean equals(Object other) {
+        if (other instanceof Symbol<?> that) {
+            assert this == that || !super.equals(that);
+            return this == that;
+        }
+        return super.equals(other);
     }
 }
