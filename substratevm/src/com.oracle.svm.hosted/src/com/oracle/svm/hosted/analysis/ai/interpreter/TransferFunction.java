@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.call.CallInterpreter;
@@ -20,14 +21,14 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
 
     private final NodeInterpreter<Domain> nodeInterpreter;
     private final CallInterpreter<Domain> callInterpreter;
-    private final AbstractInterpretationLogger logger;
+    private final AnalysisPayload<Domain> payload;
 
     public TransferFunction(NodeInterpreter<Domain> nodeInterpreter,
                             CallInterpreter<Domain> callInterpreter,
-                            AbstractInterpretationLogger logger) {
+                            AnalysisPayload<Domain> payload) {
         this.nodeInterpreter = nodeInterpreter;
         this.callInterpreter = callInterpreter;
-        this.logger = logger;
+        this.payload = payload;
     }
 
     /**
@@ -38,12 +39,11 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
      * @param abstractStateMap current state of the analysis
      */
     public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap) {
-        logger.logToFile("Analyzing node: " + node);
         collectInvariantsFromCfgPredecessors(node, abstractStateMap);
-        nodeInterpreter.execNode(node, abstractStateMap);
+        nodeInterpreter.execNode(node, abstractStateMap, payload);
         if (node instanceof Invoke invoke) {
-            logger.logToFile("Encountered invoke: " + invoke);
-            callInterpreter.execInvoke(invoke, node, abstractStateMap);
+            payload.getLogger().logToFile("Encountered invoke: " + invoke);
+            callInterpreter.execInvoke(invoke, node, abstractStateMap, payload);
         }
         abstractStateMap.incrementVisitCount(node);
     }
@@ -59,8 +59,7 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
      * @param abstractStateMap current state of the analysis
      */
     public void analyzeEdge(Node sourceNode, Node destinationNode, AbstractStateMap<Domain> abstractStateMap) {
-        logger.logToFile("Analyzing edge: " + sourceNode + " -> " + destinationNode);
-        nodeInterpreter.execEdge(sourceNode, destinationNode, abstractStateMap);
+        nodeInterpreter.execEdge(sourceNode, destinationNode, abstractStateMap, payload);
     }
 
     /**
@@ -85,7 +84,7 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
     }
 
     public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap) {
-        logger.logToFile("Analyzing block: " + block);
+        payload.getLogger().logToFile("Analyzing block: " + block);
         for (Node node : block.getNodes()) {
             analyzeNode(node, abstractStateMap);
         }
