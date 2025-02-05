@@ -304,12 +304,15 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         }
 
         public LoopSafepointPlan optimizeSafepoints() {
+            LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
+            loops.detectCountedLoops();
+            return optimizeSafepoints(loops);
+        }
+
+        public LoopSafepointPlan optimizeSafepoints(LoopsData loops) {
             LoopSafepointPlan graphWidePlan = new LoopSafepointPlan(graph);
 
             final boolean optimisticallyRemoveLoopSafepoints = Options.RemoveLoopSafepoints.getValue(graph.getOptions());
-
-            LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-            loops.detectCountedLoops();
 
             for (Loop loop : loops.loops()) {
                 if (!allowGuestSafepoints()) {
