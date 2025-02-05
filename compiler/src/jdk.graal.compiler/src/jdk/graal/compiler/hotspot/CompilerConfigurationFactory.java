@@ -25,7 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.graal.compiler.libgraal.LibGraalFeature.NATIVE_IMAGE_SETTING_KEY_PREFIX;
+import static jdk.graal.compiler.core.common.LibGraalSupport.NATIVE_IMAGE_SETTING_KEY_PREFIX;
 
 import java.util.ArrayList;
 import java.util.Collections;

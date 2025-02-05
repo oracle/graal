@@ -27,9 +27,11 @@ package jdk.graal.compiler.graph;
 import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static jdk.graal.compiler.graph.Node.NOT_ITERABLE;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.function.Function;
 
 import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
@@ -37,7 +39,6 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.NodeClass.EdgeInfo;
 import jdk.internal.misc.Unsafe;
-import org.graalvm.nativeimage.hosted.Feature;
 
 /**
  * Describes {@link Node} fields representing the set of inputs for the node or the set of the
@@ -86,17 +87,16 @@ public abstract class Edges extends Fields {
     private final Type type;
     private final long iterationMask;
 
-    @SuppressWarnings("this-escape")
     public Edges(Type type, int directCount, ArrayList<? extends FieldsScanner.FieldInfo> edges) {
         super(edges);
         this.type = type;
         this.directCount = directCount;
-        this.iterationMask = computeIterationMask(type, directCount, getOffsets());
+        this.iterationMask = computeIterationMask(type, directCount, offsets);
     }
 
     @Override
-    public Map.Entry<long[], Long> recomputeOffsetsAndIterationMask(Feature.BeforeCompilationAccess access) {
-        Map.Entry<long[], Long> e = super.recomputeOffsetsAndIterationMask(access);
+    public Map.Entry<long[], Long> recomputeOffsetsAndIterationMask(Function<Field, Long> getFieldOffset) {
+        Map.Entry<long[], Long> e = super.recomputeOffsetsAndIterationMask(getFieldOffset);
         long[] newOffsets = e.getKey();
         return Map.entry(newOffsets, computeIterationMask(type, directCount, newOffsets));
     }

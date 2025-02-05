@@ -215,7 +215,7 @@ final class LibGraalEntryPoints {
              * libgraal doesn't use a dedicated reference handler thread, so we trigger the
              * reference handling manually when a compilation finishes.
              */
-            HotSpotGraalRuntime.doReferenceHandling();
+            LibGraalSupportImpl.doReferenceHandling();
         }
     }
 
@@ -265,7 +265,7 @@ final class LibGraalEntryPoints {
                     if (verbose) {
                         System.out.println("calling reference handling");
                     }
-                    HotSpotGraalRuntime.doReferenceHandling();
+                    LibGraalSupportImpl.doReferenceHandling();
                     if (verbose) {
                         System.out.println("called reference handling");
                     }

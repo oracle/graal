@@ -28,9 +28,8 @@ import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.nativeimage.LibGraalLoader;
-import jdk.graal.nativeimage.hosted.GlobalData;
 import jdk.internal.misc.Unsafe;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
@@ -49,7 +48,7 @@ public class GlobalAtomicLong {
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
-     * Cleaner for freeing {@link #address}.
+     * Cleaner for freeing {@link #address} when executing in jargraal.
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     private static Cleaner cleaner;
@@ -66,8 +65,7 @@ public class GlobalAtomicLong {
     private volatile long address;
 
     /**
-     * Supplies the address of the global memory storing the global value. This field is transformed
-     * during native image building into a supplier backed by {@link GlobalData}
+     * Supplies the address of the global memory storing the global value.
      */
     private final Supplier<Long> addressSupplier;
 
@@ -87,13 +85,15 @@ public class GlobalAtomicLong {
         if (ImageInfo.inImageRuntimeCode()) {
             throw GraalError.shouldNotReachHere("Cannot create " + getClass().getName() + " objects in native image runtime");
         } else {
-            if (ImageInfo.inImageBuildtimeCode() && GlobalAtomicLong.class.getClassLoader() instanceof LibGraalLoader) {
-                addressSupplier = GlobalData.createGlobal(initialValue);
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            if (libgraal != null) {
+                if (ImageInfo.inImageRuntimeCode()) {
+                    throw GraalError.shouldNotReachHere("The addressSupplier field value should have been replaced at image build time");
+                }
+                addressSupplier = libgraal.createGlobal(initialValue);
             } else {
+                // Executing in jargraal
                 addressSupplier = () -> {
-                    if (ImageInfo.inImageRuntimeCode()) {
-                        throw GraalError.shouldNotReachHere("The addressSupplier field value should have been replaced at image build time");
-                    }
                     long addr = UNSAFE.allocateMemory(Long.BYTES);
                     synchronized (GlobalAtomicLong.class) {
                         if (cleaner == null) {

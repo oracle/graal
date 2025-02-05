@@ -54,4 +54,15 @@ class LibGraalSubstitutions {
         public static boolean IS_IN_NATIVE_IMAGE = true;
         // Checkstyle: resume
     }
+
+    @TargetClass(className = "jdk.vm.ci.hotspot.Cleaner", onlyWith = LibGraalFeature.IsEnabled.class)
+    static final class Target_jdk_vm_ci_hotspot_Cleaner {
+
+        /*
+         * Make package-private clean() accessible so that it can be called from
+         * LibGraalEntryPoints.doReferenceHandling().
+         */
+        @Alias
+        public static native void clean();
+    }
 }

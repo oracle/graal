@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.CompilerConfig;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.util.ObjectCopier;
 import org.graalvm.nativeimage.ImageInfo;

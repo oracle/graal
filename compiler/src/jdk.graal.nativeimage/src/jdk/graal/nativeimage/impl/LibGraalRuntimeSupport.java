@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,30 @@
  */
 package jdk.graal.nativeimage.impl;
 
+import jdk.graal.nativeimage.LibGraalRuntime;
+
+/**
+ * Service provider interface for implementation of {@link LibGraalRuntime}.
+ */
 public interface LibGraalRuntimeSupport {
 
+    /**
+     * @see LibGraalRuntime#processReferences()
+     */
     void processReferences();
 
+    /**
+     * @see LibGraalRuntime#notifyLowMemoryPoint(boolean)
+     */
     void notifyLowMemoryPoint(boolean suggestFullGC);
 
+    /**
+     * @see LibGraalRuntime#getIsolateID()
+     */
     long getIsolateID();
 
+    /**
+     * @see LibGraalRuntime#fatalError(String)
+     */
     void fatalError(String message);
 }

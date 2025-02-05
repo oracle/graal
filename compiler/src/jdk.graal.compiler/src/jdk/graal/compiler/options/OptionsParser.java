@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.options;
 
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
 import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.util.ArrayList;
@@ -39,11 +38,10 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import jdk.graal.nativeimage.LibGraalLoader;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.ImageInfo;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
@@ -55,9 +53,7 @@ public class OptionsParser {
      * Info about libgraal options.
      *
      * @param descriptors set of compiler options available in libgraal. These correspond to the
-     *            reachable {@link OptionKey}s discovered during Native Image static analysis. This
-     *            field is only non-null when {@link OptionsParser} is loaded by a
-     *            {@link jdk.graal.nativeimage.LibGraalLoader}.
+     *            reachable {@link OptionKey}s discovered during Native Image static analysis.
      * @param enterpriseOptions {@linkplain OptionKey#getName() names} of enterprise options
      */
     public record LibGraalOptionsInfo(EconomicMap<String, OptionDescriptor> descriptors, Set<String> enterpriseOptions) {
@@ -67,12 +63,9 @@ public class OptionsParser {
     }
 
     /**
-     * Compiler options info available in libgraal. This field is only non-null when
-     * {@link OptionsParser} is loaded by a {@link jdk.graal.nativeimage.LibGraalLoader} and
-     * {@linkplain ImageInfo#inImageBuildtimeCode libgraal is being built}.
+     * Compiler options info available in libgraal.
      */
-    public static final LibGraalOptionsInfo libgraalOptions = inImageBuildtimeCode() &&
-                    OptionsParser.class.getClassLoader() instanceof LibGraalLoader ? LibGraalOptionsInfo.create() : null;
+    public static final LibGraalOptionsInfo libgraalOptions = LibGraalSupport.inLibGraal() ? LibGraalOptionsInfo.create() : null;
 
     /**
      * Gets an iterable of available {@link OptionDescriptors}.
@@ -82,11 +75,10 @@ public class OptionsParser {
         if (inImageRuntimeCode()) {
             return List.of(new OptionDescriptorsMap(Objects.requireNonNull(libgraalOptions.descriptors, "missing options")));
         }
-        boolean inLibGraal = libgraalOptions != null;
-        if (inLibGraal) {
+        if (LibGraalSupport.inLibGraal()) {
             /*
-             * Graal code being run is loaded by a LibGraalLoader while building libgraal so use the
-             * loader to load the OptionDescriptors.
+             * Executing in the context of the libgraal class loader so use it to load the
+             * OptionDescriptors.
              */
             ClassLoader myCL = OptionsParser.class.getClassLoader();
             return ServiceLoader.load(OptionDescriptors.class, myCL);

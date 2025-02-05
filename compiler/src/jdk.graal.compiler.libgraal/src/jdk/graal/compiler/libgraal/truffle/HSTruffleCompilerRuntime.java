@@ -33,6 +33,7 @@ import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal;
 import jdk.graal.compiler.libgraal.LibGraalFeature;
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -69,11 +70,12 @@ import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.I
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.Log;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnCodeInstallation;
+import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.OnIsolateShutdown;
 import static com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
 import static org.graalvm.jniutils.JNIMethodScope.env;
 import static org.graalvm.jniutils.JNIMethodScope.scope;
 
-final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
+public final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompilerRuntime {
 
     static final String COMPILER_VERSION = HotSpotTruffleCompilationSupport.readCompilerVersion();
 
@@ -245,5 +247,10 @@ final class HSTruffleCompilerRuntime extends HSObject implements TruffleCompiler
                 LibGraalObjectHandles.remove(serializedExceptionHandle);
             }
         }
+    }
+
+    @TruffleFromLibGraal(OnIsolateShutdown)
+    public void notifyShutdown(JNIEnv env) {
+        HSTruffleCompilerRuntimeGen.callOnIsolateShutdown(calls, env, IsolateUtil.getIsolateID());
     }
 }

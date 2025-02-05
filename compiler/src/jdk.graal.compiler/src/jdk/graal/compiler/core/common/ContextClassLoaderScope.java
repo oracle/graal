@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,37 @@
  */
 package jdk.graal.compiler.core.common;
 
-import org.graalvm.nativeimage.hosted.Feature;
-
 /**
- * Implemented by classes that have logic specific to a {@link Feature}s.
+ * Utility to use in a try-with-resource statement override the
+ * {@linkplain Thread#getContextClassLoader() context class loader} in a scoped way.
  */
-public interface FeatureComponent {
+public class ContextClassLoaderScope implements AutoCloseable {
+    private final ClassLoader previous;
+    private final Thread thread;
 
     /**
-     * Called during analysis of {@code feature}.
-     *
-     * @see Feature#duringAnalysis(Feature.DuringAnalysisAccess)
+     * @param cl the class loader to use as the context class loader for the current thread within
+     *            the scope of this object. If {@code null}, no change to the context class loader
+     *            is made.
      */
-    void duringAnalysis(Feature feature, Feature.DuringAnalysisAccess access);
+    public ContextClassLoaderScope(ClassLoader cl) {
+        thread = Thread.currentThread();
+        if (cl != null) {
+            previous = thread.getContextClassLoader();
+            thread.setContextClassLoader(cl);
+        } else {
+            previous = null;
+        }
+
+    }
+
+    @Override
+    public void close() {
+        if (previous != null) {
+            if (thread != Thread.currentThread()) {
+                throw new IllegalStateException("Cannot (re)set context class loader in a different thread");
+            }
+            thread.setContextClassLoader(previous);
+        }
+    }
 }

@@ -27,11 +27,9 @@ package jdk.graal.compiler.hotspot;
 import static jdk.vm.ci.common.InitTimer.timer;
 
 import java.io.PrintStream;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import org.graalvm.collections.EconomicMap;
@@ -43,9 +41,6 @@ import jdk.graal.compiler.options.OptionsParser;
 
 import jdk.vm.ci.common.InitTimer;
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.RuntimeOptions;
 
 /**
  * The {@link #defaultOptions()} method returns the options values initialized in a HotSpot VM. The
@@ -71,8 +66,6 @@ public class HotSpotGraalOptionValues {
      * Prefix for system properties that correspond to libgraal Native Image options.
      */
     public static final String LIBGRAAL_VM_OPTION_PROPERTY_PREFIX = "jdk.graal.internal.";
-
-    private static final Set<String> UNSUPPORTED_LIBGRAAL_PREFIXES = Set.of("jdk.libgraal.", "libgraal.");
 
     /**
      * Guard for issuing warning about deprecated Graal option prefix at most once.
@@ -142,20 +135,16 @@ public class HotSpotGraalOptionValues {
                         String value = e.getValue();
                         compilerOptionSettings.put(stripPrefix(name, GRAAL_OPTION_PROPERTY_PREFIX), value);
                     }
-                } else {
-                    for (var prefix : UNSUPPORTED_LIBGRAAL_PREFIXES) {
-                        if (name.startsWith(prefix)) {
-                            String baseName = name.substring(prefix.length());
-                            String msg = String.format("The '%s' property prefix is no longer supported. Use %s%s instead of %s%s.",
-                                            prefix, LIBGRAAL_VM_OPTION_PROPERTY_PREFIX, baseName, prefix, baseName);
-                            throw new IllegalArgumentException(msg);
-                        }
-                    }
                 }
             }
 
             if (!vmOptionSettings.isEmpty()) {
-                notifyLibgraalOptions(vmOptionSettings);
+                LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+                if (libgraal != null) {
+                    libgraal.notifyOptions(vmOptionSettings);
+                } else {
+                    System.err.printf("WARNING: Ignoring the following libgraal VM option(s) while executing jargraal: %s%n", vmOptionSettings);
+                }
             }
             OptionsParser.parseOptions(compilerOptionSettings, compilerOptionValues, descriptors);
             return compilerOptionValues;
@@ -168,38 +157,6 @@ public class HotSpotGraalOptionValues {
             throw new IllegalArgumentException("Option name must follow '" + prefix + "' prefix");
         }
         return baseName;
-    }
-
-    /**
-     * @param settings unparsed libgraal option values
-     */
-    private static void notifyLibgraalOptions(EconomicMap<String, String> settings) {
-        if (ImageInfo.inImageRuntimeCode()) {
-            MapCursor<String, String> cursor = settings.getEntries();
-            while (cursor.advance()) {
-                String name = cursor.getKey();
-                String stringValue = cursor.getValue();
-                Object value;
-                if (name.startsWith("X") && stringValue.isEmpty()) {
-                    name = name.substring(1);
-                    value = stringValue;
-                } else {
-                    RuntimeOptions.Descriptor desc = RuntimeOptions.getDescriptor(name);
-                    if (desc == null) {
-                        throw new IllegalArgumentException("Could not find option " + name);
-                    }
-                    value = desc.convertValue(stringValue);
-                    explicitOptions.add(name);
-                }
-                try {
-                    RuntimeOptions.set(name, value);
-                } catch (RuntimeException ex) {
-                    throw new IllegalArgumentException(ex);
-                }
-            }
-        } else {
-            System.err.printf("WARNING: Ignoring the following libgraal VM option(s) while executing jargraal: %s%n", settings.toString());
-        }
     }
 
     /**
@@ -219,21 +176,9 @@ public class HotSpotGraalOptionValues {
     static void printProperties(OptionValues compilerOptions, PrintStream out) {
         boolean all = HotSpotGraalCompilerFactory.Options.PrintPropertiesAll.getValue(compilerOptions);
         compilerOptions.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX, all);
-        if (all && ImageInfo.inImageRuntimeCode()) {
-            if (ImageInfo.inImageRuntimeCode()) {
-                Comparator<RuntimeOptions.Descriptor> comparator = Comparator.comparing(RuntimeOptions.Descriptor::name);
-                RuntimeOptions.listDescriptors().stream().sorted(comparator).forEach(d -> {
-                    String assign = explicitOptions.contains(d.name()) ? ":=" : "=";
-                    OptionValues.printHelp(out, LIBGRAAL_VM_OPTION_PROPERTY_PREFIX,
-                                    d.name(),
-                                    RuntimeOptions.get(d.name()),
-                                    d.valueType(),
-                                    assign,
-                                    "[community edition]",
-                                    d.help(),
-                                    List.of());
-                });
-            }
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (all && libgraal != null) {
+            libgraal.printOptions(out, LIBGRAAL_VM_OPTION_PROPERTY_PREFIX);
         }
     }
 }

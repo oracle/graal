@@ -24,9 +24,17 @@
  */
 package jdk.graal.nativeimage.impl;
 
+import jdk.graal.nativeimage.hosted.GlobalData;
+
 import java.util.function.Supplier;
 
+/**
+ * Service provider interface for implementation of {@link GlobalData}.
+ */
 public interface GlobalDataSupport {
 
+    /**
+     * @see GlobalData#createGlobal(long)
+     */
     Supplier<Long> createGlobal(long initialValue);
 }

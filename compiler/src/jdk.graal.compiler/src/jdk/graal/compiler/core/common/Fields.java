@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,19 +30,16 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Edges;
-import jdk.graal.compiler.libgraal.LibGraalFeature;
 import jdk.internal.misc.Unsafe;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.Feature.BeforeCompilationAccess;
 
 /**
  * Describes fields in a class, primarily for access via {@link Unsafe}.
  */
-public class Fields implements FeatureComponent {
+public class Fields {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
     private static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
@@ -64,7 +61,6 @@ public class Fields implements FeatureComponent {
 
     private final Class<?>[] declaringClasses;
 
-    @SuppressWarnings("this-escape")
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
@@ -79,13 +75,9 @@ public class Fields implements FeatureComponent {
             declaringClasses[index] = f.declaringClass;
             index++;
         }
-
-        if (ImageInfo.inImageBuildtimeCode() && LibGraalFeature.singleton() != null) {
-            LibGraalFeature.singleton().addFeatureComponent(this);
-        }
     }
 
-    private Field getField(int i) {
+    public Field getField(int i) {
         try {
             return getDeclaringClass(i).getDeclaredField(getName(i));
         } catch (NoSuchFieldException e) {
@@ -97,29 +89,19 @@ public class Fields implements FeatureComponent {
      * Recomputes the {@link Unsafe} based field offsets and the {@link Edges#getIterationMask()}
      * derived from them.
      *
-     * @param access provides the new offsets via {@link BeforeCompilationAccess#objectFieldOffset}
+     * @param getFieldOffset provides the new offsets
      * @return a pair (represented as a map entry) where the key is the new offsets and the value is
      *         the iteration mask
      *
      */
-    public Map.Entry<long[], Long> recomputeOffsetsAndIterationMask(Feature.BeforeCompilationAccess access) {
+    public Map.Entry<long[], Long> recomputeOffsetsAndIterationMask(Function<Field, Long> getFieldOffset) {
         long[] newOffsets = new long[offsets.length];
         for (int i = 0; i < offsets.length; i++) {
             Field field = getField(i);
-            long newOffset = access.objectFieldOffset(field);
+            long newOffset = getFieldOffset.apply(field);
             newOffsets[i] = newOffset;
         }
         return Map.entry(newOffsets, 0L);
-    }
-
-    @Override
-    public void duringAnalysis(Feature feature, Feature.DuringAnalysisAccess access) {
-        if (feature == LibGraalFeature.singleton()) {
-            for (int i = 0; i < offsets.length; i++) {
-                Field field = getField(i);
-                access.registerAsUnsafeAccessed(field);
-            }
-        }
     }
 
     public static Fields create(ArrayList<? extends FieldsScanner.FieldInfo> fields) {

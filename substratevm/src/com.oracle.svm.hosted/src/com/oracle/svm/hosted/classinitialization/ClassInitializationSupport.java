@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.core.common.ContextClassLoaderScope;
 import jdk.graal.nativeimage.LibGraalLoader;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -189,18 +190,14 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
      * Ensure class is initialized. Report class initialization errors in a user-friendly way if
      * class initialization fails.
      */
+    @SuppressWarnings("try")
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
         LibGraalLoader libGraalLoader = loader.classLoaderSupport.getLibGraalLoader();
-        Thread thread = Thread.currentThread();
-        ClassLoader restoreCCL = null;
-        ClassLoader clazzLoader = clazz.getClassLoader();
-        if (libGraalLoader != null && (ClassLoader) libGraalLoader == clazzLoader) {
-            // Graal and JVMCI make use of ServiceLoader which uses the
-            // context class loader so it needs to be the libgraal loader.
-            restoreCCL = thread.getContextClassLoader();
-            thread.setContextClassLoader(clazz.getClassLoader());
-        }
-        try {
+        ClassLoader cl = clazz.getClassLoader();
+        // Graal and JVMCI make use of ServiceLoader which uses the
+        // context class loader so it needs to be the libgraal loader.
+        ClassLoader libGraalCCL = libGraalLoader == cl ? cl : null;
+        try (var ignore = new ContextClassLoaderScope(libGraalCCL)) {
             loader.watchdog.recordActivity();
             /*
              * This can run arbitrary user code, i.e., it can deadlock or get stuck in an endless
@@ -244,10 +241,6 @@ public class ClassInitializationSupport implements RuntimeClassInitializationSup
                 }
 
                 throw UserError.abort(t, "%s", msg);
-            }
-        } finally {
-            if (restoreCCL != null) {
-                thread.setContextClassLoader(restoreCCL);
             }
         }
     }

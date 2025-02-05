@@ -26,6 +26,7 @@ package jdk.graal.compiler.libgraal;
 
 import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,48 +68,14 @@ import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.core.common.FeatureComponent;
 import jdk.graal.nativeimage.LibGraalLoader;
 import jdk.vm.ci.hotspot.HotSpotModifiers;
-import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
 
 /**
  * This feature builds the libgraal shared library (e.g., libjvmcicompiler.so on linux).
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class LibGraalFeature implements Feature {
-
-    /**
-     * Prefix to be used when {@linkplain RuntimeSystemProperties#register registering} properties
-     * describing the image configuration for libgraal. This is analogous to the configuration info
-     * displayed by {@code -XshowSettings}.
-     *
-     * For example:
-     *
-     * <pre>
-     * RuntimeSystemProperties.register(NATIVE_IMAGE_SETTING_KEY_PREFIX + "gc", "serial");
-     * </pre>
-     */
-    public static final String NATIVE_IMAGE_SETTING_KEY_PREFIX = "org.graalvm.nativeimage.setting.";
-
-    private static LibGraalFeature singleton;
-
-    public LibGraalFeature() {
-        synchronized (LibGraalFeature.class) {
-            GraalError.guarantee(singleton == null, "only a single %s instance should be created", LibGraalFeature.class.getName());
-            singleton = this;
-        }
-    }
-
-    /**
-     * @return the singleton {@link LibGraalFeature} instance if called within the context of the
-     *         class loader used to load the code being compiled into the libgraal image, otherwise
-     *         null
-     */
-    public static LibGraalFeature singleton() {
-        // Cannot use ImageSingletons here as it is not initialized early enough.
-        return singleton;
-    }
 
     /**
      * Looks up a class in the libgraal class loader.
@@ -147,30 +114,25 @@ public final class LibGraalFeature implements Feature {
         }
     }
 
-    final LibGraalLoader libgraalLoader = (LibGraalLoader) getClass().getClassLoader();
-
-    /**
-     * Set of {@link FeatureComponent}s created during analysis.
-     */
-    private final Set<FeatureComponent> libGraalFeatureComponents = ConcurrentHashMap.newKeySet();
-
-    public void addFeatureComponent(FeatureComponent fc) {
-        libGraalFeatureComponents.add(fc);
-    }
+    private final LibGraalLoader libgraalLoader = (LibGraalLoader) getClass().getClassLoader();
+    private BeforeAnalysisAccess beforeAnalysisAccess;
+    private BeforeCompilationAccess beforeCompilationAccess;
+    private OptionCollector optionCollector;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
 
-        // The qualified exports from java.base to jdk.internal.vm.ci
-        // and jdk.graal.compiler need to be expressed as exports to
-        // ALL-UNNAMED so that access is also possible when these classes
-        // are loaded via the libgraal loader.
-        Module javaBase = ModuleLayer.boot().findModule("java.base").orElseThrow();
-        Set<ModuleDescriptor.Exports> exports = javaBase.getDescriptor().exports();
-        for (ModuleDescriptor.Exports e : exports) {
-            if (e.targets().contains("jdk.internal.vm.ci") || e.targets().contains("jdk.graal.compiler")) {
-                Modules.addExportsToAllUnnamed(javaBase, e.source());
+        // All qualified exports to libgraal modules need to be further exported to
+        // ALL-UNNAMED so that access is also possible when the libgraal classes
+        // are loaded via the libgraal loader into unnamed modules.
+        Set<String> libgraalModules = Set.copyOf(libgraalLoader.getModuleMap().values());
+        for (Module module : ModuleLayer.boot().modules()) {
+            Set<ModuleDescriptor.Exports> exports = module.getDescriptor().exports();
+            for (ModuleDescriptor.Exports e : exports) {
+                if (e.targets().stream().anyMatch(libgraalModules::contains)) {
+                    Modules.addExportsToAllUnnamed(module, e.source());
+                }
             }
         }
     }
@@ -178,11 +140,23 @@ public final class LibGraalFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         optionCollector = new OptionCollector();
+
         access.registerObjectReachabilityHandler(optionCollector::accept, OptionKey.class);
+        access.registerObjectReachabilityHandler(fields -> {
+            for (int i = 0; i < fields.getOffsets().length; i++) {
+                Field field = fields.getField(i);
+                beforeAnalysisAccess.registerAsUnsafeAccessed(field);
+            }
+        }, Fields.class);
+        access.registerObjectReachabilityHandler(nodeClass -> {
+            Class<?> clazz = nodeClass.getClazz();
+            if (!Modifier.isAbstract(clazz.getModifiers())) {
+                /* Support for NodeClass.allocateInstance. */
+                beforeAnalysisAccess.registerAsUnsafeAllocated(clazz);
+            }
+        }, NodeClass.class);
         GetJNIConfig.register((ClassLoader) libgraalLoader);
     }
-
-    private OptionCollector optionCollector;
 
     /**
      * Collects all instances of the LibGraalLoader loaded {@link OptionKey} class reached by the
@@ -222,8 +196,6 @@ public final class LibGraalFeature implements Feature {
             }
         }
     }
-
-    private BeforeCompilationAccess beforeCompilationAccess;
 
     /**
      * Transformer for {@code Fields.offsets} and {@code Edges.iterationMask} which need to be
@@ -271,14 +243,14 @@ public final class LibGraalFeature implements Feature {
 
         private Map.Entry<long[], Long> computeReplacement(Object receiver) {
             Fields fields = (Fields) receiver;
-            return fields.recomputeOffsetsAndIterationMask(beforeCompilationAccess);
+            return fields.recomputeOffsetsAndIterationMask(beforeCompilationAccess::objectFieldOffset);
         }
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-
+        beforeAnalysisAccess = access;
         new FieldOffsetsTransformer().register(access);
 
         /* Contains static fields that depend on HotSpotJVMCIRuntime */
@@ -360,13 +332,6 @@ public final class LibGraalFeature implements Feature {
             jvmciServiceLocatorCachedLocatorsField.set(null, cachedLocators);
         } catch (Throwable e) {
             throw new GraalError(e);
-        }
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        for (var c : libGraalFeatureComponents) {
-            c.duringAnalysis(this, access);
         }
     }
 

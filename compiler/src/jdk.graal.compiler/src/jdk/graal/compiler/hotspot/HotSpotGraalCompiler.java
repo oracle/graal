@@ -37,6 +37,7 @@ import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.CompilationWatchDog;
 import jdk.graal.compiler.core.GraalCompiler;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
@@ -47,7 +48,6 @@ import jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
-import jdk.graal.compiler.libgraal.LibGraalJNIMethodScope;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
 import jdk.graal.compiler.nodes.Cancellable;
@@ -65,8 +65,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.compiler.word.Word;
-import jdk.graal.nativeimage.LibGraalRuntime;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
@@ -80,9 +78,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.jniutils.JNI;
-import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.nativeimage.ImageInfo;
 
 public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JVMCICompilerShadow, GraalCompiler.RequestedCrashHandler {
 
@@ -130,52 +125,13 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         return graalRuntime;
     }
 
-    /**
-     * Performs the following actions around a libgraal compilation:
-     * <ul>
-     * <li>before: opens a JNIMethodScope to allow Graal compilations of Truffle host methods to
-     * call methods on the TruffleCompilerRuntime.</li>
-     * <li>after: closes the above JNIMethodScope</li>
-     * <li>after: triggers GC weak reference processing as SVM does not use a separate thread for
-     * this in libgraal</li>
-     * </ul>
-     */
-    static class LibGraalCompilationRequestScope implements AutoCloseable {
-        final JNIMethodScope scope;
-
-        LibGraalCompilationRequestScope() {
-            JNI.JNIEnv env = Word.unsigned(HotSpotGraalRuntime.getJNIEnv());
-            /*
-             * This scope is required to allow Graal compilations of host methods to call methods in
-             * the TruffleCompilerRuntime. This is, for example, required to find out about
-             * Truffle-specific method annotations.
-             */
-            scope = LibGraalJNIMethodScope.open("<called from VM>", env, false);
-        }
-
-        @Override
-        public void close() {
-            try {
-                if (scope != null) {
-                    scope.close();
-                }
-            } finally {
-                /*
-                 * libgraal doesn't use a dedicated reference handler thread, so trigger the
-                 * reference handling manually when a compilation finishes.
-                 */
-                HotSpotGraalRuntime.doReferenceHandling();
-            }
-        }
-    }
-
     @SuppressWarnings("try")
     @Override
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        try (AutoCloseable ignored = ImageInfo.inImageRuntimeCode() ? new LibGraalCompilationRequestScope() : null) {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        try (AutoCloseable ignored = libgraal != null ? libgraal.openCompilationRequestScope() : null) {
             return compileMethod(request, true, getGraalRuntime().getOptions());
         } catch (Exception e) {
-            e.printStackTrace(System.out);
             return HotSpotCompilationRequestResult.failure(e.toString(), false);
         }
     }
@@ -205,10 +161,11 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
             OptionValues options = task.filterOptions(initialOptions);
 
             HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(graalRuntime.getVMConfig().getStore());
-            boolean oneIsolatePerCompilation = ImageInfo.inImageRuntimeCode() &&
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            boolean oneIsolatePerCompilation = libgraal != null &&
                             config.getFlag("JVMCIThreadsPerNativeLibraryRuntime", Integer.class, 0) == 1 &&
                             config.getFlag("JVMCICompilerIdleDelay", Integer.class, 1000) == 0;
-            ThreadFactory factory = ImageInfo.inImageRuntimeCode() ? HotSpotGraalServiceThread::new : null;
+            ThreadFactory factory = libgraal != null ? HotSpotGraalServiceThread::new : null;
             try (CompilationWatchDog w1 = CompilationWatchDog.watch(task.getCompilationIdentifier(), options, oneIsolatePerCompilation, task, factory);
                             BootstrapWatchDog.Watch w2 = bootstrapWatchDog == null ? null : bootstrapWatchDog.watch(request);
                             CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(options);) {
@@ -418,7 +375,8 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
 
     @Override
     public boolean notifyCrash(OptionValues options, String crashMessage) {
-        if (ImageInfo.inImageRuntimeCode()) {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
             if (HotSpotGraalCompiler.Options.CrashAtThrowsOOME.getValue(options)) {
                 if (OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
                     // The -Djdk.libgraal.Xmx option should also be employed to make
@@ -437,7 +395,7 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
                     } catch (InterruptedException e) {
                         // ignore
                     }
-                    LibGraalRuntime.fatalError(crashMessage);
+                    libgraal.fatalError(crashMessage);
 
                     // If changing this message, update the test for it in mx_vm_gate.py
                     System.out.println("CrashAtIsFatal: no fatalError function pointer installed");

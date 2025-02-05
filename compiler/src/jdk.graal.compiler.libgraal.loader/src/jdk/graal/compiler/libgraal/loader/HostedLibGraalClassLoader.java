@@ -26,16 +26,19 @@ package jdk.graal.compiler.libgraal.loader;
 
 import jdk.graal.nativeimage.LibGraalLoader;
 import jdk.internal.jimage.BasicImageReader;
-import jdk.internal.jimage.ImageLocation;
+import jdk.internal.module.ModulePath;
 import jdk.internal.module.Modules;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.module.ModuleDescriptor;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -43,6 +46,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
@@ -51,11 +55,14 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * A classloader that reads class files and resources from a jimage file at image build time.
+ * A classloader that reads class files and resources from a jimage file and a module path at image
+ * build time.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class HostedLibGraalClassLoader extends ClassLoader implements LibGraalLoader {
@@ -67,14 +74,84 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     private static final String LIBGRAAL_JAVA_HOME_PROPERTY_NAME = "libgraal.java.home";
 
     /**
+     * Name of the system property specifying a module path for the module(s) containing
+     * {@code LibGraalFeature} and its dependencies that are not available in the runtime image.
+     */
+    private static final String LIBGRAAL_MODULE_PATH_PROPERTY_NAME = "libgraal.module.path";
+
+    /**
      * Reader for the image.
      */
     private final BasicImageReader imageReader;
 
     /**
+     * A resource located in the jimage file or on the module path.
+     */
+    static abstract class Resource {
+        final String name;
+
+        Resource(String name) {
+            this.name = name;
+        }
+
+        /**
+         * Gets the bytes of the resource.
+         *
+         * @throws ClassNotFoundException if the bytes cannot be accessed
+         */
+        abstract byte[] readBytes() throws ClassNotFoundException;
+    }
+
+    /**
+     * A resource located in the jimage file.
+     */
+    class ImageResource extends Resource {
+        ImageResource(String name) {
+            super(name);
+        }
+
+        @Override
+        byte[] readBytes() throws ClassNotFoundException {
+            byte[] resource = imageReader.getResource(name);
+            if (resource == null) {
+                throw new ClassNotFoundException(name);
+            }
+            return resource;
+        }
+    }
+
+    /**
+     * A resource located on the module path specified by
+     * {@link #LIBGRAAL_MODULE_PATH_PROPERTY_NAME}.
+     */
+    static class ModulePathResource extends Resource {
+        private final ModuleReference mref;
+
+        ModulePathResource(String name, ModuleReference mref) {
+            super(name);
+            this.mref = mref;
+        }
+
+        @Override
+        byte[] readBytes() throws ClassNotFoundException {
+            try (ModuleReader reader = mref.open()) {
+                Optional<InputStream> oin = reader.open(name);
+                if (oin.isEmpty()) {
+                    throw new ClassNotFoundException(name);
+                }
+                try (InputStream in = oin.get()) {
+                    return in.readAllBytes();
+                }
+            } catch (IOException e) {
+                throw new ClassNotFoundException(name, e);
+            }
+        }
+    }
+
+    /**
      * Map from the name of a resource (without module qualifier) to its path in the image.
      */
-    private final Map<String, String> resources = new HashMap<>();
+    private final Map<String, Resource> resources = new HashMap<>();
 
     /**
      * Map from a service name to a list of providers.
@@ -88,21 +165,20 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     private final Map<String, String> modules;
 
     /**
-     * Modules in which Graal and JVMCI classes are defined.
-     */
-    private static final Set<String> LIBGRAAL_MODULES = Set.of(
-                    "jdk.internal.vm.ci",
-                    "jdk.graal.compiler",
-                    "org.graalvm.truffle.compiler",
-                    "com.oracle.graal.graal_enterprise");
-
-    /**
      * Modules containing classes that can be annotated by {@code LibGraalService}.
      */
     private static final Set<String> LIBGRAAL_SERVICES_MODULES = Set.of(
                     "jdk.graal.compiler",
+                    "jdk.graal.compiler.libgraal",
                     "org.graalvm.truffle.compiler",
                     "com.oracle.graal.graal_enterprise");
+
+    /**
+     * Modules in which Graal and JVMCI classes are defined that this loader will load.
+     */
+    private static final Set<String> LIBGRAAL_MODULES = Stream.concat(
+                    LIBGRAAL_SERVICES_MODULES.stream(), Stream.of("jdk.internal.vm.ci")) //
+                    .collect(Collectors.toUnmodifiableSet());
 
     static {
         ClassLoader.registerAsParallelCapable();
@@ -115,9 +191,23 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
         return libgraalJavaHome;
     }
 
+    /**
+     * Converts the module path entry {@code s} to a {@link Path}.
+     *
+     * @throws RuntimeException if {@code s} does not denote a readable path
+     */
+    Path parseModulePathEntry(String s) {
+        Path path = Path.of(s);
+        if (!Files.isReadable(path)) {
+            throw new RuntimeException("%s specified by the %s system property is not readable".formatted(path, LIBGRAAL_MODULE_PATH_PROPERTY_NAME));
+        }
+        return path;
+    }
+
     @SuppressWarnings("unused")
     public HostedLibGraalClassLoader() {
-        super(LibGraalClassLoader.LOADER_NAME, Feature.class.getClassLoader());
+        // This loader delegates to the class loader that loaded its own class.
+        super(LibGraalClassLoader.LOADER_NAME, HostedLibGraalClassLoader.class.getClassLoader());
 
         try {
             /*
@@ -144,7 +234,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
                     String module = entry.substring(1, secondSlash);
                     if (LIBGRAAL_MODULES.contains(module)) {
                         String resource = entry.substring(secondSlash + 1);
-                        resources.put(resource, entry);
+                        resources.put(resource, new ImageResource(entry));
                         if (resource.endsWith(".class")) {
                             String className = resource.substring(0, resource.length() - ".class".length()).replace('/', '.');
                             if (resource.equals("module-info.class")) {
@@ -155,6 +245,30 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
                             } else {
                                 modulesMap.put(className, module);
                             }
+                        }
+                    }
+                }
+            }
+
+            String prop = System.getProperty(LIBGRAAL_MODULE_PATH_PROPERTY_NAME);
+            if (prop != null) {
+                ModuleFinder libgraalModulePath = ModulePath.of(Stream.of(prop.split(File.pathSeparator)).map(this::parseModulePathEntry).toArray(Path[]::new));
+                for (ModuleReference mr : libgraalModulePath.findAll()) {
+                    ModuleDescriptor md = mr.descriptor();
+                    if (LIBGRAAL_MODULES.contains(md.name())) {
+                        for (var p : md.provides()) {
+                            services.computeIfAbsent(p.service(), k -> new ArrayList<>()).addAll(p.providers());
+                        }
+                        try (ModuleReader reader = mr.open()) {
+                            reader.list().forEach(entry -> {
+                                resources.put(entry, new ModulePathResource(entry, mr));
+                                if (entry.endsWith(".class")) {
+                                    String className = entry.substring(0, entry.length() - ".class".length()).replace('/', '.');
+                                    if (!entry.equals("module-info.class")) {
+                                        modulesMap.put(className, md.name());
+                                    }
+                                }
+                            });
                         }
                     }
                 }
@@ -196,18 +310,14 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     }
 
     @Override
-    protected Class<?> findClass(final String name)
-                    throws ClassNotFoundException {
+    protected Class<?> findClass(final String name) throws ClassNotFoundException {
         String path = name.replace('.', '/').concat(".class");
 
-        String pathInImage = resources.get(path);
-        if (pathInImage != null) {
-            ImageLocation location = imageReader.findLocation(pathInImage);
-            if (location != null) {
-                ByteBuffer bb = Objects.requireNonNull(imageReader.getResourceBuffer(location));
-                ProtectionDomain pd = null;
-                return super.defineClass(name, bb, pd);
-            }
+        Resource resource = resources.get(path);
+        if (resource != null) {
+            ByteBuffer bb = ByteBuffer.wrap(resource.readBytes());
+            ProtectionDomain pd = null;
+            return super.defineClass(name, bb, pd);
         }
         throw new ClassNotFoundException(name);
     }
@@ -242,8 +352,8 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
                 }
             }
         } else {
-            String path = resources.get(name);
-            if (path != null) {
+            Resource resource = resources.get(name);
+            if (resource != null) {
                 try {
                     var uri = new URI(RESOURCE_PROTOCOL, name, null);
                     return URL.of(uri, handler);
@@ -278,10 +388,13 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
                     return new ImageURLConnection(u, String.join("\n", providers).getBytes());
                 }
             } else if (protocol.equalsIgnoreCase(RESOURCE_PROTOCOL)) {
-                String pathInImage = resources.get(u.getPath());
-                if (pathInImage != null) {
-                    byte[] bytes = Objects.requireNonNull(imageReader.getResource(pathInImage));
-                    return new ImageURLConnection(u, bytes);
+                Resource resource = resources.get(u.getPath());
+                if (resource != null) {
+                    try {
+                        return new ImageURLConnection(u, resource.readBytes());
+                    } catch (ClassNotFoundException e) {
+                        throw new IllegalArgumentException(u.toString(), e);
+                    }
                 }
             }
             throw new IllegalArgumentException(u.toString());

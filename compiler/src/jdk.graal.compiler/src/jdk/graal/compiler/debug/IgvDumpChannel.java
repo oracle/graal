@@ -43,7 +43,6 @@ import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
 import jdk.graal.compiler.options.OptionValues;
 
 import jdk.graal.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.ImageInfo;
 
 final class IgvDumpChannel implements WritableByteChannel {
 
@@ -103,7 +102,7 @@ final class IgvDumpChannel implements WritableByteChannel {
             if (target == PrintGraphTarget.File) {
                 sharedChannel = createFileChannel(pathProvider, null);
             } else if (target == PrintGraphTarget.Network) {
-                if (ImageInfo.inImageRuntimeCode() && !ENABLE_NETWORK_DUMPING) {
+                if (GraalServices.isInLibgraal() && !ENABLE_NETWORK_DUMPING) {
                     if (!networkDumpingUnsupportedWarned) {
                         // Ignore races or multiple isolates - an extra warning is ok
                         networkDumpingUnsupportedWarned = true;

@@ -31,12 +31,11 @@ import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationFailureAct
 import static jdk.graal.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static jdk.graal.compiler.core.phases.HighTier.Options.Inline;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.PrintStream;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.options.Option;
-import jdk.graal.nativeimage.LibGraalRuntime;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -64,7 +63,6 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -230,7 +228,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
          */
         private static boolean shouldExitVM(Throwable throwable) {
             // If not in libgraal, don't exit
-            if (!inImageRuntimeCode()) {
+            if (!LibGraalSupport.inLibGraal()) {
                 return false;
             }
             // If assertions are not enabled, don't exit.
@@ -489,12 +487,15 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
         try (DebugCloseable a = CompilationTime.start(debug)) {
             HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
-            if (GraalServices.isInLibgraal()) {
-                // Notify the runtime that most objects allocated in the current compilation
-                // are dead and can be reclaimed.
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            if (libgraal != null) {
+                /*
+                 * Notify the libgraal runtime that most objects allocated in the current
+                 * compilation are dead and can be reclaimed.
+                 */
                 try (DebugCloseable timer = HintedFullGC.start(debug)) {
-                    LibGraalRuntime.notifyLowMemoryPoint(true);
-                    LibGraalRuntime.processReferences();
+                    libgraal.notifyLowMemoryPoint(true);
+                    libgraal.processReferences();
                 }
             }
             return result;

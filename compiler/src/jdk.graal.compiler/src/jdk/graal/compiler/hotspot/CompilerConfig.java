@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.libgraal;
+package jdk.graal.compiler.hotspot;
 
 import java.io.FileOutputStream;
 import java.io.PrintStream;
@@ -39,12 +39,6 @@ import org.graalvm.collections.MapCursor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.core.target.Backend;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.EncodedSnippets;
-import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
-import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
-import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
-import jdk.graal.compiler.hotspot.SymbolicSnippetEncoder;
 import jdk.graal.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.options.OptionValues;

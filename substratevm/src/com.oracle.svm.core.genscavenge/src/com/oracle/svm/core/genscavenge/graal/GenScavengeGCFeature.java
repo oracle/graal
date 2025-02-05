@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import jdk.graal.compiler.libgraal.LibGraalFeature;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -132,7 +132,7 @@ class GenScavengeGCFeature implements InternalFeature {
         }
 
         String gcName = Heap.getHeap().getGC().getName();
-        RuntimeSystemProperties.register(LibGraalFeature.NATIVE_IMAGE_SETTING_KEY_PREFIX + "gc", gcName);
+        RuntimeSystemProperties.register(LibGraalSupport.NATIVE_IMAGE_SETTING_KEY_PREFIX + "gc", gcName);
 
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);

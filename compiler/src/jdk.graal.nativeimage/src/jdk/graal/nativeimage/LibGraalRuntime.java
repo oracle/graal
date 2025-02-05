@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,9 +72,7 @@ public final class LibGraalRuntime {
 
     /**
      * Called to signal a fatal, non-recoverable error. This method does not return or throw an
-     * exception. A typical implementation will delegate to an OS function that kills the process.
-     * In the context of libgraal, it will call the HotSpot fatal crash routine that produces an
-     * hs-err crash log.
+     * exception but calls the HotSpot fatal crash routine that produces an hs-err crash log.
      *
      * @param message a description of the error condition
      */

@@ -143,13 +143,7 @@ graal_sdk_compiler_component = mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=[
-        'sdk:WORD',
-        'sdk:COLLECTIONS',
-        'sdk:NATIVEIMAGE',
-        'sdk:NATIVEBRIDGE',
-        'sdk:JNIUTILS'
-    ],
+    boot_jars=['sdk:WORD', 'sdk:COLLECTIONS', 'sdk:NATIVEIMAGE'],
     stability="supported",
 )
 mx_sdk_vm.register_graalvm_component(graal_sdk_compiler_component)

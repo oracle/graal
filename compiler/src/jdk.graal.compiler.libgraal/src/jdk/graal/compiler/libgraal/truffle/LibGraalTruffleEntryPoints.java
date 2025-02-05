@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.compiler.TruffleCompilationTask;
+import jdk.graal.compiler.libgraal.LibGraalSupportImpl;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.jniutils.JNI.JByteArray;
@@ -95,7 +96,7 @@ public class LibGraalTruffleEntryPoints {
     @TruffleToLibGraal(Id.InitializeIsolate)
     public static void initializeIsolate(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress, JClass runtimeClass) {
         try (JNIMethodScope s = openScope(Id.InitializeIsolate, env)) {
-            TruffleLibGraalShutdownHook.registerShutdownHook(env, runtimeClass);
+            // TruffleLibGraalShutdownHook.registerShutdownHook(env, runtimeClass);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
@@ -122,6 +123,7 @@ public class LibGraalTruffleEntryPoints {
         try (JNIMethodScope s = openScope(Id.InitializeRuntime, env)) {
             ResolvedJavaType classLoaderDelegate = HotSpotJVMCIRuntime.runtime().asResolvedJavaType(hsClassLoaderDelegate.rawValue());
             HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, hsClassLoaderDelegate);
+            LibGraalSupportImpl.registerTruffleCompilerRuntime(hsTruffleRuntime);
             return LibGraalObjectHandles.create(hsTruffleRuntime);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
@@ -322,19 +324,16 @@ public class LibGraalTruffleEntryPoints {
         return JNIUtil.NewGlobalRef(env, JNIUtil.findClass(env, "java/lang/String"), "Class<java.lang.String>");
     }
 
-    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls2_getCompilationId")
+    @CEntryPoint(name = "Java_com_oracle_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls2_getCompilationId", include = LibGraalFeature.IsEnabled.class)
     @SuppressWarnings({"unused", "try"})
     @TruffleToLibGraal(Id.GetCompilationId)
     public static long getCompilationId(JNIEnv env, JClass hsClazz, @IsolateThreadContext long isolateThreadAddress, long handle) {
-        try {
-            JNIMethodScope scope = openScope(Id.GetCompilationId, env);
-            try (JNIMethodScope s = scope) {
-                CompilationResultInfo compilationResultInfo = LibGraalObjectHandles.resolve(handle, CompilationResultInfo.class);
-                return compilationResultInfo.getCompilationId();
-            }
+        try (JNIMethodScope s = openScope(Id.GetCompilationId, env)) {
+            CompilationResultInfo compilationResultInfo = LibGraalObjectHandles.resolve(handle, CompilationResultInfo.class);
+            return compilationResultInfo.getCompilationId();
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
-            return -1;
+            return 0;
         }
     }
 

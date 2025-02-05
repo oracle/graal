@@ -209,7 +209,7 @@ public class FieldsOffsetsFeature implements Feature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
         for (FieldsOffsetsReplacement replacement : getReplacements().values()) {
-            Map.Entry<long[], Long> e = replacement.fields.recomputeOffsetsAndIterationMask(a);
+            Map.Entry<long[], Long> e = replacement.fields.recomputeOffsetsAndIterationMask(a::objectFieldOffset);
             replacement.newOffsets = e.getKey();
             replacement.newIterationInitMask = e.getValue();
         }

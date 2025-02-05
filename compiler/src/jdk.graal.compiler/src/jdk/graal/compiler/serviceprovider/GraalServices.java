@@ -41,7 +41,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 
 import jdk.graal.compiler.core.ArchitectureSpecific;
-import jdk.graal.nativeimage.LibGraalLoader;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.vm.ci.code.Architecture;
 import org.graalvm.nativeimage.ImageInfo;
 
@@ -60,17 +60,16 @@ import org.graalvm.nativeimage.Platforms;
 public final class GraalServices {
 
     /**
-     * Returns true if code is executing in the context of executing libgraal. Note that this is
-     * more specific than {@link ImageInfo#inImageRuntimeCode()}. The latter will return true when
-     * executing any native image, not just libgraal.
+     * Returns true if current runtime is in libgraal. Note that this is more specific than
+     * {@link ImageInfo#inImageRuntimeCode()}. The latter will return true when executing any native
+     * image, not just libgraal.
      */
     public static boolean isInLibgraal() {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
     /**
-     * The set of services available in libgraal. This field is only non-null when
-     * {@link GraalServices} is loaded by a {@link LibGraalLoader}.
+     * The set of services available in libgraal.
      */
     private static final Map<Class<?>, List<?>> libgraalServices;
 
@@ -113,11 +112,11 @@ public final class GraalServices {
     }
 
     static {
-        ClassLoader cl = GraalServices.class.getClassLoader();
-        if (inImageBuildtimeCode() && cl instanceof LibGraalLoader libgraalLoader) {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
             libgraalServices = new HashMap<>();
-            Set<String> libgraalServicesModules = libgraalLoader.getServicesModules();
-            Map<String, String> modules = libgraalLoader.getModuleMap();
+            Set<String> libgraalServicesModules = libgraal.getServicesModules();
+            Map<String, String> modules = libgraal.getModuleMap();
             String arch = getJVMCIArch();
             modules.entrySet().stream()//
                             .filter(e -> libgraalServicesModules.contains(e.getValue()))//

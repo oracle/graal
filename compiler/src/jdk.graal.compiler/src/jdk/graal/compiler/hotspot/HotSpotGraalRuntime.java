@@ -35,16 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import jdk.graal.compiler.libgraal.LibGraalFeature;
-import jdk.graal.compiler.word.Word;
-import jdk.graal.nativeimage.LibGraalRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
-import org.graalvm.jniutils.JNI;
-import org.graalvm.jniutils.JNIExceptionWrapper;
-import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.nativeimage.ImageInfo;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -84,8 +75,6 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.runtime.JVMCIBackend;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.VMRuntime;
 
 //JaCoCo Exclude
 
@@ -109,31 +98,6 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final String runtimeName;
     private final String compilerConfigurationName;
     private final HotSpotBackend hostBackend;
-
-    /**
-     * Since reference handling is synchronous in libgraal, explicitly perform it here and then run
-     * any code which is expecting to process a reference queue to let it clean up.
-     */
-    public static void doReferenceHandling() {
-        LibGraalRuntime.processReferences();
-
-        /*
-         * Thanks to JDK-8346781, this can be replaced with jdk.vm.ci.hotspot.Cleaner.clean() once
-         * JDK 21 support is no longer necessary.
-         */
-        Target_jdk_vm_ci_hotspot_Cleaner.clean();
-    }
-
-    @TargetClass(className = "jdk.vm.ci.hotspot.Cleaner", onlyWith = LibGraalFeature.IsEnabled.class)
-    static final class Target_jdk_vm_ci_hotspot_Cleaner {
-
-        /*
-         * Make package-private clean() accessible so that it can be called from
-         * LibGraalEntryPoints.doReferenceHandling().
-         */
-        @Alias
-        public static native void clean();
-    }
 
     public GlobalMetrics getMetricValues() {
         return metricValues;
@@ -229,8 +193,9 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         this.compilerProfiler = GraalServices.loadSingle(CompilerProfiler.class, false);
 
-        if (ImageInfo.inImageRuntimeCode()) {
-            VMRuntime.initialize();
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            libgraal.initialize();
         }
     }
 
@@ -457,48 +422,21 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         outputDirectory.close();
 
-        if (ImageInfo.inImageRuntimeCode()) {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
             String callback = HotSpotGraalCompiler.Options.OnShutdownCallback.getValue(options);
+            String callbackClassName = null;
+            String callbackMethodName = null;
             if (callback != null) {
                 int lastDot = callback.lastIndexOf('.');
                 if (lastDot < 1 || lastDot == callback.length() - 1) {
                     throw new IllegalArgumentException(HotSpotGraalCompiler.Options.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
                 }
-                String cbClassName = callback.substring(0, lastDot);
-                String cbMethodName = callback.substring(lastDot + 1);
-
-                JNI.JNIEnv env = Word.unsigned(getJNIEnv());
-                JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
-                                JNIUtil.getBinaryName(cbClassName), true);
-                JNI.JMethodID cbMethod = JNIUtil.findMethod(env, cbClass, true, cbMethodName, "()V");
-                env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
-
+                callbackClassName = callback.substring(0, lastDot);
+                callbackMethodName = callback.substring(lastDot + 1);
             }
-            VMRuntime.shutdown();
+            libgraal.shutdown(callbackClassName, callbackMethodName);
         }
-    }
-
-    private static long jniEnvironmentOffset = Integer.MAX_VALUE;
-
-    private static long getJniEnvironmentOffset() {
-        if (jniEnvironmentOffset == Integer.MAX_VALUE) {
-            HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
-            HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
-            HotSpotVMConfigAccess config = new HotSpotVMConfigAccess(store);
-            jniEnvironmentOffset = config.getFieldOffset("JavaThread::_jni_environment", Integer.class, "JNIEnv");
-        }
-        return jniEnvironmentOffset;
-    }
-
-    /**
-     * Gets the JNIEnv value for the current HotSpot thread.
-     */
-    static long getJNIEnv() {
-        HotSpotJVMCIRuntime jvmciRuntime = HotSpotJVMCIRuntime.runtime();
-        long offset = getJniEnvironmentOffset();
-        long javaThreadAddr = jvmciRuntime.getCurrentJavaThread();
-        return javaThreadAddr + offset;
     }
 
     void clearMetrics() {

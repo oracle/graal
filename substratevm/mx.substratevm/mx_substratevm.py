@@ -1471,9 +1471,13 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     jlink=False,
 ))
 
+# Jars copied to the <graalvm-home>/lib/graalvm of the libgraal GraalVM that
+# are also added to the value of the `-imagecp` Native Image option when
+# building libgraal.
 libgraal_jar_distributions = [
     'sdk:NATIVEBRIDGE',
     'sdk:JNIUTILS',
+    'compiler:LIBGRAAL',
     'compiler:LIBGRAAL_LOADER']
 
 def allow_build_path_in_libgraal():
@@ -1523,6 +1527,7 @@ libgraal_build_args = [
     f'--parallelism={mx.cpu_count()}',
 ] if mx.is_interactive() else []) + svm_experimental_options([
     "-H:LibGraalClassLoader=jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader",
+    "-Dlibgraal.module.path=${.}/../../../graalvm/libgraal.jar",
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Dtruffle.TruffleRuntime=',
