@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.analyzer.context.filter;
+package com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.util.AnalysisMethodUtils;
