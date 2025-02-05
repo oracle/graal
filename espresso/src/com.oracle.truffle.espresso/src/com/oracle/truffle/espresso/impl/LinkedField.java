@@ -104,7 +104,7 @@ final class LinkedField extends StaticProperty {
         int arrayDims = TypeSymbols.getArrayDimensions(t);
         if (arrayDims > 0) {
             // Component string
-            StringBuilder typeString = new StringBuilder(idFromNameAndType(name, t.subSequence(arrayDims, t.length() - arrayDims)));
+            StringBuilder typeString = new StringBuilder(idFromNameAndType(name, t.subSequence(arrayDims)));
             typeString.append('_');
             // Append a number of ']'
             while (arrayDims > 0) {

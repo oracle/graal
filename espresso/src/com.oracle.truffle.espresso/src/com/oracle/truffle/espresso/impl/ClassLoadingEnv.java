@@ -50,7 +50,6 @@ public class ClassLoadingEnv implements LanguageAccess {
     private final EspressoLanguage language;
     private final TruffleLogger logger;
     private final TimerCollection timers;
-    private final ParsingContext parsingContext;
 
     @CompilationFinal private Meta meta;
 
@@ -58,11 +57,6 @@ public class ClassLoadingEnv implements LanguageAccess {
         this.language = language;
         this.logger = logger;
         this.timers = timers;
-        this.parsingContext = createParsingContext(this);
-    }
-
-    public ParsingContext getParsingContext() {
-        return parsingContext;
     }
 
     @Override
@@ -126,11 +120,7 @@ public class ClassLoadingEnv implements LanguageAccess {
         return id;
     }
 
-    public boolean isStrictComplianceMode() {
-        return getLanguage().getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.STRICT;
-    }
-
-    private static ParsingContext createParsingContext(ClassLoadingEnv env) {
+    public static ParsingContext createParsingContext(ClassLoadingEnv env, boolean ensureStrongReferences) {
         return new ParsingContext() {
 
             final Logger truffleEnvLogger = new Logger() {
@@ -177,17 +167,17 @@ public class ClassLoadingEnv implements LanguageAccess {
 
             @Override
             public Symbol<Name> getOrCreateName(ByteSequence byteSequence) {
-                return env.getNames().getOrCreate(byteSequence);
+                return env.getNames().getOrCreate(byteSequence, ensureStrongReferences);
             }
 
             @Override
             public Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence) {
-                return env.getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence));
+                return env.getTypes().getOrCreateValidType(TypeSymbols.nameToType(byteSequence), ensureStrongReferences);
             }
 
             @Override
-            public Utf8Constant getOrCreateUtf8Constant(ByteSequence bytes) {
-                return env.getLanguage().getUtf8ConstantTable().getOrCreate(bytes);
+            public Utf8Constant getOrCreateUtf8Constant(ByteSequence byteSequence) {
+                return env.getLanguage().getUtf8ConstantTable().getOrCreate(byteSequence, ensureStrongReferences);
             }
         };
     }

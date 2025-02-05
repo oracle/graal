@@ -81,7 +81,20 @@ public final class NameSymbols {
      * @return A new or existing Symbol representing the name
      */
     public Symbol<Name> getOrCreate(ByteSequence nameBytes) {
-        return symbols.symbolify(nameBytes);
+        return getOrCreate(nameBytes, false);
+    }
+
+    /**
+     * Creates a new name symbol or retrieves an existing one from a byte sequence. If the symbol
+     * doesn't exist, it will be created.
+     *
+     * @param ensureStrongReference if {@code true}, the returned symbol is guaranteed to be
+     *            strongly referenced by the symbol table
+     * @param nameBytes The name as a byte sequence to create or retrieve
+     * @return A new or existing Symbol representing the name
+     */
+    public Symbol<Name> getOrCreate(ByteSequence nameBytes, boolean ensureStrongReference) {
+        return symbols.getOrCreate(nameBytes, ensureStrongReference);
     }
 
     /**

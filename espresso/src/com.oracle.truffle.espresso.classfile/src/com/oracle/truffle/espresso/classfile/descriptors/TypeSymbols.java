@@ -61,8 +61,20 @@ public final class TypeSymbols {
      * @return A Symbol representing the type, or null if the descriptor is invalid
      */
     public Symbol<Type> getOrCreateValidType(ByteSequence typeBytes) {
+        return getOrCreateValidType(typeBytes, false);
+    }
+
+    /**
+     * Creates or retrieves a Type symbol for a valid type descriptor byte sequence.
+     *
+     * @param ensureStrongReference if {@code true}, the returned symbol is guaranteed to be
+     *            strongly referenced by the symbol table
+     * @param typeBytes The type descriptor byte sequence to process
+     * @return A Symbol representing the type, or null if the descriptor is invalid
+     */
+    public Symbol<Type> getOrCreateValidType(ByteSequence typeBytes, boolean ensureStrongReference) {
         if (Validation.validTypeDescriptor(typeBytes, true)) {
-            return symbols.symbolify(typeBytes);
+            return symbols.getOrCreate(typeBytes, ensureStrongReference);
         } else {
             return null;
         }
@@ -143,7 +155,7 @@ public final class TypeSymbols {
     public static ByteSequence typeToName(Symbol<Type> type) {
         assert type.byteAt(0) == 'L';
         assert type.byteAt(type.length() - 1) == ';';
-        return type.substring(1, type.length() - 1);
+        return type.subSequence(1, type.length() - 1);
     }
 
     @TruffleBoundary
@@ -151,7 +163,7 @@ public final class TypeSymbols {
         String internalName = internalFromClassName(className);
         ByteSequence byteSequence = ByteSequence.create(internalName);
         ErrorUtil.guarantee(Validation.validTypeDescriptor(byteSequence, true), "invalid type");
-        return symbols.symbolify(byteSequence);
+        return symbols.getOrCreate(byteSequence);
     }
 
     public static Symbol<Type> forPrimitive(JavaKind kind) {
@@ -177,7 +189,7 @@ public final class TypeSymbols {
                 throw new ParserException.ClassFormatError("invalid descriptor: " + descriptor);
             }
         }
-        return symbols.symbolify(descriptor.substring(beginIndex, endIndex));
+        return symbols.getOrCreate(descriptor.subSequence(beginIndex, endIndex));
     }
 
     /**
@@ -202,7 +214,7 @@ public final class TypeSymbols {
                 if (endIndex > beginIndex + 1 && endIndex < descriptor.length() && descriptor.byteAt(endIndex) == ';') {
                     return endIndex + 1;
                 }
-                throw new ParserException.ClassFormatError("Invalid Java name " + descriptor.substring(beginIndex));
+                throw new ParserException.ClassFormatError("Invalid Java name " + descriptor.subSequence(beginIndex));
             }
             case '[': {
                 // compute the number of dimensions
@@ -212,12 +224,12 @@ public final class TypeSymbols {
                 }
                 final int dimensions = index - beginIndex;
                 if (dimensions > 255) {
-                    throw new ParserException.ClassFormatError("Array with more than 255 dimensions " + descriptor.substring(beginIndex));
+                    throw new ParserException.ClassFormatError("Array with more than 255 dimensions " + descriptor.subSequence(beginIndex));
                 }
                 return skipValidTypeDescriptor(descriptor, index, slashes);
             }
         }
-        throw new ParserException.ClassFormatError("Invalid type descriptor " + descriptor.substring(beginIndex));
+        throw new ParserException.ClassFormatError("Invalid type descriptor " + descriptor.subSequence(beginIndex));
     }
 
     /**
@@ -239,7 +251,7 @@ public final class TypeSymbols {
         byte[] bytes = new byte[type.length() + dimensions];
         Arrays.fill(bytes, 0, dimensions, (byte) '[');
         type.writeTo(bytes, dimensions);
-        return symbols.symbolify(ByteSequence.wrap(bytes));
+        return symbols.getOrCreate(ByteSequence.wrap(bytes));
     }
 
     public Symbol<Type> arrayOf(Symbol<Type> type) {
@@ -319,14 +331,14 @@ public final class TypeSymbols {
 
     public Symbol<Type> getComponentType(Symbol<Type> type) {
         if (isArray(type)) {
-            return symbols.symbolify(type.substring(1));
+            return symbols.getOrCreate(type.subSequence(1));
         }
         return null;
     }
 
     public Symbol<Type> getElementalType(Symbol<Type> type) {
         if (isArray(type)) {
-            return symbols.symbolify(type.substring(getArrayDimensions(type)));
+            return symbols.getOrCreate(type.subSequence(getArrayDimensions(type)));
         }
         return type; // null?
     }
@@ -334,7 +346,7 @@ public final class TypeSymbols {
     public Symbol<Type> fromClass(Class<?> clazz) {
         ByteSequence descriptor = ByteSequence.create(internalFromClassName(clazz.getName()));
         assert Validation.validTypeDescriptor(descriptor, true) : descriptor;
-        return symbols.symbolify(descriptor);
+        return symbols.getOrCreate(descriptor);
     }
 
     public static String binaryName(Symbol<Type> type) {
@@ -344,7 +356,7 @@ public final class TypeSymbols {
         if (isPrimitive(type)) {
             return getJavaKind(type).getJavaName();
         }
-        return typeToName(type).toString().replace('/', '.');
+        return type.subSequence(1, type.length() - 1).toString().replace('/', '.');
     }
 
     @SuppressWarnings("unchecked")
@@ -379,7 +391,7 @@ public final class TypeSymbols {
         if (name.byteAt(0) == '[') {
             return fromSymbol(name);
         }
-        return symbols.symbolify(nameToType(name));
+        return symbols.getOrCreate(nameToType(name));
     }
 
     public Symbol<Type> fromClassNameEntryUnsafe(Symbol<Name> name) {
@@ -390,7 +402,7 @@ public final class TypeSymbols {
         if (name.byteAt(0) == '[') {
             return fromSymbolUnsafe(name);
         }
-        return symbols.symbolify(nameToType(name));
+        return symbols.getOrCreate(nameToType(name));
     }
 
     public static ByteSequence nameToType(ByteSequence name) {
@@ -410,7 +422,7 @@ public final class TypeSymbols {
     public static ByteSequence getRuntimePackage(ByteSequence symbol) {
         if (symbol.byteAt(0) == '[') {
             int arrayDimensions = getArrayDimensions(symbol);
-            return getRuntimePackage(symbol.subSequence(arrayDimensions, symbol.length() - arrayDimensions));
+            return getRuntimePackage(symbol.subSequence(arrayDimensions));
         }
         if (symbol.byteAt(0) != 'L') {
             assert isPrimitive(symbol);
@@ -420,7 +432,7 @@ public final class TypeSymbols {
         if (lastSlash < 0) {
             return EMPTY;
         }
-        return symbol.subSequence(1, lastSlash - 1);
+        return symbol.subSequence(1, lastSlash);
     }
 
     /**
