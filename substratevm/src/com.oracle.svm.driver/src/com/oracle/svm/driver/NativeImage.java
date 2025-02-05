@@ -285,6 +285,7 @@ public class NativeImage {
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
+    final String oHLayerCreate = oH(SubstrateOptions.LayerCreate);
 
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
@@ -1336,6 +1337,10 @@ public class NativeImage {
                         imageBuilderArgs.add(oH(SubstrateOptions.Name, "explicit image name") + extraImageName.value);
                     }
                 }
+            }
+
+            if (mainClass != null && !mainClass.isEmpty() && !Character.isJavaIdentifierStart(mainClass.charAt(0))) {
+                showError("'%s' is not a valid mainclass. Specify a valid classname for the class that contains the main method.".formatted(mainClass));
             }
 
             if (!extraImageArgs.isEmpty()) {
