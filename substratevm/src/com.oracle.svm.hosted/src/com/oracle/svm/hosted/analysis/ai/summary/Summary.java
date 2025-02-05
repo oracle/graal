@@ -5,6 +5,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
+import java.util.List;
+
 /**
  * Represents a description of behavior of a method.
  * It is used to avoid reanalyzing the method's body at every call site.
@@ -23,16 +25,18 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      *
      * @return the pre-condition of the summary
      */
-    Domain getPreCondition();
+    Domain preCondition();
 
     /**
      * Get the post-condition of the summary.
      * The post-condition should be deduced from the return value of the method.
+     *
+     * @return the post-condition of the summary
      */
-    Domain getPostCondition();
+    Domain postCondition();
 
     /**
-     * Check if this summary covers the other summary.
+     * Checks if this summary covers the other summary.
      * Covering in this case means that the precondition of this summary is more general than the precondition of the other summary.
      * We will be using this method to check if we can reuse the summary from {@link SummaryCache},
      * meaning that one summary does not have a calculated post-condition yet, therefore implementations
@@ -47,7 +51,7 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     boolean subsumes(Summary<Domain> other);
 
     /**
-     * Convert the summary to an abstract domain {@code Domain} and apply it back to the caller state map.
+     * Converts the summary to an abstract domain {@code Domain} and apply it back to the caller state map.
      * @param invoke of the invokeNode
      * @param invokeNode the invoke node that we are applying the summary to
      * @param callerStateMap the state map of the caller
@@ -55,9 +59,19 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     void applySummary(Invoke invoke, Node invokeNode, AbstractStateMap<Domain> callerStateMap);
 
     /**
-     * Replace the formal parameters of the method with the actual arguments that the method was called with
-     * @param calleeMap the {@link AbstractStateMap} of the callee
+     * Gets the list of actual arguments of the method.
+     * There are multiple ways to represent the actual arguments of the method.
+     * The most common way is to use the list of abstract domains, where each domain represents an actual argument.
+     *
+     * @return the list of actual arguments of the method
      */
-    void replaceFormalArgsWithActual(AbstractStateMap<Domain> calleeMap);
+    List<Domain> getActualArguments();
 
+    String toString();
+
+    default Domain getActualArgumentAt(int index) {
+        List<Domain> arguments = getActualArguments();
+        assert index >= 0 && index < arguments.size();
+        return arguments.get(index);
+    }
 }
