@@ -63,4 +63,28 @@ public class LayerOptionsSupport {
         }
     }
 
+    public record PackageOptionValue(String name, boolean isWildcard) {
+
+        static final String PACKAGE_WILDCARD_SUFFIX = ".*";
+
+        public PackageOptionValue(String name) {
+            this(name, false);
+        }
+
+        public static PackageOptionValue from(ExtendedOption extendedOption) {
+            if (!extendedOption.key().equals(LayerArchiveSupport.PACKAGE_OPTION)) {
+                return null;
+            }
+            String extendedOptionValue = extendedOption.value();
+            if (extendedOptionValue.endsWith(PACKAGE_WILDCARD_SUFFIX)) {
+                return new PackageOptionValue(extendedOptionValue.substring(0, extendedOptionValue.length() - PACKAGE_WILDCARD_SUFFIX.length()), true);
+            }
+            return new PackageOptionValue(extendedOptionValue, false);
+        }
+
+        @Override
+        public String toString() {
+            return name + (isWildcard ? PACKAGE_WILDCARD_SUFFIX : "");
+        }
+    }
 }

@@ -36,9 +36,9 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
-import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
 import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
 import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
+import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.PackageOptionValue;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.options.OptionType;
@@ -147,13 +147,21 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (!layerCreateValue.isEmpty()) {
                 LayerOption layerOption = LayerOption.parse(layerCreateValue);
                 for (ExtendedOption option : layerOption.extendedOptions()) {
-                    switch (option.key()) {
-                        case LayerArchiveSupport.PACKAGE_OPTION -> {
-                            String packageName = option.value();
-                            String moduleName = nativeImage.systemPackagesToModules.get(packageName);
-                            if (moduleName != null) {
+                    var packageOptionValue = PackageOptionValue.from(option);
+                    if (packageOptionValue == null) {
+                        continue;
+                    }
+                    String packageName = packageOptionValue.name();
+                    if (packageOptionValue.isWildcard()) {
+                        nativeImage.systemPackagesToModules.forEach((systemPackageName, moduleName) -> {
+                            if (systemPackageName.startsWith(packageName)) {
                                 nativeImage.addAddedModules(moduleName);
                             }
+                        });
+                    } else {
+                        String moduleName = nativeImage.systemPackagesToModules.get(packageName);
+                        if (moduleName != null) {
+                            nativeImage.addAddedModules(moduleName);
                         }
                     }
                 }

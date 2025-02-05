@@ -238,7 +238,7 @@ public class SVMHost extends HostVM {
         }
         layerId = ImageLayerBuildingSupport.buildingImageLayer() ? DynamicImageLayerInfo.singleton().layerNumber : 0;
         useBaseLayer = ImageLayerBuildingSupport.buildingExtensionLayer();
-        if (SubstrateOptions.includeAll()) {
+        if (ImageLayerBuildingSupport.buildingSharedLayer()) {
             initializeExcludedFields();
         }
 

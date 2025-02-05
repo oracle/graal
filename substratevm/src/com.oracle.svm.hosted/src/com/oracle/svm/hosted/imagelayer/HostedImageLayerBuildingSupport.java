@@ -31,6 +31,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.capnproto.ReaderOptions;
 import org.capnproto.Serialize;
@@ -50,10 +51,12 @@ import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
 import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
+import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.PackageOptionValue;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.options.OptionKey;
@@ -148,7 +151,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
      * in {@code HostedOptionKey.onValueUpdate()} because processing this options affects other
      * option's values, and any intermediate state may lead to a wrong configuration.
      */
-    public static void processLayerOptions(EconomicMap<OptionKey<?>, Object> values) {
+    public static void processLayerOptions(EconomicMap<OptionKey<?>, Object> values, NativeImageClassLoaderSupport classLoaderSupport) {
         OptionValues hostedOptions = new OptionValues(values);
         if (SubstrateOptions.LayerCreate.hasBeenSet(hostedOptions)) {
             /* The last value wins, GR-55565 will warn about the overwritten values. */
@@ -157,7 +160,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 /* Nothing to do, an empty --layer-create= disables the layer creation. */
             } else {
                 LayerOption layerOption = LayerOption.parse(layerCreateValue);
-                String buildLayer = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, "");
+                String buildLayer = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
                 for (ExtendedOption option : layerOption.extendedOptions()) {
                     switch (option.key()) {
                         case LayerArchiveSupport.MODULE_OPTION -> {
@@ -166,7 +169,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                         }
                         case LayerArchiveSupport.PACKAGE_OPTION -> {
                             UserError.guarantee(option.value() != null, "Option %s of %s requires a package name argument, e.g., %s=package-name.", option.key(), buildLayer, option.key());
-                            SubstrateOptions.IncludeAllFromPackage.update(values, option.value());
+                            classLoaderSupport.addJavaPackageToInclude(Objects.requireNonNull(PackageOptionValue.from(option)));
                         }
                         case LayerArchiveSupport.PATH_OPTION -> {
                             UserError.guarantee(option.value() != null, "Option %s of %s requires a class-path entry, e.g., %s=path/to/cp-entry.", option.key(), buildLayer, option.key());
