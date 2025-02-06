@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,17 @@
 
 package org.graalvm.wasm;
 
+/**
+ * Supplier of import values resolved from the importObject passed to WebAssembly.instantiate.
+ */
 @FunctionalInterface
-public interface LinkAction {
-
-    void accept(WasmContext context, WasmInstance instance, ImportValueSupplier imports);
+public interface ImportValueSupplier {
+    /**
+     * {@return the value for the given import of the given module instance, if available from this
+     * supplier, else null}.
+     *
+     * @param importDesc {@link ImportDescriptor} of the import to be resolved.
+     * @param intoInstance importing module instance of the import to be resolved.
+     */
+    Object get(ImportDescriptor importDesc, WasmInstance intoInstance);
 }
