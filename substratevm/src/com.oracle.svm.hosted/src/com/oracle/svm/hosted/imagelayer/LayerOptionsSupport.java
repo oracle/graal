@@ -40,14 +40,14 @@ public class LayerOptionsSupport {
             // First get the list: [layer-file.nil, module=m1, package=p1]
             String[] options = SubstrateUtil.split(layerOptionValue, ",");
             // Check for the optional file name
-            String fileName = null;
+            Path fileName = null;
             int skip = 0;
             if (options[0].endsWith(LayerArchiveSupport.LAYER_FILE_EXTENSION)) {
-                fileName = options[0];
+                fileName = Path.of(options[0]);
                 skip = 1;
             }
             ExtendedOption[] extendedOptions = Arrays.stream(options).skip(skip).map(ExtendedOption::parse).toArray(ExtendedOption[]::new);
-            return new LayerOption(Path.of(fileName), extendedOptions);
+            return new LayerOption(fileName, extendedOptions);
         }
     }
 
