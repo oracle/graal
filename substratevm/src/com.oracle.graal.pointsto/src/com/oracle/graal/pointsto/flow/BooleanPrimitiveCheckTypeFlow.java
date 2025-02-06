@@ -39,12 +39,14 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
     private final TypeFlow<?> left;
     private final TypeFlow<?> right;
     private final PrimitiveComparison comparison;
+    private final boolean isUnsigned;
 
-    public BooleanPrimitiveCheckTypeFlow(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeFlow<?> right, PrimitiveComparison comparison) {
+    public BooleanPrimitiveCheckTypeFlow(BytecodePosition position, AnalysisType declaredType, TypeFlow<?> left, TypeFlow<?> right, PrimitiveComparison comparison, boolean isUnsigned) {
         super(position, declaredType);
         this.left = left;
         this.right = right;
         this.comparison = comparison;
+        this.isUnsigned = isUnsigned;
     }
 
     private BooleanPrimitiveCheckTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BooleanPrimitiveCheckTypeFlow original) {
@@ -52,6 +54,7 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
         this.left = methodFlows.lookupCloneOf(bb, original.left);
         this.right = methodFlows.lookupCloneOf(bb, original.right);
         this.comparison = original.comparison;
+        this.isUnsigned = original.isUnsigned;
     }
 
     @Override
@@ -86,6 +89,6 @@ public class BooleanPrimitiveCheckTypeFlow extends BooleanCheckTypeFlow {
         }
         assert leftState.isPrimitive() : left;
         assert rightState.isPrimitive() : right;
-        return convertToBoolean(bb, TypeState.filter(leftState, comparison, rightState), TypeState.filter(leftState, comparison.negate(), rightState));
+        return convertToBoolean(bb, TypeState.filter(leftState, comparison, rightState, isUnsigned), TypeState.filter(leftState, comparison.negate(), rightState, isUnsigned));
     }
 }
