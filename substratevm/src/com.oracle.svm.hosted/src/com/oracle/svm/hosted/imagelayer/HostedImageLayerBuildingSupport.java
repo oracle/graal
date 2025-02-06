@@ -46,6 +46,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
@@ -155,7 +156,14 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         OptionValues hostedOptions = new OptionValues(values);
         if (SubstrateOptions.LayerCreate.hasBeenSet(hostedOptions)) {
             /* The last value wins, GR-55565 will warn about the overwritten values. */
-            String layerCreateValue = SubstrateOptions.LayerCreate.getValue(hostedOptions).lastValue().orElseThrow();
+            ValueWithOrigin<String> valueWithOrigin = SubstrateOptions.LayerCreate.getValue(hostedOptions).lastValueWithOrigin().orElseThrow();
+            String layerCreateValue = valueWithOrigin.value();
+            if (!valueWithOrigin.origin().commandLineLike()) {
+                /* Provide error message if option is specified anywhere else than command line */
+                String layerCreateArgument = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
+                throw UserError.abort("Layer option specified with '%s' from %s only allowed on command line.",
+                                layerCreateArgument, valueWithOrigin.origin());
+            }
             if (layerCreateValue.isEmpty()) {
                 /* Nothing to do, an empty --layer-create= disables the layer creation. */
             } else {
