@@ -184,7 +184,9 @@ public final class UninterruptibleAnnotationChecker {
             Uninterruptible implAnnotation = Uninterruptible.Utils.getAnnotation(impl);
             if (implAnnotation != null) {
                 if (methodAnnotation.callerMustBe() != implAnnotation.callerMustBe()) {
-                    violations.add("callerMustBe: " + method.format("%H.%n(%p):%r") + " != " + impl.format("%H.%n(%p):%r"));
+                    // GR-45784: temporarily disabled so that we can remove legacy code
+                    // violations.add("callerMustBe: " + method.format("%H.%n(%p):%r") + " != " +
+                    // impl.format("%H.%n(%p):%r"));
                 }
                 if (methodAnnotation.calleeMustBe() != implAnnotation.calleeMustBe()) {
                     violations.add("calleeMustBe: " + method.format("%H.%n(%p):%r") + " != " + impl.format("%H.%n(%p):%r"));

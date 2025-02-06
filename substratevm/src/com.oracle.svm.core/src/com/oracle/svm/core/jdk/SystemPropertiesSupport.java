@@ -335,20 +335,9 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
     protected abstract String osVersionValue();
 
-    protected String javaIoTmpdirValue() {
-        return tmpdirValue();
-    }
+    protected abstract String javaIoTmpdirValue();
 
-    /* Should be removed, see GR-61420. */
-    protected String tmpdirValue() {
-        throw VMError.shouldNotReachHere("Subclasses must either implement javaIoTmpdirValue() or tmpdirValue().");
-    }
-
-    /* Should be removed, see GR-61420. */
-    protected String javaLibraryPathValue() {
-        /* Fallback for platforms that don't implement this method. */
-        return "";
-    }
+    protected abstract String javaLibraryPathValue();
 
     private static class LazySystemProperty {
         private final String key;

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.os;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.thread.VMOperation;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     private static final OutOfMemoryError ALIGNED_OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate an aligned heap chunk. " +
@@ -49,6 +49,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
         return (ChunkBasedCommittedMemoryProvider) ImageSingletons.lookup(CommittedMemoryProvider.class);
     }
 
+    /** Returns a non-null value or throws a pre-allocated exception. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
         Pointer result = allocate(nbytes, alignment, false, NmtCategory.JavaHeap);
@@ -58,6 +59,7 @@ public abstract class ChunkBasedCommittedMemoryProvider extends AbstractCommitte
         return result;
     }
 
+    /** Returns a non-null value or throws a pre-allocated exception. */
     public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
         Pointer result = allocate(nbytes, getAlignmentForUnalignedChunks(), false, NmtCategory.JavaHeap);
         if (result.isNull()) {
