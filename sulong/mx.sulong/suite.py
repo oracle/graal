@@ -322,9 +322,12 @@ suite = {
         "sdk:POLYGLOT_TCK",
       ],
       "buildDependencies" : [
-        "NATIVE_MODE_SUPPORT",
         "SULONG_TCK_NATIVE",
       ],
+      "os" : {
+        "windows" : {"ignore": "Native mode is not supported on Windows"},
+        "<others>" : {},
+      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle, LLVM",
