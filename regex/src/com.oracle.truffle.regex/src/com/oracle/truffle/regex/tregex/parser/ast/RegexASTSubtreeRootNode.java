@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,6 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     private MatchFound unAnchoredInitialState;
     private PositionAssertion anchoredFinalState;
     private MatchFound matchFound;
-    private MatchFound matchFoundChecked;
     private boolean visitorGroupVisited = false;
 
     private final SubTreeIndex subtrees = new SubTreeIndex();
@@ -230,14 +229,5 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
     @Override
     protected JsonObject toJson(String typeName) {
         return super.toJson(typeName).append(Json.prop("group", astNodeId(group)));
-    }
-
-    public void setMatchFoundChecked(MatchFound matchFoundChecked) {
-        this.matchFoundChecked = matchFoundChecked;
-    }
-
-    public MatchFound getMatchFoundChecked() {
-        assert matchFoundChecked != null;
-        return matchFoundChecked;
     }
 }
