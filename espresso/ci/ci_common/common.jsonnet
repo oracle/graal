@@ -221,15 +221,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   espresso_interpreter_benchmark(env, suite, host_jvm=null):
     self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '10']),
 
-  scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=[]):
-    self.espresso_benchmark(
-      env,
-      self.scala_dacapo_jvm_warmup,
-      guest_jvm_config=guest_jvm_config,
-      extra_args=extra_args,
-      timelimit='5:00:00'
-    ),
-
   scala_dacapo_benchmark(env, guest_jvm_config, extra_args=[]):
     self.espresso_benchmark(
       env,
@@ -265,10 +256,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       timelimit: '1:00:00',
     }
     + self.bench_upload,
-
-  # Scala DaCapo benchmarks that run in both JVM and native modes,
-  # Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.
-  scala_dacapo_jvm_warmup: 'scala-dacapo:*[scalap,scalac,scaladoc,scalaxb]',
 
   dacapo_stable(env): 'dacapo:*[fop,lusearch,luindex,sunflow,xalan]',
 
