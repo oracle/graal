@@ -35,9 +35,13 @@ import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 public class DeoptimizationSupport {
 
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class) private CFunctionPointer deoptStubPointer;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) private CFunctionPointer eagerDeoptStubPointer;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) private CFunctionPointer lazyDeoptStubPrimitiveReturnPointer;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) private CFunctionPointer lazyDeoptStubObjectReturnPointer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DeoptimizationSupport() {
@@ -61,21 +65,45 @@ public class DeoptimizationSupport {
         return ImageSingletons.lookup(DeoptimizationSupport.class);
     }
 
-    /**
-     * Initializes the pointer to the code of {@link Deoptimizer#deoptStub}.
-     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setDeoptStubPointer(CFunctionPointer deoptStub) {
-        assert get().deoptStubPointer == null : "multiple deopt stub methods registered";
-        get().deoptStubPointer = deoptStub;
+    public static void setEagerDeoptStubPointer(CFunctionPointer ptr) {
+        assert get().eagerDeoptStubPointer == null : "multiple eagerDeoptStub methods registered";
+        get().eagerDeoptStubPointer = ptr;
     }
 
-    /**
-     * Returns a pointer to the code of {@link Deoptimizer#deoptStub}.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CFunctionPointer getDeoptStubPointer() {
-        CFunctionPointer ptr = get().deoptStubPointer;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void setLazyDeoptStubPrimitiveReturnPointer(CFunctionPointer ptr) {
+        assert get().lazyDeoptStubPrimitiveReturnPointer == null : "multiple lazyDeoptStubPrimitiveReturn methods registered";
+        assert Deoptimizer.Options.UseLazyDeopt.getValue() : "lazy deoptimization not enabled";
+        get().lazyDeoptStubPrimitiveReturnPointer = ptr;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void setLazyDeoptStubObjectReturnPointer(CFunctionPointer ptr) {
+        assert get().lazyDeoptStubObjectReturnPointer == null : "multiple lazyDeoptStubObjectReturn methods registered";
+        assert Deoptimizer.Options.UseLazyDeopt.getValue() : "lazy deoptimization not enabled";
+        get().lazyDeoptStubObjectReturnPointer = ptr;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static CFunctionPointer getEagerDeoptStubPointer() {
+        CFunctionPointer ptr = get().eagerDeoptStubPointer;
+        assert ptr.rawValue() != 0;
+        return ptr;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static CFunctionPointer getLazyDeoptStubPrimitiveReturnPointer() {
+        assert Deoptimizer.Options.UseLazyDeopt.getValue() : "lazy deoptimization not enabled";
+        CFunctionPointer ptr = get().lazyDeoptStubPrimitiveReturnPointer;
+        assert ptr.rawValue() != 0;
+        return ptr;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static CFunctionPointer getLazyDeoptStubObjectReturnPointer() {
+        assert Deoptimizer.Options.UseLazyDeopt.getValue() : "lazy deoptimization not enabled";
+        CFunctionPointer ptr = get().lazyDeoptStubObjectReturnPointer;
         assert ptr.rawValue() != 0;
         return ptr;
     }

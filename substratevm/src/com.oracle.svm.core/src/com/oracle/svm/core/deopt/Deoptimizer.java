@@ -33,12 +33,14 @@ import java.lang.annotation.Target;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.snippets.ExceptionUnwind;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
@@ -102,29 +104,38 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * the call stack. A method is deoptimizable if {@link FrameInfoQueryResult deoptimization
  * information} is available.
  * <p>
- * Deoptimization is done in two steps:
+ * Deoptimization can happen eagerly or lazily. For eager deoptimization, a {@link DeoptimizedFrame}
+ * is constructed immediately and pinned, whereas for lazy deoptimization, the
+ * {@link DeoptimizedFrame} is not constructed until immediately before it is installed (and
+ * therefore does not need to be pinned).
+ * <p>
+ * The stack slot at SP[0] is reserved for deoptimization, and can be used freely by lazy and eager
+ * deoptimization.
+ * <p>
+ * Eager Deoptimization is done in two steps:
  * <ol>
  * <li>A call to {@link #deoptimizeInRange} walks the stack and for each method to deoptimize it
  * builds a {@link DeoptimizedFrame}. This handle contains all constants and materialized objects
- * which are needed to build the deoptimization target frames. It is stored in the stack slot right
- * above the return address. The return address (to the deoptimized method) is replaced by a pointer
- * to {@link #deoptStub}.
+ * which are needed to build the deoptimization target frames. It is stored at SP[0] (directly above
+ * the return address). The return address (to the deoptimized method) is replaced by a pointer to
+ * {@link #eagerDeoptStub}.
  *
  * <pre>
- *    :                                :
- *    |                                |
- *    |                                |
- *    +--------------------------------+   frame of the
- *    | outgoing stack parameters      |   deopmethod
- *    +--------------------------------+
- *    | pointer to DeoptimizedFrame    |
- *    +--------------------------------+---------
- *    | pointer to deoptStub           |   return address
- *    +--------------------------------+---------
- *    |                                |
- *    |                                |   frame of {@link #deoptimizeInRange} or
- *    |                                |   a method which called it
- *    :     ...                        :
+ *    top of stack (lowest address)
+ *
+ *    | ...                                   |
+ *    +---------------------------------------+-------------
+ *    |                                       | frame of the
+ *    |---------------------------------------| callee of
+ *    | return address (points to deoptStub)  | deopt method
+ *    +---------------------------------------+-------------
+ *    | pointer to DeoptimizedFrame           | frame of the
+ *    |---------------------------------------| deopt method
+ *    | outgoing stack parameters             |
+ *    |---------------------------------------|
+ *    |                                       |
+ *    +---------------------------------------+-------------
+ *    | ...                                   |
  * </pre>
  * <p>
  * From now on, the frame of the deoptimized method is no longer valid and the GC will ignore it.
@@ -133,18 +144,58 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * {@link DeoptimizedFrame}, which contains all objects which are needed by the deoptimization
  * targets.
  * <p>
- * There is one exception: outgoing parameters. Outgoing parameters of a deoptimized method may
- * still be accessed by a called method, even after the first step of deoptimization is done.
- * Therefore the calling convention must make sure that there is a free stack slot for the
- * {@link DeoptimizedFrame} between the outgoing parameters and the return address slot.
+ * There is one exception: outgoing primitive parameters of a deoptimized method may still be
+ * accessed by a called method, even after the first step of eager deoptimization is done. Note that
+ * this does not apply to outgoing object parameters as those are always copied to registers at the
+ * beginning of the called method to avoid problems with the GC.</li>
  * <p>
- * Exception from the exception: outgoing object parameters are always copied to registers at the
- * beginning of the called method. Therefore we don't have to worry about GC these parameters.</li>
- * <p>
- * <li>Now when a called method will return to a deoptimized method, the {@link #deoptStub} will be
+ * <li>Now when a called method will return to a deoptimized method, the eager deopt stub will be
  * called instead. It reads the {@link DeoptimizedFrame} handle and replaces the deoptimized
- * method's frame with the frame(s) of the deopt target method(s). Note that the deopt stub is
+ * method's frame with the frame(s) of the deopt target method(s). Note that the eager deopt stub is
  * completely allocation free.</li>
+ * </ol>
+ *
+ * <p>
+ * Lazy Deoptimization is also done in two steps:
+ * <ol>
+ * <li>During the first step, we patch the frame's return address to the return address of a lazy
+ * deopt stub. Depending on whether the method being deoptimized returns an object or a primitive,
+ * this return address either points to {@link #lazyDeoptStubObjectReturn} or
+ * {@link #lazyDeoptStubPrimitiveReturn}. The stack slot that is used to store the
+ * {@link DeoptimizedFrame} in eager deoptimization is instead used to store the original return
+ * address, which points somewhere into the deopt source method.
+ *
+ * <pre>
+ *    top of stack (lowest address)
+ *
+ *    | ...                                       |
+ *    +-------------------------------------------+-------------
+ *    |                                           | frame of the
+ *    |-------------------------------------------| callee of
+ *    | return address (points to lazyDeoptStub)  | deopt method
+ *    +-------------------------------------------+-------------
+ *    | original return address                   | frame of the
+ *    |-------------------------------------------| deopt method
+ *    | outgoing stack parameters                 |
+ *    |-------------------------------------------|
+ *    |                                           |
+ *    +-------------------------------------------+-------------
+ *    | ...                                       |
+ * </pre>
+ * 
+ * Stack walks and GC will now visit this frame that is pending lazy deoptimization as if it was a
+ * normal stack frame, with the only difference being that the original return address is stored in
+ * a different slot.</li>
+ * <li>
+ * <p>
+ * When a method returns to this method pending lazy deoptimization, it instead calls one of the
+ * lazy deopt stubs, which leads to {@link #lazyDeoptStubCore}. This method performs all the
+ * necessary operations to construct a {@link DeoptimizedFrame} just like the first step of eager
+ * deoptimization. The process of constructing the frame is interruptible and involves allocation,
+ * therefore if {@code gpReturnValue} contains an object reference, it must be turned into an object
+ * reference so that the GC is aware of said reference.
+ * <p>
+ * The frame is then copied onto the stack in {@link #rewriteStackStub}.</li>
  * </ol>
  */
 public final class Deoptimizer {
@@ -215,6 +266,18 @@ public final class Deoptimizer {
 
         @Option(help = "Print verbose logging information for every deoptimization")//
         public static final RuntimeOptionKey<Boolean> TraceDeoptimizationDetails = new RuntimeOptionKey<>(false);
+
+        /**
+         * Enables lazy deoptimization. If not enabled, then all calls to the lazy deoptimization
+         * methods are handled eagerly.
+         *
+         * Enabling this option adds 1 byte to the CodeInfo of each infopoint for deopt target
+         * methods, which is used to keep track of whether each infopoint is a call where an object
+         * is returned. This determines whether {@link #lazyDeoptStubCore} treats
+         * {@code gpReturnValue} as an object reference.
+         */
+        @Option(help = "Enables delayed deoptimization of runtime-compiled code. This slightly enlarges code metadata.")//
+        public static final HostedOptionKey<Boolean> UseLazyDeopt = new HostedOptionKey<>(false);
     }
 
     /**
@@ -223,19 +286,52 @@ public final class Deoptimizer {
      */
     public static boolean testGCinDeoptimizer = false;
 
+    /**
+     * If true, then we call eager deoptimization from within {@link #lazyDeoptStubCore}, which
+     * triggers a fatal error. This is only set to true for testing.
+     */
+    public static boolean testEagerDeoptInLazyDeoptFatalError = false;
+
+    public static void maybeTestGC() {
+        if (testGCinDeoptimizer) {
+            Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
+        }
+    }
+
+    private static void maybeTestEagerDeoptInLazyDeoptFatalError(Deoptimizer deoptimizer, CodePointer pc) {
+        if (testEagerDeoptInLazyDeoptFatalError) {
+            deoptimizer.deoptSourceFrameEagerly(pc, false);
+        }
+    }
+
+    /** Returns true if the frame has been eagerly or lazily deoptimized. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static DeoptimizedFrame checkDeoptimized(JavaFrame frame) {
+    public static boolean checkIsDeoptimized(JavaFrame frame) {
+        return checkLazyDeoptimized(frame) || checkEagerDeoptimized(frame) != null;
+    }
+
+    /**
+     * Returns the DeoptimizedFrame object installed during eager deoptimization, or null if the
+     * frame was not eagerly deoptimized.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static DeoptimizedFrame checkEagerDeoptimized(JavaFrame frame) {
         if (DeoptimizationSupport.enabled()) {
-            return checkDeoptimized0(frame.getSP(), frame.getIP());
+            return checkEagerDeoptimized0(frame.getSP(), frame.getIP());
         }
         return null;
     }
 
+    /**
+     * Returns the DeoptimizedFrame object installed during eager deoptimization, or null if the
+     * frame was not eagerly deoptimized. This method must not be called if the return address is
+     * stored in a native frame, since we do not control the layout of native frames.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static DeoptimizedFrame checkDeoptimized(IsolateThread thread, Pointer sp) {
+    public static DeoptimizedFrame checkEagerDeoptimized(IsolateThread thread, Pointer sp) {
         if (DeoptimizationSupport.enabled()) {
             CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
-            return checkDeoptimized0(sp, ip);
+            return checkEagerDeoptimized0(sp, ip);
         }
         return null;
     }
@@ -245,10 +341,10 @@ public final class Deoptimizer {
      * returns the {@link DeoptimizedFrame} in that case.
      */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    private static DeoptimizedFrame checkDeoptimized0(Pointer sp, CodePointer ip) {
-        /* A frame is deoptimized when the return address was patched to the deoptStub. */
-        if (ip.equal(DeoptimizationSupport.getDeoptStubPointer())) {
-            /* The DeoptimizedFrame instance is stored above the return address. */
+    private static DeoptimizedFrame checkEagerDeoptimized0(Pointer sp, CodePointer ip) {
+        /* A frame was eagerly deoptimized if the return address was patched to the deoptStub. */
+        if (ip.equal(DeoptimizationSupport.getEagerDeoptStubPointer())) {
+            /* The DeoptimizedFrame instance is stored above the return address, at sp[0]. */
             DeoptimizedFrame result = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(sp, true);
             if (result == null) {
                 throw checkDeoptimizedError(sp);
@@ -256,6 +352,51 @@ public final class Deoptimizer {
             return result;
         }
         return null;
+    }
+
+    /**
+     * Checks whether a {@link JavaFrame} is lazily deoptimized.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean checkLazyDeoptimized(JavaFrame frame) {
+        if (DeoptimizationSupport.enabled() && Options.UseLazyDeopt.getValue()) {
+            return frame.getIsPendingLazyDeopt();
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether a frame identified by the stack pointer is lazily deoptimized. This must not
+     * be called if the return address is stored in a native frame, since we do not control the
+     * layout of native frames.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean checkLazyDeoptimized(IsolateThread thread, Pointer sp) {
+        if (DeoptimizationSupport.enabled() && Options.UseLazyDeopt.getValue()) {
+            CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
+            return checkLazyDeoptimized0(ip);
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether a return address is equal to one of the lazy deopt stubs.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean checkLazyDeoptimized(CodePointer ip) {
+        if (DeoptimizationSupport.enabled() && Options.UseLazyDeopt.getValue()) {
+            return checkLazyDeoptimized0(ip);
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether a return address is equal to one of the lazy deopt stubs.
+     */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean checkLazyDeoptimized0(CodePointer ip) {
+        assert Options.UseLazyDeopt.getValue();
+        return ip.equal(DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer()) || ip.equal(DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer());
     }
 
     @Uninterruptible(reason = "Switch to interruptible code and report a fatal error.", calleeMustBe = false)
@@ -272,9 +413,10 @@ public final class Deoptimizer {
     @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
     private void installDeoptimizedFrame(DeoptimizedFrame deoptimizedFrame) {
         /*
-         * Replace the return address to the deoptimized method with a pointer to the deoptStub.
+         * Replace the return address to the deoptimized method with a pointer to the
+         * eagerDeoptStub.
          */
-        FrameAccess.singleton().writeReturnAddress(deoptState.targetThread, deoptState.sourceSp, DeoptimizationSupport.getDeoptStubPointer());
+        FrameAccess.singleton().writeReturnAddress(deoptState.targetThread, deoptState.sourceSp, DeoptimizationSupport.getEagerDeoptStubPointer());
 
         /*
          * GR-54888: leaveInterpreterStub uses the deoptSlot, thus an existing value should be saved
@@ -317,7 +459,6 @@ public final class Deoptimizer {
     @NeverInline("deoptimize must have a separate stack frame")
     public static void deoptimizeInRange(CodePointer fromIp, CodePointer toIp, boolean deoptAll) {
         VMOperation.guaranteeInProgressAtSafepoint("Deoptimization requires a safepoint.");
-        /* Captures "fromIp", "toIp", and "deoptAll" for the VMOperation. */
         deoptimizeInRangeOperation(fromIp, toIp, deoptAll);
     }
 
@@ -341,9 +482,7 @@ public final class Deoptimizer {
             StackFrameVisitor deoptVisitor = getStackFrameVisitor((Pointer) fromIp, (Pointer) toIp, deoptAll, vmThread);
             JavaStackWalker.walkThread(vmThread, deoptVisitor);
         }
-        if (testGCinDeoptimizer) {
-            Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
-        }
+        maybeTestGC();
     }
 
     private static StackFrameVisitor getStackFrameVisitor(Pointer fromIp, Pointer toIp, boolean deoptAll, IsolateThread targetThread) {
@@ -354,7 +493,7 @@ public final class Deoptimizer {
                 if ((ip.aboveOrEqual(fromIp) && ip.belowThan(toIp)) || deoptAll) {
                     CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, frameIp);
                     Deoptimizer deoptimizer = new Deoptimizer(frameSp, queryResult, targetThread);
-                    deoptimizer.deoptSourceFrame(frameIp, deoptAll);
+                    deoptimizer.deoptSourceFrameLazily(frameIp, deoptAll);
                 }
                 return true;
             }
@@ -368,26 +507,42 @@ public final class Deoptimizer {
     }
 
     /**
-     * Deoptimizes the given frame.
+     * Deoptimizes the given frame (lazily or eagerly, depending on the configuration).
      *
      * @param ignoreNonDeoptimizable if set to true, a frame that cannot be deoptimized is ignored
-     *            instead of raising an error (use for deoptimzation testing only).
+     *            instead of raising an error (use for deoptimization testing only).
      */
     @NeverInline("Inlining of this method would require that we have deopt targets for callees of this method (SVM internals).")
     public static void deoptimizeFrame(Pointer sp, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
+        boolean deoptEagerly = !Options.UseLazyDeopt.getValue();
+        deoptimizeFrame0(sp, ignoreNonDeoptimizable, speculation, deoptEagerly);
+    }
+
+    /**
+     * Deoptimizes the given frame eagerly.
+     *
+     * @param ignoreNonDeoptimizable if set to true, a frame that cannot be deoptimized is ignored
+     *            instead of raising an error (use for deoptimization testing only).
+     */
+    @NeverInline("Inlining of this method would require that we have deopt targets for callees of this method (SVM internals).")
+    public static void deoptimizeFrameEagerly(Pointer sp, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
+        deoptimizeFrame0(sp, ignoreNonDeoptimizable, speculation, true);
+    }
+
+    private static void deoptimizeFrame0(Pointer sp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, boolean deoptEagerly) {
         /*
          * Note that the thread needs to be read outside of the VMOperation, since the operation can
          * run in any different thread.
          */
         IsolateThread targetThread = CurrentIsolate.getCurrentThread();
-        DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(targetThread, sp);
+        DeoptimizedFrame deoptFrame = Deoptimizer.checkEagerDeoptimized(targetThread, sp);
         if (deoptFrame != null) {
             /* Already deoptimized, so nothing to do. */
             registerSpeculationFailure(deoptFrame.getSourceInstalledCode(), speculation);
             return;
         }
 
-        DeoptimizeFrameOperation vmOp = new DeoptimizeFrameOperation(sp, ignoreNonDeoptimizable, speculation, targetThread);
+        DeoptimizeFrameOperation vmOp = new DeoptimizeFrameOperation(sp, ignoreNonDeoptimizable, speculation, targetThread, deoptEagerly);
         vmOp.enqueue();
     }
 
@@ -396,52 +551,69 @@ public final class Deoptimizer {
         private final boolean ignoreNonDeoptimizable;
         private final SpeculationReason speculation;
         private final IsolateThread targetThread;
+        private final boolean deoptEagerly;
 
-        DeoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread targetThread) {
+        DeoptimizeFrameOperation(Pointer sourceSp, boolean ignoreNonDeoptimizable, SpeculationReason speculation, IsolateThread targetThread, boolean deoptEagerly) {
             super(VMOperationInfos.get(DeoptimizeFrameOperation.class, "Deoptimize frame", SystemEffect.SAFEPOINT));
             this.sourceSp = sourceSp;
             this.ignoreNonDeoptimizable = ignoreNonDeoptimizable;
             this.speculation = speculation;
             this.targetThread = targetThread;
+            this.deoptEagerly = deoptEagerly;
+            if (Options.UseLazyDeopt.getValue() && deoptEagerly) {
+                /*
+                 * If lazy deoptimization is enabled, eager deoptimization is only used for stack
+                 * introspection. We enforce that eager deoptimization cannot be applied to other
+                 * threads, because we do not want an eager deoptimization operation to interrupt
+                 * and interfere with a thread that is undergoing lazy deoptimization.
+                 */
+                assert targetThread == CurrentIsolate.getCurrentThread() : "With lazy deoptimization enabled, eager deoptimization cannot be used to deoptimize other threads";
+            }
         }
 
         @Override
         protected void operate() {
             VMOperation.guaranteeInProgress("doDeoptimizeFrame");
             CodePointer ip = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
-            deoptimizeFrame(targetThread, sourceSp, ip, ignoreNonDeoptimizable, speculation);
+            deoptimizeFrame(targetThread, sourceSp, ip, ignoreNonDeoptimizable, speculation, deoptEagerly);
         }
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private static void deoptimizeFrame(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation) {
+    private static void deoptimizeFrame(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation, boolean deoptEagerly) {
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
             CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-            deoptimize(targetThread, sp, ip, ignoreNonDeoptimizable, speculation, info);
+            deoptimize(targetThread, sp, ip, ignoreNonDeoptimizable, speculation, info, deoptEagerly);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
     }
 
     @Uninterruptible(reason = "Pass the now protected CodeInfo object to interruptible code.", calleeMustBe = false)
-    private static void deoptimize(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodeInfo info) {
-        deoptimize0(targetThread, sp, ip, ignoreNonDeoptimizable, speculation, info);
+    private static void deoptimize(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodeInfo info, boolean deoptEagerly) {
+        deoptimize0(targetThread, sp, ip, ignoreNonDeoptimizable, speculation, info, deoptEagerly);
     }
 
-    private static void deoptimize0(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodeInfo info) {
+    private static void deoptimize0(IsolateThread targetThread, Pointer sp, CodePointer ip, boolean ignoreNonDeoptimizable, SpeculationReason speculation, CodeInfo info, boolean deoptEagerly) {
         CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(info, ip);
         Deoptimizer deoptimizer = new Deoptimizer(sp, queryResult, targetThread);
-        DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrame(ip, ignoreNonDeoptimizable);
-        if (sourceFrame != null) {
-            registerSpeculationFailure(sourceFrame.getSourceInstalledCode(), speculation);
+        if (deoptEagerly) {
+            DeoptimizedFrame sourceFrame = deoptimizer.deoptSourceFrameEagerly(ip, ignoreNonDeoptimizable);
+            if (sourceFrame != null) {
+                registerSpeculationFailure(sourceFrame.getSourceInstalledCode(), speculation);
+            }
+        } else {
+            deoptimizer.deoptSourceFrameLazily(ip, ignoreNonDeoptimizable);
+            SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);
+            registerSpeculationFailure(installedCode, speculation);
         }
     }
 
     /**
      * Invalidates the {@link InstalledCode} of the method of the given frame. The method must be a
-     * runtime compiled method, since there is not {@link InstalledCode} for native image methods.
+     * runtime compiled method, since there is no {@link InstalledCode} for native image methods.
      */
     public static void invalidateMethodOfFrame(IsolateThread thread, Pointer sp, SpeculationReason speculation) {
         CodePointer ip = FrameAccess.singleton().readReturnAddress(thread, sp);
@@ -455,19 +627,20 @@ public final class Deoptimizer {
          * installedCode multiple times in case of a race is not a problem because the actual
          * invalidation is in a VMOperation.
          */
-        DeoptimizedFrame deoptimizedFrame = checkDeoptimized(thread, sp);
+        DeoptimizedFrame deoptimizedFrame = checkEagerDeoptimized(thread, sp);
         if (deoptimizedFrame != null) {
             installedCode = deoptimizedFrame.getSourceInstalledCode();
-            if (installedCode == null) {
-                /* When the method was invalidated before, all the metadata can be gone by now. */
+        }
+
+        if (installedCode == null) {
+            boolean alreadyDeoptimized = deoptimizedFrame != null || checkLazyDeoptimized(thread, sp);
+            if (alreadyDeoptimized) {
+                /* All the metadata might already be gone. */
                 return;
             }
-        } else {
-            if (installedCode == null) {
-                throw VMError.shouldNotReachHere(
-                                "Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sp.rawValue()) + ", returnAddress = " + Long.toHexString(ip.rawValue()));
-            }
+            throw VMError.shouldNotReachHere("Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sp.rawValue()) + ", returnAddress = " + Long.toHexString(ip.rawValue()));
         }
+
         registerSpeculationFailure(installedCode, speculation);
         VMOperation.guaranteeNotInProgress("invalidateMethodOfFrame: running user code that can block");
         installedCode.invalidate();
@@ -523,7 +696,15 @@ public final class Deoptimizer {
         /**
          * Custom prologue: save all of the architecture's return registers onto the stack.
          */
-        EntryStub,
+        EagerEntryStub,
+
+        /**
+         * Custom prologue: same custom Prologue as the EagerEntryStub, but we also reserve some
+         * additional memory on the stack when this stub is entered, because the lazyDeoptStub might
+         * need to access callee-saved values in the frame of the callee of the method to be
+         * deoptimized.
+         */
+        LazyEntryStub,
 
         /**
          * Custom prologue: set the stack pointer to the first method parameter.
@@ -557,6 +738,142 @@ public final class Deoptimizer {
         StubType stubType();
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static boolean isNonNullValue(UnsignedWord pointer) {
+        if (SubstrateOptions.SpawnIsolates.getValue()) {
+            /*
+             * KnownIntrinsics.heapBase() can represent null objects, but we cannot convert the heap
+             * base value to an object.
+             */
+            return pointer != Word.nullPointer() && pointer != KnownIntrinsics.heapBase();
+        }
+        /*
+         * With spawn isolates option disabled (which is a legacy mode), the heap base may represent
+         * a valid heap object.
+         */
+        return pointer != Word.nullPointer();
+    }
+
+    @DeoptStub(stubType = StubType.LazyEntryStub)
+    @Uninterruptible(reason = "gpReturnValue may hold unmanaged reference")
+    public static UnsignedWord lazyDeoptStubObjectReturn(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
+        assert Options.UseLazyDeopt.getValue();
+        assert VMThreads.StatusSupport.isStatusJava() : "Deopt stub execution must not be visible to other threads.";
+
+        boolean hasException = ExceptionUnwind.getLazyDeoptStubShouldReturnToExceptionHandler();
+        if (hasException) {
+            ExceptionUnwind.setLazyDeoptStubShouldReturnToExceptionHandler(false);
+        }
+        Object gpReturnValueObject = null;
+        if (isNonNullValue(gpReturnValue)) {
+            gpReturnValueObject = ((Pointer) gpReturnValue).toObject();
+        }
+
+        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, hasException, gpReturnValueObject);
+    }
+
+    @DeoptStub(stubType = StubType.LazyEntryStub)
+    @Uninterruptible(reason = "gpReturnValue may hold unmanaged reference")
+    public static UnsignedWord lazyDeoptStubPrimitiveReturn(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+        /*
+         * If we need to return to the exception handler, then we should always go to
+         * lazyDeoptStubObjectReturn, since returning to an exception handler involves returning an
+         * Exception Object.
+         */
+        assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
+        assert Options.UseLazyDeopt.getValue();
+        assert VMThreads.StatusSupport.isStatusJava() : "Deopt stub execution must not be visible to other threads.";
+        assert !ExceptionUnwind.getLazyDeoptStubShouldReturnToExceptionHandler();
+
+        return lazyDeoptStubCore(framePointer, gpReturnValue, fpReturnValue, false, null);
+    }
+
+    /**
+     * The handler for lazy deoptimization.
+     * 
+     * Despite being marked Uninterruptible, this contains interruptible sections when we look up
+     * the codeinfo, and construct the {@link DeoptimizedFrame}.
+     */
+    @Uninterruptible(reason = "frame will hold objects in unmanaged storage")
+    private static UnsignedWord lazyDeoptStubCore(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue, boolean hasException, Object gpReturnValueObject) {
+        DeoptimizedFrame deoptFrame;
+        Pointer newSp;
+
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            /* The original return address is at offset 0 from the stack pointer */
+            CodePointer originalReturnAddress = framePointer.readWord(0);
+            assert originalReturnAddress.isNonNull();
+
+            /* Clear the deoptimization slot. */
+            framePointer.writeWord(0, Word.nullPointer());
+
+            /*
+             * Write the old return address to the return address slot, so that stack walks see a
+             * consistent stack.
+             */
+            FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), framePointer, originalReturnAddress);
+
+            UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(originalReturnAddress);
+            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+            try {
+                CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
+                deoptFrame = constructLazilyDeoptimizedFrameInterruptibly(framePointer, info, originalReturnAddress, hasException);
+            } finally {
+                CodeInfoAccess.releaseTether(untetheredInfo, tether);
+            }
+
+            DeoptimizationCounters.counters().deoptCount.inc();
+            assert deoptFrame != null : "was not able to lazily construct a deoptimized frame";
+
+            newSp = computeNewFramePointer(framePointer, deoptFrame);
+
+            /* Build the content of the deopt target stack frames. */
+            deoptFrame.buildContent(newSp);
+
+            /*
+             * We fail fatally if eager deoptimization is invoked when the lazy deopt stub is
+             * executing, because eager deoptimization should only be invoked through stack
+             * introspection, which can only be called from the current thread. Thus, there is no
+             * use case for eager deoptimization to happen if the current thread is executing the
+             * lazy deopt stub.
+             */
+            VMError.guarantee(framePointer.readWord(0) == Word.nullPointer(), "Eager deoptimization should not occur when lazy deoptimization is in progress");
+
+            recentDeoptimizationEvents.append(deoptFrame.getCompletedMessage());
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
+        // From this point on, only uninterruptible code may be executed.
+        UnsignedWord updatedGpReturnValue = gpReturnValue;
+        if (gpReturnValueObject != null) {
+            updatedGpReturnValue = Word.objectToUntrackedPointer(gpReturnValueObject);
+        }
+
+        /* Do the stack rewriting. Return directly to the deopt target. */
+        return rewriteStackStub(newSp, updatedGpReturnValue, fpReturnValue, deoptFrame);
+    }
+
+    @Uninterruptible(reason = "Wrapper to call interruptible methods", calleeMustBe = false)
+    private static DeoptimizedFrame constructLazilyDeoptimizedFrameInterruptibly(Pointer sourceSp, CodeInfo info, CodePointer ip, boolean hasException) {
+        return constructLazilyDeoptimizedFrameInterruptibly0(sourceSp, info, ip, hasException);
+    }
+
+    private static DeoptimizedFrame constructLazilyDeoptimizedFrameInterruptibly0(Pointer sourceSp, CodeInfo info, CodePointer ip, boolean hasException) {
+        maybeTestGC();
+        CodeInfoQueryResult sourceChunk = CodeInfoTable.lookupCodeInfoQueryResult(info, ip);
+        maybeTestGC();
+        Deoptimizer deoptimizer = new Deoptimizer(sourceSp, sourceChunk, CurrentIsolate.getCurrentThread());
+        maybeTestEagerDeoptInLazyDeoptFatalError(deoptimizer, ip);
+        DeoptimizedFrame deoptFrame = deoptimizer.doDeoptSourceFrame(ip, true, false);
+        if (hasException) {
+            deoptFrame.takeException();
+        }
+        maybeTestGC();
+        return deoptFrame;
+    }
+
     /**
      * Performs the second step of deoptimization: the actual rewriting of a deoptimized method's
      * frame.
@@ -565,7 +882,7 @@ public final class Deoptimizer {
      * {@link #deoptimizeInRange}. Therefore the stub is "called" when a method wants to return to a
      * deoptimized method.
      * <p>
-     * When {@link #deoptStub} is "called", the stack looks like this:
+     * When {@link #eagerDeoptStub} is "called", the stack looks like this:
      *
      * <pre>
      *    :                                :
@@ -576,7 +893,7 @@ public final class Deoptimizer {
      *    +--------------------------------+--------- no return address between the frames!
      *    |                                |
      *    |                                |   frame of
-     *    |                                |   {@link #deoptStub}
+     *    |                                |   {@link #eagerDeoptStub}
      *    :     ...                        :
      * </pre>
      *
@@ -593,9 +910,9 @@ public final class Deoptimizer {
      *            when the deopt stub was reached. It must be restored to the register before
      *            completion of the stub.
      */
-    @DeoptStub(stubType = StubType.EntryStub)
+    @DeoptStub(stubType = StubType.EagerEntryStub)
     @Uninterruptible(reason = "Frame holds Objects in unmanaged storage.")
-    public static UnsignedWord deoptStub(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
+    public static UnsignedWord eagerDeoptStub(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue) {
         assert PointerUtils.isAMultiple(KnownIntrinsics.readStackPointer(), Word.unsigned(ConfigurationValues.getTarget().stackAlignment));
         VMError.guarantee(VMThreads.StatusSupport.isStatusJava(), "Deopt stub execution must not be visible to other threads.");
         DeoptimizedFrame frame = (DeoptimizedFrame) ReferenceAccess.singleton().readObjectAt(framePointer, true);
@@ -605,12 +922,7 @@ public final class Deoptimizer {
             DeoptimizationCounters.startTime.set(System.nanoTime());
         }
 
-        /* Computation of the new stack pointer: we start with the stack pointer of this frame. */
-        final Pointer newSp = framePointer
-                        /* Remove the size of the frame that gets deoptimized. */
-                        .add(Word.unsigned(frame.getSourceTotalFrameSize()))
-                        /* Add the size of the deoptimization target frames. */
-                        .subtract(frame.getTargetContent().getSize());
+        final Pointer newSp = computeNewFramePointer(framePointer, frame);
 
         /* Build the content of the deopt target stack frames. */
         frame.buildContent(newSp);
@@ -619,12 +931,22 @@ public final class Deoptimizer {
          * The frame was pinned to keep it from moving during construction. I can unpin it now that
          * I am uninterruptible. (And I have to unpin it.)
          */
-        frame.getPin().close();
+        frame.unpin();
 
         recentDeoptimizationEvents.append(frame.getCompletedMessage());
 
         /* Do the stack rewriting. Return directly to the deopt target. */
         return rewriteStackStub(newSp, gpReturnValue, fpReturnValue, frame);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    private static Pointer computeNewFramePointer(Pointer originalFramePointer, DeoptimizedFrame deoptimizedFrame) {
+        /* Computation of the new stack pointer: we start with the stack pointer of this frame. */
+        return originalFramePointer
+                        /* Remove the size of the frame that gets deoptimized. */
+                        .add(Word.unsigned(deoptimizedFrame.getSourceTotalFrameSize()))
+                        /* Add the size of the deoptimization target frames. */
+                        .subtract(deoptimizedFrame.getTargetContent().getSize());
     }
 
     /**
@@ -669,35 +991,109 @@ public final class Deoptimizer {
     }
 
     /**
-     * Deoptimizes a source frame.
+     * Deoptimizes a source frame lazily, or reverts to eager deoptimization if lazy deoptimization
+     * is not enabled.
      *
      * @param pc A code address inside the source method (= the method to deoptimize)
      */
-    public DeoptimizedFrame deoptSourceFrame(CodePointer pc, boolean ignoreNonDeoptimizable) {
-        final DeoptSourceFrameOperation operation = new DeoptSourceFrameOperation(this, pc, ignoreNonDeoptimizable);
+    public void deoptSourceFrameLazily(CodePointer pc, boolean ignoreNonDeoptimizable) {
+        assert VMOperation.isInProgress();
+        if (!Options.UseLazyDeopt.getValue()) {
+            deoptSourceFrameEagerly(pc, ignoreNonDeoptimizable);
+            return;
+        }
+        if (checkLazyDeoptimized(deoptState.targetThread, deoptState.sourceSp)) {
+            // already lazily deoptimized, nothing to do
+            return;
+        } else if (checkEagerDeoptimized(deoptState.targetThread, deoptState.sourceSp) != null) {
+            // if already eagerly deoptimized, don't lazily deoptimize.
+            return;
+        }
+
+        if (!canBeDeoptimized(sourceChunk.getFrameInfo())) {
+            if (ignoreNonDeoptimizable) {
+                return;
+            } else {
+                throw fatalDeoptimizationError("Deoptimization: cannot lazily deoptimize a method that has no deoptimization entry point", sourceChunk.getFrameInfo(), sourceChunk.getFrameInfo());
+            }
+        }
+
+        FrameInfoQueryResult frameInfo = sourceChunk.getFrameInfo();
+        CodeInfoQueryResult targetInfo = CodeInfoTable.lookupDeoptimizationEntrypoint(frameInfo.getDeoptMethodImageCodeInfo(), frameInfo.getDeoptMethodOffset(), frameInfo.getEncodedBci());
+        installLazyDeoptStubReturnAddress(targetInfo.getDeoptReturnValueIsObject(), deoptState.sourceSp, deoptState.targetThread);
+    }
+
+    /**
+     * Deoptimizes a source frame eagerly.
+     */
+    public DeoptimizedFrame deoptSourceFrameEagerly(CodePointer pc, boolean ignoreNonDeoptimizable) {
+        if (!canBeDeoptimized(sourceChunk.getFrameInfo())) {
+            if (ignoreNonDeoptimizable) {
+                return null;
+            } else {
+                throw fatalDeoptimizationError("Deoptimization: cannot lazily deoptimize a method that has no deoptimization entry point", sourceChunk.getFrameInfo(), sourceChunk.getFrameInfo());
+            }
+        }
+
+        final EagerDeoptSourceFrameOperation operation = new EagerDeoptSourceFrameOperation(this, pc, ignoreNonDeoptimizable);
         operation.enqueue();
         return operation.getResult();
     }
 
-    /** A VMOperation to encapsulate deoptSourceFrame. */
-    private static final class DeoptSourceFrameOperation extends JavaVMOperation {
+    @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
+    private static void installLazyDeoptStubReturnAddress(boolean returnValueIsObject, Pointer sourceSp, IsolateThread targetThread) {
+        assert Options.UseLazyDeopt.getValue();
+        assert VMOperation.isInProgress();
+        CodePointer oldReturnAddress = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
+
+        // Replace the return address to the deoptimized method with a pointer to the lazyDeoptStub.
+        CodePointer stubAddress = returnValueIsObject ? DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer() : DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer();
+        FrameAccess.singleton().writeReturnAddress(targetThread, sourceSp, stubAddress);
+        /*
+         * Write the original return address into the slot where the Deoptimized Frame would go in
+         * the case of eager deoptimization.
+         */
+        sourceSp.writeWord(0, oldReturnAddress);
+    }
+
+    @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
+    private static void uninstallLazyDeoptStubReturnAddress(Pointer sourceSp, IsolateThread thread) {
+        assert Options.UseLazyDeopt.getValue();
+        assert VMOperation.isInProgress();
+        CodePointer oldReturnAddress = sourceSp.readWord(0);
+        assert oldReturnAddress.isNonNull();
+        // Clear the old return address from the deopt slot
+        sourceSp.writeWord(0, Word.nullPointer());
+        // Restore the old return address on the stack
+        FrameAccess.singleton().writeReturnAddress(thread, sourceSp, oldReturnAddress);
+    }
+
+    /**
+     * A VMOperation to deoptimize a frame eagerly. This involves patching the return address to
+     * {@link #eagerDeoptStub} and also installing a heap-allocated {@link DeoptimizedFrame} in a
+     * reserved stack slot.
+     */
+    private static final class EagerDeoptSourceFrameOperation extends JavaVMOperation {
 
         private final Deoptimizer receiver;
         private final CodePointer pc;
         private final boolean ignoreNonDeoptimizable;
         private DeoptimizedFrame result;
 
-        DeoptSourceFrameOperation(Deoptimizer receiver, CodePointer pc, boolean ignoreNonDeoptimizable) {
-            super(VMOperationInfos.get(DeoptSourceFrameOperation.class, "Deoptimize source frame", SystemEffect.SAFEPOINT));
+        EagerDeoptSourceFrameOperation(Deoptimizer receiver, CodePointer pc, boolean ignoreNonDeoptimizable) {
+            super(VMOperationInfos.get(EagerDeoptSourceFrameOperation.class, "Eagerly deoptimize source frame", SystemEffect.SAFEPOINT));
             this.receiver = receiver;
             this.pc = pc;
             this.ignoreNonDeoptimizable = ignoreNonDeoptimizable;
             this.result = null;
+            if (Options.UseLazyDeopt.getValue()) {
+                assert receiver.deoptState.targetThread == CurrentIsolate.getCurrentThread() : "With lazy deoptimization enabled, eager deoptimization cannot be used to deoptimize other threads";
+            }
         }
 
         @Override
         public void operate() {
-            result = receiver.deoptSourceFrameOperation(pc, ignoreNonDeoptimizable);
+            result = receiver.doDeoptSourceFrame(pc, ignoreNonDeoptimizable, true);
         }
 
         public DeoptimizedFrame getResult() {
@@ -705,13 +1101,36 @@ public final class Deoptimizer {
         }
     }
 
-    private DeoptimizedFrame deoptSourceFrameOperation(CodePointer pc, boolean ignoreNonDeoptimizable) {
-        VMOperation.guaranteeInProgress("deoptSourceFrame");
+    /**
+     * Checks if a frame has a deoptimization target.
+     */
+    private static boolean canBeDeoptimized(FrameInfoQueryResult frame) {
+        if (frame == null) {
+            return false;
+        }
+        FrameInfoQueryResult currFrame = frame;
+        while (currFrame != null) {
+            if (currFrame.getDeoptMethodOffset() == 0) {
+                return false;
+            }
+            currFrame = currFrame.getCaller();
+        }
+        return true;
+    }
 
-        DeoptimizedFrame existing = checkDeoptimized(deoptState.targetThread, deoptState.sourceSp);
+    private DeoptimizedFrame doDeoptSourceFrame(CodePointer pc, boolean ignoreNonDeoptimizable, boolean isEagerDeopt) {
+        assert !Options.UseLazyDeopt.getValue() || deoptState.targetThread == CurrentIsolate.getCurrentThread() : "with lazy deopt enabled, this method may only be called for the current thread";
+        assert !isEagerDeopt || VMOperation.isInProgressAtSafepoint() : "eager deopts may only happen at a safepoint";
+
+        DeoptimizedFrame existing = checkEagerDeoptimized(deoptState.targetThread, deoptState.sourceSp);
         if (existing != null) {
             /* Already deoptimized, so nothing to do. */
             return existing;
+        }
+
+        if (isEagerDeopt && checkLazyDeoptimized(deoptState.targetThread, deoptState.sourceSp)) {
+            // already pending lazy deoptimization. Fix return address, then deopt eagerly below.
+            uninstallLazyDeoptStubReturnAddress(deoptState.sourceSp, deoptState.targetThread);
         }
 
         final FrameInfoQueryResult frameInfo = sourceChunk.getFrameInfo();
@@ -779,9 +1198,11 @@ public final class Deoptimizer {
         boolean rethrowException = FrameInfoDecoder.decodeRethrowException(frameInfo.getEncodedBci());
         /* Allocate a buffer to hold the contents of the new target frame. */
         DeoptimizedFrame deoptimizedFrame = DeoptimizedFrame.factory(targetContentSize, sourceChunk.getEncodedFrameSize(), CodeInfoTable.lookupInstalledCode(pc), topFrame, relockObjectData, pc,
-                        rethrowException);
+                        rethrowException, isEagerDeopt);
 
-        installDeoptimizedFrame(deoptimizedFrame);
+        if (isEagerDeopt) {
+            installDeoptimizedFrame(deoptimizedFrame);
+        }
 
         if (Options.TraceDeoptimization.getValue()) {
             printDeoptimizedFrame(Log.log(), deoptState.sourceSp, deoptimizedFrame, frameInfo, false);
@@ -793,7 +1214,7 @@ public final class Deoptimizer {
 
     private static void logDeoptSourceFrameOperation(Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult frameInfo) {
         StringBuilderLog log = new StringBuilderLog();
-        PointerBase deoptimizedFrameAddress = deoptimizedFrame.getPin().addressOfObject();
+        Pointer deoptimizedFrameAddress = Word.objectToUntrackedPointer(deoptimizedFrame);
         log.string("deoptSourceFrameOperation: DeoptimizedFrame at ").zhex(deoptimizedFrameAddress).string(": ");
         printDeoptimizedFrame(log, sp, deoptimizedFrame, frameInfo, true);
         recentDeoptimizationEvents.append(log.getResult().toCharArray());

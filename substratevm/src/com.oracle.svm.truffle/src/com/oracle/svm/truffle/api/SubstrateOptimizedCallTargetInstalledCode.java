@@ -105,10 +105,10 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     /**
-     * Returns false if not valid, including if {@linkplain #invalidateWithoutDeoptimization
-     * previously invalidated without deoptimization} in which case there can still be
-     * {@linkplain #isAlive live activations}. In order to entirely invalidate code in such cases,
-     * {@link #invalidate} must still be called even when this method returns false.
+     * Returns false if not valid, including if {@linkplain #makeNonEntrant previously made
+     * non-entrant} in which case there can still be {@linkplain #isAlive live activations}. In
+     * order to entirely invalidate code in such cases, {@link #invalidate} must still be called
+     * even when this method returns false.
      */
     @Override
     public boolean isValid() {
@@ -187,15 +187,15 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     @Override
-    public void invalidateWithoutDeoptimization() {
+    public void makeNonEntrant() {
         assert VMOperation.isInProgressAtSafepoint();
         if (isValid()) {
-            invalidateWithoutDeoptimization0();
+            makeNonEntrant0();
         }
     }
 
     @Uninterruptible(reason = "Must tether the CodeInfo.")
-    private void invalidateWithoutDeoptimization0() {
+    private void makeNonEntrant0() {
         this.entryPoint = 0;
 
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(Word.pointer(this.address));

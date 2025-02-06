@@ -25,6 +25,7 @@
 package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.core.deopt.Deoptimizer.Options.UseLazyDeopt;
 
 import java.util.BitSet;
 import java.util.EnumSet;
@@ -34,6 +35,8 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import jdk.vm.ci.meta.JavaType;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -306,6 +309,7 @@ public class CodeInfoEncoder {
         protected long referenceMapIndex;
         protected FrameInfoEncoder.FrameData frameData;
         protected IPData next;
+        protected boolean deoptReturnValueIsObject;
     }
 
     private final TreeMap<Long, IPData> entries;
@@ -392,6 +396,11 @@ public class CodeInfoEncoder {
                     assert entry.referenceMap == null && (entry.frameData == null || entry.frameData.isDefaultFrameData) : entry;
                     entry.referenceMap = (ReferenceMapEncoder.Input) debugInfo.getReferenceMap();
                     entry.frameData = frameInfoEncoder.addDebugInfo(method, compilation, infopoint, totalFrameSize);
+                    if (DeoptimizationSupport.enabled() && UseLazyDeopt.getValue() && entry.frameData.frame.isDeoptEntry && infopoint instanceof Call call && call.target != null) {
+                        ResolvedJavaMethod invokeTarget = (ResolvedJavaMethod) call.target;
+                        JavaType returnType = invokeTarget.getSignature().getReturnType(null);
+                        entry.deoptReturnValueIsObject = ((SharedType) returnType).getStorageKind().isObject();
+                    }
                     if (entry.frameData != null && entry.frameData.frame.isDeoptEntry) {
                         BytecodeFrame frame = debugInfo.frame();
                         long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
@@ -505,6 +514,14 @@ public class CodeInfoEncoder {
             writeExceptionOffset(encodingBuffer, data, entryFlags);
             writeReferenceMapIndex(encodingBuffer, data, entryFlags);
             writeEncodedFrameInfo(encodingBuffer, data, entryFlags);
+
+            if (DeoptimizationSupport.enabled() && UseLazyDeopt.getValue() && data.frameData != null && data.frameData.frame.isDeoptEntry) {
+                /*
+                 * When we enable useLazyDeopt, we have an extra byte in the codeinfo, which keeps
+                 * track for each deopt entry point whether it is at a call that returns an object.
+                 */
+                encodingBuffer.putU1(data.deoptReturnValueIsObject ? 1 : 0);
+            }
         }
 
         codeInfoIndex = NonmovableArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()), NmtCategory.Code);

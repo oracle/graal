@@ -51,6 +51,8 @@ import jdk.graal.compiler.nodes.FrameState;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 /**
  * The handle to a deoptimized frame. It contains all stack entries which are written to the frame
  * of the deopt target method(s). For details see {@link Deoptimizer}.
@@ -268,9 +270,9 @@ public final class DeoptimizedFrame {
     }
 
     protected static DeoptimizedFrame factory(int targetContentSize, long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame,
-                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException) {
+                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException, boolean isEagerDeopt) {
         final TargetContent targetContentBuffer = new TargetContent(targetContentSize, ConfigurationValues.getTarget().arch.getByteOrder());
-        return new DeoptimizedFrame(sourceEncodedFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, relockedObjects, sourcePC, rethrowException);
+        return new DeoptimizedFrame(sourceEncodedFrameSize, sourceInstalledCode, topFrame, targetContentBuffer, relockedObjects, sourcePC, rethrowException, isEagerDeopt);
     }
 
     private final long sourceEncodedFrameSize;
@@ -290,16 +292,17 @@ public final class DeoptimizedFrame {
     private final boolean rethrowException;
 
     private DeoptimizedFrame(long sourceEncodedFrameSize, SubstrateInstalledCode sourceInstalledCode, VirtualFrame topFrame, Deoptimizer.TargetContent targetContent,
-                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException) {
+                    RelockObjectData[] relockedObjects, CodePointer sourcePC, boolean rethrowException, boolean isEagerDeopt) {
         this.sourceEncodedFrameSize = sourceEncodedFrameSize;
         this.topFrame = topFrame;
         this.targetContent = targetContent;
         this.relockedObjects = relockedObjects;
         this.sourceInstalledCode = sourceInstalledCode == null ? null : new WeakReference<>(sourceInstalledCode);
         this.sourcePC = sourcePC;
-        this.pin = PinnedObject.create(this);
+        // We assume that the frame will be pinned if and only if we are deoptimizing eagerly
+        this.pin = isEagerDeopt ? PinnedObject.create(this) : null;
         StringBuilderLog sbl = new StringBuilderLog();
-        sbl.string("deoptStub: completed for DeoptimizedFrame at ").hex(pin.addressOfObject()).newline();
+        sbl.string("deoptStub: completed ").string(isEagerDeopt ? "eagerly" : "lazily").string(" for DeoptimizedFrame at ").hex(Word.objectToUntrackedPointer(this)).newline();
         this.completedMessage = sbl.getResult().toCharArray();
         this.rethrowException = rethrowException;
     }
@@ -346,12 +349,15 @@ public final class DeoptimizedFrame {
     }
 
     /**
-     * Returns the {@link PinnedObject} that ensures that this {@link DeoptimizedFrame} is not moved
-     * by the GC. The {@link DeoptimizedFrame} is accessed during GC when walking the stack.
+     * Releases the {@link PinnedObject} that ensures that this {@link DeoptimizedFrame} is not
+     * moved by the GC after eager deoptimization. The {@link DeoptimizedFrame} is accessed during
+     * GC when walking the stack after being installed during eager deoptimization. For lazy
+     * deoptimization, the pin is not needed, and in that case this method must not be called.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public PinnedObject getPin() {
-        return pin;
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public void unpin() {
+        assert pin != null;
+        pin.close();
     }
 
     /**
@@ -361,7 +367,7 @@ public final class DeoptimizedFrame {
         return sourcePC;
     }
 
-    @Uninterruptible(reason = "Called from Deoptimizer.deoptStub.")
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     char[] getCompletedMessage() {
         return completedMessage;
     }

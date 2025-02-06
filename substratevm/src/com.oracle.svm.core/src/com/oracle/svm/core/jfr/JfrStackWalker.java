@@ -249,7 +249,7 @@ public final class JfrStackWalker {
 
         while (JavaStackWalker.advance(walk, thread)) {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
-            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "JIT compilation is not supported");
+            VMError.guarantee(!Deoptimizer.checkIsDeoptimized(frame), "JIT compilation is not supported");
 
             if (JavaFrames.isUnknownFrame(frame) || isAsync && !hasValidCaller(walk, frame)) {
                 /* Most likely, the stack walk already started with a wrong SP or IP. */

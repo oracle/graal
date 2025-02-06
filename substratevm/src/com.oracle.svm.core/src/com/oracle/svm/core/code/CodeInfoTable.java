@@ -59,6 +59,8 @@ import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.vm.ci.code.InstalledCode;
 
+import static com.oracle.svm.core.deopt.Deoptimizer.Options.UseLazyDeopt;
+
 /**
  * Provides the main entry points to look up metadata for code, either {@link #getImageCodeCache()
  * ahead-of-time compiled code in the native image} or {@link CodeInfoTable#getRuntimeCodeCache()
@@ -224,7 +226,12 @@ public class CodeInfoTable {
             if (CodeInfoAccess.isAlive(info)) {
                 invalidateCodeAtSafepoint0(info);
             }
-            assert CodeInfoAccess.getState(info) == CodeInfo.STATE_INVALIDATED;
+            // If lazy deoptimization is enabled, the CodeInfo will not be removed immediately.
+            if (UseLazyDeopt.getValue()) {
+                assert CodeInfoAccess.getState(info) == CodeInfo.STATE_NON_ENTRANT;
+            } else {
+                assert CodeInfoAccess.getState(info) == CodeInfo.STATE_REMOVED_FROM_CODE_CACHE;
+            }
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
