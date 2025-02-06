@@ -268,7 +268,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   # Scala DaCapo benchmarks that run in both JVM and native modes,
   # Excluding factorie (too slow). kiama and scalariform have transient issues with compilation enabled.
-  scala_dacapo_jvm_warmup: 'scala-dacapo-warmup:*[scalap,scalac,scaladoc,scalaxb]',
+  scala_dacapo_jvm_warmup: 'scala-dacapo:*[scalap,scalac,scaladoc,scalaxb]',
 
   dacapo_stable(env): 'dacapo:*[fop,lusearch,luindex,sunflow,xalan]',
 
