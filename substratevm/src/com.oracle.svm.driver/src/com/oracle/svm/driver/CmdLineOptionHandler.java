@@ -31,7 +31,6 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.util.ExitStatus;
@@ -142,8 +141,8 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             return true;
         }
 
-        if (headArg.startsWith(SubstrateOptions.LAYER_CREATE_OPTION)) {
-            String layerCreateValue = headArg.substring(SubstrateOptions.LAYER_CREATE_OPTION.length());
+        if (headArg.startsWith(nativeImage.oHLayerCreate)) {
+            String layerCreateValue = headArg.substring(nativeImage.oHLayerCreate.length());
             if (!layerCreateValue.isEmpty()) {
                 LayerOption layerOption = LayerOption.parse(layerCreateValue);
                 for (ExtendedOption option : layerOption.extendedOptions()) {
