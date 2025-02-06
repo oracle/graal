@@ -151,7 +151,7 @@ public class CountedLoopInfo {
     }
 
     /**
-     * See {@link InductionVariable#intact()}
+     * See {@link InductionVariable#intact()}.
      */
     public boolean intact() {
         return limitCheckedIV.intact() && limit.isAlive() && body.isAlive() && ifNode.isAlive();
