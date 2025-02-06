@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1620,6 +1620,7 @@ public class OracleDBTests extends RegexTestBase {
         test("(?:a()|b??){22,26}c", "", "aabbbaabaaaaaabaaaac", 0, true, 19, 20, 19, 19, -1, -1);
         test("b()(a\\1|){4,4}\\2c", "", "baaaac", 0, false);
         test("a((?=b()|)[a-d])+", "", "abbbcbd", 0, true, 0, 7, 6, 7, 6, 6, -1, -1);
+        test("[[.\ue09f.][=\ud800\udc00=]]", "", "\ud800\udc00", 0, true, 0, 4);
         test("(a{1100,1100})\\1", "i", "a".repeat(2400), 0, true, 0, 2200, 0, 1100);
 
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
