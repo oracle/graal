@@ -62,7 +62,6 @@ import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 
-import org.graalvm.options.OptionDescriptor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
@@ -93,6 +92,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.polyglot.PolyglotSourceCache.ParseOrigin;
 
 /** The data corresponding to a specific context of a {@link TruffleLanguage}. */
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
@@ -368,11 +368,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return initialized;
     }
 
-    CallTarget parseCached(PolyglotLanguage accessingLanguage, Source source, String[] argumentNames) throws AssertionError {
+    CallTarget parseCached(ParseOrigin origin, PolyglotLanguage accessingLanguage, Source source, String[] argumentNames) throws AssertionError {
         ensureInitialized(accessingLanguage);
         PolyglotSourceCache cache = context.layer.getSourceCache();
         assert cache != null;
-        return cache.parseCached(this, source, argumentNames);
+        return cache.parseCached(origin, this, source, argumentNames);
     }
 
     Env requireEnv() {
@@ -584,39 +584,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     boolean isCreated() {
         return created;
-    }
-
-    OptionValuesImpl parseSourceOptions(Source source, String componentOnly) {
-        Map<String, String> rawOptions = EngineAccessor.SOURCE.getSourceOptions(source);
-        if (rawOptions.isEmpty()) {
-            // fast-path: no options
-            return language.getEmptySourceOptionsInternal();
-        }
-        PolyglotContextConfig config = context.config;
-        Map<String, OptionValuesImpl> options = PolyglotSourceCache.parseSourceOptions(getEngine(),
-                        rawOptions, componentOnly,
-                        config.sandboxPolicy,
-                        config.allowExperimentalOptions);
-        OptionValuesImpl languageOptions = options.get(componentOnly != null ? componentOnly : source.getLanguage());
-        if (languageOptions == null) {
-            return language.getEmptySourceOptionsInternal();
-        }
-        List<OptionDescriptor> deprecated = null;
-        for (OptionValuesImpl resolvedOptions : options.values()) {
-            Collection<OptionDescriptor> descriptors = resolvedOptions.getUsedDeprecatedDescriptors();
-            if (!descriptors.isEmpty()) {
-                if (deprecated == null) {
-                    deprecated = new ArrayList<>();
-                }
-                deprecated.addAll(descriptors);
-            }
-        }
-
-        if (deprecated != null) {
-            context.engine.printDeprecatedOptionsWarning(deprecated);
-        }
-
-        return languageOptions;
     }
 
     void ensureCreated(PolyglotLanguage accessingLanguage) {

@@ -59,6 +59,7 @@ final class SourceAccessor extends Accessor {
     static final SourceAccessor ACCESSOR = new SourceAccessor();
 
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
 
     private SourceAccessor() {
     }

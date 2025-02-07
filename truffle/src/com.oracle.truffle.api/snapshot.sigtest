@@ -610,7 +610,6 @@ meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 meth public java.util.Map<java.lang.String,java.lang.String> getEnvironment()
 meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(java.lang.Thread[],com.oracle.truffle.api.ThreadLocalAction)
 meth public org.graalvm.options.OptionValues getOptions()
-meth public org.graalvm.options.OptionValues getOptions(com.oracle.truffle.api.source.Source)
 meth public org.graalvm.polyglot.SandboxPolicy getSandboxPolicy()
 meth public void addToHostClassPath(com.oracle.truffle.api.TruffleFile)
 meth public void exportSymbol(java.lang.String,java.lang.Object)
@@ -1520,6 +1519,7 @@ meth public final int hashCode()
 meth public final java.io.Reader getReader()
 meth public final java.lang.CharSequence getCharacters(int)
 meth public final java.net.URI getURI()
+meth public final org.graalvm.options.OptionValues getOptions(com.oracle.truffle.api.TruffleLanguage<?>)
 meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.source.Source$LiteralBuilder newBuilder(com.oracle.truffle.api.source.Source)
 meth public static com.oracle.truffle.api.source.Source$LiteralBuilder newBuilder(java.lang.String,java.lang.CharSequence,java.lang.String)
@@ -1703,7 +1703,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,jfrTracing,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation

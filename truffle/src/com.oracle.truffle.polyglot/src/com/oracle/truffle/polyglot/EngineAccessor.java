@@ -133,6 +133,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotSourceCache.ParseOrigin;
 import com.oracle.truffle.polyglot.PolyglotThreadTask.PolyglotThread;
 import com.oracle.truffle.polyglot.PolyglotThreadTask.ThreadSpawnRootNode;
 import com.oracle.truffle.polyglot.SystemThread.InstrumentSystemThread;
@@ -287,14 +288,14 @@ final class EngineAccessor extends Accessor {
             PolyglotLanguage targetLanguage = sourceContext.context.engine.findLanguage(sourceContext, source.getLanguage(), source.getMimeType(), true, allowInternal);
             PolyglotLanguageContext targetContext = sourceContext.context.getContextInitialized(targetLanguage, sourceContext.language);
             targetContext.checkAccess(sourceContext.getLanguageInstance().language);
-            return targetContext.parseCached(sourceContext.language, source, argumentNames);
+            return targetContext.parseCached(ParseOrigin.LANGUAGE, sourceContext.language, source, argumentNames);
         }
 
         @Override
         public ExecutableNode parseInlineForLanguage(Object languageContext, Source source, Node node, MaterializedFrame frame) {
             PolyglotLanguageContext sourceContext = (PolyglotLanguageContext) languageContext;
             TruffleLanguage.Env env = sourceContext.requireEnv();
-            OptionValuesImpl options = sourceContext.parseSourceOptions(source, null);
+            OptionValuesImpl options = sourceContext.getLanguageInstance().parseSourceOptions(ParseOrigin.LANGUAGE, source, null);
             ExecutableNode fragment = EngineAccessor.LANGUAGE.parseInline(env, source, options, node, frame);
             if (fragment != null) {
                 TruffleLanguage<?> languageSPI = EngineAccessor.LANGUAGE.getSPI(env);
@@ -936,7 +937,7 @@ final class EngineAccessor extends Accessor {
             targetContext.checkAccess(accessingLanguage);
             Object result;
             try {
-                CallTarget target = targetContext.parseCached(accessingLanguage, source, null);
+                CallTarget target = targetContext.parseCached(ParseOrigin.INSTRUMENT, accessingLanguage, source, null);
                 result = target.call(null, PolyglotImpl.EMPTY_ARGS);
             } catch (Throwable e) {
                 throw OtherContextGuestObject.migrateException(context.parent, e, context);
@@ -1736,8 +1737,12 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public OptionValues parseLanguageSourceOptions(Object polyglotLanguageContext, Source source) {
-            PolyglotLanguageContext c = (PolyglotLanguageContext) polyglotLanguageContext;
-            return c.parseSourceOptions(source, c.language.getId());
+            try {
+                PolyglotLanguageInstance c = (PolyglotLanguageInstance) polyglotLanguageContext;
+                return c.parseSourceOptions(ParseOrigin.LANGUAGE, source, c.language.getId());
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         @Override

@@ -46,6 +46,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
 import java.util.Set;
 
 import org.graalvm.options.OptionCategory;
@@ -56,7 +57,10 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -183,28 +187,28 @@ public class SourceOptionsTest {
             c.enter();
             c.initialize(SourceOptionsTestLanguage.ID);
 
-            TruffleLanguage.Env env = SourceOptionsTestLanguage.REF.get(null);
+            SourceOptionsTestLanguage lang = SourceOptionsTestLanguage.LANGUAGE_REF.get(null);
             var source = com.oracle.truffle.api.source.Source.newBuilder("", "", "").build();
-            assertEquals(42, (int) TestSourceOptions.StableOption.getValue(env.getOptions(source)));
+            assertEquals(42, (int) TestSourceOptions.StableOption.getValue(source.getOptions(lang)));
 
             source = com.oracle.truffle.api.source.Source.newBuilder("", "", "").option(STABLE_OPTION_NAME, "43").build();
-            assertEquals(43, (int) TestSourceOptions.StableOption.getValue(env.getOptions(source)));
+            assertEquals(43, (int) TestSourceOptions.StableOption.getValue(source.getOptions(lang)));
 
             source = com.oracle.truffle.api.source.Source.newBuilder("", "", "").option(OTHER_STABLE_OPTION_NAME, "not-a-number").build();
             // other options are not parsed - expected to succeed even though the option is invalid
-            assertEquals(42, (int) TestSourceOptions.StableOption.getValue(env.getOptions(source)));
+            assertEquals(42, (int) TestSourceOptions.StableOption.getValue(source.getOptions(lang)));
 
             source = com.oracle.truffle.api.source.Source.newBuilder("", "", "").option("invalid-component.invalid-name", "not-a-number").build();
             // other options are not parsed - expected to succeed even though the option is invalid
-            assertEquals(42, (int) TestSourceOptions.StableOption.getValue(env.getOptions(source)));
+            assertEquals(42, (int) TestSourceOptions.StableOption.getValue(source.getOptions(lang)));
 
             source = com.oracle.truffle.api.source.Source.newBuilder("", "", "").option("arbitrary-text-as-key", "not-a-number").build();
             // other options are not parsed - expected to succeed even though the option is invalid
-            assertEquals(42, (int) TestSourceOptions.StableOption.getValue(env.getOptions(source)));
+            assertEquals(42, (int) TestSourceOptions.StableOption.getValue(source.getOptions(lang)));
 
             var source2 = com.oracle.truffle.api.source.Source.newBuilder("", "", "").option(STABLE_OPTION_NAME, "not-a-number").build();
             // other options are not parsed - expected to succeed even though the option is invalid
-            assertFails(() -> env.getOptions(source2),
+            assertFails(() -> source2.getOptions(lang),
                             IllegalArgumentException.class, (e) -> {
                                 assertEquals("""
                                                 Failed to parse source option 'SourceOptionsTest_SourceOptionsTestLanguage.StableOption=not-a-number': For input string: "not-a-number"
@@ -229,10 +233,13 @@ public class SourceOptionsTest {
             }
         }
 
+        // can't perform this test if experimental options are allowed globally
+        Assume.assumeFalse(Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions"));
+
         String error = "Failed to parse source option 'SourceOptionsTest_SourceOptionsTestLanguage.ExperimentalOption=experimental': " +
                         "Option 'SourceOptionsTest_SourceOptionsTestLanguage.ExperimentalOption' is experimental and must be enabled with allowExperimentalOptions(boolean) " +
                         "in Context.Builder or Engine.Builder. Do not use experimental options in production environments.";
-        try (Context c = Context.create(SourceOptionsTestLanguage.ID)) {
+        try (Context c = Context.newBuilder(SourceOptionsTestLanguage.ID).allowExperimentalOptions(false).build()) {
             Source s1 = Source.newBuilder(SourceOptionsTestLanguage.ID, EXPERIMENTAL_OPTION_NAME, "test").option(EXPERIMENTAL_OPTION_NAME, "experimental").buildLiteral();
             assertFails(() -> c.eval(s1), IllegalArgumentException.class, (e) -> {
                 assertEquals(error, e.getMessage());
@@ -270,12 +277,57 @@ public class SourceOptionsTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = SourceOptionsTestLanguage.ID)
+    /*
+     * Internal use of experimental source options is always independent of the embedding config.
+     * Otherwise experimental options would effectively never be usable internally.
+     */
+    @Test
+    public void testExperimentalOptionInternalUse() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+        try (Context c = Context.newBuilder().allowExperimentalOptions(false).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            c.enter();
+            c.initialize(SourceOptionsTestLanguage.ID);
+            Env env = SourceOptionsTestLanguage.REF.get(null);
+
+            var source = com.oracle.truffle.api.source.Source.newBuilder(SourceOptionsTestLanguage.ID, EXPERIMENTAL_OPTION_NAME, "test").option(EXPERIMENTAL_OPTION_NAME, "42").build();
+            assertEquals(42, env.parseInternal(source).call());
+
+            source = com.oracle.truffle.api.source.Source.newBuilder(SourceOptionsOtherLanguage.ID, OTHER_EXPERIMENTAL_OPTION_NAME, "test").option(OTHER_EXPERIMENTAL_OPTION_NAME, "42").build();
+            assertEquals(42, env.parseInternal(source).call());
+        }
+    }
+
+    /*
+     * Internal use of sandbox options are always allowed for internal parses independent of
+     * embedding config. Otherwise non-sandbox options would effectively never be usable internally.
+     */
+    @Test
+    public void testSandboxOptionInternalUse() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
+        // optimizing runtime fails as some options don't support sandboxing there.
+        TruffleTestAssumptions.assumeFallbackRuntime();
+        try (Context c = Context.newBuilder(SourceOptionsTestLanguage.ID, SourceOptionsOtherLanguage.ID) //
+                        .out(OutputStream.nullOutputStream()).err(OutputStream.nullOutputStream()).sandbox(SandboxPolicy.CONSTRAINED).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            c.enter();
+            c.initialize(SourceOptionsTestLanguage.ID);
+            Env env = SourceOptionsTestLanguage.REF.get(null);
+
+            var source = com.oracle.truffle.api.source.Source.newBuilder(SourceOptionsTestLanguage.ID, EXPERIMENTAL_OPTION_NAME, "test").option(EXPERIMENTAL_OPTION_NAME, "42").build();
+            assertEquals(42, env.parseInternal(source).call());
+
+            source = com.oracle.truffle.api.source.Source.newBuilder(SourceOptionsOtherLanguage.ID, OTHER_EXPERIMENTAL_OPTION_NAME, "test").option(OTHER_EXPERIMENTAL_OPTION_NAME, "42").build();
+            assertEquals(42, env.parseInternal(source).call());
+        }
+    }
+
+    @TruffleLanguage.Registration(id = SourceOptionsTestLanguage.ID, sandbox = SandboxPolicy.CONSTRAINED)
     public static final class SourceOptionsTestLanguage extends TruffleLanguage<Env> {
 
         public static final String ID = "SourceOptionsTest_SourceOptionsTestLanguage";
 
         public static final ContextReference<Env> REF = ContextReference.create(SourceOptionsTestLanguage.class);
+        public static final LanguageReference<SourceOptionsTestLanguage> LANGUAGE_REF = LanguageReference.create(SourceOptionsTestLanguage.class);
 
         @Override
         protected OptionDescriptors getSourceOptionDescriptors() {
@@ -356,7 +408,7 @@ public class SourceOptionsTest {
 
     }
 
-    @TruffleLanguage.Registration(id = SourceOptionsOtherLanguage.ID)
+    @TruffleLanguage.Registration(id = SourceOptionsOtherLanguage.ID, sandbox = SandboxPolicy.CONSTRAINED)
     public static final class SourceOptionsOtherLanguage extends TruffleLanguage<Env> {
 
         public static final String ID = "SourceOptionsTest_SourceOptionsOtherLanguage";
