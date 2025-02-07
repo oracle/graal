@@ -469,19 +469,27 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             super(compilationId, lir, frameMapBuilder, registerAllocationConfig, callingConvention);
             this.method = method;
 
-            if (method.hasCalleeSavedRegisters()) {
+            /*
+             * Besides for methods with callee saved registers, we reserve additional stack space
+             * for lazyDeoptStub too. This is necessary because the lazy deopt stub might read
+             * callee-saved register values in the callee of the function to be deoptimized, thus
+             * that stack space must not be overwritten by the lazy deopt stub.
+             */
+            if (method.hasCalleeSavedRegisters() || method.getDeoptStubType() == Deoptimizer.StubType.LazyEntryStub) {
                 AArch64CalleeSavedRegisters calleeSavedRegisters = AArch64CalleeSavedRegisters.singleton();
                 FrameMap frameMap = ((FrameMapBuilderTool) frameMapBuilder).getFrameMap();
                 int registerSaveAreaSizeInBytes = calleeSavedRegisters.getSaveAreaSize();
                 StackSlot calleeSaveArea = frameMap.allocateStackMemory(registerSaveAreaSizeInBytes, frameMap.getTarget().wordSize);
 
-                /*
-                 * The offset of the callee save area must be fixed early during image generation.
-                 * It is accessed when compiling methods that have a call with callee-saved calling
-                 * convention. Here we verify that offset computed earlier is the same as the offset
-                 * actually reserved.
-                 */
-                calleeSavedRegisters.verifySaveAreaOffsetInFrame(calleeSaveArea.getRawOffset());
+                if (method.hasCalleeSavedRegisters()) {
+                    /*
+                     * The offset of the callee save area must be fixed early during image
+                     * generation. It is accessed when compiling methods that have a call with
+                     * callee-saved calling convention. Here we verify that offset computed earlier
+                     * is the same as the offset actually reserved.
+                     */
+                    calleeSavedRegisters.verifySaveAreaOffsetInFrame(calleeSaveArea.getRawOffset());
+                }
             }
 
             if (method.canDeoptimize() || method.isDeoptTarget()) {
@@ -951,8 +959,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     /**
-     * Generates the prolog of a {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EntryStub}
-     * method.
+     * Generates the prolog of a
+     * {@link com.oracle.svm.core.deopt.Deoptimizer.StubType#EagerEntryStub} method.
      */
     protected static class DeoptEntryStubContext extends SubstrateAArch64FrameContext {
         protected final CallingConvention callingConvention;
@@ -1241,7 +1249,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     protected FrameContext createFrameContext(SharedMethod method, Deoptimizer.StubType stubType, CallingConvention callingConvention) {
-        if (stubType == Deoptimizer.StubType.EntryStub) {
+        if (stubType == Deoptimizer.StubType.EagerEntryStub || stubType == Deoptimizer.StubType.LazyEntryStub) {
             return new DeoptEntryStubContext(method, callingConvention);
         } else if (stubType == Deoptimizer.StubType.ExitStub) {
             return new DeoptExitStubContext(method, callingConvention);

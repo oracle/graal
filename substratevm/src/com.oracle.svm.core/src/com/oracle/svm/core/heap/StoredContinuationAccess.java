@@ -181,7 +181,7 @@ public final class StoredContinuationAccess {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
-            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "Deoptimized frames are not supported");
+            VMError.guarantee(!Deoptimizer.checkIsDeoptimized(frame), "Deoptimized frames are not supported");
 
             UntetheredCodeInfo untetheredCodeInfo = frame.getIPCodeInfo();
             Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
@@ -208,7 +208,7 @@ public final class StoredContinuationAccess {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
-            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "Deoptimized frames are not supported");
+            VMError.guarantee(!Deoptimizer.checkIsDeoptimized(frame), "Deoptimized frames are not supported");
 
             UntetheredCodeInfo untetheredCodeInfo = frame.getIPCodeInfo();
             Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);

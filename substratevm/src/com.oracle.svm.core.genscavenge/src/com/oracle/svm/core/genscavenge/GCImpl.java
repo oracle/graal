@@ -847,7 +847,7 @@ public final class GCImpl implements GC {
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "GC must not encounter unknown frames");
 
             /* We are during a GC, so tethering of the CodeInfo is not necessary. */
-            DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(frame);
+            DeoptimizedFrame deoptFrame = Deoptimizer.checkEagerDeoptimized(frame);
             if (deoptFrame == null) {
                 Pointer sp = frame.getSP();
                 CodeInfo codeInfo = CodeInfoAccess.unsafeConvert(frame.getIPCodeInfo());

@@ -264,8 +264,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         boolean isEntryPoint = type.nativeABI() && !type.outgoing;
 
         /*
-         * We have to reserve a slot between return address and outgoing parameters for the deopt
-         * frame handle. Exception: calls to native methods.
+         * We have to reserve a slot between return address and outgoing parameters for the
+         * deoptimized frame (eager deoptimization), or the original return address (lazy
+         * deoptimization). Exception: calls to native methods.
          */
         int currentStackOffset = type.nativeABI() ? nativeParamsStackOffset : target.wordSize;
 
