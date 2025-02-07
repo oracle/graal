@@ -1462,7 +1462,7 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
         }
 
         JavaKind javaKind;
-        int baseOffset;
+        long baseOffset;
         int indexScale;
         int svmAlignmentCorrection;
         if (propertyType.isPrimitive()) {
@@ -1482,13 +1482,13 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
         /*
          * Reverse the offset computation to find the index
          */
-        int index = (offset - baseOffset) / indexScale;
+        long index = (offset - baseOffset) / indexScale;
 
         /*
          * Find SVM array base offset and array index scale for this JavaKind
          */
-        int svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
-        int svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
+        long svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
+        long svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
 
         /*
          * Redo the offset computation with the SVM array base offset and array index scale
