@@ -1493,7 +1493,7 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
         /*
          * Redo the offset computation with the SVM array base offset and array index scale
          */
-        return svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index;
+        return Math.toIntExact(svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index);
     }
 
 }
