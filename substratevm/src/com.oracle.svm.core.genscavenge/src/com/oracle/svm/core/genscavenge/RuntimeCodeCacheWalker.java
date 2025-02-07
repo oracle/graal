@@ -76,26 +76,28 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
         Object tether = UntetheredCodeInfoAccess.getTetherUnsafe(codeInfo);
         if (tether != null && !isReachable(tether)) {
             int state = CodeInfoAccess.getState(codeInfo);
-            if (state == CodeInfo.STATE_INVALIDATED) {
+            if (state == CodeInfo.STATE_REMOVED_FROM_CODE_CACHE) {
                 /*
-                 * The tether object is not reachable and the CodeInfo was already invalidated, so
-                 * we only need to visit references that will be accessed before the unmanaged
-                 * memory is freed during this garbage collection.
+                 * The tether object is not reachable and the CodeInfo was already removed from the
+                 * code cache, so we only need to visit references that will be accessed before the
+                 * unmanaged memory is freed during this garbage collection.
                  */
                 RuntimeCodeInfoAccess.walkObjectFields(codeInfo, greyToBlackObjectVisitor);
-                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_UNREACHABLE);
+                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_PENDING_FREE);
                 return true;
             }
 
             /*
-             * We don't want to keep heap objects unnecessarily alive, so invalidate and free the
-             * CodeInfo if it has weak references to otherwise unreachable objects. However, we need
-             * to make sure that all the objects that are accessed during the invalidation remain
-             * reachable. Those objects can only be collected in a subsequent garbage collection.
+             * We don't want to keep heap objects unnecessarily alive. So, we check if the CodeInfo
+             * has weak references to otherwise unreachable objects. If so, we remove the CodeInfo
+             * from the code cache and free the CodeInfo during the current safepoint (see
+             * RuntimeCodeCacheCleaner). However, we need to make sure that all the objects that are
+             * accessed while doing so remain reachable. Those objects can only be collected in a
+             * subsequent garbage collection.
              */
             if (state == CodeInfo.STATE_NON_ENTRANT || invalidateCodeThatReferencesUnreachableObjects && state == CodeInfo.STATE_CODE_CONSTANTS_LIVE && hasWeakReferenceToUnreachableObject(codeInfo)) {
                 RuntimeCodeInfoAccess.walkObjectFields(codeInfo, greyToBlackObjectVisitor);
-                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_READY_FOR_INVALIDATION);
+                CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_PENDING_REMOVAL_FROM_CODE_CACHE);
                 return true;
             }
         }

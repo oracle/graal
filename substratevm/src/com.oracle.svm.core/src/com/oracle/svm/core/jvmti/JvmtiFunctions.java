@@ -70,7 +70,7 @@ import com.oracle.svm.core.jni.headers.JNIMethodIdPointerPointer;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
 import com.oracle.svm.core.jni.headers.JNINativeInterfacePointer;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.jvmti.headers.BooleanPointer;
+import com.oracle.svm.core.c.BooleanPointer;
 import com.oracle.svm.core.jvmti.headers.JClass;
 import com.oracle.svm.core.jvmti.headers.JClassPointer;
 import com.oracle.svm.core.jvmti.headers.JClassPointerPointer;

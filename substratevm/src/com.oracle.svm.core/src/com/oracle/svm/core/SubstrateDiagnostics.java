@@ -695,7 +695,12 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer()).newline().newline();
+            log.string("EagerDeoptStub address: ").zhex(DeoptimizationSupport.getEagerDeoptStubPointer()).newline();
+            if (Deoptimizer.Options.LazyDeoptimization.getValue()) {
+                log.string("LazyDeoptStubPrimitiveReturn address: ").zhex(DeoptimizationSupport.getLazyDeoptStubPrimitiveReturnPointer()).newline();
+                log.string("LazyDeoptStubObjectReturn address: ").zhex(DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer()).newline();
+            }
+            log.newline();
         }
     }
 

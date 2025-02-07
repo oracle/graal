@@ -46,7 +46,7 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 public class JavaFrames {
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean isUnknownFrame(JavaFrame frame) {
-        return frame.getIPCodeInfo().isNull() && Deoptimizer.checkDeoptimized(frame) == null;
+        return frame.getIPCodeInfo().isNull() && Deoptimizer.checkEagerDeoptimized(frame) == null;
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
@@ -80,6 +80,7 @@ public class JavaFrames {
         frame.setSP(Word.nullPointer());
         frame.setIP(Word.nullPointer());
         frame.setIPCodeInfo(Word.nullPointer());
+        frame.setIsPendingLazyDeopt(false);
 
         frame.setEncodedFrameSize(CodeInfoDecoder.INVALID_SIZE_ENCODING);
         frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
@@ -90,15 +91,28 @@ public class JavaFrames {
     public static void setData(JavaFrame frame, Pointer sp, CodePointer ip) {
         frame.setSP(sp);
         frame.setIP(ip);
+        frame.setIsPendingLazyDeopt(false);
 
-        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(frame);
+        DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkEagerDeoptimized(frame);
         if (deoptimizedFrame != null) {
             frame.setIPCodeInfo(Word.nullPointer());
             frame.setEncodedFrameSize(deoptimizedFrame.getSourceEncodedFrameSize());
             frame.setExceptionOffset(CodeInfoQueryResult.NO_EXCEPTION_OFFSET);
             frame.setReferenceMapIndex(ReferenceMapIndex.NO_REFERENCE_MAP);
         } else {
-            UntetheredCodeInfo untetheredCodeInfo = CodeInfoTable.lookupCodeInfo(ip);
+            CodePointer returnAddress = ip;
+            if (Deoptimizer.checkLazyDeoptimized(ip)) {
+                /*
+                 * For lazily deoptimized frames, the return address is stored in a reserved slot.
+                 * See Deoptimizer.java for details.
+                 */
+                frame.setIsPendingLazyDeopt(true);
+                returnAddress = sp.readWord(0);
+                assert returnAddress.isNonNull();
+                frame.setIP(returnAddress);
+            }
+
+            UntetheredCodeInfo untetheredCodeInfo = CodeInfoTable.lookupCodeInfo(returnAddress);
             frame.setIPCodeInfo(untetheredCodeInfo);
 
             if (untetheredCodeInfo.isNull()) {
@@ -111,7 +125,7 @@ public class JavaFrames {
                 Object tether = CodeInfoAccess.acquireTether(untetheredCodeInfo);
                 try {
                     CodeInfo info = CodeInfoAccess.convert(untetheredCodeInfo, tether);
-                    CodeInfoAccess.lookupCodeInfo(info, ip, frame);
+                    CodeInfoAccess.lookupCodeInfo(info, returnAddress, frame);
                 } finally {
                     CodeInfoAccess.releaseTether(untetheredCodeInfo, tether);
                 }

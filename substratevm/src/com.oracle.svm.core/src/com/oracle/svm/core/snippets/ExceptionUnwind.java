@@ -24,14 +24,18 @@
  */
 package com.oracle.svm.core.snippets;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 
+import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import com.oracle.svm.core.c.BooleanPointer;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -70,8 +74,20 @@ public abstract class ExceptionUnwind {
     };
 
     public static final FastThreadLocalObject<Throwable> currentException = FastThreadLocalFactory.createObject(Throwable.class, "ExceptionUnwind.currentException");
+    public static final FastThreadLocalBytes<BooleanPointer> lazyDeoptStubShouldReturnToExceptionHandler = FastThreadLocalFactory.createBytes(() -> SizeOf.get(BooleanPointer.class),
+                    "ExceptionUnwind.lazyDeoptStubShouldReturnToExceptionHandler");
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static void setLazyDeoptStubShouldReturnToExceptionHandler(boolean val) {
+        lazyDeoptStubShouldReturnToExceptionHandler.getAddress().write(val);
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean getLazyDeoptStubShouldReturnToExceptionHandler() {
+        return lazyDeoptStubShouldReturnToExceptionHandler.getAddress().read();
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     static boolean exceptionsAreFatal() {
         /*
          * If an exception is thrown while the thread is not in the Java state, most likely
@@ -196,13 +212,26 @@ public abstract class ExceptionUnwind {
 
             Pointer sp = frame.getSP();
             if (DeoptimizationSupport.enabled()) {
-                DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(frame);
+                DeoptimizedFrame deoptFrame = Deoptimizer.checkEagerDeoptimized(frame);
                 if (deoptFrame != null) {
                     /* Deoptimization entry points always have an exception handler. */
                     deoptTakeExceptionInterruptible(deoptFrame);
-                    jumpToHandler(sp, DeoptimizationSupport.getDeoptStubPointer(), hasCalleeSavedRegisters);
+                    jumpToHandler(sp, DeoptimizationSupport.getEagerDeoptStubPointer(), hasCalleeSavedRegisters);
                     UnreachableNode.unreachable();
                     return; /* Unreachable */
+                } else if (Deoptimizer.checkLazyDeoptimized(frame)) {
+                    long exceptionOffset = frame.getExceptionOffset();
+                    if (exceptionOffset != CodeInfoQueryResult.NO_EXCEPTION_OFFSET) {
+                        setLazyDeoptStubShouldReturnToExceptionHandler(true);
+                        /*
+                         * When handling exceptions, we always jump to the "object return" lazy
+                         * deopt stub, because the Exception object is always passed as the return
+                         * value.
+                         */
+                        jumpToHandler(sp, DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer(), hasCalleeSavedRegisters);
+                        UnreachableNode.unreachable();
+                        return; /* Unreachable */
+                    }
                 }
             }
 
