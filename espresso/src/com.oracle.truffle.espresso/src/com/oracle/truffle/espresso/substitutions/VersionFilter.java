@@ -77,6 +77,18 @@ public interface VersionFilter {
         }
     }
 
+    final class Java11OrLater implements VersionFilter {
+        public static final Java11OrLater INSTANCE = new Java11OrLater();
+
+        private Java11OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java11OrLater();
+        }
+    }
+
     final class Java13OrEarlier implements VersionFilter {
         public static final Java13OrEarlier INSTANCE = new Java13OrEarlier();
 
