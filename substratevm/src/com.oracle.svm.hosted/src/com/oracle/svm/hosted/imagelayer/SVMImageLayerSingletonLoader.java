@@ -41,16 +41,21 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.svm.core.layeredimagesingleton.ImageSingletonLoader;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton.PersistFlags;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonKey;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ImageSingletonObject;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.KeyStoreEntry;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.meta.JavaConstant;
+
 public class SVMImageLayerSingletonLoader {
     private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
     private final SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader snapshot;
+    private Map<Class<?>, Integer> initialLayerOnlySingletonConstantIds;
 
     public SVMImageLayerSingletonLoader(HostedImageLayerBuildingSupport imageLayerBuildingSupport, SharedLayerSnapshotCapnProtoSchemaHolder.SharedLayerSnapshot.Reader snapshot) {
         this.imageLayerBuildingSupport = imageLayerBuildingSupport;
@@ -58,11 +63,8 @@ public class SVMImageLayerSingletonLoader {
     }
 
     public Map<Object, Set<Class<?>>> loadImageSingletons(Object forbiddenObject) {
-        return loadImageSingletons0(forbiddenObject);
-    }
-
-    private Map<Object, Set<Class<?>>> loadImageSingletons0(Object forbiddenObject) {
         Map<Integer, Object> idToObjectMap = new HashMap<>();
+        Map<Class<?>, Integer> initialLayerKeyToIdMap = new HashMap<>();
         for (ImageSingletonObject.Reader obj : snapshot.getSingletonObjects()) {
             String className = obj.getClassName().toString();
 
@@ -110,13 +112,29 @@ public class SVMImageLayerSingletonLoader {
                 Class<?> clazz = imageLayerBuildingSupport.lookupClass(false, className);
                 singletonInitializationMap.computeIfAbsent(forbiddenObject, (k) -> new HashSet<>());
                 singletonInitializationMap.get(forbiddenObject).add(clazz);
+                if (InitialLayerOnlyImageSingleton.class.isAssignableFrom(clazz)) {
+                    int constantId = entry.getConstantId();
+                    if (constantId != -1) {
+                        initialLayerKeyToIdMap.put(clazz, constantId);
+                    }
+                }
             } else {
                 assert persistInfo == PersistFlags.NOTHING : "Unexpected PersistFlags value: " + persistInfo;
                 assert id == -1 : "Unrestored image singleton should not be linked to an object";
             }
         }
 
+        initialLayerOnlySingletonConstantIds = Map.copyOf(initialLayerKeyToIdMap);
+
         return singletonInitializationMap;
+    }
+
+    public JavaConstant loadInitialLayerOnlyImageSingleton(Class<?> key) {
+        int constantId = initialLayerOnlySingletonConstantIds.getOrDefault(key, -1);
+        if (constantId != -1) {
+            return imageLayerBuildingSupport.getLoader().getOrCreateConstant(constantId);
+        }
+        throw UserError.abort("Unable to load InitialLayerOnlyImageSingleton: %s. Please override accessibleInFutureLayers if you want this singleton to be reachable in future layers.", key);
     }
 
     public Class<?> lookupClass(boolean optional, String className) {

@@ -209,6 +209,7 @@ struct ImageSingletonKey {
   keyClassName @0 :Text;
   persistFlag @1 :Int32;
   objectId @2 :SingletonObjId;
+  constantId @3 :ConstantId;
 }
 
 struct ImageSingletonObject {

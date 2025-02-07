@@ -87,6 +87,7 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.LoadImageSingletonFactory;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.layeredimagesingleton.ApplicationLayerOnlyImageSingleton;
+import com.oracle.svm.core.layeredimagesingleton.InitialLayerOnlyImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonBuilderFlags;
 import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingletonSupport;
@@ -1158,6 +1159,16 @@ public class SubstrateGraphBuilderPlugins {
                      * layers looks refer to this singleton.
                      */
                     b.addPush(JavaKind.Object, LoadImageSingletonFactory.loadApplicationOnlyImageSingleton(key, b.getMetaAccess()));
+                    return true;
+                }
+
+                if (InitialLayerOnlyImageSingleton.class.isAssignableFrom(key) && ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                    /*
+                     * This singleton is only installed in the initial layer heap. When allowed, all
+                     * other layers lookups refer to this singleton.
+                     */
+                    JavaConstant initialSingleton = LayeredImageSingletonSupport.singleton().getInitialLayerOnlyImageSingleton(key);
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(initialSingleton, b.getMetaAccess(), b.getGraph()));
                     return true;
                 }
 

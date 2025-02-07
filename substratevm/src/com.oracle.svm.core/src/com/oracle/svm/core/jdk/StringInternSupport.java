@@ -197,6 +197,11 @@ class RuntimeInternedStrings implements InitialLayerOnlyImageSingleton {
     }
 
     @Override
+    public boolean accessibleInFutureLayers() {
+        return true;
+    }
+
+    @Override
     public EnumSet<LayeredImageSingletonBuilderFlags> getImageBuilderFlags() {
         return LayeredImageSingletonBuilderFlags.RUNTIME_ACCESS_ONLY;
     }

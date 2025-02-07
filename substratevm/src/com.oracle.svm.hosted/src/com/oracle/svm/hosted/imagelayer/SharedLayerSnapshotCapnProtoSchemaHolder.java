@@ -3622,7 +3622,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class ImageSingletonKey {
-    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)1,(short)1);
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)2,(short)1);
     public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -3678,6 +3678,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setIntField(1, value);
       }
 
+      public final int getConstantId() {
+        return _getIntField(2);
+      }
+      public final void setConstantId(int value) {
+        _setIntField(2, value);
+      }
+
     }
 
     public static final class Reader extends org.capnproto.StructReader {
@@ -3698,6 +3705,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
       public final int getObjectId() {
         return _getIntField(1);
+      }
+
+      public final int getConstantId() {
+        return _getIntField(2);
       }
 
     }
