@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.regex.tregex.test;
 
 import java.util.Random;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
@@ -86,7 +85,7 @@ public class InputStringGeneratorTests extends RegexTestBase {
         testInputStringGenerator("(?<=(a))\\1");
     }
 
-    private TruffleString generateInputString(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed) {
+    private InputStringGenerator.InputString generateInputString(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed) {
         String sourceString = createSourceString(pattern, flags, options, encoding);
         Source source = Source.newBuilder("regex", sourceString, "regexSource").build();
         RegexSource regexSource = RegexLanguage.createRegexSource(source);
@@ -105,10 +104,12 @@ public class InputStringGeneratorTests extends RegexTestBase {
 
     private void testInputStringGenerator(String pattern, String flags, String options, Encodings.Encoding encoding, long rngSeed, Value compiledRegex) {
         for (int i = 0; i < 20; i++) {
-            TruffleString input = generateInputString(pattern, flags, options, encoding, rngSeed);
+            InputStringGenerator.InputString input = generateInputString(pattern, flags, options, encoding, rngSeed + i);
             Assert.assertNotNull(input);
-            Value result = execRegex(compiledRegex, encoding, input, 0);
-            Assert.assertTrue(result.getMember("isMatch").asBoolean());
+            Value result = execRegex(compiledRegex, encoding, input.input(), input.fromIndex());
+            if (!result.getMember("isMatch").asBoolean()) {
+                Assert.assertTrue(execRegex(compiledRegex, encoding, input.input(), input.matchStart()).getMember("isMatch").asBoolean());
+            }
         }
     }
 }
