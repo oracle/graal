@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,6 +67,7 @@ import jdk.graal.compiler.nodes.extended.LoadHubOrNullNode;
 import jdk.graal.compiler.nodes.extended.RawLoadNode;
 import jdk.graal.compiler.nodes.extended.StoreHubNode;
 import jdk.graal.compiler.nodes.memory.AddressableMemoryAccess;
+import jdk.graal.compiler.nodes.memory.ReadNode;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
 import jdk.graal.compiler.nodes.memory.address.OffsetAddressNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
@@ -235,7 +236,20 @@ public class HotSpotReplacementsUtil {
         return config.threadExceptionPcOffset;
     }
 
-    public static final LocationIdentity TLAB_TOP_LOCATION = NamedLocationIdentity.mutable("TlabTop");
+    public static final LocationIdentity TLAB_TOP_LOCATION = new HotSpotOptimizingLocationIdentity("TlabTop", false) {
+        @Override
+        public ValueNode canonicalizeRead(ValueNode read, ValueNode object, ValueNode location, NodeView view, CoreProviders tool) {
+            // The TLAB top is always aligned to -XX:ObjectAlignment, reflect this in its stamp.
+            if (read instanceof ReadNode readNode) {
+                IntegerStamp readStamp = (IntegerStamp) readNode.stamp(view);
+                GraalHotSpotVMConfig config = ((HotSpotProviders) tool.getReplacements().getProviders()).getConfig();
+                long alignmentMask = -config.objectAlignment;
+                IntegerStamp alignedStamp = IntegerStamp.stampForMask(readStamp.getBits(), readStamp.mustBeSet(), alignmentMask);
+                readNode.setStamp(readStamp.join(alignedStamp));
+            }
+            return read;
+        }
+    };
 
     @Fold
     public static int threadTlabTopOffset(@InjectedParameter GraalHotSpotVMConfig config) {

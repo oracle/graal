@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
-
 import jdk.vm.ci.code.Architecture;
 
 public abstract class BackendTest extends GraalCompilerTest {
@@ -53,8 +52,11 @@ public abstract class BackendTest extends GraalCompilerTest {
             throw debug.handle(e);
         }
 
-        LIRGenerationResult lirGen = LIRCompilerBackend.emitLIR(getBackend(), graph, null, null, createLIRSuites(graph.getOptions()), null);
-        return lirGen;
+        try (DebugContext.Scope s = debug.scope("BackEnd", graph, graph.getLastSchedule())) {
+            return LIRCompilerBackend.emitLIR(getBackend(), graph, null, null, createLIRSuites(graph.getOptions()), null);
+        } catch (Throwable e) {
+            throw debug.handle(e);
+        }
     }
 
     protected LIRGenerationResult getLIRGenerationResult(final StructuredGraph graph) {
