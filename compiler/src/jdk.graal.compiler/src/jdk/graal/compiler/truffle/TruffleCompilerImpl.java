@@ -868,8 +868,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
 
         @Override
+        @SuppressWarnings("try")
         public void installFailed(Throwable t) {
-            notifyAssumptions(null);
+            try (TruffleRuntimeScope scope = config.openCanCallTruffleRuntimeScope()) {
+                notifyAssumptions(null);
+            }
         }
 
         private void notifyAssumptions(OptimizedAssumptionDependency dependency) {
