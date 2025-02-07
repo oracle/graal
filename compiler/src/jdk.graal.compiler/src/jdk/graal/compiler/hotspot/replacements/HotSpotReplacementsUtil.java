@@ -342,8 +342,6 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity JAVA_THREAD_MONITOR_OWNER_ID_LOCATION = NamedLocationIdentity.mutable("JavaThread::_monitor_owner_id");
 
-    public static final LocationIdentity JAVA_THREAD_OSTHREAD_LOCATION = NamedLocationIdentity.mutable("JavaThread::_osthread");
-
     public static final LocationIdentity JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION = NamedLocationIdentity.mutable("JavaThread::_held_monitor_count");
 
     public static final LocationIdentity JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION = NamedLocationIdentity.immutable("JavaThread::_scopedValueCache");
@@ -1024,9 +1022,9 @@ public class HotSpotReplacementsUtil {
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION = NamedLocationIdentity.mutable("JavaThread::_is_in_tmp_VTMS_transition");
     public static final LocationIdentity HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND = NamedLocationIdentity.mutable("JavaThread::_is_disable_suspend");
     public static final LocationIdentity HOTSPOT_JAVA_LANG_THREAD_IS_IN_VTMS_TRANSITION = NamedLocationIdentity.mutable("Thread::_is_in_VTMS_transition");
-    public static final LocationIdentity HOTSPOT_JAVA_THREAD_CONT_ENTRY = NamedLocationIdentity.mutable("JavaThread::_cont_entry");
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_CONT_ENTRY_LOCATION = NamedLocationIdentity.mutable("JavaThread::_cont_entry");
 
-    public static final LocationIdentity HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT = NamedLocationIdentity.mutable("ContinuationEntry::_pin_count");
+    public static final LocationIdentity HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT_LOCATION = NamedLocationIdentity.mutable("ContinuationEntry::_pin_count");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {
@@ -1097,7 +1095,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static int threadCarrierThreadOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.threadCarrierThreadObjectOffset;
+        return config.javaThreadThreadObjOffset;
     }
 
     public static boolean supportsVirtualThreadUpdateJFR(GraalHotSpotVMConfig config) {
