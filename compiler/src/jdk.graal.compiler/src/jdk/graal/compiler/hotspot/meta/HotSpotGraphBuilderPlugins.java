@@ -40,10 +40,11 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVM
 import static jdk.graal.compiler.hotspot.HotSpotBackend.SHAREDRUNTIME_NOTIFY_JVMTI_VTHREAD_UNMOUNT;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotInvocationPluginHelper.HotSpotVMConfigField.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotInvocationPluginHelper.HotSpotVMConfigField.HOTSPOT_JAVA_THREAD_CONT_ENTRY;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
-import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_CONT_ENTRY;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.JAVA_THREAD_MONITOR_OWNER_ID_LOCATION;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
@@ -100,6 +101,7 @@ import jdk.graal.compiler.hotspot.replacements.UnsafeSetMemoryNode;
 import jdk.graal.compiler.hotspot.word.HotSpotWordTypes;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.lir.SyncPort;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.BeginNode;
 import jdk.graal.compiler.nodes.ComputeObjectAddressNode;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -134,6 +136,7 @@ import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.MembarNode;
 import jdk.graal.compiler.nodes.extended.ObjectIsArrayNode;
 import jdk.graal.compiler.nodes.extended.PublishWritesNode;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import jdk.graal.compiler.nodes.gc.BarrierSet;
 import jdk.graal.compiler.nodes.graphbuilderconf.ForeignCallPlugin;
 import jdk.graal.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
@@ -748,7 +751,7 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        r.registerConditional(config.threadScopedValueCacheOffset != -1, new InvocationPlugin("scopedValueCache") {
+        r.registerConditional(config.javaThreadScopedValueCacheOffset != -1, new InvocationPlugin("scopedValueCache") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -762,7 +765,7 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        r.registerConditional(config.threadScopedValueCacheOffset != -1, new InvocationPlugin("setScopedValueCache", Object[].class) {
+        r.registerConditional(config.javaThreadScopedValueCacheOffset != -1, new InvocationPlugin("setScopedValueCache", Object[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode cache) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -808,8 +811,8 @@ public class HotSpotGraphBuilderPlugins {
 
             // else set hide value to the VTMS transition bit in current JavaThread and
             // VirtualThread object
-            GraalError.guarantee(config.threadIsInVTMSTransitionOffset != -1L, "JavaThread::_is_in_VTMS_transition is not exported");
-            OffsetAddressNode jtAddress = graph.addOrUniqueWithInputs(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInVTMSTransitionOffset)));
+            GraalError.guarantee(config.javaThreadIsInVTMSTransitionOffset != -1L, "JavaThread::_is_in_VTMS_transition is not exported");
+            OffsetAddressNode jtAddress = graph.addOrUniqueWithInputs(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadIsInVTMSTransitionOffset)));
             JavaWriteNode jtWrite = b.add(new JavaWriteNode(JavaKind.Boolean, jtAddress, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_VTMS_TRANSITION, hide, BarrierType.NONE, false));
             falseSuccessor.setNext(jtWrite);
 
@@ -852,21 +855,17 @@ public class HotSpotGraphBuilderPlugins {
                 StructuredGraph graph = b.getGraph();
                 CurrentJavaThreadNode javaThread = graph.addOrUniqueWithInputs(new CurrentJavaThreadNode(helper.getWordKind()));
 
-                GraalError.guarantee(config.contEntry != -1, "JavaThread::_cont_entry is not exported");
-                OffsetAddressNode lastContinuationAddr = graph.addOrUniqueWithInputs(new OffsetAddressNode(javaThread, helper.asWord(config.contEntry)));
-                ValueNode lastContinuation = b.add(new JavaReadNode(JavaKind.Object, lastContinuationAddr, HOTSPOT_JAVA_THREAD_CONT_ENTRY, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
-                ValueNode nonNullLastContinuation = helper.emitNullReturnGuard(lastContinuation, null, NOT_FREQUENT_PROBABILITY);
+                ValueNode lastContinuation = helper.readLocation(javaThread, HOTSPOT_JAVA_THREAD_CONT_ENTRY);
+                AbstractBeginNode guard = helper.emitReturnIf(IntegerEqualsNode.create(lastContinuation, helper.asWord(0), NodeView.DEFAULT), null, NOT_FREQUENT_PROBABILITY);
 
-                GraalError.guarantee(config.pinCount != -1, "ContinuationEntry::_pin_count is not exported");
-                OffsetAddressNode pinCountAddr = graph.addOrUniqueWithInputs(new OffsetAddressNode(nonNullLastContinuation, helper.asWord(config.pinCount)));
-                ValueNode pinCount = b.add(new JavaReadNode(JavaKind.Int, pinCountAddr, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT, BarrierType.NONE, MemoryOrderMode.PLAIN, false));
+                ValueNode pinCount = helper.readLocation(lastContinuation, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT, guard);
 
                 LogicNode overFlow = IntegerEqualsNode.create(pinCount, pin ? ConstantNode.forInt(-1) : ConstantNode.forInt(0), NodeView.DEFAULT);
                 // TypeCheckedInliningViolated (Reason_type_checked_inlining) is aliasing
                 // Reason_intrinsic
                 b.append(new FixedGuardNode(overFlow, TypeCheckedInliningViolated, DeoptimizationAction.None, true));
                 ValueNode newPinCount = b.add(AddNode.create(pinCount, pin ? ConstantNode.forInt(1) : ConstantNode.forInt(-1), NodeView.DEFAULT));
-                b.add(new JavaWriteNode(JavaKind.Int, pinCountAddr, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT, newPinCount, BarrierType.NONE, false));
+                b.add(new RawStoreNode(lastContinuation, helper.asWord(config.pinCountOffset), newPinCount, JavaKind.Int, HOTSPOT_CONTINUATION_ENTRY_PIN_COUNT_LOCATION));
                 helper.emitFinalReturn(JavaKind.Void, null);
             }
             return true;
@@ -934,9 +933,9 @@ public class HotSpotGraphBuilderPlugins {
                             receiver.get(true);
                             // unconditionally update the temporary VTMS transition bit in current
                             // JavaThread
-                            GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
+                            GraalError.guarantee(config.javaThreadIsInTmpVTMSTransitionOffset != -1, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
                             CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsInTmpVTMSTransitionOffset)));
+                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadIsInTmpVTMSTransitionOffset)));
                             b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_IN_TMP_VTMS_TRANSITION, hide, BarrierType.NONE, false));
                         }
                     }
@@ -957,9 +956,9 @@ public class HotSpotGraphBuilderPlugins {
                             }
                             // unconditionally update the is_disable_suspend bit in current
                             // JavaThread
-                            GraalError.guarantee(config.threadIsDisableSuspendOffset != -1, "JavaThread::_is_disable_suspend is not exported");
+                            GraalError.guarantee(config.javaThreadIsDisableSuspendOffset != -1, "JavaThread::_is_disable_suspend is not exported");
                             CurrentJavaThreadNode javaThread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.threadIsDisableSuspendOffset)));
+                            OffsetAddressNode address = b.add(new OffsetAddressNode(javaThread, helper.asWord(config.javaThreadIsDisableSuspendOffset)));
                             b.add(new JavaWriteNode(JavaKind.Boolean, address, HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_IS_DISABLE_SUSPEND, enter, BarrierType.NONE, false));
                         }
                     }
