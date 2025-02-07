@@ -1549,9 +1549,6 @@ public final class Deoptimizer {
         /** All references in deopt frames are compressed when compressed references are enabled. */
         private final int sizeofCompressedReference = ConfigurationValues.getObjectLayout().getReferenceSize();
         private final int sizeofUncompressedReference = FrameAccess.uncompressedReferenceSize();
-        /**
-         * The offset of the within the array object. I do not have to scale the offsets.
-         */
         private final int arrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
 
         private static final ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException("TargetContent.offsetCheck");
