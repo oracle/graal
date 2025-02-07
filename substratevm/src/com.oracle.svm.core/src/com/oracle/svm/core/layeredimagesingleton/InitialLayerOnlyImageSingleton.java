@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.layeredimagesingleton;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -33,5 +35,15 @@ public interface InitialLayerOnlyImageSingleton extends LayeredImageSingleton {
     default PersistFlags preparePersist(ImageSingletonWriter writer) {
         VMError.guarantee(ImageLayerBuildingSupport.buildingInitialLayer(), "This singleton should only be installed in the initial layer");
         return PersistFlags.FORBIDDEN;
+    }
+
+    /**
+     * When true is returned, runtime code within future layers can call
+     * {@link ImageSingletons#lookup} and the singleton will be constant folded into the code. In
+     * the future layers it will still not be possible to call {@link ImageSingletons#lookup} at
+     * build time.
+     */
+    default boolean accessibleInFutureLayers() {
+        return false;
     }
 }
