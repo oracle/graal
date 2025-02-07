@@ -25,10 +25,9 @@
 package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
-import static com.oracle.svm.core.deopt.Deoptimizer.Options.UseLazyDeopt;
 
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -41,6 +40,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ConstantAccess;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -226,7 +226,7 @@ public final class CodeInfoDecoder {
                 codeInfo.exceptionOffset = loadExceptionOffset(info, entryOffset, entryFlags);
                 codeInfo.referenceMapIndex = loadReferenceMapIndex(info, entryOffset, entryFlags);
                 codeInfo.frameInfo = loadFrameInfo(info, entryOffset, entryFlags, constantAccess);
-                if (UseLazyDeopt.getValue()) {
+                if (LazyDeoptimization.getValue()) {
                     codeInfo.deoptReturnValueIsObject = loadDeoptReturnValueIsObject(info, entryOffset, entryFlags) != 0;
                 }
                 assert codeInfo.frameInfo.isDeoptEntry() && codeInfo.frameInfo.getCaller() == null : "Deoptimization entry must not have inlined frames";
@@ -286,7 +286,7 @@ public final class CodeInfoDecoder {
          * The byte which encodes whether a return value is an object is stored at the end of the
          * codeInfo and is only present for deopt entry points if lazy deoptimization is enabled.
          */
-        assert UseLazyDeopt.getValue() : "must have lazy deoptimization enabled to have this information in the codeinfo";
+        assert LazyDeoptimization.getValue() : "must have lazy deoptimization enabled to have this information in the code info";
         long rvoOffset = getU1(AFTER_FI_OFFSET, entryFlags);
         return NonmovableByteArrayReader.getU1(CodeInfoAccess.getCodeInfoEncodings(info), entryOffset + rvoOffset);
     }
@@ -570,7 +570,7 @@ public final class CodeInfoDecoder {
         int maxFlag = 1 << TOTAL_BITS;
 
         /*
-         * When we enable useLazyDeopt, we have an extra byte in the codeinfo, which keeps track of
+         * With lazy deoptimization, we have an extra byte in the code info, which keeps track of
          * whether each infopoint is at a call that returns an object. This byte is stored after the
          * FI (frameInfo) section. It is accounted for by the advanceOffset() method.
          */
@@ -647,7 +647,7 @@ public final class CodeInfoDecoder {
     private static long advanceOffset(long entryOffset, int entryFlags) {
         counters().advanceOffset.inc();
         long returnValueIsObjectSize = 0;
-        if (DeoptimizationSupport.enabled() && UseLazyDeopt.getValue() && extractFI(entryFlags) == FI_DEOPT_ENTRY_INDEX_S4) {
+        if (DeoptimizationSupport.enabled() && LazyDeoptimization.getValue() && extractFI(entryFlags) == FI_DEOPT_ENTRY_INDEX_S4) {
             returnValueIsObjectSize = Byte.BYTES;
         }
         return entryOffset + getU1(AFTER_FI_OFFSET, entryFlags) + returnValueIsObjectSize;

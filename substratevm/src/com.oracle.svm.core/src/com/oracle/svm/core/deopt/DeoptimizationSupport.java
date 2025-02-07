@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.deopt;
 
-import jdk.graal.compiler.api.replacements.Fold;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -35,7 +36,7 @@ import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
-import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+import jdk.graal.compiler.api.replacements.Fold;
 
 public class DeoptimizationSupport {
 
@@ -74,14 +75,14 @@ public class DeoptimizationSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setLazyDeoptStubPrimitiveReturnPointer(CFunctionPointer ptr) {
         assert get().lazyDeoptStubPrimitiveReturnPointer == null : "multiple lazyDeoptStubPrimitiveReturn methods registered";
-        assert Deoptimizer.Options.UseLazyDeopt.getValue() : "lazy deoptimization not enabled";
+        assert Deoptimizer.Options.LazyDeoptimization.getValue() : "lazy deoptimization not enabled";
         get().lazyDeoptStubPrimitiveReturnPointer = ptr;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setLazyDeoptStubObjectReturnPointer(CFunctionPointer ptr) {
         assert get().lazyDeoptStubObjectReturnPointer == null : "multiple lazyDeoptStubObjectReturn methods registered";
-        assert Deoptimizer.Options.UseLazyDeopt.getValue() : "lazy deoptimization not enabled";
+        assert Deoptimizer.Options.LazyDeoptimization.getValue() : "lazy deoptimization not enabled";
         get().lazyDeoptStubObjectReturnPointer = ptr;
     }
 
@@ -94,7 +95,7 @@ public class DeoptimizationSupport {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static CFunctionPointer getLazyDeoptStubPrimitiveReturnPointer() {
-        assert Deoptimizer.Options.UseLazyDeopt.getValue() : "lazy deoptimization not enabled";
+        assert Deoptimizer.Options.LazyDeoptimization.getValue() : "lazy deoptimization not enabled";
         CFunctionPointer ptr = get().lazyDeoptStubPrimitiveReturnPointer;
         assert ptr.rawValue() != 0;
         return ptr;
@@ -102,7 +103,7 @@ public class DeoptimizationSupport {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static CFunctionPointer getLazyDeoptStubObjectReturnPointer() {
-        assert Deoptimizer.Options.UseLazyDeopt.getValue() : "lazy deoptimization not enabled";
+        assert Deoptimizer.Options.LazyDeoptimization.getValue() : "lazy deoptimization not enabled";
         CFunctionPointer ptr = get().lazyDeoptStubObjectReturnPointer;
         assert ptr.rawValue() != 0;
         return ptr;

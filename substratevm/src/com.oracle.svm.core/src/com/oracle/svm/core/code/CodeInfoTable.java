@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
+
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -57,9 +58,8 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.code.InstalledCode;
-
-import static com.oracle.svm.core.deopt.Deoptimizer.Options.UseLazyDeopt;
 
 /**
  * Provides the main entry points to look up metadata for code, either {@link #getImageCodeCache()
@@ -227,7 +227,7 @@ public class CodeInfoTable {
                 invalidateCodeAtSafepoint0(info);
             }
             // If lazy deoptimization is enabled, the CodeInfo will not be removed immediately.
-            if (UseLazyDeopt.getValue()) {
+            if (LazyDeoptimization.getValue()) {
                 assert CodeInfoAccess.getState(info) == CodeInfo.STATE_NON_ENTRANT;
             } else {
                 assert CodeInfoAccess.getState(info) == CodeInfo.STATE_REMOVED_FROM_CODE_CACHE;

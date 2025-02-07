@@ -28,10 +28,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.util.ReflectionUtil;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -56,6 +52,11 @@ import com.oracle.svm.core.util.CounterFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 
 /**
  * Feature to allow deoptimization in a generated native image.
@@ -89,7 +90,7 @@ public final class DeoptimizationFeature implements InternalFeature {
          * address during deoptimization.
          */
         access.registerAsRoot(eagerDeoptStubMethod, true, "Eager deoptimization stub, registered in " + DeoptimizationFeature.class);
-        if (Deoptimizer.Options.UseLazyDeopt.getValue()) {
+        if (Deoptimizer.Options.LazyDeoptimization.getValue()) {
             access.registerAsRoot(lazyDeoptStubPrimitiveReturnMethod, true, "Lazy deoptimization stub for primitive return values, registered in " + DeoptimizationFeature.class);
             access.registerAsRoot(lazyDeoptStubObjectReturnMethod, true, "Lazy deoptimization stub for object return values, registered in " + DeoptimizationFeature.class);
         }
@@ -128,7 +129,7 @@ public final class DeoptimizationFeature implements InternalFeature {
         config.registerAsImmutable(ImageSingletons.lookup(DeoptimizationSupport.class));
         HostedMetaAccess metaAccess = config.getMetaAccess();
         DeoptimizationSupport.setEagerDeoptStubPointer(new MethodPointer(metaAccess.lookupJavaMethod(eagerDeoptStubMethod)));
-        if (Deoptimizer.Options.UseLazyDeopt.getValue()) {
+        if (Deoptimizer.Options.LazyDeoptimization.getValue()) {
             DeoptimizationSupport.setLazyDeoptStubPrimitiveReturnPointer(new MethodPointer(metaAccess.lookupJavaMethod(lazyDeoptStubPrimitiveReturnMethod)));
             DeoptimizationSupport.setLazyDeoptStubObjectReturnPointer(new MethodPointer(metaAccess.lookupJavaMethod(lazyDeoptStubObjectReturnMethod)));
         }
