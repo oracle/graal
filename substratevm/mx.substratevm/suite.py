@@ -219,8 +219,8 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "sdk:NATIVEIMAGE",
+                "sdk:GRAAL_NATIVEIMAGE",
                 "compiler:GRAAL",
-                "compiler:GRAAL_NATIVEIMAGE",
             ],
             "requiresConcealed" : {
                 "java.base" : ["jdk.internal.module"],
@@ -2143,8 +2143,8 @@ suite = {
             ],
             "distDependencies": [
                 "compiler:GRAAL",
-                "compiler:GRAAL_NATIVEIMAGE",
                 "sdk:NATIVEIMAGE",
+                "sdk:GRAAL_NATIVEIMAGE",
             ],
             "exclude": [
             ],

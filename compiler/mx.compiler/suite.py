@@ -473,17 +473,6 @@ suite = {
 
     # ------------- libgraal -------------
 
-    # Native Image API extensions for libgraal.
-    "jdk.graal.nativeimage" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "sdk:NATIVEIMAGE"
-      ],
-      "checkstyle" : "jdk.graal.compiler",
-      "javaCompliance" : "21+"
-    },
-
     # See jdk.graal.compiler.core.common.LibGraalSupport for the SPI
     # used by core compiler classes to access libgraal specific
     # functionality without requiring the compiler classes to directly
@@ -495,7 +484,7 @@ suite = {
       "javaCompliance" : "21+",
       "dependencies" : [
         "GRAAL",
-        "GRAAL_NATIVEIMAGE",
+        "sdk:GRAAL_NATIVEIMAGE",
         "sdk:JNIUTILS",
         "sdk:NATIVEBRIDGE"
       ],
@@ -523,7 +512,7 @@ suite = {
       "workingSets" : "Graal",
       "javaCompliance" : "21+",
       "dependencies" : [
-        "GRAAL_NATIVEIMAGE",
+        "sdk:GRAAL_NATIVEIMAGE",
       ],
       "requiresConcealed" : {
         "java.base" : [
@@ -681,39 +670,13 @@ suite = {
       },
     },
 
-    "GRAAL_NATIVEIMAGE" : {
-      "subDir" : "src",
-      "dependencies" : [
-        "jdk.graal.nativeimage",
-      ],
-      "distDependencies" : ["sdk:NATIVEIMAGE"],
-      "javadocType": "api",
-      "moduleInfo" : {
-        "name" : "jdk.graal.nativeimage",
-        "requires" : [
-          "transitive org.graalvm.nativeimage",
-        ],
-        "exports" : [
-          "jdk.graal.nativeimage",
-          "jdk.graal.nativeimage.hosted",
-          "jdk.graal.nativeimage.impl to org.graalvm.nativeimage.builder",
-        ],
-        "uses" : [],
-        "opens" : [],
-      },
-      "description" : "Native Image API extensions for libgraal.",
-      "maven": {
-        "tag": ["default", "public"],
-      },
-    },
-
     "LIBGRAAL_LOADER" : {
       "subDir": "src",
       "dependencies" : [
         "jdk.graal.compiler.libgraal.loader"
       ],
       "distDependencies" : [
-        "GRAAL_NATIVEIMAGE",
+        "sdk:GRAAL_NATIVEIMAGE",
         "GRAAL",
       ],
       "maven": False,
@@ -731,7 +694,7 @@ suite = {
       ],
       "distDependencies": [
         "GRAAL",
-        "GRAAL_NATIVEIMAGE",
+        "sdk:GRAAL_NATIVEIMAGE",
         "sdk:JNIUTILS",
         "sdk:NATIVEIMAGE",
         "sdk:NATIVEBRIDGE"

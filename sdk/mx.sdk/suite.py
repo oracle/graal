@@ -436,6 +436,18 @@ suite = {
       "javaCompliance" : "11+",
       "workingSets" : "API,SDK",
     },
+
+    # Native Image API extensions for libgraal.
+    "jdk.graal.nativeimage" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:NATIVEIMAGE"
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "21+"
+    },
+
     "com.oracle.svm.core.annotate" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -826,6 +838,32 @@ suite = {
       "description" : "A framework that allows to customize native image generation.",
       "maven": {
           "tag": ["default", "public"],
+      },
+    },
+
+    "GRAAL_NATIVEIMAGE" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "jdk.graal.nativeimage",
+      ],
+      "distDependencies" : ["NATIVEIMAGE"],
+      "javadocType": "api",
+      "moduleInfo" : {
+        "name" : "jdk.graal.nativeimage",
+        "requires" : [
+          "transitive org.graalvm.nativeimage",
+        ],
+        "exports" : [
+          "jdk.graal.nativeimage",
+          "jdk.graal.nativeimage.hosted",
+          "jdk.graal.nativeimage.impl to org.graalvm.nativeimage.builder",
+        ],
+        "uses" : [],
+        "opens" : [],
+      },
+      "description" : "Native Image API extensions for libgraal.",
+      "maven": {
+        "tag": ["default", "public"],
       },
     },
 
