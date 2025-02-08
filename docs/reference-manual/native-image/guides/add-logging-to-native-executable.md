@@ -22,7 +22,7 @@ For example, if you use `java.util.logging.FileHandler`, then provide the follow
 {
     "name" : "java.util.logging.FileHandler",
     "methods" : [
-      { "name" : "<init>", "parameterTypes" : [] },
+      { "name" : "<init>", "parameterTypes" : [] }
     ]
   }
 ```
