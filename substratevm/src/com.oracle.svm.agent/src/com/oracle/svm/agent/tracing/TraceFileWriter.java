@@ -24,101 +24,27 @@
  */
 package com.oracle.svm.agent.tracing;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.StringWriter;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Base64;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.core.util.VMError;
-
-import jdk.graal.compiler.util.json.JsonWriter;
+import com.oracle.svm.configure.trace.JsonFileWriter;
 
 public class TraceFileWriter extends Tracer implements TracingResultWriter {
-    private final Object lock = new Object();
-    private final BufferedWriter writer;
-    private boolean open = true;
-    private int written = 0;
+    private final JsonFileWriter jsonFileWriter;
 
     @SuppressWarnings("this-escape")
     public TraceFileWriter(Path path) throws IOException {
-        writer = Files.newBufferedWriter(path);
-        JsonWriter json = new JsonWriter(writer);
-        json.append('[').newline();
+        jsonFileWriter = new JsonFileWriter(path);
         traceInitialization();
-        json.flush(); // avoid close() on underlying stream
     }
 
     @Override
     protected void traceEntry(EconomicMap<String, Object> entry) {
-        try {
-            StringWriter str = new StringWriter();
-            try (JsonWriter json = new JsonWriter(str)) {
-                json.append('{');
-                boolean first = true;
-                MapCursor<String, Object> cursor = entry.getEntries();
-                while (cursor.advance()) {
-                    if (!first) {
-                        json.append(", ");
-                    }
-                    json.quote(cursor.getKey()).append(':');
-                    if (cursor.getValue() instanceof Object[]) {
-                        printArray(json, (Object[]) cursor.getValue());
-                    } else {
-                        printValue(json, cursor.getValue());
-                    }
-                    first = false;
-                }
-                json.append('}');
-            }
-            traceEntry(str.toString());
-        } catch (IOException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
-    private static void printArray(JsonWriter json, Object[] array) throws IOException {
-        json.append('[');
-        for (int i = 0; i < array.length; i++) {
-            if (i > 0) {
-                json.append(',');
-            }
-            Object obj = array[i];
-            if (obj instanceof Object[]) {
-                printArray(json, (Object[]) obj);
-            } else {
-                printValue(json, array[i]);
-            }
-        }
-        json.append(']');
-    }
-
-    private static void printValue(JsonWriter json, Object value) throws IOException {
-        Object s = null;
-        if (value instanceof byte[]) {
-            s = Base64.getEncoder().encodeToString((byte[]) value);
-        } else if (value != null) {
-            s = value;
-        }
-        json.printValue(s);
-    }
-
-    private void traceEntry(String s) throws IOException {
-        synchronized (lock) {
-            if (open) { // late events on exit
-                if (written > 0) {
-                    writer.write(",\n");
-                }
-                writer.write(s);
-                written++;
-            }
-        }
+        jsonFileWriter.printObject(entry);
     }
 
     @Override
@@ -133,13 +59,6 @@ public class TraceFileWriter extends Tracer implements TracingResultWriter {
 
     @Override
     public void close() {
-        synchronized (lock) {
-            try {
-                writer.write("\n]\n");
-                writer.close();
-            } catch (IOException ignored) {
-            }
-            open = false;
-        }
+        jsonFileWriter.close();
     }
 }
