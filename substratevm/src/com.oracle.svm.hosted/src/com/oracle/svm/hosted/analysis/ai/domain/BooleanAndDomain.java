@@ -3,9 +3,12 @@ package com.oracle.svm.hosted.analysis.ai.domain;
 import java.util.Objects;
 
 /**
- * Represents the boolean and domain in the abstract domain.
+ * Represents a boolean domain ordered by a || ¬b.
+ * This domain can be used when we want to have a boolean value
+ * that is true only when it is true in all paths.
  */
 public final class BooleanAndDomain extends AbstractDomain<BooleanAndDomain> {
+
     private boolean value;
 
     public BooleanAndDomain() {
