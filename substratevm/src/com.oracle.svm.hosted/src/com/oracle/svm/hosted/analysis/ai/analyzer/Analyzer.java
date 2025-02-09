@@ -39,7 +39,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Runs the analysis with the provided initial domain and interpreter.
+     * This method is used in analyzer subclasses to create a complete payload for the analysis.
      *
      * @param initialDomain         initial domain for the analysis
      * @param domainNodeInterpreter interpreter to use
@@ -47,7 +47,7 @@ public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
     public abstract void run(Domain initialDomain, NodeInterpreter<Domain> domainNodeInterpreter);
 
     /**
-     * Common method to run the analysis.
+     * Common method to run the analysis from the root {@link AnalysisMethod}.
      *
      * @param payload               analyzer payload
      * @param iterator              fixpoint iterator
