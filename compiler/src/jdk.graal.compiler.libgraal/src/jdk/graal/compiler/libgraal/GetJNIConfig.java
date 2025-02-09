@@ -78,9 +78,9 @@ final class GetJNIConfig implements AutoCloseable {
 
     int lineNo;
 
-    private GetJNIConfig(ClassLoader loader) {
+    private GetJNIConfig(ClassLoader loader, Path libgraalJavaHome) {
         this.loader = loader;
-        Path javaExe = getJavaExe(Path.of(GraalServices.getSavedProperty("java.home")));
+        Path javaExe = getJavaExe(libgraalJavaHome);
         configFilePath = Path.of("libgraal_jniconfig.txt");
 
         String[] command = {javaExe.toFile().getAbsolutePath(), "-XX:+UnlockExperimentalVMOptions", "-XX:+EnableJVMCI", "-XX:JVMCILibDumpJNIConfig=" + configFilePath};
@@ -196,8 +196,8 @@ final class GetJNIConfig implements AutoCloseable {
      * @param loader used to resolve type names in the config
      */
     @SuppressWarnings("try")
-    public static void register(ClassLoader loader) {
-        try (GetJNIConfig source = new GetJNIConfig(loader)) {
+    public static void register(ClassLoader loader, Path libgraalJavaHome) {
+        try (GetJNIConfig source = new GetJNIConfig(loader, libgraalJavaHome)) {
             Map<String, Class<?>> classes = new HashMap<>();
             for (String line : source.lines) {
                 source.lineNo++;

@@ -57,12 +57,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * A classloader that reads class files and resources from a jimage file and a module path at image
- * build time.
+ * build time. The {@code java.home} of the JDK containing the jimage can be obtained by converting
+ * the bytes of {@code getResourceAsStream("META-INF/libgraal.java.home")} to a string.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class HostedLibGraalClassLoader extends ClassLoader implements LibGraalLoader {
@@ -72,6 +72,12 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
      * contains the Graal and JVMCI classes from which libgraal will be built.
      */
     private static final String LIBGRAAL_JAVA_HOME_PROPERTY_NAME = "libgraal.java.home";
+
+    /**
+     * The {@code java.home} of the JDK whose runtime image contains the Graal and JVMCI classes
+     * from which libgraal will be built.
+     */
+    private static final Path LIBGRAAL_JAVA_HOME = Path.of(System.getProperty(LIBGRAAL_JAVA_HOME_PROPERTY_NAME, System.getProperty("java.home")));
 
     /**
      * Name of the system property specifying a module path for the module(s) containing
@@ -167,28 +173,15 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     /**
      * Modules containing classes that can be annotated by {@code LibGraalService}.
      */
-    private static final Set<String> LIBGRAAL_SERVICES_MODULES = Set.of(
+    private static final Set<String> LIBGRAAL_MODULES = Set.of(
+                    "jdk.internal.vm.ci",
                     "jdk.graal.compiler",
                     "jdk.graal.compiler.libgraal",
                     "org.graalvm.truffle.compiler",
                     "com.oracle.graal.graal_enterprise");
 
-    /**
-     * Modules in which Graal and JVMCI classes are defined that this loader will load.
-     */
-    private static final Set<String> LIBGRAAL_MODULES = Stream.concat(
-                    LIBGRAAL_SERVICES_MODULES.stream(), Stream.of("jdk.internal.vm.ci")) //
-                    .collect(Collectors.toUnmodifiableSet());
-
     static {
         ClassLoader.registerAsParallelCapable();
-    }
-
-    private final Path libgraalJavaHome = Path.of(System.getProperty(LIBGRAAL_JAVA_HOME_PROPERTY_NAME, System.getProperty("java.home")));
-
-    @Override
-    public Path getJavaHome() {
-        return libgraalJavaHome;
     }
 
     /**
@@ -207,7 +200,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     @SuppressWarnings("unused")
     public HostedLibGraalClassLoader() {
         // This loader delegates to the class loader that loaded its own class.
-        super(LibGraalClassLoader.LOADER_NAME, HostedLibGraalClassLoader.class.getClassLoader());
+        super("LibGraalClassLoader", HostedLibGraalClassLoader.class.getClassLoader());
 
         try {
             /*
@@ -226,7 +219,7 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
 
             Map<String, String> modulesMap = new HashMap<>();
 
-            Path imagePath = libgraalJavaHome.resolve(Path.of("lib", "modules"));
+            Path imagePath = LIBGRAAL_JAVA_HOME.resolve(Path.of("lib", "modules"));
             this.imageReader = BasicImageReader.open(imagePath);
             for (var entry : imageReader.getEntryNames()) {
                 int secondSlash = entry.indexOf('/', 1);
@@ -286,13 +279,8 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
      * name of its enclosing module.
      */
     @Override
-    public Map<String, String> getModuleMap() {
+    public Map<String, String> getClassModuleMap() {
         return modules;
-    }
-
-    @Override
-    public Set<String> getServicesModules() {
-        return LIBGRAAL_SERVICES_MODULES;
     }
 
     @Override
@@ -329,6 +317,12 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
     private static final String SERVICE_PROTOCOL = "service-config";
 
     /**
+     * Name of the protocol for accessing a file whose contents are the {@code java.home} of the JDK
+     * whose runtime image contains the Graal and JVMCI * classes from which libgraal will be built.
+     */
+    private static final String LIBGRAAL_JAVA_HOME_PROTOCOL = "libgraal-java-home";
+
+    /**
      * Name of the protocol for accessing entries in {@link #resources}.
      */
     private static final String RESOURCE_PROTOCOL = "resource";
@@ -341,7 +335,14 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
         if (handler == null) {
             this.serviceHandler = handler = new ImageURLStreamHandler();
         }
-        if (name.startsWith("META-INF/services/")) {
+        if (name.equals("META-INF/libgraal.java.home")) {
+            try {
+                var uri = new URI(LIBGRAAL_JAVA_HOME_PROTOCOL, "libgraal.java.home", null);
+                return URL.of(uri, handler);
+            } catch (URISyntaxException | MalformedURLException e) {
+                return null;
+            }
+        } else if (name.startsWith("META-INF/services/")) {
             String service = name.substring("META-INF/services/".length());
             if (services.containsKey(service)) {
                 try {
@@ -382,7 +383,12 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
         @Override
         public URLConnection openConnection(URL u) {
             String protocol = u.getProtocol();
-            if (protocol.equalsIgnoreCase(SERVICE_PROTOCOL)) {
+            if (protocol.equalsIgnoreCase(LIBGRAAL_JAVA_HOME_PROTOCOL)) {
+                if (!u.getPath().equals("libgraal.java.home")) {
+                    throw new IllegalArgumentException(u.toString());
+                }
+                return new ImageURLConnection(u, LIBGRAAL_JAVA_HOME.toString().getBytes());
+            } else if (protocol.equalsIgnoreCase(SERVICE_PROTOCOL)) {
                 List<String> providers = services.get(u.getPath());
                 if (providers != null) {
                     return new ImageURLConnection(u, String.join("\n", providers).getBytes());
@@ -433,10 +439,5 @@ public final class HostedLibGraalClassLoader extends ClassLoader implements LibG
         public String getContentType() {
             return "application/octet-stream";
         }
-    }
-
-    @Override
-    public ClassLoader getRuntimeClassLoader() {
-        return LibGraalClassLoader.singleton;
     }
 }

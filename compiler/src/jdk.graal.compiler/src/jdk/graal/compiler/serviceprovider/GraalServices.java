@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
-import java.util.Set;
 
 import jdk.graal.compiler.core.ArchitectureSpecific;
 import jdk.graal.compiler.core.common.LibGraalSupport;
@@ -115,12 +114,8 @@ public final class GraalServices {
         LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
         if (libgraal != null) {
             libgraalServices = new HashMap<>();
-            Set<String> libgraalServicesModules = libgraal.getServicesModules();
-            Map<String, String> modules = libgraal.getModuleMap();
             String arch = getJVMCIArch();
-            modules.entrySet().stream()//
-                            .filter(e -> libgraalServicesModules.contains(e.getValue()))//
-                            .map(Map.Entry::getKey)//
+            libgraal.getClassModuleMap().keySet().stream()//
                             .map(GraalServices::loadClassOrNull)//
                             .filter(c -> c != null && c.getAnnotation(LibGraalService.class) != null)//
                             .forEach(service -> addProviders(arch, service));

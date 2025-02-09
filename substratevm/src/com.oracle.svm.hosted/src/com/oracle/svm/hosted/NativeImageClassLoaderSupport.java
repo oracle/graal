@@ -274,7 +274,7 @@ public final class NativeImageClassLoaderSupport {
         LibGraalLoader loader = getLibGraalLoader();
         if (loader != null) {
             /* If we have a LibGraalLoader, register its classes to the image builder */
-            for (String fqn : loader.getModuleMap().keySet()) {
+            for (String fqn : loader.getClassModuleMap().keySet()) {
                 try {
                     var clazz = ((ClassLoader) loader).loadClass(fqn);
                     imageClassLoader.handleClass(clazz);

@@ -40,9 +40,7 @@
  */
 package jdk.graal.nativeimage;
 
-import java.nio.file.Path;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The class loader used to load the Graal and JVMCI classes compiled into libgraal implements this
@@ -53,29 +51,11 @@ import java.util.Set;
 public interface LibGraalLoader {
 
     /**
-     * Gets the {@code java.home} of the JDK whose runtime image contains the Graal and JVMCI
-     * classes from which libgraal will be built.
-     */
-    Path getJavaHome();
-
-    /**
-     * Gets the ClassLoader that should be seen at image runtime if a class was loaded at image
-     * build-time by this loader.
-     */
-    ClassLoader getRuntimeClassLoader();
-
-    /**
      * Gets a map from the {@linkplain Class#forName(String) name} of a class to the name of its
      * enclosing module. There is one entry in the map for each class available for loading by this
      * loader.
      *
      * @return an unmodifiable map
      */
-    Map<String, String> getModuleMap();
-
-    /**
-     * Gets the names of the modules containing classes that can be annotated by
-     * {@code LibGraalService}.
-     */
-    Set<String> getServicesModules();
+    Map<String, String> getClassModuleMap();
 }

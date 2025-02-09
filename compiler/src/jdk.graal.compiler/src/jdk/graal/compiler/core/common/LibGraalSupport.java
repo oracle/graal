@@ -34,7 +34,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -82,18 +81,13 @@ public interface LibGraalSupport {
     Supplier<Long> createGlobal(long initialValue);
 
     /**
-     * Gets the names of the modules containing classes that can be annotated by
-     * {@code LibGraalService}.
-     */
-    Set<String> getServicesModules();
-
-    /**
      * Gets a map from the {@linkplain Class#forName(String) name} of a class to the name of its
-     * enclosing module. There is one entry in the map for each class compiled into libgraal.
+     * enclosing module. There is one entry in the map for each class loadable via the libgraal
+     * class loader.
      *
      * @return an unmodifiable map
      */
-    Map<String, String> getModuleMap();
+    Map<String, String> getClassModuleMap();
 
     /**
      * Notifies the runtime that the caller is at a point where the live set of objects is expected

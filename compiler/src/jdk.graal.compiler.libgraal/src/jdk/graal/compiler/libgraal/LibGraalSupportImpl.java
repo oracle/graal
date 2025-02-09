@@ -32,7 +32,6 @@ import java.lang.invoke.MethodType;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import jdk.graal.compiler.core.common.LibGraalSupport;
@@ -152,14 +151,8 @@ public final class LibGraalSupportImpl implements LibGraalSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public Map<String, String> getModuleMap() {
-        return libGraalLoader.getModuleMap();
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    @Override
-    public Set<String> getServicesModules() {
-        return libGraalLoader.getServicesModules();
+    public Map<String, String> getClassModuleMap() {
+        return libGraalLoader.getClassModuleMap();
     }
 
     @Override

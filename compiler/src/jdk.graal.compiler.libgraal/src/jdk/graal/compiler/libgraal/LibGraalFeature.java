@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.libgraal;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.module.ModuleDescriptor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -114,7 +116,23 @@ public final class LibGraalFeature implements Feature {
         }
     }
 
+    /**
+     * See javadoc for {@code jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader}.
+     */
+    private static Path readLibgraalJavaHome(ClassLoader cl) {
+        try (InputStream in = cl.getResourceAsStream("META-INF/libgraal.java.home")) {
+            if (in == null) {
+                throw new GraalError(cl.getClass().getName() + " does not support META-INF/libgraal.java.home protocol (see javadoc of HostedLibGraalClassLoader)");
+            }
+            return Path.of(new String(in.readAllBytes()));
+        } catch (IOException e) {
+            throw new GraalError(e);
+        }
+    }
+
     private final LibGraalLoader libgraalLoader = (LibGraalLoader) getClass().getClassLoader();
+    private final Path libgraalJavaHome = readLibgraalJavaHome(getClass().getClassLoader());
+
     private BeforeAnalysisAccess beforeAnalysisAccess;
     private BeforeCompilationAccess beforeCompilationAccess;
     private OptionCollector optionCollector;
@@ -126,7 +144,7 @@ public final class LibGraalFeature implements Feature {
         // All qualified exports to libgraal modules need to be further exported to
         // ALL-UNNAMED so that access is also possible when the libgraal classes
         // are loaded via the libgraal loader into unnamed modules.
-        Set<String> libgraalModules = Set.copyOf(libgraalLoader.getModuleMap().values());
+        Set<String> libgraalModules = Set.copyOf(libgraalLoader.getClassModuleMap().values());
         for (Module module : ModuleLayer.boot().modules()) {
             Set<ModuleDescriptor.Exports> exports = module.getDescriptor().exports();
             for (ModuleDescriptor.Exports e : exports) {
@@ -141,13 +159,28 @@ public final class LibGraalFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         optionCollector = new OptionCollector();
 
+        /*
+         * Replace HostedLibGraalClassLoader with a basic class loader at runtime that cuts out the
+         * parent class loader (i.e., NativeImageClassLoader) and is guaranteed not to make any
+         * additional types/methods/fields accidentally reachable.
+         */
+        String loaderName = ((ClassLoader) libgraalLoader).getName();
+        LibGraalClassLoader runtimeLibgraalLoader = new LibGraalClassLoader(loaderName);
+        access.registerObjectReplacer(obj -> obj == libgraalLoader ? runtimeLibgraalLoader : obj);
+
+        // Register reachability handler used to initialize OptionsParser.libgraalOptions.
         access.registerObjectReachabilityHandler(optionCollector::accept, OptionKey.class);
+
+        // Register reachability handler that marks the fields that are accessed via unsafe.
         access.registerObjectReachabilityHandler(fields -> {
             for (int i = 0; i < fields.getOffsets().length; i++) {
                 Field field = fields.getField(i);
                 beforeAnalysisAccess.registerAsUnsafeAccessed(field);
             }
         }, Fields.class);
+
+        // Register reachability handler that marks NodeClass subclasses as unsafe allocated
+        // (see jdk.graal.compiler.graph.NodeClass.allocateInstance).
         access.registerObjectReachabilityHandler(nodeClass -> {
             Class<?> clazz = nodeClass.getClazz();
             if (!Modifier.isAbstract(clazz.getModifiers())) {
@@ -155,12 +188,14 @@ public final class LibGraalFeature implements Feature {
                 beforeAnalysisAccess.registerAsUnsafeAllocated(clazz);
             }
         }, NodeClass.class);
-        GetJNIConfig.register((ClassLoader) libgraalLoader);
+
+        // Register the fields/methods/classes accessed via JNI.
+        GetJNIConfig.register((ClassLoader) libgraalLoader, libgraalJavaHome);
     }
 
     /**
      * Collects all instances of the LibGraalLoader loaded {@link OptionKey} class reached by the
-     * static analysis.
+     * static analysis and uses them to initialize {@link OptionsParser#libgraalOptions}.
      */
     private final class OptionCollector implements Consumer<OptionKey<?>> {
         private final Set<OptionKey<?>> options = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -178,7 +213,7 @@ public final class LibGraalFeature implements Feature {
 
         void afterAnalysis(AfterAnalysisAccess access) {
             sealed = true;
-            Map<String, String> modules = libgraalLoader.getModuleMap();
+            Map<String, String> modules = libgraalLoader.getClassModuleMap();
             for (OptionKey<?> option : options) {
                 OptionDescriptor descriptor = option.getDescriptor();
                 if (descriptor.isServiceLoaded()) {
@@ -272,8 +307,7 @@ public final class LibGraalFeature implements Feature {
 
         doLegacyJVMCIInitialization();
 
-        Path libGraalJavaHome = libgraalLoader.getJavaHome();
-        GetCompilerConfig.Result configResult = GetCompilerConfig.from(libGraalJavaHome);
+        GetCompilerConfig.Result configResult = GetCompilerConfig.from(libgraalJavaHome);
         for (var e : configResult.opens().entrySet()) {
             Module module = ModuleLayer.boot().findModule(e.getKey()).orElseThrow();
             for (String source : e.getValue()) {

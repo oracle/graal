@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,20 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package jdk.graal.compiler.libgraal.loader;
+package jdk.graal.compiler.libgraal;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 
 /**
  * The image runtime class loader that {@linkplain DuringSetupAccess#registerObjectReplacer
- * replaces} the build-time instance of {@link HostedLibGraalClassLoader}.
+ * replaces} the build-time instance of the {@link jdk.graal.nativeimage.LibGraalLoader}.
  */
-public final class LibGraalClassLoader extends ClassLoader {
+final class LibGraalClassLoader extends ClassLoader {
 
-    static final String LOADER_NAME = "LibGraalClassLoader";
-    static final LibGraalClassLoader singleton = new LibGraalClassLoader();
-
-    private LibGraalClassLoader() {
-        super(LOADER_NAME, null);
+    LibGraalClassLoader(String name) {
+        super(name, null);
     }
 }

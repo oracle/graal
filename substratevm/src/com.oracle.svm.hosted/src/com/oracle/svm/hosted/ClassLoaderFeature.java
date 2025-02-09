@@ -125,15 +125,6 @@ public class ClassLoaderFeature implements InternalFeature {
             if (libGraalLoader != null) {
                 ClassLoader libGraalClassLoader = (ClassLoader) libGraalLoader;
                 ClassForNameSupport.currentLayer().setLibGraalLoader(libGraalClassLoader);
-
-                ClassLoader runtimeLibGraalClassLoader = libGraalLoader.getRuntimeClassLoader();
-                if (runtimeLibGraalClassLoader != null) {
-                    /*
-                     * LibGraalLoader provides runtime-replacement ClassLoader instance. Make sure
-                     * LibGraalLoader gets replaced by runtimeLibGraalClassLoader instance in image.
-                     */
-                    access.registerObjectReplacer(obj -> obj == libGraalClassLoader ? runtimeLibGraalClassLoader : obj);
-                }
             }
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {
