@@ -7,6 +7,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
  * Used in some cases to skip methods that are not relevant for the analysis.
  * For example when analyzing a specific package, the filter can be used to skip methods that are not in the package.
  */
-public interface MethodFilter {
-    boolean shouldSkip(AnalysisMethod method);
+public interface AnalysisMethodFilter {
+
+    boolean shouldSkipMethod(AnalysisMethod method);
 }
