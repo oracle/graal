@@ -60,8 +60,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.DebuggerSupport;
-import com.oracle.svm.interpreter.Interpreter;
 import com.oracle.svm.interpreter.InterpreterOptions;
+import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.jdwp.bridge.ArgFilesOption;
 import com.oracle.svm.jdwp.bridge.DebugOptions.Options;
 import com.oracle.svm.jdwp.bridge.JDWPEventHandlerBridge;
@@ -262,7 +262,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
             long isolate = CurrentIsolate.getIsolate().rawValue();
 
             // Ensures that the callbacks To HotSpot have a JNIEnv available via JNIMethodScope.
-            Interpreter.DEBUGGER.setEventHandler(new EnterHSEventHandler(jdwpEventHandler));
+            DebuggerEvents.singleton().setEventHandler(new EnterHSEventHandler(jdwpEventHandler));
 
             ThreadStartDeathSupport.get().setListener(new ThreadStartDeathSupport.Listener() {
                 @Override
@@ -309,7 +309,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
 
             });
 
-            assert Interpreter.DEBUGGER.getEventHandler() != null;
+            assert DebuggerEvents.singleton().getEventHandler() != null;
             Path metadataPath = DebuggerSupport.getMetadataFilePath();
             String metadataHashString = DebuggerSupport.getMetadataHashString();
             try (JNIMethodScope ignored = new JNIMethodScope("JDWPServer::spawnServer", currentThreadJniEnv())) {
