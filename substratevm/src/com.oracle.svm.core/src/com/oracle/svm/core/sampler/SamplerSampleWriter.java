@@ -155,7 +155,13 @@ public final class SamplerSampleWriter {
 
         int totalRequested = requested + END_MARKER_SIZE;
         if (getAvailableSize(data).belowThan(totalRequested)) {
-            if (!accommodate(data, getUncommittedSize(data))) {
+            if (data.getLeakProfiler()) {
+                /*
+                 * Leak profiler buffers correspond to a specific OldObject sample instance and
+                 * should not draw from the sampler buffer pools.
+                 */
+                return false;
+            } else if (!accommodate(data, getUncommittedSize(data))) {
                 assert !isValid(data);
                 return false;
             }
