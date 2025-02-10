@@ -45,6 +45,7 @@ import jdk.graal.compiler.debug.DebugOptions;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.phases.OnStackReplacementPhase;
+import jdk.graal.compiler.hotspot.phases.VerifyLockDepthPhase;
 import jdk.graal.compiler.java.GraphBuilderPhase;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilderFactory;
 import jdk.graal.compiler.lir.phases.LIRSuites;
@@ -352,6 +353,9 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         }
         GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig);
         newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
+        if (Assertions.assertionsEnabled()) {
+            newGbs.appendPhase(new VerifyLockDepthPhase());
+        }
         if (isOSR) {
             newGbs.appendPhase(new OnStackReplacementPhase());
         }
