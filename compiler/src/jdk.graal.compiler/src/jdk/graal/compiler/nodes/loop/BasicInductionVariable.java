@@ -224,7 +224,7 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
-    public boolean intact() {
+    public boolean structuralIntegrityValid() {
         return phi.isAlive() && init.isAlive() && rawStride.isAlive() && op.isAlive();
     }
 

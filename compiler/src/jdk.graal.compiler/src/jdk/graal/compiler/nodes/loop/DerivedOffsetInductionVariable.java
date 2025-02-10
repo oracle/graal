@@ -50,8 +50,8 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
     }
 
     @Override
-    public boolean intact() {
-        return super.intact() && offset.isAlive() && value.isAlive();
+    public boolean structuralIntegrityValid() {
+        return super.structuralIntegrityValid() && offset.isAlive() && value.isAlive();
     }
 
     public ValueNode getOffset() {

@@ -42,8 +42,8 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     }
 
     @Override
-    public boolean intact() {
-        return super.intact() && value.isAlive();
+    public boolean structuralIntegrityValid() {
+        return super.structuralIntegrityValid() && value.isAlive();
     }
 
     @Override

@@ -196,7 +196,7 @@ public abstract class InductionVariable {
      * Determines if the components of this IV are structurally intact, i.e., part of a graph, not
      * deleted etc.
      */
-    public abstract boolean intact();
+    public abstract boolean structuralIntegrityValid();
 
     public abstract String toString(IVToStringVerbosity verbosity);
 

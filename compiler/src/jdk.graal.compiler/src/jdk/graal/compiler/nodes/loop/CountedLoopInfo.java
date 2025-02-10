@@ -151,10 +151,10 @@ public class CountedLoopInfo {
     }
 
     /**
-     * See {@link InductionVariable#intact()}.
+     * See {@link InductionVariable#structuralIntegrityValid()}.
      */
-    public boolean intact() {
-        return limitCheckedIV.intact() && limit.isAlive() && body.isAlive() && ifNode.isAlive();
+    public boolean countedIntegrityValid() {
+        return limitCheckedIV.structuralIntegrityValid() && limit.isAlive() && body.isAlive() && ifNode.isAlive();
     }
 
     /**

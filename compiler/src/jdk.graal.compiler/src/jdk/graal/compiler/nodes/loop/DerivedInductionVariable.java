@@ -63,8 +63,8 @@ public abstract class DerivedInductionVariable extends InductionVariable {
     }
 
     @Override
-    public boolean intact() {
-        return base.intact();
+    public boolean structuralIntegrityValid() {
+        return base.structuralIntegrityValid();
     }
 
     public abstract ValueNode copyValue(InductionVariable newBase);
