@@ -608,6 +608,7 @@ public final class GraphState {
         CANONICALIZATION,
         /* Stages applied by high tier. */
         LOOP_OVERFLOWS_CHECKED,
+        PARTIAL_ESCAPE,
         FINAL_PARTIAL_ESCAPE,
         HIGH_TIER_LOWERING,
         /* Stages applied by mid tier. */
