@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.foreign;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -73,6 +74,10 @@ final class BaseFieldRecomputer implements FieldValueTransformer {
         } else {
             throw VMError.shouldNotReachHere("Unexpected BaseAndScale instance: " + receiver);
         }
-        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(kind);
+        int offset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(kind);
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            return offset;
+        }
+        return (long) offset;
     }
 }
