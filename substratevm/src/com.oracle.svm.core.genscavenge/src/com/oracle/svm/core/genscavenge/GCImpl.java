@@ -31,7 +31,6 @@ import static com.oracle.svm.core.genscavenge.HeapVerifier.Occasion.During;
 
 import java.lang.ref.Reference;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -80,6 +79,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
+import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -105,6 +105,7 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
@@ -213,7 +214,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean inVMInternalCode() {
-        return VMOperation.isInProgress() || ReferenceHandlerThread.isReferenceHandlerThread();
+        return VMOperation.isInProgress() || ReferenceHandlerThread.isReferenceHandlerThread() || SuspendSerialGCMaxHeapSize.isSuspended();
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)

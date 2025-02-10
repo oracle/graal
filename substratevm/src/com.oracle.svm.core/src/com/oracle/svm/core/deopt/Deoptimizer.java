@@ -61,6 +61,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
@@ -801,6 +802,7 @@ public final class Deoptimizer {
         Pointer newSp;
 
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        SuspendSerialGCMaxHeapSize.suspendInCurrentThread();
         try {
             /* The original return address is at offset 0 from the stack pointer */
             CodePointer originalReturnAddress = framePointer.readWord(0);
@@ -843,6 +845,7 @@ public final class Deoptimizer {
 
             recentDeoptimizationEvents.append(deoptFrame.getCompletedMessage());
         } finally {
+            SuspendSerialGCMaxHeapSize.resumeInCurrentThread();
             StackOverflowCheck.singleton().protectYellowZone();
         }
         // From this point on, only uninterruptible code may be executed.
