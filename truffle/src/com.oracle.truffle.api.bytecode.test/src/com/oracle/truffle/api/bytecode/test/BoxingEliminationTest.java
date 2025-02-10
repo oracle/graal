@@ -1867,6 +1867,321 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
         return nodes.getNode(nodes.count() - 1);
     }
 
+    @Test
+    public void testOrTwice() {
+        // return arg0 & arg1 & arg2
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginConsumer();
+            b.beginOr();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endOr();
+            b.endConsumer();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean",
+                        "sc.Or",
+                        "load.argument",
+                        "c.ToBoolean",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(false, true);
+        node.getCallTarget().call(true, false);
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "c.ToBoolean$Boolean",
+                        "sc.Or",
+                        "load.argument$Boolean",
+                        "c.ToBoolean$Boolean",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(0L, 1L);
+        node.getCallTarget().call(1L, 0L);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean",
+                        "sc.Or",
+                        "load.argument",
+                        "c.ToBoolean",
+                        "c.Consumer",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 12, 5);
+
+        assertStable(quickenings, node, false, true);
+        assertStable(quickenings, node, true, false);
+
+        assertStable(quickenings, node, 0L, 1L);
+        assertStable(quickenings, node, 1L, 0L);
+    }
+
+    @Test
+    public void testOrSingle() {
+        // return arg0 & arg1 & arg2
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginConsumer();
+            b.beginOr();
+            b.emitLoadArgument(0);
+            b.endOr();
+            b.endConsumer();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(false);
+        node.getCallTarget().call(true);
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "c.ToBoolean$Boolean$unboxed",
+                        "c.Consumer$Boolean",
+                        "return");
+
+        node.getCallTarget().call(0L);
+        node.getCallTarget().call(1L);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean$unboxed",
+                        "c.Consumer$Boolean",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 7, 3);
+
+        assertStable(quickenings, node, false);
+        assertStable(quickenings, node, true);
+
+        assertStable(quickenings, node, 0L);
+        assertStable(quickenings, node, 1L);
+    }
+
+    @Test
+    public void testAndReturnTwice() {
+        // return arg0 & arg1 & arg2
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginConsumer();
+            b.beginAndReturn();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAndReturn();
+            b.endConsumer();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "c.ToBoolean",
+                        "sc.AndReturn",
+                        "load.argument",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(false, true);
+        node.getCallTarget().call(true, false);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "c.ToBoolean",
+                        "sc.AndReturn",
+                        "load.argument",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(0L, 1L);
+        node.getCallTarget().call(1L, 0L);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "dup",
+                        "c.ToBoolean",
+                        "sc.AndReturn",
+                        "load.argument",
+                        "c.Consumer",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 6, 4);
+
+        assertStable(quickenings, node, false, true);
+        assertStable(quickenings, node, true, false);
+
+        assertStable(quickenings, node, 0L, 1L);
+        assertStable(quickenings, node, 1L, 0L);
+    }
+
+    @Test
+    public void testAndReturnSingle() {
+        // return arg0 & arg1 & arg2
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginConsumer();
+            b.beginAndReturn();
+            b.emitLoadArgument(0);
+            b.endAndReturn();
+            b.endConsumer();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(false);
+        node.getCallTarget().call(true);
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "c.Consumer$Boolean",
+                        "return");
+
+        node.getCallTarget().call(0L);
+        node.getCallTarget().call(1L);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.Consumer",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 5, 2);
+
+        assertStable(quickenings, node, false);
+        assertStable(quickenings, node, true);
+
+        assertStable(quickenings, node, 0L);
+        assertStable(quickenings, node, 1L);
+    }
+
+    @Test
+    public void testAndTwice() {
+        // return arg0 & arg1 & arg2
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginConsumer();
+            b.beginAnd();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAnd();
+            b.endConsumer();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean",
+                        "sc.And",
+                        "load.argument",
+                        "c.ToBoolean",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(false, true);
+        node.getCallTarget().call(true, false);
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "c.ToBoolean$Boolean",
+                        "sc.And",
+                        "load.argument$Boolean",
+                        "c.ToBoolean$Boolean",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(0L, 1L);
+        node.getCallTarget().call(1L, 0L);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean",
+                        "sc.And",
+                        "load.argument",
+                        "c.ToBoolean",
+                        "c.Consumer",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 12, 5);
+
+        assertStable(quickenings, node, false, true);
+        assertStable(quickenings, node, true, false);
+
+        assertStable(quickenings, node, 0L, 1L);
+        assertStable(quickenings, node, 1L, 0L);
+    }
+
+    @Test
+    public void testAndSingle() {
+        // return arg0 & arg1 & arg2
+        BoxingEliminationTestRootNode node = (BoxingEliminationTestRootNode) parse(b -> {
+            b.beginRoot();
+
+            b.beginConsumer();
+            b.beginAnd();
+            b.emitLoadArgument(0);
+            b.endAnd();
+            b.endConsumer();
+
+            b.endRoot();
+        }).getRootNode();
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean",
+                        "c.Consumer",
+                        "return");
+
+        node.getCallTarget().call(false);
+        node.getCallTarget().call(true);
+
+        assertInstructions(node,
+                        "load.argument$Boolean",
+                        "c.ToBoolean$Boolean$unboxed",
+                        "c.Consumer$Boolean",
+                        "return");
+
+        node.getCallTarget().call(0L);
+        node.getCallTarget().call(1L);
+
+        assertInstructions(node,
+                        "load.argument",
+                        "c.ToBoolean$unboxed",
+                        "c.Consumer$Boolean",
+                        "return");
+
+        var quickenings = assertQuickenings(node, 7, 3);
+
+        assertStable(quickenings, node, false);
+        assertStable(quickenings, node, true);
+
+        assertStable(quickenings, node, 0L);
+        assertStable(quickenings, node, 1L);
+    }
+
     @GenerateBytecode(languageClass = BytecodeDSLTestLanguage.class, //
                     enableYield = true, enableSerialization = true, //
                     enableQuickening = true, //
@@ -1893,7 +2208,19 @@ public class BoxingEliminationTest extends AbstractInstructionTest {
             public static boolean doLong(long v) {
                 return v != 0;
             }
+        }
 
+        @Operation
+        static final class Consumer {
+            @Specialization
+            public static boolean doBoolean(boolean v) {
+                return v;
+            }
+
+            @Specialization
+            public static long doLong(long v) {
+                return v;
+            }
         }
 
         /*
