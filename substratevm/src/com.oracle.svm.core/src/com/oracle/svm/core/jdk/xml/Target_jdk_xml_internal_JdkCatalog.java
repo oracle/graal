@@ -33,6 +33,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDKLatest;
+import com.oracle.svm.core.jdk.MarkedAsBuildTimeInitialized;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -46,7 +47,7 @@ import com.oracle.svm.util.ReflectionUtil;
  * Ideally, we would initialize all of {@code jdk.xml} at run time, but that is too intrusive at the
  * current point in time (GR-50683).
  */
-@TargetClass(className = "jdk.xml.internal.JdkCatalog", onlyWith = JDKLatest.class)
+@TargetClass(className = "jdk.xml.internal.JdkCatalog", onlyWith = {JDKLatest.class, MarkedAsBuildTimeInitialized.class})
 public final class Target_jdk_xml_internal_JdkCatalog {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JdkCatalogSupplier.class, isFinal = true) //
@@ -63,7 +64,7 @@ public final class Target_jdk_xml_internal_JdkCatalog {
 final class Target_javax_xml_catalog_Catalog {
 }
 
-@TargetClass(className = "javax.xml.catalog.CatalogImpl")
+@TargetClass(className = "javax.xml.catalog.CatalogImpl", onlyWith = MarkedAsBuildTimeInitialized.class)
 final class Target_javax_xml_catalog_CatalogImpl {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //

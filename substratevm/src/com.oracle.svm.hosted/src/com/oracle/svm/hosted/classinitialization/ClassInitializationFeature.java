@@ -197,10 +197,12 @@ public class ClassInitializationFeature implements InternalFeature {
             msg += """
                             If you are seeing this message after upgrading to a new GraalVM release, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
                             To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
+                            If the classes originate from the JDK you can try to use %s to temporarily disable this error until the proper configuration is introduced for the project.
                             """
                             .replaceAll("\n", System.lineSeparator())
                             .formatted(SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
-                                            "initialize-at-build-time", true, false));
+                                            "initialize-at-build-time", true, false),
+                                            SubstrateOptionsParser.commandArgument(SubstrateOptions.InitializeJDKAtBuildTimeMigration, "+"));
 
             msg += System.lineSeparator() + "The following detailed trace displays from which field in the code the object was reached.";
             throw new UnsupportedFeatureException(msg);

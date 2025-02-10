@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,13 @@ import static com.oracle.svm.hosted.xml.XMLParsersRegistration.SchemaDVFactoryCl
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.StAXParserClasses;
 import static com.oracle.svm.hosted.xml.XMLParsersRegistration.TransformerClassesAndResources;
 
+import java.lang.reflect.Method;
+
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 @AutomaticallyRegisteredFeature
 public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil implements InternalFeature {
@@ -66,5 +70,13 @@ public class JavaxXmlClassAndResourcesLoaderFeature extends JNIRegistrationUtil 
 
         access.registerReachabilityHandler(new BuiltinSchemaGrammarClasses()::registerConfigs,
                         constructor(access, "com.sun.org.apache.xerces.internal.impl.xs.SchemaGrammar$BuiltinSchemaGrammar", int.class, short.class));
+
+        RuntimeClassInitialization.initializeAtBuildTime("jdk.xml.internal.SecuritySupport");
+        /*
+         * Loads all properties for jdk.xml.internal.SecuritySupport at build-time to avoid
+         * java.home usage.
+         */
+        Method readConfigMethod = ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass("jdk.xml.internal.SecuritySupport"), "readConfig", String.class);
+        ReflectionUtil.invokeMethod(readConfigMethod, null, "do initialize");
     }
 }
