@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,13 +80,13 @@ public class SyncPortProcessor extends AbstractProcessor {
     static final String SYNC_SEARCH_RANGE_VAR = "HOTSPOT_PORT_SYNC_SEARCH_RANGE";
 
     static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
-    static final String JDK_LATEST_HUMAN = "https://github.com/openjdk/jdk/blob/master/";
     static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/jdk/git/matching-refs/heads/master";
 
     static final String SYNC_PORT_CLASS_NAME = "jdk.graal.compiler.lir.SyncPort";
     static final String SYNC_PORTS_CLASS_NAME = "jdk.graal.compiler.lir.SyncPorts";
 
     static final Pattern URL_PATTERN = Pattern.compile("^https://github.com/openjdk/jdk/blob/(?<commit>[0-9a-fA-F]{40})/(?<path>[-_./A-Za-z0-9]+)#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+)$");
+    static final Pattern URL_RAW_PATTERN = Pattern.compile("^https://raw.githubusercontent.com/openjdk/jdk/(?<commit>[0-9a-fA-F]{40})/$");
 
     static final int DEFAULT_SEARCH_RANGE = 200;
 
@@ -150,18 +150,30 @@ public class SyncPortProcessor extends AbstractProcessor {
                 return;
             }
 
+            String latestCommit;
+
+            if (isURLOverwritten) {
+                Matcher rawMatcher = URL_RAW_PATTERN.matcher(urlPrefix);
+                if (rawMatcher.matches()) {
+                    latestCommit = rawMatcher.group("commit");
+                } else {
+                    latestCommit = "UNKNOWN";
+                }
+            } else {
+                latestCommit = getLatestCommit(proxy);
+            }
+
             String extraMessage = "";
 
             String urlOld = String.format("https://raw.githubusercontent.com/openjdk/jdk/%s/%s", commit, path);
             String sha1Old = digest(proxy, md, urlOld, lineStart - 1, lineEnd);
 
             if (sha1.equals(sha1Old)) {
-                String latestCommit = getLatestCommit(proxy);
                 int idx = find(proxy, urlOld, url, lineStart - 1, lineEnd, searchRange);
                 if (idx != -1) {
                     int idxInclusive = idx + 1;
                     kind = NOTE;
-                    if (isURLOverwritten) {
+                    if ("UNKNOWN".equals(latestCommit)) {
                         extraMessage = " The original code snippet is shifted.";
                     } else {
                         String urlFormat = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d";
@@ -201,17 +213,17 @@ public class SyncPortProcessor extends AbstractProcessor {
                                 @SyncPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
                                           sha1 = "%s")
                                 """,
-                                getLatestCommit(proxy),
+                                latestCommit,
                                 path,
                                 lineStart,
                                 lineEnd,
                                 sha1Latest);
             }
             env().getMessager().printMessage(kind,
-                            String.format("Sha1 digest of %s (ported by %s) does not match %s%s#L%d-L%d : expected %s but was %s.%s",
+                            String.format("Sha1 digest of %s (ported by %s) does not match https://github.com/openjdk/jdk/blob%s/%s#L%d-L%d : expected %s but was %s.%s",
                                             from,
                                             toString(element),
-                                            isURLOverwritten ? overwriteURL : JDK_LATEST_HUMAN,
+                                            isURLOverwritten ? "/" + latestCommit : "/master",
                                             path,
                                             lineStart,
                                             lineEnd,
