@@ -26,18 +26,15 @@ package com.oracle.svm.truffle.tck;
 
 import static com.oracle.graal.pointsto.reports.ReportUtils.report;
 
-import java.io.FileDescriptor;
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
-import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -51,9 +48,11 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.SynchronousQueue;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.spi.LocaleServiceProvider;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.hosted.code.FactoryMethod;
@@ -68,7 +67,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
@@ -107,8 +105,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * To execute the {@code PermissionsFeature} you need to enable it using
  * {@code --features=com.oracle.svm.truffle.tck.PermissionsFeature} native-image option, specify
  * report file using {@code -H:TruffleTCKPermissionsReportFile} option and specify the language
- * packages by {@code -H:TruffleTCKPermissionsLanguagePackages} option. You also need to disable
- * folding of {@code System.getSecurityManager} using {@code -H:-FoldSecurityManagerGetter} option.
+ * packages by {@code -H:TruffleTCKPermissionsLanguagePackages} option.
  */
 public class PermissionsFeature implements Feature {
 
@@ -229,9 +226,6 @@ public class PermissionsFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
-            UserError.abort("%s requires -H:-FoldSecurityManagerGetter option.", ClassUtil.getUnqualifiedName(getClass()));
-        }
         String reportFile = Options.TruffleTCKPermissionsReportFile.getValue();
         if (reportFile == null) {
             UserError.abort("Path to report file must be given by -H:TruffleTCKPermissionsReportFile option.");
@@ -248,7 +242,8 @@ public class PermissionsFeature implements Feature {
         BigBang bb = accessImpl.getBigBang();
         contextFilters = new HashSet<>();
         Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
-                        new SafeReflectionRecognizer(bb), new SafeSetThreadNameRecognizer(bb));
+                        new SafeReflectionRecognizer(bb), new SafeSetThreadNameRecognizer(bb),
+                        new SafeLocaleServiceProvider(bb), new SafeSystemGetProperty(bb));
 
         /*
          * Ensure methods which are either deniedMethods or on the allow list are never inlined into
@@ -281,19 +276,26 @@ public class PermissionsFeature implements Feature {
             inlinedUnsafeCall = new InlinedUnsafeMethodNode(bb.getMetaAccess().lookupJavaType(sunMiscUnsafe));
         }
         String featureName = ClassUtil.getUnqualifiedName(getClass());
-        AllowListParser parser = new AllowListParser(accessImpl.getImageClassLoader(), bb);
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, accessImpl.getImageClassLoader(), featureName,
+        AllowListParser allowListparser = new AllowListParser(accessImpl.getImageClassLoader(), bb);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(allowListparser, accessImpl.getImageClassLoader(), featureName,
                         CONFIG,
                         List.of(),
-                        List.of(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"));
-        platformAllowList = parser.getLoadedAllowList();
-        parser = new AllowListParser(accessImpl.getImageClassLoader(), bb);
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, accessImpl.getImageClassLoader(), featureName,
+                        List.of(getClass().getPackage().getName().replace('.', '/') + "/resources/jdk_allowed_methods.json"));
+        platformAllowList = allowListparser.getMethods();
+        allowListparser = new AllowListParser(accessImpl.getImageClassLoader(), bb);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(allowListparser, accessImpl.getImageClassLoader(), featureName,
                         CONFIG,
                         Options.TruffleTCKPermissionsExcludeFiles.getValue().values(),
                         List.of());
-        languageAllowList = parser.getLoadedAllowList().stream().collect(Collectors.toMap(Function.identity(), key -> false));
-        deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
+        languageAllowList = allowListparser.getMethods().stream().collect(Collectors.toMap(Function.identity(), key -> false));
+
+        PrivilegedListParser privilegedListParser = new PrivilegedListParser(accessImpl.getImageClassLoader(), bb, ModuleLayer.boot().modules());
+        ConfigurationParserUtils.parseAndRegisterConfigurations(privilegedListParser, accessImpl.getImageClassLoader(), "featureName",
+                        CONFIG,
+                        List.of(),
+                        List.of(getClass().getPackage().getName().replace('.', '/') + "/resources/jdk_privileged_methods.json"));
+        deniedMethods.addAll(privilegedListParser.getMethods());
+
         if (sunMiscUnsafe != null) {
             deniedMethods.addAll(findMethods(bb, sunMiscUnsafe, ModifiersProvider::isPublic));
         }
@@ -303,8 +305,11 @@ public class PermissionsFeature implements Feature {
         // can be directly used by a language. We need to include it into deniedMethods.
         deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), ModifiersProvider::isPublic));
         // JDK 19 introduced BigInteger.parallelMultiply that uses the ForkJoinPool.
-        // We deny this method but explicitly allow non-parallel multiply (cf. jre.json).
+        // We deny this method but explicitly allow non-parallel multiply (cf.
+        // jdk_allowed_methods.json).
         deniedMethods.addAll(findMethods(bb, BigInteger.class, (m) -> m.getName().startsWith("parallel")));
+        // We deny SynchronousQueue as it creates ForkJoinWorkerThread.
+        deniedMethods.addAll(findConstructors(bb, SynchronousQueue.class, (m) -> "<init>".equals(m.getName())));
         // Reflective calls
         deniedMethods.addAll(findMethods(bb, Method.class, (m) -> m.getName().equals("invoke") && m.isPublic() && m.getParameters().length == 2));
         deniedMethods.addAll(findMethods(bb, Constructor.class, (m) -> m.getName().equals("newInstance") && m.isPublic() && m.getParameters().length == 1));
@@ -568,15 +573,8 @@ public class PermissionsFeature implements Feature {
         if (numReports >= maxReports) {
             return numReports;
         }
-        if (depth > 1) {
-            // The denied method can be a method from a "safe" class
-            if (isSafeClass(mNode)) {
-                return numReports;
-            }
-            // The denied method can be excluded by a allow list
-            if (isExcludedClass(mNode)) {
-                return numReports;
-            }
+        if (isSafeClass(mNode) || isExcludedClass(mNode)) {
+            return numReports;
         }
         if (!visited.contains(mNode)) {
             visited.add(mNode);
@@ -696,6 +694,23 @@ public class PermissionsFeature implements Feature {
      */
     static Set<AnalysisMethodNode> findMethods(BigBang bb, AnalysisType owner, Predicate<ResolvedJavaMethod> filter) {
         return findImpl(bb, owner.getWrapped().getDeclaredMethods(false), filter);
+    }
+
+    /**
+     * Finds constructors declared in {@code owner} class using {@code filter} predicate.
+     *
+     * @param bb the {@link BigBang}
+     * @param owner the class which constructor should be listed
+     * @param filter the predicate filtering constructors declared in {@code owner}
+     * @return the constructors accepted by {@code filter}
+     * @throws IllegalStateException if owner cannot be resolved
+     */
+    private static Set<AnalysisMethodNode> findConstructors(BigBang bb, Class<?> owner, Predicate<ResolvedJavaMethod> filter) {
+        AnalysisType clazz = bb.getMetaAccess().lookupJavaType(owner);
+        if (clazz == null) {
+            throw new IllegalStateException("Cannot resolve " + owner.getName() + ".");
+        }
+        return findConstructors(bb, clazz, filter);
     }
 
     /**
@@ -995,6 +1010,64 @@ public class PermissionsFeature implements Feature {
         }
     }
 
+    /**
+     * All JDK subclasses of LocaleServiceProvider are allowed.
+     */
+    private static final class SafeLocaleServiceProvider implements CallGraphFilter {
+
+        private final AnalysisMethodNode localeServiceProviderInit;
+
+        SafeLocaleServiceProvider(BigBang bb) {
+            Set<AnalysisMethodNode> constructors = findConstructors(bb, LocaleServiceProvider.class, (m) -> m.getParameters().length == 0);
+            if (constructors.size() != 1) {
+                throw new IllegalStateException("Failed to lookup LocaleServiceProvider.<init>().");
+            }
+            localeServiceProviderInit = constructors.iterator().next();
+        }
+
+        @Override
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
+            if (localeServiceProviderInit.equals(methodNode)) {
+                return isSystemOrSafeClass(callerNode);
+            }
+            return false;
+        }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return Set.of(localeServiceProviderInit.getMethod());
+        }
+    }
+
+    /**
+     * JDK classes are allowed to read System properties.
+     */
+    private static final class SafeSystemGetProperty implements CallGraphFilter {
+
+        private final Set<AnalysisMethodNode> getProperty;
+
+        SafeSystemGetProperty(BigBang bb) {
+            Set<AnalysisMethodNode> methods = findMethods(bb, System.class, (m) -> "getProperty".equals(m.getName()));
+            if (methods.size() != 2) {
+                throw new IllegalStateException("Failed to lookup System.getProperty.");
+            }
+            getProperty = methods;
+        }
+
+        @Override
+        public boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, List<BaseMethodNode> trace) {
+            if (getProperty.contains(methodNode)) {
+                return isSystemOrSafeClass(callerNode);
+            }
+            return false;
+        }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return getProperty.stream().map(AnalysisMethodNode::getMethod).collect(Collectors.toSet());
+        }
+    }
+
     abstract static class BaseMethodNode {
         abstract StackTraceElement asStackTraceElement();
 
@@ -1093,149 +1166,6 @@ public class PermissionsFeature implements Feature {
         public String toString() {
             return String.format("%s[method=%s]", ClassUtil.getUnqualifiedName(getClass()), method);
         }
-    }
-}
-
-@TargetClass(value = java.lang.SecurityManager.class, onlyWith = PermissionsFeature.IsEnabled.class)
-final class Target_java_lang_SecurityManager {
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkSecurityAccess(String target) {
-    }
-
-    @Substitute
-    private void checkSetFactory() {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPackageDefinition(String pkg) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPackageAccess(String pkg) {
-    }
-
-    @Substitute
-    private void checkPrintJobAccess() {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPropertyAccess(String key) {
-    }
-
-    @Substitute
-    private void checkPropertiesAccess() {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkMulticast(InetAddress maddr) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkAccept(String host, int port) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkListen(int port) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkConnect(String host, int port, Object context) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkConnect(String host, int port) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkDelete(String file) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkWrite(String file) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkWrite(FileDescriptor fd) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkRead(String file, Object context) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkRead(String file) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkRead(FileDescriptor fd) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkLink(String lib) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkExec(String cmd) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkExit(int status) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkAccess(ThreadGroup g) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkAccess(Thread t) {
-    }
-
-    @Substitute
-    private void checkCreateClassLoader() {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPermission(Permission perm, Object context) {
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    private void checkPermission(Permission perm) {
-    }
-}
-
-final class SecurityManagerHolder {
-    @SuppressWarnings("deprecation") // SecurityManager deprecated since 17.
-    static final SecurityManager SECURITY_MANAGER = new SecurityManager();
-}
-
-@TargetClass(value = java.lang.System.class, onlyWith = PermissionsFeature.IsEnabled.class)
-final class Target_java_lang_System {
-    @Substitute
-    private static SecurityManager getSecurityManager() {
-        return SecurityManagerHolder.SECURITY_MANAGER;
     }
 }
 
