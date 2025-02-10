@@ -58,10 +58,10 @@ import jdk.vm.ci.meta.Value;
  */
 @Opcode("ARRAYS_FILL")
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/master/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2411-L2548",
-          sha1 = "0a5ef827b06ca9fc6a7cbc059e4331cfd3cd2e62")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/master/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6281-L6351",
-          sha1 = "0a5ef827b06ca9fc6a7cbc059e4331cfd3cd2e62")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a5ef827b06ca9fc6a7cbc059e4331cfd3cd2e62/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2411-L2548",
+          sha1 = "c8db33f150caf5059df8333befef21895e3a260c")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a5ef827b06ca9fc6a7cbc059e4331cfd3cd2e62/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6281-L6351",
+          sha1 = "015edcc22608ebb8657baec359f53042ec4103b2")
 // @formatter:on
 public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
     public static final LIRInstructionClass<AArch64ArrayFillOp> TYPE = LIRInstructionClass.create(AArch64ArrayFillOp.class);
