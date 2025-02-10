@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl.generics.tree;
 
 /* Root of the abstract syntax tree hierarchy for generic signatures */

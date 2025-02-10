@@ -363,17 +363,6 @@ suite = {
             },
         },
 
-        "com.oracle.truffle.espresso.dacapo": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "sdk:DACAPO_SCALA",
-            ],
-            "javaCompliance": "8+",
-            "checkstyle": "com.oracle.truffle.espresso",
-            "testProject" : True,
-        },
-
         "com.oracle.truffle.espresso.shadowed.asm" : {
             # Shadowed ASM library (org.ow2.asm:asm)
             "subDir" : "src",
@@ -704,34 +693,6 @@ suite = {
                 "com.oracle.truffle.espresso.jvmci",
             ],
             "description": "JVMCI implementation for Espresso",
-            "maven": False,
-        },
-
-        "DACAPO_SCALA_WARMUP": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.espresso.dacapo",
-                "sdk:DACAPO_SCALA",
-            ],
-            "testDistribution": True,
-            "manifestEntries" : {
-                    "Manifest-Version": "1.0",
-                    "Build-Timestamp": "2012-02-16T11:12:52",
-                    "Implementation-Title": "Scala Benchmark Suite",
-                    "Implementation-Version": "0.1.0-SNAPSHOT",
-                    "Built-By": "sewe",
-                    "Specification-Vendor": "Technische Universitat Darmstadt",
-                    "Created-By": "Apache Maven 3.0.4",
-                    "Implementation-Vendor": "Technische Universitat Darmstadt",
-                    "Build-Number": "02fbc0d55f60",
-                    "Implementation-Vendor-Id": "org.scalabench.benchmarks",
-                    "Build-Jdk": "1.6.0_26",
-                    "Specification-Title": "Scala Benchmark Suite",
-                    "Specification-Version": "0.1.0-SNAPSHOT",
-                    "Main-Class": "Harness",
-                    "Archiver-Version": "Plexus Archiver",
-            },
-            "description": "Scala DaCapo with WallTime callback",
             "maven": False,
         },
     }
