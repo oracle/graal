@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.analysis.liveness;
 
 import static com.oracle.truffle.espresso.classfile.bytecode.Bytecodes.ALOAD_0;
