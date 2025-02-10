@@ -25,7 +25,8 @@
 package com.oracle.svm.jdwp.bridge.nativebridge;
 
 import org.graalvm.nativeimage.ObjectHandles;
-import org.graalvm.word.WordFactory;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A support class for mapping objects in the native image isolate to long handles.
@@ -50,7 +51,7 @@ public final class NativeObjectHandles {
      */
     public static <T> T resolve(long handle, Class<T> type) {
         try {
-            return type.cast(ObjectHandles.getGlobal().get(WordFactory.pointer(handle)));
+            return type.cast(ObjectHandles.getGlobal().get(Word.pointer(handle)));
         } catch (IllegalArgumentException iae) {
             throw new InvalidHandleException(iae);
         }
@@ -61,7 +62,7 @@ public final class NativeObjectHandles {
      */
     public static void remove(long handle) {
         try {
-            ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));
+            ObjectHandles.getGlobal().destroy(Word.pointer(handle));
         } catch (IllegalArgumentException iae) {
             throw new InvalidHandleException(iae);
         }
