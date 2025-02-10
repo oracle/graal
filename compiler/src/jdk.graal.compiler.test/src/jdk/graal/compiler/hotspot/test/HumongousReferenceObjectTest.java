@@ -29,9 +29,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.graal.compiler.core.test.SubprocessTest;
 import org.junit.Test;
 
+import jdk.graal.compiler.core.test.SubprocessTest;
 import jdk.internal.vm.annotation.Contended;
 
 @SuppressWarnings("unused")
@@ -70,12 +70,30 @@ public class HumongousReferenceObjectTest extends SubprocessTest {
         }, newArgs.toArray(new String[0]));
     }
 
+    // Checkstyle: stop method name check
     @Test
-    public void testG1() throws IOException, InterruptedException {
-        String[] sizes = {"-XX:G1HeapRegionSize=1M", "-XX:G1HeapRegionSize=2M", "-XX:G1HeapRegionSize=4M", "-XX:G1HeapRegionSize=8M"};
-        for (String size : sizes) {
-            runSubprocessTest("-XX:+UseG1GC", "-XX:+EnableContended", "-XX:-RestrictContended", "-Xmx128m", "-XX:ContendedPaddingWidth=8192", size);
-        }
+    public void testG1_1M() throws IOException, InterruptedException {
+        testG1("-XX:G1HeapRegionSize=1M");
+    }
+
+    @Test
+    public void testG1_2M() throws IOException, InterruptedException {
+        testG1("-XX:G1HeapRegionSize=2M");
+    }
+
+    @Test
+    public void testG1_4M() throws IOException, InterruptedException {
+        testG1("-XX:G1HeapRegionSize=4M");
+    }
+
+    @Test
+    public void testG1_8M() throws IOException, InterruptedException {
+        testG1("-XX:G1HeapRegionSize=9M");
+    }
+    // Checkstyle: resume method name check
+
+    public void testG1(String size) throws IOException, InterruptedException {
+        runSubprocessTest("-XX:+UseG1GC", "-XX:+EnableContended", "-XX:-RestrictContended", "-Xmx128m", "-XX:ContendedPaddingWidth=8192", size);
     }
 
     @Test
