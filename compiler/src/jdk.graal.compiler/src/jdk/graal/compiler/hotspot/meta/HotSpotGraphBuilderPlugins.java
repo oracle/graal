@@ -780,7 +780,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/22845a77a2175202876d0029f75fa32271e07b91/src/hotspot/share/opto/library_call.cpp#L2914-L2968",
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/6b581d22e13599b16b38aff1ca5a795c6a910d30/src/hotspot/share/opto/library_call.cpp#L2903-L2957",
               sha1 = "353e0d45b0f63ac58af86dcab5b19777950da7e2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
@@ -829,8 +829,8 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @SyncPort(from = "https://github.com/openjdk/jdk/blob/22845a77a2175202876d0029f75fa32271e07b91/src/hotspot/share/opto/library_call.cpp#L3734-L3817",
-              sha1 = "f05a07a18ffae50e2a2b20586184a26e9cc8c5f2")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/6b581d22e13599b16b38aff1ca5a795c6a910d30/src/hotspot/share/opto/library_call.cpp#L3723-L3807",
+              sha1 = "3e9cfba4d9554f7cd9ab392f0826a31ae6396193")
     // @formatter:on
     private static class ContinuationPinningPlugin extends InvocationPlugin {
 
