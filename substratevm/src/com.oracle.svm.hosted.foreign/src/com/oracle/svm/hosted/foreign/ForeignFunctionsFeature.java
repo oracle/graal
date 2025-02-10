@@ -413,7 +413,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
                 access.getBigBang().addRootMethod(analysisStub, false, "Foreign stub, registered in " + ForeignFunctionsFeature.class);
                 if (registerAsEntryPoints) {
-                    analysisStub.registerAsEntryPoint(CEntryPointData.createCustomUnpublished());
+                    analysisStub.registerAsNativeEntryPoint(CEntryPointData.createCustomUnpublished());
                 }
                 created.put(key, stub);
                 factory.registerStub(key, new MethodPointer(analysisStub));

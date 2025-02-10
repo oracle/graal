@@ -485,7 +485,8 @@ public class JNIAccessFeature implements Feature {
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
                 access.getBigBang().addRootMethod(analysisWrapper, true, "Registerd in " + JNIAccessFeature.class);
-                analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
+                /* ensures C calling convention */
+                analysisWrapper.registerAsNativeEntryPoint(unpublished);
             });
             return new JNIJavaCallVariantWrapperGroup(varargs, array, valist);
         });

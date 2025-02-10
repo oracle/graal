@@ -613,7 +613,7 @@ public class NativeImageGenerator {
 
                 /* Find the entry point methods in the hosted world. */
                 for (AnalysisMethod m : aUniverse.getMethods()) {
-                    if (m.isEntryPoint()) {
+                    if (m.isNativeEntryPoint()) {
                         HostedMethod found = hUniverse.lookup(m);
                         assert found != null;
                         hostedEntryPoints.add(found);
@@ -1679,7 +1679,7 @@ public class NativeImageGenerator {
      */
     protected void checkForInvalidCallsToEntryPoints() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
-            if (method.isEntryPoint()) {
+            if (method.isNativeEntryPoint()) {
                 Set<AnalysisMethod> invocations = method.getCallers();
                 if (invocations.size() > 0) {
                     String name = method.format("%H.%n(%p)");
