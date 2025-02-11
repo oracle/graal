@@ -376,8 +376,12 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * initialized with the corresponding parameter declared type.
              */
             Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
+                /*
+                 * Make sure that the method is registered as root immediately, so that a potential
+                 * subsequent registration as native entrypoint does not fail.
+                 */
+                pointsToMethod.registerAsDirectRootMethod(reason);
                 postTask(() -> {
-                    pointsToMethod.registerAsDirectRootMethod(reason);
                     pointsToMethod.registerAsImplementationInvoked(reason.toString());
                     MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                     for (int idx = 0; idx < paramCount; idx++) {
