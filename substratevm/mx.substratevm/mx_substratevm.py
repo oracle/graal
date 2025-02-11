@@ -1627,20 +1627,6 @@ libsvmjdwp_build_args = [
     "-H:+PreserveFramePointer",
 ]
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
-    suite=suite,
-    name='SubstrateVM JDWP Debugger Resident',
-    short_name='svmjdwp',
-    dir_name="svmjdwp",
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['SubstrateVM'],
-    builder_jar_distributions=['substratevm:SVM_JDWP_COMMON', 'substratevm:SVM_JDWP_RESIDENT'],
-    support_distributions=['substratevm:SVM_JDWP_RESIDENT_SUPPORT'],
-    stability="experimental",
-    jlink=False,
-))
-
 libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
     destination="<lib:svmjdwp>",
     jvm_library=True,
@@ -1655,7 +1641,7 @@ libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
 libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM JDWP Debugger',
-    short_name='svmjdwpserver',
+    short_name='svmjdwp',
     dir_name="svm",
     license_files=[],
     third_party_license_files=[],

@@ -24,6 +24,13 @@
  */
 package com.oracle.svm.jdwp.resident;
 
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
+import java.util.OptionalInt;
+
+import org.graalvm.nativeimage.IsolateThread;
+
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.FrameSourceInfo;
 import com.oracle.svm.core.heap.VMOperationInfos;
@@ -40,7 +47,6 @@ import com.oracle.svm.interpreter.debug.EventKind;
 import com.oracle.svm.interpreter.debug.Location;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
-import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.jdwp.bridge.ErrorCode;
 import com.oracle.svm.jdwp.bridge.JDWP;
 import com.oracle.svm.jdwp.bridge.JDWPBridge;
@@ -51,16 +57,10 @@ import com.oracle.svm.jdwp.bridge.TypeTag;
 import com.oracle.svm.jdwp.resident.impl.AllJavaFramesVisitor;
 import com.oracle.svm.jdwp.resident.impl.ResidentJDWP;
 import com.oracle.svm.jdwp.resident.impl.SafeStackWalker;
+
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
-
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.List;
-import java.util.OptionalInt;
 
 public final class JDWPBridgeImpl implements JDWPBridge {
 
@@ -72,41 +72,40 @@ public final class JDWPBridgeImpl implements JDWPBridge {
         return IDS;
     }
 
-    private static final DebuggerEvents DEBUGGER = MetadataUtil.requireNonNull(ImageSingletons.lookup(DebuggerEvents.class));
-
     @Override
     public void setEventEnabled(long threadId, int eventKind, boolean enable) {
-        DEBUGGER.setEventEnabled(getIds().toObject(threadId, Thread.class), EventKind.fromOrdinal(eventKind), enable);
+        DebuggerEvents.singleton().setEventEnabled(getIds().toObject(threadId, Thread.class), EventKind.fromOrdinal(eventKind), enable);
     }
 
     @Override
     public boolean isEventEnabled(long threadId, int eventKind) {
-        return DEBUGGER.isEventEnabled(getIds().toObject(threadId, Thread.class), EventKind.fromOrdinal(eventKind));
+        return DebuggerEvents.singleton().isEventEnabled(getIds().toObject(threadId, Thread.class), EventKind.fromOrdinal(eventKind));
     }
 
     @Override
     public void toggleBreakpoint(long methodId, int bci, boolean enable) {
-        DEBUGGER.toggleBreakpoint(getIds().toObject(methodId, ResolvedJavaMethod.class), bci, enable);
+        DebuggerEvents.singleton().toggleBreakpoint(getIds().toObject(methodId, ResolvedJavaMethod.class), bci, enable);
     }
 
     @Override
     public void toggleMethodEnterEvent(long clazzId, boolean enable) {
-        DEBUGGER.toggleMethodEnterEvent(getIds().toObject(clazzId, ResolvedJavaType.class), enable);
+        DebuggerEvents.singleton().toggleMethodEnterEvent(getIds().toObject(clazzId, ResolvedJavaType.class), enable);
     }
 
     @Override
     public void toggleMethodExitEvent(long clazzId, boolean enable) {
-        DEBUGGER.toggleMethodExitEvent(getIds().toObject(clazzId, ResolvedJavaType.class), enable);
+        DebuggerEvents.singleton().toggleMethodExitEvent(getIds().toObject(clazzId, ResolvedJavaType.class), enable);
     }
 
     @Override
     public void setSteppingFromLocation(long threadId, int depth, int size, long methodId, int bci, int lineNumber) {
-        DEBUGGER.setSteppingFromLocation(getIds().toObject(threadId, Thread.class), depth, size, Location.create(getIds().toObject(methodId, ResolvedJavaMethod.class), bci, lineNumber));
+        DebuggerEvents.singleton().setSteppingFromLocation(getIds().toObject(threadId, Thread.class), depth, size,
+                        Location.create(getIds().toObject(methodId, ResolvedJavaMethod.class), bci, lineNumber));
     }
 
     @Override
     public void clearStepping(long threadId) {
-        DEBUGGER.clearStepping(getIds().toObject(threadId, Thread.class));
+        DebuggerEvents.singleton().clearStepping(getIds().toObject(threadId, Thread.class));
     }
 
     @Override

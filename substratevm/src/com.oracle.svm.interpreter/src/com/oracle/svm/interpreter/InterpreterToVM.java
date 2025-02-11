@@ -25,8 +25,8 @@
 
 package com.oracle.svm.interpreter;
 
-import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterOptions.DebuggerWithInterpreter;
+import static com.oracle.svm.interpreter.InterpreterOptions.InterpreterTraceSupport;
 import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_NO_ENTRY;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.VTBL_ONE_IMPL;
@@ -34,21 +34,18 @@ import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
-import com.oracle.svm.core.hub.RuntimeClassLoading;
-import com.oracle.svm.interpreter.metadata.ReferenceConstant;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
+import com.oracle.svm.core.graal.snippets.OpenTypeWorldDispatchTableSnippets;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -57,6 +54,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -65,6 +63,7 @@ import jdk.graal.compiler.word.Word;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @InternalVMMethod
@@ -323,8 +322,8 @@ public final class InterpreterToVM {
         assert obj != null;
         assert wordField.getType().isWordType();
         return switch (wordJavaKind()) {
-            case Long -> WordFactory.signed(getFieldLong(obj, wordField));
-            case Int -> WordFactory.signed(getFieldInt(obj, wordField));
+            case Long -> Word.signed(getFieldLong(obj, wordField));
+            case Int -> Word.signed(getFieldInt(obj, wordField));
             default -> throw VMError.shouldNotReachHere("Unexpected word kind " + wordJavaKind());
         };
     }
@@ -763,7 +762,7 @@ public final class InterpreterToVM {
             ensureClassInitialized(seedDeclaringClass);
         }
 
-        CFunctionPointer calleeFtnPtr = WordFactory.nullPointer();
+        CFunctionPointer calleeFtnPtr = Word.nullPointer();
 
         if (goThroughPLT) {
             if (seedMethod.hasNativeEntryPoint()) {

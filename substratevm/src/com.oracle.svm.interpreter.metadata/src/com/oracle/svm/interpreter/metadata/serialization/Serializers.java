@@ -31,11 +31,9 @@ import java.util.List;
 import java.util.function.IntFunction;
 import java.util.function.ToLongFunction;
 
-import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -47,7 +45,9 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedPrimitiveType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -282,7 +282,7 @@ public final class Serializers {
                 return ReferenceConstant.nullReference();
             }
             Pointer heapBase = KnownIntrinsics.heapBase();
-            Object ref = heapBase.add(WordFactory.unsigned(nativeHeapAddress)).toObject();
+            Object ref = heapBase.add(Word.unsigned(nativeHeapAddress)).toObject();
             return ReferenceConstant.createFromNonNullReference(ref);
         } else {
             // The reference could have been serialized despite not being on the native image heap.
