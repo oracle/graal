@@ -8,7 +8,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.intra.IntraProceduralSequentia
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
-import com.oracle.svm.hosted.analysis.ai.summary.SummarySupplier;
+import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import jdk.graal.compiler.debug.DebugContext;
 
 /**
@@ -19,65 +19,65 @@ public class AnalyzerFactory {
     public static <Domain extends AbstractDomain<Domain>> InterProceduralConcurrentAnalyzer<Domain> createInterProceduralConcurrentAnalyzer(
             AnalysisMethod root,
             DebugContext debug,
-            SummarySupplier<Domain> summarySupplier) {
-        return new InterProceduralConcurrentAnalyzer<>(root, debug, summarySupplier);
+            SummaryFactory<Domain> summaryFactory) {
+        return new InterProceduralConcurrentAnalyzer<>(root, debug, summaryFactory);
     }
 
     public static <Domain extends AbstractDomain<Domain>> InterProceduralConcurrentAnalyzer<Domain> createInterProceduralConcurrentAnalyzer(
             AnalysisMethod root,
             DebugContext debug,
-            SummarySupplier<Domain> summarySupplier,
+            SummaryFactory<Domain> summaryFactory,
             IteratorPolicy iteratorPolicy) {
-        return new InterProceduralConcurrentAnalyzer<>(root, debug, summarySupplier, iteratorPolicy);
+        return new InterProceduralConcurrentAnalyzer<>(root, debug, summaryFactory, iteratorPolicy);
     }
 
     public static <Domain extends AbstractDomain<Domain>> InterProceduralConcurrentAnalyzer<Domain> createInterProceduralConcurrentAnalyzer(
             AnalysisMethod root,
             DebugContext debug,
-            SummarySupplier<Domain> summarySupplier,
+            SummaryFactory<Domain> summaryFactory,
             AnalysisMethodFilterManager methodFilterManager) {
-        return new InterProceduralConcurrentAnalyzer<>(root, debug, summarySupplier, methodFilterManager);
+        return new InterProceduralConcurrentAnalyzer<>(root, debug, summaryFactory, methodFilterManager);
     }
 
     public static <Domain extends AbstractDomain<Domain>> InterProceduralConcurrentAnalyzer<Domain> createInterProceduralConcurrentAnalyzer(
             AnalysisMethod root,
             DebugContext debug,
-            SummarySupplier<Domain> summarySupplier,
+            SummaryFactory<Domain> summaryFactory,
             IteratorPolicy iteratorPolicy,
             AnalysisMethodFilterManager methodFilterManager) {
-        return new InterProceduralConcurrentAnalyzer<>(root, debug, summarySupplier, iteratorPolicy, methodFilterManager);
+        return new InterProceduralConcurrentAnalyzer<>(root, debug, summaryFactory, iteratorPolicy, methodFilterManager);
     }
 
     public static <Domain extends AbstractDomain<Domain>> InterProceduralSequentialAnalyzer<Domain> createInterProceduralSequentialAnalyzer(
             AnalysisMethod root,
             DebugContext debug,
-            SummarySupplier<Domain> summarySupplier) {
-        return new InterProceduralSequentialAnalyzer<>(root, debug, summarySupplier);
+            SummaryFactory<Domain> summaryFactory) {
+        return new InterProceduralSequentialAnalyzer<>(root, debug, summaryFactory);
     }
 
     public static <Domain extends AbstractDomain<Domain>> InterProceduralSequentialAnalyzer<Domain> createInterProceduralSequentialAnalyzer(
             AnalysisMethod root,
             DebugContext debug,
-            SummarySupplier<Domain> summarySupplier,
+            SummaryFactory<Domain> summaryFactory,
             IteratorPolicy iteratorPolicy) {
-        return new InterProceduralSequentialAnalyzer<>(root, debug, summarySupplier, iteratorPolicy);
+        return new InterProceduralSequentialAnalyzer<>(root, debug, summaryFactory, iteratorPolicy);
     }
 
     public static <Domain extends AbstractDomain<Domain>> InterProceduralSequentialAnalyzer<Domain> createInterProceduralSequentialAnalyzer(
             AnalysisMethod root,
             DebugContext debug,
-            SummarySupplier<Domain> summarySupplier,
+            SummaryFactory<Domain> summaryFactory,
             AnalysisMethodFilterManager methodFilterManager) {
-        return new InterProceduralSequentialAnalyzer<>(root, debug, summarySupplier, methodFilterManager);
+        return new InterProceduralSequentialAnalyzer<>(root, debug, summaryFactory, methodFilterManager);
     }
 
     public static <Domain extends AbstractDomain<Domain>> InterProceduralSequentialAnalyzer<Domain> createInterProceduralSequentialAnalyzer(
             AnalysisMethod root,
             DebugContext debug,
-            SummarySupplier<Domain> summarySupplier,
+            SummaryFactory<Domain> summaryFactory,
             IteratorPolicy iteratorPolicy,
             AnalysisMethodFilterManager methodFilterManager) {
-        return new InterProceduralSequentialAnalyzer<>(root, debug, summarySupplier, iteratorPolicy, methodFilterManager);
+        return new InterProceduralSequentialAnalyzer<>(root, debug, summaryFactory, iteratorPolicy, methodFilterManager);
     }
 
     public static <Domain extends AbstractDomain<Domain>> IntraProceduralConcurrentAnalyzer<Domain> createIntraProceduralConcurrentAnalyzer(
