@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,5 +147,155 @@ public class RemoveKeyTest extends AbstractParametrizedLibraryTest {
         rm.removeKey(obj, "fun");
 
         DOTestAsserts.verifyValues(obj, archive);
+    }
+
+    /**
+     * Performs removeKey operations where moves have to be sorted.
+     */
+    @Test
+    public void testReversePairwise() {
+        Object undefined = new Object();
+        DynamicObject obj = new TestDynamicObjectDefault(rootShape);
+
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+
+        lib.put(obj, "length", 10.0);
+        lib.put(obj, "0", true);
+        lib.put(obj, "2", Double.POSITIVE_INFINITY);
+        lib.put(obj, "4", undefined);
+        lib.put(obj, "5", undefined);
+        lib.put(obj, "8", "NaN");
+        lib.put(obj, "9", "-1");
+
+        // reverse with length 10
+        lib.put(obj, "0", "-1");
+        lib.put(obj, "9", true);
+        lib.put(obj, "1", "NaN");
+        lib.removeKey(obj, "8");
+        lib.removeKey(obj, "2");
+        lib.put(obj, "7", Double.POSITIVE_INFINITY);
+        lib.removeKey(obj, "3"); // no-op
+        lib.removeKey(obj, "6"); // no-op
+        lib.put(obj, "4", undefined);
+        lib.put(obj, "5", undefined);
+
+        DOTestAsserts.verifyValues(obj, Map.of(
+                        "length", 10.0,
+                        "0", "-1",
+                        "1", "NaN",
+                        "4", undefined,
+                        "5", undefined,
+                        "7", Double.POSITIVE_INFINITY,
+                        "9", true));
+
+        // reverse again but with length 9
+        lib.put(obj, "length", 9.0);
+        lib.removeKey(obj, "0");
+        lib.put(obj, "8", "-1");
+        lib.put(obj, "1", Double.POSITIVE_INFINITY);
+        lib.put(obj, "7", "NaN");
+        lib.removeKey(obj, "2"); // no-op
+        lib.removeKey(obj, "6"); // no-op
+        lib.put(obj, "3", undefined);
+        lib.removeKey(obj, "5");
+
+        DOTestAsserts.verifyValues(obj, Map.of(
+                        "length", 9.0,
+                        "1", Double.POSITIVE_INFINITY,
+                        "3", undefined,
+                        "4", undefined,
+                        "7", "NaN",
+                        "8", "-1",
+                        "9", true));
+    }
+
+    @Test
+    public void testReverseSequential() {
+        Object undefined = new Object();
+        DynamicObject obj = new TestDynamicObjectDefault(rootShape);
+
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj);
+
+        lib.put(obj, "length", 10.0);
+        lib.put(obj, "0", true);
+        lib.put(obj, "2", Double.POSITIVE_INFINITY);
+        lib.put(obj, "4", undefined);
+        lib.put(obj, "5", undefined);
+        lib.put(obj, "8", "NaN");
+        lib.put(obj, "9", "-1");
+
+        // reverse with length 10
+        lib.put(obj, "0", "-1");
+        lib.put(obj, "1", "NaN");
+        lib.removeKey(obj, "2");
+        lib.removeKey(obj, "3");
+        lib.put(obj, "4", undefined);
+        lib.put(obj, "5", undefined);
+        lib.removeKey(obj, "6");
+        lib.put(obj, "7", Double.POSITIVE_INFINITY);
+        lib.removeKey(obj, "8");
+        lib.put(obj, "9", true);
+
+        DOTestAsserts.verifyValues(obj, Map.of(
+                        "length", 10.0,
+                        "0", "-1",
+                        "1", "NaN",
+                        "4", undefined,
+                        "5", undefined,
+                        "7", Double.POSITIVE_INFINITY,
+                        "9", true));
+
+        // reverse again but with length 9
+        lib.put(obj, "length", 9.0);
+        lib.removeKey(obj, "0");
+        lib.put(obj, "1", Double.POSITIVE_INFINITY);
+        lib.removeKey(obj, "2"); // no-op
+        lib.put(obj, "3", undefined);
+        lib.removeKey(obj, "5");
+        lib.removeKey(obj, "6"); // no-op
+        lib.put(obj, "7", "NaN");
+        lib.put(obj, "8", "-1");
+
+        DOTestAsserts.verifyValues(obj, Map.of(
+                        "length", 9.0,
+                        "1", Double.POSITIVE_INFINITY,
+                        "3", undefined,
+                        "4", undefined,
+                        "7", "NaN",
+                        "8", "-1",
+                        "9", true));
+    }
+
+    /**
+     * Performs a removeKey operation that uses the fallback strategy.
+     */
+    @Test
+    public void testRemoveUsingFallback() {
+        DynamicObject obj1 = new TestDynamicObjectDefault(rootShape);
+        DynamicObjectLibrary lib = createLibrary(DynamicObjectLibrary.class, obj1);
+        lib.put(obj1, "length", 10.0);
+        lib.put(obj1, "0", true);
+        lib.put(obj1, "1", 11);
+        lib.put(obj1, "2", Math.E);
+        lib.put(obj1, "3", Math.PI);
+        lib.put(obj1, "4", 42);
+        lib.put(obj1, "5", 056);
+        lib.put(obj1, "8", "NaN");
+        lib.put(obj1, "9", "-1");
+
+        DynamicObject obj2 = new TestDynamicObjectDefault(rootShape);
+        lib.put(obj2, "length", 10.0);
+        lib.put(obj2, "0", true);
+        lib.put(obj2, "1", 11);
+        lib.put(obj2, "2", Math.E);
+        lib.put(obj2, "3", Math.PI);
+        lib.put(obj2, "4", 42);
+        lib.put(obj2, "5", 056);
+        lib.put(obj2, "8", "NaN");
+        lib.put(obj2, "9", "-1");
+
+        lib.put(obj2, "1", "eleven");
+        // Perform removeKey on an obsolete shape.
+        lib.removeKey(obj1, "2");
     }
 }
