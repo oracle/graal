@@ -259,7 +259,11 @@ public final class AccessAdvisor {
     public boolean shouldIgnoreJniLookup(String jniFunction, LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass,
                     EconomicMap<String, Object> entry) {
         if (shouldIgnore(queriedClass, callerClass, entry)) {
-            throw new AssertionError("Must check shouldIgnore before shouldIgnoreJniLookup");
+            // The live phase could have been changed concurrently after we checked shouldIgnore (we
+            // don't synchronize). If so, don't throw, and let logic below decide whether to ignore.
+            if (isInLivePhase) {
+                throw new AssertionError("Must check shouldIgnore before shouldIgnoreJniLookup");
+            }
         }
         if (!heuristicsEnabled || launchPhase >= JNI_STARTUP_COMPLETE) {
             // Startup sequence completed (or we're not using the startup heuristics).
@@ -307,7 +311,11 @@ public final class AccessAdvisor {
 
     public boolean shouldIgnoreLoadClass(LazyValue<String> queriedClass, LazyValue<String> callerClass, EconomicMap<String, Object> entry) {
         if (shouldIgnore(queriedClass, callerClass, entry)) {
-            throw new AssertionError("Must check shouldIgnore before shouldIgnoreLoadClass");
+            // The live phase could have been changed concurrently after we checked shouldIgnore (we
+            // don't synchronize). If so, don't throw, and let logic below decide whether to ignore.
+            if (isInLivePhase) {
+                throw new AssertionError("Must check shouldIgnore before shouldIgnoreLoadClass");
+            }
         }
         if (!heuristicsEnabled) {
             return false;
