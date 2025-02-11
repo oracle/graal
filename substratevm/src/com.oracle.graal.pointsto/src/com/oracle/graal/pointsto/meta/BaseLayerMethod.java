@@ -55,6 +55,7 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
     private final ResolvedJavaType declaringClass;
     private final String name;
     private final boolean isVarArgs;
+    private final boolean isBridge;
     private final ResolvedSignature<AnalysisType> signature;
     private final boolean canBeStaticallyBound;
     private final boolean isConstructor;
@@ -64,13 +65,14 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
     private final int codeSize;
     private final IntrinsicMethod methodHandleIntrinsic;
 
-    public BaseLayerMethod(int id, AnalysisType declaringClass, String name, boolean isVarArgs, ResolvedSignature<AnalysisType> signature, boolean canBeStaticallyBound, boolean isConstructor,
-                    int modifiers, boolean isSynthetic, byte[] code, int codeSize, IntrinsicMethod methodHandleIntrinsic, Annotation[] annotations) {
+    public BaseLayerMethod(int id, AnalysisType declaringClass, String name, boolean isVarArgs, boolean isBridge, ResolvedSignature<AnalysisType> signature, boolean canBeStaticallyBound,
+                    boolean isConstructor, int modifiers, boolean isSynthetic, byte[] code, int codeSize, IntrinsicMethod methodHandleIntrinsic, Annotation[] annotations) {
         super(annotations);
         this.id = id;
         this.declaringClass = declaringClass.getWrapped();
         this.name = name;
         this.isVarArgs = isVarArgs;
+        this.isBridge = isBridge;
         this.signature = signature;
         this.canBeStaticallyBound = canBeStaticallyBound;
         this.isConstructor = isConstructor;
@@ -136,7 +138,7 @@ public class BaseLayerMethod extends BaseLayerElement implements ResolvedJavaMet
 
     @Override
     public boolean isBridge() {
-        throw unimplemented();
+        return isBridge;
     }
 
     @Override
