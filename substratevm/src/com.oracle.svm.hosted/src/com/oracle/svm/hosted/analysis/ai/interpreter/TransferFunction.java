@@ -4,7 +4,6 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.call.CallInterpreter;
-import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ControlSplitNode;
 import jdk.graal.compiler.nodes.Invoke;
@@ -15,20 +14,24 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  * This class is responsible for performing semantic transformation from original semantics
  * into an abstract domain semantics.
  *
- * @param <Domain> type of the derived {@link AbstractDomain}
+ * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
 public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
 
     private final NodeInterpreter<Domain> nodeInterpreter;
     private final CallInterpreter<Domain> callInterpreter;
-    private final AnalysisPayload<Domain> payload;
 
-    public TransferFunction(NodeInterpreter<Domain> nodeInterpreter,
-                            CallInterpreter<Domain> callInterpreter,
-                            AnalysisPayload<Domain> payload) {
+    public TransferFunction(NodeInterpreter<Domain> nodeInterpreter, CallInterpreter<Domain> callInterpreter) {
         this.nodeInterpreter = nodeInterpreter;
         this.callInterpreter = callInterpreter;
-        this.payload = payload;
+    }
+
+    public NodeInterpreter<Domain> getNodeInterpreter() {
+        return nodeInterpreter;
+    }
+
+    public CallInterpreter<Domain> getCallInterpreter() {
+        return callInterpreter;
     }
 
     /**
@@ -38,9 +41,9 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
      * @param node             to analyze
      * @param abstractStateMap current state of the analysis
      */
-    public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap) {
+    public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap, AnalysisPayload<Domain> payload) {
         collectInvariantsFromCfgPredecessors(node, abstractStateMap);
-        nodeInterpreter.execNode(node, abstractStateMap, payload);
+        nodeInterpreter.execNode(node, abstractStateMap);
         if (node instanceof Invoke invoke) {
             payload.getLogger().logToFile("Encountered invoke: " + invoke);
             callInterpreter.execInvoke(invoke, node, abstractStateMap, payload);
@@ -59,7 +62,7 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
      * @param abstractStateMap current state of the analysis
      */
     public void analyzeEdge(Node sourceNode, Node destinationNode, AbstractStateMap<Domain> abstractStateMap) {
-        nodeInterpreter.execEdge(sourceNode, destinationNode, abstractStateMap, payload);
+        nodeInterpreter.execEdge(sourceNode, destinationNode, abstractStateMap);
     }
 
     /**
@@ -75,6 +78,13 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
         }
     }
 
+    /**
+     * Perform semantic transformation of an edge between two {@link HIRBlock}s.
+     *
+     * @param sourceBlock the block from which the edge originates
+     * @param destinationBlock the block to which the edge goes
+     * @param abstractStateMap current state of the analysis
+     */
     public void analyzeEdge(HIRBlock sourceBlock, HIRBlock destinationBlock, AbstractStateMap<Domain> abstractStateMap) {
         for (Node sourceNode : sourceBlock.getNodes()) {
             for (Node destinationNode : destinationBlock.getNodes()) {
@@ -83,10 +93,17 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
         }
     }
 
-    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap) {
+    /**
+     * Perform semantic transformation of the given {@link HIRBlock}.
+     *
+     * @param block the block to analyze
+     * @param abstractStateMap current state of the analysis
+     * @param payload the analysis payload
+     */
+    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap, AnalysisPayload<Domain> payload) {
         payload.getLogger().logToFile("Analyzing block: " + block);
         for (Node node : block.getNodes()) {
-            analyzeNode(node, abstractStateMap);
+            analyzeNode(node, abstractStateMap, payload);
         }
     }
 }
