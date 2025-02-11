@@ -33,13 +33,13 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -387,7 +387,7 @@ public final class InterpreterResolvedJavaMethod implements ResolvedJavaMethod {
 
     public MethodPointer getNativeEntryPoint() {
         if (nativeEntryPoint == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         return (MethodPointer) nativeEntryPoint.getReferent().functionPointer;
     }

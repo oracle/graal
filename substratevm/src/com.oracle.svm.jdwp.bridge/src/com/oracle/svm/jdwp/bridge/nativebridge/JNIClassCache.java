@@ -33,7 +33,8 @@ import com.oracle.svm.jdwp.bridge.jniutils.JNI.JClass;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JNIEnv;
 import com.oracle.svm.jdwp.bridge.jniutils.JNIExceptionWrapper;
 import com.oracle.svm.jdwp.bridge.jniutils.JNIUtil;
-import org.graalvm.word.WordFactory;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Support class for {@link JClass} lookup. JClass instances are cached as JNI globals. The cached
@@ -72,7 +73,7 @@ public final class JNIClassCache {
         Function<String, JNIClassData> createClassData = new Function<>() {
             @Override
             public JNIClassData apply(String cn) {
-                JClass jClass = JNIUtil.findClass(env, WordFactory.nullPointer(), JNIUtil.getBinaryName(className), required);
+                JClass jClass = JNIUtil.findClass(env, Word.nullPointer(), JNIUtil.getBinaryName(className), required);
                 if (jClass.isNull()) {
                     return JNIClassData.INVALID;
                 }

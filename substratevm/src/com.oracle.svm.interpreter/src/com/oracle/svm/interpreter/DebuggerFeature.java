@@ -95,13 +95,11 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
-import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -139,26 +137,6 @@ public class DebuggerFeature implements InternalFeature {
     private Set<AnalysisMethod> methodsProcessedDuringAnalysis;
     private InvocationPlugins invocationPlugins;
     private static final String SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME = "$assertionsDisabled";
-
-    public DebuggerFeature() {
-        if (ModuleSupport.modulePathBuild) {
-            /* SVM_JDWP_RESIDENT */
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterFeature.class, false,
-                            "jdk.internal.vm.ci", "jdk.vm.ci.code", "jdk.vm.ci.meta");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterFeature.class, false,
-                            "java.base", "jdk.internal.misc");
-
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterFeature.class, false,
-                            "org.graalvm.nativeimage", "org.graalvm.nativeimage.impl");
-
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterFeature.class, false,
-                            "org.graalvm.nativeimage.base");
-
-            /* SVM_JDWP_COMMON */
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterUniverse.class, false,
-                            "jdk.internal.vm.ci", "jdk.vm.ci.meta");
-        }
-    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
