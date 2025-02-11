@@ -495,6 +495,8 @@ public final class LinkResolver {
                 }
                 if (resolved.isFinalFlagSet() || resolved.getDeclaringClass().isFinalFlagSet() || resolved.isPrivate()) {
                     callKind = CallKind.DIRECT;
+                } else if (resolved.getDeclaringClass().isInterface()) {
+                    callKind = CallKind.ITABLE_LOOKUP;
                 } else {
                     callKind = CallKind.VTABLE_LOOKUP;
                 }

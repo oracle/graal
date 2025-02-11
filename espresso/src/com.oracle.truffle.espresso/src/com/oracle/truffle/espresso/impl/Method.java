@@ -852,8 +852,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return !isStatic() && !isConstructor() && !isPrivate() && !getDeclaringKlass().isInterface();
     }
 
-    public void setPoisonPill() {
+    public Method setPoisonPill() {
         getMethodVersion().poisonPill = true;
+        return this;
     }
 
     @Override
@@ -1320,6 +1321,42 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return isPolySignatureIntrinsic();
     }
 
+    @Override
+    public boolean canOverride(Method parentMethod, int vtableIndex) {
+        assert getName() == parentMethod.getName() && getRawSignature() == parentMethod.getRawSignature();
+        assert !parentMethod.isPrivate() && !parentMethod.isStatic();
+        if (this.canOverride(parentMethod)) {
+            return true;
+        }
+        Method currentCandidate;
+        ObjectKlass currentParent = parentMethod.getDeclaringKlass();
+        while (vtableIndex < currentParent.getVTable().length) {
+            currentCandidate = currentParent.vtableLookupImpl(vtableIndex);
+            if (this.canOverride(currentCandidate)) {
+                return true;
+            }
+            currentParent = currentParent.getSuperKlass();
+        }
+        return false;
+    }
+
+    @Override
+    public boolean sameAccess(Method parentMethod) {
+        assert !isPrivate() && !parentMethod.isPrivate();
+        if (isPublic()) {
+            return parentMethod.isPublic();
+        }
+        if (isProtected()) {
+            return parentMethod.isProtected();
+        }
+        return parentMethod.isPackagePrivate() && getDeclaringKlass().sameRuntimePackage(parentMethod.getDeclaringKlass());
+    }
+
+    @Override
+    public Method asMethodAccess() {
+        return this;
+    }
+
     // endregion MethodAccess impl
 
     // region MethodRef impl
@@ -1655,6 +1692,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
         public CodeAttribute getCodeAttribute() {
             return codeAttribute;
+        }
+
+        void resetTableIndexes() {
+            this.vtableIndex = -1;
+            this.itableIndex = -1;
         }
 
         void setVTableIndex(int i) {
