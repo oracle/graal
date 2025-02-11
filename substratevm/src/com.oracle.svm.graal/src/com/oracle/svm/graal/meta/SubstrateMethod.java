@@ -134,12 +134,12 @@ public class SubstrateMethod implements SharedRuntimeMethod {
         hashCode = original.hashCode();
         encodedGraphStartOffset = -1;
 
-        SubstrateCallingConventionKind callingConventionKind = ExplicitCallingConvention.Util.getCallingConventionKind(original, original.isEntryPoint());
+        SubstrateCallingConventionKind callingConventionKind = ExplicitCallingConvention.Util.getCallingConventionKind(original, original.isNativeEntryPoint());
         flags = makeFlag(original.isBridge(), FLAG_BIT_BRIDGE) |
                         makeFlag(original.hasNeverInlineDirective(), FLAG_BIT_NEVER_INLINE) |
                         makeFlag(Uninterruptible.Utils.isUninterruptible(original), FLAG_BIT_UNINTERRUPTIBLE) |
                         makeFlag(SubstrateSafepointInsertionPhase.needSafepointCheck(original), FLAG_BIT_NEEDS_SAFEPOINT_CHECK) |
-                        makeFlag(original.isEntryPoint(), FLAG_BIT_ENTRY_POINT) |
+                        makeFlag(original.isNativeEntryPoint(), FLAG_BIT_ENTRY_POINT) |
                         makeFlag(original.isAnnotationPresent(Snippet.class), FLAG_BIT_SNIPPET) |
                         makeFlag(original.isAnnotationPresent(SubstrateForeignCallTarget.class), FLAG_BIT_FOREIGN_CALL_TARGET) |
                         makeFlag(callingConventionKind.ordinal(), FLAG_BIT_CALLING_CONVENTION_KIND, NUM_BITS_CALLING_CONVENTION_KIND) |

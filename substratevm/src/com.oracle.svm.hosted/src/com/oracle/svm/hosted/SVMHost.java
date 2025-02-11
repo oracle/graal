@@ -738,7 +738,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        if (method.isEntryPoint() && !Modifier.isStatic(graph.method().getModifiers())) {
+        if (method.isNativeEntryPoint() && !Modifier.isStatic(graph.method().getModifiers())) {
             ValueNode receiver = graph.start().stateAfter().localAt(0);
             if (receiver != null && receiver.hasUsages()) {
                 /*

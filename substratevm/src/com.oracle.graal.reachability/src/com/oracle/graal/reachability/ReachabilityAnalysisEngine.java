@@ -327,23 +327,10 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         Set<ReachabilityAnalysisMethod> seen = new HashSet<>();
         Deque<ReachabilityAnalysisMethod> queue = new ArrayDeque<>();
 
-        for (AnalysisMethod m : universe.getMethods()) {
-            ReachabilityAnalysisMethod method = ((ReachabilityAnalysisMethod) m);
-            if (method.isDirectRootMethod() || method.isEntryPoint()) {
-                if (seen.add(method)) {
-                    queue.add(method);
-                }
-            }
-            if (method.isVirtualRootMethod()) {
-                for (ReachabilityAnalysisType subtype : method.getDeclaringClass().getInstantiatedSubtypes()) {
-                    ReachabilityAnalysisMethod resolved = subtype.resolveConcreteMethod(method, subtype);
-                    if (resolved != null) {
-                        if (seen.add(resolved)) {
-                            queue.add(resolved);
-                        }
-                    }
-                }
-            }
+        for (AnalysisMethod m : AnalysisUniverse.getCallTreeRoots(getUniverse())) {
+            ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
+            queue.add(method);
+            seen.add(method);
         }
 
         while (!queue.isEmpty()) {
