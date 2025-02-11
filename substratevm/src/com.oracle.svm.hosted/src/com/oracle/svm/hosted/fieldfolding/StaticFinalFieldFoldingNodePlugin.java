@@ -62,7 +62,7 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
             return false;
         }
 
-        AnalysisField aField = StaticFinalFieldFoldingFeature.toAnalysisField(field);
+        AnalysisField aField = StaticFinalFieldFoldingSingleton.toAnalysisField(field);
         AnalysisMethod definingClassInitializer = aField.getDeclaringClass().getClassInitializer();
         if (!StaticFinalFieldFoldingFeature.isOptimizationCandidate(aField, definingClassInitializer, fieldValueInterceptionSupport)) {
             return false;

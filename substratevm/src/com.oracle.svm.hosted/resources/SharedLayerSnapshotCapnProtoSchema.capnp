@@ -133,7 +133,6 @@ struct PersistedAnalysisField {
   isSynthetic @13 :Bool;
   annotationList @14 :List(Annotation);
   name @15 :Text;
-  fieldCheckIndex @16 :Int32;
 }
 
 struct CEntryPointLiteralReference {
@@ -258,6 +257,15 @@ struct SharedLayerSnapshot {
   singletonObjects @12 :List(ImageSingletonObject);
   fields @13 :List(PersistedAnalysisField);
   nextLayerNumber @14 :Int32;
+  staticFinalFieldFoldingSingleton @15 :StaticFinalFieldFoldingSingleton;
+}
+
+struct StaticFinalFieldFoldingSingleton {
+  fields @0 :List(FieldId);
+  fieldCheckIndexes @1 :List(Int32);
+  fieldInitializationStatusList @2 :List(Bool);
+  bytecodeParsedFoldedFieldValues @3 :List(ConstantReference);
+  afterParsingHooksDoneFoldedFieldValues @4 :List(ConstantReference);
 }
 
 struct PrimitiveValue {
