@@ -136,7 +136,7 @@ public final class MapValue<
         }
     }
 
-    public void filter(Predicate<Map.Entry<Key, Domain>> predicate) {
+    public void removeIf(Predicate<Map.Entry<Key, Domain>> predicate) {
         map.entrySet().removeIf(entry -> !predicate.test(entry));
     }
 

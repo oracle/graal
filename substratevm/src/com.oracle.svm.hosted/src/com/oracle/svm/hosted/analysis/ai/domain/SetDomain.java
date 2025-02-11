@@ -38,6 +38,11 @@ public final class SetDomain<Element> extends LatticeDomain<SetValue<Element>, S
         updateKind();
     }
 
+    public void removeIf(Predicate<Element> predicate) {
+        getValue().getSet().removeIf(predicate);
+        updateKind();
+    }
+
     public boolean empty() {
         return getValue().empty();
     }
@@ -51,7 +56,7 @@ public final class SetDomain<Element> extends LatticeDomain<SetValue<Element>, S
     }
 
     public void filter(Predicate<Element> predicate) {
-        getValue().filter(predicate);
+        getValue().removeIf(predicate);
         updateKind();
     }
 

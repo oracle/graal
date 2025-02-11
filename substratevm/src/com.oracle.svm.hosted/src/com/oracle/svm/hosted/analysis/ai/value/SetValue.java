@@ -102,9 +102,7 @@ public final class SetValue<Element>
         set.remove(element);
     }
 
-
-    // TODO: this should not be called filter
-    public void filter(Predicate<Element> predicate) {
+    public void removeIf(Predicate<Element> predicate) {
         set.removeIf(predicate.negate());
     }
 

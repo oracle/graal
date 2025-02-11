@@ -53,8 +53,8 @@ public abstract class MapDomain<
         return getValue().getDomainAtKey(key);
     }
 
-    public void filter(Predicate<Map.Entry<Key, Domain>> predicate) {
-        getValue().filter(predicate);
+    public void removeIf(Predicate<Map.Entry<Key, Domain>> predicate) {
+        getValue().removeIf(predicate);
         updateKind();
     }
 
