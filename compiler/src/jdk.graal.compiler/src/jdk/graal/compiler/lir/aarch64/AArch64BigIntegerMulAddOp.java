@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,8 +48,8 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4738-L4757",
-          sha1 = "57f40186d75104a5e607d6fc047bbd50ef246590")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4817-L4837",
+          sha1 = "4b7c56d39d91df3d900d50ca260ff8ad04815574")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L4234-L4270",
           sha1 = "33649be9177daf5f0b4817d807458a5ff8c00365")
 // @formatter:on

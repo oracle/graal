@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,8 +74,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2985-L3265",
-          sha1 = "75a3a4dabdc42e5e23bbec0cb448d09fb0d7b129")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2991-L3272",
+          sha1 = "462821b98f5b5cd3c4a2867e0a807437191479e3")
 // @formatter:on
 public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 

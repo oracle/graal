@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,8 +57,8 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3268-L3320",
-          sha1 = "2f3b577fa7f0ced9cc2514af80d2c2833ab7caf2")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3384-L3437",
+          sha1 = "fab3e655909df456c2fc5a065f98aa62aac0bc08")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L7795-L7829",
           sha1 = "e68b8c7bdb37d4bd1350c7e1219fdcb419d2618a")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L8047-L8224",

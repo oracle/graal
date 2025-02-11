@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,8 +61,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1515-L1557",
-          sha1 = "593a45db708f1b6a74086cf170612c1102fe56c2")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1585-L1638",
+          sha1 = "ab4fd62b52f1ad67abecf4cb2f919c5cd2c27610")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L234-L492",
           sha1 = "722bdd7519a7d7b9d9cec900af38137f1849ac4e")
 // @formatter:on

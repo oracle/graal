@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,8 +58,8 @@ import jdk.vm.ci.meta.Value;
  */
 @Opcode("ARRAYS_FILL")
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a5ef827b06ca9fc6a7cbc059e4331cfd3cd2e62/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2411-L2548",
-          sha1 = "c8db33f150caf5059df8333befef21895e3a260c")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2393-L2502",
+          sha1 = "4ff403a9b236cce54bc806efd30d1e06e92ccde0")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/0a5ef827b06ca9fc6a7cbc059e4331cfd3cd2e62/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L6281-L6351",
           sha1 = "015edcc22608ebb8657baec359f53042ec4103b2")
 // @formatter:on

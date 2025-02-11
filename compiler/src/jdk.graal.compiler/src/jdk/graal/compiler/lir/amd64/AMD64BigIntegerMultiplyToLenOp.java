@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,8 +56,8 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3037-L3092",
-          sha1 = "2bf2eb0a9feca080f99e6932d3750cdf3ce2ef3a")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3149-L3205",
+          sha1 = "bb78557c95005fea278c78ad114bfdc8e256151a")
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L7051-L7508",
           sha1 = "0763af542cf9f40a1c542e4834a67fc4b2c74e1c")
 // @formatter:on
