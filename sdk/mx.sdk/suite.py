@@ -881,7 +881,7 @@ suite = {
       "maven": {
         # Explicitly set the artifactId here instead of relying on mx automatically
         # deriving it from the distribution name. This also makes the maven
-        # coordinates stable in case of the (unlikely) even that the distribution
+        # coordinates stable in case of the (unlikely) event that the distribution
         # is renamed.
         "artifactId": "nativeimage-libgraal",
         "tag": ["default", "public"],

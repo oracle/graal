@@ -47,9 +47,11 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.hotspot.CompilerConfig;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -60,6 +62,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.libgraal.LibGraalLoader;
 
 import jdk.graal.compiler.core.common.Fields;
+import jdk.graal.compiler.core.common.LibGraalSupport.HostedOnly;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Edges;
@@ -146,6 +149,12 @@ public final class LibGraalFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        // Check that NativeImageSupport.inBuildtimeCode() and ImageInfo.inImageBuildtimeCode()
+        // agree on the system property key and value they rely on.
+        GraalError.guarantee(ImageInfo.PROPERTY_IMAGE_CODE_KEY.equals("org.graalvm.nativeimage.imagecode") &&
+                        ImageInfo.PROPERTY_IMAGE_CODE_VALUE_BUILDTIME.equals("buildtime"),
+                        "%s is out of sync with %s", NativeImageSupport.class, ImageInfo.class);
+
         ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
 
         // All qualified exports to libgraal modules need to be further exported to
@@ -290,7 +299,7 @@ public final class LibGraalFeature implements Feature {
     }
 
     /**
-     * List of reached elements annotated by {@link LibGraalSupport.HostedOnly}.
+     * List of reached elements annotated by {@link HostedOnly}.
      */
     private final List<Object> reachedHostedOnlyElements = new ArrayList<>();
 
@@ -303,7 +312,7 @@ public final class LibGraalFeature implements Feature {
 
     private void registerHostedOnlyElements(BeforeAnalysisAccess access, AnnotatedElement... elements) {
         for (AnnotatedElement element : elements) {
-            if (element.getAnnotation(LibGraalSupport.HostedOnly.class) != null) {
+            if (element.getAnnotation(HostedOnly.class) != null) {
                 access.registerReachabilityHandler(new HostedOnlyElementCallback(element, reachedHostedOnlyElements), element);
             }
         }
@@ -446,12 +455,9 @@ public final class LibGraalFeature implements Feature {
                 suggestions.computeIfAbsent(name, k -> new TreeSet<>()).add(value);
             }
             var sep = System.lineSeparator() + "  ";
-            var s = suggestions.entrySet().stream()
-                            .map(e -> e.getValue().stream()
-                                            .map(v -> "-H:AbortOn" + e.getKey() + "Reachable" + "=" + v)
-                                            .collect(Collectors.joining(sep)))
-                            .collect(Collectors.joining(sep));
-            String anno = LibGraalSupport.HostedOnly.class.getSimpleName();
+            var s = suggestions.entrySet().stream().map(e -> e.getValue().stream().map(v -> "-H:AbortOn" + e.getKey() + "Reachable" + "=" + v).collect(Collectors.joining(sep))).collect(
+                            Collectors.joining(sep));
+            String anno = HostedOnly.class.getSimpleName();
             throw new IllegalArgumentException("@" + anno + " annotated elements reached. Add following Native Image flags to see why they are reachable:" + sep + s);
         }
     }

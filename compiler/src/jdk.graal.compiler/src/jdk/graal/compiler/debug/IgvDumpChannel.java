@@ -39,6 +39,7 @@ import java.nio.channels.WritableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.function.Supplier;
 
+import jdk.graal.compiler.core.common.NativeImageSupport;
 import jdk.graal.compiler.debug.DebugOptions.PrintGraphTarget;
 import jdk.graal.compiler.options.OptionValues;
 
@@ -102,7 +103,7 @@ final class IgvDumpChannel implements WritableByteChannel {
             if (target == PrintGraphTarget.File) {
                 sharedChannel = createFileChannel(pathProvider, null);
             } else if (target == PrintGraphTarget.Network) {
-                if (GraalServices.isInLibgraal() && !ENABLE_NETWORK_DUMPING) {
+                if (NativeImageSupport.inRuntimeCode() && !ENABLE_NETWORK_DUMPING) {
                     if (!networkDumpingUnsupportedWarned) {
                         // Ignore races or multiple isolates - an extra warning is ok
                         networkDumpingUnsupportedWarned = true;

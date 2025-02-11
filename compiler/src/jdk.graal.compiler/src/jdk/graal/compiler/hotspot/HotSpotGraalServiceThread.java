@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.hotspot;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
@@ -41,7 +42,7 @@ public class HotSpotGraalServiceThread extends Thread {
     @Override
     public final void run() {
         try {
-            if (GraalServices.isInLibgraal()) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 if (!HotSpotJVMCIRuntime.runtime().attachCurrentThread(isDaemon(), null)) {
                     throw new InternalError("Couldn't attach to HotSpot runtime");
                 }
@@ -55,7 +56,7 @@ public class HotSpotGraalServiceThread extends Thread {
         try {
             runnable.run();
         } finally {
-            if (GraalServices.isInLibgraal()) {
+            if (LibGraalSupport.inLibGraalRuntime()) {
                 HotSpotJVMCIRuntime.runtime().detachCurrentThread(false);
             }
         }

@@ -35,7 +35,6 @@ import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CO
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.Arrays;
@@ -48,6 +47,7 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
@@ -1035,8 +1035,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
     }
 
     private void throwCachedException(BytecodeExceptionNode node) {
-        if (inImageRuntimeCode()) {
-            throw new InternalError("Can't throw exception from SVM object");
+        if (LibGraalSupport.inLibGraalRuntime()) {
+            throw new InternalError("Cannot throw exception from libgraal (JDK-8306085)");
         }
         Throwable exception = Exceptions.cachedExceptions.get(node.getExceptionKind());
         assert exception != null;

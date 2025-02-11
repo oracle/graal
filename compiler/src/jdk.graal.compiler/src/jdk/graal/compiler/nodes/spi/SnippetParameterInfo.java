@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -83,7 +83,7 @@ public final class SnippetParameterInfo {
         this.varargsParametersBits = varargs;
         this.nonNullParametersBits = nonNull;
 
-        if (inImageBuildtimeCode()) {
+        if (inBuildtimeCode()) {
             // Capture the names during image building in case the image wants them.
             initNames(method, count);
         } else {

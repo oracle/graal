@@ -24,8 +24,8 @@
  */
 package jdk.graal.compiler.nodes.graphbuilderconf;
 
-import static org.graalvm.nativeimage.ImageInfo.inImageBuildtimeCode;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inBuildtimeCode;
+import static jdk.graal.compiler.core.common.NativeImageSupport.inRuntimeCode;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -79,7 +79,7 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
      * @return true if the folding being attempted by the caller can proceed
      */
     protected boolean checkInjectedArgument(GraphBuilderContext b, ValueNode arg, ResolvedJavaMethod foldAnnotatedMethod) {
-        if (inImageRuntimeCode()) {
+        if (inRuntimeCode()) {
             // In native image runtime compilation, there is no later stage where execution of the
             // plugin can be deferred.
             return true;
@@ -93,7 +93,7 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
             return false;
         }
 
-        if (inImageBuildtimeCode()) {
+        if (inBuildtimeCode()) {
             // Calls to the @Fold method from the generated fold plugin shouldn't be folded. This is
             // detected by comparing the class names of the current plugin and the method being
             // parsed. These might be in different class loaders so the classes can't be compared
