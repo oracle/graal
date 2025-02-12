@@ -10,14 +10,19 @@ public record IteratorPolicy(int maxJoinIterations,
                              int maxRecursionDepth,
                              IterationStrategy strategy) {
 
-    public static final IteratorPolicy DEFAULT_CONCURRENT = new IteratorPolicy(10, 10, 10, IterationStrategy.CONCURRENT);
-    public static final IteratorPolicy DEFAULT_SEQUENTIAL = new IteratorPolicy(10, 20, 10, IterationStrategy.SEQUENTIAL);
+    public static final IteratorPolicy DEFAULT_CONCURRENT = new IteratorPolicy(10, 10, 10, IterationStrategy.WPO);
+    public static final IteratorPolicy DEFAULT_SEQUENTIAL = new IteratorPolicy(10, 20, 10, IterationStrategy.WTO);
+    public static final IteratorPolicy DEFAULT_WORKLIST = new IteratorPolicy(10, 10, 10, IterationStrategy.WORKLIST);
 
     public boolean isConcurrent() {
-        return strategy == IterationStrategy.CONCURRENT;
+        return strategy == IterationStrategy.WPO;
     }
 
     public boolean isSequential() {
-        return strategy == IterationStrategy.SEQUENTIAL;
+        return strategy == IterationStrategy.WTO;
+    }
+
+    public boolean isWorklist() {
+        return strategy == IterationStrategy.WORKLIST;
     }
 }
