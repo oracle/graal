@@ -103,11 +103,12 @@ public final class NativeImageHeapWriter {
         try (Indent perHeapIndent = debug.logAndIndent("NativeImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject());
-                if (info.getConstant().isInBaseLayer()) {
+                if (info.getConstant().isWrittenInPreviousLayer()) {
                     /*
-                     * Base layer constants are only added to the heap model to store the absolute
-                     * offset in the base layer heap. We don't need to actually write them; their
-                     * absolute offset is used by the objects that reference them.
+                     * Base layer constants already written in the base layer heap are only added to
+                     * the heap model to store the absolute offset in the base layer heap. We don't
+                     * need to actually write them; their absolute offset is used by the objects
+                     * that reference them.
                      */
                     continue;
                 }
