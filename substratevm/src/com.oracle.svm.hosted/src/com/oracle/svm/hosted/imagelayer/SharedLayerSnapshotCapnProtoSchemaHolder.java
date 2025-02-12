@@ -1149,6 +1149,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setBooleanField(168, value);
       }
 
+      public final boolean getIsBridge() {
+        return _getBooleanField(169);
+      }
+      public final void setIsBridge(boolean value) {
+        _setBooleanField(169, value);
+      }
+
       public final boolean hasAnalysisGraphLocation() {
         return !_pointerFieldIsNull(8);
       }
@@ -1165,10 +1172,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _initPointerField(org.capnproto.Text.factory, 8, size);
       }
       public final boolean getAnalysisGraphIsIntrinsic() {
-        return _getBooleanField(169);
+        return _getBooleanField(170);
       }
       public final void setAnalysisGraphIsIntrinsic(boolean value) {
-        _setBooleanField(169, value);
+        _setBooleanField(170, value);
       }
 
       public final boolean hasStrengthenedGraphLocation() {
@@ -1319,6 +1326,10 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         return _getBooleanField(168);
       }
 
+      public final boolean getIsBridge() {
+        return _getBooleanField(169);
+      }
+
       public boolean hasAnalysisGraphLocation() {
         return !_pointerFieldIsNull(8);
       }
@@ -1327,7 +1338,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
 
       public final boolean getAnalysisGraphIsIntrinsic() {
-        return _getBooleanField(169);
+        return _getBooleanField(170);
       }
 
       public boolean hasStrengthenedGraphLocation() {
