@@ -3,30 +3,24 @@ package com.oracle.svm.hosted.analysis.ai.checker;
 import java.util.List;
 
 /**
- * Summarizes the results of a checker run.
+ * Summarizes the results of a single checker.
+ * Contains a list of warnings and errors.
  */
-public class CheckerSummary {
+public final class CheckerSummary {
 
-    private final Checker checker;
     private List<CheckerResult> warnings;
     private List<CheckerResult> errors;
 
-    public CheckerSummary(Checker checker) {
-        this.checker = checker;
-    }
-
-    public void addWarning(CheckerResult warning) {
-        warnings.add(warning);
-    }
-
-    public void addError(CheckerResult error) {
-        errors.add(error);
+    public void addResult(CheckerResult result) {
+        switch (result.result()) {
+            case WARNING -> addWarning(result);
+            case ERROR -> addError(result);
+        }
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Summary of Checker: ").append(checker.getClass().getSimpleName()).append("\n");
         for (var warning : warnings) {
             sb.append("WARNING: ").append(warning).append("\n");
         }
@@ -40,5 +34,13 @@ public class CheckerSummary {
         }
 
         return sb.toString();
+    }
+
+    private void addWarning(CheckerResult warning) {
+        warnings.add(warning);
+    }
+
+    private void addError(CheckerResult error) {
+        errors.add(error);
     }
 }
