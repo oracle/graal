@@ -824,14 +824,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return (flags & required) == required;
     }
 
-    void setVTableIndex(int i) {
-        getMethodVersion().setVTableIndex(i);
-    }
-
-    void setVTableIndex(int i, boolean isRedefinition) {
-        getMethodVersion().setVTableIndex(i, isRedefinition);
-    }
-
     public int getVTableIndex() {
         return getMethodVersion().getVTableIndex();
     }
@@ -1297,6 +1289,46 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return instance;
     }
 
+    /**
+     * Returns the maximally specific method between the two given methods. If they are both
+     * maximally-specific, returns a proxy of the second, to which a poison pill has been set.
+     * <p>
+     * Determining maximally specific method works as follow:
+     * <li>If both methods are abstract, return any of the two.
+     * <li>If exactly one is non-abstract, return it.
+     * <li>If both are non-abstract, check if one of the declaring class subclasses the other. If
+     * that is the case, return the method that is lower in the hierarchy. Otherwise, return a
+     * freshly spawned proxy method pointing to either of them, which is set to fail on invocation.
+     */
+    public static MethodVersion resolveMaximallySpecific(Method m1, Method m2) {
+        ObjectKlass k1 = m1.getDeclaringKlass();
+        ObjectKlass k2 = m2.getDeclaringKlass();
+        if (k1.isAssignableFrom(k2)) {
+            return m2.getMethodVersion();
+        } else if (k2.isAssignableFrom(k1)) {
+            return m1.getMethodVersion();
+        } else {
+            boolean b1 = m1.isAbstract();
+            boolean b2 = m2.isAbstract();
+            if (b1 && b2) {
+                return m1.getMethodVersion();
+            }
+            if (b1) {
+                return m2.getMethodVersion();
+            }
+            if (b2) {
+                return m1.getMethodVersion();
+            }
+            // JVM specs:
+            // Can *declare* ambiguous default method (in bytecodes only, javac wouldn't compile
+            // it). (5.4.3.3.)
+            //
+            // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
+            // Return an arbitrary choice.
+            return m2.getMethodVersion();
+        }
+    }
+
     // region MethodAccess impl
 
     @Override
@@ -1700,11 +1732,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         void setVTableIndex(int i) {
-            setVTableIndex(i, false);
-        }
-
-        void setVTableIndex(int i, boolean isRedefinition) {
-            assert (vtableIndex == -1 || vtableIndex == i || isRedefinition);
+            assert vtableIndex == -1 || vtableIndex == i;
             assert itableIndex == -1;
             CompilerAsserts.neverPartOfCompilation();
             this.vtableIndex = i;

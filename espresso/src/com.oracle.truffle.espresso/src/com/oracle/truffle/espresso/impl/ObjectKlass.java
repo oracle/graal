@@ -238,7 +238,6 @@ public final class ObjectKlass extends Klass {
         if (getMeta().java_lang_Class != null) {
             initializeEspressoClass();
         }
-        // assert verifyTables();
     }
 
     private static boolean isEnumValuesField(LinkedField lkStaticFields) {
@@ -294,34 +293,6 @@ public final class ObjectKlass extends Klass {
                 throw EspressoError.shouldNotReachHere();
             }
         }
-    }
-
-    private boolean verifyTables() {
-        Method.MethodVersion[] vtable = getKlassVersion().getVtable();
-        if (vtable != null) {
-            for (int i = 0; i < vtable.length; i++) {
-                if (isInterface()) {
-                    if (vtable[i].getITableIndex() != i) {
-                        return false;
-                    }
-                } else {
-                    if (vtable[i].getVTableIndex() != i) {
-                        return false;
-                    }
-                }
-            }
-        }
-        Method.MethodVersion[][] itable = getItable();
-        if (itable != null) {
-            for (Method.MethodVersion[] table : itable) {
-                for (int i = 0; i < table.length; i++) {
-                    if (table[i].getITableIndex() != i) {
-                        return false;
-                    }
-                }
-            }
-        }
-        return true;
     }
 
     StaticObject getStaticsImpl() {
@@ -1132,36 +1103,6 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
-        Symbol<Name> methodName = current.getName();
-        Symbol<Signature> signature = current.getRawSignature();
-        for (Method.MethodVersion m : getVTable()) {
-            if (!m.isStatic() && !m.isPrivate() && m.getName() == methodName && m.getRawSignature() == signature) {
-                if (m.isProtected() || m.isPublic()) {
-                    result.add(m);
-                } else {
-                    if (m.getMethod().getDeclaringKlass().sameRuntimePackage(subKlass)) {
-                        result.add(m);
-                    } else {
-                        ObjectKlass currentKlass = this.getSuperKlass();
-                        int index = m.getVTableIndex();
-                        while (currentKlass != null) {
-                            if (index >= currentKlass.getVTable().length) {
-                                break;
-                            }
-                            Method.MethodVersion toExamine = currentKlass.getVTable()[index];
-                            if (current.canOverride(toExamine.getMethod())) {
-                                result.add(toExamine);
-                                break;
-                            }
-                            currentKlass = currentKlass.getSuperKlass();
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     @TruffleBoundary
     public Method resolveInterfaceMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         assert isInterface();
@@ -1213,7 +1154,7 @@ public final class ObjectKlass extends Klass {
                          * ACC_PRIVATE flag nor its ACC_STATIC flag set, one of these is arbitrarily
                          * chosen and method lookup succeeds.
                          */
-                        resolved = InterfaceTables.resolveMaximallySpecific(resolved, superM).getMethod();
+                        resolved = Method.resolveMaximallySpecific(resolved, superM).getMethod();
                         if (resolved.getITableIndex() == -1) {
                             /*
                              * Multiple maximally specific: this method has a poison pill.
@@ -1727,7 +1668,6 @@ public final class ObjectKlass extends Klass {
         @CompilationFinal(dimensions = 1) final ObjectKlass[] superInterfaces;
         // Stores the VTable for classes, holds public non-static methods for interfaces.
         @CompilationFinal(dimensions = 1) private final Method.MethodVersion[] vtable;
-        // TODO(garcia) Sort itables (according to an arbitrary key) for dichotomic search?
         @CompilationFinal(dimensions = 2) private final Method.MethodVersion[][] itable;
         @CompilationFinal(dimensions = 1) private final KlassVersion[] iKlassTable;
         @CompilationFinal(dimensions = 1) private final Method.MethodVersion[] declaredMethods;
@@ -1736,10 +1676,8 @@ public final class ObjectKlass extends Klass {
         private final int modifiers;
         @CompilationFinal private int computedModifiers = -1;
 
-        @CompilationFinal //
-        boolean hasDeclaredDefaultMethods;
-        @CompilationFinal //
-        boolean hasDefaultMethods;
+        final boolean hasDeclaredDefaultMethods;
+        final boolean hasDefaultMethods;
 
         @CompilationFinal private HierarchyInfo hierarchyInfo;
 
