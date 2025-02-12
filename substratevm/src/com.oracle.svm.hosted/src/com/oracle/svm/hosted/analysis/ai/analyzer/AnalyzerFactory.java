@@ -14,7 +14,7 @@ import jdk.graal.compiler.debug.DebugContext;
 /**
  * Factory class for creating different types of analyzers
  */
-public class AnalyzerFactory {
+public final class AnalyzerFactory {
 
     public static <Domain extends AbstractDomain<Domain>> InterProceduralConcurrentAnalyzer<Domain> createInterProceduralConcurrentAnalyzer(
             AnalysisMethod root,
