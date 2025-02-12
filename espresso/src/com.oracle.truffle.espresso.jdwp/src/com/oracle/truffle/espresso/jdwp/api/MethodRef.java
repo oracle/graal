@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -216,14 +216,14 @@ public interface MethodRef {
      *
      * @param requestId the ID for the request that set the breakpoint
      */
-    void removedMethodHook(int requestId);
+    void removeMethodHook(int requestId);
 
     /**
      * Remove a method hook with the given hook on this method.
      *
      * @param hook the method hook
      */
-    void removedMethodHook(MethodHook hook);
+    void removeMethodHook(MethodHook hook);
 
     /**
      * Determines if there are any breakpoints set on this method.

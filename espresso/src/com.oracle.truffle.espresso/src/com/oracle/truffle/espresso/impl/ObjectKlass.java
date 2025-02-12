@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,8 +86,6 @@ import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
-import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
@@ -250,8 +248,8 @@ public final class ObjectKlass extends Klass {
     }
 
     private void addSubType(ObjectKlass objectKlass) {
-        // We only build subtypes model iff jdwp is enabled
-        if (getContext().getEspressoEnv().JDWPOptions != null) {
+        // We only build subtypes model iff class redefinition is enabled
+        if (getContext().getClassRedefinition() != null) {
             if (this == getMeta().java_lang_Object) {
                 // skip collecting subtypes for j.l.Object because that can't ever change at runtime
                 return;
@@ -819,11 +817,6 @@ public final class ObjectKlass extends Klass {
             methods[i] = declaredMethodVersions[i].getMethod();
         }
         return methods;
-    }
-
-    @Override
-    public MethodRef[] getDeclaredMethodRefs() {
-        return getDeclaredMethodVersions();
     }
 
     @Override
@@ -1476,7 +1469,7 @@ public final class ObjectKlass extends Klass {
         return cache;
     }
 
-    public void redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, Ids<Object> ids) {
+    public void redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses) {
         DetectedChange change = packet.detectedChange;
 
         if (change.isChangedSuperClass()) {
@@ -1492,7 +1485,7 @@ public final class ObjectKlass extends Klass {
                     if (!declaredField.isStatic()) {
                         declaredField.removeByRedefinition();
 
-                        int nextFieldSlot = getContext().getClassRedefinition().getNextAvailableFieldSlot();
+                        int nextFieldSlot = extension.getNextAvailableFieldSlot();
                         LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(getLinkedKlass().getParserKlass());
                         LinkedField linkedField = new LinkedField(declaredField.linkedField.getParserField(), nextFieldSlot, mode);
                         Field field = new RedefineAddedField(getKlassVersion(), linkedField, getConstantPool(), false);
@@ -1523,7 +1516,7 @@ public final class ObjectKlass extends Klass {
         } else {
             linkedKlass = LinkedKlass.redefine(parserKlass, change.getSuperKlass().getLinkedKlass(), interfaces, oldLinkedKlass);
         }
-        klassVersion = new KlassVersion(oldVersion, pool, linkedKlass, packet, invalidatedClasses, ids);
+        klassVersion = new KlassVersion(oldVersion, pool, linkedKlass, packet, invalidatedClasses);
 
         // fields
         if (!change.getAddedStaticFields().isEmpty() || !change.getAddedInstanceFields().isEmpty()) {
@@ -1531,8 +1524,8 @@ public final class ObjectKlass extends Klass {
 
             ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
             // add new fields to the extension object
-            extension.addNewStaticFields(klassVersion, change.getAddedStaticFields(), pool, compatibleFields, getContext().getClassRedefinition());
-            extension.addNewInstanceFields(klassVersion, change.getAddedInstanceFields(), pool, compatibleFields, getContext().getClassRedefinition());
+            extension.addNewStaticFields(klassVersion, change.getAddedStaticFields(), pool, compatibleFields);
+            extension.addNewInstanceFields(klassVersion, change.getAddedInstanceFields(), pool, compatibleFields);
 
             // make sure all new fields trigger re-resolution of fields
             // with same name + type in the full class hierarchy
@@ -1597,17 +1590,17 @@ public final class ObjectKlass extends Klass {
         getClassInitializer().getCallTarget().call();
     }
 
-    private static void checkCopyMethods(KlassVersion klassVersion, Method method, Method.MethodVersion[][] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
+    private static void checkCopyMethods(KlassVersion klassVersion, Method method, Method.MethodVersion[][] table, Method.SharedRedefinitionContent content) {
         for (Method.MethodVersion[] methods : table) {
-            checkCopyMethods(klassVersion, method, methods, content, ids);
+            checkCopyMethods(klassVersion, method, methods, content);
         }
     }
 
-    private static void checkCopyMethods(KlassVersion klassVersion, Method method, Method.MethodVersion[] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
+    private static void checkCopyMethods(KlassVersion klassVersion, Method method, Method.MethodVersion[] table, Method.SharedRedefinitionContent content) {
         for (Method.MethodVersion m : table) {
             Method otherMethod = m.getMethod();
             if (method.identity() == otherMethod.identity() && otherMethod != method) {
-                otherMethod.redefine(klassVersion, content, ids);
+                otherMethod.redefine(klassVersion, content);
             }
         }
     }
@@ -1637,9 +1630,9 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    public void swapKlassVersion(Ids<Object> ids) {
+    public void swapKlassVersion() {
         KlassVersion oldVersion = klassVersion;
-        klassVersion = oldVersion.replace(ids);
+        klassVersion = oldVersion.replace();
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
@@ -1796,7 +1789,7 @@ public final class ObjectKlass extends Klass {
         }
 
         // used to create a redefined version
-        private KlassVersion(KlassVersion oldVersion, RuntimeConstantPool pool, LinkedKlass linkedKlass, ChangePacket packet, List<ObjectKlass> invalidatedClasses, Ids<Object> ids) {
+        private KlassVersion(KlassVersion oldVersion, RuntimeConstantPool pool, LinkedKlass linkedKlass, ChangePacket packet, List<ObjectKlass> invalidatedClasses) {
             this.assumption = Truffle.getRuntime().createAssumption();
             this.pool = pool;
             this.linkedKlass = linkedKlass;
@@ -1848,7 +1841,7 @@ public final class ObjectKlass extends Klass {
                 Method declMethod = methods[i].getMethod();
                 if (changedMethodBodies.containsKey(declMethod)) {
                     ParserMethod newMethod = changedMethodBodies.get(declMethod);
-                    Method.SharedRedefinitionContent redefineContent = declMethod.redefine(this, newMethod, packet.parserKlass, ids);
+                    Method.SharedRedefinitionContent redefineContent = declMethod.redefine(this, newMethod, packet.parserKlass);
                     ClassRedefinition.LOGGER.fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
                     methods[i] = redefineContent.getMethodVersion();
 
@@ -1858,7 +1851,7 @@ public final class ObjectKlass extends Klass {
                     }
                 }
                 if (change.getUnchangedMethods().contains(declMethod)) {
-                    methods[i] = declMethod.swapMethodVersion(this, ids);
+                    methods[i] = declMethod.swapMethodVersion(this);
                 }
             }
             // create new tables
@@ -1881,9 +1874,9 @@ public final class ObjectKlass extends Klass {
                 Method key = entry.getKey();
                 Method.SharedRedefinitionContent value = entry.getValue();
 
-                checkCopyMethods(this, key, itable, value, ids);
-                checkCopyMethods(this, key, vtable, value, ids);
-                checkCopyMethods(this, key, mirandaMethods, value, ids);
+                checkCopyMethods(this, key, itable, value);
+                checkCopyMethods(this, key, vtable, value);
+                checkCopyMethods(this, key, mirandaMethods, value);
             }
 
             // only update subtype lists if class hierarchy changed
@@ -1899,7 +1892,7 @@ public final class ObjectKlass extends Klass {
             this.declaredMethods = methods;
         }
 
-        public KlassVersion replace(Ids<Object> ids) {
+        public KlassVersion replace() {
             DetectedChange detectedChange = new DetectedChange();
             detectedChange.addSuperKlass(superKlass);
             detectedChange.addSuperInterfaces(superInterfaces);
@@ -1911,7 +1904,7 @@ public final class ObjectKlass extends Klass {
             }
 
             ChangePacket packet = new ChangePacket(null, linkedKlass.getParserKlass(), null, detectedChange);
-            return new KlassVersion(this, pool, linkedKlass, packet, Collections.emptyList(), ids);
+            return new KlassVersion(this, pool, linkedKlass, packet, Collections.emptyList());
         }
 
         public Method.MethodVersion[][] getItable() {

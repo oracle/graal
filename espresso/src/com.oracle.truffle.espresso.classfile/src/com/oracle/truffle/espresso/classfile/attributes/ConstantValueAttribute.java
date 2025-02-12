@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -55,17 +56,11 @@ public final class ConstantValueAttribute extends Attribute {
     }
 
     @Override
-    public boolean sameAs(Attribute other) {
-        if (this == other) {
-            return true;
-        }
-        if (other == null || getClass() != other.getClass()) {
-            return false;
-        }
-        if (!super.sameAs(other)) {
+    public boolean isSame(Attribute other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!super.isSame(other, thisPool, otherPool)) {
             return false;
         }
         ConstantValueAttribute that = (ConstantValueAttribute) other;
-        return constantValueIndex == that.constantValueIndex;
+        return thisPool.at(constantValueIndex).isSame(otherPool.at(that.constantValueIndex), thisPool, otherPool);
     }
 }

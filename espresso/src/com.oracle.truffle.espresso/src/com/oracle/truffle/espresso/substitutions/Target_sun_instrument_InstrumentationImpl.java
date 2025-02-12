@@ -23,15 +23,19 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ClasspathEntry;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Signatures;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -53,35 +57,61 @@ public final class Target_sun_instrument_InstrumentationImpl {
                     long agentId,
                     boolean has,
                     @Inject EspressoContext context) {
-        context.getJavaAgents().setHasTransformer((int) agentId, has);
+        context.getJavaAgents().setHasTransformers((int) agentId, has);
     }
 
     @Substitution(hasReceiver = true)
     public static void setHasRetransformableTransformers(
                     @SuppressWarnings("unused") StaticObject self,
-                    @SuppressWarnings("unused") long agentId,
-                    @SuppressWarnings("unused") boolean has,
+                    long agentId,
+                    boolean has,
                     @Inject EspressoContext context) {
-        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_UnsupportedOperationException,
-                        "Espresso VM doesn't support retransformable agents. This restriction will be lifted in later versions.");
+        context.getJavaAgents().setHasRetransformers((int) agentId, has);
     }
 
     @Substitution(hasReceiver = true)
     public static boolean isRetransformClassesSupported0(
                     @SuppressWarnings("unused") StaticObject self,
-                    @SuppressWarnings("unused") long agentId) {
-        return false;
+                    long agentId,
+                    @Inject EspressoContext context) {
+        return context.getJavaAgents().isRetransformSupported((int) agentId);
     }
 
     @Substitution(hasReceiver = true)
     public static void redefineClasses0(
                     @SuppressWarnings("unused") StaticObject self,
                     @SuppressWarnings("unused") long agentId,
-                    @JavaType(internalName = "[Ljava/lang/instrument/ClassDefinition;") StaticObject mirrorClasses,
+                    @JavaType(internalName = "[Ljava/lang/instrument/ClassDefinition;") StaticObject classDefinitions,
                     @Inject EspressoContext context) {
-        assert StaticObject.notNull(mirrorClasses);
-        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_UnsupportedOperationException,
-                        "Espresso VM doesn't support redefining classes from java agents. This restriction will be lifted in later versions.");
+        assert StaticObject.notNull(classDefinitions);
+        // translate the passed class definitions to our internal RedefineInfo objects
+        RedefineInfo[] redefineInfos = new RedefineInfo[classDefinitions.length(context.getLanguage())];
+        for (int i = 0; i < redefineInfos.length; i++) {
+            redefineInfos[i] = translateClassDefinition(context.getMeta(), classDefinitions.get(context.getLanguage(), i));
+        }
+        context.getClassRedefinition().redefineClasses(redefineInfos, true);
+    }
+
+    private static RedefineInfo translateClassDefinition(Meta meta, @JavaType(internalName = "Ljava/lang/instrument/ClassDefinition;") StaticObject classDefinition) {
+        StaticObject guestClass = (StaticObject) meta.java_lang_instrument_ClassDefinition_getDefinitionClass.invokeDirectVirtual(classDefinition);
+        if (StaticObject.isNull(guestClass)) {
+            throw meta.throwException(meta.java_lang_NullPointerException);
+        }
+        Klass klass = guestClass.getMirrorKlass(meta);
+        if (klass.isArray() || klass.isPrimitive()) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_instrument_UnmodifiableClassException, getUnmodifiableMessage(klass));
+        }
+        StaticObject guestBytes = (StaticObject) meta.java_lang_instrument_ClassDefinition_getDefinitionClassFile.invokeDirectVirtual(classDefinition);
+        if (StaticObject.isNull(guestBytes)) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, "byte array for class being redefined is null");
+        }
+        byte[] hostBytes = guestBytes.unwrap(meta.getLanguage());
+        return new RedefineInfo(klass, hostBytes);
+    }
+
+    @TruffleBoundary
+    private static String getUnmodifiableMessage(Klass klass) {
+        return "class " + klass.getName() + " is not modifiable";
     }
 
     @Substitution(hasReceiver = true)
@@ -89,19 +119,34 @@ public final class Target_sun_instrument_InstrumentationImpl {
                     @SuppressWarnings("unused") StaticObject self,
                     @SuppressWarnings("unused") long agentId,
                     @JavaType(Class[].class) StaticObject mirrorClasses,
-                    @Inject EspressoContext context) {
-        assert StaticObject.notNull(mirrorClasses);
-        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_UnsupportedOperationException,
-                        "Espresso VM doesn't support retransforming classes from java agents. This restriction will be lifted in later versions.");
+                    @Inject EspressoContext context,
+                    @Inject EspressoLanguage language) {
+        Meta meta = context.getMeta();
+        if (StaticObject.isNull(mirrorClasses)) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, "classes array is null");
+        }
+        Klass[] klasses = new Klass[mirrorClasses.length(language)];
+        for (int i = 0; i < klasses.length; i++) {
+            StaticObject guestClass = mirrorClasses.get(language, i);
+            if (StaticObject.isNull(guestClass)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, "class in array is null");
+            }
+            klasses[i] = guestClass.getMirrorKlass(meta);
+            if (klasses[i].isArray() || klasses[i].isPrimitive()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_instrument_UnmodifiableClassException, getUnmodifiableMessage(klasses[i]));
+            }
+        }
+        context.getJavaAgents().retransformClasses(klasses);
     }
 
     @Substitution(hasReceiver = true)
     public static boolean isModifiableClass0(
                     @SuppressWarnings("unused") StaticObject self,
                     @SuppressWarnings("unused") long agentId,
-                    @JavaType(Class.class) StaticObject mirrorClass) {
-        assert StaticObject.notNull(mirrorClass);
-        return false;
+                    @JavaType(Class.class) StaticObject guestClass) {
+        assert StaticObject.notNull(guestClass);
+        Klass klass = guestClass.getMirrorKlass();
+        return !klass.isArray() && !klass.isPrimitive();
     }
 
     @Substitution(hasReceiver = true)
@@ -140,15 +185,25 @@ public final class Target_sun_instrument_InstrumentationImpl {
         return object.getObjectSize(language);
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
+    @SuppressWarnings("unchecked")
     public static void setNativeMethodPrefixes(
                     @SuppressWarnings("unused") StaticObject self,
-                    @SuppressWarnings("unused") long agentId,
-                    @SuppressWarnings("unused") @JavaType(String[].class) StaticObject prefixes,
+                    long agentId,
+                    @JavaType(String[].class) StaticObject guestPrefixes,
                     @SuppressWarnings("unused") boolean isRetransformable,
                     @Inject EspressoContext context) {
-        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_UnsupportedOperationException,
-                        "Espresso VM doesn't support setting native method prefix from java agents. This restriction will be lifted in later versions.");
+        // when this method is called, we know that the agent in question can set native prefixes
+        ArrayList<Symbol<Name>> prefixes = new ArrayList<>();
+        for (int i = 0; i < guestPrefixes.length(context.getLanguage()); i++) {
+            StaticObject guestString = guestPrefixes.get(context.getLanguage(), i);
+            if (StaticObject.notNull(guestString)) {
+                String hostString = context.getMeta().toHostString(guestString);
+                prefixes.add(context.getNames().getOrCreate(hostString));
+            }
+        }
+        context.getJavaAgents().setNativePrefixes((int) agentId, prefixes.toArray(Symbol.EMPTY_ARRAY));
     }
 
     @Substitution(hasReceiver = true)
@@ -166,28 +221,28 @@ public final class Target_sun_instrument_InstrumentationImpl {
             ClasspathEntry entry = Classpath.createEntry(meta.toHostString(jarFile));
             if (!entry.isArchive()) {
                 // we only accept valid archives here so throw IllegalArgumentException
-                throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, notValidJarMessage(jarFile, context));
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, notValidJarMessage(jarFile, meta));
             }
             context.appendBootClasspath(entry);
         }
     }
 
     @TruffleBoundary
-    private static String notValidJarMessage(StaticObject jarFile, EspressoContext context) {
-        return context.getMeta().toHostString(jarFile) + " is not a valid jar!";
+    private static String notValidJarMessage(StaticObject jarFile, Meta meta) {
+        return meta.toHostString(jarFile) + " is not a valid jar!";
     }
 
     @Substitution()
     public static void loadAgent0(
                     @JavaType(String.class) StaticObject jarPath,
                     @Inject EspressoContext context) {
-
-        throw context.getMeta().throwExceptionWithMessage(context.getMeta().java_lang_UnsupportedOperationException, noLauncherAgentClassSupport(jarPath, context));
+        Meta meta = context.getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, noLauncherAgentClassSupport(jarPath, meta));
     }
 
     @TruffleBoundary
-    private static String noLauncherAgentClassSupport(StaticObject jarFile, EspressoContext context) {
-        return context.getMeta().toHostString(jarFile) + " will not be launched!. " +
+    private static String noLauncherAgentClassSupport(StaticObject jarFile, Meta meta) {
+        return meta.toHostString(jarFile) + " will not be launched!. " +
                         "Espresso doesn't support launching Java agents after the VM has started. " +
                         "Launcher-Agent-Class attribute in the agent manifest is ignored. " +
                         "This restriction will be lifted in later versions.";

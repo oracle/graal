@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.jni;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 
 /**
@@ -73,18 +72,6 @@ public final class Mangle {
         }
 
         return mangledName.toString();
-    }
-
-    /**
-     * Mangles a Java method to a unique C function name in compliance with the JNI specification
-     * for resolving native method names.
-     *
-     * @param method a Java method
-     * @param withSignature if true, the method's signature is included in the mangled name
-     * @return the mangled C function name for {@code method}
-     */
-    public static String mangleMethod(Method method, boolean withSignature) {
-        return mangleMethod(method.getDeclaringKlass().getType(), method.getName().toString(), withSignature ? method.getRawSignature() : null, false);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -148,10 +148,10 @@ public final class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
         for (int methodIndex = 0; methodIndex < itable.length; methodIndex++) {
             Method.MethodVersion m = itable[methodIndex];
             // This class' itable entry for this method is not the interface's declared method.
-            if (m.getDeclaringKlassRef() != currInterface) {
+            if (m.getMethod().getDeclaringKlass() != currInterface) {
                 Method.MethodVersion intfMethod = currInterface.getInterfaceMethodsTable()[methodIndex];
                 // sanity checks
-                assert intfMethod.getDeclaringKlassRef() == currInterface;
+                assert intfMethod.getMethod().getDeclaringKlass() == currInterface;
                 assert m.getMethod().canOverride(intfMethod.getMethod()) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
                 isLeafMethod(intfMethod).invalidate();
             }

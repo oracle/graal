@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,7 +93,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -104,7 +103,6 @@ import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
-import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
@@ -171,8 +169,7 @@ public final class EspressoContext
     @CompilationFinal private ClassLoadingEnv classLoadingEnv;
     // endregion InitControl
 
-    // region JDWP
-    private ClassRedefinition classRedefinition;
+    private @CompilationFinal ClassRedefinition classRedefinition;
     private final Assumption anyHierarchyChanges = Truffle.getRuntime().createAssumption();
     // endregion JDWP
 
@@ -505,12 +502,6 @@ public final class EspressoContext
                     meta.java_lang_System_initPhase3.invokeDirectStatic();
                 }
             }
-            meta.postSystemInit();
-
-            getVM().getJvmti().postVmInit();
-            if (javaAgents != null) {
-                javaAgents.startJavaAgents();
-            }
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 // System exceptions.
@@ -541,6 +532,18 @@ public final class EspressoContext
             meta.java_lang_StackOverflowError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(stackOverflowErrorInstance, meta.toGuestString("VM StackOverFlow"));
             meta.java_lang_OutOfMemoryError.lookupDeclaredMethod(Names._init_, Signatures._void_String).invokeDirectSpecial(outOfMemoryErrorInstance, meta.toGuestString("VM OutOfMemory"));
 
+            meta.postSystemInit();
+
+            // class redefinition will be enabled if debug mode or if any redefine or retransform
+            // capable java agent is present
+            if (espressoEnv.JDWPOptions != null || (javaAgents != null && javaAgents.shouldEnableRedefinition())) {
+                classRedefinition = getClassRedefinition();
+            }
+
+            getVM().getJvmti().postVmInit();
+            if (javaAgents != null) {
+                javaAgents.startJavaAgents();
+            }
             // Create application (system) class loader.
             StaticObject systemClassLoader = null;
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(espressoEnv.getTimers())) {
@@ -1142,12 +1145,12 @@ public final class EspressoContext
 
     public boolean reportOnMethodEntry(Method.MethodVersion method, Object scope) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodEntry(method, scope);
+        return espressoEnv.getEventListener().onMethodEntry(method.getMethod(), scope);
     }
 
     public boolean reportOnMethodReturn(Method.MethodVersion method, Object returnValue) {
         assert shouldReportVMEvents();
-        return espressoEnv.getEventListener().onMethodReturn(method, returnValue);
+        return espressoEnv.getEventListener().onMethodReturn(method.getMethod(), returnValue);
     }
 
     public boolean reportOnFieldModification(Field field, StaticObject receiver, Object value) {
@@ -1161,14 +1164,6 @@ public final class EspressoContext
     }
     // endregion VM event reporting
 
-    public void registerExternalHotSwapHandler(StaticObject handler) {
-        espressoEnv.getJdwpContext().registerExternalHotSwapHandler(handler);
-    }
-
-    public void rerunclinit(ObjectKlass oldKlass) {
-        espressoEnv.getJdwpContext().rerunclinit(oldKlass);
-    }
-
     private static final ContextReference<EspressoContext> REFERENCE = ContextReference.create(EspressoLanguage.class);
 
     /**
@@ -1178,14 +1173,10 @@ public final class EspressoContext
         return REFERENCE.get(node);
     }
 
-    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler) {
-        if (classRedefinition == null) {
-            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler);
-        }
-        return classRedefinition;
-    }
-
     public ClassRedefinition getClassRedefinition() {
+        if (classRedefinition == null) {
+            classRedefinition = new ClassRedefinition(this);
+        }
         return classRedefinition;
     }
 
