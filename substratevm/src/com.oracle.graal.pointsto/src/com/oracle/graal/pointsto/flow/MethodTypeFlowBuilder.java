@@ -750,9 +750,9 @@ public class MethodTypeFlowBuilder {
      * It only makes sense to create a local version of all instantiated if it will be guarded by a
      * predicate more precise than alwaysEnabled.
      */
-    protected TypeFlow<?> maybePatchAllInstantiated(TypeFlow<?> flow, AnalysisType declaredType, Object predicate) {
+    protected TypeFlow<?> maybePatchAllInstantiated(TypeFlow<?> flow, BytecodePosition position, AnalysisType declaredType, Object predicate) {
         if (bb.usePredicates() && flow instanceof AllInstantiatedTypeFlow && predicate != alwaysEnabled) {
-            var localFlow = new LocalAllInstantiatedFlow(declaredType);
+            var localFlow = new LocalAllInstantiatedFlow(position, declaredType);
             flowsGraph.addMiscEntryFlow(localFlow);
             flow.addUse(bb, localFlow);
             return localFlow;
@@ -818,13 +818,14 @@ public class MethodTypeFlowBuilder {
                 throw AnalysisError.shouldNotReachHere("Stamp for node " + node + " is empty.");
             }
             AnalysisType stampType = (AnalysisType) StampTool.typeOrNull(stamp, bb.getMetaAccess());
+            BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
             if (stamp.isExactType()) {
                 /*
                  * We are lucky: the stamp tells us which type the node has. Happens e.g. for a
                  * predicated boxed node.
                  */
                 return TypeFlowBuilder.create(bb, method, getPredicate(), node, SourceTypeFlow.class, () -> {
-                    SourceTypeFlow src = new SourceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), stampType, !stamp.nonNull());
+                    SourceTypeFlow src = new SourceTypeFlow(position, stampType, !stamp.nonNull());
                     flowsGraph.addMiscEntryFlow(src);
                     return src;
                 });
@@ -835,9 +836,9 @@ public class MethodTypeFlowBuilder {
                  */
                 TypeFlowBuilder<?> predicate = getPredicate();
                 return TypeFlowBuilder.create(bb, method, predicate, node, TypeFlow.class, () -> {
-                    TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), stampType.getTypeFlow(bb, true));
+                    TypeFlow<?> proxy = bb.analysisPolicy().proxy(position, stampType.getTypeFlow(bb, true));
                     flowsGraph.addMiscEntryFlow(proxy);
-                    return maybePatchAllInstantiated(proxy, stampType, predicate);
+                    return maybePatchAllInstantiated(proxy, position, stampType, predicate);
                 });
             }
         }
@@ -1470,9 +1471,10 @@ public class MethodTypeFlowBuilder {
                 TypeFlowBuilder<?> exceptionObjectBuilder = TypeFlowBuilder.create(bb, method, predicate, node, TypeFlow.class, () -> {
                     AnalysisType analysisType = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
                     TypeFlow<?> input = analysisType.getTypeFlow(bb, false);
-                    TypeFlow<?> exceptionObjectFlow = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), input);
+                    BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
+                    TypeFlow<?> exceptionObjectFlow = bb.analysisPolicy().proxy(position, input);
                     flowsGraph.addMiscEntryFlow(exceptionObjectFlow);
-                    return maybePatchAllInstantiated(exceptionObjectFlow, analysisType, predicate);
+                    return maybePatchAllInstantiated(exceptionObjectFlow, position, analysisType, predicate);
                 });
                 state.add(node, exceptionObjectBuilder);
 
@@ -1533,7 +1535,7 @@ public class MethodTypeFlowBuilder {
                     instanceType = bb.getObjectType();
                     TypeFlowBuilder<?> predicate = state.getPredicate();
                     instanceTypeBuilder = TypeFlowBuilder.create(bb, method, predicate, instanceType, TypeFlow.class,
-                                    () -> maybePatchAllInstantiated(instanceType.getTypeFlow(bb, false), instanceType, predicate));
+                                    () -> maybePatchAllInstantiated(instanceType.getTypeFlow(bb, false), AbstractAnalysisEngine.sourcePosition(node), instanceType, predicate));
                 }
                 TypeFlowBuilder<DynamicNewInstanceTypeFlow> dynamicNewInstanceBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), node, DynamicNewInstanceTypeFlow.class, () -> {
                     DynamicNewInstanceTypeFlow newInstanceTypeFlow = new DynamicNewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), instanceTypeBuilder.get(), instanceType);

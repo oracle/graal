@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
+import jdk.vm.ci.code.BytecodePosition;
 
 public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     /**
@@ -124,7 +125,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
          * 
          * AnyPrimitiveFlow can be either global (source == null) or local (source != null)
          */
-        return flow instanceof AllInstantiatedTypeFlow || flow instanceof AllSynchronizedTypeFlow || (flow instanceof AnyPrimitiveSourceTypeFlow && flow.getSource() == null);
+        return flow instanceof GlobalFlow || flow.isContextInsensitive() || (flow instanceof AnyPrimitiveSourceTypeFlow && flow.getSource() == null);
     }
 
     /**
@@ -224,8 +225,25 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
             @Override
             public TypeFlow<?> next() {
                 TypeFlow<?> current = next;
+                assert withinMethod(current) : "Flow " + current + " has source " + current.source + " that is not a part of " + method;
                 next = findNext();
                 return current;
+            }
+
+            /**
+             * Check that the flow is local to the typeflow graph of this method. The iterator
+             * should not leave the scope of this method, but it may include flows originated from
+             * inlined methods.
+             */
+            private boolean withinMethod(TypeFlow<?> flow) {
+                var source = flow.getSource();
+                while (source instanceof BytecodePosition position) {
+                    if (method.equals(position.getMethod())) {
+                        return true;
+                    }
+                    source = position.getCaller();
+                }
+                return false;
             }
 
             /** Get the next flow and expand the work list. */
