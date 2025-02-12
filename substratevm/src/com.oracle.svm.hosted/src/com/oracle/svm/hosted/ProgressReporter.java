@@ -92,6 +92,7 @@ import com.oracle.svm.hosted.ProgressReporterJsonHelper.JsonMetric;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.ResourceUsageKey;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
+import com.oracle.svm.hosted.image.NativeImageDebugInfoStripFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.DiagnosticUtils;
@@ -607,7 +608,12 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
             }
             l.println();
         }
-        long otherBytes = imageFileSize - codeAreaSize - imageHeapSize - debugInfoSize;
+        long otherBytes = imageFileSize - codeAreaSize - imageHeapSize;
+        if (!ImageSingletons.lookup(NativeImageDebugInfoStripFeature.class).hasStrippedSuccessfully()) {
+            // Only subtract if debug info is embedded in file (not stripped).
+            otherBytes -= debugInfoSize;
+        }
+        assert otherBytes >= 0 : "Other bytes should never be negative: " + otherBytes;
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_SIZE, imageHeapSize);
         recordJsonMetric(ImageDetailKey.TOTAL_SIZE, imageFileSize);
         recordJsonMetric(ImageDetailKey.CODE_AREA_SIZE, codeAreaSize);
