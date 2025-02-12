@@ -1,14 +1,11 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.hosted.analysis.ai.analyzer.context.AnalysisContext;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import com.oracle.svm.hosted.analysis.ai.log.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
-import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
@@ -22,29 +19,21 @@ public abstract class FixpointIteratorBase<
         Domain extends AbstractDomain<Domain>>
         implements FixpointIterator<Domain> {
 
+    protected final AnalysisPayload<Domain> payload;
     protected final ControlFlowGraph cfgGraph;
-    protected final IteratorPolicy policy;
-    protected final Domain initialDomain;
-    protected final DebugContext debug;
-    protected final AbstractInterpretationLogger logger;
     protected final AbstractStateMap<Domain> abstractStateMap;
-    protected final TransferFunction<Domain> transferFunction;
 
-    protected FixpointIteratorBase(AnalysisContext<Domain> payload, TransferFunction<Domain> transferFunction) {
-        this.debug = payload.getDebugContext();
-        this.cfgGraph = GraphUtils.getGraph(payload.getRoot(), debug);
-        this.policy = payload.getIteratorPolicy();
-        this.initialDomain = payload.getInitialDomain();
-        this.logger = payload.getLogger();
-        this.abstractStateMap = new AbstractStateMap<>(initialDomain);
-        this.transferFunction = transferFunction;
+    protected FixpointIteratorBase(AnalysisPayload<Domain> payload) {
+        this.payload = payload;
+        this.cfgGraph = GraphUtils.getGraph(payload.getRoot(), payload.getDebugContext());
+        this.abstractStateMap = new AbstractStateMap<>(payload.getInitialDomain());
     }
 
-    @Override
-    public void clear() {
-        if (abstractStateMap != null) {
-            abstractStateMap.clear();
-        }
+    /* This ctor is used when we have the graph for a method ready (we analyzed it in the past) */
+    protected FixpointIteratorBase(AnalysisPayload<Domain> payload, ControlFlowGraph cfgGraph) {
+        this.payload = payload;
+        this.cfgGraph = cfgGraph;
+        this.abstractStateMap = new AbstractStateMap<>(payload.getInitialDomain());
     }
 
     @Override
@@ -58,13 +47,15 @@ public abstract class FixpointIteratorBase<
     }
 
     @Override
-    public IteratorPolicy getPolicy() {
-        return policy;
+    public AbstractStateMap<Domain> getAbstractStateMap() {
+        return abstractStateMap;
     }
 
     @Override
-    public AbstractStateMap<Domain> getAbstractStateMap() {
-        return abstractStateMap;
+    public void clear() {
+        if (abstractStateMap != null) {
+            abstractStateMap.clear();
+        }
     }
 
     protected void setPrecondition(Node node, Domain domain) {
@@ -81,13 +72,13 @@ public abstract class FixpointIteratorBase<
     protected void extrapolate(Node node) {
         var state = abstractStateMap.getState(node);
         int visitedAmount = abstractStateMap.getState(node).getVisitedCount();
-        if (visitedAmount < policy.maxJoinIterations()) {
+        if (visitedAmount < payload.getIteratorPolicy().maxJoinIterations()) {
             abstractStateMap.getPostCondition(node).joinWith(abstractStateMap.getPreCondition(node));
         } else {
             abstractStateMap.getPostCondition(node).widenWith(abstractStateMap.getPreCondition(node));
         }
 
-        if (state.getVisitedCount() > policy.maxWidenIterations() + policy.maxJoinIterations()) {
+        if (state.getVisitedCount() > payload.getIteratorPolicy().maxWidenIterations() + payload.getIteratorPolicy().maxJoinIterations()) {
             throw AnalysisError.shouldNotReachHere("Exceeded maxWidenIterations!" +
                     " Consider increasing the limit, or refactor your widening operator");
         }
