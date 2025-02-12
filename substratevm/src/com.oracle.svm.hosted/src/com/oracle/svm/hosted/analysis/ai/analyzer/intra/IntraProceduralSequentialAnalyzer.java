@@ -15,7 +15,7 @@ import jdk.graal.compiler.debug.DebugContext;
  * Represents an intra-procedural sequential analyzer
  * @param <Domain> the type of derived {@link AbstractDomain}
  */
-public class IntraProceduralSequentialAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
+public final class IntraProceduralSequentialAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
 
     public IntraProceduralSequentialAnalyzer(AnalysisMethod root, DebugContext debug, IteratorPolicy iteratorPolicy) {
         super(root, debug, iteratorPolicy);
@@ -28,10 +28,10 @@ public class IntraProceduralSequentialAnalyzer<Domain extends AbstractDomain<Dom
     @Override
     public void run(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
         IteratorPolicy policy = IteratorPolicy.DEFAULT_SEQUENTIAL;
-        IntraProceduralAnalysisPayload<Domain> payload = new IntraProceduralAnalysisPayload<>(initialDomain, policy, root, debug, nodeInterpreter, checkerManager);
+        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, new IntraProceduralCallInterpreter<>());
+        IntraProceduralAnalysisPayload<Domain> payload = new IntraProceduralAnalysisPayload<>(initialDomain, policy, root, debug, transferFunction, checkerManager);
         payload.getLogger().logHighlightedDebugInfo("Running intra-procedural sequential analysis");
-        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, new IntraProceduralCallInterpreter<>(), payload);
-        SequentialWtoFixpointIterator<Domain> iterator = new SequentialWtoFixpointIterator<>(payload, transferFunction);
+        SequentialWtoFixpointIterator<Domain> iterator = new SequentialWtoFixpointIterator<>(payload);
         doRun(payload, iterator);
     }
 }

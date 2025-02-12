@@ -57,4 +57,12 @@ public final class CheckerManager {
         }
         return sb.toString();
     }
+
+    public String printCheckers() {
+        StringBuilder sb = new StringBuilder();
+        for (Checker checker : checkers) {
+            sb.append(checker.getDescription()).append(":\n");
+        }
+        return sb.toString();
+    }
 }
