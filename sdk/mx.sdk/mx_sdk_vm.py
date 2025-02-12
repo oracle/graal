@@ -841,11 +841,19 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 if 'jdk.graal.compiler' in non_synthetic_modules and mx_sdk_vm_impl._get_libgraal_component() is None:
                     # If libgraal is absent, jargraal is used by default.
                     # Use of jargraal requires exporting jdk.internal.misc to
-                    # Graal as it uses jdk.internal.misc.Unsafe.
+                    # Graal as it uses jdk.internal.misc.Unsafe. To avoid warnings
+                    # about unknown modules (e.g. in `-Xint` mode), the export target
+                    # modules must be explicitly added to the root set with `--add-modules`.
                     if 'com.oracle.graal.graal_enterprise' in non_synthetic_modules:
-                        vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'])
+                        vm_options.extend([
+                            '--add-modules=jdk.graal.compiler,com.oracle.graal.graal_enterprise',
+                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler,com.oracle.graal.graal_enterprise'
+                        ])
                     else:
-                        vm_options.extend(['--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'])
+                        vm_options.extend([
+                            '--add-modules=jdk.graal.compiler',
+                            '--add-exports=java.base/jdk.internal.misc=jdk.graal.compiler'
+                        ])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
                 # This avoids unexpected issues with using the out-of-date Graal compiler in
