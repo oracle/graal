@@ -533,6 +533,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         builder.setName(method.getName());
         builder.setReturnTypeId(method.getSignature().getReturnType().getId());
         builder.setIsVarArgs(method.isVarArgs());
+        builder.setIsBridge(method.isBridge());
         builder.setCanBeStaticallyBound(method.canBeStaticallyBound());
         builder.setModifiers(method.getModifiers());
         builder.setIsConstructor(method.isConstructor());

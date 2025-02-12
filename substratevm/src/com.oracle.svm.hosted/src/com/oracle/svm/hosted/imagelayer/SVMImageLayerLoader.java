@@ -773,7 +773,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         Annotation[] annotations = getAnnotations(md.getAnnotationList());
 
         baseLayerMethods.computeIfAbsent(mid,
-                        methodId -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
+                        methodId -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), md.getIsBridge(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
                                         md.getModifiers(), md.getIsSynthetic(), code, md.getCodeSize(), methodHandleIntrinsic, annotations));
         BaseLayerMethod baseLayerMethod = baseLayerMethods.get(mid);
 
