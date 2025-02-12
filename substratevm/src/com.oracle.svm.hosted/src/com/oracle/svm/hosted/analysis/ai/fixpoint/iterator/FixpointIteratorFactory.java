@@ -14,7 +14,7 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy
  *      to save time by caching important internal structures of iterators for a method, we first check these caches and call the appropriate constructor.
  *      On the other hand intra-procedural analysis should run on a single method and does not need to cache anything, so we call the appropriate constructor directly.
  */
-public class FixpointIteratorFactory {
+public final class FixpointIteratorFactory {
 
     public static <Domain extends AbstractDomain<Domain>> FixpointIterator<Domain> createFromIntraPayload(IntraProceduralAnalysisPayload<Domain> payload) {
         IteratorPolicy policy = payload.getIteratorPolicy();

@@ -51,6 +51,7 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
             analyzeComponent(component);
         }
 
+        payload.getCheckerManager().checkAll(abstractStateMap);
         return abstractStateMap;
     }
 

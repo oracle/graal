@@ -9,6 +9,9 @@ import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Provides a base implementation for methods used both by
  * {@link ConcurrentWpoFixpointIterator} and {@link SequentialWtoFixpointIterator}.
@@ -56,10 +59,6 @@ public abstract class FixpointIteratorBase<
         if (abstractStateMap != null) {
             abstractStateMap.clear();
         }
-    }
-
-    protected void setPrecondition(Node node, Domain domain) {
-        abstractStateMap.setPreCondition(node, domain);
     }
 
     /**

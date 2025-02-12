@@ -59,6 +59,7 @@ public final class ConcurrentWpoFixpointIterator<
         payload.getLogger().logToFile("Weak Partial Ordering for given graph: " + weakPartialOrdering);
         buildWorkNodes();
         runAnalysis();
+        payload.getCheckerManager().checkAll(abstractStateMap);
         return abstractStateMap;
     }
 

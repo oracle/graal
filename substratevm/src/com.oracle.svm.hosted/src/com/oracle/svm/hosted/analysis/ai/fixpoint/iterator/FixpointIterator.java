@@ -2,6 +2,8 @@ package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
+
 import jdk.graal.compiler.graph.Node;
 
 /**
@@ -15,10 +17,14 @@ public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
     /**
      * Runs the fixpoint iteration algorith with a given initial {@link Domain}.
      * This method performs a fixpoint iteration algorithm and returns the
-     * resulting {@link AbstractStateMap}
-     * after the iteration is completed.
+     * resulting {@link AbstractStateMap} after the iteration is completed.
+     * This is a good place to run checkers from {@link CheckerManager}, because
+     * we know the abstract context at every point in the method.
+     * NOTE:
+     *      Currently, all implementations should call checkerManager.checkAll after the fixpoint is reached.
+     *      This is not optimal when we have recursive methods.
      *
-     * @return the environment after the fixpoint is reached
+     * @return mapping of every IR node to it's abstract state after the fixpoint is reached
      */
     AbstractStateMap<Domain> iterateUntilFixpoint();
 
