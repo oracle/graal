@@ -7,8 +7,6 @@ import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -71,6 +69,7 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
             }
         }
 
+        payload.getCheckerManager().checkAll(abstractStateMap);
         return abstractStateMap;
     }
 

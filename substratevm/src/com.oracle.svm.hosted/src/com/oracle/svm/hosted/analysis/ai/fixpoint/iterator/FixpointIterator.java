@@ -1,15 +1,17 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
+import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
-
 import jdk.graal.compiler.graph.Node;
 
 /**
- * API for abstract interpretation fixpoint iterators.
+ * Interface for a fixpoint iterator in abstract interpretation.
+ * A fixpoint iterator is responsible for computing abstract states for all nodes in a control flow graph (CFG)
+ * until a stable solution (fixpoint) is reached. The iteration process applies abstract transfer functions
+ * repeatedly, propagating abstract states through the graph until further changes no longer occur.
  *
- * @param <Domain> the type of the abstract domain
+ * @param <Domain> abstract domain used in the abstract interpretation
  *                                                                                                                                                                                                                                                                                 TODO in the future add support for different directions of iteration (bottom-up)
  */
 public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
