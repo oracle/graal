@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,11 @@
 
 package com.oracle.truffle.espresso.classfile.attributes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import java.util.HashSet;
+import java.util.Set;
+
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -31,7 +35,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 public class NestMembersAttribute extends Attribute {
     public static final Symbol<Name> NAME = ParserNames.NestMembers;
 
-    @CompilerDirectives.CompilationFinal(dimensions = 1)//
+    @CompilationFinal(dimensions = 1)//
     private final int[] classes;
 
     public NestMembersAttribute(Symbol<Name> name, int[] classes) {
@@ -41,5 +45,25 @@ public class NestMembersAttribute extends Attribute {
 
     public int[] getClasses() {
         return classes;
+    }
+
+    @Override
+    public boolean isSame(Attribute other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!super.isSame(other, thisPool, otherPool)) {
+            return false;
+        }
+        NestMembersAttribute otherNestHostAttribute = (NestMembersAttribute) other;
+        // build the name symbols of all nest member classes and compare
+        Set<Symbol<Name>> thisSymbols = fillConstants(classes, thisPool);
+        Set<Symbol<Name>> otherSymbols = fillConstants(otherNestHostAttribute.classes, otherPool);
+        return thisSymbols.equals(otherSymbols);
+    }
+
+    private static Set<Symbol<Name>> fillConstants(int[] classIndices, ConstantPool pool) {
+        Set<Symbol<Name>> symbols = new HashSet<>();
+        for (int classIndex : classIndices) {
+            symbols.add(pool.classAt(classIndex).getName(pool));
+        }
+        return symbols;
     }
 }

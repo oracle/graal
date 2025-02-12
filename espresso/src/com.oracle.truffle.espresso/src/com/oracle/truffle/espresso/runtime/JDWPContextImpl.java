@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,11 @@ package com.oracle.truffle.espresso.runtime;
 import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
 
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -55,7 +52,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method.MethodVersion;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
@@ -77,12 +74,6 @@ import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableRootNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
-import com.oracle.truffle.espresso.redefinition.ChangePacket;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
-import com.oracle.truffle.espresso.redefinition.HotSwapClassInfo;
-import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
-import com.oracle.truffle.espresso.redefinition.RedefinitionNotSupportedException;
-import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -96,17 +87,12 @@ public final class JDWPContextImpl implements JDWPContext {
 
     private final EspressoContext context;
     private final Ids<Object> ids;
-    private ClassRedefinition classRedefinition;
-    private final InnerClassRedefiner innerClassRedefiner;
-    private RedefinitionPluginHandler redefinitionPluginHandler;
-    private final ArrayList<ReloadingAction> classInitializerActions = new ArrayList<>(1);
     private DebuggerController controller;
     private VMEventListenerImpl vmEventListener;
 
     public JDWPContextImpl(EspressoContext context) {
         this.context = context;
         this.ids = new Ids<>(StaticObject.NULL);
-        this.innerClassRedefiner = new InnerClassRedefiner(context);
     }
 
     public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl eventListener) {
@@ -115,8 +101,6 @@ public final class JDWPContextImpl implements JDWPContext {
         vmEventListener = eventListener;
         eventListener.activate(mainThread, controller, this);
         controller.initialize(debugger, context.getEspressoEnv().JDWPOptions, this, mainThread, eventListener);
-        redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
-        classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
@@ -325,7 +309,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public MethodRef getMethodFromRootNode(RootNode root) {
         if (root != null && root instanceof EspressoRootNode) {
-            return ((EspressoRootNode) root).getMethodVersion();
+            return ((EspressoRootNode) root).getMethod();
         }
         return null;
     }
@@ -651,8 +635,8 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int getCatchLocation(MethodRef method, Object guestException, int bci) {
         if (guestException instanceof StaticObject) {
-            MethodVersion guestMethod = (MethodVersion) method;
-            return guestMethod.getMethod().getCatchLocation(bci, (StaticObject) guestException);
+            Method guestMethod = (Method) method;
+            return guestMethod.getCatchLocation(bci, (StaticObject) guestException);
         } else {
             return -1;
         }
@@ -663,7 +647,7 @@ public final class JDWPContextImpl implements JDWPContext {
         if (callerRoot instanceof EspressoRootNode espressoRootNode) {
             int bci = (int) readBCIFromFrame(callerRoot, frame);
             if (bci >= 0) {
-                BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethodVersion().getOriginalCode());
+                BytecodeStream bs = new BytecodeStream(espressoRootNode.getMethod().getOriginalCode());
                 return bs.nextBCI(bci);
             }
         }
@@ -682,7 +666,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public CallFrame locateObjectWaitFrame() {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
-        MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
+        MethodRef method = context.getMeta().java_lang_Object_wait;
         return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null, LOGGER);
     }
 
@@ -832,177 +816,7 @@ public final class JDWPContextImpl implements JDWPContext {
         return context.getRegistries().getAllModuleRefs();
     }
 
-    public void rerunclinit(ObjectKlass oldKlass) {
-        classInitializerActions.add(new ReloadingAction(oldKlass));
-    }
-
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
-        // list to collect all changed classes
-        List<ObjectKlass> changedKlasses = new ArrayList<>(redefineInfos.size());
-        try {
-            controller.fine(() -> "Redefining " + redefineInfos.size() + " classes");
-
-            // begin redefine transaction
-            classRedefinition.begin();
-
-            // clear synthetic fields, which forces re-resolution
-            classRedefinition.clearDelegationFields();
-
-            // invalidate missing fields assumption, which forces re-resolution
-            classRedefinition.invalidateMissingFields();
-
-            // redefine classes based on direct code changes first
-            doRedefine(redefineInfos, changedKlasses);
-
-            // Now, collect additional classes to redefine in response
-            // to the redefined classes above
-            List<RedefineInfo> additional = Collections.synchronizedList(new ArrayList<>());
-            classRedefinition.addExtraReloadClasses(redefineInfos, additional);
-            // redefine additional classes now
-            doRedefine(additional, changedKlasses);
-
-            // re-run all registered class initializers before ending transaction
-            classInitializerActions.forEach((reloadingAction) -> {
-                try {
-                    reloadingAction.fire();
-                } catch (Throwable t) {
-                    // Some anomalies when rerunning class initializers
-                    // to be expected. Treat them as non-fatal.
-                    controller.warning(() -> "exception while re-running a class initializer!");
-                }
-            });
-            assert !changedKlasses.contains(null);
-            // run post redefinition plugins before ending the redefinition transaction
-            try {
-                classRedefinition.runPostRedefinitionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
-            } catch (Throwable t) {
-                controller.severe(() -> JDWPContextImpl.class.getName() + ": redefineClasses: " + t.getMessage());
-            }
-        } catch (RedefinitionNotSupportedException ex) {
-            return ex.getErrorCode();
-        } finally {
-            classRedefinition.end();
-        }
-        return 0;
-    }
-
-    private void doRedefine(List<RedefineInfo> redefineInfos, List<ObjectKlass> changedKlasses) throws RedefinitionNotSupportedException {
-        // list to hold removed inner classes that must be marked removed
-        List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
-        // list of classes that need to refresh due to
-        // changes in other classes for things like vtable
-        List<ObjectKlass> invalidatedClasses = new ArrayList<>();
-        // list of all classes that have been redefined within this transaction
-        List<ObjectKlass> redefinedClasses = new ArrayList<>();
-
-        // match anon inner classes with previous state
-        HotSwapClassInfo[] matchedInfos = innerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, removedInnerClasses);
-
-        // detect all changes to all classes, throws if redefinition cannot be completed
-        // due to the nature of the changes
-        List<ChangePacket> changePackets = classRedefinition.detectClassChanges(matchedInfos);
-
-        // We have to redefine super classes prior to subclasses
-        Collections.sort(changePackets, new HierarchyComparator());
-
-        for (ChangePacket packet : changePackets) {
-            controller.fine(() -> "Redefining class " + packet.info.getNewName());
-            int result = classRedefinition.redefineClass(packet, invalidatedClasses, redefinedClasses);
-            if (result != 0) {
-                throw new RedefinitionNotSupportedException(result);
-            }
-        }
-
-        // refresh invalidated classes if not already redefined
-        Collections.sort(invalidatedClasses, new SubClassHierarchyComparator());
-        for (ObjectKlass invalidatedClass : invalidatedClasses) {
-            if (!redefinedClasses.contains(invalidatedClass)) {
-                controller.fine(() -> "Refreshing invalidated class " + invalidatedClass.getName());
-                invalidatedClass.swapKlassVersion(ids);
-            }
-        }
-
-        // include invalidated classes in all changed classes list
-        changedKlasses.addAll(invalidatedClasses);
-
-        // update the JWDP IDs for renamed inner classes
-        for (ChangePacket changePacket : changePackets) {
-            ObjectKlass klass = changePacket.info.getKlass();
-            if (klass != null) {
-                changedKlasses.add(klass);
-                if (changePacket.info.isRenamed()) {
-                    ids.updateId(klass);
-                }
-            }
-        }
-
-        // tell the InnerClassRedefiner to commit the changes to cache
-        innerClassRedefiner.commit(matchedInfos);
-
-        for (ObjectKlass removed : removedInnerClasses) {
-            removed.removeByRedefinition();
-        }
-    }
-
-    public void registerExternalHotSwapHandler(StaticObject handler) {
-        redefinitionPluginHandler.registerExternalHotSwapHandler(handler);
-    }
-
-    private static final class HierarchyComparator implements Comparator<ChangePacket> {
-        public int compare(ChangePacket packet1, ChangePacket packet2) {
-            Klass k1 = packet1.info.getKlass();
-            Klass k2 = packet2.info.getKlass();
-            // we need to do this check because isAssignableFrom is true in this case
-            // and we would get an order that doesn't exist
-            if (k1 == null || k2 == null || k1.equals(k2)) {
-                return 0;
-            }
-            if (k1.isAssignableFrom(k2)) {
-                return -1;
-            } else if (k2.isAssignableFrom(k1)) {
-                return 1;
-            }
-            // no hierarchy, check anon inner classes
-            Matcher m1 = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(k1.getNameAsString());
-            Matcher m2 = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(k2.getNameAsString());
-            if (!m1.matches()) {
-                return -1;
-            } else {
-                if (m2.matches()) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            }
-        }
-    }
-
-    private static final class SubClassHierarchyComparator implements Comparator<ObjectKlass> {
-        public int compare(ObjectKlass k1, ObjectKlass k2) {
-            // we need to do this check because isAssignableFrom is true in this case
-            // and we would get an order that doesn't exist
-            if (k1.equals(k2)) {
-                return 0;
-            }
-            if (k1.isAssignableFrom(k2)) {
-                return -1;
-            } else if (k2.isAssignableFrom(k1)) {
-                return 1;
-            }
-            // no hierarchy
-            return 0;
-        }
-    }
-
-    private final class ReloadingAction {
-        private ObjectKlass klass;
-
-        private ReloadingAction(ObjectKlass klass) {
-            this.klass = klass;
-        }
-
-        private void fire() {
-            klass.reRunClinit();
-        }
+        return context.getClassRedefinition().redefineClasses(redefineInfos, false, true);
     }
 }

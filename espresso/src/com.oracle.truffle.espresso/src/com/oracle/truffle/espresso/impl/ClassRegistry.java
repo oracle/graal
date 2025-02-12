@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -252,6 +252,33 @@ public abstract class ClassRegistry {
     protected final ConcurrentHashMap<Symbol<Type>, ClassRegistries.RegistryEntry> classes = new ConcurrentHashMap<>();
 
     /**
+     * The map from class name symbol hashcode to the up-to-date bytes that represent the input to a
+     * retranformation as defined per
+     * java.lang.instrument.Instrumentation#retransformClasses(Class[]). This map is only
+     * initialized/used when java agents are present.
+     */
+    private volatile ConcurrentHashMap<Klass, byte[]> retransformBytes;
+
+    @TruffleBoundary
+    public void registerRetransformBytes(Klass klass, byte[] bytes) {
+        if (retransformBytes == null) {
+            synchronized (this) {
+                // double-checked locking
+                if (retransformBytes == null) {
+                    retransformBytes = new ConcurrentHashMap<>();
+                }
+            }
+        }
+        retransformBytes.put(klass, bytes);
+    }
+
+    @TruffleBoundary
+    public byte[] getRetransformBytes(Klass klass) {
+        assert retransformBytes != null;
+        return retransformBytes.get(klass);
+    }
+
+    /**
      * Strong hidden classes must be referenced by the class loader data to prevent them from being
      * reclaimed, while not appearing in the actual registry. This field simply keeps those hidden
      * classes strongly reachable from the class registry.
@@ -371,15 +398,26 @@ public abstract class ClassRegistry {
     public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] initialBytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
         byte[] bytes = initialBytes;
-        if (context.getJavaAgents() != null && context.getJavaAgents().hasTransformer() && !info.isHidden() && !info.isAnonymousClass()) {
+        // When agents are present we need to retain the bytes we must use for a future
+        // retransformation. Those are the bytes resulting from applying all retransform incapable
+        // transformers.
+        byte[] beforeRetransformBytes = null;
+        if (context.getJavaAgents() != null && !info.isHidden() && !info.isAnonymousClass()) {
             // we must not apply a transformation on a class that was loaded in response
             // to an ongoing transformation, so we check our ThreadLocal state
             EspressoThreadLocalState tls = context.getLanguage().getThreadLocalState();
             if (!tls.isInTransformer()) {
                 try (EspressoThreadLocalState.TransformerScope transformerScope = tls.transformerScope()) {
-                    StaticObject module = getGuestModuleInstance(typeOrNull, context);
+                    ModuleEntry module = getGuestModuleInstance(typeOrNull, context);
                     StaticObject protectionDomain = info.protectionDomain == null ? StaticObject.NULL : info.protectionDomain;
-                    bytes = context.getJavaAgents().transformClass(module, getClassLoader(), typeOrNull, protectionDomain, initialBytes);
+                    beforeRetransformBytes = context.getJavaAgents().applyTransformers(StaticObject.NULL, module.module(), getClassLoader(), typeOrNull, protectionDomain, initialBytes);
+                    bytes = context.getJavaAgents().applyRetransformers(StaticObject.NULL, module.module(), getClassLoader(), typeOrNull, protectionDomain, beforeRetransformBytes);
+                    if (bytes != initialBytes) {
+                        // When bytes are modified, we need to grant module read access
+                        // to potentially injected helper classes in the unnamed module
+                        // of the bootstrap and system class loader.
+                        context.getJavaAgents().grantReadAccessToUnnamedModules(module);
+                    }
                 }
             }
         }
@@ -406,20 +444,20 @@ public abstract class ClassRegistry {
         }
 
         if (info.addedToRegistry()) {
-            registerKlass(klass, type);
+            registerKlass(klass, type, beforeRetransformBytes);
         } else if (info.isStrongHidden()) {
             registerStrongHiddenClass(klass);
         }
         return klass;
     }
 
-    private StaticObject getGuestModuleInstance(Symbol<Type> typeOrNull, EspressoContext context) {
+    private ModuleEntry getGuestModuleInstance(Symbol<Type> typeOrNull, EspressoContext context) {
         // we need the package symbol first
         Symbol<Name> pkgSymbol = typeOrNull == null ? context.getNames().getOrCreate(ByteSequence.EMPTY) : context.getNames().getOrCreate(TypeSymbols.getRuntimePackage(typeOrNull));
         // then obtain the package entry
         PackageTable.PackageEntry pkgEntry = getPackageEntry(context, pkgSymbol);
         // from the package entry we can now get the module
-        return getModuleEntry(pkgEntry).module();
+        return getModuleEntry(pkgEntry);
     }
 
     public PackageTable.PackageEntry getPackageEntry(EspressoContext context, Symbol<Name> pkgSymbol) {
@@ -611,9 +649,12 @@ public abstract class ClassRegistry {
         }
     }
 
-    private void registerKlass(ObjectKlass klass, Symbol<Type> type) {
+    private void registerKlass(ObjectKlass klass, Symbol<Type> type, byte[] bytes) {
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
         ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
+        if (bytes != null) {
+            registerRetransformBytes(klass, bytes);
+        }
 
         EspressoError.guarantee(previous == null, "Class already defined", type);
 

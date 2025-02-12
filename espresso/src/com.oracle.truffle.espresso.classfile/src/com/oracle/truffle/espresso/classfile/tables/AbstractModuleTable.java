@@ -64,6 +64,7 @@ public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.Abst
         private String location;
         private boolean canReadAllUnnamed;
         private ArrayList<AbstractModuleEntry<M>> reads;
+        private volatile boolean hasDefaultReads;
 
         protected AbstractModuleEntry(Symbol<Name> name, ModuleData<M> data) {
             super(name);
@@ -135,6 +136,14 @@ public abstract class AbstractModuleTable<M, ME extends AbstractModuleTable.Abst
 
         public void setCanReadAllUnnamed() {
             canReadAllUnnamed = true;
+        }
+
+        public boolean hasDefaultReads() {
+            return hasDefaultReads;
+        }
+
+        public void setHasDefaultReads() {
+            hasDefaultReads = true;
         }
 
         public boolean isOpen() {
