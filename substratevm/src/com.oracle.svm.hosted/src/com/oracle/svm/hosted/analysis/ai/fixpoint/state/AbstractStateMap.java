@@ -30,6 +30,10 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
         return initialDomain;
     }
 
+    public Map<Node, AbstractState<Domain>> getStateMap() {
+        return stateMap;
+    }
+
     public AbstractState<Domain> getState(Node node) {
         return stateMap.computeIfAbsent(node, n -> new AbstractState<>(initialDomain.copyOf()));
     }
@@ -68,6 +72,19 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
         return stateMap.containsKey(node);
     }
 
+    public void join(AbstractStateMap<Domain> other) {
+        for (Node node : other.stateMap.keySet()) {
+            AbstractState<Domain> state = other.stateMap.get(node);
+            AbstractState<Domain> thisState = getState(node);
+            thisState.getPreCondition().joinWith(state.getPreCondition());
+            thisState.getPostCondition().joinWith(state.getPostCondition());
+        }
+    }
+
+    public void removeState(Node node) {
+        stateMap.remove(node);
+    }
+
     public String toString() {
         StringBuilder sb = new StringBuilder("Pre and Post conditions after executing the analysis: \n");
         for (Node node : stateMap.keySet()) {
@@ -83,6 +100,8 @@ public final class AbstractStateMap<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Get the abstract context of the {@link ReturnNode}
+     * NOTE: Graal IR has only one return node, therefore we can do this safely.
+     *
      * @return the abstract context of the {@link ReturnNode}
      */
     public AbstractState<Domain> getReturnState() {
