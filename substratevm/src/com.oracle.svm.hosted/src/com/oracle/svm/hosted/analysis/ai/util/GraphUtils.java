@@ -11,7 +11,7 @@ import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraphBuilder;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
-public class GraphUtils {
+public final class GraphUtils {
 
     public static ControlFlowGraph getGraph(AnalysisMethod root, DebugContext debug) {
         StructuredGraph structuredGraph = root.decodeAnalyzedGraph(debug, null);
