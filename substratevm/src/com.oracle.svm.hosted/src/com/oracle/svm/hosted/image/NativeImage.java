@@ -177,11 +177,12 @@ public abstract class NativeImage extends AbstractImage {
             throw shouldNotReachHere(ex);
         }
         debugInfoSize = 0;
-        String debugIdentifier = OS.getCurrent() == OS.DARWIN ? "__debug" : ".debug";
-        for (Element e : objectFile.getElements()) {
-            String name = e.getName();
-            if (name.contains(debugIdentifier) && !name.startsWith(".rela")) {
-                debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
+        if (!OS.DARWIN.isCurrent()) { // debug info not available on Darwin
+            for (Element e : objectFile.getElements()) {
+                String name = e.getName();
+                if (name.contains(".debug") && !name.startsWith(".rela")) {
+                    debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
+                }
             }
         }
         if (NativeImageOptions.PrintImageElementSizes.getValue()) {
