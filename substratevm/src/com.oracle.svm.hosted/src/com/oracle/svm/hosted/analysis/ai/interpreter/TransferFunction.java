@@ -16,23 +16,9 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
-public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
-
-    private final NodeInterpreter<Domain> nodeInterpreter;
-    private final CallInterpreter<Domain> callInterpreter;
-
-    public TransferFunction(NodeInterpreter<Domain> nodeInterpreter, CallInterpreter<Domain> callInterpreter) {
-        this.nodeInterpreter = nodeInterpreter;
-        this.callInterpreter = callInterpreter;
-    }
-
-    public NodeInterpreter<Domain> getNodeInterpreter() {
-        return nodeInterpreter;
-    }
-
-    public CallInterpreter<Domain> getCallInterpreter() {
-        return callInterpreter;
-    }
+public record TransferFunction<Domain extends AbstractDomain<Domain>>(
+        NodeInterpreter<Domain> nodeInterpreter,
+        CallInterpreter<Domain> callInterpreter) {
 
     /**
      * Perform semantic transformation of the given {@link Node},
@@ -42,7 +28,6 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
      * @param abstractStateMap current state of the analysis
      */
     public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap, AnalysisPayload<Domain> payload) {
-        collectInvariantsFromCfgPredecessors(node, abstractStateMap);
         nodeInterpreter.execNode(node, abstractStateMap);
         if (node instanceof Invoke invoke) {
             payload.getLogger().logToFile("Encountered invoke: " + invoke);
@@ -66,13 +51,13 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Collect invariants from CFG predecessors of the given node.
+     * Collect invariants from CFG predecessors of the given node (joining incoming states).
      * NOTE: This method should modify the precondition of the destination node directly, to avoid creating copies.
      *
      * @param destinationNode  the node to which the edge goes
      * @param abstractStateMap current state of the analysis
      */
-    public void collectInvariantsFromCfgPredecessors(Node destinationNode, AbstractStateMap<Domain> abstractStateMap) {
+    public void collectInvariantsFromPredecessors(Node destinationNode, AbstractStateMap<Domain> abstractStateMap) {
         for (Node predecessor : destinationNode.cfgPredecessors()) {
             analyzeEdge(predecessor, destinationNode, abstractStateMap);
         }
@@ -103,6 +88,7 @@ public final class TransferFunction<Domain extends AbstractDomain<Domain>> {
     public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap, AnalysisPayload<Domain> payload) {
         payload.getLogger().logToFile("Analyzing block: " + block);
         for (Node node : block.getNodes()) {
+            collectInvariantsFromPredecessors(node, abstractStateMap);
             analyzeNode(node, abstractStateMap, payload);
         }
     }
