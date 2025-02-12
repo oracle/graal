@@ -29,7 +29,18 @@ import com.oracle.truffle.espresso.shared.meta.Named;
 import com.oracle.truffle.espresso.shared.meta.Signed;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
+/**
+ * A representation of a method in the process of being created, providing access to the data
+ * necessary for building method tables.
+ *
+ * @param <C> The class providing access to the VM-side java {@link Class}.
+ * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
+ * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
+ */
 public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named, Signed, ModifiersProvider {
+    /**
+     * @return Whether this method appears in a method table.
+     */
     default boolean isVirtualEntry() {
         return !isPrivate() && !isStatic() && !isConstructor() && !isClassInitializer();
     }
@@ -47,12 +58,48 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
      */
     boolean isClassInitializer();
 
+    /**
+     * Returns whether the current considered {@link PartialMethod method} overrides the method
+     * {@code parentMethod} at vtable index {@code vtableIndex}.
+     * <p>
+     * Typically, this information can be obtained by checking if the declaring class of this method
+     * has access to {@code parentMethod}, or any of the methods present in any one of its
+     * superclasses' vtables at index {@code vtableIndex}.
+     * <p>
+     * this method and {@code parentMethod} are guaranteed to have the same
+     * {@link #getSymbolicName()} and {@link #getSymbolicSignature()}.
+     */
     boolean canOverride(M parentMethod, int vtableIndex);
 
-    default boolean sameAccess(M parentMethod) {
+    /**
+     * Returns whether {@link PartialMethod this method} and the given {@code parentMethod} obey the
+     * same access checks rules.
+     * <p>
+     * This method is used to determine whether it is necessary to allocate a new vtable slot for a
+     * declared method that overrides a method from the super's vtable.
+     * <p>
+     * Implementing this method is not necessary if using
+     * {@link VTable#create(PartialType, boolean, boolean)} with {@code verbose} set to
+     * {@code true}.
+     * <p>
+     * This method should return {@code true} if:
+     * <ul>
+     * <li>Both methods are {@link ModifiersProvider#isPublic() public}</li>
+     * <li>Both methods are {@link ModifiersProvider#isProtected()} protected}</li>
+     * <li>Both methods are {@link ModifiersProvider#isPackagePrivate()} package-private} and the
+     * declaring classes of both method are in the same runtime package.</li>
+     * </ul>
+     * And returns {@code false} otherwise.
+     */
+    default boolean sameAccess(@SuppressWarnings("unused") M parentMethod) {
         return false;
     }
 
+    /**
+     * This method is not used as part of the vtable creation process, and is provided simply for
+     * simplifying the translation from {@link PartialMethod} to {@link MethodAccess} once the
+     * tables have been obtained and the methods fully created.
+     */
     default M asMethodAccess() {
         return null;
     }

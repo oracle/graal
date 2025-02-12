@@ -38,7 +38,29 @@ import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
+/**
+ * Helper for creating method tables.
+ */
 public final class VTable {
+    /**
+     * Creates method tables associated with the given {@link PartialType targetClass}.
+     * <p>
+     * The returned object is a {@link Tables} containing the {@link Tables#getVtable() virtual
+     * table} and the {@link Tables#getItables() interface tables}. That object also makes known the
+     * {@link Tables#getImplicitInterfaceMethods() implicit interface methods} that do not have a
+     * concrete implementation in the type hierarchy of {@code targetClass}.
+     *
+     * @param targetClass The type for which method tables should be created
+     * @param verbose Whether all declared methods should be unconditionally added to the vtable.
+     *            See {@link PartialMethod#sameAccess(MethodAccess)} for more details.
+     * @param allowInterfaceResolvingToPrivate Whether the runtime allows selection of interface
+     *            invokes to select private methods. Requires implementing
+     *            {@link PartialType#lookupOverrideWithPrivate(Symbol, Symbol)}.
+     *
+     * @param <C> The class providing access to the VM-side java {@link java.lang.Class}.
+     * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
+     * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
+     */
     public static <C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> Tables<C, M, F> create(
                     PartialType<C, M, F> targetClass,
                     boolean verbose,
@@ -148,6 +170,10 @@ public final class VTable {
                 List<PartialMethod<C, M, F>> table = new ArrayList<>(cursor.getValue().size());
 
                 for (M m : parentTable) {
+                    if (!m.isVirtualEntry()) {
+                        table.add(m);
+                        continue;
+                    }
                     MethodKey k = MethodKey.of(m);
                     table.add(locations.get(k).resolveInterface(k, this));
                 }
@@ -159,6 +185,9 @@ public final class VTable {
         private void registerFromTable(List<M> table, LocationKind kind) {
             int index = 0;
             for (M m : table) {
+                if (!m.isVirtualEntry()) {
+                    continue;
+                }
                 MethodKey k = MethodKey.of(m);
                 if (!locations.containsKey(k)) {
                     locations.put(k, new Locations<>());

@@ -30,6 +30,14 @@ import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
+/**
+ * Contains the result of method table creation from
+ * {@link VTable#create(PartialType, boolean, boolean)}.
+ *
+ * @param <C> The class providing access to the VM-side java {@link java.lang.Class}.
+ * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
+ * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
+ */
 public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
     private final List<PartialMethod<C, M, F>> vtable;
     private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables;
