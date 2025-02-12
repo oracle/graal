@@ -29,7 +29,7 @@ import java.util.function.Supplier;
 import com.oracle.svm.core.c.GlobalLongSupplier;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 
-import jdk.graal.nativeimage.impl.GlobalDataSupport;
+import org.graalvm.nativeimage.libgraal.impl.GlobalDataSupport;
 
 @AutomaticallyRegisteredImageSingleton(GlobalDataSupport.class)
 public final class GlobalDataSupportImpl implements GlobalDataSupport {

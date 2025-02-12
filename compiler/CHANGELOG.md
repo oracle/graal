@@ -3,7 +3,7 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## GraalVM for JDK 25 (Internal Version 25.0.0)
-* (GR-60088): This PR adds the `jdk.graal.nativeimage` SDK module. With this module, all logic for building
+* (GR-60088): This PR adds the `org.graalvm.nativeimage.libgraal` SDK module. With this module, all logic for building
   libgraal has been moved into the compiler suite in a new `jdk.graal.compiler.libgraal` module
   which has no dependency on Native Image internals. This
   is required for Galahad CE where libgraal must be buildable from the Graal compiler sources in the OpenJDK

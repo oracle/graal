@@ -30,7 +30,7 @@ import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import jdk.graal.nativeimage.hosted.GlobalData;
+import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;

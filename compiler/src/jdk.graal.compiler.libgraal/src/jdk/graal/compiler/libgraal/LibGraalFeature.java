@@ -41,20 +41,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
-import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.hotspot.EncodedSnippets;
-import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
-import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
-import jdk.graal.compiler.libgraal.truffle.LibGraalTruffleHostEnvironmentLookup;
-import jdk.graal.compiler.options.OptionsParser;
-import jdk.graal.compiler.serviceprovider.GraalServices;
-import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
-import jdk.graal.compiler.util.ObjectCopier;
-import jdk.internal.module.Modules;
-import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.services.JVMCIServiceLocator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -64,14 +50,28 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.libgraal.LibGraalLoader;
 
 import jdk.graal.compiler.core.common.Fields;
+import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Edges;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.hotspot.EncodedSnippets;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
+import jdk.graal.compiler.hotspot.HotSpotReplacementsImpl;
+import jdk.graal.compiler.libgraal.truffle.LibGraalTruffleHostEnvironmentLookup;
 import jdk.graal.compiler.options.OptionDescriptor;
 import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.nativeimage.LibGraalLoader;
+import jdk.graal.compiler.options.OptionsParser;
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.util.ObjectCopier;
+import jdk.internal.module.Modules;
+import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotModifiers;
+import jdk.vm.ci.services.JVMCIServiceLocator;
 
 /**
  * This feature builds the libgraal shared library (e.g., libjvmcicompiler.so on linux).

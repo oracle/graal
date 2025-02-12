@@ -41,7 +41,7 @@ import com.oracle.svm.hosted.imagelayer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.nativeimage.LibGraalLoader;
+import org.graalvm.nativeimage.libgraal.LibGraalLoader;
 import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
 

@@ -24,13 +24,6 @@
  */
 package jdk.graal.compiler.libgraal.loader;
 
-import jdk.graal.nativeimage.LibGraalLoader;
-import jdk.internal.jimage.BasicImageReader;
-import jdk.internal.module.ModulePath;
-import jdk.internal.module.Modules;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -58,6 +51,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.libgraal.LibGraalLoader;
+
+import jdk.internal.jimage.BasicImageReader;
+import jdk.internal.module.ModulePath;
+import jdk.internal.module.Modules;
 
 /**
  * A classloader that reads class files and resources from a jimage file and a module path at image

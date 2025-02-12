@@ -1,4 +1,4 @@
-Specify the fully qualified name of a class that implements jdk.graal.nativeimage.LibGraalLoader.
+Specify the fully qualified name of a class that implements org.graalvm.nativeimage.libgraal.LibGraalLoader.
 
 This option is only supported for building the libgraal shared library.
 

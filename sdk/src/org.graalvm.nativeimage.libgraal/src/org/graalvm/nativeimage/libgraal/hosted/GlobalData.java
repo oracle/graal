@@ -38,9 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package jdk.graal.nativeimage.hosted;
+package org.graalvm.nativeimage.libgraal.hosted;
 
-import jdk.graal.nativeimage.impl.GlobalDataSupport;
+import org.graalvm.nativeimage.libgraal.impl.GlobalDataSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

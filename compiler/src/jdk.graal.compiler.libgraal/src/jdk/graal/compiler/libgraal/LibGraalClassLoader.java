@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 
 /**
  * The image runtime class loader that {@linkplain DuringSetupAccess#registerObjectReplacer
- * replaces} the build-time instance of the {@link jdk.graal.nativeimage.LibGraalLoader}.
+ * replaces} the build-time instance of the {@link org.graalvm.nativeimage.libgraal.LibGraalLoader}.
  */
 final class LibGraalClassLoader extends ClassLoader {
 

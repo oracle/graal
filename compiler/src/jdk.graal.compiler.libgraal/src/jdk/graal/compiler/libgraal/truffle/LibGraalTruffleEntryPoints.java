@@ -61,7 +61,7 @@ import jdk.graal.compiler.libgraal.LibGraalJNIMethodScope;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilationSupport;
 import jdk.graal.compiler.truffle.hotspot.HotSpotTruffleCompilerImpl;
-import jdk.graal.nativeimage.LibGraalRuntime;
+import org.graalvm.nativeimage.libgraal.LibGraalRuntime;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

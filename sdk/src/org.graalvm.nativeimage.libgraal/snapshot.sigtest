@@ -1,17 +1,17 @@
 #Signature file v4.1
 #Version
 
-CLSS public abstract interface jdk.graal.nativeimage.LibGraalLoader
+CLSS public abstract interface org.graalvm.nativeimage.libgraal.LibGraalLoader
 meth public abstract java.util.Map getClassModuleMap()
 
-CLSS public final jdk.graal.nativeimage.LibGraalRuntime
+CLSS public final org.graalvm.nativeimage.libgraal.LibGraalRuntime
 meth public static long getIsolateID()
 meth public static void notifyLowMemoryPoint(boolean)
 meth public static void processReferences()
 meth public static void fatalError(java.lang.String)
 supr java.lang.Object
 
-CLSS public final jdk.graal.nativeimage.hosted.GlobalData
+CLSS public final org.graalvm.nativeimage.libgraal.hosted.GlobalData
 meth public static java.util.function.Supplier<java.lang.Long> createGlobal(long)
 supr java.lang.Object
 

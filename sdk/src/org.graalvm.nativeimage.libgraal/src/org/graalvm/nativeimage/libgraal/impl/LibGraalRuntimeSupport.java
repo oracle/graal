@@ -38,24 +38,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package jdk.graal.nativeimage;
+package org.graalvm.nativeimage.libgraal.impl;
 
-import java.util.Map;
+import org.graalvm.nativeimage.libgraal.LibGraalRuntime;
 
 /**
- * The class loader used to load the Graal and JVMCI classes compiled into libgraal implements this
- * interface to provide extra information about the libgraal classes.
- *
- * @since 25
+ * Interface for Native Image to implement {@link LibGraalRuntime}.
  */
-public interface LibGraalLoader {
+public interface LibGraalRuntimeSupport {
 
     /**
-     * Gets a map from the {@linkplain Class#forName(String) name} of a class to the name of its
-     * enclosing module. There is one entry in the map for each class available for loading by this
-     * loader.
-     *
-     * @return an unmodifiable map
+     * @see LibGraalRuntime#processReferences()
      */
-    Map<String, String> getClassModuleMap();
+    void processReferences();
+
+    /**
+     * @see LibGraalRuntime#notifyLowMemoryPoint(boolean)
+     */
+    void notifyLowMemoryPoint(boolean suggestFullGC);
+
+    /**
+     * @see LibGraalRuntime#getIsolateID()
+     */
+    long getIsolateID();
+
+    /**
+     * @see LibGraalRuntime#fatalError(String)
+     */
+    void fatalError(String message);
 }

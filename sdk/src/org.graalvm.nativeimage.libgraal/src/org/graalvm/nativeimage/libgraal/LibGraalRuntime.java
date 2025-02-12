@@ -38,32 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package jdk.graal.nativeimage.impl;
+package org.graalvm.nativeimage.libgraal;
 
-import jdk.graal.nativeimage.LibGraalRuntime;
+import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
+import org.graalvm.nativeimage.libgraal.impl.LibGraalRuntimeSupport;
 
 /**
- * Service provider interface for implementation of {@link LibGraalRuntime}.
+ * LibGraal specific extensions to {@link org.graalvm.nativeimage}.
+ *
+ * @since 25
  */
-public interface LibGraalRuntimeSupport {
+public final class LibGraalRuntime {
 
     /**
-     * @see LibGraalRuntime#processReferences()
+     * Enqueues pending {@link Reference}s into their corresponding {@link ReferenceQueue}s and
+     * executes pending cleaners.
+     *
+     * If automatic reference handling is enabled, this method is a no-op.
      */
-    void processReferences();
+    public static void processReferences() {
+        ImageSingletons.lookup(LibGraalRuntimeSupport.class).processReferences();
+    }
 
     /**
-     * @see LibGraalRuntime#notifyLowMemoryPoint(boolean)
+     * Notifies the runtime that the caller is at a point where the live set of objects is expected
+     * to just have decreased significantly and now is a good time for a partial or full collection.
+     *
+     * @param suggestFullGC if a GC is performed, then suggests a full GC is done. This is true when
+     *            the caller believes the heap occupancy is close to the minimal set of live objects
+     *            for Graal (e.g. after a compilation).
      */
-    void notifyLowMemoryPoint(boolean suggestFullGC);
+    public static void notifyLowMemoryPoint(boolean suggestFullGC) {
+        ImageSingletons.lookup(LibGraalRuntimeSupport.class).notifyLowMemoryPoint(suggestFullGC);
+    }
 
     /**
-     * @see LibGraalRuntime#getIsolateID()
+     * Gets an identifier for the current isolate that is guaranteed to be unique for the first
+     * {@code 2^64 - 1} isolates in the process.
+     *
+     * @return a non-zero value
      */
-    long getIsolateID();
+    public static long getIsolateID() {
+        return ImageSingletons.lookup(LibGraalRuntimeSupport.class).getIsolateID();
+    }
 
     /**
-     * @see LibGraalRuntime#fatalError(String)
+     * Called to signal a fatal, non-recoverable error. This method does not return or throw an
+     * exception but calls the HotSpot fatal crash routine that produces an hs-err crash log.
+     *
+     * @param message a description of the error condition
      */
-    void fatalError(String message);
+    public static void fatalError(String message) {
+        ImageSingletons.lookup(LibGraalRuntimeSupport.class).fatalError(message);
+    }
+
+    private LibGraalRuntime() {
+    }
 }

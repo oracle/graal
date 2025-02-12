@@ -44,8 +44,9 @@
  )
  */
 /**
- * Extensions to the GraalVM SDK Native Image API to customize building libgraal.
+ * Extensions to the GraalVM SDK Native Image API to customize building libgraal. Although these
+ * extensions contain public classes, they should only be used by the feature that builds libgraal.
  *
  * @since 25
  */
-package jdk.graal.nativeimage;
+package org.graalvm.nativeimage.libgraal.hosted;

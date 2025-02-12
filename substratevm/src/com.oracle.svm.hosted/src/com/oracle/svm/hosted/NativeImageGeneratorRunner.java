@@ -239,7 +239,6 @@ public class NativeImageGeneratorRunner {
                                 /* graal */
                                 potentialNeedModule.getName().startsWith("org.graalvm.") ||
                                 potentialNeedModule.getName().startsWith("jdk.graal.compiler") ||
-                                potentialNeedModule.getName().startsWith("jdk.graal.nativeimage") ||
                                 /* enterprise graal */
                                 potentialNeedModule.getName().startsWith("com.oracle.graal.") ||
                                 /* exclude all truffle modules */

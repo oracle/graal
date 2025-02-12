@@ -25,7 +25,7 @@
 package com.oracle.svm.core.c;
 
 import jdk.graal.compiler.word.Word;
-import jdk.graal.nativeimage.hosted.GlobalData;
+import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
 import org.graalvm.word.PointerBase;
 
 import java.util.function.Supplier;

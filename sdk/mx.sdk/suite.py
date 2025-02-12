@@ -438,7 +438,7 @@ suite = {
     },
 
     # Native Image API extensions for libgraal.
-    "jdk.graal.nativeimage" : {
+    "org.graalvm.nativeimage.libgraal" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -841,22 +841,22 @@ suite = {
       },
     },
 
-    "GRAAL_NATIVEIMAGE" : {
+    "NATIVEIMAGE_LIBGRAAL" : {
       "subDir" : "src",
       "dependencies" : [
-        "jdk.graal.nativeimage",
+        "org.graalvm.nativeimage.libgraal",
       ],
       "distDependencies" : ["NATIVEIMAGE"],
       "javadocType": "api",
       "moduleInfo" : {
-        "name" : "jdk.graal.nativeimage",
+        "name" : "org.graalvm.nativeimage.libgraal",
         "requires" : [
           "transitive org.graalvm.nativeimage",
         ],
         "exports" : [
-          "jdk.graal.nativeimage",
-          "jdk.graal.nativeimage.hosted",
-          "jdk.graal.nativeimage.impl to org.graalvm.nativeimage.builder",
+          "org.graalvm.nativeimage.libgraal",
+          "org.graalvm.nativeimage.libgraal.hosted",
+          "org.graalvm.nativeimage.libgraal.impl to org.graalvm.nativeimage.builder",
         ],
         "uses" : [],
         "opens" : [],

@@ -38,7 +38,7 @@ import java.util.function.Supplier;
 
 /**
  * Service provider interface (SPI) defining support needed by libgraal. Using an SPI instead of
- * directly depending on modules such as {@code jdk.graal.nativeimage} and
+ * directly depending on modules such as {@code org.graalvm.nativeimage.libgraal} and
  * {@code org.graalvm.jniutils} allows use of jargraal (e.g., putting {@code compiler.jar} on the
  * {@code --upgrade-module-path} for use with Truffle on a non-GraalVM JDK) without concern for
  * dependencies that are only needed when building libgraal.

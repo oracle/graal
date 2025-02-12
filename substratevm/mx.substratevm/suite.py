@@ -219,7 +219,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "sdk:NATIVEIMAGE",
-                "sdk:GRAAL_NATIVEIMAGE",
+                "sdk:NATIVEIMAGE_LIBGRAAL",
                 "compiler:GRAAL",
             ],
             "requiresConcealed" : {
@@ -1714,7 +1714,7 @@ suite = {
                     "transitive org.graalvm.nativeimage.pointsto",
                     "org.graalvm.collections",
                     "org.graalvm.truffle.compiler",
-                    "jdk.graal.nativeimage"
+                    "org.graalvm.nativeimage.libgraal"
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
@@ -2144,7 +2144,7 @@ suite = {
             "distDependencies": [
                 "compiler:GRAAL",
                 "sdk:NATIVEIMAGE",
-                "sdk:GRAAL_NATIVEIMAGE",
+                "sdk:NATIVEIMAGE_LIBGRAAL",
             ],
             "exclude": [
             ],

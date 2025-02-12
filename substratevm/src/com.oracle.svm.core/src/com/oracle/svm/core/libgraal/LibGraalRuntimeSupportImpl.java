@@ -31,7 +31,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.graal.nativeimage.impl.LibGraalRuntimeSupport;
+import org.graalvm.nativeimage.libgraal.impl.LibGraalRuntimeSupport;
 
 @AutomaticallyRegisteredImageSingleton({LibGraalRuntimeSupport.class})
 public final class LibGraalRuntimeSupportImpl implements LibGraalRuntimeSupport {

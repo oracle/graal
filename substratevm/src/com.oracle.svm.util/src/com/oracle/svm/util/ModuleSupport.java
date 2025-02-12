@@ -52,7 +52,7 @@ public final class ModuleSupport {
                     "com.oracle.graal.graal_enterprise",
                     "com.oracle.svm.svm_enterprise",
                     "jdk.graal.compiler",
-                    "jdk.graal.nativeimage",
+                    "org.graalvm.nativeimage.libgraal",
                     "jdk.internal.vm.ci",
                     "org.graalvm.nativeimage",
                     "org.graalvm.nativeimage.base",

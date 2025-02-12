@@ -34,18 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.libgraal.truffle.HSTruffleCompilerRuntime;
-import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import jdk.graal.compiler.word.Word;
-import jdk.graal.nativeimage.LibGraalLoader;
-import jdk.graal.nativeimage.LibGraalRuntime;
-import jdk.graal.nativeimage.hosted.GlobalData;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
-import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
-
 import jdk.graal.compiler.options.OptionValues;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -60,6 +48,18 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.RuntimeOptions;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
+import org.graalvm.nativeimage.libgraal.LibGraalLoader;
+import org.graalvm.nativeimage.libgraal.LibGraalRuntime;
+import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
+
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.libgraal.truffle.HSTruffleCompilerRuntime;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
+import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 
 /**
  * Implementation of {@link LibGraalSupport} that is only loaded by the libgraal class loader when

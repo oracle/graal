@@ -38,14 +38,19 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-/*
- @ApiInfo(
- group="Native Image LibGraal extensions"
- )
- */
+package org.graalvm.nativeimage.libgraal.impl;
+
+import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
+
+import java.util.function.Supplier;
+
 /**
- * Extensions to the GraalVM SDK Native Image API to customize building libgraal.
- *
- * @since 25
+ * Interface for Native Image to implement {@link GlobalData}.
  */
-package jdk.graal.nativeimage.hosted;
+public interface GlobalDataSupport {
+
+    /**
+     * @see GlobalData#createGlobal(long)
+     */
+    Supplier<Long> createGlobal(long initialValue);
+}

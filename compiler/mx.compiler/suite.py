@@ -484,7 +484,7 @@ suite = {
       "javaCompliance" : "21+",
       "dependencies" : [
         "GRAAL",
-        "sdk:GRAAL_NATIVEIMAGE",
+        "sdk:NATIVEIMAGE_LIBGRAAL",
         "sdk:JNIUTILS",
         "sdk:NATIVEBRIDGE"
       ],
@@ -512,7 +512,7 @@ suite = {
       "workingSets" : "Graal",
       "javaCompliance" : "21+",
       "dependencies" : [
-        "sdk:GRAAL_NATIVEIMAGE",
+        "sdk:NATIVEIMAGE_LIBGRAAL",
       ],
       "requiresConcealed" : {
         "java.base" : [
@@ -676,7 +676,7 @@ suite = {
         "jdk.graal.compiler.libgraal.loader"
       ],
       "distDependencies" : [
-        "sdk:GRAAL_NATIVEIMAGE",
+        "sdk:NATIVEIMAGE_LIBGRAAL",
         "GRAAL",
       ],
       "maven": False,
@@ -694,7 +694,7 @@ suite = {
       ],
       "distDependencies": [
         "GRAAL",
-        "sdk:GRAAL_NATIVEIMAGE",
+        "sdk:NATIVEIMAGE_LIBGRAAL",
         "sdk:JNIUTILS",
         "sdk:NATIVEIMAGE",
         "sdk:NATIVEBRIDGE"
