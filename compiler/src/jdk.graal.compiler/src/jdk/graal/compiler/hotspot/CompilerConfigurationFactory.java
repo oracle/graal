@@ -25,7 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.graal.compiler.core.common.LibGraalSupport.NATIVE_IMAGE_SETTING_KEY_PREFIX;
+import static jdk.graal.compiler.core.common.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -279,9 +279,9 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
             String justification = "properties initialized via org.graalvm.nativeimage.hosted.RuntimeSystemProperties " +
                             "are not accessible via GraalServices.getSavedProperties()";
             String settings = GraalServices.getSystemProperties(justification).entrySet().stream()//
-                            .filter(e -> e.getKey().toString().startsWith(NATIVE_IMAGE_SETTING_KEY_PREFIX))//
+                            .filter(e -> e.getKey().toString().startsWith(LIBGRAAL_SETTING_PROPERTY_PREFIX))//
                             .map(e -> {
-                                String key = e.getKey().toString().substring(NATIVE_IMAGE_SETTING_KEY_PREFIX.length());
+                                String key = e.getKey().toString().substring(LIBGRAAL_SETTING_PROPERTY_PREFIX.length());
                                 String val = e.getValue().toString();
                                 return val.isEmpty() ? key : key + "=" + val;
                             })//

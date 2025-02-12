@@ -27,7 +27,6 @@ package jdk.graal.compiler.core.common;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
 
 import java.io.PrintStream;
 import java.lang.ref.Reference;
@@ -46,17 +45,11 @@ import java.util.function.Supplier;
 public interface LibGraalSupport {
 
     /**
-     * Prefix to be used when {@linkplain RuntimeSystemProperties#register registering} properties
-     * describing the image configuration for libgraal. This is analogous to the configuration info
-     * displayed by {@code -XshowSettings}.
-     * <p>
-     * For example:
-     *
-     * <pre>
-     * RuntimeSystemProperties.register(NATIVE_IMAGE_SETTING_KEY_PREFIX + "gc", "serial");
-     * </pre>
+     * Prefix to use for an image runtime system property describing some aspect of the libgraal
+     * image configuration. These properties are included in the output of
+     * {@code -Djdk.graal.ShowConfiguration}.
      */
-    String NATIVE_IMAGE_SETTING_KEY_PREFIX = "org.graalvm.nativeimage.setting.";
+    String LIBGRAAL_SETTING_PROPERTY_PREFIX = "libgraal.setting.";
 
     /**
      * Called to signal a fatal, non-recoverable error. This method does not return or throw an
