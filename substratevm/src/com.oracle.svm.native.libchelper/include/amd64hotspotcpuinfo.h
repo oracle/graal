@@ -267,7 +267,9 @@ typedef union {
                serialize : 1,
                          : 5,
                  cet_ibt : 1,
-                         : 11;
+                         : 2,
+            avx512_fp16  : 1,
+                         : 8;
   } bits;
 } SefCpuid7Edx;
 
