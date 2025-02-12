@@ -3,7 +3,7 @@ package com.oracle.svm.hosted.analysis.ai.access;
 /**
  * Represents a field access in an access path (e.g., .name, .address)
  */
-public class FieldAccess implements AccessPathElement {
+public final class FieldAccess implements AccessPathElement {
 
     private final String fieldName;
 

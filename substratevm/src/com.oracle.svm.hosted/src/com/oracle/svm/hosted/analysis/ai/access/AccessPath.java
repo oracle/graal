@@ -12,9 +12,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a complete access path, consisting of a base variable and a sequence of accesses
+ * Represents a name of a memory ( stack/heap ) location via the path that is used to access it
+ * e.g a.b[0].c, where a is the base variable and b[0].c is the access path
  */
-public class AccessPath {
+public final class AccessPath {
 
     private final String baseVariable;
     private final List<AccessPathElement> elements;

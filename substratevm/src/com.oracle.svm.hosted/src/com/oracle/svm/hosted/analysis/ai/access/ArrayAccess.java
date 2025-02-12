@@ -3,7 +3,14 @@ package com.oracle.svm.hosted.analysis.ai.access;
 /**
  * Represents an array access in an access path (e.g., [0], [i])
  */
-public class ArrayAccess implements AccessPathElement {
+// TODO: try interpreting arrays
+
+/**
+ * a[i] = 5;
+ * a[j] = 6
+ * ....
+ */
+public final class ArrayAccess implements AccessPathElement {
     private final String index; // Could be a constant or symbolic
 
     public ArrayAccess(String index) {
