@@ -29,6 +29,7 @@ import static com.oracle.svm.agent.NativeImageAgent.ExitCodes.PARSE_ERROR;
 import static com.oracle.svm.agent.NativeImageAgent.ExitCodes.SUCCESS;
 import static com.oracle.svm.agent.NativeImageAgent.ExitCodes.USAGE_ERROR;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -43,9 +44,12 @@ import java.nio.file.attribute.FileTime;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -105,6 +109,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     private Path configOutputDirPath;
     private Path configOutputLockFilePath;
     private FileTime expectedConfigModifiedBefore;
+    Set<String> classPathEntries;
 
     private static String getTokenValue(String token) {
         return token.substring(token.indexOf('=') + 1);
@@ -281,6 +286,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         if (!conditionalConfigUserPackageFilterFiles.isEmpty() && conditionalConfigPartialRun) {
             return error(USAGE_ERROR, "The agent can generate conditional configuration either for the current run or in the partial mode but not both at the same time.");
         }
+
+        classPathEntries = new HashSet<>(Arrays.asList(getClasspathEntries(jvmti)));
 
         boolean isConditionalConfigurationRun = !conditionalConfigUserPackageFilterFiles.isEmpty() || conditionalConfigPartialRun;
         boolean shouldTraceOriginInformation = configurationWithOrigins || isConditionalConfigurationRun;
@@ -501,7 +508,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         initialDelay, writePeriod, TimeUnit.SECONDS);
     }
 
-    private static void ignoreConfigFromClasspath(JvmtiEnv jvmti, ConfigurationFileCollection ignoredConfigCollection) {
+    private static String[] getClasspathEntries(JvmtiEnv jvmti) {
         String classpath = Support.getSystemProperty(jvmti, "java.class.path");
         String sep = Support.getSystemProperty(jvmti, "path.separator");
         if (sep == null) {
@@ -510,13 +517,25 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             } else if (Platform.includedIn(Platform.WINDOWS.class)) {
                 sep = "[:;]";
             } else {
-                warn("Running on unknown platform. Not omitting existing config from classpath.");
-                return;
+                warn("Running on unknown platform. Could not process classpath.");
+                return new String[]{};
             }
         }
+        String[] entries = classpath.split(sep);
+        for (int i = 0; i < entries.length; i++) {
+            try {
+                entries[i] = new File(entries[i]).getCanonicalPath();
+            } catch (IOException ex) {
+                warn("Could not normalize classpath entry %s. Agent output may be incorrect.".formatted(entries[i]));
+            }
+        }
+        return entries;
+    }
 
+    private static void ignoreConfigFromClasspath(JvmtiEnv jvmti, ConfigurationFileCollection ignoredConfigCollection) {
+        String[] entries = getClasspathEntries(jvmti);
         AgentMetaInfProcessor processor = new AgentMetaInfProcessor(ignoredConfigCollection);
-        for (String cpEntry : classpath.split(sep)) {
+        for (String cpEntry : entries) {
             try {
                 NativeImageMetaInfWalker.walkMetaInfForCPEntry(Paths.get(cpEntry), processor);
             } catch (NativeImageMetaInfWalker.MetaInfWalkException e) {
