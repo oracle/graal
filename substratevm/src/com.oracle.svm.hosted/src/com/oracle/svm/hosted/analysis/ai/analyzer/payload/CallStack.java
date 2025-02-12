@@ -12,7 +12,7 @@ import java.util.LinkedList;
  *
  * @param <Domain> the type of derived {@link AbstractDomain} the analysis is running on
  */
-public class CallStack<Domain extends AbstractDomain<Domain>> {
+public final class CallStack<Domain extends AbstractDomain<Domain>> {
 
     private final Deque<StackRecord<Domain>> callStack = new LinkedList<>();
 
@@ -40,6 +40,23 @@ public class CallStack<Domain extends AbstractDomain<Domain>> {
         return getCurrentStackRecord().preConditionSummary();
     }
 
+    /**
+     * Counts the number of recursive calls of the specified method in the call stack.
+     *
+     * @param method the method to count recursive calls for
+     * @return the number of recursive calls of the specified method
+     */
+    public int countRecursiveCalls(AnalysisMethod method) {
+        int count = 0;
+        String qualifiedName = method.getQualifiedName();
+        for (StackRecord<Domain> record : callStack) {
+            if (record.method().getQualifiedName().equals(qualifiedName)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -48,13 +65,11 @@ public class CallStack<Domain extends AbstractDomain<Domain>> {
             sb.append("Method: ").append(record.method().toString()).append(", Summary: ");
             if (preConditionSummary == null) {
                 sb.append("[ ]");
-            }
-            else {
+            } else {
                 sb.append(record.preConditionSummary());
             }
-             sb.append("\n");
+            sb.append("\n");
         }
         return sb.toString();
     }
-
 }
