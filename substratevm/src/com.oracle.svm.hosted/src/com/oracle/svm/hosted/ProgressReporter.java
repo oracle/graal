@@ -353,8 +353,8 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
                 /* Only check builder arguments, ignore options that were set as part of others. */
                 continue;
             }
-            String origins = "";
-            String migrationMessage = OptionUtils.getAnnotationsByType(descriptor, OptionMigrationMessage.class).stream().map(a -> a.value()).collect(Collectors.joining(". "));
+            String origins;
+            String migrationMessage = OptionUtils.getAnnotationsByType(descriptor, OptionMigrationMessage.class).stream().map(OptionMigrationMessage::value).collect(Collectors.joining(". "));
             String alternatives = "";
 
             if (optionValue instanceof AccumulatingLocatableMultiOptionValue<?> lmov) {
@@ -411,7 +411,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         if (envVarValue != null && !envVarValue.isEmpty()) {
             l().printLineSeparator();
             l().yellowBold().a(" ").doclink("Picked up " + SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR, "#glossary-picked-up-ni-options").reset().a(":").println();
-            for (String arg : JDKArgsUtils.parseArgsFromEnvVar(envVarValue, SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR, msg -> UserError.abort(msg))) {
+            for (String arg : JDKArgsUtils.parseArgsFromEnvVar(envVarValue, SubstrateOptions.NATIVE_IMAGE_OPTIONS_ENV_VAR, UserError::abort)) {
                 l().a(" - '%s'", arg).println();
             }
         }
@@ -598,6 +598,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), Utils.toPercentage(imageHeapSize, imageFileSize))
                         .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", heapObjectCount, numResources).println();
+        long otherBytes = imageFileSize - codeAreaSize - imageHeapSize;
         if (debugInfoSize > 0) {
             recordJsonMetric(ImageDetailKey.DEBUG_INFO_SIZE, debugInfoSize); // Optional metric
             DirectPrinter l = l().a(format, ByteFormattingUtil.bytesToHuman(debugInfoSize), Utils.toPercentage(debugInfoSize, imageFileSize))
@@ -607,11 +608,10 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
                 l.a(" generated in %.1fs", Utils.millisToSeconds(debugInfoTimer.getTotalTime()));
             }
             l.println();
-        }
-        long otherBytes = imageFileSize - codeAreaSize - imageHeapSize;
-        if (!ImageSingletons.lookup(NativeImageDebugInfoStripFeature.class).hasStrippedSuccessfully()) {
-            // Only subtract if debug info is embedded in file (not stripped).
-            otherBytes -= debugInfoSize;
+            if (!ImageSingletons.lookup(NativeImageDebugInfoStripFeature.class).hasStrippedSuccessfully()) {
+                // Only subtract if debug info is embedded in file (not stripped).
+                otherBytes -= debugInfoSize;
+            }
         }
         assert otherBytes >= 0 : "Other bytes should never be negative: " + otherBytes;
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_SIZE, imageHeapSize);
@@ -791,9 +791,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
 
     private void createAdditionalArtifactsOnSuccess(BuildArtifacts artifacts, NativeImageGenerator generator, OptionValues parsedHostedOptions) {
         Optional<Path> buildOutputJSONFile = SubstrateOptions.BuildOutputJSONFile.getValue(parsedHostedOptions).lastValue();
-        if (buildOutputJSONFile.isPresent()) {
-            artifacts.add(ArtifactType.BUILD_INFO, reportBuildOutput(buildOutputJSONFile.get()));
-        }
+        buildOutputJSONFile.ifPresent(path -> artifacts.add(ArtifactType.BUILD_INFO, reportBuildOutput(path)));
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
@@ -951,10 +949,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         }
     }
 
-    private static class GCStats {
-        private final long totalCount;
-        private final long totalTimeMillis;
-
+    private record GCStats(long totalCount, long totalTimeMillis) {
         private static GCStats getCurrent() {
             long totalCount = 0;
             long totalTime = 0;
@@ -969,11 +964,6 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
                 }
             }
             return new GCStats(totalCount, totalTime);
-        }
-
-        GCStats(long totalCount, long totalTimeMillis) {
-            this.totalCount = totalCount;
-            this.totalTimeMillis = totalTimeMillis;
         }
     }
 
