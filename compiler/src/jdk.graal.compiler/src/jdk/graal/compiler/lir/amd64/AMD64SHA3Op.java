@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,8 +78,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/f0b72f728d357a257074177fbea2f1ff70cf70f2/src/hotspot/cpu/x86/stubGenerator_x86_64_sha3.cpp#L42-L326",
-          sha1 = "714247ae095f919159a8835d1435f497bbcd3643")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_sha3.cpp#L41-L337",
+          sha1 = "d9d050bb8e4213f750eae298d436ace9a086b233")
 // @formatter:on
 public final class AMD64SHA3Op extends AMD64LIRInstruction {
 

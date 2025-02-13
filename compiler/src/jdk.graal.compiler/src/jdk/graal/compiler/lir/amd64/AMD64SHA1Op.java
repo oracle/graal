@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,9 +61,9 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/79345bbbae2564f9f523859d1227a1784293b20f/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1433-L1468",
-          sha1 = "12a9844b6c686f0185bb738d9c0758a66b54ba7a")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/b3f34039fedd3c49404783ec880e1885dceb296b/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L32-L233",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1489-L1535",
+          sha1 = "9d6aadada55947ed011dac155786a0be0724e688")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/macroAssembler_x86_sha.cpp#L31-L232",
           sha1 = "983fb75958945f5fb6b89327bd807f98b4e8c99c")
 // @formatter:on
 public final class AMD64SHA1Op extends AMD64LIRInstruction {

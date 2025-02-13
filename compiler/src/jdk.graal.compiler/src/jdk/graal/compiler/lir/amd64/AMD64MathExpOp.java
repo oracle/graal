@@ -87,8 +87,8 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
  * </pre>
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/stubGenerator_x86_64_exp.cpp#L32-L385",
-          sha1 = "219106b137bac6345b31ef2e2d45eb6b15bfc2f3")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_exp.cpp#L31-L384",
+          sha1 = "1e8f1116aeca1c0d88ac9e0a1c82d83f9b949336")
 // @formatter:on
 public final class AMD64MathExpOp extends AMD64MathIntrinsicUnaryOp {
 
