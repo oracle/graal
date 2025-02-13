@@ -520,6 +520,8 @@ public class SVMHost extends HostVM {
         String simpleBinaryName = stringTable.deduplicate(getSimpleBinaryName(javaClass), true);
 
         Class<?> nestHost = javaClass.getNestHost();
+        VMError.guarantee(platformSupported(nestHost), "The NestHost %s for %s is not available in this platform.", nestHost, javaClass);
+
         boolean isHidden = javaClass.isHidden();
         boolean isRecord = javaClass.isRecord();
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
