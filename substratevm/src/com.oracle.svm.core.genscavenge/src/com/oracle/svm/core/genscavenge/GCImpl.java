@@ -432,7 +432,7 @@ public final class GCImpl implements GC {
             }
 
             if (SerialGCOptions.TraceHeapChunks.getValue()) {
-                HeapImpl.getHeapImpl().logChunks(Log.log());
+                HeapImpl.getHeapImpl().logChunks(Log.log(), false);
             }
         }
 

@@ -78,13 +78,12 @@ import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
-import com.oracle.svm.core.stack.ThreadStackPrinter.Stage0StackFramePrintVisitor;
-import com.oracle.svm.core.stack.ThreadStackPrinter.Stage1StackFramePrintVisitor;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -115,8 +114,7 @@ public class SubstrateDiagnostics {
 
     private static final FastThreadLocalBytes<CCharPointer> threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1, "SubstrateDiagnostics.threadOnlyAttachedForCrashHandler");
     private static final ImageCodeLocationInfoPrinter imageCodeLocationInfoPrinter = new ImageCodeLocationInfoPrinter();
-    private static final Stage0StackFramePrintVisitor[] printVisitors = new Stage0StackFramePrintVisitor[]{new StackFramePrintVisitor(), new Stage1StackFramePrintVisitor(),
-                    new Stage0StackFramePrintVisitor()};
+    private static final StackFramePrintVisitor stackFramePrinter = new StackFramePrintVisitor();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setOnlyAttachedForCrashHandler(IsolateThread thread) {
@@ -850,7 +848,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    static class DumpVMInfo extends DiagnosticThunk {
+    static class DumpBuildTimeInfo extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -867,7 +865,9 @@ public class SubstrateDiagnostics {
             Platform platform = ImageSingletons.lookup(Platform.class);
             log.string("Platform: ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
             log.string("Page size: ").unsigned(SubstrateOptions.getPageSize()).newline();
+            log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
             log.string("Containerized: ").string(String.valueOf(Container.singleton().isContainerized())).newline();
+            log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
             log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
             log.indent(false);
         }
@@ -878,7 +878,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    public static class DumpMachineInfo extends DiagnosticThunk {
+    public static class DumpRuntimeInfo extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -888,6 +888,8 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Runtime information:").indent(true);
+            log.string("Isolate id: ").signed(Isolates.getIsolateId()).newline();
+            log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
 
             if (Container.singleton().isContainerized()) {
                 log.string("CPU cores (container): ");
@@ -1024,8 +1026,8 @@ public class SubstrateDiagnostics {
             Pointer sp = context.getStackPointer();
             CodePointer ip = context.getInstructionPointer();
 
-            log.string("Stacktrace for the failing thread ").zhex(CurrentIsolate.getCurrentThread()).string(" (A=AOT compiled, J=JIT compiled, D=deoptimized, i=inlined):").indent(true);
-            boolean success = ThreadStackPrinter.printStacktrace(CurrentIsolate.getCurrentThread(), sp, ip, printVisitors[invocationCount - 1].reset(), log);
+            log.string("Stacktrace for the failing thread ").zhex(CurrentIsolate.getCurrentThread()).string(" (A=AOT compiled, J=JIT compiled, D=deoptimized, i=inlined, C=native):").indent(true);
+            boolean success = ThreadStackPrinter.printStacktrace(CurrentIsolate.getCurrentThread(), sp, ip, stackFramePrinter.reset(invocationCount), log);
 
             if (!success && DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel)) {
                 /*
@@ -1056,7 +1058,7 @@ public class SubstrateDiagnostics {
             Pointer sp = returnAddressPos.add(FrameAccess.returnAddressSize());
             log.newline();
             log.string("Starting the stack walk in a possible caller (sp + ").unsigned(sp.subtract(originalSp)).string("):").newline();
-            ThreadStackPrinter.printStacktrace(CurrentIsolate.getCurrentThread(), sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
+            ThreadStackPrinter.printStacktrace(CurrentIsolate.getCurrentThread(), sp, possibleIp, stackFramePrinter.reset(invocationCount), log);
         }
     }
 
@@ -1103,7 +1105,7 @@ public class SubstrateDiagnostics {
 
         private static void printStackTrace(Log log, IsolateThread vmThread, int invocationCount) {
             log.string("Stacktrace:").indent(true);
-            JavaStackWalker.walkThread(vmThread, printVisitors[invocationCount - 1].reset(), log);
+            JavaStackWalker.walkThread(vmThread, stackFramePrinter.reset(invocationCount), log);
             log.redent(false);
         }
     }
@@ -1279,8 +1281,8 @@ public class SubstrateDiagnostics {
             thunks.add(new DumpCurrentVMOperation());
             thunks.add(new DumpVMOperationHistory());
             thunks.add(new VMLockSupport.DumpVMMutexes());
-            thunks.add(new DumpVMInfo());
-            thunks.add(new DumpMachineInfo());
+            thunks.add(new DumpBuildTimeInfo());
+            thunks.add(new DumpRuntimeInfo());
             if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
                 thunks.add(new DumpCommandLine());
             }
