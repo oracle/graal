@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -169,10 +171,24 @@ public final class StoredContinuationAccess {
         cont.ip = ip;
     }
 
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean shouldWalkContinuation(StoredContinuation s) {
+        /*
+         * StoredContinuations in the image heap are read-only and should not be visited. They may
+         * contain unresolved uncompressed references which are patched only on a platform thread's
+         * stack before resuming the continuation. We should typically not see such objects during
+         * GC, but they might be visited due to card marking when they are near an object which has
+         * been modified at runtime.
+         */
+        return !Heap.getHeap().isInImageHeap(s);
+    }
+
     @AlwaysInline("De-virtualize calls to ObjectReferenceVisitor")
     @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
     public static boolean walkReferences(StoredContinuation s, ObjectReferenceVisitor visitor) {
-        assert !Heap.getHeap().isInImageHeap(s) : "StoredContinuations in the image heap are read-only and don't need to be visited";
+        if (!shouldWalkContinuation(s)) {
+            return true;
+        }
 
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         JavaStackWalker.initializeForContinuation(walk, s);
@@ -199,7 +215,9 @@ public final class StoredContinuationAccess {
     @AlwaysInline("De-virtualize calls to visitor.")
     @Uninterruptible(reason = "StoredContinuation must not move.", callerMustBe = true)
     public static void walkFrames(StoredContinuation s, ContinuationStackFrameVisitor visitor, ContinuationStackFrameVisitorData data) {
-        assert !Heap.getHeap().isInImageHeap(s) : "StoredContinuations in the image heap are read-only and don't need to be visited";
+        if (!shouldWalkContinuation(s)) {
+            return;
+        }
 
         JavaStackWalk walk = StackValue.get(JavaStackWalker.sizeOfJavaStackWalk());
         JavaStackWalker.initializeForContinuation(walk, s);
