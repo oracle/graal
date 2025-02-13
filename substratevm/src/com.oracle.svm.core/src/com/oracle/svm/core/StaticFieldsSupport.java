@@ -38,6 +38,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -188,6 +189,26 @@ public final class StaticFieldsSupport {
             assert constant.isNonNull() : constant;
             replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
         }
+    }
+
+    /**
+     * We must ensure we are not querying the offset of a static field of a type assignable from
+     * {@link org.graalvm.word.WordBase}.
+     */
+    public interface StaticFieldValidator {
+        static void checkFieldOffsetAllowed(ResolvedJavaField field) {
+            if (field.isStatic()) {
+                if (SubstrateUtil.HOSTED) {
+                    ImageSingletons.lookup(StaticFieldValidator.class).hostedCheckFieldOffsetAllowed(field);
+                } else {
+                    SharedField sField = (SharedField) field;
+                    boolean wordType = ((SharedType) sField.getType()).isWordType();
+                    VMError.guarantee(!wordType, "static Word field offsets cannot be queried");
+                }
+            }
+        }
+
+        void hostedCheckFieldOffsetAllowed(ResolvedJavaField field);
     }
 }
 

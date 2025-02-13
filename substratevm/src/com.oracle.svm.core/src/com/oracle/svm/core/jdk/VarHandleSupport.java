@@ -52,7 +52,7 @@ public abstract class VarHandleSupport {
         return ImageSingletons.lookup(VarHandleSupport.class);
     }
 
-    protected abstract ResolvedJavaField findVarHandleField(Object varHandle);
+    protected abstract ResolvedJavaField findVarHandleField(Object varHandle, boolean guaranteeUnsafeAccessed);
 }
 
 abstract class VarHandleFieldOffsetComputer implements FieldValueTransformerWithAvailability {
@@ -70,7 +70,7 @@ abstract class VarHandleFieldOffsetComputer implements FieldValueTransformerWith
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(receiver);
+        ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(receiver, true);
         int offset = field.getOffset();
         if (offset <= 0) {
             throw VMError.shouldNotReachHere("Field is not marked as unsafe accessed: " + field);
@@ -90,7 +90,7 @@ abstract class VarHandleFieldOffsetComputer implements FieldValueTransformerWith
     public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
         Object varHandle = providers.getSnippetReflection().asObject(Object.class, receiver);
         if (varHandle != null) {
-            ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(varHandle);
+            ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(varHandle, false);
             return FieldOffsetNode.create(kind, field);
         }
         return null;
@@ -117,7 +117,8 @@ class VarHandleStaticBaseComputer implements FieldValueTransformerWithAvailabili
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(receiver);
+        ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(receiver, false);
+        StaticFieldsSupport.StaticFieldValidator.checkFieldOffsetAllowed(field);
         return field.getType().getJavaKind().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
     }
 
@@ -125,7 +126,8 @@ class VarHandleStaticBaseComputer implements FieldValueTransformerWithAvailabili
     public ValueNode intrinsify(CoreProviders providers, JavaConstant receiver) {
         Object varHandle = providers.getSnippetReflection().asObject(Object.class, receiver);
         if (varHandle != null) {
-            ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(varHandle);
+            ResolvedJavaField field = VarHandleSupport.singleton().findVarHandleField(varHandle, false);
+            StaticFieldsSupport.StaticFieldValidator.checkFieldOffsetAllowed(field);
             return StaticFieldsSupport.createStaticFieldBaseNode(field.getType().getJavaKind().isPrimitive());
         }
         return null;
