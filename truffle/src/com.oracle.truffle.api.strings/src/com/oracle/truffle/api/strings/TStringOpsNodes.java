@@ -57,19 +57,6 @@ final class TStringOpsNodes {
      */
     static final String LIMIT_STRIDE = "9";
 
-    abstract static class RawReadValueNode extends AbstractInternalNode {
-
-        abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int i);
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"compaction == cachedCompaction"}, limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
-        static int cached(Node node, AbstractTruffleString a, Object arrayA, int i,
-                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
-                        @Cached("compaction") CompactionLevel cachedCompaction) {
-            return TStringOps.readValue(a, arrayA, cachedCompaction.getStride(), i);
-        }
-    }
-
     abstract static class IndexOfAnyCharUTF16Node extends AbstractInternalNode {
 
         abstract int execute(Node node, AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values);

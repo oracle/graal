@@ -46,6 +46,7 @@ import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 
@@ -327,6 +328,7 @@ final class Encodings {
         return utf8DecodeBroken(arrayA, a.offset(), a.length(), i, errorHandling);
     }
 
+    @InliningCutoff
     @SuppressWarnings("fallthrough")
     static int utf8DecodeBroken(Object arrayA, int offsetA, int lengthA, int i, ErrorHandling errorHandling) {
         int b = readS0(arrayA, offsetA, lengthA, i);
@@ -364,6 +366,7 @@ final class Encodings {
         return codepoint;
     }
 
+    @InliningCutoff
     static int utf8GetCodePointLength(AbstractTruffleString a, Object arrayA, int i, DecodingErrorHandler errorHandler) {
         return utf8GetCodePointLength(arrayA, a.offset(), a.length(), i, errorHandler);
     }
@@ -434,6 +437,7 @@ final class Encodings {
         return codepoint < 0x10000 ? 1 : 2;
     }
 
+    @InliningCutoff
     static int utf16BrokenGetCodePointByteLength(AbstractTruffleString a, Object arrayA, int i, ErrorHandling errorHandling) {
         return utf16BrokenGetCodePointByteLength(arrayA, a.offset(), a.length(), i, errorHandling);
     }
@@ -458,6 +462,7 @@ final class Encodings {
         return 2;
     }
 
+    @InliningCutoff
     static int utf16FEBrokenGetCodePointByteLength(Object arrayA, int offset, int length, int i, ErrorHandling errorHandling) {
         char c = Character.reverseBytes(readS1(arrayA, offset, length, i));
         if (errorHandling == ErrorHandling.BEST_EFFORT) {
@@ -559,6 +564,7 @@ final class Encodings {
         return iChars;
     }
 
+    @InliningCutoff
     static int utf16BrokenCodePointToCharIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
         int iCP = 0;
         int iChars = 0;
@@ -577,6 +583,7 @@ final class Encodings {
         return iChars;
     }
 
+    @InliningCutoff
     static int utf16FEBrokenCodePointToCharIndex(Node location, Object arrayA, int offsetA, int lengthA, int codePointIndex) {
         int iCP = 0;
         int iChars = 0;
@@ -623,6 +630,7 @@ final class Encodings {
         return utf16DecodeBroken(arrayA, a.offset(), a.length(), i, errorHandling);
     }
 
+    @InliningCutoff
     static int utf16DecodeBroken(Object arrayA, int offsetA, int lengthA, int i, ErrorHandling errorHandling) {
         char c = readS1(arrayA, offsetA, lengthA, i);
         if (errorHandling == ErrorHandling.BEST_EFFORT) {
@@ -648,6 +656,7 @@ final class Encodings {
         return c;
     }
 
+    @InliningCutoff
     static int utf16FEDecodeBroken(Object arrayA, int offsetA, int lengthA, int i, ErrorHandling errorHandling) {
         char c = Character.reverseBytes(readS1(arrayA, offsetA, lengthA, i));
         if (errorHandling == ErrorHandling.BEST_EFFORT) {

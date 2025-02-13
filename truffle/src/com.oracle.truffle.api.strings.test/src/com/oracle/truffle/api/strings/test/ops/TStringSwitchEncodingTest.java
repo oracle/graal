@@ -171,7 +171,7 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
                                     Assert.fail();
                                 }
                             }
-                            Assert.assertEquals(expected, it.nextUncached());
+                            Assert.assertEquals(expected, it.nextUncached(targetEncoding));
                         }
                     }
                 }

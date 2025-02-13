@@ -662,7 +662,7 @@ public class TStringTestBase {
     protected static void assertCodePointsEqual(AbstractTruffleString a, TruffleString.Encoding encoding, int[] codepoints, int fromIndex, int length) {
         TruffleStringIterator it = a.createCodePointIteratorUncached(encoding);
         for (int i = 0; i < length; i++) {
-            Assert.assertEquals(codepoints[fromIndex + i], it.nextUncached());
+            Assert.assertEquals(codepoints[fromIndex + i], it.nextUncached(encoding));
         }
     }
 

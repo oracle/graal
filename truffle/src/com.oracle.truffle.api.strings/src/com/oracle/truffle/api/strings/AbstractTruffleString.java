@@ -1341,7 +1341,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
                 StringBuilder sb = new StringBuilder(length);
                 TruffleStringIterator it = createCodePointIteratorUncached(Encoding.BYTES);
                 while (it.hasNext()) {
-                    int c = it.nextUncached();
+                    int c = it.nextUncached(Encoding.BYTES);
                     if (c <= 0x7f) {
                         sb.append((char) c);
                     } else {
@@ -1499,12 +1499,12 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
             return bytes;
         }
 
-        void materializeByteArray(Node node, AbstractTruffleString a, InlinedConditionProfile profile) {
-            materializeByteArray(node, a.offset(), a.length() << a.stride(), profile);
+        void materializeByteArray(AbstractTruffleString a) {
+            materializeByteArray(a.offset(), a.length() << a.stride());
         }
 
-        void materializeByteArray(Node node, int byteOffset, int byteLength, InlinedConditionProfile profile) {
-            if (profile.profile(node, !byteArrayIsValid)) {
+        void materializeByteArray(int byteOffset, int byteLength) {
+            if (!byteArrayIsValid) {
                 if (bytes == null) {
                     bytes = new byte[byteLength];
                 }

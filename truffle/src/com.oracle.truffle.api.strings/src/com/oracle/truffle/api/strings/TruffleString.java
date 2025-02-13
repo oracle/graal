@@ -78,7 +78,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -224,7 +223,7 @@ public final class TruffleString extends AbstractTruffleString {
             knownCodeRange = TSCodeRange.get16Bit();
         }
         if (bytes instanceof NativePointer) {
-            ((NativePointer) bytes).materializeByteArray(null, offset, length << stride, InlinedConditionProfile.getUncached());
+            ((NativePointer) bytes).materializeByteArray(offset, length << stride);
         } else {
             assert stride == Stride.fromCodeRangeAllowImprecise(codeRange, encoding);
         }
@@ -2556,38 +2555,36 @@ public final class TruffleString extends AbstractTruffleString {
             return data;
         }
 
-        @Specialization(guards = "isSupportedEncoding(a.encoding())")
-        static NativePointer doNativeSupported(@SuppressWarnings("unused") AbstractTruffleString a, NativePointer data) {
-            return data;
-        }
-
-        @InliningCutoff
-        @Specialization(guards = "!isSupportedEncoding(a.encoding())")
-        static NativePointer doNativeUnsupported(Node node, @SuppressWarnings("unused") AbstractTruffleString a, NativePointer data,
-                        @Shared @Cached InlinedConditionProfile materializeProfile) {
-            data.materializeByteArray(node, a, materializeProfile);
-            return data;
-        }
-
-        @InliningCutoff
-        @Specialization
-        static byte[] doLazyConcat(Node node, AbstractTruffleString a, @SuppressWarnings("unused") LazyConcat data) {
-            // note: the write to a.data is racy, and we deliberately read it from the TString
-            // object again after the race to de-duplicate simultaneously generated arrays
-            a.setData(LazyConcat.flatten(node, (TruffleString) a));
-            return (byte[]) a.data();
-        }
-
-        @InliningCutoff
-        @Specialization
-        static byte[] doLazyLong(Node node, AbstractTruffleString a, LazyLong data,
-                        @Shared @Cached InlinedConditionProfile materializeProfile) {
-            // same pattern as in #doLazyConcat: racy write to data.bytes and read the result
-            // again to de-duplicate
-            if (materializeProfile.profile(node, data.bytes == null)) {
-                data.setBytes((TruffleString) a, NumberConversion.longToString(data.value, a.length()));
+        @Fallback
+        static Object doByteArray(Node node, AbstractTruffleString a, Object data,
+                        @Cached InlinedBranchProfile slowPathProfile) {
+            if (data instanceof NativePointer nativePointer && (!JCodings.JCODINGS_ENABLED || isSupportedEncoding(a.encoding()))) {
+                return nativePointer;
             }
-            return data.bytes;
+            slowPathProfile.enter(node);
+            return slowpath(node, a, data);
+        }
+
+        @TruffleBoundary
+        private static Object slowpath(Node node, AbstractTruffleString a, Object data) {
+            if (data instanceof NativePointer nativePointer) {
+                assert !isSupportedEncoding(a.encoding());
+                nativePointer.materializeByteArray(a);
+                return nativePointer;
+            } else if (data instanceof LazyConcat) {
+                // note: the write to a.data is racy, and we deliberately read it from the TString
+                // object again after the race to de-duplicate simultaneously generated arrays
+                a.setData(LazyConcat.flatten(node, (TruffleString) a));
+                return a.data();
+            } else {
+                LazyLong lazyLong = (LazyLong) data;
+                // same pattern as in #doLazyConcat: racy write to data.bytes and read the result
+                // again to de-duplicate
+                if (lazyLong.bytes == null) {
+                    lazyLong.setBytes((TruffleString) a, NumberConversion.longToString(lazyLong.value, a.length()));
+                }
+                return lazyLong.bytes;
+            }
         }
 
         public static ToIndexableNode getUncached() {
@@ -2611,25 +2608,10 @@ public final class TruffleString extends AbstractTruffleString {
             }
 
             private static Object doNativeOrLazy(Node node, AbstractTruffleString a, Object data) {
-                if (data instanceof NativePointer nativePointer && Encoding.isSupported(a.encoding())) {
+                if (data instanceof NativePointer nativePointer && (!JCodings.JCODINGS_ENABLED || isSupportedEncoding(a.encoding()))) {
                     return nativePointer;
                 }
-                return doMaterialize(node, a, data);
-            }
-
-            @TruffleBoundary
-            private static Object doMaterialize(Node node, AbstractTruffleString a, Object data) {
-                if (data instanceof NativePointer nativePointer) {
-                    assert !TStringGuards.isSupportedEncoding(a.encoding());
-                    return ToIndexableNode.doNativeUnsupported(node, a, nativePointer, InlinedConditionProfile.getUncached());
-                } else if (data instanceof LazyConcat) {
-                    return doLazyConcat(node, a, (LazyConcat) data);
-                } else if (data instanceof LazyLong) {
-                    return ToIndexableNode.doLazyLong(node, a, (LazyLong) data, InlinedConditionProfile.getUncached());
-                } else {
-                    assert false : data;
-                    throw CompilerDirectives.shouldNotReachHere();
-                }
+                return ToIndexableNode.slowpath(node, a, data);
             }
 
             @Override
@@ -4018,7 +4000,7 @@ public final class TruffleString extends AbstractTruffleString {
             while (it.getRawIndex() < toIndex) {
                 assert it.hasNext();
                 int index = it.getByteIndex();
-                if (IndexOfCodePointSet.IndexOfRangesNode.rangesContain(codePointSet.ranges, nextNode.execute(this, it))) {
+                if (IndexOfCodePointSet.IndexOfRangesNode.rangesContain(codePointSet.ranges, nextNode.execute(this, it, encoding))) {
                     return index;
                 }
             }

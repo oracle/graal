@@ -53,7 +53,6 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.ErrorHandling;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider;
 import com.oracle.truffle.api.strings.provider.JCodingsProvider.Encoding;
@@ -279,7 +278,7 @@ final class JCodingsImpl implements JCodings {
 
     private static byte[] asBytesMaterializeNative(AbstractTruffleString a, Object arrayA) {
         if (arrayA instanceof AbstractTruffleString.NativePointer) {
-            ((AbstractTruffleString.NativePointer) arrayA).materializeByteArray(null, a, InlinedConditionProfile.getUncached());
+            ((AbstractTruffleString.NativePointer) arrayA).materializeByteArray(a);
         }
         return JCodings.asByteArray(arrayA);
     }

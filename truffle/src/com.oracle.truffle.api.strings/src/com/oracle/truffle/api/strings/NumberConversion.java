@@ -91,14 +91,14 @@ final class NumberConversion {
     private static final long MAX_SAFE_INTEGER_LONG = (long) Math.pow(2, 53) - 1;
     private static final long MIN_SAFE_INTEGER_LONG = (long) MIN_SAFE_INTEGER;
 
-    static int parseInt(Node node, TruffleStringIterator it, int radix, InlinedBranchProfile errorProfile,
+    static int parseInt(Node node, TruffleStringIterator it, TruffleString.Encoding encoding, int radix, InlinedBranchProfile errorProfile,
                     TruffleStringIterator.InternalNextNode nextNode) throws TruffleString.NumberFormatException {
-        return (int) parseNum(node, it, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE, nextNode);
+        return (int) parseNum(node, it, encoding, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE, nextNode);
     }
 
-    static long parseLong(Node node, TruffleStringIterator it, int radix, InlinedBranchProfile errorProfile,
+    static long parseLong(Node node, TruffleStringIterator it, TruffleString.Encoding encoding, int radix, InlinedBranchProfile errorProfile,
                     TruffleStringIterator.InternalNextNode nextNode) throws TruffleString.NumberFormatException {
-        return parseNum(node, it, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE, nextNode);
+        return parseNum(node, it, encoding, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE, nextNode);
     }
 
     static int parseInt7Bit(Node node, AbstractTruffleString a, Object ptrA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
@@ -113,14 +113,14 @@ final class NumberConversion {
         return MIN_SAFE_INTEGER_LONG <= value && value <= MAX_SAFE_INTEGER_LONG;
     }
 
-    private static long parseNum(Node node, TruffleStringIterator it, int radix, InlinedBranchProfile errorProfile, long min, long max,
+    private static long parseNum(Node node, TruffleStringIterator it, TruffleString.Encoding encoding, int radix, InlinedBranchProfile errorProfile, long min, long max,
                     TruffleStringIterator.InternalNextNode nextNode) throws TruffleString.NumberFormatException {
         checkArgs(node, it, radix, errorProfile);
         long result = 0;
         boolean negative = false;
         long limit = -max;
         if (it.hasNext()) {
-            int firstChar = nextNode.execute(node, it);
+            int firstChar = nextNode.execute(node, it, encoding);
             if (firstChar < '0') { // Possible leading "+" or "-"
                 if (firstChar == '-') {
                     negative = true;
@@ -145,7 +145,7 @@ final class NumberConversion {
             long multmin = limit / radix;
             while (it.hasNext()) {
                 // Accumulating negatively avoids surprises near MAX_VALUE
-                int digit = Character.digit(nextNode.execute(node, it), radix);
+                int digit = Character.digit(nextNode.execute(node, it, encoding), radix);
                 if (digit < 0) {
                     errorProfile.enter(node);
                     throw numberFormatException(it, Reason.INVALID_CODEPOINT);

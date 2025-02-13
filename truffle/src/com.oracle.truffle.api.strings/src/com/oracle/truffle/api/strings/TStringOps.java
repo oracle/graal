@@ -1179,6 +1179,7 @@ final class TStringOps {
         }
     }
 
+    @InliningCutoff
     static long calcStringAttributesUTF16FE(Node location, Object array, int offset, int length) {
         try {
             final boolean isNative = isNativePointer(array);
@@ -1223,6 +1224,7 @@ final class TStringOps {
         }
     }
 
+    @InliningCutoff
     static int calcStringAttributesUTF32FE(Node location, Object array, int offset, int length) {
         try {
             final boolean isNative = isNativePointer(array);
