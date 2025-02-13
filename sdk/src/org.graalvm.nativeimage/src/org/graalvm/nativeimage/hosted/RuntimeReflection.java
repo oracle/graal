@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -231,7 +231,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredFields(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFieldsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFields(ConfigurationCondition.alwaysTrue(), declaringClass);
     }
 
     /**
