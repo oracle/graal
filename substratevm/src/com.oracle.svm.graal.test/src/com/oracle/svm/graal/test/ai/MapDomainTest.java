@@ -167,14 +167,14 @@ public class MapDomainTest {
     }
 
     @Test
-    public void testFilter() {
+    public void testRemoveIf() {
         Map<String, BooleanAndDomain> map = new HashMap<>();
         map.put("key1", new BooleanAndDomain(true));
         map.put("key2", new BooleanAndDomain(false));
         TestMapDomain<String, BooleanAndDomain> mapDomain = new TestMapDomain<>(map, new BooleanAndDomain(false));
 
         /* keep only the true values in the map */
-        mapDomain.filter((entry) -> entry.getValue().getValue());
+        mapDomain.removeIf((entry) -> entry.getValue().getValue());
         Assert.assertTrue(mapDomain.get("key1").getValue());
         Assert.assertEquals(1, mapDomain.getSize());
     }
