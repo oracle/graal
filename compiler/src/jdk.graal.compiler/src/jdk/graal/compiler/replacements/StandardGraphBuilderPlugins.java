@@ -851,8 +851,15 @@ public class StandardGraphBuilderPlugins {
             if (arrayType != null && arrayType.isArray()) {
                 unsafe.get(true);
                 var elementKind = b.getMetaAccessExtensionProvider().getStorageKind(arrayType.getComponentType());
-                int result = arrayBaseOffset ? b.getMetaAccess().getArrayBaseOffset(elementKind) : b.getMetaAccess().getArrayIndexScale(elementKind);
-                b.addPush(JavaKind.Int, ConstantNode.forInt(result));
+                if (arrayBaseOffset) {
+                    if (JavaVersionUtil.JAVA_SPEC > 21) {
+                        b.addPush(JavaKind.Long, ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(elementKind)));
+                    } else {
+                        b.addPush(JavaKind.Int, ConstantNode.forInt(b.getMetaAccess().getArrayBaseOffset(elementKind)));
+                    }
+                } else {
+                    b.addPush(JavaKind.Int, ConstantNode.forInt(b.getMetaAccess().getArrayIndexScale(elementKind)));
+                }
                 return true;
             }
         }

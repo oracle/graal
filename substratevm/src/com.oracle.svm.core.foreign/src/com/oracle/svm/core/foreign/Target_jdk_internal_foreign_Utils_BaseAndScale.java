@@ -24,19 +24,29 @@
  */
 package com.oracle.svm.core.foreign;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDKLatest;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.foreign.Utils;
 import jdk.vm.ci.meta.JavaKind;
 
-@TargetClass(className = "jdk.internal.foreign.Utils", innerClass = "BaseAndScale", onlyWith = ForeignFunctionsEnabled.class)
+@TargetClass(className = "jdk.internal.foreign.Utils", innerClass = "BaseAndScale", onlyWith = {ForeignFunctionsEnabled.class, JDKLatest.class})
 final class Target_jdk_internal_foreign_Utils_BaseAndScale {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = BaseFieldRecomputer.class) //
+    long base;
+}
+
+@TargetClass(className = "jdk.internal.foreign.Utils", innerClass = "BaseAndScale", onlyWith = {ForeignFunctionsEnabled.class, JDK21OrEarlier.class})
+final class Target_jdk_internal_foreign_Utils_BaseAndScale_JDK21 {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = BaseFieldRecomputer.class) //
     int base;
@@ -64,6 +74,10 @@ final class BaseFieldRecomputer implements FieldValueTransformer {
         } else {
             throw VMError.shouldNotReachHere("Unexpected BaseAndScale instance: " + receiver);
         }
-        return ConfigurationValues.getObjectLayout().getArrayBaseOffset(kind);
+        int offset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(kind);
+        if (JavaVersionUtil.JAVA_SPEC <= 21) {
+            return offset;
+        }
+        return (long) offset;
     }
 }
