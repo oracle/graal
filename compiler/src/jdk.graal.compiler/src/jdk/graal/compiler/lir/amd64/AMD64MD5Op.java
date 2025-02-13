@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,9 +48,9 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/79345bbbae2564f9f523859d1227a1784293b20f/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1373-L1409",
-          sha1 = "acf2eea69d799b0a1a38edaff048ff30f5257016")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/1cf26a5179e619f17909426fdb26a3fb3b748483/src/hotspot/cpu/x86/macroAssembler_x86_md5.cpp#L52-L209",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L1416-L1463",
+          sha1 = "a2a5c672ea09ea19fd9ce7e3c79ab75f3cdc7287")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/macroAssembler_x86_md5.cpp#L51-L208",
           sha1 = "8367eccc4e44cd5c71915c01d7b01f2f95179aaf")
 // @formatter:on
 public final class AMD64MD5Op extends AMD64LIRInstruction {

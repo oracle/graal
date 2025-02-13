@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -80,8 +80,8 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
  * </pre>
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp#L365-L707",
-          sha1 = "b8e7d34454b0d8d90eb8bbfce4fab3c5e018a941")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp#L365-L708",
+          sha1 = "2a5edbf704a1b047c67abb90fe14494ecdb2f790")
 // @formatter:on
 public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
 

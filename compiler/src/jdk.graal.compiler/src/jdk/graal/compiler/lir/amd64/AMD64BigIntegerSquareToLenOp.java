@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,9 +55,9 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/79345bbbae2564f9f523859d1227a1784293b20f/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3147-L3191",
-          sha1 = "ab70559cefe0dc177a290d417047955fba3ad1fc")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/496641955041c5e48359e6256a4a61812653d900/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L7716-L8029",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3260-L3305",
+          sha1 = "b002fbc3aef7b27914cb3dbf66e27e94ffc2d8d9")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L7732-L8045",
           sha1 = "2e4ea1436904cbd5a933eb8c687296d9bbefe4f0")
 // @formatter:on
 public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {

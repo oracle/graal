@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,9 +66,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/1d117f65f06456ae571aecc146542c2f79d402cf/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2709-L2739",
-          sha1 = "e1333c6ab2d693fa9231a7365c568d81db63fae7")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/12358e6c94bc96e618efc3ec5299a2cfe1b4669d/src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp#L112-L283",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/642816538fbaa5b74c6beb8a14d1738cdde28c10/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2706-L2737",
+          sha1 = "90bf2f17582a498872c2da19966a9121a43de0f5")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/98a93e115137a305aed6b7dbf1d4a7d5906fe77c/src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp#L111-L282",
           sha1 = "41ef4f49f68c0e08ff4d698c8cc962e392cc16ec")
 // @formatter:on
 public final class AArch64AESEncryptOp extends AArch64LIRInstruction {

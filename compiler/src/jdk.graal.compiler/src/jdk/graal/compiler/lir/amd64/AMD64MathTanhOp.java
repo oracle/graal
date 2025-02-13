@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,8 +95,8 @@ import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 //  tanh(+/-0) = +/-0
 //
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/212e32931cafe446d94219d6c3ffd92261984dff/src/hotspot/cpu/x86/stubGenerator_x86_64_tanh.cpp#L31-L500",
-          sha1 = "b2eb58437ef628ce35348a90c3300b4c1e06341a")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_tanh.cpp#L30-L500",
+          sha1 = "5db3de8e1c558087ee3d89916fbcfa4531138f26")
 // @formatter:on
 public final class AMD64MathTanhOp extends AMD64MathIntrinsicUnaryOp {
 

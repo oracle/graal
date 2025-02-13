@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,8 +64,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/7fa2f229fbee68112cbdd18b811d95721adfe2ec/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1247-L1393",
-          sha1 = "644bffae25607c21475e4b5f51476fa6117f4ca2")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/a937f6db30ab55b98dae25d5b6d041cf4b7b7291/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1253-L1400",
+          sha1 = "27eaaba5d02e385a00e56873954323b965814723")
 // @formatter:on
 public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruction {
 
