@@ -70,7 +70,6 @@ import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
@@ -123,9 +122,6 @@ public final class HeapImpl extends Heap {
     private volatile long refListOfferCounter;
     /** Total number of times when threads waiting for a pending reference list were interrupted. */
     private volatile long refListWaiterWakeUpCounter;
-
-    /** Head of the linked list of object pins. */
-    private final AtomicReference<PinnedObjectImpl> pinHead = new AtomicReference<>();
 
     /** A cached list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
@@ -277,11 +273,6 @@ public final class HeapImpl extends Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public OldGeneration getOldGeneration() {
         return oldGeneration;
-    }
-
-    @Fold
-    AtomicReference<PinnedObjectImpl> getPinHead() {
-        return pinHead;
     }
 
     void logUsage(Log log) {

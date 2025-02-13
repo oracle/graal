@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -174,6 +176,7 @@ public abstract class VMOperation {
     }
 
     /** Verifies that the current thread is in the middle of performing a garbage collection. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void guaranteeGCInProgress(String message) {
         if (!isGCInProgress()) {
             throw VMError.shouldNotReachHere(message);
