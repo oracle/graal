@@ -151,6 +151,13 @@ public class CountedLoopInfo {
     }
 
     /**
+     * See {@link InductionVariable#structuralIntegrityValid()}.
+     */
+    public boolean countedIntegrityValid() {
+        return limitCheckedIV.structuralIntegrityValid() && limit.isAlive() && body.isAlive() && ifNode.isAlive();
+    }
+
+    /**
      * Returns the induction variable compared against the limit node. For a loop like
      *
      * <pre>
