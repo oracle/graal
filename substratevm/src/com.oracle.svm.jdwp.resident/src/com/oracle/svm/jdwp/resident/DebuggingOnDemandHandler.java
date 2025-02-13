@@ -29,12 +29,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
-import com.oracle.svm.interpreter.DebuggerSupport;
-import com.oracle.svm.jdwp.bridge.Logger;
-import com.oracle.svm.jdwp.bridge.nativebridge.NativeObjectHandles;
-import com.oracle.svm.jdwp.resident.impl.ResidentJDWP;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -46,7 +40,6 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.Uninterruptible;
@@ -64,20 +57,27 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.interpreter.Interpreter;
+import com.oracle.svm.interpreter.DebuggerSupport;
 import com.oracle.svm.interpreter.InterpreterOptions;
-import com.oracle.svm.jdwp.bridge.jniutils.JNI;
-import com.oracle.svm.jdwp.bridge.jniutils.JNIMethodScope;
+import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.jdwp.bridge.ArgFilesOption;
 import com.oracle.svm.jdwp.bridge.DebugOptions.Options;
 import com.oracle.svm.jdwp.bridge.JDWPEventHandlerBridge;
+import com.oracle.svm.jdwp.bridge.Logger;
 import com.oracle.svm.jdwp.bridge.NativeToHSJDWPEventHandlerBridge;
 import com.oracle.svm.jdwp.bridge.ResidentJDWPFeatureEnabled;
+import com.oracle.svm.jdwp.bridge.jniutils.JNI;
+import com.oracle.svm.jdwp.bridge.jniutils.JNIMethodScope;
+import com.oracle.svm.jdwp.bridge.nativebridge.NativeObjectHandles;
+import com.oracle.svm.jdwp.resident.impl.ResidentJDWP;
 
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.Word;
+import jdk.internal.misc.Signal;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.internal.misc.Signal;
 
 public class DebuggingOnDemandHandler implements Signal.Handler {
 
@@ -101,7 +101,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
         if (currentJniEnv.isNull()) {
             JNI.JNIEnvPointer attachedJniEnvPointer = StackValue.get(JNI.JNIEnvPointer.class);
             // Enter the debugger server (HotSpot or isolate) as a daemon thread.
-            debuggerServerJavaVM.getFunctions().getAttachCurrentThreadAsDaemon().call(debuggerServerJavaVM, attachedJniEnvPointer, WordFactory.nullPointer());
+            debuggerServerJavaVM.getFunctions().getAttachCurrentThreadAsDaemon().call(debuggerServerJavaVM, attachedJniEnvPointer, Word.nullPointer());
             currentJniEnv = attachedJniEnvPointer.readJNIEnv();
             jniEnvPerThread.set(currentJniEnv);
         }
@@ -262,7 +262,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
             long isolate = CurrentIsolate.getIsolate().rawValue();
 
             // Ensures that the callbacks To HotSpot have a JNIEnv available via JNIMethodScope.
-            Interpreter.DEBUGGER.setEventHandler(new EnterHSEventHandler(jdwpEventHandler));
+            DebuggerEvents.singleton().setEventHandler(new EnterHSEventHandler(jdwpEventHandler));
 
             ThreadStartDeathSupport.get().setListener(new ThreadStartDeathSupport.Listener() {
                 @Override
@@ -309,7 +309,7 @@ public class DebuggingOnDemandHandler implements Signal.Handler {
 
             });
 
-            assert Interpreter.DEBUGGER.getEventHandler() != null;
+            assert DebuggerEvents.singleton().getEventHandler() != null;
             Path metadataPath = DebuggerSupport.getMetadataFilePath();
             String metadataHashString = DebuggerSupport.getMetadataHashString();
             try (JNIMethodScope ignored = new JNIMethodScope("JDWPServer::spawnServer", currentThreadJniEnv())) {

@@ -155,12 +155,12 @@ public final class CodeInfoAccess {
                 return "code constants live";
             case CodeInfo.STATE_NON_ENTRANT:
                 return "non-entrant";
-            case CodeInfo.STATE_READY_FOR_INVALIDATION:
-                return "ready for invalidation";
-            case CodeInfo.STATE_INVALIDATED:
-                return "invalidated";
-            case CodeInfo.STATE_UNREACHABLE:
-                return "unreachable";
+            case CodeInfo.STATE_PENDING_REMOVAL_FROM_CODE_CACHE:
+                return "pending removal from code cache";
+            case CodeInfo.STATE_REMOVED_FROM_CODE_CACHE:
+                return "removed from code cache";
+            case CodeInfo.STATE_PENDING_FREE:
+                return "pending free";
             case CodeInfo.STATE_FREED:
                 return "invalid (freed)";
             default:

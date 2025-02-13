@@ -28,8 +28,6 @@ import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.heap.GCCause;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -162,9 +160,7 @@ public class DeoptState {
         }
 
         materializedObjects[virtualObjectId] = obj;
-        if (Deoptimizer.testGCinDeoptimizer) {
-            Heap.getHeap().getGC().collect(GCCause.TestGCInDeoptimizer);
-        }
+        Deoptimizer.maybeTestGC();
 
         while (curIdx < encodings.length) {
             FrameInfoQueryResult.ValueInfo value = encodings[curIdx];

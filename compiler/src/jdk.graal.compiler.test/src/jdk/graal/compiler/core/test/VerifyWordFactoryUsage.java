@@ -24,13 +24,14 @@
  */
 package jdk.graal.compiler.core.test;
 
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.VerifyPhase;
 import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.word.WordFactory;
 
 /**
  * Ensures that Graal compiler code uses factory methods in {@link Word} instead of
@@ -53,7 +54,7 @@ public class VerifyWordFactoryUsage extends VerifyPhase<CoreProviders> {
                                 wordFactory.toJavaName(),
                                 graph.method().format("%H.%n(%p)"),
                                 Word.class.getName(),
-                                graph.method().format("%n(%p)"));
+                                t.targetMethod().format("%n(%p)"));
 
             }
         }

@@ -316,7 +316,7 @@ final class Target_java_lang_StackWalker {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             VMError.guarantee(!JavaFrames.isEntryPoint(frame), "Entry point frames are not supported");
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
-            VMError.guarantee(Deoptimizer.checkDeoptimized(frame) == null, "Deoptimized frames are not supported");
+            VMError.guarantee(!Deoptimizer.checkIsDeoptimized(frame), "Deoptimized frames are not supported");
 
             UntetheredCodeInfo untetheredInfo = frame.getIPCodeInfo();
             VMError.guarantee(UntetheredCodeInfoAccess.isAOTImageCode(untetheredInfo));
@@ -393,7 +393,7 @@ final class Target_java_lang_StackWalker {
             JavaFrame frame = JavaStackWalker.getCurrentFrame(walk);
             VMError.guarantee(!JavaFrames.isUnknownFrame(frame), "Stack walk must not encounter unknown frame");
 
-            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkDeoptimized(frame);
+            DeoptimizedFrame deoptimizedFrame = Deoptimizer.checkEagerDeoptimized(frame);
             if (deoptimizedFrame != null) {
                 this.deoptimizedVFrame = deoptimizedFrame.getTopFrame();
             } else {

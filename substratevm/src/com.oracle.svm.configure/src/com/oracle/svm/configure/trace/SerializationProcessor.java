@@ -48,7 +48,7 @@ public class SerializationProcessor extends AbstractProcessor {
 
     @Override
     @SuppressWarnings("unchecked")
-    void processEntry(EconomicMap<String, ?> entry, ConfigurationSet configurationSet) {
+    void processEntry(EconomicMap<String, Object> entry, ConfigurationSet configurationSet) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
         if (invalidResult) {
             return;
@@ -62,7 +62,7 @@ public class SerializationProcessor extends AbstractProcessor {
         if ("ObjectStreamClass.<init>".equals(function) || "ObjectInputStream.readClassDescriptor".equals(function)) {
             expectSize(args, 1);
 
-            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null), false)) {
+            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null), false, entry)) {
                 return;
             }
 
@@ -76,7 +76,7 @@ public class SerializationProcessor extends AbstractProcessor {
         } else if ("SerializedLambda.readResolve".equals(function)) {
             expectSize(args, 1);
 
-            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null))) {
+            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null), entry)) {
                 return;
             }
 
@@ -87,7 +87,7 @@ public class SerializationProcessor extends AbstractProcessor {
             List<String> interfaces = (List<String>) args.get(0);
 
             for (String iface : interfaces) {
-                if (advisor.shouldIgnore(lazyValue(iface), LazyValueUtils.lazyValue(null))) {
+                if (advisor.shouldIgnore(lazyValue(iface), LazyValueUtils.lazyValue(null), copyWithUniqueEntry(entry, "ignoredInterface", iface))) {
                     return;
                 }
             }

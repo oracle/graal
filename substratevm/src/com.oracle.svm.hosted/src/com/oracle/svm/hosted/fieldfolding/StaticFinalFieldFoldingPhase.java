@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.fieldfolding;
 
 import java.util.Arrays;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph.Stage;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -64,11 +65,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public final class StaticFinalFieldFoldingPhase extends BasePhase<CoreProviders> {
 
     private final FieldValueInterceptionSupport fieldValueInterceptionSupport;
-    private final StaticFinalFieldFoldingFeature feature;
+    private final BigBang bb;
 
     public StaticFinalFieldFoldingPhase() {
         assert StaticFinalFieldFoldingFeature.isAvailable();
-        this.feature = StaticFinalFieldFoldingFeature.singleton();
+        this.bb = StaticFinalFieldFoldingFeature.singleton().bb;
         this.fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
     }
 
@@ -78,9 +79,7 @@ public final class StaticFinalFieldFoldingPhase extends BasePhase<CoreProviders>
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (feature == null) {
-            return;
-        }
+        assert StaticFinalFieldFoldingFeature.isAvailable();
 
         for (Node node : graph.getNodes()) {
             if (node instanceof LoadFieldNode loadFieldNode) {
@@ -95,7 +94,7 @@ public final class StaticFinalFieldFoldingPhase extends BasePhase<CoreProviders>
             return;
         }
 
-        AnalysisField aField = StaticFinalFieldFoldingFeature.toAnalysisField(field);
+        AnalysisField aField = StaticFinalFieldFoldingSingleton.toAnalysisField(field);
         AnalysisMethod definingClassInitializer = aField.getDeclaringClass().getClassInitializer();
         if (!StaticFinalFieldFoldingFeature.isOptimizationCandidate(aField, definingClassInitializer, fieldValueInterceptionSupport)) {
             return;
@@ -124,7 +123,7 @@ public final class StaticFinalFieldFoldingPhase extends BasePhase<CoreProviders>
          */
         if (!inClassInitializer || !graph.method().equals(definingClassInitializer)) {
             assert definingClassInitializer.isOriginalMethod();
-            definingClassInitializer.ensureGraphParsed(feature.bb, stage);
+            definingClassInitializer.ensureGraphParsed(bb, stage);
         }
 
         /*
@@ -140,7 +139,7 @@ public final class StaticFinalFieldFoldingPhase extends BasePhase<CoreProviders>
          * results could vary depending on whether the declaring class initializer was already
          * parsed before or not.
          */
-        JavaConstant initializedValue = feature.getFoldedFieldValue(stage, aField);
+        JavaConstant initializedValue = StaticFinalFieldFoldingSingleton.singleton().getFoldedFieldValue(stage, aField);
         if (initializedValue == null) {
             /* Field cannot be optimized. Remove the StateSplitProxyNode. */
             FrameState frameState = stateSplitProxyNode.stateAfter();

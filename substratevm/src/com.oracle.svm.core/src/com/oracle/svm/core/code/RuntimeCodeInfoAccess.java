@@ -219,11 +219,11 @@ public final class RuntimeCodeInfoAccess {
     }
 
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")
-    static void markAsInvalidated(CodeInfo info) {
+    static void markAsRemovedFromCodeCache(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
-        assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
+        assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_PENDING_REMOVAL_FROM_CODE_CACHE : "unexpected state (probably already released)";
         /* We can't free any data because only the GC is allowed to free CodeInfo data. */
-        CodeInfoAccess.setState(info, CodeInfo.STATE_INVALIDATED);
+        CodeInfoAccess.setState(info, CodeInfo.STATE_REMOVED_FROM_CODE_CACHE);
     }
 
     public static CodePointer allocateCodeMemory(UnsignedWord size) {

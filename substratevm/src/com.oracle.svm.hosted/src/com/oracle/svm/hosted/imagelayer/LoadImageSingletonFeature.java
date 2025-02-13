@@ -192,7 +192,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         loader = (SVMImageLayerLoader) universe.getImageLayerLoader();
 
         LayeredImageSingletonSupport layeredImageSingletonSupport = LayeredImageSingletonSupport.singleton();
-        layeredImageSingletonSupport.freezeMultiLayeredImageSingletons();
+        layeredImageSingletonSupport.freezeLayeredImageSingletonMetadata();
 
         Consumer<Object[]> multiLayerEmbeddedRootsRegistration = (objArray) -> {
             var method = metaAccess.lookupJavaMethod(ReflectionUtil.lookupMethod(MultiLayeredImageSingleton.class, "getAllLayers", Class.class));
@@ -210,6 +210,15 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
             Object[] multiLayeredSingletons = layeredImageSingletonSupport.getMultiLayeredImageSingletonKeys().stream().map(key -> layeredImageSingletonSupport.lookup(key, true, true)).toArray();
             if (multiLayeredSingletons.length != 0) {
                 multiLayerEmbeddedRootsRegistration.accept(multiLayeredSingletons);
+            }
+
+            /*
+             * Make sure all image singletons accessible in future layers are persisted.
+             */
+            for (Class<?> key : layeredImageSingletonSupport.getFutureLayerAccessibleImageSingletonKeys()) {
+                var singleton = layeredImageSingletonSupport.lookup(key, true, false);
+                ImageHeapConstant constant = (ImageHeapConstant) universe.getSnippetReflection().forObject(singleton);
+                SVMImageLayerSnapshotUtil.forcePersistConstant(constant);
             }
         }
 

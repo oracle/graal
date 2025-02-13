@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -232,7 +234,12 @@ public class CodeInfoTable {
             if (CodeInfoAccess.isAlive(info)) {
                 invalidateCodeAtSafepoint0(info);
             }
-            assert CodeInfoAccess.getState(info) == CodeInfo.STATE_INVALIDATED;
+            // If lazy deoptimization is enabled, the CodeInfo will not be removed immediately.
+            if (LazyDeoptimization.getValue()) {
+                assert CodeInfoAccess.getState(info) == CodeInfo.STATE_NON_ENTRANT;
+            } else {
+                assert CodeInfoAccess.getState(info) == CodeInfo.STATE_REMOVED_FROM_CODE_CACHE;
+            }
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }

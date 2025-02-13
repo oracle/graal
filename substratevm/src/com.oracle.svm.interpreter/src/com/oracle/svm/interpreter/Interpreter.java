@@ -58,8 +58,8 @@ import static com.oracle.svm.interpreter.EspressoFrame.setLocalObject;
 import static com.oracle.svm.interpreter.EspressoFrame.setLocalObjectOrReturnAddress;
 import static com.oracle.svm.interpreter.EspressoFrame.startingStackOffset;
 import static com.oracle.svm.interpreter.EspressoFrame.swapSingle;
-import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 import static com.oracle.svm.interpreter.InterpreterToVM.nullCheck;
+import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.AALOAD;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.AASTORE;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.ACONST_NULL;
@@ -264,28 +264,26 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.SWAP;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.TABLESWITCH;
 import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 
+import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.interpreter.debug.EventKind;
 import com.oracle.svm.interpreter.debug.SteppingControl;
 import com.oracle.svm.interpreter.metadata.BytecodeStream;
-import com.oracle.svm.interpreter.metadata.LookupSwitch;
-import com.oracle.svm.interpreter.metadata.ReferenceConstant;
-import com.oracle.svm.interpreter.metadata.TableSwitch;
-import jdk.graal.compiler.api.directives.GraalDirectives;
 import com.oracle.svm.interpreter.metadata.Bytecodes;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.InterpreterConstantPool;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
 import com.oracle.svm.interpreter.metadata.InterpreterUnresolvedSignature;
+import com.oracle.svm.interpreter.metadata.LookupSwitch;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
+import com.oracle.svm.interpreter.metadata.ReferenceConstant;
+import com.oracle.svm.interpreter.metadata.TableSwitch;
 
+import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
 import jdk.vm.ci.meta.JavaConstant;
@@ -302,9 +300,7 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  */
 @InternalVMMethod
 public final class Interpreter {
-    protected static final String FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP = "Trying to load constant that is not part of the Native Image heap";
-
-    public static final DebuggerEvents DEBUGGER = MetadataUtil.requireNonNull(ImageSingletons.lookup(DebuggerEvents.class));
+    static final String FAILURE_CONSTANT_NOT_PART_OF_IMAGE_HEAP = "Trying to load constant that is not part of the Native Image heap";
 
     private Interpreter() {
         throw VMError.shouldNotReachHere("private constructor");
@@ -483,7 +479,7 @@ public final class Interpreter {
             traceInterpreterEnter(method, indent, curBCI, top);
 
             int debuggerEventFlags = 0;
-            if (DEBUGGER.isEventEnabled(Thread.currentThread(), EventKind.METHOD_ENTRY)) {
+            if (DebuggerEvents.singleton().isEventEnabled(Thread.currentThread(), EventKind.METHOD_ENTRY)) {
                 if (((InterpreterResolvedJavaType) method.getDeclaringClass()).isMethodEnterEvent()) {
                     debuggerEventFlags |= EventKind.METHOD_ENTRY.getFlag();
                 }
@@ -496,10 +492,10 @@ public final class Interpreter {
                  */
                 int curOpcode = BytecodeStream.opaqueOpcode(code, curBCI);
 
-                if (DEBUGGER.isEventEnabled(Thread.currentThread(), EventKind.SINGLE_STEP)) {
+                if (DebuggerEvents.singleton().isEventEnabled(Thread.currentThread(), EventKind.SINGLE_STEP)) {
                     // Check that stepping "depth" and "size" are respected.
                     Thread currentThread = Thread.currentThread();
-                    SteppingControl steppingControl = DEBUGGER.getSteppingControl(currentThread);
+                    SteppingControl steppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
                     if (steppingControl != null && steppingControl.isActiveAtCurrentFrameDepth()) {
                         int stepSize = steppingControl.getSize();
                         if (stepSize == SteppingControl.STEP_MIN ||
@@ -510,14 +506,14 @@ public final class Interpreter {
                 }
 
                 if (curOpcode == BREAKPOINT) {
-                    if (DEBUGGER.isEventEnabled(Thread.currentThread(), EventKind.BREAKPOINT)) {
+                    if (DebuggerEvents.singleton().isEventEnabled(Thread.currentThread(), EventKind.BREAKPOINT)) {
                         debuggerEventFlags |= EventKind.BREAKPOINT.getFlag();
                     }
                     curOpcode = method.getOriginalOpcodeAt(curBCI);
                 }
                 if (debuggerEventFlags != 0) {
                     // We have possibly: method enter, step before statement/expression, breakpoint
-                    DEBUGGER.getEventHandler().onEventAt(Thread.currentThread(), method, curBCI, null, debuggerEventFlags);
+                    DebuggerEvents.singleton().getEventHandler().onEventAt(Thread.currentThread(), method, curBCI, null, debuggerEventFlags);
                     debuggerEventFlags = 0;
                 }
 
@@ -855,10 +851,10 @@ public final class Interpreter {
                         case RETURN: {
                             Object returnValue = getReturnValueAsObject(frame, method, top);
                             traceInterpreterReturn(method, indent, curBCI, top);
-                            if (DEBUGGER.isEventEnabled(Thread.currentThread(), EventKind.METHOD_EXIT)) {
+                            if (DebuggerEvents.singleton().isEventEnabled(Thread.currentThread(), EventKind.METHOD_EXIT)) {
                                 if (((InterpreterResolvedJavaType) method.getDeclaringClass()).isMethodExitEvent()) {
                                     int flags = EventKind.METHOD_EXIT.getFlag() | EventKind.METHOD_EXIT_WITH_RETURN_VALUE.getFlag();
-                                    DEBUGGER.getEventHandler().onEventAt(Thread.currentThread(), method, curBCI, returnValue, flags);
+                                    DebuggerEvents.singleton().getEventHandler().onEventAt(Thread.currentThread(), method, curBCI, returnValue, flags);
                                 }
                             }
                             return returnValue;
@@ -879,14 +875,14 @@ public final class Interpreter {
                             SteppingControl steppingControl = null;
                             boolean stepEventDisabled = false;
                             Thread currentThread = Thread.currentThread();
-                            if (DEBUGGER.isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
+                            if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
                                 // Disable stepping for inner frames, except for step into, where we must force interpreter execution.
-                                steppingControl = DEBUGGER.getSteppingControl(currentThread);
+                                steppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
                                 if (steppingControl != null) {
                                     // If step events can be ignored at frame n => can be also ignored at inner frame n + 1.
                                     steppingControl.pushFrame();
                                     if (!steppingControl.isActiveAtCurrentFrameDepth()) {
-                                        DEBUGGER.setEventEnabled(currentThread, EventKind.SINGLE_STEP, false);
+                                        DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, false);
                                         stepEventDisabled = true;
                                     }
                                     if (steppingControl.getDepth() == SteppingControl.STEP_INTO) {
@@ -901,13 +897,13 @@ public final class Interpreter {
                             try {
                                 top += invoke(frame, method, code, top, curBCI, curOpcode, forceStayInInterpreter, preferStayInInterpreter);
                             } finally {
-                                SteppingControl newSteppingControl = DEBUGGER.getSteppingControl(currentThread);
+                                SteppingControl newSteppingControl = DebuggerEvents.singleton().getSteppingControl(currentThread);
                                 if (newSteppingControl != null) {
-                                    if (DEBUGGER.isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
+                                    if (DebuggerEvents.singleton().isEventEnabled(currentThread, EventKind.SINGLE_STEP)) {
                                         newSteppingControl.popFrame();
                                     } else if (steppingControl == newSteppingControl && stepEventDisabled) {
                                         // Re-enable stepping events that could have been disabled by step outer/out into inner frames.
-                                        DEBUGGER.setEventEnabled(currentThread, EventKind.SINGLE_STEP, true);
+                                        DebuggerEvents.singleton().setEventEnabled(currentThread, EventKind.SINGLE_STEP, true);
                                         newSteppingControl.popFrame();
                                     }
                                 }

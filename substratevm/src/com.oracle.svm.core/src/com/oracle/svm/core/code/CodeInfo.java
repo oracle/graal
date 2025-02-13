@@ -66,36 +66,37 @@ public interface CodeInfo extends UntetheredCodeInfo {
     /**
      * This state is only a temporary state when the VM is at a safepoint. It indicates that no
      * activations are remaining and that the code is no longer needed (code is non-entrant) or no
-     * longer wanted (code has references to otherwise unreachable objects). The GC will invalidate
-     * and free this {@link CodeInfo} object during the current safepoint. It is crucial that the GC
-     * still visits all heap references that may be accessed while invalidating and freeing the
-     * {@link CodeInfo} object (i.e., all object fields).
+     * longer wanted (code has references to otherwise unreachable objects). The GC will remove this
+     * {@link CodeInfo} object from the code cache and free it during the current safepoint. It is
+     * crucial that the GC still visits all heap references that may be accessed while removing and
+     * freeing the {@link CodeInfo} object (i.e., all object fields).
      */
     @DuplicatedInNativeCode //
-    int STATE_READY_FOR_INVALIDATION = STATE_NON_ENTRANT + 1;
+    int STATE_PENDING_REMOVAL_FROM_CODE_CACHE = STATE_NON_ENTRANT + 1;
 
     /**
-     * Indicates that this {@link CodeInfo} object was invalidated. The data will be freed by the GC
-     * once the tether object becomes unreachable. Until then, the GC must continue visiting all
-     * heap references, including code constants that are directly embedded into the machine code.
+     * Indicates that this {@link CodeInfo} object was removed from the code cache. The data will be
+     * freed by the GC once the tether object becomes unreachable. Until then, the GC must continue
+     * visiting all heap references, including code constants that are directly embedded into the
+     * machine code.
      */
     @DuplicatedInNativeCode //
-    int STATE_INVALIDATED = STATE_READY_FOR_INVALIDATION + 1;
+    int STATE_REMOVED_FROM_CODE_CACHE = STATE_PENDING_REMOVAL_FROM_CODE_CACHE + 1;
 
     /**
      * This state is only a temporary state when the VM is at a safepoint. It indicates that a
-     * previously invalidated {@link CodeInfo} object is no longer reachable from the GC point of
-     * view. The GC will free the {@link CodeInfo} object during the current safepoint. It is
-     * crucial that the GC still visits all heap references that may be accessed while freeing the
-     * {@link CodeInfo} object (i.e., all object fields).
+     * {@link CodeInfo} object which has already been removed from the code cache is no longer
+     * reachable from the GC point of view. The GC will free the {@link CodeInfo} object during the
+     * current safepoint. It is crucial that the GC still visits all heap references that may be
+     * accessed while freeing the {@link CodeInfo} object (i.e., all object fields).
      */
     @DuplicatedInNativeCode //
-    int STATE_UNREACHABLE = STATE_INVALIDATED + 1;
+    int STATE_PENDING_FREE = STATE_REMOVED_FROM_CODE_CACHE + 1;
 
     /**
      * Indicates that the {@link CodeInfo} object was already freed. This state should never be
      * seen.
      */
     @DuplicatedInNativeCode //
-    int STATE_FREED = STATE_UNREACHABLE + 1;
+    int STATE_FREED = STATE_PENDING_FREE + 1;
 }

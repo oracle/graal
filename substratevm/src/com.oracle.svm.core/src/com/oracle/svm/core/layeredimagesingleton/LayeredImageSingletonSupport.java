@@ -30,6 +30,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import jdk.vm.ci.meta.JavaConstant;
+
 @Platforms(Platform.HOSTED_ONLY.class)
 public interface LayeredImageSingletonSupport {
 
@@ -47,5 +49,9 @@ public interface LayeredImageSingletonSupport {
 
     Collection<Class<?>> getMultiLayeredImageSingletonKeys();
 
-    void freezeMultiLayeredImageSingletons();
+    Collection<Class<?>> getFutureLayerAccessibleImageSingletonKeys();
+
+    void freezeLayeredImageSingletonMetadata();
+
+    JavaConstant getInitialLayerOnlyImageSingleton(Class<?> key);
 }

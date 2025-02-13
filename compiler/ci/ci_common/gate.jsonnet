@@ -83,10 +83,9 @@
     timelimit: "3:00:00",
   },
 
-  test:: s.base(no_warning_as_error=true),
+  test:: s.base(no_warning_as_error=true, extra_vm_args="-Djdk.graal.DetailedAsserts=true"),
   test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
   test_serialgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseSerialGC"),
-
 
   jacoco_gate_args:: ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
   upload_coverage:: ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],

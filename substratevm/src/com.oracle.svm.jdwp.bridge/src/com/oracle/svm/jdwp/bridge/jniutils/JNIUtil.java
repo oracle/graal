@@ -27,10 +27,21 @@ package com.oracle.svm.jdwp.bridge.jniutils;
 import static com.oracle.svm.jdwp.bridge.jniutils.JNI.JNI_OK;
 import static com.oracle.svm.jdwp.bridge.jniutils.JNI.JNI_VERSION_10;
 import static org.graalvm.nativeimage.c.type.CTypeConversion.toCString;
-import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CDoublePointer;
+import org.graalvm.nativeimage.c.type.CFloatPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.nativeimage.c.type.CShortPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JArray;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JBooleanArray;
@@ -55,18 +66,8 @@ import com.oracle.svm.jdwp.bridge.jniutils.JNI.JWeak;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JavaVM;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JavaVMAttachArgs;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JavaVMPointer;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CDoublePointer;
-import org.graalvm.nativeimage.c.type.CFloatPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.nativeimage.c.type.CLongPointer;
-import org.graalvm.nativeimage.c.type.CShortPointer;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
-import org.graalvm.nativeimage.c.type.VoidPointer;
-import org.graalvm.word.WordFactory;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Helpers for calling JNI functions.
@@ -380,7 +381,7 @@ public final class JNIUtil {
         if (env.getFunctions().getGetJavaVM().call(env, javaVMPointer) == JNI_OK) {
             return javaVMPointer.readJavaVM();
         } else {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -390,7 +391,7 @@ public final class JNIUtil {
         if (vm.getFunctions().getGetEnv().call(vm, envPointer, JNI_VERSION_10) == JNI_OK) {
             return envPointer.readJNIEnv();
         } else {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -400,7 +401,7 @@ public final class JNIUtil {
         if (vm.getFunctions().getAttachCurrentThread().call(vm, envPointer, args) == JNI_OK) {
             return envPointer.readJNIEnv();
         } else {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -410,7 +411,7 @@ public final class JNIUtil {
         if (vm.getFunctions().getAttachCurrentThreadAsDaemon().call(vm, envPointer, args) == JNI_OK) {
             return envPointer.readJNIEnv();
         } else {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
     }
 
@@ -527,7 +528,7 @@ public final class JNIUtil {
             return null;
         }
         int len = env.getFunctions().getGetStringLength().call(env, hsString);
-        CShortPointer unicode = env.getFunctions().getGetStringChars().call(env, hsString, WordFactory.nullPointer());
+        CShortPointer unicode = env.getFunctions().getGetStringChars().call(env, hsString, Word.nullPointer());
         try {
             char[] data = new char[len];
             for (int i = 0; i < len; i++) {
@@ -544,7 +545,7 @@ public final class JNIUtil {
      */
     public static JString createHSString(JNIEnv env, String string) {
         if (string == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         int len = string.length();
         CShortPointer buffer = UnmanagedMemory.malloc(len << 1);
@@ -570,7 +571,7 @@ public final class JNIUtil {
 
     public static JBooleanArray createHSArray(JNIEnv jniEnv, boolean[] a) {
         if (a == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         JBooleanArray array = NewBooleanArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
@@ -589,7 +590,7 @@ public final class JNIUtil {
 
     public static JByteArray createHSArray(JNIEnv jniEnv, byte[] a) {
         if (a == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         JByteArray array = NewByteArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
@@ -608,7 +609,7 @@ public final class JNIUtil {
 
     public static JCharArray createHSArray(JNIEnv jniEnv, char[] a) {
         if (a == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         JCharArray array = NewCharArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
@@ -627,7 +628,7 @@ public final class JNIUtil {
 
     public static JShortArray createHSArray(JNIEnv jniEnv, short[] a) {
         if (a == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         JShortArray array = NewShortArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
@@ -646,7 +647,7 @@ public final class JNIUtil {
 
     public static JIntArray createHSArray(JNIEnv jniEnv, int[] a) {
         if (a == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         JIntArray array = NewIntArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
@@ -665,7 +666,7 @@ public final class JNIUtil {
 
     public static JLongArray createHSArray(JNIEnv jniEnv, long[] a) {
         if (a == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         JLongArray array = NewLongArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
@@ -684,7 +685,7 @@ public final class JNIUtil {
 
     public static JFloatArray createHSArray(JNIEnv jniEnv, float[] a) {
         if (a == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         JFloatArray array = NewFloatArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
@@ -703,7 +704,7 @@ public final class JNIUtil {
 
     public static JDoubleArray createHSArray(JNIEnv jniEnv, double[] a) {
         if (a == null) {
-            return WordFactory.nullPointer();
+            return Word.nullPointer();
         }
         JDoubleArray array = NewDoubleArray(jniEnv, a.length);
         arrayCopy(jniEnv, a, 0, array, 0, a.length);
@@ -713,14 +714,14 @@ public final class JNIUtil {
     public static JObjectArray createHSArray(JNIEnv jniEnv, Object[] array, int sourcePosition, int length, String componentTypeBinaryName) {
         JObjectArray hsArray;
         if (array != null) {
-            hsArray = JNIUtil.NewObjectArray(jniEnv, length, JNIUtil.findClass(jniEnv, WordFactory.nullPointer(), componentTypeBinaryName, true), WordFactory.nullPointer());
+            hsArray = JNIUtil.NewObjectArray(jniEnv, length, JNIUtil.findClass(jniEnv, Word.nullPointer(), componentTypeBinaryName, true), Word.nullPointer());
             for (int i = 0; i < length; i++) {
                 HSObject element = (HSObject) array[sourcePosition + i];
-                JObject hsElement = element != null ? element.getHandle() : WordFactory.nullPointer();
+                JObject hsElement = element != null ? element.getHandle() : Word.nullPointer();
                 JNIUtil.SetObjectArrayElement(jniEnv, hsArray, i, hsElement);
             }
         } else {
-            hsArray = WordFactory.nullPointer();
+            hsArray = Word.nullPointer();
         }
         return hsArray;
     }
@@ -1048,7 +1049,7 @@ public final class JNIUtil {
      * Finds a class in HotSpot heap using JNI.
      *
      * @param env the {@code JNIEnv}
-     * @param classLoader the class loader to find class in or {@link WordFactory#nullPointer() NULL
+     * @param classLoader the class loader to find class in or {@link Word#nullPointer() NULL
      *            pointer}.
      * @param binaryName the class binary name
      * @param required if {@code true} the {@link JNIExceptionWrapper} is thrown when the class is
@@ -1086,7 +1087,7 @@ public final class JNIUtil {
         if (getClassLoaderId.isNull()) {
             throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_PLATFORM_CLASS_LOADER[0], ClassLoader.class.getName()));
         }
-        return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
+        return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, Word.nullPointer());
     }
 
     public static JObject getClassLoader(JNIEnv env, JClass clazz) {
@@ -1099,7 +1100,7 @@ public final class JNIUtil {
         if (getClassLoader.isNull()) {
             throw new NullPointerException("Not found: getClassLoader()");
         }
-        return env.getFunctions().getCallObjectMethodA().call(env, clazz, getClassLoader, nullPointer());
+        return env.getFunctions().getCallObjectMethodA().call(env, clazz, getClassLoader, Word.nullPointer());
     }
 
     /**
@@ -1117,7 +1118,7 @@ public final class JNIUtil {
         if (getClassLoaderId.isNull()) {
             throw new InternalError(String.format("Cannot find method %s in class %s.", METHOD_GET_SYSTEM_CLASS_LOADER[0], ClassLoader.class.getName()));
         }
-        return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, nullPointer());
+        return env.getFunctions().getCallStaticObjectMethodA().call(env, clazz, getClassLoaderId, Word.nullPointer());
     }
 
     public static JMethodID findMethod(JNIEnv env, JClass clazz, boolean staticMethod, String methodName, String methodSignature) {

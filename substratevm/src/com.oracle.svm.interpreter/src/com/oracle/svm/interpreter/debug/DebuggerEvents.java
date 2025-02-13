@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.interpreter.debug;
 
+import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.nativeimage.ImageSingletons;
 
 public interface DebuggerEvents {
 
@@ -90,4 +92,8 @@ public interface DebuggerEvents {
      * Returns the {@link SteppingControl stepping information} associated with a thread.
      */
     SteppingControl getSteppingControl(Thread thread);
+
+    static DebuggerEvents singleton() {
+        return MetadataUtil.requireNonNull(ImageSingletons.lookup(DebuggerEvents.class));
+    }
 }

@@ -8,6 +8,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-52400) The build process now uses 85% of system memory in containers and CI environments. Otherwise, it tries to only use available memory. If less than 8GB of memory are available, it falls back to 85% of system memory. The reason for the selected memory limit is now also shown in the build resources section of the build output.
 * (GR-59864) Added JVM version check to the Native Image agent. The agent will abort execution if the JVM major version does not match the version it was built with, and warn if the full JVM version is different.
 * (GR-59135) Verify if hosted options passed to `native-image` exist prior to starting the builder. Provide suggestions how to fix unknown options early on.
+* (GR-61492) The experimental JDWP option is now present in standard GraalVM builds.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.
