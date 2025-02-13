@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,8 +45,8 @@ import jdk.vm.ci.meta.Value;
  * {@link AMD64G1BarrierSetLIRTool}.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/43a2f17342af8f5bf1f5823df9fa0bf0bdfdfce2/src/hotspot/cpu/x86/gc/g1/g1BarrierSetAssembler_x86.cpp#L266-L342",
-          ignore = "GR-58685",
+@SyncPort(from = "https://github.com/tschatzl/jdk/blob/9feaeb2734f2b0f9dfb9866d598fa8c2385d2231/src/hotspot/cpu/x86/gc/g1/g1BarrierSetAssembler_x86.cpp#L316-L353",
+          ignore = "JDK-8342382 HOTSPOT_PORT_SYNC_OVERWRITE=https://raw.githubusercontent.com/tschatzl/jdk/9feaeb2734f2b0f9dfb9866d598fa8c2385d2231/",
           sha1 = "5691006914119b2a6047c6935a3d4fe656dc663f")
 // @formatter:on
 public class AMD64G1PostWriteBarrierOp extends AMD64LIRInstruction {

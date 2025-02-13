@@ -45,8 +45,8 @@ import jdk.vm.ci.meta.Value;
  * {@link AArch64G1BarrierSetLIRTool}.
  */
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/43a2f17342af8f5bf1f5823df9fa0bf0bdfdfce2/src/hotspot/cpu/aarch64/gc/g1/g1BarrierSetAssembler_aarch64.cpp#L185-L259",
-          ignore = "GR-58685",
+@SyncPort(from = "from = https://github.com/tschatzl/jdk/blob/9feaeb2734f2b0f9dfb9866d598fa8c2385d2231/src/hotspot/cpu/aarch64/gc/g1/g1BarrierSetAssembler_aarch64.cpp#L227-L270",
+          ignore = "JDK-8342382 HOTSPOT_PORT_SYNC_OVERWRITE=https://raw.githubusercontent.com/tschatzl/jdk/9feaeb2734f2b0f9dfb9866d598fa8c2385d2231/",
           sha1 = "dd42f4d351403eb99f9bd76454131e0659be1565")
 // @formatter:on
 public class AArch64G1PostWriteBarrierOp extends AArch64LIRInstruction {
