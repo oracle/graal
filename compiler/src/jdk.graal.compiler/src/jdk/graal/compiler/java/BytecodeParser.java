@@ -2956,7 +2956,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
 
         ValueNode realReturnVal = processReturnValue(returnVal, returnKind);
 
-        frameState.setRethrowException(false);
+        assert !frameState.rethrowException() : frameState;
         frameState.clearStack();
         beforeReturn(realReturnVal, returnKind);
         if (parent == null) {
@@ -3291,10 +3291,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                     bci = ((ExceptionDispatchBlock) targetBlock).deoptBci;
                 }
                 FrameStateBuilder newState = target.state.copy();
-                // Perform the same logic as is done in processBlock
-                if (targetBlock != blockMap.getUnwindBlock() && !(targetBlock instanceof ExceptionDispatchBlock)) {
-                    newState.setRethrowException(false);
-                }
                 clearNonLiveLocalsAtLoopExitCreation(targetBlock, newState);
 
                 for (BciBlock loop : exitLoops) {
@@ -3332,8 +3328,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
         if (targetBlock != blockMap.getUnwindBlock()) {
             return new Target(target, state);
         }
+        assert !state.rethrowException() : state;
         FrameStateBuilder newState = state.copy();
-        newState.setRethrowException(false);
         if (!method.isSynchronized() || methodSynchronizedObject == null) {
             /*
              * methodSynchronizedObject==null indicates that the methodSynchronizeObject has been
@@ -3413,23 +3409,34 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     @SuppressWarnings("try")
-    private FixedNode createTarget(BciBlock block, FrameStateBuilder state, boolean canReuseInstruction, boolean canReuseState) {
+    private FixedNode createTarget(BciBlock block, FrameStateBuilder initialState, boolean canReuseInstruction, boolean canReuseState) {
         assert block != null;
-        assert state != null;
-        assert !block.isExceptionEntry() || state.stackSize() == 1 : Assertions.errorMessage(block, state);
+        assert initialState != null;
+        assert !block.isExceptionEntry() || initialState.stackSize() == 1 : Assertions.errorMessage(block, initialState);
 
-        try (DebugCloseable context = openNodeContext(state, block.startBci)) {
+        try (DebugCloseable context = openNodeContext(initialState, block.startBci)) {
             if (block == blockMap.getUnwindBlock()) {
-                int expectedDepth = state.getMethod().isSynchronized() && methodSynchronizedObject != null ? 1 : 0;
+                int expectedDepth = initialState.getMethod().isSynchronized() && methodSynchronizedObject != null ? 1 : 0;
                 /*
                  * methodSynchronizeObject==null indicates that the methodSynchronizeObject has been
                  * released unexpectedly but we are already on the path to the unwind for throwing
                  * an IllegalMonitorStateException. Thus, we need to break up an exception loop in
                  * the unwind path.
                  */
-                if (state.lockDepth(false) != expectedDepth) {
-                    return handleUnstructuredLockingForUnwindTarget("too few monitorexits exiting frame", state);
+                if (initialState.lockDepth(false) != expectedDepth) {
+                    return handleUnstructuredLockingForUnwindTarget("too few monitorexits exiting frame", initialState);
                 }
+            }
+
+            FrameStateBuilder state = initialState;
+            if (initialState.rethrowException() && (block == blockMap.getUnwindBlock() || !(block instanceof ExceptionDispatchBlock))) {
+                /*
+                 * Exceptions are only rethrown if deopts happen during the dispatch process. The
+                 * unwind block is the only ExceptionDispatchBlock where rethrowException must be
+                 * false.
+                 */
+                state = initialState.copy();
+                state.setRethrowException(false);
             }
 
             if (getFirstInstruction(block) == null) {
@@ -3463,7 +3470,7 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                  */
                 Target target = checkLoopExit(checkUnwind(getFirstInstruction(block), block, state), block);
                 FixedNode result = target.entry;
-                FrameStateBuilder currentEntryState = target.state == state ? (canReuseState ? state : state.copy()) : target.state;
+                FrameStateBuilder currentEntryState = target.state == initialState ? (canReuseState ? initialState : initialState.copy()) : target.state;
                 setEntryState(block, currentEntryState);
                 clearNonLiveLocalsAtTargetCreation(block, currentEntryState);
 
@@ -3487,13 +3494,12 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
                 Target target = checkUnstructuredLocking(checkLoopExit(new Target(loopEnd, state.copy()), block), block, getEntryState(block));
                 FixedNode result = target.entry;
                 /*
-                 * It is guaranteed that a loop header cannot be an ExceptionDispatchBlock. By the
-                 * time the backward loop edge is reached, the block will already be processed, and
-                 * its rethrow exception will be set to false.
+                 * It is guaranteed that a loop header cannot be an ExceptionDispatchBlock.
+                 * Therefore, the rethrowException flag of its entry state must be false.
                  */
                 assert !(block instanceof ExceptionDispatchBlock) : block;
-                assert !getEntryState(block).rethrowException();
-                target.state.setRethrowException(false);
+                assert !getEntryState(block).rethrowException() : getEntryState(block);
+                assert !target.state.rethrowException() : target.state;
 
                 if (target.isReachable()) {
                     getEntryState(block).merge(loopBegin, target.state);
@@ -3607,10 +3613,6 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
             lastInstr = firstInstruction;
             frameState = getEntryState(block);
             currentBlock = block;
-
-            if (block != blockMap.getUnwindBlock() && !(block instanceof ExceptionDispatchBlock)) {
-                frameState.setRethrowException(false);
-            }
 
             if (firstInstruction instanceof AbstractMergeNode) {
                 setMergeStateAfter(block, firstInstruction);
