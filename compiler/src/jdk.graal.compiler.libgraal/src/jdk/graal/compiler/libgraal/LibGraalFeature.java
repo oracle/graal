@@ -27,7 +27,10 @@ package jdk.graal.compiler.libgraal;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.module.ModuleDescriptor;
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -37,9 +40,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import jdk.graal.compiler.hotspot.CompilerConfig;
 import org.graalvm.collections.EconomicMap;
@@ -283,11 +289,43 @@ public final class LibGraalFeature implements Feature {
         }
     }
 
+    /**
+     * List of reached elements annotated by {@link LibGraalSupport.HostedOnly}.
+     */
+    private final List<Object> reachedHostedOnlyElements = new ArrayList<>();
+
+    record HostedOnlyElementCallback(Object element, List<Object> reached) implements Consumer<DuringAnalysisAccess> {
+        @Override
+        public void accept(DuringAnalysisAccess duringAnalysisAccess) {
+            reached.add(element);
+        }
+    }
+
+    private void registerHostedOnlyElements(BeforeAnalysisAccess access, AnnotatedElement... elements) {
+        for (AnnotatedElement element : elements) {
+            if (element.getAnnotation(LibGraalSupport.HostedOnly.class) != null) {
+                access.registerReachabilityHandler(new HostedOnlyElementCallback(element, reachedHostedOnlyElements), element);
+            }
+        }
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         beforeAnalysisAccess = access;
         new FieldOffsetsTransformer().register(access);
+
+        for (String className : libgraalLoader.getClassModuleMap().keySet()) {
+            try {
+                Class<?> c = Class.forName(className, false, (ClassLoader) libgraalLoader);
+                registerHostedOnlyElements(access, c);
+                registerHostedOnlyElements(access, c.getDeclaredMethods());
+                registerHostedOnlyElements(access, c.getDeclaredFields());
+                registerHostedOnlyElements(access, c.getDeclaredConstructors());
+            } catch (ClassNotFoundException e) {
+                throw new GraalError(e);
+            }
+        }
 
         /* Contains static fields that depend on HotSpotJVMCIRuntime */
         RuntimeClassInitialization.initializeAtRunTime(HotSpotModifiers.class);
@@ -379,6 +417,43 @@ public final class LibGraalFeature implements Feature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         optionCollector.afterAnalysis(access);
+
+        if (!reachedHostedOnlyElements.isEmpty()) {
+            Map<String, Set<String>> suggestions = new TreeMap<>();
+            for (var e : reachedHostedOnlyElements) {
+                String name;
+                String value;
+                switch (e) {
+                    case Method m -> {
+                        name = "Method";
+                        value = m.getDeclaringClass().getName() + "." + m.getName();
+                    }
+                    case Constructor<?> c -> {
+                        name = "Method";
+                        Class<?> dc = c.getDeclaringClass();
+                        value = dc.getName() + "." + dc.getSimpleName();
+                    }
+                    case Field f -> {
+                        name = "Field";
+                        value = f.getDeclaringClass().getName() + "." + f.getName();
+                    }
+                    case Class<?> c -> {
+                        name = "Type";
+                        value = c.getName();
+                    }
+                    case null, default -> throw new GraalError("Unexpected element: ", e);
+                }
+                suggestions.computeIfAbsent(name, k -> new TreeSet<>()).add(value);
+            }
+            var sep = System.lineSeparator() + "  ";
+            var s = suggestions.entrySet().stream()
+                            .map(e -> e.getValue().stream()
+                                            .map(v -> "-H:AbortOn" + e.getKey() + "Reachable" + "=" + v)
+                                            .collect(Collectors.joining(sep)))
+                            .collect(Collectors.joining(sep));
+            String anno = LibGraalSupport.HostedOnly.class.getSimpleName();
+            throw new IllegalArgumentException("@" + anno + " annotated elements reached. Add following Native Image flags to see why they are reachable:" + sep + s);
+        }
     }
 
     @Override

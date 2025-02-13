@@ -29,6 +29,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import java.io.PrintStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Map;
@@ -43,6 +47,16 @@ import java.util.function.Supplier;
  * dependencies that are only needed when building libgraal.
  */
 public interface LibGraalSupport {
+
+    /**
+     * Denotes that the annotated element (type, method, or field) is only visible when running
+     * hosted on HotSpot (i.e., jargraal or while building libgraal) but not cannot be used at
+     * libgraal run time.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target({ElementType.TYPE, ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.FIELD})
+    public @interface HostedOnly {
+    }
 
     /**
      * Prefix to use for an image runtime system property describing some aspect of the libgraal
