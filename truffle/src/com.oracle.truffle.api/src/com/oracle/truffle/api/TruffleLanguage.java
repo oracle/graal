@@ -1065,7 +1065,7 @@ public abstract class TruffleLanguage<C> {
 
     /**
      * Returns a set of source option descriptors that are supported by this language. Option values
-     * are accessible using the {@link Env#getOptions(Source) environment} or using a
+     * are accessible using the {@link Source#getOptions(TruffleLanguage) environment} or using a
      * {@link ParsingRequest#getOptionValues() parsing request} when the source is parsed. Languages
      * must always return the same option descriptors independent of the language instance or
      * side-effects.
@@ -1144,8 +1144,9 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Returns the source option values associated with the parsing request's source and
-         * language. This method should be preferred over {@link Env#getOptions(Source)} when
-         * accessing the source options of a source when possible.
+         * language. This method should be preferred over {@link Source#getOptions(TruffleLanguage)}
+         * when accessing the source options of a source when possible, to avoid parsing the options
+         * twice.
          * <p>
          * In order to allow users of the language to specify source options they must be declared
          * by implementing {@link TruffleLanguage#getSourceOptionDescriptors()}.
@@ -1224,8 +1225,9 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Returns the source option values associated with the parsing request's source and
-         * language. This method should be preferred over {@link Env#getOptions(Source)} when
-         * accessing the source options of a source when possible.
+         * language. This method should be preferred over {@link Source#getOptions(TruffleLanguage)}
+         * when accessing the source options of a source when possible, to avoid parsing the options
+         * twice.
          * <p>
          * In order to allow users of the language to specify source options they must be declared
          * by implementing {@link TruffleLanguage#getSourceOptionDescriptors()}.
@@ -1847,30 +1849,6 @@ public abstract class TruffleLanguage<C> {
          */
         public OptionValues getOptions() {
             return options;
-        }
-
-        /**
-         * Returns the parsed option values of the given source for the current language. Options
-         * can be specified by implementing {@link TruffleLanguage#getSourceOptionDescriptors()}.
-         * When accessing source options during parsing, use
-         * {@link ParsingRequest#getOptionValues()} instead of this method.
-         * <p>
-         * Note that options may not be validated beforehand, which can result in an
-         * {@link IllegalArgumentException} if validation fails. If the source was parsed
-         * previously, all options are guaranteed to have been validated. Otherwise, this method
-         * validates only the options of the current language.
-         *
-         * @param source the source whose option values are to be retrieved
-         * @return the parsed {@link OptionValues} for the specified source
-         * @throws IllegalArgumentException if option validation fails
-         * @since 25.0
-         */
-        public OptionValues getOptions(Source source) {
-            try {
-                return LanguageAccessor.engineAccess().parseLanguageSourceOptions(polyglotLanguageContext, source);
-            } catch (Throwable t) {
-                throw engineToLanguageException(t);
-            }
         }
 
         /**

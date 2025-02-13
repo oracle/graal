@@ -118,6 +118,7 @@ import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationException;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
+import com.oracle.truffle.polyglot.PolyglotSourceCache.ParseOrigin;
 import com.oracle.truffle.polyglot.PolyglotThreadLocalActions.HandshakeConfig;
 import com.oracle.truffle.polyglot.SystemThread.LanguageSystemThread;
 
@@ -1862,7 +1863,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             Source truffleSource = (Source) getAPIAccess().getSourceReceiver(source);
             languageContext.checkAccess(null);
             languageContext.ensureInitialized(null);
-            CallTarget target = languageContext.parseCached(null, truffleSource, null);
+            CallTarget target = languageContext.parseCached(ParseOrigin.EMBEDDING, null, truffleSource, null);
             return languageContext.asValue(new PolyglotParsedEval(languageContext, truffleSource, target));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(languageContext, e, true);
@@ -1890,7 +1891,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             Source truffleSource = (Source) getAPIAccess().getSourceReceiver(source);
             languageContext.checkAccess(null);
             languageContext.ensureInitialized(null);
-            CallTarget target = languageContext.parseCached(null, truffleSource, null);
+            CallTarget target = languageContext.parseCached(ParseOrigin.EMBEDDING, null, truffleSource, null);
             Object result = target.call(null, PolyglotImpl.EMPTY_ARGS);
             Object hostValue;
             try {
