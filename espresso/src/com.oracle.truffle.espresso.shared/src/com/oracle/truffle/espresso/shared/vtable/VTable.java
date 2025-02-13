@@ -64,7 +64,7 @@ public final class VTable {
     public static <C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> Tables<C, M, F> create(
                     PartialType<C, M, F> targetClass,
                     boolean verbose,
-                    boolean allowInterfaceResolvingToPrivate) {
+                    boolean allowInterfaceResolvingToPrivate) throws MethodTableException {
         return new Builder<>(targetClass, verbose, allowInterfaceResolvingToPrivate).build();
     }
 
@@ -77,7 +77,7 @@ public final class VTable {
 
         private final List<PartialMethod<C, M, F>> vtable = new ArrayList<>();
         private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables = EconomicMap.create(Equivalence.IDENTITY);
-        private final List<M> mirandas = new ArrayList<>();
+        private final List<Tables.MethodWrapper<C, M, F>> mirandas = new ArrayList<>();
 
         Builder(PartialType<C, M, F> targetClass, boolean verbose, boolean allowInterfaceResolvingToPrivate) {
             this.targetClass = targetClass;
@@ -85,7 +85,7 @@ public final class VTable {
             this.allowInterfaceResolvingToPrivate = allowInterfaceResolvingToPrivate;
         }
 
-        Tables<C, M, F> build() {
+        Tables<C, M, F> build() throws MethodTableException {
             // First, we collect all method present from the superclass / superinterfaces.
             buildLocations();
             // Next, we look at the declared method, and present it as a candidate for its
@@ -123,7 +123,7 @@ public final class VTable {
             }
         }
 
-        private void resolveVirtual() {
+        private void resolveVirtual() throws MethodTableException {
             List<M> parentTable = targetClass.getParentTable();
             for (int i = 0; i < parentTable.size(); i++) {
                 M m = parentTable.get(i);
@@ -138,6 +138,14 @@ public final class VTable {
                 }
                 assert currentLocations.vLookup(i) == m : "Should have been populated with super table.";
                 if (target.canOverride(m, i)) {
+                    if (m.isFinalFlagSet()) {
+                        throw new MethodTableException(
+                                        "Method " + target.getSymbolicName() + target.getSymbolicSignature() +
+                                                        " from type " + targetClass.getSymbolicName() +
+                                                        " overrides final method " + m.getSymbolicName() + target.getSymbolicSignature() +
+                                                        " from type " + m.getDeclaringClass().getSymbolicName(),
+                                        MethodTableException.Kind.IllegalClassChangeError);
+                    }
                     vtable.add(target);
                     if (!target.sameAccess(m)) {
                         currentLocations.markForPopulation();
@@ -280,9 +288,9 @@ public final class VTable {
                 // No method in classes. Lookup in interfaces. This will be a miranda method.
                 M miranda = resolveMaximallySpecific();
                 if (miranda == null) {
-                    b.mirandas.add(iLocations.get(0).value);
+                    b.mirandas.add(new Tables.MethodWrapper<>(iLocations.get(0).value, true));
                 } else {
-                    b.mirandas.add(miranda);
+                    b.mirandas.add(new Tables.MethodWrapper<>(miranda, false));
                 }
                 return miranda;
             }
@@ -299,10 +307,6 @@ public final class VTable {
                 EconomicSet<M> maximallySpecific = EconomicSet.create(Equivalence.IDENTITY);
                 locationLoop: //
                 for (Location loc : iLocations) {
-                    if (loc.value.isAbstract()) {
-                        // Ignore non-abstract methods
-                        continue;
-                    }
                     Iterator<M> iter = maximallySpecific.iterator();
                     while (iter.hasNext()) {
                         M next = iter.next();
@@ -320,10 +324,23 @@ public final class VTable {
                     }
                     maximallySpecific.add(loc.value);
                 }
-                if (maximallySpecific.size() == 1) {
+                EconomicSet<M> nonAbstractMaximallySpecific = EconomicSet.create(Equivalence.IDENTITY);
+                for (M m : maximallySpecific) {
+                    if (!m.isAbstract()) {
+                        nonAbstractMaximallySpecific.add(m);
+                    }
+                }
+                if (nonAbstractMaximallySpecific.size() == 1) {
+                    return nonAbstractMaximallySpecific.iterator().next();
+                }
+                if (nonAbstractMaximallySpecific.isEmpty()) {
+                    // No non-abstract maximally specific: select an abstract method to fail on
+                    // invoke
+                    assert !maximallySpecific.isEmpty();
                     return maximallySpecific.iterator().next();
                 }
-                // Failed to find a maximally specific method:
+                // Multiple maximally specific non-abstract methods, mark the slot as null.
+                // Will require handling from runtime.
                 return null;
             }
 

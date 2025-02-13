@@ -41,9 +41,9 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
     private final List<PartialMethod<C, M, F>> vtable;
     private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables;
-    private final List<M> mirandas;
+    private final List<MethodWrapper<C, M, F>> mirandas;
 
-    public Tables(List<PartialMethod<C, M, F>> vtable, EconomicMap<C, List<PartialMethod<C, M, F>>> itables, List<M> mirandas) {
+    public Tables(List<PartialMethod<C, M, F>> vtable, EconomicMap<C, List<PartialMethod<C, M, F>>> itables, List<MethodWrapper<C, M, F>> mirandas) {
         this.vtable = vtable;
         this.itables = itables;
         this.mirandas = mirandas;
@@ -57,7 +57,10 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
         return itables;
     }
 
-    public List<M> getImplicitInterfaceMethods() {
+    public List<MethodWrapper<C, M, F>> getImplicitInterfaceMethods() {
         return mirandas;
+    }
+
+    public record MethodWrapper<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>>(M method, boolean isSelectionFailure) {
     }
 }

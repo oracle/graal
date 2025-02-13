@@ -1324,8 +1324,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             // it). (5.4.3.3.)
             //
             // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
-            // Return an arbitrary choice.
-            return m2.getMethodVersion();
+            return new Method(m2).setPoisonPill().getMethodVersion();
         }
     }
 

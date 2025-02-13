@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.shared.meta.Named;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
@@ -42,7 +43,7 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
  * @param <F> The class providing access to the VM-side java {@link java.lang.reflect.Field}.
  */
-public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
+public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named {
     /**
      * @return The declared superclass of this type.
      */

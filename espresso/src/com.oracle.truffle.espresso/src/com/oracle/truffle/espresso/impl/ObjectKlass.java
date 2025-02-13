@@ -1705,6 +1705,7 @@ public final class ObjectKlass extends Klass {
             ObjectKlass.KlassVersion[] transitiveInterfaceList = EspressoMethodTableBuilder.transitiveInterfaceList(superKlass, superInterfaces);
             EspressoMethodTableBuilder.EspressoTables tables = EspressoMethodTableBuilder.create(
                             isInterface(),
+                            getName(),
                             superKlass,
                             transitiveInterfaceList,
                             methods,
@@ -1718,8 +1719,6 @@ public final class ObjectKlass extends Klass {
 
             this.hasDeclaredDefaultMethods = isInterface() && EspressoMethodTableBuilder.declaresDefaultMethod(methods);
             this.hasDefaultMethods = EspressoMethodTableBuilder.hasDefaultMethods(hasDeclaredDefaultMethods, superKlass, superInterfaces);
-
-            EspressoMethodTableBuilder.assignTableIndexes(isInterface(), vtable);
 
             if (superKlass != null) {
                 superKlass.addSubType(getKlass());
@@ -1798,10 +1797,15 @@ public final class ObjectKlass extends Klass {
 
             Method[] declared = EspressoMethodTableBuilder.versionToRegularArray(methods);
 
+            for (Method.MethodVersion m : methods) {
+                m.resetTableIndexes();
+            }
+
             // create new tables
             ObjectKlass.KlassVersion[] transitiveInterfaceList = EspressoMethodTableBuilder.transitiveInterfaceList(superKlass, superInterfaces);
             EspressoMethodTableBuilder.EspressoTables tables = EspressoMethodTableBuilder.create(
                             isInterface(),
+                            getName(),
                             superKlass,
                             transitiveInterfaceList,
                             declared,
@@ -1815,11 +1819,6 @@ public final class ObjectKlass extends Klass {
 
             this.hasDeclaredDefaultMethods = isInterface() && EspressoMethodTableBuilder.declaresDefaultMethod(declared);
             this.hasDefaultMethods = EspressoMethodTableBuilder.hasDefaultMethods(hasDeclaredDefaultMethods, superKlass, superInterfaces);
-
-            for (Method.MethodVersion m : methods) {
-                m.resetTableIndexes();
-            }
-            EspressoMethodTableBuilder.assignTableIndexes(isInterface(), vtable);
 
             // check and replace copied methods too
             for (Map.Entry<Method, Method.SharedRedefinitionContent> entry : copyCheckMap.entrySet()) {

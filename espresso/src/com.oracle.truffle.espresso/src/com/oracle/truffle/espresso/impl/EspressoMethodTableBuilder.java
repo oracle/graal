@@ -34,6 +34,9 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.shared.vtable.MethodTableException;
 import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
 import com.oracle.truffle.espresso.shared.vtable.PartialType;
 import com.oracle.truffle.espresso.shared.vtable.Tables;
@@ -42,23 +45,34 @@ import com.oracle.truffle.espresso.shared.vtable.VTable;
 public final class EspressoMethodTableBuilder {
     public static EspressoTables create(
                     boolean isInterface,
+                    Symbol<Name> name,
                     ObjectKlass superKlass,
                     ObjectKlass.KlassVersion[] transitiveInterfaces,
                     Method[] declaredMethods,
                     boolean allowInterfaceResolutionToPrivete) {
-        Tables<Klass, Method, Field> tables;
-        if (isInterface) {
-            tables = new Tables<>(filterInterfaceMethods(declaredMethods), null, null);
-        } else {
-            tables = VTable.create(
-                            new PartialKlass(superKlass, transitiveInterfaces, declaredMethods),
-                            false,
-                            allowInterfaceResolutionToPrivete);
+        try {
+            Tables<Klass, Method, Field> tables;
+            if (isInterface) {
+                tables = new Tables<>(filterInterfaceMethods(declaredMethods), null, null);
+            } else {
+
+                tables = VTable.create(
+                                new PartialKlass(name, superKlass, transitiveInterfaces, declaredMethods),
+                                false,
+                                allowInterfaceResolutionToPrivete);
+            }
+            return new EspressoTables(
+                            assignTableIndexes(isInterface, vtable(tables)),
+                            itable(tables, transitiveInterfaces),
+                            mirandas(tables));
+        } catch (MethodTableException e) {
+            Meta meta = EspressoContext.get(null).getMeta();
+            switch (e.getKind()) {
+                case IllegalClassChangeError:
+                    meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
+            }
+            return null;
         }
-        return new EspressoTables(
-                        vtable(tables),
-                        itable(tables, transitiveInterfaces),
-                        mirandas(tables));
     }
 
     public static ObjectKlass.KlassVersion[] transitiveInterfaceList(ObjectKlass superKlass, ObjectKlass[] declaredInterfaces) {
@@ -113,21 +127,6 @@ public final class EspressoMethodTableBuilder {
         return false;
     }
 
-    public static void assignTableIndexes(boolean isInterface, Method.MethodVersion[] vtable) {
-        for (int i = vtable.length - 1; i >= 0; i--) {
-            Method.MethodVersion m = vtable[i];
-            if (isInterface) {
-                if (m.getITableIndex() == -1) {
-                    m.setITableIndex(i);
-                }
-            } else {
-                if (m.getVTableIndex() == -1) {
-                    m.setVTableIndex(i);
-                }
-            }
-        }
-    }
-
     public static Method[] versionToRegularArray(Method.MethodVersion[] methods) {
         List<Method> table = new ArrayList<>(methods.length);
         for (Method.MethodVersion m : methods) {
@@ -137,6 +136,7 @@ public final class EspressoMethodTableBuilder {
     }
 
     public static final class EspressoTables {
+
         private final Method.MethodVersion[] vtable;
         private final Method.MethodVersion[][] itable;
         private final Method.MethodVersion[] mirandas;
@@ -158,10 +158,28 @@ public final class EspressoMethodTableBuilder {
         public Method.MethodVersion[] getMirandas() {
             return mirandas;
         }
-
     }
 
-    public static Method.MethodVersion[] toEspressoITable(Method.MethodVersion[] intfTable, List<? extends PartialMethod<Klass, Method, Field>> table) {
+    private static Method.MethodVersion[] assignTableIndexes(boolean isInterface, Method.MethodVersion[] vtable) {
+        if (vtable == null) {
+            return null;
+        }
+        for (int i = vtable.length - 1; i >= 0; i--) {
+            Method.MethodVersion m = vtable[i];
+            if (isInterface) {
+                if (m.getITableIndex() == -1) {
+                    m.setITableIndex(i);
+                }
+            } else {
+                if (m.getVTableIndex() == -1) {
+                    m.setVTableIndex(i);
+                }
+            }
+        }
+        return vtable;
+    }
+
+    private static Method.MethodVersion[] toEspressoITable(Method.MethodVersion[] intfTable, List<? extends PartialMethod<Klass, Method, Field>> table) {
         Method.MethodVersion[] itable = new Method.MethodVersion[table.size()];
         int itableIndex = 0;
         for (PartialMethod<Klass, Method, Field> m : table) {
@@ -173,6 +191,22 @@ public final class EspressoMethodTableBuilder {
             itableIndex++;
         }
         return itable;
+    }
+
+    private static Method.MethodVersion[] toEspressoMirandas(List<Tables.MethodWrapper<Klass, Method, Field>> mirandas) {
+        Method.MethodVersion[] table = new Method.MethodVersion[mirandas.size()];
+        int idx = 0;
+        for (Tables.MethodWrapper<Klass, Method, Field> m : mirandas) {
+            if (m.isSelectionFailure()) {
+                Method method = new Method(m.method());
+                method.setITableIndex(m.method().getITableIndex());
+                table[idx] = method.setPoisonPill().getMethodVersion();
+            } else {
+                table[idx] = m.method().getMethodVersion();
+            }
+            idx++;
+        }
+        return table;
     }
 
     private static List<Method> versionToRegular(Method.MethodVersion[] methods) {
@@ -205,11 +239,11 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static Method.MethodVersion[] mirandas(Tables<Klass, Method, Field> tables) {
-        List<Method> implicitInterfaceMethods = tables.getImplicitInterfaceMethods();
+        List<Tables.MethodWrapper<Klass, Method, Field>> implicitInterfaceMethods = tables.getImplicitInterfaceMethods();
         if (implicitInterfaceMethods == null) {
             return null;
         }
-        return toEspressoTable(implicitInterfaceMethods);
+        return toEspressoMirandas(implicitInterfaceMethods);
     }
 
     private static List<PartialMethod<Klass, Method, Field>> filterInterfaceMethods(Method[] declaredMethods) {
@@ -223,12 +257,14 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static class PartialKlass implements PartialType<Klass, Method, Field> {
+        private final Symbol<Name> targetName;
         private final ObjectKlass superKlass;
         private final List<Method> parentTable;
         private final List<PartialMethod<Klass, Method, Field>> declaredMethods;
         private final EconomicMap<Klass, List<Method>> interfacesData;
 
-        PartialKlass(ObjectKlass superKlass, ObjectKlass.KlassVersion[] transitiveInterfaces, Method[] declaredMethods) {
+        PartialKlass(Symbol<Name> targetName, ObjectKlass superKlass, ObjectKlass.KlassVersion[] transitiveInterfaces, Method[] declaredMethods) {
+            this.targetName = targetName;
             this.superKlass = superKlass;
             this.parentTable = superKlass == null ? Collections.emptyList() : versionToRegular(superKlass.getVTable());
             this.declaredMethods = List.of(declaredMethods);
@@ -237,6 +273,11 @@ public final class EspressoMethodTableBuilder {
                 ObjectKlass intf = intfVersion.getKlass();
                 interfacesData.put(intf, versionToRegular(intf.getInterfaceMethodsTable()));
             }
+        }
+
+        @Override
+        public Symbol<Name> getSymbolicName() {
+            return targetName;
         }
 
         @Override
