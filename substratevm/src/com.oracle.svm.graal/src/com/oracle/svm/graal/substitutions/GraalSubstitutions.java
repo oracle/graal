@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.core.Isolates;
 import jdk.graal.compiler.graph.Edges;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -40,7 +41,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
-import org.graalvm.nativeimage.impl.IsolateSupport;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.annotate.Alias;
@@ -218,7 +218,7 @@ final class Target_jdk_graal_compiler_serviceprovider_IsolateUtil {
 
     @Substitute
     public static long getIsolateID() {
-        return ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
+        return Isolates.getIsolateId();
     }
 }
 

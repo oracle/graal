@@ -108,8 +108,6 @@ public interface LibGraalSupport {
     /**
      * Gets an identifier for the current isolate that is guaranteed to be unique for the first
      * {@code 2^64 - 1} isolates in the process.
-     *
-     * @return a non-zero value
      */
     long getIsolateID();
 

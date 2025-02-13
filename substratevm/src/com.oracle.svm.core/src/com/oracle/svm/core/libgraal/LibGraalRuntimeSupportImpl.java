@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.core.libgraal;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.IsolateSupport;
+import com.oracle.svm.core.Isolates;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.Heap;
@@ -48,7 +47,7 @@ public final class LibGraalRuntimeSupportImpl implements LibGraalRuntimeSupport 
 
     @Override
     public long getIsolateID() {
-        return ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
+        return Isolates.getIsolateId();
     }
 
     @Override
