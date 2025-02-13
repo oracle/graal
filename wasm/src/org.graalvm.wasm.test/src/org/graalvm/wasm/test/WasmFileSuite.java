@@ -222,37 +222,40 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                     e.setStackTrace(new StackTraceElement[0]);
                     throw e;
                 } finally {
-                    // Save context state, and check that it's consistent with the previous one.
-                    if (iterationNeedsStateCheck(i)) {
-                        final ContextState contextState = saveContext(wasmContext);
-                        if (firstIterationContextState == null) {
-                            firstIterationContextState = contextState;
-                        } else {
-                            assertContextEqual(firstIterationContextState, contextState);
+                    // Context may have already been closed, e.g. by __wasi_proc_exit.
+                    if (!wasmContext.environment().getContext().isClosed()) {
+                        // Save context state, and check that it's consistent with the previous one.
+                        if (iterationNeedsStateCheck(i)) {
+                            final ContextState contextState = saveContext(wasmContext);
+                            if (firstIterationContextState == null) {
+                                firstIterationContextState = contextState;
+                            } else {
+                                assertContextEqual(firstIterationContextState, contextState);
+                            }
                         }
-                    }
 
-                    // Reset context state.
-                    final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
-                    if (reinitMemory) {
-                        for (int j = 0; j < wasmContext.memories().count(); ++j) {
-                            WasmMemoryLibrary.getUncached().reset(wasmContext.memories().memory(j));
+                        // Reset context state.
+                        final boolean reinitMemory = requiresZeroMemory || iterationNeedsStateCheck(i + 1);
+                        if (reinitMemory) {
+                            for (int j = 0; j < wasmContext.memories().count(); ++j) {
+                                WasmMemoryLibrary.getUncached().reset(wasmContext.memories().memory(j));
+                            }
+                            for (int j = 0; j < wasmContext.tables().tableCount(); ++j) {
+                                wasmContext.tables().table(j).reset();
+                            }
                         }
-                        for (int j = 0; j < wasmContext.tables().tableCount(); ++j) {
-                            wasmContext.tables().table(j).reset();
+                        List<WasmInstance> instanceList = new ArrayList<>(wasmContext.moduleInstances().values());
+                        instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
+                        for (WasmInstance instance : instanceList) {
+                            if (!instance.isBuiltin()) {
+                                wasmContext.reinitInstance(instance, reinitMemory);
+                            }
                         }
-                    }
-                    List<WasmInstance> instanceList = new ArrayList<>(wasmContext.moduleInstances().values());
-                    instanceList.sort(Comparator.comparingInt(RuntimeState::startFunctionIndex));
-                    for (WasmInstance instance : instanceList) {
-                        if (!instance.isBuiltin()) {
-                            wasmContext.reinitInstance(instance, reinitMemory);
-                        }
-                    }
 
-                    // Reset stdin
-                    if (wasmContext.environment().in() instanceof ByteArrayInputStream) {
-                        wasmContext.environment().in().reset();
+                        // Reset stdin
+                        if (wasmContext.environment().in() instanceof ByteArrayInputStream) {
+                            wasmContext.environment().in().reset();
+                        }
                     }
                 }
             }
