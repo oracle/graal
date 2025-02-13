@@ -37,16 +37,18 @@ struct PersistedAnalysisType {
   annotationList @23 :List(Annotation);
   classInitializationInfo @24 :ClassInitializationInfo;
   hasArrayType @25 :Bool;
+  subTypes @26 :List(TypeId);
+  isAnySubtypeInstantiated @27 :Bool;
   wrappedType :union {
-    none @26 :Void; # default
+    none @28 :Void; # default
     serializationGenerated :group {
-      rawDeclaringClass @27 :Text;
-      rawTargetConstructor @28 :Text;
+      rawDeclaringClass @29 :Text;
+      rawTargetConstructor @30 :Text;
     }
     lambda :group {
-      capturingClass @29 :Text;
+      capturingClass @31 :Text;
     }
-    proxyType @30 :Void;
+    proxyType @32 :Void;
   }
 }
 
