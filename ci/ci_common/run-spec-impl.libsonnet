@@ -215,7 +215,7 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
       local onlyMatrixKeys = union == known_fields;
       local noMatrixKeys = inter == [];
       if isLeaf then
-        assert noMatrixKeys: "unexected platform spec keys in build definition %s (context: %s, stack: %s)" % [inter, context, stack];
+        assert noMatrixKeys: "unexpected platform spec keys in build definition %s (context: %s, stack: %s)" % [inter, context, stack];
         obj
       else
         assert onlyMatrixKeys : "unexpected keys in platform spec %s, expected %s (context: %s, stack: %s)" % [diff, known_fields, context, stack];
@@ -443,7 +443,7 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
         task_dict[build] +
         // add the os/arch/jdk specific spec
         _spec +
-        // provide the task_name/os/arch/jdk definitons to the spec
+        // provide the task_name/os/arch/jdk definitions to the spec
         task_spec({
           task_name:: build,
           os:: os,
@@ -482,7 +482,7 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
   ,
   // Add properties that need to be evaluated late
   //
-  // This works around ordering issues. For example, a platform needs to add a download, which depdends
+  // This works around ordering issues. For example, a platform needs to add a download, which depends
   // on the JDK version. However, the JDK definition might come after the platform definition. To avoid this,
   // the definition can be added to the `evaluate_late` field. The content of the `evaluate_late` field
   // (if it exists) will be added late when all other properties have been set.

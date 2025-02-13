@@ -1015,7 +1015,7 @@ final class BreakpointInterceptor {
      * This method should be intercepted when we are predefining a lambda class. This is the only
      * spot in the lambda-class creation pipeline where we can get lambda-class bytecode so the
      * class can be predefined. We do not want to predefine all lambda classes, but only the ones
-     * that are actually created at runtime, so we have a method that checks wheter the lambda
+     * that are actually created at runtime, so we have a method that checks whether the lambda
      * should be predefined or not.
      */
     private static boolean onMethodHandleClassFileInit(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {

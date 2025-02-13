@@ -1,4 +1,4 @@
-# long isnt long long
+# long isn't long long
 gcc-5.2.0/gcc/testsuite/gcc.c-torture/compile/20010327-1.c
 
 # typedef redefinitions

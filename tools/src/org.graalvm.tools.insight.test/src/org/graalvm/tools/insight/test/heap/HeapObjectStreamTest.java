@@ -131,7 +131,7 @@ public class HeapObjectStreamTest {
                         new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), createDumpObject())})
         });
 
-        assertEquals("Size of first stream remains unchaged", heapSize, heapOutput.size());
+        assertEquals("Size of first stream remains unchanged", heapSize, heapOutput.size());
 
         String anotherHeader = new String(anotherStream.toByteArray(), 0, 18);
         assertEquals("JAVA PROFILE 1.0.1", anotherHeader);
@@ -230,7 +230,7 @@ public class HeapObjectStreamTest {
         }
         invokeFlush(heap);
 
-        assertEquals("Size of first stream remains unchaged", heapSize, heapOutput.size());
+        assertEquals("Size of first stream remains unchanged", heapSize, heapOutput.size());
         assertEquals("Size of the second stream is the same due to LRU caching", heapSize, anotherStream.size());
         assertNotEquals("Heap contents differ", true, equals(heapOutput.toByteArray(), anotherStream.toByteArray()));
     }

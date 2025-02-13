@@ -238,7 +238,7 @@ public class MethodEntry extends MemberEntry {
      * with existing recorded parameter or local variables. Values with invalid (negative) slots
      * always fail. Values whose slot is associated with a parameter only conform if their name and
      * type equal those of the parameter. Values whose slot is in the local range will always
-     * succeed,. either by matchign the slot and name of an existing local or by being recorded as a
+     * succeed,. either by matching the slot and name of an existing local or by being recorded as a
      * new local variable.
      * 
      * @param localValueInfo
