@@ -22,15 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.imagelayer;
+package com.oracle.svm.hosted.driver;
 
 import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
 
-public class LayerOptionsSupport {
+public class LayerOptionsSupport extends IncludeOptionsSupport {
 
     public record LayerOption(Path fileName, ExtendedOption[] extendedOptions) {
         /** Split a layer option into its components. */
@@ -55,36 +56,4 @@ public class LayerOptionsSupport {
         }
     }
 
-    public record ExtendedOption(String key, String value) {
-
-        static ExtendedOption parse(String option) {
-            String[] optionParts = SubstrateUtil.split(option, "=", 2);
-            if (optionParts.length == 2) {
-                return new ExtendedOption(optionParts[0], optionParts[1]);
-            } else {
-                return new ExtendedOption(option, null);
-            }
-        }
-    }
-
-    public record PackageOptionValue(String name, boolean isWildcard) {
-
-        static final String PACKAGE_WILDCARD_SUFFIX = ".*";
-
-        public static PackageOptionValue from(ExtendedOption extendedOption) {
-            if (!extendedOption.key().equals(LayerArchiveSupport.PACKAGE_OPTION)) {
-                return null;
-            }
-            String extendedOptionValue = extendedOption.value();
-            if (extendedOptionValue.endsWith(PACKAGE_WILDCARD_SUFFIX)) {
-                return new PackageOptionValue(extendedOptionValue.substring(0, extendedOptionValue.length() - PACKAGE_WILDCARD_SUFFIX.length()), true);
-            }
-            return new PackageOptionValue(extendedOptionValue, false);
-        }
-
-        @Override
-        public String toString() {
-            return name + (isWildcard ? PACKAGE_WILDCARD_SUFFIX : "");
-        }
-    }
 }
