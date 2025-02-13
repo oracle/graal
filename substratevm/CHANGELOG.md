@@ -9,6 +9,18 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-59864) Added JVM version check to the Native Image agent. The agent will abort execution if the JVM major version does not match the version it was built with, and warn if the full JVM version is different.
 * (GR-59135) Verify if hosted options passed to `native-image` exist prior to starting the builder. Provide suggestions how to fix unknown options early on.
 * (GR-61492) The experimental JDWP option is now present in standard GraalVM builds.
+* (GR-54953) Add the experimental option `-H:Preserve` that preserves all classes, resources and reflection metadata from a module, a class-path entry, or a package in the image. This will allow users to more easily support third-party libraries and get more user-friendly experience with Native Image.
+
+    The flag can be used in following ways:
+    1. `-H:Preserve=all` preserves all elements from the JDK and from the classpath
+    2. `-H:Preserve=module=<module>`preserves all elements from a given module
+    3. `-H:Preserve=module=ALL-UNNAMED`preserves all elements from the class-path entry
+    4. `-H:Preserve=package=<package>`preserves all elements from a given package, package group
+    5. `-H:Preserve=package=<package-wildcard>`preserves all elements from packages captured by the wildcard. For example, `-H:Preserve=package=my.app.*`. 
+    6. `-H:Preserve=path=<cp-entry>`preserves all elements from a given class-path entry
+    7.  A combination of any of the previous uses, for example, `-H:Preserve=path=<cp-entry>,module=<module>`
+
+    The `-H:Preserve` option is forbidden in the `native-image.property` entries on the classpath.
 
 ## GraalVM for JDK 24 (Internal Version 24.2.0)
 * (GR-59717) Added `DuringSetupAccess.registerObjectReachabilityHandler` to allow registering a callback that is executed when an object of a specified type is marked as reachable during heap scanning.

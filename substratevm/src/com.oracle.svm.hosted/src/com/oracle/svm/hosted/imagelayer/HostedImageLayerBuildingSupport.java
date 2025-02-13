@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted.imagelayer;
 
+import static com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption.MODULE_OPTION;
+import static com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption.PACKAGE_OPTION;
+import static com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption.PATH_OPTION;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.MappedByteBuffer;
@@ -56,9 +60,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
 import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.PackageOptionValue;
 
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.options.OptionKey;
@@ -166,24 +168,22 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 classLoaderSupport.setLayerFile(layerOption.fileName());
 
                 String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
-                for (ExtendedOption option : layerOption.extendedOptions()) {
+                for (LayerOptionsSupport.ExtendedOption option : layerOption.extendedOptions()) {
+                    boolean validOption = option.value() == null || option.value().isEmpty();
                     switch (option.key()) {
-                        case LayerArchiveSupport.MODULE_OPTION -> {
-                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
-                                            "Layer option %s specified with '%s' from %s requires a module name argument, e.g., %s=module-name.",
+                        case MODULE_OPTION -> {
+                            UserError.guarantee(validOption, "Layer option %s specified with '%s' from %s requires a module name argument, e.g., %s=module-name.",
                                             option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
                             classLoaderSupport.addJavaModuleToInclude(option.value());
 
                         }
-                        case LayerArchiveSupport.PACKAGE_OPTION -> {
-                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
-                                            "Layer option %s specified with '%s' from %s requires a package name argument, e.g., %s=package-name.",
+                        case PACKAGE_OPTION -> {
+                            UserError.guarantee(validOption, "Layer option %s specified with '%s' from %s requires a package name argument, e.g., %s=package-name.",
                                             option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
-                            classLoaderSupport.addJavaPackageToInclude(Objects.requireNonNull(PackageOptionValue.from(option)));
+                            classLoaderSupport.addJavaPackageToInclude(Objects.requireNonNull(LayerOptionsSupport.PackageOptionValue.from(option)));
                         }
-                        case LayerArchiveSupport.PATH_OPTION -> {
-                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
-                                            "Layer option %s specified with '%s' from %s requires a class-path entry, e.g., %s=path/to/cp-entry.",
+                        case PATH_OPTION -> {
+                            UserError.guarantee(validOption, "Layer option %s specified with '%s' from %s requires a class-path entry, e.g., %s=path/to/cp-entry.",
                                             option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
                             classLoaderSupport.addClassPathEntryToInclude(option.value());
                         }

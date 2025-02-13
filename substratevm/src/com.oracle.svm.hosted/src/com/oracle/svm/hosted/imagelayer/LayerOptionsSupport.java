@@ -57,7 +57,11 @@ public class LayerOptionsSupport {
 
     public record ExtendedOption(String key, String value) {
 
-        static ExtendedOption parse(String option) {
+        public static final String PACKAGE_OPTION = "package";
+        public static final String MODULE_OPTION = "module";
+        public static final String PATH_OPTION = "path";
+
+        public static ExtendedOption parse(String option) {
             String[] optionParts = SubstrateUtil.split(option, "=", 2);
             if (optionParts.length == 2) {
                 return new ExtendedOption(optionParts[0], optionParts[1]);
@@ -72,7 +76,7 @@ public class LayerOptionsSupport {
         static final String PACKAGE_WILDCARD_SUFFIX = ".*";
 
         public static PackageOptionValue from(ExtendedOption extendedOption) {
-            if (!extendedOption.key().equals(LayerArchiveSupport.PACKAGE_OPTION)) {
+            if (!extendedOption.key().equals(ExtendedOption.PACKAGE_OPTION)) {
                 return null;
             }
             String extendedOptionValue = extendedOption.value();
