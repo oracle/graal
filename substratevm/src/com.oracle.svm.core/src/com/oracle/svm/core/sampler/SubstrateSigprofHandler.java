@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.sampler;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -51,6 +50,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.word.Word;
 
 /**
  * This is the core class of the low overhead asynchronous execution sampler. It registers a SIGPROF
@@ -136,8 +136,13 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     }
 
     @Override
-    @Uninterruptible(reason = "Prevent VM operations that modify the global or thread-local execution sampler state.")
     public void beforeThreadRun() {
+        /* Workaround for GR-48636. */
+        beforeThreadRun0();
+    }
+
+    @Uninterruptible(reason = "Prevent VM operations that modify the global or thread-local execution sampler state.")
+    private void beforeThreadRun0() {
         IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (isSampling()) {
             SubstrateJVM.getSamplerBufferPool().adjustBufferCount();
