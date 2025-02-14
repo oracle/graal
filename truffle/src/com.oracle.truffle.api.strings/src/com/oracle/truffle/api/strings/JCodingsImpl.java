@@ -194,17 +194,28 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     @TruffleBoundary
-    public long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex) {
-        if (TStringGuards.is7BitCompatible(encoding) && TStringOps.calcStringAttributesLatin1(location, array, offset + fromIndex, length) == TSCodeRange.get7Bit()) {
-            return StringAttributes.create(length, TSCodeRange.get7Bit());
+    public long calcStringAttributes(Node location, AbstractTruffleString a, Object arrayA, int offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA) {
+        if (TStringGuards.is7BitCompatible(encodingA) && TStringOps.calcStringAttributesLatin1(location, arrayA, offsetA + fromIndexA, lengthA) == TSCodeRange.get7Bit()) {
+            return StringAttributes.create(lengthA, TSCodeRange.get7Bit());
         }
-        byte[] bytes = JCodings.asByteArray(array);
-        int offsetBytes = array instanceof AbstractTruffleString.NativePointer ? fromIndex : offset + fromIndex;
-        Encoding enc = get(encoding);
+        final byte[] bytes;
+        final int offsetBytes;
+        if (arrayA instanceof AbstractTruffleString.NativePointer nativePointer) {
+            if (a == null) {
+                bytes = nativePointer.materializeByteArray(offsetA, lengthA);
+            } else {
+                bytes = nativePointer.materializeByteArray(a);
+            }
+            offsetBytes = fromIndexA;
+        } else {
+            bytes = (byte[]) arrayA;
+            offsetBytes = offsetA + fromIndexA;
+        }
+        Encoding enc = get(encodingA);
         int codeRange = TSCodeRange.getValid(enc.isSingleByte());
         int characters = 0;
         int p = offsetBytes;
-        final int end = offsetBytes + length;
+        final int end = offsetBytes + lengthA;
         int loopCount = 0;
         for (; p < end; characters++) {
             final int lengthOfCurrentCharacter = enc.length(bytes, p, end);
@@ -215,7 +226,7 @@ final class JCodingsImpl implements JCodings {
                 // If a string is detected as broken, and we already know the character length
                 // due to a fixed width encoding, we can break here.
                 if (enc.isFixedWidth()) {
-                    characters = (length + enc.minLength() - 1) / enc.minLength();
+                    characters = (lengthA + enc.minLength() - 1) / enc.minLength();
                     return StringAttributes.create(characters, codeRange);
                 } else {
                     p += enc.minLength();
@@ -273,13 +284,6 @@ final class JCodingsImpl implements JCodings {
     }
 
     private static byte[] asBytesMaterializeNative(AbstractTruffleString replacementString) {
-        return asBytesMaterializeNative(replacementString, TruffleString.ToIndexableNode.getUncached().execute(null, replacementString, replacementString.data()));
-    }
-
-    private static byte[] asBytesMaterializeNative(AbstractTruffleString a, Object arrayA) {
-        if (arrayA instanceof AbstractTruffleString.NativePointer) {
-            ((AbstractTruffleString.NativePointer) arrayA).materializeByteArray(a);
-        }
-        return JCodings.asByteArray(arrayA);
+        return JCodings.asByteArray(replacementString, TruffleString.ToIndexableNode.getUncached().execute(null, replacementString, replacementString.data()));
     }
 }

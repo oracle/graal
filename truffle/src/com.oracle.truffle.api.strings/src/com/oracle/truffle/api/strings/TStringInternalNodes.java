@@ -291,11 +291,7 @@ final class TStringInternalNodes {
                 checkByteLengthUTF32(byteLength);
                 return StringAttributes.create(byteLength >> 2, TStringOps.calcStringAttributesUTF32FE(node, arrayA, offsetA, byteLength >> 2));
             } else {
-                JCodings jcodings = JCodings.getInstance();
-                if (arrayA instanceof NativePointer) {
-                    ((NativePointer) arrayA).materializeByteArray(offsetA, byteLength);
-                }
-                return jcodings.calcStringAttributes(node, arrayA, offsetA, byteLength, encodingObj, 0);
+                return JCodings.getInstance().calcStringAttributes(node, null, arrayA, offsetA, byteLength, encodingObj, 0);
             }
         }
     }
@@ -514,7 +510,7 @@ final class TStringInternalNodes {
         @TruffleBoundary
         private static int unsupported(AbstractTruffleString a, Object arrayA, Encoding encoding, int index, ErrorHandling errorHandling) {
             JCodings jcodings = JCodings.getInstance();
-            int cpLength = jcodings.getCodePointLength(encoding, JCodings.asByteArray(arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
+            int cpLength = jcodings.getCodePointLength(encoding, JCodings.asByteArray(a, arrayA), a.byteArrayOffset() + index, a.byteArrayOffset() + a.length());
             int regionLength = a.length() - index;
             if (errorHandling == ErrorHandling.BEST_EFFORT) {
                 if (cpLength > 0 && cpLength <= regionLength) {
@@ -578,7 +574,7 @@ final class TStringInternalNodes {
                 return index >> 2;
             } else {
                 assert isUnsupportedEncoding(encoding);
-                return StringAttributes.getCodePointLength(JCodings.getInstance().calcStringAttributes(node, arrayA, a.offset(), index, encoding, byteOffset));
+                return StringAttributes.getCodePointLength(JCodings.getInstance().calcStringAttributes(node, a, arrayA, a.offset(), index, encoding, byteOffset));
             }
         }
     }
@@ -647,7 +643,7 @@ final class TStringInternalNodes {
                 return index << 2;
             } else {
                 assert isUnsupportedEncoding(encoding);
-                return JCodings.getInstance().codePointIndexToRaw(node, a, JCodings.asByteArray(arrayA), extraOffsetRaw, index, isLength, encoding);
+                return unsupported(node, a, arrayA, encoding, extraOffsetRaw, index, isLength);
             }
         }
 
@@ -698,6 +694,11 @@ final class TStringInternalNodes {
                 TStringConstants.truffleSafePointPoll(node, i + 1);
             }
             return atEnd(a, extraOffsetRaw, index, isLength, cpi);
+        }
+
+        @TruffleBoundary
+        private static int unsupported(Node node, AbstractTruffleString a, Object arrayA, Encoding encoding, int extraOffsetRaw, int index, boolean isLength) {
+            return JCodings.getInstance().codePointIndexToRaw(node, a, JCodings.asByteArray(a, arrayA), extraOffsetRaw, index, isLength, encoding);
         }
 
         static int atEnd(AbstractTruffleString a, int extraOffsetRaw, int index, boolean isLength, int cpi) {
@@ -832,7 +833,7 @@ final class TStringInternalNodes {
                 assert isStride0(a);
                 return TStringOps.readS0(a, arrayA, i);
             } else if (asciiBrokenProfile.profile(node, isAscii(encoding))) {
-                return CodePointAtRawNode.doAsciiBroken(a, arrayA, codeRangeA, encoding, i, errorHandling);
+                return CodePointAtRawNode.asciiBroken(a, arrayA, codeRangeA, encoding, i, errorHandling);
             } else if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
                 return utf16FE(node, a, arrayA, codeRangeA, i, errorHandling, utf16FEValidProfile);
             } else if (utf32FEProfile.profile(node, isUTF32FE(encoding))) {
@@ -840,9 +841,7 @@ final class TStringInternalNodes {
             } else {
                 assert isUnsupportedEncoding(encoding);
                 assert isStride0(a);
-                JCodings jcodings = JCodings.getInstance();
-                byte[] bytes = JCodings.asByteArray(arrayA);
-                return jcodings.decode(a, bytes, jcodings.codePointIndexToRaw(node, a, bytes, 0, i, false, encoding), encoding, errorHandling);
+                return unsupported(node, a, arrayA, encoding, i, errorHandling);
             }
         }
 
@@ -856,6 +855,13 @@ final class TStringInternalNodes {
                 assert TStringGuards.isBroken(codeRangeA);
                 return Encodings.utf16FEDecodeBroken(arrayA, offsetA, lengthA, Encodings.utf16FEBrokenCodePointToCharIndex(node, arrayA, offsetA, lengthA, i), errorHandling);
             }
+        }
+
+        @TruffleBoundary
+        private static int unsupported(Node node, AbstractTruffleString a, Object arrayA, Encoding encoding, int i, ErrorHandling errorHandling) {
+            JCodings jcodings = JCodings.getInstance();
+            byte[] bytes = JCodings.asByteArray(a, arrayA);
+            return jcodings.decode(a, bytes, jcodings.codePointIndexToRaw(node, a, bytes, 0, i, false, encoding), encoding, errorHandling);
         }
     }
 
@@ -929,7 +935,7 @@ final class TStringInternalNodes {
                 assert isStride0(a);
                 return TStringOps.readS0(a, arrayA, i);
             } else if (asciiBrokenProfile.profile(node, isAscii(encoding))) {
-                return doAsciiBroken(a, arrayA, codeRangeA, encoding, i, errorHandling);
+                return asciiBroken(a, arrayA, codeRangeA, encoding, i, errorHandling);
             } else if (utf16FEProfile.profile(node, isUTF16FE(encoding))) {
                 assert isStride0(a);
                 if (utf16FEValidProfile.profile(node, isValid(codeRangeA))) {
@@ -942,8 +948,19 @@ final class TStringInternalNodes {
                 return utf32FE(a, arrayA, codeRangeA, encoding, i, errorHandling);
             } else {
                 assert isUnsupportedEncoding(encoding);
-                return JCodings.getInstance().decode(a, JCodings.asByteArray(arrayA), i, encoding, errorHandling);
+                return unsupported(a, arrayA, encoding, i, errorHandling);
             }
+        }
+
+        static int asciiBroken(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") Encoding encoding, int i,
+                        ErrorHandling errorHandling) {
+            assert isStride0(a);
+            int c = readS0(a, arrayA, i);
+            if (errorHandling == ErrorHandling.RETURN_NEGATIVE && c > 0x7f) {
+                return -1;
+            }
+            assert errorHandling == ErrorHandling.BEST_EFFORT || !TSCodeRange.isPrecise(codeRangeA);
+            return c;
         }
 
         static int utf32FE(AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA, @SuppressWarnings("unused") Encoding encoding, int i,
@@ -956,15 +973,9 @@ final class TStringInternalNodes {
             return c;
         }
 
-        static int doAsciiBroken(AbstractTruffleString a, Object arrayA, int codeRangeA, @SuppressWarnings("unused") Encoding encoding, int i,
-                        ErrorHandling errorHandling) {
-            assert isStride0(a);
-            int c = readS0(a, arrayA, i);
-            if (errorHandling == ErrorHandling.RETURN_NEGATIVE && c > 0x7f) {
-                return -1;
-            }
-            assert errorHandling == ErrorHandling.BEST_EFFORT || !TSCodeRange.isPrecise(codeRangeA);
-            return c;
+        @TruffleBoundary
+        private static int unsupported(AbstractTruffleString a, Object arrayA, Encoding encoding, int i, ErrorHandling errorHandling) {
+            return JCodings.getInstance().decode(a, JCodings.asByteArray(a, arrayA), i, encoding, errorHandling);
         }
     }
 
@@ -1600,7 +1611,7 @@ final class TStringInternalNodes {
                 return StringAttributes.create(length >> 2, TStringOps.calcStringAttributesUTF32FE(node, array, offset + fromIndex, length >> 2));
             } else {
                 assert isUnsupportedEncoding(encoding);
-                return JCodings.getInstance().calcStringAttributes(node, array, offset, length, encoding, fromIndex);
+                return JCodings.getInstance().calcStringAttributes(node, a, array, offset, length, encoding, fromIndex);
             }
         }
     }
@@ -1651,13 +1662,11 @@ final class TStringInternalNodes {
 
         abstract double execute(Node node, AbstractTruffleString a, Object arrayA) throws TruffleString.NumberFormatException;
 
-        @SuppressWarnings("unused")
         @Specialization(guards = "compaction == cachedCompaction", limit = Stride.STRIDE_CACHE_LIMIT, unroll = Stride.STRIDE_UNROLL)
         static double doParse(Node node, AbstractTruffleString a, Object arrayA,
-                        @Bind("fromStride(a.stride())") CompactionLevel compaction,
-                        @Cached("compaction") CompactionLevel cachedCompaction,
-                        @Cached InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
-            return FastDoubleParser.parseDouble(node, a, arrayA, cachedCompaction.getStride(), 0, a.length(), errorProfile);
+                        @SuppressWarnings("unused") @Bind("fromStride(a.stride())") CompactionLevel compaction,
+                        @Cached("compaction") CompactionLevel cachedCompaction) throws TruffleString.NumberFormatException {
+            return FastDoubleParser.parseDouble(node, a, arrayA, cachedCompaction.getStride(), 0, a.length());
         }
     }
 

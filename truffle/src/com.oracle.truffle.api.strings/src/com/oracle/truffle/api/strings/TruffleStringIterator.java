@@ -434,7 +434,7 @@ public final class TruffleStringIterator {
         private static int unsupported(TruffleStringIterator it, Encoding encoding, DecodingErrorHandler errorHandler) {
             assert it.hasNext();
             JCodings jcodings = JCodings.getInstance();
-            byte[] bytes = JCodings.asByteArray(it.arrayA);
+            byte[] bytes = JCodings.asByteArray(it.a, it.arrayA);
             int startIndex = it.rawIndex;
             int p = it.a.byteArrayOffset() + it.rawIndex;
             int end = it.a.byteArrayOffset() + it.a.length();
@@ -801,7 +801,7 @@ public final class TruffleStringIterator {
         private static int unsupported(TruffleStringIterator it, Encoding encoding, DecodingErrorHandler errorHandler) {
             assert it.hasPrevious();
             JCodings jcodings = JCodings.getInstance();
-            byte[] bytes = JCodings.asByteArray(it.arrayA);
+            byte[] bytes = JCodings.asByteArray(it.a, it.arrayA);
             int start = it.a.byteArrayOffset();
             int index = it.a.byteArrayOffset() + it.rawIndex;
             int end = it.a.byteArrayOffset() + it.a.length();

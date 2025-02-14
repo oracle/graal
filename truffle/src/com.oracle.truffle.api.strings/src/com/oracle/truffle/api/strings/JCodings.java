@@ -82,11 +82,11 @@ sealed interface JCodings permits JCodingsImpl {
         return INSTANCE;
     }
 
-    static byte[] asByteArray(Object array) {
-        if (array instanceof AbstractTruffleString.NativePointer) {
-            return ((AbstractTruffleString.NativePointer) array).getBytes();
+    static byte[] asByteArray(AbstractTruffleString a, Object arrayA) {
+        if (arrayA instanceof AbstractTruffleString.NativePointer) {
+            return ((AbstractTruffleString.NativePointer) arrayA).materializeByteArray(a);
         }
-        return (byte[]) array;
+        return (byte[]) arrayA;
     }
 
     /**
@@ -134,7 +134,7 @@ sealed interface JCodings permits JCodingsImpl {
     int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, TruffleString.Encoding encoding, TruffleString.ErrorHandling errorHandling);
 
     @TruffleBoundary
-    long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex);
+    long calcStringAttributes(Node location, AbstractTruffleString a, Object arrayA, int offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA);
 
     @TruffleBoundary
     TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding, TranscodingErrorHandler errorHandler);

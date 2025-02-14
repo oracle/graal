@@ -405,9 +405,8 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     }
 
     // don't use this on fast path
-    final boolean isMaterialized(Encoding expectedEncoding) {
-        return data instanceof byte[] || isLazyLong() && ((AbstractTruffleString.LazyLong) data).bytes != null ||
-                        isNative() && (isSupportedEncoding(expectedEncoding) || ((NativePointer) data).byteArrayIsValid);
+    final boolean isMaterialized() {
+        return data instanceof byte[] || isLazyLong() && ((AbstractTruffleString.LazyLong) data).bytes != null || isNative();
     }
 
     final boolean isLazyConcat() {
@@ -1494,16 +1493,11 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
             return pointerObject;
         }
 
-        byte[] getBytes() {
-            assert bytes != null;
-            return bytes;
+        byte[] materializeByteArray(AbstractTruffleString a) {
+            return materializeByteArray(a.offset(), a.length() << a.stride());
         }
 
-        void materializeByteArray(AbstractTruffleString a) {
-            materializeByteArray(a.offset(), a.length() << a.stride());
-        }
-
-        void materializeByteArray(int byteOffset, int byteLength) {
+        byte[] materializeByteArray(int byteOffset, int byteLength) {
             if (!byteArrayIsValid) {
                 if (bytes == null) {
                     bytes = new byte[byteLength];
@@ -1515,6 +1509,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
                     Reference.reachabilityFence(pointerObject);
                 }
             }
+            return bytes;
         }
 
         void invalidateCachedByteArray() {

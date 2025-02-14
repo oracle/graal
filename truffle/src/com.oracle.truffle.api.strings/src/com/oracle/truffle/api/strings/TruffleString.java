@@ -75,7 +75,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
@@ -83,12 +82,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.GenerateCached;
-import com.oracle.truffle.api.dsl.GenerateInline;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -222,11 +217,7 @@ public final class TruffleString extends AbstractTruffleString {
         } else if (isUTF32(encoding) && stride == 1) {
             knownCodeRange = TSCodeRange.get16Bit();
         }
-        if (bytes instanceof NativePointer) {
-            ((NativePointer) bytes).materializeByteArray(offset, length << stride);
-        } else {
-            assert stride == Stride.fromCodeRangeAllowImprecise(codeRange, encoding);
-        }
+        assert bytes instanceof NativePointer || stride == Stride.fromCodeRangeAllowImprecise(codeRange, encoding);
         long attrs = CalcStringAttributesNodeGen.getUncached().execute(CalcStringAttributesNodeGen.getUncached(), null, bytes, offset, length, stride, encoding, 0, knownCodeRange);
         int cpLengthCalc = StringAttributes.getCodePointLength(attrs);
         int codeRangeCalc = StringAttributes.getCodeRange(attrs);
@@ -2542,36 +2533,24 @@ public final class TruffleString extends AbstractTruffleString {
         }
     }
 
-    @GenerateUncached(false)
     abstract static class ToIndexableNode extends AbstractInternalNode {
-
-        private static final ToIndexableNode UNCACHED = new Uncached();
 
         abstract Object execute(Node node, AbstractTruffleString a, Object data);
 
         @Specialization
-        @SuppressWarnings("unused")
-        static byte[] doByteArray(AbstractTruffleString a, byte[] data) {
+        static byte[] doByteArray(@SuppressWarnings("unused") AbstractTruffleString a, byte[] data) {
             return data;
         }
 
-        @Fallback
-        static Object doByteArray(Node node, AbstractTruffleString a, Object data,
-                        @Cached InlinedBranchProfile slowPathProfile) {
-            if (data instanceof NativePointer nativePointer && (!JCodings.JCODINGS_ENABLED || isSupportedEncoding(a.encoding()))) {
-                return nativePointer;
-            }
-            slowPathProfile.enter(node);
-            return slowpath(node, a, data);
+        @Specialization
+        static NativePointer doNativePointer(@SuppressWarnings("unused") AbstractTruffleString a, NativePointer data) {
+            return data;
         }
 
         @TruffleBoundary
-        private static Object slowpath(Node node, AbstractTruffleString a, Object data) {
-            if (data instanceof NativePointer nativePointer) {
-                assert !isSupportedEncoding(a.encoding());
-                nativePointer.materializeByteArray(a);
-                return nativePointer;
-            } else if (data instanceof LazyConcat) {
+        @Fallback
+        static Object slowpath(Node node, AbstractTruffleString a, Object data) {
+            if (data instanceof LazyConcat) {
                 // note: the write to a.data is racy, and we deliberately read it from the TString
                 // object again after the race to de-duplicate simultaneously generated arrays
                 a.setData(LazyConcat.flatten(node, (TruffleString) a));
@@ -2587,37 +2566,8 @@ public final class TruffleString extends AbstractTruffleString {
             }
         }
 
-        public static ToIndexableNode getUncached() {
-            return UNCACHED;
-        }
-
-        @DenyReplace
-        @GenerateCached(false)
-        @GenerateUncached(false)
-        @GenerateInline(false)
-        private static final class Uncached extends ToIndexableNode {
-
-            @Override
-            public Object execute(Node node, AbstractTruffleString a, Object data) {
-                if (data instanceof byte[] byteData) {
-                    return byteData;
-                } else {
-                    // Outlined to keep this method as trivial as possible
-                    return doNativeOrLazy(node, a, data);
-                }
-            }
-
-            private static Object doNativeOrLazy(Node node, AbstractTruffleString a, Object data) {
-                if (data instanceof NativePointer nativePointer && (!JCodings.JCODINGS_ENABLED || isSupportedEncoding(a.encoding()))) {
-                    return nativePointer;
-                }
-                return ToIndexableNode.slowpath(node, a, data);
-            }
-
-            @Override
-            public boolean isAdoptable() {
-                return false;
-            }
+        static ToIndexableNode getUncached() {
+            return TruffleStringFactory.ToIndexableNodeGen.getUncached();
         }
     }
 
@@ -2645,7 +2595,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ToIndexableNode toIndexableNode) {
             a.checkEncoding(expectedEncoding);
             toIndexableNode.execute(this, a, a.data());
-            assert a.isMaterialized(expectedEncoding);
+            assert a.isMaterialized();
         }
 
         /**
