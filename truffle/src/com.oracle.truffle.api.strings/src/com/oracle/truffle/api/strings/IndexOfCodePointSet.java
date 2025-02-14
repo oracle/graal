@@ -355,17 +355,17 @@ final class IndexOfCodePointSet {
             this.maxCodeRange = (byte) maxCodeRange;
         }
 
-        abstract int execute(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding);
+        abstract int execute(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding);
 
         @Specialization
-        int doWithConditionProfile(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding,
+        int doWithConditionProfile(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding,
                         @Cached InlinedBranchProfile branchProfile) {
             branchProfile.enter(this);
             return runSearch(location, arrayA, offsetA, lengthA, strideA, codeRangeA, fromIndex, toIndex, encoding);
         }
 
         @SuppressWarnings("unused")
-        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+        int runSearch(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             throw CompilerDirectives.shouldNotReachHere();
         }
 
@@ -401,7 +401,7 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+        int runSearch(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             CompilerAsserts.partialEvaluationConstant(this);
             CompilerAsserts.partialEvaluationConstant(encoding);
             int codepointLength = 1;
@@ -456,7 +456,7 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+        int runSearch(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return -1;
         }
 
@@ -481,7 +481,7 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+        int runSearch(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return fromIndex;
         }
 
@@ -509,7 +509,7 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+        int runSearch(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return TStringOps.indexOfAnyInt(location, arrayA, offsetA, strideA, fromIndex, toIndex, values);
         }
 
@@ -537,7 +537,7 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+        int runSearch(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return TStringOps.indexOfAnyIntRange(location, arrayA, offsetA, strideA, fromIndex, toIndex, ranges);
         }
 
@@ -566,7 +566,7 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+        int runSearch(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
             return TStringOps.indexOfTable(location, arrayA, offsetA, strideA, fromIndex, toIndex, tables);
         }
 
@@ -591,7 +591,8 @@ final class IndexOfCodePointSet {
         }
 
         @Override
-        int runSearch(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+        int runSearch(Node location, Object arrayA, long offsetA, int lengthA, int strideA, int codeRangeA, int fromIndex, int toIndex, Encoding encoding) {
+            assert str.isManaged() && str.isMaterialized();
             return TStringOps.indexOfStringWithOrMaskWithStride(location, arrayA, offsetA, lengthA, strideA, str.data(), str.offset(), str.length(), str.stride(), fromIndex, toIndex, null);
         }
 

@@ -116,9 +116,10 @@ final class TStringGuards {
         return TSCodeRange.isFixedWidth(codeRangeA, codeRangeB);
     }
 
-    static boolean indexOfCannotMatch(Node node, int codeRangeA, AbstractTruffleString b, int codeRangeB, int regionLength, Encoding encoding,
-                    TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
-        return regionLength < getCodePointLengthNodeB.execute(node, b, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
+    static boolean indexOfCannotMatch(Node node, int codeRangeA,
+                    AbstractTruffleString b, Object arrayB, long offsetB, int codeRangeB,
+                    int regionLength, Encoding encoding, TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
+        return regionLength < getCodePointLengthNodeB.execute(node, b, arrayB, offsetB, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
     }
 
     static boolean indexOfCannotMatch(int codeRangeA, AbstractTruffleString b, int codeRangeB, byte[] mask, int regionLength) {

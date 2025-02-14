@@ -65,7 +65,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString.Encoding;
-import com.oracle.truffle.api.strings.TruffleString.ToIndexableNode;
 
 /**
  * Abstract base class for Truffle strings. Useful when a value can be both a {@link TruffleString}
@@ -421,20 +420,20 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         return data instanceof String;
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding) {
-        return forwardIterator(a, arrayA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding) {
+        return forwardIterator(a, arrayA, offsetA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
-        return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, errorHandling, 0);
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
+        return new TruffleStringIterator(a, arrayA, offsetA, codeRangeA, encoding, errorHandling, 0);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding) {
-        return backwardIterator(a, arrayA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding) {
+        return backwardIterator(a, arrayA, offsetA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
-        return new TruffleStringIterator(a, arrayA, codeRangeA, encoding, errorHandling, a.length());
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
+        return new TruffleStringIterator(a, arrayA, offsetA, codeRangeA, encoding, errorHandling, a.length());
     }
 
     final void checkEncoding(TruffleString.Encoding expectedEncoding) {
@@ -486,16 +485,16 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         return rawIndex << expectedEncoding.naturalStride;
     }
 
-    final void boundsCheck(Node node, int index, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
-        boundsCheckI(index, codePointLengthNode.execute(node, this, expectedEncoding));
+    final void boundsCheck(Node node, Object arrayA, long offsetA, int index, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
+        boundsCheckI(index, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
-    final void boundsCheck(Node node, int fromIndex, int toIndex, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
-        boundsCheckI(fromIndex, toIndex, codePointLengthNode.execute(node, this, expectedEncoding));
+    final void boundsCheck(Node node, Object arrayA, long offsetA, int fromIndex, int toIndex, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
+        boundsCheckI(fromIndex, toIndex, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
-    final void boundsCheckRegion(Node node, int fromIndex, int regionLength, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
-        boundsCheckRegionI(fromIndex, regionLength, codePointLengthNode.execute(node, this, expectedEncoding));
+    final void boundsCheckRegion(Node node, Object arrayA, long offsetA, int fromIndex, int regionLength, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
+        boundsCheckRegionI(fromIndex, regionLength, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
     final void boundsCheckByteIndexS0(int byteIndex) {
@@ -1303,8 +1302,8 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
             }
         }
         return TruffleString.EqualNode.checkContentEquals(TruffleString.EqualNode.getUncached(), this, b,
-                        ToIndexableNode.getUncached(),
-                        ToIndexableNode.getUncached(),
+                        TStringInternalNodes.ToIndexableNode.getUncached(),
+                        TStringInternalNodes.ToIndexableNode.getUncached(),
                         InlinedConditionProfile.getUncached(),
                         InlinedBranchProfile.getUncached(),
                         InlinedConditionProfile.getUncached());
@@ -1364,6 +1363,24 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     public final String toStringDebug() {
         return String.format("TString(%s, %s, off: %d, len: %d, str: %d, cpLen: %d, \"%s\")",
                         TruffleString.Encoding.get(encoding()), TSCodeRange.toString(codeRange()), offset(), length(), stride(), codePointLength(), toJavaStringUncached());
+    }
+
+    @TruffleBoundary
+    byte[] materializeLazy(Node node, Object thisData) {
+        if (thisData instanceof AbstractTruffleString.LazyConcat) {
+            // note: the write to data is racy, and we deliberately read it from the TString
+            // object again after the race to de-duplicate simultaneously generated arrays
+            setData(AbstractTruffleString.LazyConcat.flatten(node, (TruffleString) this));
+            return (byte[]) data;
+        } else {
+            AbstractTruffleString.LazyLong lazyLong = (AbstractTruffleString.LazyLong) thisData;
+            // same pattern as in #doLazyConcat: racy write to data.bytes and read the result
+            // again to de-duplicate
+            if (lazyLong.bytes == null) {
+                lazyLong.setBytes((TruffleString) this, NumberConversion.longToString(lazyLong.value, length()));
+            }
+            return lazyLong.bytes;
+        }
     }
 
     static final class LazyConcat {
@@ -1432,10 +1449,13 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
         @TruffleBoundary
         private static void copy(Node location, TruffleString src, byte[] dst, int dstFrom, int dstStride) {
-            Object arrayA = ToIndexableNode.getUncached().execute(location, src, src.data());
+            Object dataA = TStringInternalNodes.ToIndexableNode.getUncached().execute(location, src, src.data());
+            int offsetA = src.offset();
+            // TODO: baseOffset
+            int offsetB = 0;
             TStringOps.arraycopyWithStride(location,
-                            arrayA, src.offset(), src.stride(), 0,
-                            dst, 0, dstStride, dstFrom, src.length());
+                            dataA, offsetA, src.stride(), 0,
+                            dst, offsetB, dstStride, dstFrom, src.length());
         }
     }
 
@@ -1483,6 +1503,10 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
                 throw InternalErrors.nativeAccessRequired();
             }
             return new NativePointer(pointerObject, TStringAccessor.INTEROP.unboxPointer(interopLibrary, pointerObject));
+        }
+
+        static long unwrap(Object data) {
+            return ((NativePointer) data).pointer;
         }
 
         NativePointer copy() {

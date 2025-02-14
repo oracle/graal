@@ -60,6 +60,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -121,16 +122,18 @@ public final class TruffleStringIterator {
 
     final AbstractTruffleString a;
     final Object arrayA;
+    final long offsetA;
     final byte strideA;
     final byte codeRangeA;
     final Encoding encoding;
     final TruffleString.ErrorHandling errorHandling;
     private int rawIndex;
 
-    TruffleStringIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling, int rawIndex) {
+    TruffleStringIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling, int rawIndex) {
         assert TSCodeRange.isCodeRange(codeRangeA);
         this.a = a;
         this.arrayA = arrayA;
+        this.offsetA = offsetA;
         this.strideA = (byte) a.stride();
         this.codeRangeA = (byte) codeRangeA;
         this.encoding = encoding;
@@ -228,8 +231,8 @@ public final class TruffleStringIterator {
         @SuppressWarnings("fallthrough")
         @Specialization(guards = "isUTF8(encoding)")
         static int utf8(Node node, TruffleStringIterator it, @SuppressWarnings("unused") Encoding encoding, @SuppressWarnings("unused") DecodingErrorHandler errorHandler,
-                        @Cached InlinedConditionProfile asciiProfile,
-                        @Cached InlinedConditionProfile validProfile) {
+                        @Cached @Exclusive InlinedConditionProfile asciiProfile,
+                        @Cached @Exclusive InlinedConditionProfile validProfile) {
             byte codeRange = it.codeRangeA;
             int b = it.readAndIncS0();
             if (asciiProfile.profile(node, is7Bit(codeRange))) {
@@ -264,9 +267,9 @@ public final class TruffleStringIterator {
 
         @Specialization(guards = "isUTF16(encoding)")
         static int utf16(Node node, TruffleStringIterator it, @SuppressWarnings("unused") Encoding encoding, @SuppressWarnings("unused") DecodingErrorHandler errorHandler,
-                        @Cached InlinedConditionProfile fixedProfile,
-                        @Cached InlinedConditionProfile compressedProfile,
-                        @Cached InlinedConditionProfile validProfile) {
+                        @Cached @Exclusive InlinedConditionProfile fixedProfile,
+                        @Cached @Exclusive InlinedConditionProfile compressedProfile,
+                        @Cached @Exclusive InlinedConditionProfile validProfile) {
             byte codeRange = it.codeRangeA;
             if (fixedProfile.profile(node, isFixedWidth(codeRange))) {
                 if (compressedProfile.profile(node, it.strideA == 0)) {
@@ -284,9 +287,9 @@ public final class TruffleStringIterator {
 
         @Specialization(guards = "isUTF32(encoding)")
         static int utf32(Node node, TruffleStringIterator it, @SuppressWarnings("unused") Encoding encoding, @SuppressWarnings("unused") DecodingErrorHandler errorHandler,
-                        @Cached InlinedConditionProfile oneByteProfile,
-                        @Cached InlinedConditionProfile twoByteProfile,
-                        @Cached InlinedConditionProfile validProfile) {
+                        @Cached @Exclusive InlinedConditionProfile oneByteProfile,
+                        @Cached @Exclusive InlinedConditionProfile twoByteProfile,
+                        @Cached @Exclusive InlinedConditionProfile validProfile) {
             byte codeRange = it.codeRangeA;
             if (oneByteProfile.profile(node, it.strideA == 0)) {
                 assert is7Or8Bit(codeRange);
@@ -308,7 +311,7 @@ public final class TruffleStringIterator {
 
         @Fallback
         static int unlikelyCases(Node node, TruffleStringIterator it, Encoding encoding, DecodingErrorHandler errorHandler,
-                        @Cached InlinedIntValueProfile encodingProfile) {
+                        @Cached @Exclusive InlinedIntValueProfile encodingProfile) {
             int enc = encodingProfile.profile(node, encoding.id);
             byte codeRange = it.codeRangeA;
             if (isUpToValidFixedWidth(codeRange)) {
@@ -342,8 +345,9 @@ public final class TruffleStringIterator {
         }
 
         @InliningCutoff
-        private static int utf8Broken(TruffleStringIterator it, int b, DecodingErrorHandler errorHandler) {
+        private static int utf8Broken(TruffleStringIterator it, int firstByte, DecodingErrorHandler errorHandler) {
             int startIndex = it.rawIndex - 1;
+            int b = firstByte;
             if (b < 0x80) {
                 return b;
             }
@@ -602,11 +606,10 @@ public final class TruffleStringIterator {
 
         abstract int executeInternal(Node node, TruffleStringIterator it, Encoding encoding, DecodingErrorHandler errorHandler);
 
-        @SuppressWarnings("fallthrough")
         @Specialization(guards = "isUTF8(encoding)")
         static int utf8(Node node, TruffleStringIterator it, @SuppressWarnings("unused") Encoding encoding, @SuppressWarnings("unused") DecodingErrorHandler errorHandler,
-                        @Cached InlinedConditionProfile asciiProfile,
-                        @Cached InlinedConditionProfile validProfile) {
+                        @Cached @Exclusive InlinedConditionProfile asciiProfile,
+                        @Cached @Exclusive InlinedConditionProfile validProfile) {
             byte codeRange = it.codeRangeA;
             int b = it.readAndDecS0();
             if (asciiProfile.profile(node, is7Bit(codeRange))) {
@@ -636,9 +639,9 @@ public final class TruffleStringIterator {
 
         @Specialization(guards = "isUTF16(encoding)")
         static int utf16(Node node, TruffleStringIterator it, @SuppressWarnings("unused") Encoding encoding, @SuppressWarnings("unused") DecodingErrorHandler errorHandler,
-                        @Cached InlinedConditionProfile fixedProfile,
-                        @Cached InlinedConditionProfile compressedProfile,
-                        @Cached InlinedConditionProfile validProfile) {
+                        @Cached @Exclusive InlinedConditionProfile fixedProfile,
+                        @Cached @Exclusive InlinedConditionProfile compressedProfile,
+                        @Cached @Exclusive InlinedConditionProfile validProfile) {
             byte codeRange = it.codeRangeA;
             if (fixedProfile.profile(node, isFixedWidth(codeRange))) {
                 if (compressedProfile.profile(node, it.strideA == 0)) {
@@ -656,9 +659,9 @@ public final class TruffleStringIterator {
 
         @Specialization(guards = "isUTF32(encoding)")
         static int utf32(Node node, TruffleStringIterator it, @SuppressWarnings("unused") Encoding encoding, @SuppressWarnings("unused") DecodingErrorHandler errorHandler,
-                        @Cached InlinedConditionProfile oneByteProfile,
-                        @Cached InlinedConditionProfile twoByteProfile,
-                        @Cached InlinedConditionProfile validProfile) {
+                        @Cached @Exclusive InlinedConditionProfile oneByteProfile,
+                        @Cached @Exclusive InlinedConditionProfile twoByteProfile,
+                        @Cached @Exclusive InlinedConditionProfile validProfile) {
             byte codeRange = it.codeRangeA;
             if (oneByteProfile.profile(node, it.strideA == 0)) {
                 assert is7Or8Bit(codeRange);
@@ -680,7 +683,7 @@ public final class TruffleStringIterator {
 
         @Fallback
         static int unlikelyCases(Node node, TruffleStringIterator it, Encoding encoding, DecodingErrorHandler errorHandler,
-                        @Cached InlinedIntValueProfile encodingProfile) {
+                        @Cached @Exclusive InlinedIntValueProfile encodingProfile) {
             int enc = encodingProfile.profile(node, encoding.id);
             byte codeRange = it.codeRangeA;
             if (isUpToValidFixedWidth(codeRange)) {
@@ -714,8 +717,9 @@ public final class TruffleStringIterator {
         }
 
         @InliningCutoff
-        private static int utf8Broken(TruffleStringIterator it, int b, DecodingErrorHandler errorHandler) {
+        private static int utf8Broken(TruffleStringIterator it, int firstByte, DecodingErrorHandler errorHandler) {
             int startIndex = it.rawIndex + 1;
+            int b = firstByte;
             if (b < 0x80) {
                 return b;
             }
@@ -856,7 +860,7 @@ public final class TruffleStringIterator {
     private int readFwdS0() {
         assert a.stride() == 0;
         assert hasNext();
-        return TStringOps.readS0(a, arrayA, rawIndex);
+        return TStringOps.readS0(a, arrayA, offsetA, rawIndex);
     }
 
     private int readFwdS1(boolean foreignEndian) {
@@ -864,11 +868,11 @@ public final class TruffleStringIterator {
         assert hasNext();
         if (foreignEndian) {
             assert a.stride() == 0;
-            char c = TStringOps.readS1(arrayA, a.offset(), a.length() >> 1, rawIndex >> 1);
+            char c = TStringOps.readS1(arrayA, offsetA, a.length() >> 1, rawIndex >> 1);
             return Character.reverseBytes(c);
         } else {
             assert a.stride() == 1;
-            return TStringOps.readS1(a, arrayA, rawIndex);
+            return TStringOps.readS1(a, arrayA, offsetA, rawIndex);
         }
     }
 
@@ -877,17 +881,17 @@ public final class TruffleStringIterator {
         assert hasPrevious();
         if (foreignEndian) {
             assert a.stride() == 0;
-            return Character.reverseBytes(TStringOps.readS1(arrayA, a.offset(), a.length() >> 1, (rawIndex - 2) >> 1));
+            return Character.reverseBytes(TStringOps.readS1(arrayA, offsetA, a.length() >> 1, (rawIndex - 2) >> 1));
         } else {
             assert a.stride() == 1;
-            return TStringOps.readS1(a, arrayA, rawIndex - 1);
+            return TStringOps.readS1(a, arrayA, offsetA, rawIndex - 1);
         }
     }
 
     private int readAndIncS0() {
         assert a.stride() == 0;
         assert hasNext();
-        return TStringOps.readS0(a, arrayA, rawIndex++);
+        return TStringOps.readS0(a, arrayA, offsetA, rawIndex++);
     }
 
     private int readAndIncS1(boolean foreignEndian) {
@@ -895,19 +899,19 @@ public final class TruffleStringIterator {
         assert hasNext();
         if (foreignEndian) {
             assert a.stride() == 0;
-            char c = TStringOps.readS1(arrayA, a.offset(), a.length() >> 1, rawIndex >> 1);
+            char c = TStringOps.readS1(arrayA, offsetA, a.length() >> 1, rawIndex >> 1);
             rawIndex += 2;
             return Character.reverseBytes(c);
         } else {
             assert a.stride() == 1;
-            return TStringOps.readS1(a, arrayA, rawIndex++);
+            return TStringOps.readS1(a, arrayA, offsetA, rawIndex++);
         }
     }
 
     private int readAndIncS2() {
         assert a.stride() == 2;
         assert hasNext();
-        return TStringOps.readS2(a, arrayA, rawIndex++);
+        return TStringOps.readS2(a, arrayA, offsetA, rawIndex++);
     }
 
     private int readAndDecS1(boolean foreignEndian) {
@@ -916,18 +920,18 @@ public final class TruffleStringIterator {
         if (foreignEndian) {
             assert a.stride() == 0;
             rawIndex -= 2;
-            return Character.reverseBytes(TStringOps.readS1(arrayA, a.offset(), a.length() >> 1, rawIndex >> 1));
+            return Character.reverseBytes(TStringOps.readS1(arrayA, offsetA, a.length() >> 1, rawIndex >> 1));
 
         } else {
             assert a.stride() == 1;
-            return TStringOps.readS1(a, arrayA, --rawIndex);
+            return TStringOps.readS1(a, arrayA, offsetA, --rawIndex);
         }
     }
 
     private int readAndIncS2UTF32FE() {
         assert a.stride() == 0;
         assert hasNext();
-        int value = Integer.reverseBytes(TStringOps.readS2(arrayA, a.offset(), a.length() >> 2, rawIndex >> 2));
+        int value = Integer.reverseBytes(TStringOps.readS2(arrayA, offsetA, a.length() >> 2, rawIndex >> 2));
         rawIndex += 4;
         return value;
     }
@@ -936,19 +940,19 @@ public final class TruffleStringIterator {
         assert a.stride() == 0;
         assert hasPrevious();
         rawIndex -= 4;
-        return Integer.reverseBytes(TStringOps.readS2(arrayA, a.offset(), a.length() >> 2, rawIndex >> 2));
+        return Integer.reverseBytes(TStringOps.readS2(arrayA, offsetA, a.length() >> 2, rawIndex >> 2));
     }
 
     private int readAndDecS0() {
         assert a.stride() == 0;
         assert hasPrevious();
-        return TStringOps.readS0(a, arrayA, --rawIndex);
+        return TStringOps.readS0(a, arrayA, offsetA, --rawIndex);
     }
 
     private int readAndDecS2() {
         assert a.stride() == 2;
         assert hasPrevious();
-        return TStringOps.readS2(a, arrayA, --rawIndex);
+        return TStringOps.readS2(a, arrayA, offsetA, --rawIndex);
     }
 
     private boolean curIsUtf8ContinuationByte() {

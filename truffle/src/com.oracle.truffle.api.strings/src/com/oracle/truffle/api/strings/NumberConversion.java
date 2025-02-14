@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.strings;
 
+import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -101,12 +103,12 @@ final class NumberConversion {
         return parseNum(node, it, encoding, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE, nextNode);
     }
 
-    static int parseInt7Bit(Node node, AbstractTruffleString a, Object ptrA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        return (int) parseNum7Bit(node, a, ptrA, stride, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    static int parseInt7Bit(Node node, AbstractTruffleString a, Object arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
+        return (int) parseNum7Bit(node, a, arrayA, offsetA, stride, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
-    static long parseLong7Bit(Node node, AbstractTruffleString a, Object ptrA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
-        return parseNum7Bit(node, a, ptrA, stride, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE);
+    static long parseLong7Bit(Node node, AbstractTruffleString a, Object arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
+        return parseNum7Bit(node, a, arrayA, offsetA, stride, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
     static boolean isSafeInteger(long value) {
@@ -168,7 +170,7 @@ final class NumberConversion {
         return negative ? result : -result;
     }
 
-    private static long parseNum7Bit(Node node, AbstractTruffleString a, Object arrayA, int stride, int radix, InlinedBranchProfile errorProfile, long min, long max)
+    private static long parseNum7Bit(Node node, AbstractTruffleString a, Object arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile, long min, long max)
                     throws TruffleString.NumberFormatException {
         CompilerAsserts.partialEvaluationConstant(stride);
         assert TStringGuards.is7Bit(a.codeRange());
@@ -178,7 +180,7 @@ final class NumberConversion {
         boolean negative = false;
         long limit = -max;
         int i = 0;
-        int firstChar = TStringOps.readValue(a, arrayA, stride, i);
+        int firstChar = TStringOps.readValue(a, arrayA, offsetA, stride, i);
         if (firstChar < '0') { // Possible leading "+" or "-"
             if (firstChar == '-') {
                 negative = true;
@@ -196,7 +198,7 @@ final class NumberConversion {
         long multmin = limit / radix;
         while (i < a.length()) {
             // Accumulating negatively avoids surprises near MAX_VALUE
-            int c = TStringOps.readValue(a, arrayA, stride, i++);
+            int c = TStringOps.readValue(a, arrayA, offsetA, stride, i++);
             final int digit = parseDigit7Bit(node, a, i, radix, errorProfile, c);
             if (result < multmin) {
                 errorProfile.enter(node);
@@ -353,6 +355,7 @@ final class NumberConversion {
     @InliningCutoff
     static void writeLongToBytes(Node location, long i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Long.MIN_VALUE) {
+            // TODO: baseOffset
             TStringOps.arraycopyWithStride(location,
                             LONG_MIN_VALUE_BYTES, 0, 0, 0,
                             buf, 0, stride, fromIndex, LONG_MIN_VALUE_BYTES.length);
@@ -382,8 +385,8 @@ final class NumberConversion {
             // really: r = i - (q * 100);
             r = (int) (i - ((q << 6) + (q << 5) + (q << 2)));
             i = q;
-            writeInt(buf, stride, --bytePos, DIGIT_ONES[r]);
-            writeInt(buf, stride, --bytePos, DIGIT_TENS[r]);
+            writeToByteArray(buf, stride, --bytePos, DIGIT_ONES[r]);
+            writeToByteArray(buf, stride, --bytePos, DIGIT_TENS[r]);
         }
 
         // Get 2 digits/iteration using ints
@@ -394,8 +397,8 @@ final class NumberConversion {
             // really: r = i2 - (q * 100);
             r = i2 - ((q2 << 6) + (q2 << 5) + (q2 << 2));
             i2 = q2;
-            writeInt(buf, stride, --bytePos, DIGIT_ONES[r]);
-            writeInt(buf, stride, --bytePos, DIGIT_TENS[r]);
+            writeToByteArray(buf, stride, --bytePos, DIGIT_ONES[r]);
+            writeToByteArray(buf, stride, --bytePos, DIGIT_TENS[r]);
         }
 
         // Fall thru to fast mode for smaller numbers
@@ -403,16 +406,17 @@ final class NumberConversion {
         do {
             q2 = (i2 * 52429) >>> (16 + 3);
             r = i2 - ((q2 << 3) + (q2 << 1));  // r = i2-(q2*10) ...
-            writeInt(buf, stride, --bytePos, DIGITS[r]);
+            writeToByteArray(buf, stride, --bytePos, DIGITS[r]);
             i2 = q2;
         } while (i2 != 0);
         if (sign != 0) {
-            writeInt(buf, stride, --bytePos, sign);
+            writeToByteArray(buf, stride, --bytePos, sign);
         }
     }
 
     static void writeIntToBytes(Node location, int i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Integer.MIN_VALUE) {
+            // TODO: baseOffset
             TStringOps.arraycopyWithStride(location,
                             INT_MIN_VALUE_BYTES, 0, 0, 0,
                             buf, 0, stride, fromIndex, INT_MIN_VALUE_BYTES.length);
@@ -446,23 +450,20 @@ final class NumberConversion {
             // really: r = i - (q * 100);
             r = i - ((q << 6) + (q << 5) + (q << 2));
             i = q;
-            writeInt(buf, stride, --bytePos, DIGIT_ONES[r]);
-            writeInt(buf, stride, --bytePos, DIGIT_TENS[r]);
+            writeToByteArray(buf, stride, --bytePos, DIGIT_ONES[r]);
+            writeToByteArray(buf, stride, --bytePos, DIGIT_TENS[r]);
         }
         // Fall thru to fast mode for smaller numbers
         // assert(i <= 65536, i);
         do {
             q = (i * 52429) >>> (16 + 3);
             r = i - ((q << 3) + (q << 1));  // r = i-(q*10) ...
-            writeInt(buf, stride, --bytePos, DIGITS[r]);
+            writeToByteArray(buf, stride, --bytePos, DIGITS[r]);
             i = q;
         } while (i != 0);
         if (sign != 0) {
-            writeInt(buf, stride, --bytePos, sign);
+            writeToByteArray(buf, stride, --bytePos, sign);
         }
     }
 
-    private static void writeInt(byte[] buf, int stride, int bytePos, byte value) {
-        TStringOps.writeToByteArray(buf, stride, bytePos, value);
-    }
 }

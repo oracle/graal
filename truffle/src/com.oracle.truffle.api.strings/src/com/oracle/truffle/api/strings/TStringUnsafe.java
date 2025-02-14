@@ -121,6 +121,10 @@ final class TStringUnsafe {
         }
     }
 
+    static int getArrayByteBaseOffset() {
+        return Unsafe.ARRAY_BYTE_BASE_OFFSET;
+    }
+
     static byte[] getJavaStringArray(String str) {
         assert JAVA_SPEC > 8;
         Object value = UNSAFE.getObject(str, javaStringValueFieldOffset);
@@ -193,6 +197,6 @@ final class TStringUnsafe {
     }
 
     static void copyFromNative(long arraySrc, int offsetSrc, byte[] arrayDst, long offsetDst, int byteLength) {
-        UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, Unsafe.ARRAY_BYTE_BASE_OFFSET + offsetDst, byteLength);
+        UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, TStringUnsafe.getArrayByteBaseOffset() + offsetDst, byteLength);
     }
 }

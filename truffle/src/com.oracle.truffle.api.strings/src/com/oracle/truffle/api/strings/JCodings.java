@@ -134,7 +134,7 @@ sealed interface JCodings permits JCodingsImpl {
     int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, TruffleString.Encoding encoding, TruffleString.ErrorHandling errorHandling);
 
     @TruffleBoundary
-    long calcStringAttributes(Node location, AbstractTruffleString a, Object arrayA, int offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA);
+    long calcStringAttributes(Node location, AbstractTruffleString a, Object arrayA, long offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA);
 
     @TruffleBoundary
     TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding, TranscodingErrorHandler errorHandler);
