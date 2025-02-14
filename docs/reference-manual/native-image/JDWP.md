@@ -26,7 +26,7 @@ native-image --macro:svmjdwp-library
 
 ## Usage
 
-> Note: JDWP debugging for Native Image is currently under development.
+> Note: JDWP debugging for Native Image is experimental.
 
 To include JDWP support in a native image, add the `-H:+JDWP` option to your `native-image` command:
 
