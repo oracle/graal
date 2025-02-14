@@ -3910,6 +3910,13 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             ((PreInitializeContextFileSystem) fileSystemConfig.fileSystem).onPreInitializeContextEnd(engine.internalResourceRoots, languageHomes);
             ((PreInitializeContextFileSystem) fileSystemConfig.internalFileSystem).onPreInitializeContextEnd(engine.internalResourceRoots, languageHomes);
             EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
+            if (context.contextLocals != null) {
+                /*
+                 * Context locals have to be re-initialized when the pre-initialized context is
+                 * loaded.
+                 */
+                Arrays.fill(context.contextLocals, null);
+            }
         }
     }
 
