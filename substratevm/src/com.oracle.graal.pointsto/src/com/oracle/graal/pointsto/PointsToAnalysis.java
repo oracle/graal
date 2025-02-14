@@ -666,7 +666,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         /* Register the type as instantiated with all its super types. */
 
         assert type.isInstantiated() : type;
-        AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()));
+        AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()), "Type %s must be either an array, or a non abstract instance class", type.getName());
 
         TypeState typeState = TypeState.forExactType(this, type, true);
         TypeState typeStateNonNull = TypeState.forExactType(this, type, false);

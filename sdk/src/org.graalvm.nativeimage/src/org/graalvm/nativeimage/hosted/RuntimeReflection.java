@@ -231,7 +231,7 @@ public final class RuntimeReflection {
      * @since 23.0
      */
     public static void registerAllDeclaredFields(Class<?> declaringClass) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFieldsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFields(ConfigurationCondition.alwaysTrue(), declaringClass);
     }
 
     /**

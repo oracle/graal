@@ -48,7 +48,7 @@ public interface RuntimeReflectionSupport extends ReflectionRegistry {
 
     void registerAllFieldsQuery(ConfigurationCondition condition, Class<?> clazz);
 
-    void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredFields(ConfigurationCondition condition, Class<?> clazz);
 
     void registerAllConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
 
