@@ -4,8 +4,6 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import jdk.graal.compiler.nodes.Invoke;
 
-import java.util.List;
-
 /**
  * Represents a factory for creating {@link Summary} instances.
  * This is used to create summaries for method calls during analysis.
@@ -26,9 +24,16 @@ public interface SummaryFactory<Domain extends AbstractDomain<Domain>> {
      *       Renaming the formal arguments to actual arguments, etc.
      *
      * @param invoke    the invocation we are creating the summary for
-     * @param abstractState the abstract context we entered {@code invokeNode} with
-     * @param actualArguments the actual arguments of the method call
+     * @param callerStateMap the abstract context we entered {@code invokeNode} with
      * @return a {@link Summary} containing only the pre-condition of the summary
      */
-    Summary<Domain> createSummary(Invoke invoke, AbstractState<Domain> abstractState, List<Domain> actualArguments);
+    Summary<Domain> createSummary(Invoke invoke, AbstractState<Domain> callerStateMap);
+
+    /**
+     * Creates an empty summary with no pre-condition or post-condition set.
+     * This method is generally used for initialization purposes or when a default summary is needed.
+     *
+     * @return an empty {@link Summary} instance for the specified {@code Domain}
+     */
+    Summary<Domain> createEmptySummary();
 }

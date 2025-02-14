@@ -22,20 +22,34 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Gets the complete summary of the function with the given target name and summary precondition.
-     * NOTE: If we want to get a complete summary, we first should call {@link #contains(String, Summary)}
+     * NOTE:
+     *      If we want to get a complete summary, we first should call {@link #contains(String, Summary)}
+     *      When there are multiple summaries that are subsuming {@param summaryPrecondition}, we should return the most general one.
+     *      However, there are many ways how to do this, we can choose the most precise summary,
+     *      or we can take all the subsuming summaries, perform some kind of merge
+     *      (would require meet operation in {@link Summary} api) and return the result.
      *
      * @param targetName          the name of the function
      * @param summaryPrecondition the precondition of the function
      * @return the summary for targetName with given summaryPrecondition
      */
     public Summary<Domain> getSummary(String targetName, Summary<Domain> summaryPrecondition) {
-        List<Summary<Domain>> summaries = cache.get(targetName);
-        for (Summary<Domain> summary : summaries) {
-            if (summary.subsumes(summaryPrecondition)) {
-                return summary;
+        Summary<Domain> mostGeneralSummary = null;
+
+        for (Summary<Domain> existingSummary : cache.get(targetName)) {
+            if (existingSummary.subsumes(summaryPrecondition)) {
+                if (mostGeneralSummary == null ||
+                        existingSummary.subsumes(mostGeneralSummary)) {
+                    mostGeneralSummary = existingSummary;
+                }
             }
         }
-        return null;
+
+        return mostGeneralSummary;
+    }
+
+    public int getMethodSummariesAmount(String targetName) {
+        return cache.get(targetName).size();
     }
 
     public int getCacheCalls() {

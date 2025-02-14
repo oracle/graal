@@ -5,39 +5,22 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
-import java.util.List;
-
 /**
- * Represents a description of behavior of a method.
- * It is used to avoid reanalyzing the method's body at every call site.
- * The main idea of the Summary is to store the pre-condition and post-condition of the method
- * as well as inputs and outputs of the method.
+ * Represents a summary of a method, used to avoid reanalyzing the method's body at every call site.
+ * New summaries are created in the provided {@link SummaryFactory} and then checked for subsumption in {@link SummaryCache}.
+ * When we are creating a summary, we only know the abstract context at the invocation site, actual + formal parameters and other info from {@link Invoke}
+ * Therefore, {@link SummaryFactory} can only create incomplete summaries (summaries only with their pre-condition known). -> check {@link SummaryFactory} docs.
+ * After the framework does the necessary fixpoint computation of the method body, we know everything to create a complete summary in {@code finalizeSummary}.
+ * Calling {@code finalizeSummary} should create the summary post-condition.
+ * And for this reason, {@link Summary} implementations should remember both pre-condition and post-condition in their internal structures.
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in abstract interpretation
  */
 public interface Summary<Domain extends AbstractDomain<Domain>> {
 
     /**
-     * Get the pre-condition of the summary.
-     * The pre-condition should be deduced from the input parameters of the method,
-     * and from the abstract context at the call site.
-     * It is mainly used to check, if the summary can be reused for a given call site.
-     *
-     * @return the pre-condition of the summary
-     */
-    Domain preCondition();
-
-    /**
-     * Get the post-condition of the summary.
-     * The post-condition should be deduced from the return value of the method.
-     *
-     * @return the post-condition of the summary
-     */
-    Domain postCondition();
-
-    /**
      * Checks if this summary covers the other summary.
-     * Covering in this case means that the precondition of this summary is more general than the precondition of the other summary.
+     * Covering in this case means that this pre-condition summary is more general than another pre-condition summary.
      * We will be using this method to check if we can reuse the summary from {@link SummaryCache},
      * meaning that one summary does not have a calculated post-condition yet, therefore implementations
      * should not take abstract post-conditions into account.
@@ -51,7 +34,20 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     boolean subsumes(Summary<Domain> other);
 
     /**
-     * Converts the summary to an abstract domain {@code Domain} and apply it back to the caller state map.
+     * This method is called by the framework after the fixpoint computation of the method body.
+     * It should finalize the summary by setting the post-condition of the summary.
+     *
+     * @param postCondition the post-condition of the method body
+     */
+    void finalizeSummary(Domain postCondition);
+
+    /**
+     * This method ensures that the analysis is inter-procedural.
+     * Applies the summary of the callee to the current abstract state of the caller (at the invocation site).
+     * This can be done in multiple steps, like converting the actual arguments to the callee's formal arguments,
+     * converting the summary into an abstract domain, etc.
+     * NOTE: this will be only called after {@code finalizeSummary} is called
+     *
      * @param invoke of the invokeNode
      * @param invokeNode the invoke node that we are applying the summary to
      * @param callerStateMap the state map of the caller
@@ -59,19 +55,8 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     void applySummary(Invoke invoke, Node invokeNode, AbstractStateMap<Domain> callerStateMap);
 
     /**
-     * Gets the list of actual arguments of the method.
-     * There are multiple ways to represent the actual arguments of the method.
-     * The most common way is to use the list of abstract domains, where each domain represents an actual argument.
-     *
-     * @return the list of actual arguments of the method
+     * All summaries should be able to be represented as a string.
+     * @return a string representation of the summary
      */
-    List<Domain> getActualArguments();
-
     String toString();
-
-    default Domain getActualArgumentAt(int index) {
-        List<Domain> arguments = getActualArguments();
-        assert index >= 0 && index < arguments.size();
-        return arguments.get(index);
-    }
 }
