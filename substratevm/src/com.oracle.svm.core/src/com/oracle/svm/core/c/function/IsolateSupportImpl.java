@@ -26,8 +26,6 @@ package com.oracle.svm.core.c.function;
 
 import java.util.List;
 
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -38,7 +36,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.IsolateSupport;
-import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
@@ -49,8 +46,6 @@ import com.oracle.svm.core.nmt.NmtCategory;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.core.os.MemoryProtectionProvider.UnsupportedDomainException;
-
-import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 @AutomaticallyRegisteredImageSingleton(IsolateSupport.class)
 public final class IsolateSupportImpl implements IsolateSupport {
@@ -171,32 +166,5 @@ public final class IsolateSupportImpl implements IsolateSupport {
             String message = CEntryPointErrors.getDescription(code);
             throw new IsolateException(message);
         }
-    }
-
-    private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) Word.unsigned(1L));
-
-    private volatile long isolateId = 0;
-
-    @Override
-    public long getIsolateID() {
-        if (isolateId == 0) {
-            synchronized (this) {
-                if (isolateId == 0) {
-                    Pointer p = nextIsolateId.get();
-                    long value;
-                    long nextValue;
-                    do {
-                        value = p.readLong(0);
-                        nextValue = value + 1;
-                        if (nextValue == 0) {
-                            // Avoid setting id to reserved 0 value after long integer overflow
-                            nextValue = 1;
-                        }
-                    } while (p.compareAndSwapLong(0, value, nextValue, ANY_LOCATION) != value);
-                    isolateId = value;
-                }
-            }
-        }
-        return isolateId;
     }
 }

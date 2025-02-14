@@ -152,7 +152,6 @@ public final class AccessAdvisor {
         rootNode.addOrGetChildren("com.oracle.truffle.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("jdk.graal.compiler.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("org.graalvm.compiler.**", ConfigurationFilter.Inclusion.Exclude);
-        rootNode.addOrGetChildren("org.graalvm.libgraal.**", ConfigurationFilter.Inclusion.Exclude);
     }
 
     public static HierarchyFilterNode copyBuiltinCallerFilterTree() {

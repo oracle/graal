@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -128,6 +129,9 @@ class GenScavengeGCFeature implements InternalFeature {
         if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
             ImageSingletons.add(CommittedMemoryProvider.class, createCommittedMemoryProvider());
         }
+
+        // If building libgraal, set system property showing gc algorithm
+        SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
 
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);

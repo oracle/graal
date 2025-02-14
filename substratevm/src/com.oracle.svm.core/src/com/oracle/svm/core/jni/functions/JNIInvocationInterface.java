@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.jni.functions;
 
+import com.oracle.svm.core.Isolates;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
@@ -204,8 +203,8 @@ public final class JNIInvocationInterface {
          |                    | 0-terminated C string describing the error if a description is available,         |
          |                    | otherwise extraInfo is set to null.                                               |
          |--------------------|-----------------------------------------------------------------------------------|
-         | _javavm_id         | extraInfo is a "unsigned long*" value.                                            |
-         |                    | A non-zero identifier for the current isolate that is guaranteed to be unique for |
+         | _javavm_id         | extraInfo is a "jlong*" value.                                                    |
+         |                    | An identifier for the current isolate that is guaranteed to be unique for         |
          |                    | the first 2^64 - 1 isolates in the process is returned in *value.                 |
          |--------------------|-----------------------------------------------------------------------------------|
          * </pre>
@@ -393,7 +392,7 @@ public final class JNIInvocationInterface {
             JNIJavaVM javaVm = JNIFunctionTables.singleton().getGlobalJavaVM();
             JNIJavaVMList.addJavaVM(javaVm);
             if (javaVmIdPointer.isNonNull()) {
-                long javaVmId = ImageSingletons.lookup(IsolateSupport.class).getIsolateID();
+                long javaVmId = Isolates.getIsolateId();
                 javaVmIdPointer.write(Word.pointer(javaVmId));
             }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(new RuntimeSupport.Hook() {

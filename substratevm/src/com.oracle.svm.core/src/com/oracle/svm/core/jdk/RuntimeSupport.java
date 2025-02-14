@@ -44,6 +44,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 @AutomaticallyRegisteredImageSingleton({VMRuntimeSupport.class, RuntimeSupport.class})
 public final class RuntimeSupport implements VMRuntimeSupport {
+
     @FunctionalInterface
     public interface Hook {
         void execute(boolean isFirstIsolate);

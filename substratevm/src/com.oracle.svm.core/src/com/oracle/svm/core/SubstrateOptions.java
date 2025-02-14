@@ -1389,4 +1389,7 @@ public class SubstrateOptions {
             throw UserError.invalidOptionValue(key, key.getValue(), "Mapping the image heap with mremap() is only supported on Linux.");
         }
     });
+
+    @Option(help = "file:doc-files/LibGraalClassLoader.txt")//
+    public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
 }

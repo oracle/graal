@@ -1080,6 +1080,7 @@ meth public abstract java.util.Set<java.lang.reflect.Executable> reachableMethod
 
 CLSS public abstract interface org.graalvm.nativeimage.hosted.FieldValueTransformer
 meth public abstract java.lang.Object transform(java.lang.Object,java.lang.Object)
+meth public boolean isAvailable()
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeClassInitialization
 meth public !varargs static void initializeAtBuildTime(java.lang.Class<?>[])

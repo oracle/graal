@@ -41,10 +41,8 @@ import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvaila
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
 import jdk.graal.compiler.core.common.FieldIntrospection;
 import jdk.graal.compiler.core.common.Fields;
@@ -53,7 +51,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
-import jdk.internal.misc.Unsafe;
 
 /**
  * Graal uses unsafe memory accesses to access {@link Node}s and {@link LIRInstruction}s. The
@@ -64,7 +61,7 @@ import jdk.internal.misc.Unsafe;
  */
 public class FieldsOffsetsFeature implements Feature {
 
-    abstract static class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
+    public static class IterationMaskRecomputation implements FieldValueTransformerWithAvailability {
         @Override
         public boolean isAvailable() {
             return BuildPhaseProvider.isHostedUniverseBuilt();
@@ -72,33 +69,16 @@ public class FieldsOffsetsFeature implements Feature {
 
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            Edges edges = getEdges((NodeClass<?>) receiver);
+            Edges edges = (Edges) receiver;
             FieldsOffsetsReplacement replacement = FieldsOffsetsFeature.getReplacements().get(edges.getOffsets());
             assert replacement.fields == edges;
-            assert replacement.newValuesAvailable : "Cannot access iteration mask before field offsets are assigned";
+            assert replacement.newOffsets != null : "Cannot access iteration mask before field offsets are assigned";
             return replacement.newIterationInitMask;
-        }
-
-        protected abstract Edges getEdges(NodeClass<?> nodeClass);
-    }
-
-    public static class InputsIterationMaskRecomputation extends IterationMaskRecomputation {
-        @Override
-        protected Edges getEdges(NodeClass<?> nodeClass) {
-            return nodeClass.getInputEdges();
-        }
-    }
-
-    public static class SuccessorsIterationMaskRecomputation extends IterationMaskRecomputation {
-        @Override
-        protected Edges getEdges(NodeClass<?> nodeClass) {
-            return nodeClass.getSuccessorEdges();
         }
     }
 
     static class FieldsOffsetsReplacement {
         protected final Fields fields;
-        protected boolean newValuesAvailable;
         protected long[] newOffsets;
         protected long newIterationInitMask;
 
@@ -144,7 +124,7 @@ public class FieldsOffsetsFeature implements Feature {
                  * the hosted offsets so that we have a return value. The actual offsets do not
                  * matter at this point.
                  */
-                if (replacement.newValuesAvailable) {
+                if (replacement.newOffsets != null) {
                     return replacement.newOffsets;
                 }
             }
@@ -228,25 +208,10 @@ public class FieldsOffsetsFeature implements Feature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
-        CompilationAccessImpl config = (CompilationAccessImpl) a;
-        HostedMetaAccess hMetaAccess = config.getMetaAccess();
-
         for (FieldsOffsetsReplacement replacement : getReplacements().values()) {
-            Fields fields = replacement.fields;
-            long[] newOffsets = new long[fields.getCount()];
-            for (int i = 0; i < newOffsets.length; i++) {
-                Field field = findField(fields, i);
-                assert Unsafe.getUnsafe().objectFieldOffset(field) == fields.getOffsets()[i];
-                newOffsets[i] = hMetaAccess.lookupJavaField(field).getLocation();
-            }
-            replacement.newOffsets = newOffsets;
-
-            if (fields instanceof Edges) {
-                Edges edges = (Edges) fields;
-                replacement.newIterationInitMask = NodeClass.computeIterationMask(edges.type(), edges.getDirectCount(), newOffsets);
-            }
-
-            replacement.newValuesAvailable = true;
+            Map.Entry<long[], Long> e = replacement.fields.recomputeOffsetsAndIterationMask(a::objectFieldOffset);
+            replacement.newOffsets = e.getKey();
+            replacement.newIterationInitMask = e.getValue();
         }
         ImageSingletons.lookup(FieldsOffsetsReplacements.class).newValuesAvailable = true;
     }

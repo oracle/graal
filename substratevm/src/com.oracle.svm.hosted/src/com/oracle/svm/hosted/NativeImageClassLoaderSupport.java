@@ -75,6 +75,9 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.util.ModuleSupport;
+import org.graalvm.nativeimage.libgraal.LibGraalLoader;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -82,7 +85,6 @@ import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
@@ -97,12 +99,9 @@ import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
-import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ModuleSupport.Access;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.hotspot.libgraal.LibGraalClassLoaderBase;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.module.Modules;
@@ -134,7 +133,7 @@ public final class NativeImageClassLoaderSupport {
     private Set<Path> javaPathsToInclude;
     private boolean includeAllFromClassPath;
 
-    private Optional<LibGraalClassLoaderBase> libGraalLoader;
+    private Optional<LibGraalLoader> libGraalLoader;
     private List<ClassLoader> classLoaders;
 
     private final Set<Class<?>> classesToIncludeUnconditionally = ConcurrentHashMap.newKeySet();
@@ -232,7 +231,7 @@ public final class NativeImageClassLoaderSupport {
         return classLoader;
     }
 
-    public LibGraalClassLoaderBase getLibGraalLoader() {
+    public LibGraalLoader getLibGraalLoader() {
         VMError.guarantee(libGraalLoader != null, "Invalid access to libGraalLoader before getting set up");
         return libGraalLoader.orElse(null);
     }
@@ -272,15 +271,15 @@ public final class NativeImageClassLoaderSupport {
 
         new LoadClassHandler(executor, imageClassLoader).run();
 
-        LibGraalClassLoaderBase graalLoader = getLibGraalLoader();
-        if (graalLoader != null) {
-            /* If we have a customLoader, register its classes to the image builder */
-            for (String fqn : graalLoader.getAllClassNames()) {
+        LibGraalLoader loader = getLibGraalLoader();
+        if (loader != null) {
+            /* If we have a LibGraalLoader, register its classes to the image builder */
+            for (String fqn : loader.getClassModuleMap().keySet()) {
                 try {
-                    var clazz = graalLoader.getClassLoader().loadClass(fqn);
+                    var clazz = ((ClassLoader) loader).loadClass(fqn);
                     imageClassLoader.handleClass(clazz);
                 } catch (ClassNotFoundException e) {
-                    throw GraalError.shouldNotReachHere(e, graalLoader + " could not load class " + fqn);
+                    throw GraalError.shouldNotReachHere(e, loader + " could not load class " + fqn);
                 }
             }
         }
@@ -573,22 +572,18 @@ public final class NativeImageClassLoaderSupport {
     }
 
     public void setupLibGraalClassLoader() {
-        var libGraalClassLoaderFQN = NativeImageOptions.LibGraalClassLoader.getValue(parsedHostedOptions);
-        if (!libGraalClassLoaderFQN.isEmpty()) {
-            ModuleSupport.accessModule(Access.EXPORT, classLoader.getUnnamedModule(), LibGraalClassLoaderBase.class.getModule(), LibGraalClassLoaderBase.class.getPackageName());
+        var className = SubstrateOptions.LibGraalClassLoader.getValue(parsedHostedOptions);
+        if (!className.isEmpty()) {
+            String nameOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.LibGraalClassLoader, className);
             try {
-                Class<?> loaderClass = Class.forName(libGraalClassLoaderFQN, true, classLoader);
-                LibGraalClassLoaderBase loaderInstance = (LibGraalClassLoaderBase) ReflectionUtil.newInstance(loaderClass);
-                libGraalLoader = Optional.of(loaderInstance);
-                classLoaders = List.of(loaderInstance.getClassLoader(), getClassLoader());
+                Class<?> loaderClass = Class.forName(className, true, classLoader);
+                if (!LibGraalLoader.class.isAssignableFrom(loaderClass)) {
+                    throw VMError.shouldNotReachHere("Class named by " + nameOption + " does not implement " + LibGraalLoader.class + '.');
+                }
+                libGraalLoader = Optional.of((LibGraalLoader) ReflectionUtil.newInstance(loaderClass));
+                classLoaders = List.of((ClassLoader) libGraalLoader.get(), getClassLoader());
             } catch (ClassNotFoundException e) {
-                throw VMError.shouldNotReachHere("LibGraalClassLoader " + libGraalClassLoaderFQN +
-                                " set via " + SubstrateOptionsParser.commandArgument(NativeImageOptions.LibGraalClassLoader, libGraalClassLoaderFQN) +
-                                " could not be found.", e);
-            } catch (ClassCastException e) {
-                throw VMError.shouldNotReachHere("LibGraalClassLoader " + libGraalClassLoaderFQN +
-                                " set via " + SubstrateOptionsParser.commandArgument(NativeImageOptions.LibGraalClassLoader, libGraalClassLoaderFQN) +
-                                " does not extend class " + LibGraalClassLoaderBase.class.getName() + '.', e);
+                throw VMError.shouldNotReachHere("Class named by " + nameOption + " could not be found.", e);
             }
         } else {
             libGraalLoader = Optional.empty();

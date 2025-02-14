@@ -1,0 +1,10 @@
+Specify the fully qualified name of a class that implements org.graalvm.nativeimage.libgraal.LibGraalLoader.
+
+This option is only supported for building the libgraal shared library.
+
+The named class is instantiated via the default constructor.
+It affects image building as follows:
+
+ 1. The custom loader is used to lookup Feature implementations passed via the --features option.
+ 2. All @CEntryPoint definitions in classes loaded by the custom loader are processed.
+ 3. All @TargetClass substitutions in classes loaded by the custom loader are processed.

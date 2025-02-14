@@ -133,6 +133,10 @@ public class Isolates {
         return startTimeNanos;
     }
 
+    /**
+     * Gets an identifier for the current isolate that is guaranteed to be unique for the first
+     * {@code 2^64 - 1} isolates in the process.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static long getIsolateId() {
         assert isolateId >= 0;

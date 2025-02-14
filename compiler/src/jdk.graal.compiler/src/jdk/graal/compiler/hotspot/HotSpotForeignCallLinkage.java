@@ -372,7 +372,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
                 synchronized (STUBS) {
                     data = STUBS.get(sig);
                     if (data == null) {
-                        data = new GlobalAtomicLong(0L);
+                        data = new GlobalAtomicLong("STUB_" + sig.getName(), 0L);
                         STUBS.put(sig, data);
                     }
                 }
@@ -401,7 +401,7 @@ public interface HotSpotForeignCallLinkage extends ForeignCallLinkage, InvokeTar
          */
         public static boolean initStub(ForeignCallSignature sig) {
             if (!STUBS.containsKey(sig)) {
-                STUBS.put(sig, new GlobalAtomicLong(0L));
+                STUBS.put(sig, new GlobalAtomicLong("STUB_" + sig.getName(), 0L));
                 return true;
             }
             return false;

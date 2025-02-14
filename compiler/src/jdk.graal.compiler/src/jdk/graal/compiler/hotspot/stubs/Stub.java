@@ -79,6 +79,8 @@ import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 //JaCoCo Exclude
 
@@ -158,11 +160,24 @@ public abstract class Stub {
     }
 
     /**
-     * Gets the graph that from which the code for this stub will be compiled.
+     * Gets the graph from which the code for this stub will be compiled.
      *
      * @param compilationId unique compilation id for the stub
      */
     protected abstract StructuredGraph getGraph(DebugContext debug, CompilationIdentifier compilationId);
+
+    /**
+     * Calls {@link #getGraph} for the side effect of registering the types used in the graph with
+     * SymbolicSnippetEncoder.snippetTypes.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final void findTypesInGraph() {
+        try (DebugContext debug = DebugContext.disabled(options)) {
+            Stub stub = linkage.getStub();
+            CompilationIdentifier compilationId = new StubCompilationIdentifier(stub);
+            stub.getGraph(debug, compilationId);
+        }
+    }
 
     @Override
     public String toString() {

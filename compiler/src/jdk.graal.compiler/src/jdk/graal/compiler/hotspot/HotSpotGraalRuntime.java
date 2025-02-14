@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.nativeimage.ImageInfo;
+import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -67,7 +67,6 @@ import jdk.graal.compiler.replacements.SnippetCounter.Group;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
-import jdk.graal.compiler.serviceprovider.VMSupport;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.common.InitTimer;
@@ -194,7 +193,10 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         this.compilerProfiler = GraalServices.loadSingle(CompilerProfiler.class, false);
 
-        VMSupport.startupLibGraal();
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            libgraal.initialize();
+        }
     }
 
     /**
@@ -420,18 +422,20 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
         outputDirectory.close();
 
-        if (ImageInfo.inImageRuntimeCode()) {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
             String callback = HotSpotGraalCompiler.Options.OnShutdownCallback.getValue(options);
+            String callbackClassName = null;
+            String callbackMethodName = null;
             if (callback != null) {
                 int lastDot = callback.lastIndexOf('.');
                 if (lastDot < 1 || lastDot == callback.length() - 1) {
                     throw new IllegalArgumentException(HotSpotGraalCompiler.Options.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
                 }
-                String cbClassName = callback.substring(0, lastDot);
-                String cbMethodName = callback.substring(lastDot + 1);
-                VMSupport.invokeShutdownCallback(cbClassName, cbMethodName);
+                callbackClassName = callback.substring(0, lastDot);
+                callbackMethodName = callback.substring(lastDot + 1);
             }
-            VMSupport.shutdownLibGraal();
+            libgraal.shutdown(callbackClassName, callbackMethodName);
         }
     }
 

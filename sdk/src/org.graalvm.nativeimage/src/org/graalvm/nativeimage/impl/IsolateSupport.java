@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,12 +58,4 @@ public interface IsolateSupport {
     void detachThread(IsolateThread thread) throws IsolateException;
 
     void tearDownIsolate(IsolateThread thread) throws IsolateException;
-
-    /**
-     * Gets an identifier for the current isolate that is guaranteed to be unique for the first
-     * {@code 2^64 - 1} isolates in the process.
-     *
-     * @return a non-zero value
-     */
-    long getIsolateID();
 }

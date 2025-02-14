@@ -25,6 +25,7 @@
 package jdk.graal.compiler.hotspot;
 
 import static jdk.vm.ci.common.InitTimer.timer;
+import static jdk.graal.compiler.core.common.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -203,7 +204,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
     }
 
     // Ensures ShowConfiguration output is printed once per VM process.
-    private static final GlobalAtomicLong shownConfiguration = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong shownConfiguration = new GlobalAtomicLong("SHOWN_CONFIGURATION", 0L);
 
     /**
      * Selects and instantiates a {@link CompilerConfigurationFactory}. The selection algorithm is
@@ -275,29 +276,22 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      */
     private Object getLoadedFromLocation(boolean verbose) {
         if (ImageInfo.inImageRuntimeCode()) {
-            if (nativeImageLocationQualifier != null) {
-                return "a " + nativeImageLocationQualifier + " Native Image shared library";
+            String justification = "properties initialized via org.graalvm.nativeimage.hosted.RuntimeSystemProperties " +
+                            "are not accessible via GraalServices.getSavedProperties()";
+            String settings = GraalServices.getSystemProperties(justification).entrySet().stream()//
+                            .filter(e -> e.getKey().toString().startsWith(LIBGRAAL_SETTING_PROPERTY_PREFIX))//
+                            .map(e -> {
+                                String key = e.getKey().toString().substring(LIBGRAAL_SETTING_PROPERTY_PREFIX.length());
+                                String val = e.getValue().toString();
+                                return val.isEmpty() ? key : key + "=" + val;
+                            })//
+                            .collect(Collectors.joining(", "));
+            if (!settings.isEmpty()) {
+                return "a Native Image shared library (" + settings + ")";
             }
             return "a Native Image shared library";
         }
         return verbose ? getClass().getResource(getClass().getSimpleName() + ".class") : "class files";
-    }
-
-    private static String nativeImageLocationQualifier;
-
-    /**
-     * Gets the qualifier for the libgraal library (e.g., "PGO optimized").
-     */
-    public static String getNativeImageLocationQualifier() {
-        return nativeImageLocationQualifier;
-    }
-
-    /**
-     * Records a qualifier for the libgraal library (e.g., "PGO optimized").
-     */
-    public static void setNativeImageLocationQualifier(String s) {
-        GraalError.guarantee(nativeImageLocationQualifier == null, "Native image location qualifier is already set to %s", nativeImageLocationQualifier);
-        nativeImageLocationQualifier = s;
     }
 
     private static void printConfigInfo(CompilerConfigurationFactory factory) {
