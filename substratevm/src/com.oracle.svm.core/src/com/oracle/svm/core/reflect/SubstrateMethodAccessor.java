@@ -106,21 +106,13 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
          * In case we have both a vtableOffset and a directTarget, the vtable lookup wins. For such
          * methods, the directTarget is only used when doing an invokeSpecial.
          */
-        if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
-            CFunctionPointer target;
-            if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
-                throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
-            } else if (vtableOffset != STATICALLY_BOUND) {
+        CFunctionPointer target;
+        if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
+            throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
+        } else if (vtableOffset != STATICALLY_BOUND) {
+            if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 target = BarrieredAccess.readWord(obj.getClass(), vtableOffset, NamedLocationIdentity.FINAL_LOCATION);
             } else {
-                target = directTarget;
-            }
-            return target;
-        } else {
-            CFunctionPointer target;
-            if (vtableOffset == OFFSET_NOT_YET_COMPUTED) {
-                throw VMError.shouldNotReachHere("Missed vtableOffset recomputation at image build time");
-            } else if (vtableOffset != STATICALLY_BOUND) {
                 long tableStartingOffset = LoadOpenTypeWorldDispatchTableStartingOffset.createOpenTypeWorldLoadDispatchTableStartingOffset(obj.getClass(), interfaceTypeID);
 
                 /*
@@ -129,11 +121,11 @@ public final class SubstrateMethodAccessor extends SubstrateAccessor implements 
                 long methodOffset = tableStartingOffset + vtableOffset;
 
                 target = BarrieredAccess.readWord(obj.getClass(), Word.pointer(methodOffset), NamedLocationIdentity.FINAL_LOCATION);
-            } else {
-                target = directTarget;
             }
-            return target;
+        } else {
+            target = directTarget;
         }
+        return target;
     }
 
     @Override
