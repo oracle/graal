@@ -105,16 +105,13 @@ For example, discovering an unexpected component in the SBOM allows for tracing 
 
 With the GraalVM GitHub Action, you get access to GitHub's Dependency Graph feature.
 
-## Enhanced SBOMs with Maven Plugin for Native Image
+## More Accurate SBOMs with Maven
 
-To generate more accurate SBOMs with richer component metadata, consider using the [Maven plugin for GraalVM Native Image](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html).
-This plugin integrates with Native Image to enhance the SBOM creation.
+To generate more accurate SBOMs, consider using the [Maven plugin for GraalVM Native Image](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html).
+This plugin integrates with Native Image to improve the SBOM creation.
 
 The plugin creates a "baseline" SBOM by using the `cyclonedx-maven-plugin`.
-This baseline SBOM includes additional metadata that otherwise is not available to the native-image generator, such as `licenses`, `externalReferences`, `hashes`, and `copyright`.
-See the [CycloneDX specification](https://cyclonedx.org/docs/1.5/json/#components) for more information about the fields.
-
-The baseline SBOM also defines which package names belong to a component, helping Native Image associate classes with their respective components—a task that can be challenging when shading or fat JARs are used.
+The baseline SBOM defines which package names belong to a component, helping Native Image associate classes with their respective components—a task that can be challenging for the `native-image` tool when shading or fat JARs are used.
 In this collaborative approach, Native Image is also able to prune components and dependencies more aggressively to produce a minimal SBOM.
 
 These enhancements are available starting with plugin version 0.10.4 and are enabled by default when the `--enable-sbom` option is used.
