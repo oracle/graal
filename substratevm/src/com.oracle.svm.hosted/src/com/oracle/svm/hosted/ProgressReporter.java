@@ -608,7 +608,7 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
                 l.a(" generated in %.1fs", Utils.millisToSeconds(debugInfoTimer.getTotalTime()));
             }
             l.println();
-            if (!ImageSingletons.lookup(NativeImageDebugInfoStripFeature.class).hasStrippedSuccessfully()) {
+            if (!(ImageSingletons.contains(NativeImageDebugInfoStripFeature.class) && ImageSingletons.lookup(NativeImageDebugInfoStripFeature.class).hasStrippedSuccessfully())) {
                 // Only subtract if debug info is embedded in file (not stripped).
                 otherBytes -= debugInfoSize;
             }
