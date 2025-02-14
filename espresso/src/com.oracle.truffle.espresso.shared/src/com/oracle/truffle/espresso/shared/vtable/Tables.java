@@ -49,14 +49,52 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
         this.mirandas = mirandas;
     }
 
+    /**
+     * The virtual table associated with the type used for the call to
+     * {@link VTable#create(PartialType, boolean, boolean)}.
+     * <p>
+     * For a given type {@code type}, a method {@code m} appearing at index {@code i} means that
+     * {@code m} is the result of method selection (according to JVMS-5.4.6) with respect to
+     * {@code type}, and any method appearing in slot {@code i} of all the vtables of the
+     * superclasses of {@code type}.
+     */
     public List<PartialMethod<C, M, F>> getVtable() {
         return vtable;
     }
 
+    /**
+     * The interface tables associated with the type used for the call to
+     * {@link VTable#create(PartialType, boolean, boolean)}.
+     * <p>
+     * For a given type {@code type}, A method {@code m} appearing at index {@code i} in the table
+     * corresponding to interface {@code interface} means that {@code m} is the result of method
+     * selection (according to JVMS-5.4.6) with respect to {@code type} and the method that appears
+     * at index {@code i} in the method table of {@code interface}.
+     * <p>
+     * If {@code m} is {@code null}, this means that more than one maximally-specific non-abstract
+     * methods existed for the resolution of that table slot. The runtime must make sure to handle
+     * that case accordingly (likely by throwing {@link IncompatibleClassChangeError} at the
+     * call-site, according to JVMS-6.5.invokeinterface).
+     * <p>
+     * Node: When there are zero maximally-specific non-abstract methods for the resolution of that
+     * slot, an arbitrary maximally-specific abstract method is used to populate the slot. This is
+     * consistent with the requirement to throw {@link AbstractMethodError} in that case.
+     */
     public EconomicMap<C, List<PartialMethod<C, M, F>>> getItables() {
         return itables;
     }
 
+    /**
+     * The list of methods that are declared in super interfaces, but do not have an implementation
+     * in the type associated with the call to {@link VTable#create(PartialType, boolean, boolean)}
+     * or its superclasses.
+     * <p>
+     * Such methods are also sometimes referred to as {@code miranda methods}.
+     * <p>
+     * if {@link MethodWrapper#isSelectionFailure()}, this means that more than one
+     * maximally-specific non-abstract methods existed for the resolution of that implicit interface
+     * method.
+     */
     public List<MethodWrapper<C, M, F>> getImplicitInterfaceMethods() {
         return mirandas;
     }

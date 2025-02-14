@@ -286,6 +286,10 @@ public final class VTable {
                     return result;
                 }
                 // No method in classes. Lookup in interfaces. This will be a miranda method.
+                /*
+                 * Note: By construction of the locations map, each MethodKey is added only once to
+                 * the miranda list, so it does not need to be a Set.
+                 */
                 M miranda = resolveMaximallySpecific();
                 if (miranda == null) {
                     b.mirandas.add(new Tables.MethodWrapper<>(iLocations.get(0).value, true));
