@@ -3068,10 +3068,10 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             mx_sdk.graalvm_sdk_native_image_component
         ]
 
-        if mx.suite('graal-enterprise', fatalIfMissing=False) is not None:
-            import mx_graal_enterprise
-            if has_component(mx_graal_enterprise.truffle_enterprise.name):
-                default_components.append(mx_graal_enterprise.truffle_enterprise)
+        if mx.suite('truffle-enterprise', fatalIfMissing=False) is not None:
+            import mx_truffle_enterprise
+            if has_component(mx_truffle_enterprise.truffle_enterprise.name):
+                default_components.append(mx_truffle_enterprise.truffle_enterprise)
 
         return default_components
 
