@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.classfile.attributes;
 
+import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -34,5 +36,18 @@ public class NestHostAttribute extends Attribute {
     public NestHostAttribute(Symbol<Name> name, int hostClassIndex) {
         super(name, null);
         this.hostClassIndex = hostClassIndex;
+    }
+
+    private ClassConstant.ImmutableClassConstant getClassConstant(ConstantPool pool) {
+        return pool.classAt(hostClassIndex);
+    }
+
+    @Override
+    public boolean isSame(Attribute other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!super.isSame(other, thisPool, otherPool)) {
+            return false;
+        }
+        NestHostAttribute otherNestHostAttribute = (NestHostAttribute) other;
+        return getClassConstant(thisPool).isSame(otherNestHostAttribute.getClassConstant(otherPool), thisPool, otherPool);
     }
 }

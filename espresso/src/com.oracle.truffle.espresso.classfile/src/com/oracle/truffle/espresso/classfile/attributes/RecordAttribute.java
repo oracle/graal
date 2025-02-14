@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.classfile.attributes;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.ParserSymbols.ParserNames;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
@@ -66,9 +67,45 @@ public class RecordAttribute extends Attribute {
             }
             return null;
         }
+
+        public boolean isSame(RecordComponentInfo otherComponent, ConstantPool pool, ConstantPool otherPool) {
+            if (pool.at(name).isSame(otherPool.at(otherComponent.name), pool, otherPool)) {
+                return false;
+            }
+            if (pool.at(descriptor).isSame(otherPool.at(otherComponent.descriptor), pool, otherPool)) {
+                return false;
+            }
+            // Since HotSpot says that it's OK if a record component's annotations were changed,
+            // we too ignore attribute changes
+            return true;
+        }
     }
 
     public RecordComponentInfo[] getComponents() {
         return components;
+    }
+
+    @Override
+    public boolean isSame(Attribute other, ConstantPool thisPool, ConstantPool otherPool) {
+        if (!super.isSame(other, thisPool, otherPool)) {
+            return false;
+        }
+        RecordAttribute otherRecordAttribute = (RecordAttribute) other;
+        // check if the set of record components is the same
+        if (components.length != otherRecordAttribute.components.length) {
+            return false;
+        }
+        return allSame(otherRecordAttribute.components, thisPool, otherPool);
+    }
+
+    private boolean allSame(RecordComponentInfo[] otherComponents, ConstantPool thisPool, ConstantPool otherPool) {
+        // order matters for Records, so we can just go in order once
+        for (int i = 0; i < components.length; i++) {
+            RecordComponentInfo component = components[i];
+            if (!component.isSame(otherComponents[i], thisPool, otherPool)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

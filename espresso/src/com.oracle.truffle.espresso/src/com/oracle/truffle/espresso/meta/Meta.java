@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1285,7 +1285,13 @@ public final class Meta extends ContextAccessImpl
                             .method(VERSION_9_OR_HIGHER, Names.transform, Signatures._byte_array_Module_ClassLoader_String_Class_ProtectionDomain_byte_array_boolean) //
                             .method(sun_instrument_InstrumentationImpl);
         }
-
+        java_lang_instrument_ClassDefinition = loadPlatformKlassOrNull(Types.java_lang_instrument_ClassDefinition);
+        if (java_lang_instrument_ClassDefinition != null) {
+            java_lang_instrument_UnmodifiableClassException = knownPlatformKlass(Types.java_lang_instrument_UnmodifiableClassException);
+            java_lang_instrument_ClassDefinition_getDefinitionClass = java_lang_instrument_ClassDefinition.requireDeclaredMethod(Names.getDefinitionClass, Signatures.Class);
+            java_lang_instrument_ClassDefinition_getDefinitionClassFile = java_lang_instrument_ClassDefinition.requireDeclaredMethod(Names.getDefinitionClassFile,
+                            Signatures._byte_array);
+        }
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEspressoEnv().Polyglot;
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
@@ -2029,6 +2035,10 @@ public final class Meta extends ContextAccessImpl
     @CompilationFinal public Method sun_instrument_InstrumentationImpl_init;
     @CompilationFinal public Method sun_instrument_InstrumentationImpl_loadClassAndCallPremain;
     @CompilationFinal public Method sun_instrument_InstrumentationImpl_transform;
+    @CompilationFinal public ObjectKlass java_lang_instrument_ClassDefinition;
+    @CompilationFinal public Method java_lang_instrument_ClassDefinition_getDefinitionClass;
+    @CompilationFinal public Method java_lang_instrument_ClassDefinition_getDefinitionClassFile;
+    @CompilationFinal public ObjectKlass java_lang_instrument_UnmodifiableClassException;
 
     public final class ContinuumSupport {
         public final Method org_graalvm_continuations_ContinuationImpl_run;
