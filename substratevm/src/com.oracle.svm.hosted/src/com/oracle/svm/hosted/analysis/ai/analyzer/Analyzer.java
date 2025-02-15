@@ -2,66 +2,65 @@ package com.oracle.svm.hosted.analysis.ai.analyzer;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
-import com.oracle.svm.hosted.analysis.ai.checker.Checker;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import com.oracle.svm.hosted.analysis.ai.interpreter.call.CallHandler;
 import jdk.graal.compiler.debug.DebugContext;
 
-/**
- * Base class for an abstract interpretation analyzer.
- *
- * @param <Domain> the type of derived {@link AbstractDomain}
- */
 public abstract class Analyzer<Domain extends AbstractDomain<Domain>> {
 
-    protected final AnalysisMethod root;
-    protected final DebugContext debug;
-    protected final CheckerManager checkerManager = new CheckerManager();
+    protected final Domain initialDomain;
+    protected final NodeInterpreter<Domain> nodeInterpreter;
     protected final IteratorPolicy iteratorPolicy;
+    protected final CheckerManager checkerManager;
+    protected final AnalysisMethodFilterManager methodFilterManager;
 
-    public Analyzer(AnalysisMethod root, DebugContext debug, IteratorPolicy iteratorPolicy) {
-        this.root = root;
-        this.debug = debug;
-        this.iteratorPolicy = iteratorPolicy;
+    protected Analyzer(Builder<Domain> builder) {
+        this.initialDomain = builder.initialDomain;
+        this.nodeInterpreter = builder.nodeInterpreter;
+        this.iteratorPolicy = builder.iteratorPolicy;
+        this.checkerManager = builder.checkerManager;
+        this.methodFilterManager = builder.methodFilterManager;
     }
 
-    /**
-     * Registers a new checker that will be used by the {@link Analyzer}
-     *
-     * @param checker to register
-     */
-    protected void registerChecker(Checker checker) {
-        checkerManager.registerChecker(checker);
+    protected AnalysisPayload<Domain> createPayload(AnalysisMethod method, DebugContext debug, CallHandler<Domain> callHandler) {
+        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, callHandler);
+        IteratorPayload iteratorPayload = new IteratorPayload(iteratorPolicy);
+        return new AnalysisPayload<>(initialDomain, iteratorPayload, method, debug, transferFunction, checkerManager, methodFilterManager);
     }
 
-    /**
-     * This method is used in analyzer subclasses to create a complete payload for the analysis.
-     *
-     * @param initialDomain         initial domain for the analysis
-     * @param domainNodeInterpreter interpreter to use
-     */
-    public abstract void run(Domain initialDomain, NodeInterpreter<Domain> domainNodeInterpreter);
+    public abstract void analyzeMethod(AnalysisMethod method, DebugContext debug);
 
-    /**
-     * Common method to run the analysis from the root {@link AnalysisMethod}.
-     *
-     * @param payload               analyzer payload
-     * @param iterator              fixpoint iterator
-     */
-    protected void doRun(AnalysisPayload<Domain> payload, FixpointIterator<Domain> iterator) {
-        payload.getLogger().logDebugInfo("Analysing method " + root);
-        payload.getLogger().logDebugWarning("With provided checkers: " + checkerManager.getCheckers());
+    public static class Builder<Domain extends AbstractDomain<Domain>> {
+        protected final Domain initialDomain;
+        protected final NodeInterpreter<Domain> nodeInterpreter;
+        protected IteratorPolicy iteratorPolicy = IteratorPolicy.DEFAULT_SEQUENTIAL;
+        protected CheckerManager checkerManager = new CheckerManager();
+        protected AnalysisMethodFilterManager methodFilterManager = new AnalysisMethodFilterManager();
 
-        /* Run the fixpoint iteration */
-        var stateMap = iterator.iterateUntilFixpoint();
-        payload.getLogger().logHighlightedDebugInfo("Analysis finished, you can see the analysis output at " + payload.getLogger().fileName());
-        payload.getLogger().logToFile("Abstract state map after analysis: ");
-        payload.getLogger().logToFile(stateMap.toString());
-        AbstractState<Domain> returnState = stateMap.getReturnState();
-        payload.getLogger().logHighlightedDebugInfo("The post-condition of the analysis: " + returnState.getPostCondition());
+        public Builder(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
+            this.initialDomain = initialDomain;
+            this.nodeInterpreter = nodeInterpreter;
+        }
+
+        public Builder<Domain> iteratorPolicy(IteratorPolicy iteratorPolicy) {
+            this.iteratorPolicy = iteratorPolicy;
+            return this;
+        }
+
+        public Builder<Domain> checkerManager(CheckerManager checkerManager) {
+            this.checkerManager = checkerManager;
+            return this;
+        }
+
+        public Builder<Domain> methodFilterManager(AnalysisMethodFilterManager methodFilterManager) {
+            this.methodFilterManager = methodFilterManager;
+            return this;
+        }
     }
 }

@@ -2,65 +2,53 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.inter;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.InterProceduralAnalysisPayload;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.DefaultMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.MethodFilter;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.SequentialWtoFixpointIterator;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.ConcurrentWpoFixpointIterator;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import com.oracle.svm.hosted.analysis.ai.interpreter.call.InterProceduralCallInterpreter;
-import com.oracle.svm.hosted.analysis.ai.summary.SummarySupplier;
+import com.oracle.svm.hosted.analysis.ai.interpreter.call.InterProceduralCallHandler;
+import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
 import jdk.graal.compiler.debug.DebugContext;
 
-/**
- * Represents an inter-procedural sequential analyzer
- * @param <Domain> the type of derived {@link AbstractDomain}
- */
-public class InterProceduralSequentialAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
+public final class InterProceduralSequentialAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
 
-    private final SummarySupplier<Domain> summarySupplier;
-    private final MethodFilter methodFilter;
+    private final SummaryFactory<Domain> summaryFactory;
+    private final int maxRecursionDepth;
 
-    public InterProceduralSequentialAnalyzer(AnalysisMethod root,
-                                             DebugContext debug,
-                                             SummarySupplier<Domain> summarySupplier) {
-        this(root, debug, summarySupplier, IteratorPolicy.DEFAULT_SEQUENTIAL, new DefaultMethodFilter());
-    }
-
-    public InterProceduralSequentialAnalyzer(AnalysisMethod root,
-                                             DebugContext debug,
-                                             SummarySupplier<Domain> summarySupplier,
-                                             IteratorPolicy iteratorPolicy) {
-        this(root, debug, summarySupplier, iteratorPolicy, new DefaultMethodFilter());
-    }
-
-    public InterProceduralSequentialAnalyzer(AnalysisMethod root,
-                                             DebugContext debug,
-                                             SummarySupplier<Domain> summarySupplier,
-                                             MethodFilter methodFilter) {
-        this(root, debug, summarySupplier, IteratorPolicy.DEFAULT_SEQUENTIAL, methodFilter);
-    }
-
-    public InterProceduralSequentialAnalyzer(AnalysisMethod root,
-                                             DebugContext debug,
-                                             SummarySupplier<Domain> summarySupplier,
-                                             IteratorPolicy iteratorPolicy,
-                                             MethodFilter methodFilter) {
-        super(root, debug, iteratorPolicy);
-        this.summarySupplier = summarySupplier;
-        this.methodFilter = methodFilter;
+    private InterProceduralSequentialAnalyzer(Builder<Domain> builder) {
+        super(builder);
+        this.summaryFactory = builder.summaryFactory;
+        this.maxRecursionDepth = builder.maxRecursionDepth;
     }
 
     @Override
-    public void run(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
-        InterProceduralAnalysisPayload<Domain> payload = new InterProceduralAnalysisPayload<>(initialDomain, iteratorPolicy, root, debug, nodeInterpreter, summarySupplier, checkerManager, methodFilter);
-        payload.getLogger().logHighlightedDebugInfo("Running inter-procedural sequential analysis");
-        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, new InterProceduralCallInterpreter<>(), payload);
-        SequentialWtoFixpointIterator<Domain> iterator = new SequentialWtoFixpointIterator<>(payload, transferFunction);
-        doRun(payload, iterator);
+    public void analyzeMethod(AnalysisMethod method, DebugContext debug) {
+        InterProceduralCallHandler<Domain> callHandler = new InterProceduralCallHandler<>(summaryFactory, new IteratorPayload(iteratorPolicy), maxRecursionDepth);
+        AnalysisPayload<Domain> payload = createPayload(method, debug, callHandler);
+        payload.getLogger().logHighlightedDebugInfo("Running inter-procedural analysis");
+        ConcurrentWpoFixpointIterator<Domain> iterator = new ConcurrentWpoFixpointIterator<>(payload);
+        iterator.iterateUntilFixpoint();
         payload.getLogger().logHighlightedDebugInfo("The computed summaries are: ");
-        payload.getLogger().logDebugInfo(payload.getSummaryCache().toString());
+        payload.getLogger().logDebugInfo(callHandler.getSummaryCache().toString());
+    }
+
+    public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Domain> {
+        private final SummaryFactory<Domain> summaryFactory;
+        private int maxRecursionDepth = 10;
+
+        public Builder(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter, SummaryFactory<Domain> summaryFactory) {
+            super(initialDomain, nodeInterpreter);
+            this.summaryFactory = summaryFactory;
+        }
+
+        public Builder<Domain> maxRecursionDepth(int maxRecursionDepth) {
+            this.maxRecursionDepth = maxRecursionDepth;
+            return this;
+        }
+
+        public InterProceduralSequentialAnalyzer<Domain> build() {
+            return new InterProceduralSequentialAnalyzer<>(this);
+        }
     }
 }

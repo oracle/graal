@@ -2,36 +2,41 @@ package com.oracle.svm.hosted.analysis.ai.analyzer.intra;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.Analyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IntraProceduralAnalysisPayload;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.ConcurrentWpoFixpointIterator;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.SequentialWtoFixpointIterator;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import com.oracle.svm.hosted.analysis.ai.interpreter.call.IntraProceduralCallInterpreter;
+import com.oracle.svm.hosted.analysis.ai.interpreter.call.IntraProceduralCallHandler;
 import jdk.graal.compiler.debug.DebugContext;
 
-/**
- * Represents an intra-procedural concurrent analyzer
- * @param <Domain> the type of derived {@link AbstractDomain}
- */
-public class IntraProceduralConcurrentAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
+public final class IntraProceduralConcurrentAnalyzer<Domain extends AbstractDomain<Domain>> extends Analyzer<Domain> {
 
-    public IntraProceduralConcurrentAnalyzer(AnalysisMethod root, DebugContext debug, IteratorPolicy iteratorPolicy) {
-        super(root, debug, iteratorPolicy);
-    }
-
-    public IntraProceduralConcurrentAnalyzer(AnalysisMethod root, DebugContext debug) {
-        super(root, debug, IteratorPolicy.DEFAULT_CONCURRENT);
+    private IntraProceduralConcurrentAnalyzer(Builder<Domain> builder) {
+        super(builder);
     }
 
     @Override
-    public void run(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
-        IteratorPolicy policy = IteratorPolicy.DEFAULT_CONCURRENT;
-        IntraProceduralAnalysisPayload<Domain> payload = new IntraProceduralAnalysisPayload<>(initialDomain, policy, root, debug, nodeInterpreter, checkerManager);
+    public void analyzeMethod(AnalysisMethod method, DebugContext debug) {
+        IntraProceduralCallHandler<Domain> callHandler = new IntraProceduralCallHandler<>();
+        AnalysisPayload<Domain> payload = createPayload(method, debug, callHandler);
         payload.getLogger().logHighlightedDebugInfo("Running intra-procedural concurrent analysis");
-        TransferFunction<Domain> transferFunction = new TransferFunction<>(nodeInterpreter, new IntraProceduralCallInterpreter<>(), payload);
-        ConcurrentWpoFixpointIterator<Domain> iterator = new ConcurrentWpoFixpointIterator<>(payload, transferFunction);
-        doRun(payload, iterator);
+        SequentialWtoFixpointIterator<Domain> iterator = new SequentialWtoFixpointIterator<>(payload);
+        payload.getLogger().logDebugInfo("IntraProceduralConcurrentAnalyzer: Running fixpoint iteration");
+        AbstractStateMap<Domain> stateMap = iterator.iterateUntilFixpoint();
+        payload.getLogger().logToFile("Abstract state map after analysis: ");
+        payload.getLogger().logToFile(stateMap.toString());
+        payload.getLogger().logHighlightedDebugInfo("Analysis finished, you can see the analysis output at " + payload.getLogger().fileName());
+    }
+
+    public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Domain> {
+
+        public Builder(Domain initialDomain, NodeInterpreter<Domain> nodeInterpreter) {
+            super(initialDomain, nodeInterpreter);
+        }
+
+        public IntraProceduralConcurrentAnalyzer<Domain> build() {
+            return new IntraProceduralConcurrentAnalyzer<>(this);
+        }
     }
 }
