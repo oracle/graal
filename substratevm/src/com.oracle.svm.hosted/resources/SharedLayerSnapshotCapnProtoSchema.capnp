@@ -116,6 +116,9 @@ struct PersistedAnalysisMethod {
       declaringClassName @37 :Text;
       argumentTypeNames @38 :List(Text);
     }
+    polymorphicSignature :group {
+      callers @38 :List(MethodId);
+    }
   }
 }
 
