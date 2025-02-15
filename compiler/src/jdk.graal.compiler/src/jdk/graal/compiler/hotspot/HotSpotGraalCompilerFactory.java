@@ -49,7 +49,6 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
-import jdk.vm.ci.services.Services;
 
 public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
 
@@ -172,10 +171,6 @@ public final class HotSpotGraalCompilerFactory implements JVMCICompilerFactory {
             // A bunch of code assumes that at most one of these conditions
             // is true so verify that here.
             throw new GraalError("Invariant violation: inImageBuildtimeCode && inImageRuntimeCode must not both be true");
-        }
-        if (Services.IS_BUILDING_NATIVE_IMAGE && Services.IS_IN_NATIVE_IMAGE) {
-            // Same check as above but for the JVMCI equivalent properties.
-            throw new GraalError("Invariant violation: IS_BUILDING_NATIVE_IMAGE && IS_IN_NATIVE_IMAGE must not both be true");
         }
         HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) runtime;
         checkUnsafeAccess(hsRuntime);

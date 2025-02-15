@@ -278,7 +278,16 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
             checkKey(key);
             Object result = configObjects.get(key);
             if (result == null) {
-                throw UserError.abort("ImageSingletons do not contain key %s", key.getTypeName());
+                var others = configObjects.keySet().stream()//
+                                .filter(c -> c.getName().equals(key.getName()))//
+                                .map(c -> c.getClassLoader().getName() + "/" + c.getTypeName())//
+                                .toList();
+                if (others.isEmpty()) {
+                    throw UserError.abort("ImageSingletons do not contain key %s", key.getTypeName());
+                }
+                throw UserError.abort("ImageSingletons do not contain key %s/%s but does contain the following key(s): %s",
+                                key.getClassLoader().getName(), key.getTypeName(),
+                                String.join(", ", others));
             } else if (result == SINGLETON_INSTALLATION_FORBIDDEN) {
                 throw UserError.abort("A LayeredImageSingleton was installed in a prior layer which forbids creating the singleton in a subsequent layer. Key %s", key.getTypeName());
             } else if (result instanceof RuntimeOnlyWrapper wrapper) {

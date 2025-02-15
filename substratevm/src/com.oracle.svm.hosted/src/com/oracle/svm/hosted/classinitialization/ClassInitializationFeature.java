@@ -128,6 +128,7 @@ public class ClassInitializationFeature implements InternalFeature {
 
         initializationSupport.initializeAtBuildTime("org.graalvm.collections", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("jdk.graal.compiler", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage.libgraal", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.word", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativebridge", NATIVE_IMAGE_CLASS_REASON);

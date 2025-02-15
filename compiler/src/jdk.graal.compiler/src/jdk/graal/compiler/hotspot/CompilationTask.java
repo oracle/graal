@@ -31,10 +31,11 @@ import static jdk.graal.compiler.core.GraalCompilerOptions.CompilationFailureAct
 import static jdk.graal.compiler.core.GraalCompilerOptions.PrintCompilation;
 import static jdk.graal.compiler.core.phases.HighTier.Options.Inline;
 import static jdk.graal.compiler.java.BytecodeParserOptions.InlineDuringParsing;
-import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.PrintStream;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.collections.EconomicMap;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -58,13 +59,10 @@ import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider;
 import jdk.graal.compiler.nodes.spi.StableProfileProvider.TypeFilter;
-import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.options.OptionsParser;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
@@ -80,9 +78,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 public class CompilationTask implements CompilationWatchDog.EventHandler {
 
     static class Options {
-        @Option(help = "Perform a full GC of the libgraal heap after every compile to reduce idle heap and reclaim " +
-                        "references to the HotSpot heap.  This flag has no effect in the context of jargraal.", type = OptionType.Debug)//
-        public static final OptionKey<Boolean> FullGCAfterCompile = new OptionKey<>(false);
         @Option(help = "Options which are enabled based on the method being compiled. " +
                         "The basic syntax is a MethodFilter option specification followed by a list of options to be set for that compilation. " +
                         "\"MethodFilter:\" is used to distinguish this from normal usage of MethodFilter as option." +
@@ -233,7 +228,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
          */
         private static boolean shouldExitVM(Throwable throwable) {
             // If not in libgraal, don't exit
-            if (!inImageRuntimeCode()) {
+            if (!LibGraalSupport.inLibGraal()) {
                 return false;
             }
             // If assertions are not enabled, don't exit.
@@ -492,11 +487,16 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
         try (DebugCloseable a = CompilationTime.start(debug)) {
             HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
-
-            // Notify the runtime that most objects allocated in the current compilation
-            // are dead and can be reclaimed.
-            try (DebugCloseable timer = HintedFullGC.start(debug)) {
-                GraalServices.notifyLowMemoryPoint(Options.FullGCAfterCompile.getValue(debug.getOptions()));
+            LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+            if (libgraal != null) {
+                /*
+                 * Notify the libgraal runtime that most objects allocated in the current
+                 * compilation are dead and can be reclaimed.
+                 */
+                try (DebugCloseable timer = HintedFullGC.start(debug)) {
+                    libgraal.notifyLowMemoryPoint(true);
+                    libgraal.processReferences();
+                }
             }
             return result;
         }
