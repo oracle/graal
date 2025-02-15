@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * Manages a collection of {@link AnalysisMethodFilter} instances.
  */
-public class AnalysisMethodFilterManager {
+public final class AnalysisMethodFilterManager {
 
     private final List<AnalysisMethodFilter> filters;
 
