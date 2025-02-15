@@ -187,12 +187,25 @@ public final class VTableBuilder {
             // include only methods which will be indirect calls
             includeMethod = m -> {
                 assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
-                return m.implementations.length > 1 || m.wrapped.isVirtualRootMethod();
+                if (m.implementations.length > 1) {
+                    return true;
+                } else {
+                    if (m.wrapped.isVirtualRootMethod()) {
+                        return !m.canBeStaticallyBound();
+                    } else {
+                        return false;
+                    }
+                }
             };
         } else {
             includeMethod = m -> {
                 assert !m.isConstructor() : Assertions.errorMessage("Constructors should never be in dispatch tables", m);
-                return true;
+                /*
+                 * We have to use the analysis method's canBeStaticallyBound implementation because
+                 * within HostedMethod we sometimes do additional pruning when operating under the
+                 * close type world assumption.
+                 */
+                return !m.getWrapped().canBeStaticallyBound();
             };
         }
         var table = type.getWrapped().getOpenTypeWorldDispatchTableMethods().stream().map(hUniverse::lookup).filter(includeMethod).sorted(HostedUniverse.METHOD_COMPARATOR).toList();
@@ -466,18 +479,30 @@ public final class VTableBuilder {
     }
 
     private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
+        /*
+         * Methods with 1 implementation do not need a vtable because invokes can be done as direct
+         * calls without the need for a vtable. Methods with 0 implementations are unreachable.
+         *
+         * However, virtual roots (even those with 0 implementations) that cannot be statically
+         * bound always need a vtable entry. This is because the vtable is used to invoke these
+         * methods via reflection and/or jni.
+         */
+        Predicate<HostedMethod> vtableEntryRequired = (hMethod) -> {
+            if (hMethod.implementations.length > 1) {
+                return true;
+            } else {
+                if (hMethod.wrapped.isVirtualRootMethod()) {
+                    return !hMethod.canBeStaticallyBound();
+                } else {
+                    return false;
+                }
+            }
+        };
+
         for (HostedMethod method : type.getAllDeclaredMethods()) {
             /* We only need to look at methods that the static analysis registered as invoked. */
             if (method.wrapped.isInvoked() || method.wrapped.isImplementationInvoked()) {
-                /*
-                 * Methods with 1 implementation do not need a vtable because invokes can be done as
-                 * direct calls without the need for a vtable. Methods with 0 implementations are
-                 * unreachable.
-                 *
-                 * Methods manually registered as virtual root methods always need a vtable slot,
-                 * even if there are 0 or 1 implementations.
-                 */
-                if (method.implementations.length > 1 || method.wrapped.isVirtualRootMethod()) {
+                if (vtableEntryRequired.test(method)) {
                     assert !method.isConstructor() : Assertions.errorMessage("Constructors should never be in vtables", method);
                     /*
                      * Find a suitable vtable slot for the method, taking the existing vtable
