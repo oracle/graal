@@ -30,23 +30,28 @@ import static org.graalvm.nativeimage.ImageInfo.inImageRuntimeCode;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
+import jdk.graal.compiler.core.ArchitectureSpecific;
+import jdk.graal.compiler.core.common.LibGraalSupport;
+import jdk.vm.ci.code.Architecture;
 import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.options.ExcludeFromJacocoGeneratedReport;
 import jdk.internal.misc.VM;
 import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Interface to functionality that abstracts over which JDK version Graal is running on.
@@ -54,34 +59,69 @@ import jdk.vm.ci.services.Services;
 public final class GraalServices {
 
     /**
-     * Returns true if code is executing in the context of building libgraal. Note that this is more
-     * specific than {@link ImageInfo#inImageBuildtimeCode()}. The latter will return true when
-     * building any native image, not just libgraal.
-     */
-    public static boolean isBuildingLibgraal() {
-        return Services.IS_BUILDING_NATIVE_IMAGE;
-    }
-
-    /**
-     * Returns true if code is executing in the context of executing libgraal. Note that this is
-     * more specific than {@link ImageInfo#inImageRuntimeCode()}. The latter will return true when
-     * executing any native image, not just libgraal.
+     * Returns true if current runtime is in libgraal. Note that this is more specific than
+     * {@link ImageInfo#inImageRuntimeCode()}. The latter will return true when executing any native
+     * image, not just libgraal.
      */
     public static boolean isInLibgraal() {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
     /**
-     * The set of services available in libgraal. This field is only non-null when
-     * {@link GraalServices} is loaded by the LibGraalClassLoader.
+     * The set of services available in libgraal.
      */
-    private static Map<Class<?>, List<?>> libgraalServices;
+    private static final Map<Class<?>, List<?>> libgraalServices;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    @ExcludeFromJacocoGeneratedReport("only called when building libgraal")
-    public static void setLibgraalServices(Map<Class<?>, List<?>> services) {
-        GraalError.guarantee(libgraalServices == null, "Libgraal services must be set exactly once");
-        GraalServices.libgraalServices = services;
+    private static Class<?> loadClassOrNull(String name) {
+        try {
+            return GraalServices.class.getClassLoader().loadClass(name);
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
+    /**
+     * Gets a name for the current architecture that is compatible with
+     * {@link Architecture#getName()}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String getJVMCIArch() {
+        String rawArch = getSavedProperty("os.arch");
+        return switch (rawArch) {
+            case "x86_64" -> "AMD64";
+            case "amd64" -> "AMD64";
+            case "aarch64" -> "aarch64";
+            case "riscv64" -> "riscv64";
+            default -> throw new GraalError("Unknown or unsupported arch: %s", rawArch);
+        };
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("unchecked")
+    private static void addProviders(String arch, Class<?> service) {
+        List<Object> providers = (List<Object>) GraalServices.libgraalServices.computeIfAbsent(service, key -> new ArrayList<>());
+        for (Object provider : ServiceLoader.load(service, GraalServices.class.getClassLoader())) {
+            if (provider instanceof ArchitectureSpecific as && !as.getArchitecture().equals(arch)) {
+                // Skip provider for another architecture
+                continue;
+            }
+            providers.add(provider);
+        }
+    }
+
+    static {
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            libgraalServices = new HashMap<>();
+            String arch = getJVMCIArch();
+            libgraal.getClassModuleMap().keySet().stream()//
+                            .map(GraalServices::loadClassOrNull)//
+                            .filter(c -> c != null && c.getAnnotation(LibGraalService.class) != null)//
+                            .forEach(service -> addProviders(arch, service));
+        } else {
+            libgraalServices = null;
+        }
     }
 
     private GraalServices() {
@@ -105,6 +145,19 @@ public final class GraalServices {
     }
 
     /**
+     * An escape hatch for calling {@link System#getProperties()} without falling afoul of
+     * {@code VerifySystemPropertyUsage}.
+     *
+     * @param justification explains why {@link #getSavedProperties()} cannot be used
+     */
+    public static Properties getSystemProperties(String justification) {
+        if (justification == null || justification.isEmpty()) {
+            throw new IllegalArgumentException("non-empty justification required");
+        }
+        return System.getProperties();
+    }
+
+    /**
      * Gets an unmodifiable copy of the system properties in their state at system initialization
      * time. This method must be used instead of calling {@link Services#getSavedProperties()}
      * directly for any caller that will end up in libgraal.
@@ -114,7 +167,7 @@ public final class GraalServices {
     public static Map<String, String> getSavedProperties() {
         if (inImageBuildtimeCode()) {
             // Avoid calling down to JVMCI native methods as they will fail to
-            // link in a copy of JVMCI loaded by the LibGraalClassLoader.
+            // link in a copy of JVMCI loaded by a LibGraalLoader.
             return jdk.internal.misc.VM.getSavedProperties();
         }
         return Services.getSavedProperties();
@@ -284,7 +337,7 @@ public final class GraalServices {
         return Long.toString(ProcessHandle.current().pid());
     }
 
-    private static final GlobalAtomicLong globalTimeStamp = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong globalTimeStamp = new GlobalAtomicLong("GLOBAL_TIME_STAMP", 0L);
 
     /**
      * Gets a time stamp for the current process. This method will always return the same value for
@@ -457,35 +510,5 @@ public final class GraalServices {
      */
     public static int getJavaUpdateVersion() {
         return Runtime.version().update();
-    }
-
-    /**
-     * Notifies that the compiler is at a point where memory usage is expected to be minimal like
-     * after the completion of compilation.
-     *
-     * @param forceFullGC controls whether to explicitly perform a full GC
-     */
-    public static void notifyLowMemoryPoint(boolean forceFullGC) {
-        notifyLowMemoryPoint(true, forceFullGC);
-    }
-
-    /**
-     * Notifies that the compiler is at a point where memory usage is might have dropped
-     * significantly like after some major phase execution.
-     */
-    public static void notifyLowMemoryPoint() {
-        notifyLowMemoryPoint(false, false);
-    }
-
-    /**
-     * Notifies that the compiler is at a point where memory usage is expected to be relatively low
-     * (e.g., just before/after a compilation). The garbage collector might be able to make use of
-     * such a hint to optimize its performance.
-     *
-     * @param hintFullGC controls whether the hinted GC should be a full GC.
-     * @param forceFullGC controls whether to explicitly perform a full GC
-     */
-    private static void notifyLowMemoryPoint(boolean hintFullGC, boolean forceFullGC) {
-        VMSupport.notifyLowMemoryPoint(hintFullGC, forceFullGC);
     }
 }

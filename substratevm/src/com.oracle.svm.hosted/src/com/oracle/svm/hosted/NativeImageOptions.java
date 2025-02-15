@@ -305,7 +305,4 @@ public class NativeImageOptions {
             }
         }
     };
-
-    @Option(help = "file:doc-files/LibGraalClassLoader.txt")//
-    public static final HostedOptionKey<String> LibGraalClassLoader = new HostedOptionKey<>("");
 }

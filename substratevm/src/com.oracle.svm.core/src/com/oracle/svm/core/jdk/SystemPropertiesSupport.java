@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static jdk.graal.compiler.core.common.LibGraalSupport.LIBGRAAL_SETTING_PROPERTY_PREFIX;
 import static jdk.graal.compiler.nodes.extended.MembarNode.FenceKind.STORE_STORE;
 
 import java.util.ArrayList;
@@ -35,10 +36,12 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.RuntimeSystemProperties;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -288,6 +291,18 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
          * per initialized system property.
          */
         allPropertiesInitialized = true;
+    }
+
+    /**
+     * If the current image being built is libgraal, sets a runtime system property used to describe
+     * some aspect of the libgraal image configuration.
+     *
+     * @see jdk.graal.compiler.core.common.LibGraalSupport#LIBGRAAL_SETTING_PROPERTY_PREFIX
+     */
+    public void setLibGraalRuntimeProperty(String name, String value) {
+        if (!SubstrateOptions.LibGraalClassLoader.getValue().isEmpty()) {
+            RuntimeSystemProperties.register(LIBGRAAL_SETTING_PROPERTY_PREFIX + name, value);
+        }
     }
 
     private void ensurePropertyInitialized(String key) {

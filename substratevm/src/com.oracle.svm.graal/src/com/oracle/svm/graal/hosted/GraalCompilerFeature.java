@@ -28,8 +28,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.util.ReflectionUtil;
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
+import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.feature.InternalFeature;
@@ -42,7 +46,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This feature is used to contain functionality needed when a Graal compiler is included in a
- * native-image. This is used by RuntimeCompilation and LibGraal.
+ * native-image. This is used by RuntimeCompilation but not LibGraalFeature.
  */
 public class GraalCompilerFeature implements InternalFeature {
 
@@ -65,9 +69,22 @@ public class GraalCompilerFeature implements InternalFeature {
         ((FeatureImpl.DuringSetupAccessImpl) c).registerClassReachabilityListener(GraalCompilerSupport::registerPhaseStatistics);
     }
 
+    static class GlobalAtomicLongTransformer implements FieldValueTransformer {
+        void register(BeforeAnalysisAccess access) {
+            access.registerFieldValueTransformer(ReflectionUtil.lookupField(GlobalAtomicLong.class, "addressSupplier"), this);
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return GlobalData.createGlobal(((GlobalAtomicLong) receiver).getInitialValue());
+        }
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess c) {
         DebugContext debug = DebugContext.forCurrentThread();
+
+        new GlobalAtomicLongTransformer().register(c);
 
         // box lowering accesses the caches for those classes and thus needs reflective access
         for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char,
