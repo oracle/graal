@@ -5,10 +5,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import com.oracle.svm.hosted.analysis.ai.interpreter.call.CallInterpreter;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
 import jdk.graal.compiler.debug.DebugContext;
 
@@ -20,20 +17,20 @@ import java.io.IOException;
  *
  * @param <Domain> the type of derived {@link AbstractDomain} the analysis is using
  */
-public abstract class AnalysisPayload<Domain extends AbstractDomain<Domain>> {
+public final class AnalysisPayload<Domain extends AbstractDomain<Domain>> {
 
-    protected final Domain initialDomain;
-    protected final IteratorPolicy iteratorPolicy;
-    protected final AnalysisMethod root;
-    protected final DebugContext debugContext;
-    protected final AbstractInterpretationLogger logger;
-    protected final TransferFunction<Domain> transferFunction;
-    protected final CheckerManager checkerManager;
-    protected final AnalysisMethodFilterManager methodFilterManager;
+    private final Domain initialDomain;
+    private final IteratorPayload iteratorPayload;
+    private final AnalysisMethod root;
+    private final DebugContext debugContext;
+    private final AbstractInterpretationLogger logger;
+    private final TransferFunction<Domain> transferFunction;
+    private final CheckerManager checkerManager;
+    private final AnalysisMethodFilterManager methodFilterManager;
 
     public AnalysisPayload(
             Domain initialDomain,
-            IteratorPolicy iteratorPolicy,
+            IteratorPayload iteratorPayload,
             AnalysisMethod root,
             DebugContext debugContext,
             TransferFunction<Domain> transferFunction,
@@ -41,7 +38,7 @@ public abstract class AnalysisPayload<Domain extends AbstractDomain<Domain>> {
             AnalysisMethodFilterManager methodFilterManager
     ) {
         this.initialDomain = initialDomain;
-        this.iteratorPolicy = iteratorPolicy;
+        this.iteratorPayload = iteratorPayload;
         this.root = root;
         this.debugContext = debugContext;
         this.transferFunction = transferFunction;
@@ -58,20 +55,8 @@ public abstract class AnalysisPayload<Domain extends AbstractDomain<Domain>> {
         return initialDomain;
     }
 
-    public IteratorPolicy getIteratorPolicy() {
-        return iteratorPolicy;
-    }
-
-    public int getMaxJoinIterations() {
-        return iteratorPolicy.maxJoinIterations();
-    }
-
-    public int getMaxWidenIteration() {
-        return iteratorPolicy.maxWidenIterations();
-    }
-
-    public int getMaxRecursionDepth() {
-        return iteratorPolicy.maxRecursionDepth();
+    public IteratorPayload getIteratorPayload() {
+        return iteratorPayload;
     }
 
     public AnalysisMethod getRoot() {
@@ -88,14 +73,6 @@ public abstract class AnalysisPayload<Domain extends AbstractDomain<Domain>> {
 
     public TransferFunction<Domain> getTransferFunction() {
         return transferFunction;
-    }
-
-    public NodeInterpreter<Domain> getNodeInterpreter() {
-        return transferFunction.nodeInterpreter();
-    }
-
-    public CallInterpreter<Domain> getCallInterpreter() {
-        return transferFunction.callInterpreter();
     }
 
     public CheckerManager getCheckerManager() {
