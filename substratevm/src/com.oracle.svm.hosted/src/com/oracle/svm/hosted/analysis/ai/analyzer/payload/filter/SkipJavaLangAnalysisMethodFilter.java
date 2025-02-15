@@ -6,10 +6,10 @@ import com.oracle.svm.hosted.analysis.ai.util.AnalysisMethodUtils;
 /**
  * Skip methods that are part of the java.lang package.
  */
-public class SkipJavaLangMethodFilter implements MethodFilter {
+public class SkipJavaLangAnalysisMethodFilter implements AnalysisMethodFilter {
 
     @Override
-    public boolean shouldSkip(AnalysisMethod method) {
+    public boolean shouldSkipMethod(AnalysisMethod method) {
         return AnalysisMethodUtils.isJavaLangMethod(method);
     }
 }
