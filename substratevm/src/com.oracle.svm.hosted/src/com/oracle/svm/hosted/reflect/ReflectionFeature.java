@@ -67,7 +67,6 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.ClassForNameSupportFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
@@ -219,6 +218,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                 }
                 if (!targetMethod.canBeStaticallyBound()) {
                     vtableOffset = SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED;
+                }
+                if (callerSensitiveAdapter) {
+                    VMError.guarantee(vtableOffset == SubstrateMethodAccessor.STATICALLY_BOUND, "Caller sensitive adapters should always be statically bound %s", targetMethod);
                 }
                 VMError.guarantee(directTarget != null || vtableOffset != SubstrateMethodAccessor.STATICALLY_BOUND, "Must have either a directTarget or a vtableOffset");
                 if (!targetMethod.isStatic()) {
@@ -485,7 +487,10 @@ final class ComputeVTableOffset implements FieldValueTransformerWithAvailability
         SubstrateMethodAccessor accessor = (SubstrateMethodAccessor) receiver;
 
         if (accessor.getVTableOffset() == SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED) {
-            SharedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
+            HostedMethod member = ImageSingletons.lookup(ReflectionFeature.class).hostedMetaAccess().lookupJavaMethod(accessor.getMember());
+            if (member.canBeStaticallyBound()) {
+                return SubstrateMethodAccessor.STATICALLY_BOUND;
+            }
             if (SubstrateOptions.useClosedTypeWorldHubLayout()) {
                 return KnownOffsets.singleton().getVTableOffset(member.getVTableIndex(), true);
             } else {
