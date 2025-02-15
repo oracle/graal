@@ -151,6 +151,8 @@ import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerSubstitutionType;
 import com.oracle.svm.hosted.reflect.ReflectionExpandSignatureMethod;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRenamingSubstitutionProcessor;
 import com.oracle.svm.hosted.reflect.proxy.ProxySubstitutionType;
+import com.oracle.svm.hosted.substitute.PolymorphicSignatureWrapperMethod;
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.util.FileDumpingUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
@@ -181,6 +183,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
     private Map<ImageHeapConstant, ConstantParent> constantsMap;
     private final Map<String, MethodGraphsInfo> methodsMap = new ConcurrentHashMap<>();
     private final Map<InitialLayerOnlyImageSingleton, Integer> initialLayerOnlySingletonMap = new ConcurrentHashMap<>();
+    private final Map<AnalysisMethod, Set<AnalysisMethod>> polymorphicSignatureCallers = new ConcurrentHashMap<>();
     private FileInfo fileInfo;
     private GraphsOutput graphsOutput;
     private final boolean useSharedLayerGraphs;
@@ -188,6 +191,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
 
     private NativeImageHeap nativeImageHeap;
     private HostedUniverse hUniverse;
+
+    private boolean polymorphicSignatureSealed = false;
 
     private record ConstantParent(int constantId, int index) {
         static ConstantParent NONE = new ConstantParent(UNDEFINED_CONSTANT_ID, UNDEFINED_FIELD_INDEX);
@@ -338,6 +343,8 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         snapshotBuilder.setNextMethodId(aUniverse.getNextMethodId());
         snapshotBuilder.setNextFieldId(aUniverse.getNextFieldId());
         snapshotBuilder.setNextConstantId(ImageHeapConstant.getCurrentId());
+
+        polymorphicSignatureSealed = true;
 
         List<AnalysisType> typesToPersist = aUniverse.getTypes().stream().filter(AnalysisType::isTrackedAcrossLayers).toList();
         List<AnalysisMethod> methodsToPersist = aUniverse.getMethods().stream().filter(AnalysisMethod::isTrackedAcrossLayers).toList();
@@ -603,6 +610,15 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             b.setJavaCallVariantWrapper(Void.VOID);
             Executable executable = jniJavaCallVariantWrapperMethod.getMember();
             persistMethodWrappedMember(b, executable);
+        } else if (method.wrapped instanceof SubstitutionMethod substitutionMethod && substitutionMethod.getAnnotated() instanceof PolymorphicSignatureWrapperMethod) {
+            WrappedMethod.PolymorphicSignature.Builder b = builder.getWrappedMethod().initPolymorphicSignature();
+            Set<AnalysisMethod> callers = polymorphicSignatureCallers.get(method);
+            var callersBuilder = b.initCallers(callers.size());
+            int i = 0;
+            for (AnalysisMethod caller : callers) {
+                callersBuilder.set(i, caller.getId());
+                i++;
+            }
         }
     }
 
@@ -991,6 +1007,11 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
             return true;
         }
         return false;
+    }
+
+    public void addPolymorphicSignatureCaller(AnalysisMethod polymorphicSignature, AnalysisMethod caller) {
+        AnalysisError.guarantee(!polymorphicSignatureSealed, "The caller %s for method %s was added after the methods were persisted", caller, polymorphicSignature);
+        polymorphicSignatureCallers.computeIfAbsent(polymorphicSignature, (m) -> ConcurrentHashMap.newKeySet()).add(caller);
     }
 
     record SingletonPersistInfo(LayeredImageSingleton.PersistFlags flags, int id, EconomicMap<String, Object> keyStore) {
