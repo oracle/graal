@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.payload;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IterationStrategy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.policy.IteratorPolicy;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
@@ -38,7 +39,7 @@ public final class IteratorPayload {
         this.methodGraphMap.putAll(methodGraphMap);
     }
 
-    public Map<AnalysisMethod, ControlFlowGraph> getMethodGraphMap() {
+    public Map<AnalysisMethod, ControlFlowGraph> getMethodGraph() {
         return methodGraphMap;
     }
 
@@ -86,5 +87,17 @@ public final class IteratorPayload {
 
     public IteratorPayload(IteratorPolicy iteratorPolicy) {
         this.iteratorPolicy = iteratorPolicy;
+    }
+
+    public int getMaxJoinIterations() {
+        return iteratorPolicy.maxJoinIterations();
+    }
+
+    public int getMaxWidenIterations() {
+        return iteratorPolicy.maxWidenIterations();
+    }
+
+    public IterationStrategy getIterationStrategy() {
+        return iteratorPolicy.strategy();
     }
 }
