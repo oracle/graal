@@ -422,8 +422,8 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['-H:+UseStringInlining']
         if vm.use_open_type_world:
             base_image_build_args += ['-H:-ClosedTypeWorld']
-        if vm.use_compacting_gc:
-            base_image_build_args += ['-H:+CompactingOldGen']
+        if vm.copyingoldgen_oldpolicy: # for later removal: GR-73132
+            base_image_build_args += ['-H:-CompactingOldGen','-H:InitialCollectionPolicy=Adaptive']
         if vm.is_llvm:
             base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + ['--tool:llvm-backend',
                                                                                           '-H:DeadlockWatchdogInterval=0']
@@ -876,7 +876,7 @@ class NativeImageVM(StageAwareGraalVm):
         self.future_defaults_all = False
         self.use_upx = False
         self.use_open_type_world = False
-        self.use_compacting_gc = False
+        self.copyingoldgen_oldpolicy = False # for later removal: GR-73132
         self.graalvm_edition = None
         self.config: Optional[NativeImageBenchmarkConfig] = None
         self.stages: Optional[StagesContext] = None
@@ -918,8 +918,8 @@ class NativeImageVM(StageAwareGraalVm):
             config += ["string-inlining"]
         if self.use_open_type_world is True:
             config += ["otw"]
-        if self.use_compacting_gc is True:
-            config += ["compacting-gc"]
+        if self.copyingoldgen_oldpolicy is True: # for later removal: GR-73132
+            config += ["copyingoldgen-oldpolicy"]
         if self.preserve_all is True:
             config += ["preserve-all"]
         if self.preserve_classpath is True:
@@ -1012,7 +1012,7 @@ class NativeImageVM(StageAwareGraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         # Note: the order of entries here must match the order of statements in NativeImageVM.config_name()
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<crema>crema-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<copyingoldgen_oldpolicy>copyingoldgen-oldpolicy-)?(?P<crema>crema-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
                r'(?P<graalos>graalos-)?(?P<graalhost_graalos>graalhost-graalos-)?(?P<pie>pie-)?(?P<layered>layered-)?' \
                r'(?P<future_defaults_all>future-defaults-all-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-|pgo-perf-sampler-invoke-multiple-|pgo-perf-sampler-invoke-|pgo-perf-sampler-)?(?P<inliner>inline-)?' \
@@ -1078,9 +1078,9 @@ class NativeImageVM(StageAwareGraalVm):
             mx.logv(f"'otw' is enabled for {config_name}")
             self.use_open_type_world = True
 
-        if matching.group("compacting_gc") is not None:
-            mx.logv(f"'compacting-gc' is enabled for {config_name}")
-            self.use_compacting_gc = True
+        if matching.group("copyingoldgen_oldpolicy") is not None: # for later removal (including above): GR-73132
+            mx.logv(f"'copyingoldgen_oldpolicy' is enabled for {config_name}")
+            self.copyingoldgen_oldpolicy = True
 
         if matching.group("quickbuild") is not None:
             mx.logv(f"'quickbuild' is enabled for {config_name}")
