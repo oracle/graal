@@ -35,9 +35,6 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.PackageOptionValue;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.options.OptionType;
@@ -139,33 +136,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (headArg.startsWith(BundleSupport.BUNDLE_OPTION)) {
             nativeImage.bundleSupport = BundleSupport.create(nativeImage, args.poll(), args);
             return true;
-        }
-
-        if (headArg.startsWith(nativeImage.oHLayerCreate)) {
-            String layerCreateValue = headArg.substring(nativeImage.oHLayerCreate.length());
-            if (!layerCreateValue.isEmpty()) {
-                LayerOption layerOption = LayerOption.parse(layerCreateValue);
-                for (ExtendedOption option : layerOption.extendedOptions()) {
-                    var packageOptionValue = PackageOptionValue.from(option);
-                    if (packageOptionValue == null) {
-                        continue;
-                    }
-                    String packageName = packageOptionValue.name();
-                    if (packageOptionValue.isWildcard()) {
-                        nativeImage.systemPackagesToModules.forEach((systemPackageName, moduleName) -> {
-                            if (systemPackageName.startsWith(packageName)) {
-                                nativeImage.addAddedModules(moduleName);
-                            }
-                        });
-                    } else {
-                        String moduleName = nativeImage.systemPackagesToModules.get(packageName);
-                        if (moduleName != null) {
-                            nativeImage.addAddedModules(moduleName);
-                        }
-                    }
-                }
-            }
-            return false;
         }
 
         if (headArg.startsWith(DEBUG_ATTACH_OPTION)) {

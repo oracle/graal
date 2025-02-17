@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromClassPath;
-import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
-import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
-import static com.oracle.svm.core.util.VMError.guarantee;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.module.Configuration;
@@ -128,8 +123,10 @@ public final class NativeImageClassLoaderSupport {
 
     public final AnnotationExtractor annotationExtractor;
 
+    private Path layerFile;
+
     private Set<String> javaModuleNamesToInclude;
-    private Set<PackageOptionValue> javaPackagesToInclude;
+    private final Set<PackageOptionValue> javaPackagesToInclude;
     private Set<Path> javaPathsToInclude;
     private boolean includeAllFromClassPath;
 
@@ -255,26 +252,26 @@ public final class NativeImageClassLoaderSupport {
     }
 
     public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-        guarantee(javaModuleNamesToInclude == null, "This method should be executed only once.");
-        javaModuleNamesToInclude = Collections.unmodifiableSet(new HashSet<>(IncludeAllFromModule.getValue(parsedHostedOptions).values()));
+        VMError.guarantee(javaModuleNamesToInclude == null, "This method should be executed only once.");
+        javaModuleNamesToInclude = Collections.unmodifiableSet(new HashSet<>(SubstrateOptions.IncludeAllFromModule.getValue(parsedHostedOptions).values()));
         /* Verify all modules are present */
         final Set<String> allModules = Stream.concat(modulepathModuleFinder.findAll().stream(), upgradeAndSystemModuleFinder.findAll().stream())
                         .map(m -> m.descriptor().name())
                         .collect(Collectors.toSet());
         javaModuleNamesToInclude.stream()
                         .filter(m -> !allModules.contains(m))
-                        .findAny().ifPresent(m -> missingFromSetOfEntriesError(m, allModules, "module-path", IncludeAllFromModule));
+                        .findAny().ifPresent(m -> missingFromSetOfEntriesError(m, allModules, "module-path", SubstrateOptions.IncludeAllFromModule));
 
-        javaPathsToInclude = IncludeAllFromPath.getValue(parsedHostedOptions).values().stream()
+        javaPathsToInclude = SubstrateOptions.IncludeAllFromPath.getValue(parsedHostedOptions).values().stream()
                         .map(NativeImageClassLoaderSupport::stringToPath)
                         .map(Path::toAbsolutePath)
                         .collect(Collectors.toUnmodifiableSet());
         /* Verify all paths are present */
         javaPathsToInclude.stream()
                         .filter(p -> !classpath().contains(p))
-                        .findAny().ifPresent(p -> missingFromSetOfEntriesError(p, classpath(), "classpath", IncludeAllFromPath));
+                        .findAny().ifPresent(p -> missingFromSetOfEntriesError(p, classpath(), "classpath", SubstrateOptions.IncludeAllFromPath));
 
-        includeAllFromClassPath = IncludeAllFromClassPath.getValue(parsedHostedOptions);
+        includeAllFromClassPath = SubstrateOptions.IncludeAllFromClassPath.getValue(parsedHostedOptions);
 
         loadClassHandler = new LoadClassHandler(executor, imageClassLoader);
         loadClassHandler.run();
@@ -568,7 +565,7 @@ public final class NativeImageClassLoaderSupport {
 
     private Stream<AddExportsAndOpensAndReadsFormatValue> processOption(OptionKey<AccumulatingLocatableMultiOptionValue.Strings> specificOption) {
         var valuesWithOrigins = specificOption.getValue(parsedHostedOptions).getValuesWithOrigins();
-        Stream<AddExportsAndOpensAndReadsFormatValue> parsedOptions = valuesWithOrigins.flatMap(valWithOrig -> {
+        return valuesWithOrigins.flatMap(valWithOrig -> {
             try {
                 return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
             } catch (FindException e) {
@@ -576,7 +573,6 @@ public final class NativeImageClassLoaderSupport {
                 return Stream.empty();
             }
         });
-        return parsedOptions;
     }
 
     public void setupLibGraalClassLoader() {
@@ -605,6 +601,14 @@ public final class NativeImageClassLoaderSupport {
             loadClassHandler = null;
         }
         reportBuilderClassesInApplication();
+    }
+
+    public Path getLayerFile() {
+        return layerFile;
+    }
+
+    public void setLayerFile(Path layerFile) {
+        this.layerFile = layerFile;
     }
 
     private record AddExportsAndOpensAndReadsFormatValue(Module module, String packageName,
@@ -670,11 +674,10 @@ public final class NativeImageClassLoaderSupport {
         if (targetModuleNamesList.contains("ALL-UNNAMED")) {
             targetModules = Collections.emptyList();
         } else {
-            targetModules = targetModuleNamesList.stream().map(mn -> {
-                return findModule(mn).orElseThrow(() -> {
-                    throw userWarningModuleNotFound(option, mn);
-                });
-            }).collect(Collectors.toList());
+            targetModules = targetModuleNamesList.stream()
+                            .map(mn -> findModule(mn)
+                                            .orElseThrow(() -> userWarningModuleNotFound(option, mn)))
+                            .collect(Collectors.toList());
         }
         return new AddExportsAndOpensAndReadsFormatValue(module, packageName, targetModules);
     }

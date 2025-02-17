@@ -47,6 +47,7 @@ import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ArchiveSupport;
 import com.oracle.svm.core.util.UserError;
@@ -157,34 +158,34 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         if (SubstrateOptions.LayerCreate.hasBeenSet(hostedOptions)) {
             /* The last value wins, GR-55565 will warn about the overwritten values. */
             ValueWithOrigin<String> valueWithOrigin = SubstrateOptions.LayerCreate.getValue(hostedOptions).lastValueWithOrigin().orElseThrow();
-            String layerCreateValue = valueWithOrigin.value();
-            if (!valueWithOrigin.origin().commandLineLike()) {
-                /* Provide error message if option is specified anywhere else than command line */
-                String layerCreateArgument = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
-                throw UserError.abort("Layer option specified with '%s' from %s only allowed on command line.",
-                                layerCreateArgument, valueWithOrigin.origin());
-            }
+            String layerCreateValue = String.join(",", OptionUtils.resolveOptionValuesRedirection(SubstrateOptions.LayerCreate, valueWithOrigin));
             if (layerCreateValue.isEmpty()) {
                 /* Nothing to do, an empty --layer-create= disables the layer creation. */
             } else {
                 LayerOption layerOption = LayerOption.parse(layerCreateValue);
-                String buildLayer = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
+                classLoaderSupport.setLayerFile(layerOption.fileName());
+
+                String layerCreateArg = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue);
                 for (ExtendedOption option : layerOption.extendedOptions()) {
                     switch (option.key()) {
                         case LayerArchiveSupport.MODULE_OPTION -> {
-                            UserError.guarantee(option.value() != null, "Option %s of %s requires a module name argument, e.g., %s=module-name.", option.key(), buildLayer, option.key());
+                            UserError.guarantee(option.value() != null, "Layer option %s specified with '%s' from %s requires a module name argument, e.g., %s=module-name.",
+                                            option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
                             SubstrateOptions.IncludeAllFromModule.update(values, option.value());
                         }
                         case LayerArchiveSupport.PACKAGE_OPTION -> {
-                            UserError.guarantee(option.value() != null, "Option %s of %s requires a package name argument, e.g., %s=package-name.", option.key(), buildLayer, option.key());
+                            UserError.guarantee(option.value() != null, "Layer option %s specified with '%s' from %s requires a package name argument, e.g., %s=package-name.",
+                                            option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
                             classLoaderSupport.addJavaPackageToInclude(Objects.requireNonNull(PackageOptionValue.from(option)));
                         }
                         case LayerArchiveSupport.PATH_OPTION -> {
-                            UserError.guarantee(option.value() != null, "Option %s of %s requires a class-path entry, e.g., %s=path/to/cp-entry.", option.key(), buildLayer, option.key());
+                            UserError.guarantee(option.value() != null, "Layer option %s specified with '%s' from %s requires a class-path entry, e.g., %s=path/to/cp-entry.",
+                                            option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
                             SubstrateOptions.IncludeAllFromPath.update(values, option.value());
                         }
                         default ->
-                            throw UserError.abort("Unknown option %s of %s. Use --help-extra for usage instructions.", option.key(), buildLayer);
+                            throw UserError.abort("Unknown layer option %s specified with '%s' from %s. Use --help-extra for usage instructions.",
+                                            option.key(), layerCreateArg, valueWithOrigin.origin());
                     }
                 }
 
@@ -237,8 +238,7 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
         WriteLayerArchiveSupport writeLayerArchiveSupport = null;
         ArchiveSupport archiveSupport = new ArchiveSupport(false);
         if (buildingSharedLayer) {
-            LayerOption layerOption = LayerOption.parse(SubstrateOptions.LayerCreate.getValue(values).lastValue().orElseThrow());
-            writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, layerOption.fileName());
+            writeLayerArchiveSupport = new WriteLayerArchiveSupport(archiveSupport, imageClassLoader.classLoaderSupport.getLayerFile());
         }
         SVMImageLayerSingletonLoader singletonLoader = null;
         LoadLayerArchiveSupport loadLayerArchiveSupport = null;
