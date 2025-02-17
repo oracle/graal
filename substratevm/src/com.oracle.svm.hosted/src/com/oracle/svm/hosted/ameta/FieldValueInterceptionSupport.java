@@ -221,6 +221,20 @@ public final class FieldValueInterceptionSupport {
     }
 
     /**
+     * Returns true if a field value interceptor ({@link FieldValueTransformation} or
+     * {@link FieldValueComputer}) has been registered for this field. Unlike
+     * {@link #hasFieldValueTransformer(AnalysisField)}, calling this method is side effect free.
+     */
+    public static boolean hasFieldValueInterceptor(AnalysisField field) {
+        var interceptor = field.getFieldValueInterceptor();
+        if (interceptor != null && interceptor != INTERCEPTOR_ACCESSED_MARKER) {
+            VMError.guarantee(interceptor instanceof FieldValueTransformation || interceptor instanceof FieldValueComputer);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Returns true if a field value transformer has been registered for this field. After this
      * method has been called, it is not possible to install a transformer anymore.
      */
