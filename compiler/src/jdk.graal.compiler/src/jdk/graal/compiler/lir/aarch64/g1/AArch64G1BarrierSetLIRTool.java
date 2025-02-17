@@ -40,9 +40,16 @@ public interface AArch64G1BarrierSetLIRTool extends G1BarrierSetLIRTool {
     Register getThread(AArch64MacroAssembler masm);
 
     /**
-     * Compute the card address into {@code cardAddress}.
+     * Compute the thread-local card address from {@code storeAddress} and stores it into
+     * {@code cardAddress}.
      */
-    void computeCard(Register cardAddress, Register storeAddress, Register cardtable, AArch64MacroAssembler masm);
+    void computeCardThreadLocal(Register cardAddress, Register storeAddress, Register thread, Register cardTableAddress, AArch64MacroAssembler masm);
+
+    /**
+     * Compute the global card address from {@code storeAddress} and stores it into
+     * {@code cardAddress}.
+     */
+    void computeCard(Register cardAddress, Register storeAddress, Register cardTableAddress, AArch64MacroAssembler masm);
 
     /**
      * Load an object field from {@code immediateAddress} into value.

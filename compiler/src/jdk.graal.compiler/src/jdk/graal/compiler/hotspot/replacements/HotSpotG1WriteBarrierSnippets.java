@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,9 @@ import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -40,6 +42,7 @@ import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import jdk.graal.compiler.hotspot.meta.HotSpotProviders;
 import jdk.graal.compiler.hotspot.meta.HotSpotRegistersProvider;
 import jdk.graal.compiler.hotspot.nodes.HotSpotCompressionNode;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePostWriteBarrierNode;
 import jdk.graal.compiler.nodes.gc.G1ArrayRangePreWriteBarrierNode;
@@ -65,6 +68,8 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
                     void.class, Word.class);
     public static final HotSpotForeignCallDescriptor VALIDATE_OBJECT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "validate_object", boolean.class, Word.class,
                     Word.class);
+
+    public static final LocationIdentity CARD_TABLE_BASE_LOCATION = NamedLocationIdentity.mutable("GC-Card-Table-Base");
 
     private final Register threadRegister;
 
@@ -123,10 +128,28 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
     }
 
     @Override
-    protected Word cardTableAddress(Pointer oop) {
-        Word cardTable = Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
+    public byte cleanCardValue() {
+        return HotSpotReplacementsUtil.cleanCardValue(INJECTED_VMCONFIG);
+    }
+
+    @Override
+    protected boolean supportsLowLatencyBarriers() {
+        return HotSpotReplacementsUtil.supportsG1LowLatencyBarriers(INJECTED_VMCONFIG);
+    }
+
+    @Override
+    protected Word cardTableBase() {
+        // Low-latency barriers rely on thread-local card tables
+        if (supportsLowLatencyBarriers()) {
+            return getThread().readWord(HotSpotReplacementsUtil.g1CardTableBaseOffset(INJECTED_VMCONFIG), CARD_TABLE_BASE_LOCATION);
+        }
+        return Word.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
+    }
+
+    @Override
+    protected UnsignedWord cardTableOffset(Pointer oop) {
         int cardTableShift = HotSpotReplacementsUtil.cardTableShift(INJECTED_VMCONFIG);
-        return cardTable.add(oop.unsignedShiftRight(cardTableShift));
+        return oop.unsignedShiftRight(cardTableShift);
     }
 
     @Override
@@ -213,6 +236,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
                             null,
                             receiver,
                             GC_CARD_LOCATION,
+                            CARD_TABLE_BASE_LOCATION,
                             CARD_QUEUE_LOG_LOCATION,
                             CARD_QUEUE_INDEX_LOCATION,
                             CARD_QUEUE_BUFFER_LOCATION);
@@ -231,6 +255,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
                             null,
                             receiver,
                             GC_CARD_LOCATION,
+                            CARD_TABLE_BASE_LOCATION,
                             CARD_QUEUE_LOG_LOCATION,
                             CARD_QUEUE_INDEX_LOCATION,
                             CARD_QUEUE_BUFFER_LOCATION);
