@@ -51,7 +51,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.net.URI;
-import java.nio.ByteBuffer;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -541,20 +540,12 @@ public abstract class TruffleInstrument {
     public static final class Env {
 
         private final Object polyglotInstrument;
-        private final InputStream in;
-        private final OutputStream err;
-        private final OutputStream out;
-        private final MessageTransport messageTransport;
         OptionValues options;
         InstrumentClientInstrumenter instrumenter;
         private List<Object> services;
 
-        Env(Object polyglotInstrument, OutputStream out, OutputStream err, InputStream in, MessageTransport messageInterceptor) {
+        Env(Object polyglotInstrument) {
             this.polyglotInstrument = polyglotInstrument;
-            this.in = in;
-            this.err = err;
-            this.out = out;
-            this.messageTransport = messageInterceptor != null ? new MessageTransportProxy(messageInterceptor) : null;
         }
 
         Object getPolyglotInstrument() {
@@ -579,7 +570,7 @@ public abstract class TruffleInstrument {
          * @since 0.12
          */
         public InputStream in() {
-            return in;
+            return InstrumentAccessor.ENGINE.getEngineIn(InstrumentAccessor.ENGINE.getInstrumentEngine(polyglotInstrument));
         }
 
         /**
@@ -590,7 +581,7 @@ public abstract class TruffleInstrument {
          * @since 0.12
          */
         public OutputStream out() {
-            return out;
+            return InstrumentAccessor.ENGINE.getEngineOut(InstrumentAccessor.ENGINE.getInstrumentEngine(polyglotInstrument));
         }
 
         /**
@@ -601,7 +592,7 @@ public abstract class TruffleInstrument {
          * @since 0.12
          */
         public OutputStream err() {
-            return err;
+            return InstrumentAccessor.ENGINE.getEngineErr(InstrumentAccessor.ENGINE.getInstrumentEngine(polyglotInstrument));
         }
 
         /**
@@ -629,10 +620,7 @@ public abstract class TruffleInstrument {
          * @since 19.0
          */
         public MessageEndpoint startServer(URI uri, MessageEndpoint server) throws IOException, MessageTransport.VetoException {
-            if (messageTransport == null) {
-                return null;
-            }
-            return messageTransport.open(uri, server);
+            return InstrumentAccessor.ENGINE.startEngineServer(InstrumentAccessor.ENGINE.getInstrumentEngine(polyglotInstrument), uri, server);
         }
 
         /**
@@ -1181,59 +1169,6 @@ public abstract class TruffleInstrument {
          */
         public boolean isSameFrame(RootNode root, Frame frame1, Frame frame2) {
             return InstrumentAccessor.nodesAccess().isSameFrame(root, frame1, frame2);
-        }
-
-        private static class MessageTransportProxy implements MessageTransport {
-
-            private final MessageTransport transport;
-
-            MessageTransportProxy(MessageTransport transport) {
-                this.transport = transport;
-            }
-
-            @Override
-            public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, VetoException {
-                Objects.requireNonNull(peerEndpoint, "The peer endpoint must be non null.");
-                MessageEndpoint openedEndpoint = transport.open(uri, new MessageEndpointProxy(peerEndpoint));
-                if (openedEndpoint == null) {
-                    return null;
-                }
-                return new MessageEndpointProxy(openedEndpoint);
-            }
-
-            private static class MessageEndpointProxy implements MessageEndpoint {
-
-                private final MessageEndpoint endpoint;
-
-                MessageEndpointProxy(MessageEndpoint endpoint) {
-                    this.endpoint = endpoint;
-                }
-
-                @Override
-                public void sendText(String text) throws IOException {
-                    endpoint.sendText(text);
-                }
-
-                @Override
-                public void sendBinary(ByteBuffer data) throws IOException {
-                    endpoint.sendBinary(data);
-                }
-
-                @Override
-                public void sendPing(ByteBuffer data) throws IOException {
-                    endpoint.sendPing(data);
-                }
-
-                @Override
-                public void sendPong(ByteBuffer data) throws IOException {
-                    endpoint.sendPong(data);
-                }
-
-                @Override
-                public void sendClose() throws IOException {
-                    endpoint.sendClose();
-                }
-            }
         }
 
         /**

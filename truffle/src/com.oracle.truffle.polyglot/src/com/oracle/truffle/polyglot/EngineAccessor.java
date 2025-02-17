@@ -84,6 +84,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageEndpoint;
+import org.graalvm.polyglot.io.MessageTransport.VetoException;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CallTarget;
@@ -110,6 +112,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor;
+import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.impl.JDKAccessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
@@ -2221,6 +2224,36 @@ final class EngineAccessor extends Accessor {
         public Node getUncachedLocation(Object polyglotContext) {
             return ((PolyglotContextImpl) polyglotContext).uncachedLocation;
         }
+
+        @Override
+        public MessageEndpoint startEngineServer(Object engineImpl, URI uri, MessageEndpoint server) throws IOException, VetoException {
+            PolyglotEngineImpl engine = ((PolyglotEngineImpl) engineImpl);
+            if (engine.messageTransport == null) {
+                return null;
+            }
+            return engine.messageTransport.open(uri, server);
+        }
+
+        @Override
+        public Object getInstrumentEngine(Object polyglotInstrument) {
+            return ((PolyglotInstrument) polyglotInstrument).engine;
+        }
+
+        @Override
+        public DispatchOutputStream getEngineErr(Object engine) {
+            return ((PolyglotEngineImpl) engine).err;
+        }
+
+        @Override
+        public InputStream getEngineIn(Object engine) {
+            return ((PolyglotEngineImpl) engine).in;
+        }
+
+        @Override
+        public DispatchOutputStream getEngineOut(Object engine) {
+            return ((PolyglotEngineImpl) engine).out;
+        }
+
     }
 
     private static class GuardedExecutableNode extends ExecutableNode {

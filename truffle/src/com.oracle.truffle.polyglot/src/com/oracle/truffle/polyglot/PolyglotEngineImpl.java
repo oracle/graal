@@ -44,6 +44,7 @@ import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.EngineAccessor.RUNTIME;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -51,6 +52,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.net.URI;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -98,6 +101,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageServic
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -223,7 +227,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final int languageCount;
     private volatile EngineLimits limits;
-    private final MessageTransport messageInterceptor;
+    final MessageTransport messageTransport;
     private volatile int asynchronousStackDepth = 0;
 
     final SpecializationStatistics specializationStatistics;
@@ -267,12 +271,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLoggerSupplier, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
-                    MessageTransport messageInterceptor, LogHandler logHandler,
+                    MessageTransport messageTransport, LogHandler logHandler,
                     TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService) {
         this.engineId = ENGINE_COUNTER.incrementAndGet();
         this.apiAccess = impl.getAPIAccess();
         this.sandboxPolicy = sandboxPolicy;
-        this.messageInterceptor = messageInterceptor;
+        this.messageTransport = messageTransport != null ? new MessageTransportProxy(messageTransport) : null;
         this.impl = impl;
         this.permittedLanguages = permittedLanguages;
         this.allowExperimentalOptions = allowExperimentalOptions;
@@ -334,7 +338,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         this.idToPublicInstrument = Collections.unmodifiableMap(publicInstruments);
-        this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, out, err, in, messageInterceptor, storeEngine);
+        this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(this, storeEngine);
 
         if (isSharingEnabled(null)) {
             initializeMultiContext();
@@ -538,13 +542,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.engineId = ENGINE_COUNTER.incrementAndGet();
         this.apiAccess = prototype.apiAccess;
         this.sandboxPolicy = prototype.sandboxPolicy;
-        this.messageInterceptor = prototype.messageInterceptor;
+        this.messageTransport = prototype.messageTransport;
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(
                         this,
-                        INSTRUMENT.createDispatchOutput(INSTRUMENT.getOut(prototype.out)),
-                        INSTRUMENT.createDispatchOutput(INSTRUMENT.getOut(prototype.err)),
-                        prototype.in,
-                        prototype.messageInterceptor, prototype.storeEngine);
+                        prototype.storeEngine);
         this.impl = prototype.impl;
         this.permittedLanguages = prototype.permittedLanguages;
         this.out = prototype.out;
@@ -734,8 +735,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
          * the context log levels are not set.
          */
         getOrCreateEngineLoggers();
-
-        INSTRUMENT.patchInstrumentationHandler(instrumentationHandler, newOut, newErr, newIn);
 
         Map<PolyglotLanguage, Map<String, String>> languagesOptions = new HashMap<>();
         Map<PolyglotInstrument, Map<String, String>> instrumentsOptions = new HashMap<>();
@@ -1526,8 +1525,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         if (hostLanguageService != null) {
             hostLanguageService.release();
         }
-
-        INSTRUMENT.finalizeStoreInstrumentationHandler(instrumentationHandler);
     }
 
     @TruffleBoundary
@@ -2518,4 +2515,58 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         PrintStream err = System.err;
         err.println(message);
     }
+
+    private static class MessageTransportProxy implements MessageTransport {
+
+        private final MessageTransport transport;
+
+        MessageTransportProxy(MessageTransport transport) {
+            this.transport = transport;
+        }
+
+        @Override
+        public MessageEndpoint open(URI uri, MessageEndpoint peerEndpoint) throws IOException, VetoException {
+            Objects.requireNonNull(peerEndpoint, "The peer endpoint must be non null.");
+            MessageEndpoint openedEndpoint = transport.open(uri, new MessageEndpointProxy(peerEndpoint));
+            if (openedEndpoint == null) {
+                return null;
+            }
+            return new MessageEndpointProxy(openedEndpoint);
+        }
+
+        private static class MessageEndpointProxy implements MessageEndpoint {
+
+            private final MessageEndpoint endpoint;
+
+            MessageEndpointProxy(MessageEndpoint endpoint) {
+                this.endpoint = endpoint;
+            }
+
+            @Override
+            public void sendText(String text) throws IOException {
+                endpoint.sendText(text);
+            }
+
+            @Override
+            public void sendBinary(ByteBuffer data) throws IOException {
+                endpoint.sendBinary(data);
+            }
+
+            @Override
+            public void sendPing(ByteBuffer data) throws IOException {
+                endpoint.sendPing(data);
+            }
+
+            @Override
+            public void sendPong(ByteBuffer data) throws IOException {
+                endpoint.sendPong(data);
+            }
+
+            @Override
+            public void sendClose() throws IOException {
+                endpoint.sendClose();
+            }
+        }
+    }
+
 }

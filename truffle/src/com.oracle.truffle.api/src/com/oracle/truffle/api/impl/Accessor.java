@@ -84,7 +84,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.MessageEndpoint;
+import org.graalvm.polyglot.io.MessageTransport.VetoException;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.Assumption;
@@ -810,6 +811,16 @@ public abstract class Accessor {
         public abstract OptionValues parseLanguageSourceOptions(Object polyglotLanguageContext, Source source);
 
         public abstract ExecutableNode parseInlineForLanguage(Object languageContext, Source source, Node node, MaterializedFrame frame);
+
+        public abstract Object getInstrumentEngine(Object polyglotInstrument);
+
+        public abstract MessageEndpoint startEngineServer(Object engine, URI uri, MessageEndpoint server) throws IOException, VetoException;
+
+        public abstract DispatchOutputStream getEngineErr(Object engine);
+
+        public abstract DispatchOutputStream getEngineOut(Object engine);
+
+        public abstract InputStream getEngineIn(Object engine);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -971,8 +982,7 @@ public abstract class Accessor {
 
         public abstract <T> T getInstrumentationHandlerService(Object handler, Object polyglotInstrument, Class<T> type);
 
-        public abstract Object createInstrumentationHandler(Object polyglotEngine, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor,
-                        boolean strongReferences);
+        public abstract Object createInstrumentationHandler(Object polyglotEngine, boolean strongReferences);
 
         public abstract void collectEnvServices(Set<Object> collectTo, Object polyglotLanguageContext, TruffleLanguage<?> language);
 
@@ -1039,10 +1049,6 @@ public abstract class Accessor {
         public abstract void notifyThreadFinished(Object engine, TruffleContext context, Thread thread);
 
         public abstract Object createPolyglotSourceSection(Object instrumentEnv, Object polyglotSource, SourceSection ss);
-
-        public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
-
-        public abstract void finalizeStoreInstrumentationHandler(Object instrumentationHandler);
 
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
 
