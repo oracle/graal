@@ -294,7 +294,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                  * registration will fail. That could mean that we try to register too late.
                  */
                 if (constant.getHostedObject() != null) {
-                    universe.getHeapScanner().registerBaseLayerValue(constant, null);
+                    universe.getHeapScanner().registerBaseLayerValue(constant, PERSISTED);
                 }
             }
         });
@@ -1204,15 +1204,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     @SuppressFBWarnings(value = "ES", justification = "Reference equality check needed to detect intern status")
     private boolean hasValueForObject(Object object) {
-        if (object instanceof DynamicHub dynamicHub) {
-            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(dynamicHub);
-            return typeToConstant.containsKey(type.getId());
-        } else if (object instanceof String string) {
-            return stringToConstant.containsKey(string) && string.intern() == string;
-        } else if (object instanceof Enum<?>) {
-            return enumToConstant.containsKey(object);
-        }
-        return false;
+        return switch (object) {
+            case DynamicHub dynamicHub -> typeToConstant.containsKey(((SVMHost) universe.hostVM()).lookupType(dynamicHub).getId());
+            case String string -> stringToConstant.containsKey(string) && string.intern() == string;
+            case Enum<?> e -> enumToConstant.containsKey(e);
+            default -> false;
+        };
     }
 
     @Override
@@ -1222,18 +1219,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private ImageHeapConstant getValueForObject(Object object) {
-        if (object instanceof DynamicHub dynamicHub) {
-            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(dynamicHub);
-            int id = typeToConstant.get(type.getId());
-            return getOrCreateConstant(id);
-        } else if (object instanceof String string) {
-            int id = stringToConstant.get(string);
-            return getOrCreateConstant(id);
-        } else if (object instanceof Enum<?>) {
-            int id = enumToConstant.get(object);
-            return getOrCreateConstant(id);
-        }
-        throw AnalysisError.shouldNotReachHere("The constant was not in the persisted heap.");
+        return switch (object) {
+            case DynamicHub dynamicHub ->
+                getOrCreateConstant(typeToConstant.get(((SVMHost) universe.hostVM()).lookupType(dynamicHub).getId()));
+            case String string -> getOrCreateConstant(stringToConstant.get(string));
+            case Enum<?> e -> getOrCreateConstant(enumToConstant.get(e));
+            default -> throw AnalysisError.shouldNotReachHere("The constant was not in the persisted heap.");
+        };
     }
 
     @Override
@@ -1530,7 +1522,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return null;
         } else if (relinking.isFieldConstant()) {
             var fieldConstant = relinking.getFieldConstant();
-            AnalysisField analysisField = getAnalysisFieldForBaseLayerId(fieldConstant.getFieldId());
+            AnalysisField analysisField = getAnalysisFieldForBaseLayerId(fieldConstant.getOriginFieldId());
             if (!(analysisField.getWrapped() instanceof BaseLayerField)) {
                 VMError.guarantee(!baseLayerConstant.getIsSimulated(), "Should not alter the initialization status for simulated constants.");
                 /*
