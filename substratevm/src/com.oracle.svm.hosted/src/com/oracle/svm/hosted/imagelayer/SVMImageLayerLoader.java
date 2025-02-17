@@ -471,9 +471,9 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      */
     private void loadLambdaTypes(Class<?> capturingClass) {
         capturingClasses.computeIfAbsent(capturingClass, key -> {
-            LambdaParser.allExecutablesDeclaredInClass(universe.getOriginalMetaAccess().lookupJavaType(capturingClass))
+            LambdaParser.allExecutablesDeclaredInClass(universe.getBigbang().getMetaAccess().lookupJavaType(capturingClass))
                             .filter(m -> m.getCode() != null)
-                            .forEach(m -> loadLambdaTypes(m, universe.getBigbang()));
+                            .forEach(m -> loadLambdaTypes(((AnalysisMethod) m).getWrapped(), universe.getBigbang()));
             return true;
         });
     }
