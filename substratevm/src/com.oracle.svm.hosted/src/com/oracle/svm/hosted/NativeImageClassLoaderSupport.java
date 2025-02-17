@@ -60,6 +60,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -139,6 +140,7 @@ public final class NativeImageClassLoaderSupport {
 
     private final Set<Class<?>> classesToIncludeUnconditionally = ConcurrentHashMap.newKeySet();
     private final Set<String> includedJavaPackages = ConcurrentHashMap.newKeySet();
+    private final Map<String, Throwable> failedJavaPackageInclusionRequests = new ConcurrentHashMap<>();
 
     private final Method implAddReadsAllUnnamed = ReflectionUtil.lookupMethod(Module.class, "implAddReadsAllUnnamed");
     private final Method implAddEnableNativeAccess = ReflectionUtil.lookupMethod(Module.class, "implAddEnableNativeAccess");
@@ -1005,7 +1007,8 @@ public final class NativeImageClassLoaderSupport {
                 VMError.shouldNotReachHere(error);
             } catch (Throwable t) {
                 if (includePackage(packageName(className))) {
-                    t.printStackTrace();
+                    // Record unresolvable classes that are from requested packages
+                    failedJavaPackageInclusionRequests.put(className, t);
                 }
                 ImageClassLoader.handleClassLoadingError(t);
             }
