@@ -74,10 +74,6 @@ public abstract class SubprocessTest extends GraalCompilerTest {
         return launchSubprocess(null, vmArgsFilter, true, getClass(), currentUnitTestName(), runnable, args);
     }
 
-    public SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, null, true, testClass, currentUnitTestName(), runnable, args);
-    }
-
     public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, String testSelector, Runnable runnable, String... args)
                     throws InterruptedException, IOException {
         return launchSubprocess(null, null, true, testClass, testSelector, runnable, args);
@@ -92,6 +88,8 @@ public abstract class SubprocessTest extends GraalCompilerTest {
         }
         return result;
     }
+
+    public static final String ALL_TESTS = "ALL_TESTS";
 
     public boolean isRecursiveLaunch() {
         return isRecursiveLaunch(getClass());
@@ -123,7 +121,7 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             List<String> mainClassAndArgs = new LinkedList<>();
             mainClassAndArgs.add("com.oracle.mxtool.junit.MxJUnitWrapper");
             assert testSelector != null : "must pass the name of the current unit test";
-            String testName = testClass.getName() + "#" + testSelector;
+            String testName = testSelector.equals(ALL_TESTS) ? testClass.getName() : testClass.getName() + "#" + testSelector;
             mainClassAndArgs.add(testName);
             boolean junitVerbose = getProcessCommandLine().contains("-JUnitVerbose");
             if (junitVerbose) {
