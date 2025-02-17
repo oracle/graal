@@ -89,6 +89,9 @@ public abstract class SubprocessTest extends GraalCompilerTest {
         return result;
     }
 
+    /**
+     * Sentinel value meaning all tests in the specified test class are to be run.
+     */
     public static final String ALL_TESTS = "ALL_TESTS";
 
     public boolean isRecursiveLaunch() {
