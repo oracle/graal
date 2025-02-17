@@ -648,6 +648,16 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static boolean supportsG1LowLatencyBarriers(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.g1LowLatencyPostWriteBarrierSupport;
+    }
+
+    @Fold
+    public static byte cleanCardValue(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.cleanCardValue;
+    }
+
+    @Fold
     public static byte dirtyCardValue(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.dirtyCardValue;
     }
@@ -665,6 +675,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static long cardTableStart(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.cardtableStartAddress;
+    }
+
+    @Fold
+    public static int g1CardTableBaseOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.g1CardTableBaseOffset;
     }
 
     @Fold
@@ -695,6 +710,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int g1SATBQueueBufferOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.g1SATBQueueBufferOffset;
+    }
+
+    @Fold
+    public static boolean useCondCardMark(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useCondCardMark;
     }
 
     public static final LocationIdentity KLASS_SUPER_CHECK_OFFSET_LOCATION = NamedLocationIdentity.immutable("Klass::_super_check_offset");
