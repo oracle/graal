@@ -150,6 +150,9 @@ public abstract class ImageHeapScanner {
             }
             if (isValueAvailable(field)) {
                 JavaConstant fieldValue = readStaticFieldValue(field);
+                if (fieldValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
+                    AnalysisError.guarantee(imageHeapConstant.getOrigin() != null, "The origin of the constant %s should have been registered before", imageHeapConstant);
+                }
                 markReachable(fieldValue, reason);
                 notifyAnalysis(field, null, fieldValue, reason);
             }
@@ -196,6 +199,9 @@ public abstract class ImageHeapScanner {
             ValueSupplier<JavaConstant> rawFieldValue = readHostedFieldValue(field, null);
             data.setFieldTask(field, new AnalysisFuture<>(() -> {
                 JavaConstant value = createFieldValue(field, rawFieldValue, new FieldScan(field));
+                if (value instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
+                    imageHeapConstant.setOrigin(field);
+                }
                 data.setFieldValue(field, value);
                 return value;
             }));
@@ -735,6 +741,9 @@ public abstract class ImageHeapScanner {
     protected AnalysisFuture<JavaConstant> patchStaticField(TypeData typeData, AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
             JavaConstant value = onFieldValueReachable(field, fieldValue, reason, onAnalysisModified);
+            if (value instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
+                imageHeapConstant.setOrigin(field);
+            }
             typeData.setFieldValue(field, value);
             return value;
         });

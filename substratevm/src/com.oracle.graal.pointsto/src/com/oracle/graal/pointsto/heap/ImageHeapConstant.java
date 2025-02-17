@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
@@ -55,6 +56,7 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     private static final AtomicInteger currentId = new AtomicInteger(1);
 
     public static final VarHandle isReachableHandle = ReflectionUtil.unreflectField(ConstantData.class, "isReachable", MethodHandles.lookup());
+    public static final VarHandle originHandle = ReflectionUtil.unreflectField(ConstantData.class, "origin", MethodHandles.lookup());
 
     abstract static class ConstantData {
         /**
@@ -95,6 +97,11 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
          * constant created in the current layer.
          */
         private boolean isInBaseLayer;
+        /**
+         * An object representing a way to retrieve the value of the constant in the hosted
+         * universe.
+         */
+        @SuppressWarnings("unused") private volatile AnalysisField origin;
 
         ConstantData(AnalysisType type, JavaConstant hostedObject, int identityHashCode, int id) {
             Objects.requireNonNull(type);
@@ -165,6 +172,14 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     public boolean isReachable() {
         return isReachableHandle.get(constantData) != null;
+    }
+
+    public boolean setOrigin(AnalysisField origin) {
+        return originHandle.compareAndSet(constantData, null, origin);
+    }
+
+    public AnalysisField getOrigin() {
+        return constantData.origin;
     }
 
     public boolean allowConstantFolding() {
@@ -312,6 +327,6 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     @Override
     public String toString() {
         return "ImageHeapConstant<" + constantData.type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() +
-                        ", compressed: " + compressed + ", backed: " + isBackedByHostedObject() + ">";
+                        ", compressed: " + compressed + ", backed: " + isBackedByHostedObject() + ", id: " + constantData.id + ">";
     }
 }

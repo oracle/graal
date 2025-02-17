@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -521,6 +522,9 @@ public class SimulateClassInitializerSupport {
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
+                    if (constantValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
+                        imageHeapConstant.setOrigin(field);
+                    }
                     // We use the java kind here and not the storage kind since that's what the
                     // users of (Analysis)ConstantReflectionProvider expect.
                     clusterMember.staticFieldValues.put(field, adaptForImageHeap(constantValue, field.getJavaKind()));
