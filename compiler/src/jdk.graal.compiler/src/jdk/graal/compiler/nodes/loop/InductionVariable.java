@@ -192,6 +192,12 @@ public abstract class InductionVariable {
         NUMERIC
     }
 
+    /**
+     * Determines if the components of this IV are structurally intact, i.e., part of a graph, not
+     * deleted etc.
+     */
+    public abstract boolean structuralIntegrityValid();
+
     public abstract String toString(IVToStringVerbosity verbosity);
 
     @Override
