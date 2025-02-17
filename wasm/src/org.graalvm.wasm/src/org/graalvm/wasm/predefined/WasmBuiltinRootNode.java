@@ -40,12 +40,13 @@
  */
 package org.graalvm.wasm.predefined;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.nodes.WasmRootNode;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public abstract class WasmBuiltinRootNode extends WasmRootNode {
 
@@ -53,7 +54,7 @@ public abstract class WasmBuiltinRootNode extends WasmRootNode {
 
     protected WasmBuiltinRootNode(WasmLanguage language, WasmModule module) {
         super(language, null, module);
-        this.memoryLib = insert(WasmMemoryLibrary.getFactory().createDispatched(3));
+        this.memoryLib = WasmMemoryLibrary.getFactory().createDispatched(3);
     }
 
     public abstract String builtinNodeName();
