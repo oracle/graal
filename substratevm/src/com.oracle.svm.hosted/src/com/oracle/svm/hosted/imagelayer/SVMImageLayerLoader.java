@@ -92,9 +92,11 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
@@ -109,6 +111,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType.SerializationGenerated;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.StringConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray;
@@ -153,6 +156,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
     private final SharedLayerSnapshot.Reader snapshot;
     private final FileChannel graphsChannel;
+    private final ClassInitializationSupport classInitializationSupport;
 
     private HostedUniverse hostedUniverse;
 
@@ -192,6 +196,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         this.snapshot = snapshot;
         this.graphsChannel = graphChannel;
         this.useSharedLayerGraphs = useSharedLayerGraphs;
+        classInitializationSupport = ClassInitializationSupport.singleton();
     }
 
     public AnalysisUniverse getUniverse() {
@@ -250,6 +255,51 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                         .forEach(c -> prepareConstantRelinking(c, c.getIdentityHashCode(), c.getId()));
     }
 
+    /**
+     * The non-transformed field values are prepared earlier because some constants can be loaded
+     * very early.
+     */
+    public void relinkNonTransformedStaticFinalFieldValues() {
+        relinkStaticFinalFieldValues(false);
+    }
+
+    /**
+     * The transformed field values need to be prepared after all the transformer are installed.
+     */
+    public void relinkTransformedStaticFinalFieldValues() {
+        relinkStaticFinalFieldValues(true);
+    }
+
+    /**
+     * Load each constant with a known static final {@code AnalysisField origin} in the base layer,
+     * create the corresponding {@code ImageHeapConstant baseLayerConstant}, and find its
+     * corresponding {@code JavaConstant hostedValue} reachable from the same field in the current
+     * hosted heap. Finally, register the {@code hostedValue->baseLayerConstant} mapping in the
+     * shadow heap. This registration ensures that any future lookup of {@code hostedValue} in the
+     * shadow heap will yield the same reconstructed constant. Relinking constants with known origin
+     * eagerly is necessary to ensure that the {@code hostedValue} always maps to the same
+     * reconstructed {@code baseLayerConstant}, even if the {@code hostedValue} is first reachable
+     * from other fields than the one saved as its {@code origin} in the base layer, or if it is
+     * reachable transitively from other constants.
+     */
+    private void relinkStaticFinalFieldValues(boolean isLateLoading) {
+        IntStream.range(0, snapshot.getConstants().size()).parallel().forEach(i -> {
+            var constantData = snapshot.getConstants().get(i);
+            var relinking = constantData.getObject().getRelinking();
+            if (relinking.isFieldConstant() && relinking.getFieldConstant().getRequiresLateLoading() == isLateLoading) {
+                ImageHeapConstant constant = getOrCreateConstant(constantData.getId());
+                /*
+                 * If the field value cannot be read, the hosted object will not be relinked. If
+                 * there's already an ImageHeapConstant registered for the same hosted value, the
+                 * registration will fail. That could mean that we try to register too late.
+                 */
+                if (constant.getHostedObject() != null) {
+                    universe.getHeapScanner().registerBaseLayerValue(constant, null);
+                }
+            }
+        });
+    }
+
     private static IntStream streamInts(PrimitiveList.Int.Reader reader) {
         return IntStream.range(0, reader.size()).map(reader::get);
     }
@@ -294,7 +344,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return;
         }
 
-        PersistedConstant.Object.Relinking.Reader relinking = constantData.getObject().getRelinking();
+        Relinking.Reader relinking = constantData.getObject().getRelinking();
         if (relinking.isClassConstant()) {
             int typeId = relinking.getClassConstant().getTypeId();
             typeToConstant.put(typeId, id);
@@ -1475,11 +1525,39 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (!baseLayerConstant.isObject()) {
             return null;
         }
-        PersistedConstant.Object.Relinking.Reader relinking = baseLayerConstant.getObject().getRelinking();
+        Relinking.Reader relinking = baseLayerConstant.getObject().getRelinking();
         if (relinking.isNotRelinked()) {
             return null;
-        }
-        if (clazz.equals(Class.class)) {
+        } else if (relinking.isFieldConstant()) {
+            var fieldConstant = relinking.getFieldConstant();
+            AnalysisField analysisField = getAnalysisFieldForBaseLayerId(fieldConstant.getFieldId());
+            if (!(analysisField.getWrapped() instanceof BaseLayerField)) {
+                VMError.guarantee(!baseLayerConstant.getIsSimulated(), "Should not alter the initialization status for simulated constants.");
+                /*
+                 * The declaring type of relinked fields was already initialized in the previous
+                 * layer (see SVMImageLayerWriter#shouldRelinkField).
+                 */
+                if (fieldConstant.getRequiresLateLoading()) {
+                    /*
+                     * Fields with a field value transformer are relinked later, after all possible
+                     * transformers have been registered. *Guarantee* that the declaring type has
+                     * been initialized by now. Note that reading the field below will prevent a
+                     * transformer to be installed at a later time.
+                     */
+                    VMError.guarantee(analysisField.getDeclaringClass().isInitialized());
+                } else {
+                    /*
+                     * All other fields are relinked earlier, before the constant is needed. *Force*
+                     * the build time initialization of the declaring type before reading the field
+                     * value.
+                     */
+                    Class<?> fieldDeclaringClass = analysisField.getDeclaringClass().getJavaClass();
+                    classInitializationSupport.initializeAtBuildTime(fieldDeclaringClass, "Already initialized in base layer.");
+                }
+                /* Read fields through the hostedValueProvider and apply object replacement. */
+                return hostedValuesProvider.readFieldValueWithReplacement(analysisField, null);
+            }
+        } else if (clazz.equals(Class.class)) {
             /* DynamicHub corresponding to $$TypeSwitch classes are not relinked */
             if (baseLayerConstant.isObject() && relinking.isClassConstant()) {
                 int typeId = relinking.getClassConstant().getTypeId();
