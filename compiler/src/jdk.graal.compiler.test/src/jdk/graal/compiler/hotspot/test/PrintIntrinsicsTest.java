@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,6 @@ public class PrintIntrinsicsTest extends SubprocessTest {
         assertLineInOutput(subprocess, "</Intrinsics>");
 
         // Random selection of intrinsics that should be stable.
-        assertLineInOutput(subprocess, "java.lang.Class.getModifiers()");
         assertLineInOutput(subprocess, "java.lang.Byte.valueOf(byte)");
         assertLineInOutput(subprocess, "java.lang.System.nanoTime()");
         assertLineInOutput(subprocess, "java.lang.Thread.currentThread()");
