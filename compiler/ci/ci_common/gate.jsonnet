@@ -430,12 +430,12 @@
       "coverage_ctw",
     ]
     for jdk in [
-      "21"
+      self.jdk_latest
     ]
     for os_arch in all_os_arches
   ] + [
      # Run AVX3 tests only on linux-amd64
-     self.make_build("21", "linux-amd64", "coverage_avx3").build
+     self.make_build(self.jdk_latest, "linux-amd64", "coverage_avx3").build
   ],
 
     # Test ZGC on supported platforms.  Windows requires version 1083 or later which will

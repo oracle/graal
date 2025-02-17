@@ -1048,7 +1048,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         static GraphCacheEntry createLockEntry(Stage stage, GraphCacheEntry base, ReentrantLock lock) {
             return switch (stage) {
                 case BYTECODE_PARSED -> new GraphCacheEntry(lock, lock);
-                case OPTIMIZATIONS_APPLIED -> new GraphCacheEntry(base.bytecodeParsedObject, lock);
+                /*
+                 * If the stage 1 is skipped, the first stage needs to be locked too, to avoid
+                 * another thread stealing the unparsed state.
+                 */
+                case OPTIMIZATIONS_APPLIED -> base.bytecodeParsedObject == GRAPH_CACHE_UNPARSED ? new GraphCacheEntry(lock, lock) : new GraphCacheEntry(base.bytecodeParsedObject, lock);
             };
         }
 
