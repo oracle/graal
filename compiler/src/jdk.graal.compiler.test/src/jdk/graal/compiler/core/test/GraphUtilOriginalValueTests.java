@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,29 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_String;
+import static java.lang.constant.ConstantDescs.CD_void;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.Label;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
-import jdk.graal.compiler.nodes.util.GraphUtil;
 import org.junit.Assert;
 import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
 
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Unit tests derived from https://github.com/oracle/graal/pull/1690.
  */
-public class GraphUtilOriginalValueTests extends CustomizedBytecodePatternTest {
+public class GraphUtilOriginalValueTests extends GraalCompilerTest implements CustomizedBytecodePattern {
 
     static class LinkedNode {
         LinkedNode next;
@@ -113,16 +118,7 @@ public class GraphUtilOriginalValueTests extends CustomizedBytecodePatternTest {
     }
 
     @Override
-    protected byte[] generateClass(String internalClassName) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
-        cw.visit(52, ACC_SUPER | ACC_PUBLIC, internalClassName, null, "java/lang/Object", null);
-
-        String getDescriptor = "(Ljava/lang/Object;)V";
-        MethodVisitor m = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "unbalancedMonitors", getDescriptor, null, null);
-        Label loopHead = new Label();
-        Label end = new Label();
-        m.visitCode();
-
+    public byte[] generateClass(String className) {
         // @formatter:off
         /*
          * void unbalancedMonitors(Object o) {
@@ -133,28 +129,28 @@ public class GraphUtilOriginalValueTests extends CustomizedBytecodePatternTest {
          *     }
          * }
          */
+        return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                        .withMethodBody("unbalancedMonitors", MethodTypeDesc.of(CD_void, CD_Object), ACC_PUBLIC_STATIC, b -> {
+                            Label loopHead = b.newLabel();
+                            Label end = b.newLabel();
+                            b
+                                            .aload(0)
+                                            .monitorenter()
+                                            .labelBinding(loopHead)
+                                            .aload(0)
+                                            .monitorexit()
+                                            .aload(0)
+                                            .invokevirtual(CD_Object, "toString", MethodTypeDesc.of(CD_String))
+                                            .aload(0)
+                                            .if_acmpeq(end)
+                                            .aload(0)
+                                            .invokevirtual(CD_Object, "toString", MethodTypeDesc.of(CD_String))
+                                            .astore(0)
+                                            .goto_(loopHead)
+                                            .labelBinding(end)
+                                            .return_();
+                        }));
         // @formatter:on
-
-        m.visitVarInsn(ALOAD, 0);
-        m.visitInsn(MONITORENTER);
-        m.visitLabel(loopHead);
-        m.visitVarInsn(ALOAD, 0);
-        m.visitInsn(MONITOREXIT);
-        m.visitVarInsn(ALOAD, 0);
-        m.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Object", "toString", "()Ljava/lang/String;", false);
-        m.visitVarInsn(ALOAD, 0);
-        m.visitJumpInsn(IF_ACMPEQ, end);
-        m.visitVarInsn(ALOAD, 0);
-        m.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Object", "toString", "()Ljava/lang/String;", false);
-        m.visitVarInsn(ASTORE, 0);
-        m.visitJumpInsn(GOTO, loopHead);
-        m.visitLabel(end);
-        m.visitInsn(RETURN);
-        m.visitMaxs(2, 2);
-        m.visitEnd();
-
-        cw.visitEnd();
-        return cw.toByteArray();
     }
 
     /**

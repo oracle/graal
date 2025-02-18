@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class TestIntrinsicCompiles extends HotSpotGraalCompilerTest {
 
     @Test
-    @SuppressWarnings("try")
     public void test() throws ClassNotFoundException {
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         HotSpotProviders providers = rt.getHostBackend().getProviders();

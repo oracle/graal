@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,32 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static java.lang.constant.ConstantDescs.CD_Object;
+import static java.lang.constant.ConstantDescs.CD_int;
+import static java.lang.constant.ConstantDescs.CD_void;
+import static java.lang.constant.ConstantDescs.MTD_void;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.CodeBuilder;
+import java.lang.classfile.Label;
+import java.lang.classfile.Opcode;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.reflect.InvocationTargetException;
+
+import org.junit.Ignore;
+import org.junit.Test;
 
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.java.BciBlockMapping;
 import jdk.graal.compiler.java.BytecodeParserOptions;
 import jdk.graal.compiler.options.OptionValues;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Type;
 
 /**
  * Test class exercising irreducible loop duplication logic in {@link BciBlockMapping} in
  * conjunction with locking and exception handlers.
  */
-public class UnbalancedLockingTest extends CustomizedBytecodePatternTest {
+public class UnbalancedLockingTest extends GraalCompilerTest implements CustomizedBytecodePattern {
 
     /**
      * Run many calls to a test method to force a c1/c2 compile, check with -XX:+PrintCompilation.
@@ -77,15 +85,15 @@ public class UnbalancedLockingTest extends CustomizedBytecodePatternTest {
      * {@linkp BciBlockMapping.Options#DuplicateIrreducibleLoops}.
      */
     @Override
-    protected byte[] generateClass(String internalClassName) {
-        ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
-        cw.visit(52, ACC_SUPER | ACC_PUBLIC, internalClassName, null, "java/lang/Object", null);
-        createTestMethod(cw);
-        createIllegalLockingMethod(cw);
-        createIrreducibleMethod(cw);
-        cw.visitEnd();
-        // Checkstyle: resume
-        return cw.toByteArray();
+    public byte[] generateClass(String internalClassName) {
+        ClassDesc thisClass = ClassDesc.of(internalClassName);
+
+        // @formatter:off
+        return ClassFile.of().build(thisClass, classBuilder -> classBuilder
+                        .withMethodBody("test", MTD_void, ACC_PUBLIC_STATIC, UnbalancedLockingTest::createTestMethod)
+                        .withMethodBody("snippet", MethodTypeDesc.of(CD_void, CD_int, CD_Object, CD_Object), ACC_PUBLIC_STATIC, UnbalancedLockingTest::createIllegalLockingMethod)
+                        .withMethodBody("bar", MethodTypeDesc.of(CD_void, CD_int, CD_int, CD_Object, CD_Object), ACC_PUBLIC_STATIC, b -> createIrreducibleMethod(thisClass, b)));
+        // @formatter:on
     }
 
     /**
@@ -122,110 +130,55 @@ public class UnbalancedLockingTest extends CustomizedBytecodePatternTest {
      * }
      * </pre>
      */
-    private static void createIrreducibleMethod(ClassWriter cw) {
-        // Checkstyle: stop
-        {
+    private static void createIrreducibleMethod(ClassDesc thisClass, CodeBuilder b) {
+        Label irreducible = b.newLabel();
+        Label loopHeader1 = b.newLabel();
+        Label loopHeader2 = b.newLabel();
 
-            MethodVisitor snippet = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "bar", "(IILjava/lang/Object;Ljava/lang/Object;)V", null, null);
-            Label assignmentEnd = new Label();
-            Label assignmentElse = new Label();
-
-            snippet.visitVarInsn(ILOAD, 0);
-            snippet.visitIntInsn(BIPUSH, 12);
-            snippet.visitJumpInsn(IF_ICMPLE, assignmentElse);
-            {
-                snippet.visitVarInsn(ALOAD, 2);
-                snippet.visitVarInsn(ASTORE, 6);
-                snippet.visitJumpInsn(GOTO, assignmentEnd);
-            }
-            snippet.visitLabel(assignmentElse);
-            {
-
-                snippet.visitVarInsn(ALOAD, 3);
-                snippet.visitVarInsn(ASTORE, 6);
-            }
-
-            snippet.visitLabel(assignmentEnd);
-
-            Label exceptionHandler = new Label();
-            Label irreducible = new Label();
-            Label loopHeader1 = new Label();
-            Label end1 = new Label();
-            Label loopHeader2 = new Label();
-            Label end2 = new Label();
-
-            snippet.visitCode();
-
-            snippet.visitInsn(ICONST_0);
-            snippet.visitVarInsn(ISTORE, 3);
-            snippet.visitVarInsn(ILOAD, 0);
-            snippet.visitVarInsn(ILOAD, 1);
-            Label elseBranch = new Label();
-            snippet.visitJumpInsn(IF_ICMPNE, elseBranch);
-            {
-                snippet.visitLabel(loopHeader1);
-                {
-                    snippet.visitVarInsn(ILOAD, 3);
-                    snippet.visitVarInsn(ILOAD, 0);
-                    snippet.visitJumpInsn(IF_ICMPGE, end1);
-                    snippet.visitIincInsn(3, 1);
-
-                    Label exceptionStart = new Label();
-                    Label exceptionEnd = new Label();
-
-                    snippet.visitTryCatchBlock(exceptionStart, exceptionEnd, exceptionHandler, null);
-
-                    snippet.visitLabel(exceptionStart);
-
-                    snippet.visitVarInsn(ALOAD, 6);
-                    snippet.visitInsn(MONITORENTER);
-
-                    snippet.visitMethodInsn(INVOKESTATIC, Type.getInternalName(UnbalancedLockingTest.class) + "$ABC", "test", "()V", false);
-
-                    snippet.visitVarInsn(ALOAD, 6);
-                    snippet.visitInsn(MONITOREXIT);
-                    snippet.visitLabel(irreducible);
-
-                    snippet.visitLabel(exceptionEnd);
-
-                    snippet.visitJumpInsn(GOTO, loopHeader1);
-                }
-                snippet.visitLabel(end1);
-                snippet.visitInsn(RETURN);
-            }
-            snippet.visitLabel(elseBranch);
-            {
-                Label secondEnd = new Label();
-                snippet.visitLabel(loopHeader2);
-                {
-                    snippet.visitVarInsn(ILOAD, 3);
-                    snippet.visitVarInsn(ILOAD, 0);
-                    snippet.visitJumpInsn(IF_ICMPGE, end2);
-                    snippet.visitIincInsn(3, 1);
-                    snippet.visitJumpInsn(GOTO, loopHeader2);
-                }
-                snippet.visitLabel(end2);
-                snippet.visitVarInsn(ALOAD, 2);
-                snippet.visitJumpInsn(IFNULL, secondEnd);
-                {
-                    // irreducible jump into other loops body
-                    snippet.visitJumpInsn(GOTO, irreducible);
-                }
-                snippet.visitLabel(secondEnd);
-                snippet.visitInsn(RETURN);
-            }
-
-            snippet.visitLabel(exceptionHandler);
-            {
-                snippet.visitVarInsn(ALOAD, 6);
-                snippet.visitInsn(MONITOREXIT);
-                snippet.visitInsn(ATHROW);
-            }
-
-            snippet.visitMaxs(1, 4);
-            snippet.visitEnd();
-        }
-        // Checkstyle: resume
+        // @formatter:off
+        b
+                        .iload(0)
+                        .bipush(12)
+                        .ifThenElse(Opcode.IF_ICMPGT,
+                                        thenBlock -> thenBlock.aload(2).astore(6),
+                                        elseBlock -> elseBlock.aload(3).astore(6))
+                        .iconst_0()
+                        .istore(3)
+                        .iload(0)
+                        .iload(1)
+                        .ifThenElse(Opcode.IF_ICMPEQ,
+                                        thenBlock -> thenBlock
+                                                        .labelBinding(loopHeader1)
+                                                        .iload(3)
+                                                        .iload(0)
+                                                        .ifThen(Opcode.IF_ICMPLT, thenBlock1 -> thenBlock1
+                                                                        .iinc(3, 1)
+                                                                        .trying(tryBlock -> {
+                                                                            tryBlock
+                                                                                            .aload(6)
+                                                                                            .monitorenter()
+                                                                                            .invokestatic(thisClass, "test", MTD_void)
+                                                                                            .aload(6)
+                                                                                            .monitorexit();
+                                                                        }, catchBuilder -> catchBuilder.catchingAll(catchBlock -> {
+                                                                            catchBlock
+                                                                                            .aload(6)
+                                                                                            .monitorexit()
+                                                                                            .athrow();
+                                                                        }))
+                                                                        .labelBinding(irreducible)
+                                                                        .goto_(loopHeader1)),
+                                        elseBlock -> elseBlock
+                                                        .labelBinding(loopHeader2)
+                                                        .iload(3)
+                                                        .iload(0)
+                                                        .ifThen(Opcode.IF_ICMPLT, thenBlock1 -> thenBlock1
+                                                                        .iinc(3, 1)
+                                                                        .goto_(loopHeader2))
+                                                        .aload(2)
+                                                        .ifnonnull(irreducible))
+                        .return_();
+        // @formatter:on
     }
 
     /**
@@ -246,44 +199,26 @@ public class UnbalancedLockingTest extends CustomizedBytecodePatternTest {
      * }
      * </pre>
      */
-    private static void createIllegalLockingMethod(ClassWriter cw) {
-        // Checkstyle: stop
-        {
-            MethodVisitor snippet = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "snippet", "(ILjava/lang/Object;Ljava/lang/Object;)V", null, null);
-            snippet.visitCode();
-            snippet.visitVarInsn(ILOAD, 0);
-
-            Label falseBranch = new Label();
-            Label merge = new Label();
-
-            snippet.visitJumpInsn(IFNE, falseBranch);
-            {// true branch
-                snippet.visitVarInsn(ALOAD, 1);
-                snippet.visitVarInsn(ASTORE, 3);
-
-                snippet.visitVarInsn(ALOAD, 1);
-                snippet.visitInsn(MONITORENTER);
-
-                snippet.visitJumpInsn(GOTO, merge);
-            }
-            {// false branch
-                snippet.visitLabel(falseBranch);
-                snippet.visitVarInsn(ALOAD, 2);
-                snippet.visitVarInsn(ASTORE, 3);
-
-                snippet.visitVarInsn(ALOAD, 2);
-                snippet.visitInsn(MONITORENTER);
-            }
-            snippet.visitLabel(merge);
-
-            snippet.visitVarInsn(ALOAD, 3);
-            snippet.visitInsn(MONITOREXIT);
-
-            snippet.visitInsn(RETURN);
-            snippet.visitMaxs(1, 4);
-            snippet.visitEnd();
-        }
-        // Checkstyle: resume
+    private static void createIllegalLockingMethod(CodeBuilder b) {
+        // @formatter:off
+        b
+                        .iload(0)
+                        .ifThenElse(
+                                        Opcode.IFEQ,
+                                        thenBlock -> thenBlock
+                                                        .aload(1)
+                                                        .astore(3)
+                                                        .aload(1)
+                                                        .monitorenter(),
+                                        elseBlock -> elseBlock
+                                                        .aload(2)
+                                                        .astore(3)
+                                                        .aload(2)
+                                                        .monitorenter())
+                        .aload(3)
+                        .monitorexit()
+                        .return_();
+        // @formatter:on
     }
 
     /**
@@ -294,16 +229,7 @@ public class UnbalancedLockingTest extends CustomizedBytecodePatternTest {
      * }
      * </pre>
      */
-    private static void createTestMethod(ClassWriter cw) {
-        // Checkstyle: stop
-        {
-            MethodVisitor snippet = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "test", "()V", null, null);
-            snippet.visitCode();
-            snippet.visitInsn(RETURN);
-            snippet.visitMaxs(1, 4);
-            snippet.visitEnd();
-        }
-        // Checkstyle: resume
+    private static void createTestMethod(CodeBuilder b) {
+        b.return_();
     }
-
 }
