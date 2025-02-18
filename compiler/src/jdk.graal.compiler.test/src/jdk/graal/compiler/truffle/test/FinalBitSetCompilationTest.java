@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,25 +35,25 @@ public class FinalBitSetCompilationTest extends PartialEvaluationTest {
     @Test
     public void testEmpty() {
         FinalBitSet set = FinalBitSet.valueOf(new long[]{});
-        assertConstant(false, (f) -> set.get(42));
-        assertConstant(false, (f) -> set.get(0));
-        assertConstant(0, (f) -> set.size());
-        assertConstant(0, (f) -> set.length());
-        assertConstant(0, (f) -> set.cardinality());
-        assertConstant(true, (f) -> set.isEmpty());
+        assertConstant(false, (_) -> set.get(42));
+        assertConstant(false, (_) -> set.get(0));
+        assertConstant(0, (_) -> set.size());
+        assertConstant(0, (_) -> set.length());
+        assertConstant(0, (_) -> set.cardinality());
+        assertConstant(true, (_) -> set.isEmpty());
     }
 
     @Test
     public void testSingle() {
         FinalBitSet set = FinalBitSet.valueOf(new long[]{0x8000_0000_0000_0001L});
-        assertConstant(true, (f) -> set.get(0));
-        assertConstant(false, (f) -> set.get(1));
-        assertConstant(true, (f) -> set.get(63));
-        assertConstant(false, (f) -> set.get(64));
-        assertConstant(64, (f) -> set.size());
-        assertConstant(64, (f) -> set.length());
-        assertConstant(2, (f) -> set.cardinality());
-        assertConstant(false, (f) -> set.isEmpty());
+        assertConstant(true, (_) -> set.get(0));
+        assertConstant(false, (_) -> set.get(1));
+        assertConstant(true, (_) -> set.get(63));
+        assertConstant(false, (_) -> set.get(64));
+        assertConstant(64, (_) -> set.size());
+        assertConstant(64, (_) -> set.length());
+        assertConstant(2, (_) -> set.cardinality());
+        assertConstant(false, (_) -> set.isEmpty());
     }
 
     @Test
@@ -68,14 +68,14 @@ public class FinalBitSetCompilationTest extends PartialEvaluationTest {
             for (int i = 0; i < size; i++) {
                 final int index = i;
                 int base = index * 64;
-                assertConstant(true, (f) -> set.get(base));
-                assertConstant(true, (f) -> set.get(base + 63));
-                assertConstant(false, (f) -> set.get(base + 1));
+                assertConstant(true, (_) -> set.get(base));
+                assertConstant(true, (_) -> set.get(base + 63));
+                assertConstant(false, (_) -> set.get(base + 1));
             }
         }
     }
 
     private void assertConstant(Object expectedConstant, FrameFunction ff) {
-        assertPartialEvalEquals(toRootNode((f) -> expectedConstant), toRootNode(ff), new Object[0]);
+        assertPartialEvalEquals(toRootNode((_) -> expectedConstant), toRootNode(ff), new Object[0]);
     }
 }

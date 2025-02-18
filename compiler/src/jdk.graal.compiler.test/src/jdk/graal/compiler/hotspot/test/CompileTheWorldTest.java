@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
  */
 public class CompileTheWorldTest extends GraalCompilerTest {
 
-    @SuppressWarnings("try")
     @Test
     public void testJDK() throws Throwable {
         boolean originalBailoutAction = CompilationBailoutAsFailure.getValue(getInitialOptions());
@@ -60,7 +59,7 @@ public class CompileTheWorldTest extends GraalCompilerTest {
         String excludeMethodFilters = null;
         String scratchDir = "";
         boolean verbose = false;
-        try (AutoCloseable c = new TTY.Filter()) {
+        try (AutoCloseable _ = new TTY.Filter()) {
             CompileTheWorld ctw = new CompileTheWorld(runtime,
                             (HotSpotGraalCompiler) runtime.getCompiler(),
                             CompileTheWorld.SUN_BOOT_CLASS_PATH,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,12 +40,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class HostInliningBytecodeInterpreterTest extends GraalCompilerTest {
 
     @Test
-    @SuppressWarnings("try")
     public void test() throws Throwable {
         ResolvedJavaMethod method = getResolvedJavaMethod("interpreterSwitch");
         OptionValues options = HostInliningTest.createHostInliningOptions(30000, -1);
         StructuredGraph graph = parseForCompile(method, options);
-        try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
+        try (DebugContext.Scope _ = graph.getDebug().scope("Testing", method, graph)) {
             super.createSuites(options).getHighTier().apply(graph, getDefaultHighTierContext());
 
             for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class)) {

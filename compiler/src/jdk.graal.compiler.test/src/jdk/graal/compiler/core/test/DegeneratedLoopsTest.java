@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,10 +77,9 @@ public class DegeneratedLoopsTest extends GraalCompilerTest {
 
     }
 
-    @SuppressWarnings("try")
     private void test(final String snippet) {
         DebugContext debug = getDebugContext();
-        try (DebugContext.Scope s = debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet))) {
+        try (DebugContext.Scope _ = debug.scope("DegeneratedLoopsTest", new DebugDumpScope(snippet))) {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             HighTierContext context = getDefaultHighTierContext();
             createInliningPhase().apply(graph, context);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,7 +93,6 @@ public class TruffleExplicitOOMETest extends PartialEvaluationTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testNeverSeenExceptionHandlerSkipped() {
         /*
          * We disable truffle AST inlining to not inline the callee
