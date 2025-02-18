@@ -36,7 +36,6 @@ import jdk.graal.compiler.nodes.spi.Simplifiable;
 import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -102,6 +101,7 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode i
         switch (snippet) {
             case checkcastArraycopySnippet:
             case genericArraycopySnippet:
+            case failingArraycopySnippet:
                 // will be a call
                 return false;
             case exactArraycopyWithExpandedLoopSnippet:
