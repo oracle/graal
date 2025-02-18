@@ -54,7 +54,14 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.ThreadCPULoad.getName()};
-        Recording recording = startRecording(events);
+        Recording recording = prepareRecording(events, getDefaultConfiguration(), null, createTempJfrFile());
+        /*
+         * TestThreadCPULoadEvent.waitUntilCollected checks the reference to a thread instance which
+         * is kept alive by the JFR old object sampler. Disable OldObjectSample events to avoid
+         * waiting forever.
+         */
+        recording.disable("jdk.OldObjectSample");
+        recording.start();
 
         CountDownLatch threadsStarted = new CountDownLatch(3);
         WeakReference<Thread> thread1 = new WeakReference<>(createAndStartBusyWaitThread(THREAD_NAME_1, 10, 250, threadsStarted));
