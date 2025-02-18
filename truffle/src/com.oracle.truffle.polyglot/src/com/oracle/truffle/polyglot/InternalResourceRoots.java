@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -269,18 +269,24 @@ final class InternalResourceRoots {
     private static ResolvedCacheFolder findCacheRootOnNativeImage() {
         assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
         Path executable = getExecutablePath();
+        if (executable == null) {
+            // fall back to default if executable or library path is not available
+            return findCacheRootDefault();
+        }
         return new ResolvedCacheFolder(executable.resolveSibling("resources"), "executable location", executable);
     }
 
     private static Path getExecutablePath() {
         assert ImageInfo.inImageRuntimeCode();
+        String path;
         if (ImageInfo.isExecutable()) {
-            return Path.of(ProcessProperties.getExecutableName());
+            path = ProcessProperties.getExecutableName();
         } else if (ImageInfo.isSharedLibrary()) {
-            return Path.of(ProcessProperties.getObjectFile(InternalResourceCacheSymbol.SYMBOL));
+            path = ProcessProperties.getObjectFile(InternalResourceCacheSymbol.SYMBOL);
         } else {
             throw CompilerDirectives.shouldNotReachHere("Should only be invoked within native image runtime code.");
         }
+        return path == null ? null : Path.of(path);
     }
 
     private static ResolvedCacheFolder findCacheRootDefault() {
