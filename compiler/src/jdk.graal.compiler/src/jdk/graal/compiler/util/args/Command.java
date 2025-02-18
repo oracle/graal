@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 
 /**
  * Contains utilities to parse a set of options from command-line arguments. A command is made up of
@@ -228,7 +229,10 @@ public class Command {
         var it = named.getEntries();
         while (it.advance()) {
             if (it.getValue().isRequired()) {
-                writer.append(String.format(" %s %s", it.getKey(), it.getValue().getUsage()));
+                writer.append(' ');
+                writer.append(it.getKey());
+                writer.append(' ');
+                it.getValue().printUsage(writer, false);
             } else {
                 optionalFound = true;
             }
@@ -239,11 +243,7 @@ public class Command {
 
         for (OptionValue<?> option : positional) {
             writer.append(' ');
-            if (option.isRequired()) {
-                writer.append(option.getUsage());
-            } else {
-                writer.append(String.format("[%s]", option.getUsage()));
-            }
+            option.printUsage(writer, false);
         }
     }
 
@@ -252,40 +252,23 @@ public class Command {
         printOptionUsage(writer);
     }
 
-    public final void printHelp(PrintWriter writer) {
-        printHelp(writer, 0);
-    }
-
-    public void printHelp(PrintWriter writer, int indentLevel) {
-        boolean separate = false;
-        if (!positional.isEmpty()) {
-            writer.println("ARGS:");
-            for (OptionValue<?> arg : positional) {
-                if (separate) {
-                    writer.println();
-                }
-                OptionValue.printIndented(writer, arg.getUsage(), indentLevel);
-                arg.printHelp(writer, indentLevel + 1);
-                separate = true;
+    /**
+     * Collect any options in the current command and any nested subcommands into two flattened
+     * lists, one for positional arguments and one for named arguments.
+     */
+    void collectOptions(List<OptionValue<?>> outPositional, List<Pair<String, OptionValue<?>>> outNamed) {
+        for (OptionValue<?> option : positional) {
+            if (option instanceof CommandGroup<?> commandGroup && commandGroup.isSet()) {
+                commandGroup.getSelectedCommand().collectOptions(outPositional, outNamed);
+            } else {
+                outPositional.add(option);
             }
         }
-        if (!named.isEmpty()) {
-            if (separate) {
-                writer.println();
-                separate = false;
-            }
-            writer.println("OPTIONS:");
-            var cursor = named.getEntries();
-            while (cursor.advance()) {
-                if (separate) {
-                    writer.println();
-                }
-                String key = cursor.getKey();
-                OptionValue<?> value = cursor.getValue();
-                OptionValue.printIndented(writer, String.format("%s %s", key, value.getUsage()), indentLevel);
-                value.printHelp(writer, indentLevel + 1);
-                separate = true;
-            }
+        var cursor = named.getEntries();
+        while (cursor.advance()) {
+            String key = cursor.getKey();
+            OptionValue<?> value = cursor.getValue();
+            outNamed.add(Pair.create(key, value));
         }
     }
 }
