@@ -74,9 +74,8 @@ import jdk.vm.ci.meta.JavaKind;
  * </pre>
  *
  * <p>
- * Like {@link Hybrid}, DynamicHub objects have an instance {@link HubType}, but a
- * {@link LayoutEncoding} like an array. See the javadoc for {@link Hybrid} more details its
- * implications.
+ * Like {@link Hybrid} objects, DynamicHubs have an instance {@link HubType}, but a
+ * {@link LayoutEncoding} like an array (see the javadoc for {@link Hybrid}).
  */
 public class DynamicHubLayout {
 
