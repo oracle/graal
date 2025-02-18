@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -126,6 +126,14 @@ public final class WasmFunction {
 
     public String importedFunctionName() {
         return isImported() ? importDescriptor.memberName() : null;
+    }
+
+    public String exportedFunctionName() {
+        return symbolTable.exportedFunctionName(index);
+    }
+
+    public boolean isExported() {
+        return exportedFunctionName() != null;
     }
 
     public int typeIndex() {
