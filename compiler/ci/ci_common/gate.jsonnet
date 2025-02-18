@@ -414,10 +414,9 @@
       "bootstrap_full"
     ]
 
-    # Run jobs on latest and last LTS (21)
+    # Run jobs on latest
     for jdk in [
-      self.jdk_latest,
-      "21"
+      self.jdk_latest
     ]
     for os_arch in all_os_arches
   ],

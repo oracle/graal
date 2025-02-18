@@ -11,7 +11,7 @@
       c.weekly + hw.e3 + jdk + cc.c2 + suite,
       c.weekly + hw.a12c + jdk + cc.c2 + suite
     ]
-  for jdk in cc.jdks_of_interest
+  for jdk in cc.product_jdks
   for suite in bench.groups.all_suites
   ]),
 
