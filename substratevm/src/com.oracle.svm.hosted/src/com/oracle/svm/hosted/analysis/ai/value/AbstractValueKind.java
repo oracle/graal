@@ -6,8 +6,11 @@ package com.oracle.svm.hosted.analysis.ai.value;
  */
 
 public enum AbstractValueKind {
+    /* The top of the 'lattice' or more generally the maximal element */
     TOP,
+    /* Every element that is not the top or the bottom */
     VAL,
+    /* The bottom of the 'lattice' or more generally the minimal element */
     BOT;
 
     @Override

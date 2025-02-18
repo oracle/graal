@@ -66,7 +66,7 @@ public interface AbstractValue<Derived extends AbstractValue<Derived>> {
 
     /**
      * Some abstract values require a lot of memory to store their state.
-     * This method can be used to clear the memory and reset the value to a default state.
+     * This analysisMethod can be used to clear the memory and reset the value to a default state.
      */
     void clear();
 
