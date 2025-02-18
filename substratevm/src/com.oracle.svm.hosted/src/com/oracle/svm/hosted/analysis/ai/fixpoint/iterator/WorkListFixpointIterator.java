@@ -1,9 +1,11 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.FixedNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -23,14 +25,18 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
 
     private final StructuredGraph graph;
 
-    public WorkListFixpointIterator(AnalysisPayload<Domain> payload) {
-        super(payload);
+    public WorkListFixpointIterator(AnalysisMethod method,
+                                    DebugContext debug,
+                                    Domain initialDomain,
+                                    TransferFunction<Domain> transferFunction,
+                                    IteratorPayload iteratorPayload) {
+        super(method, debug, initialDomain, transferFunction, iteratorPayload);
         this.graph = cfgGraph.graph;
     }
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
-        payload.getLogger().logToFile("WorkListFixpointIterator::iterateUntilFixpoint");
+        logger.logToFile("WorkListFixpointIterator::iterateUntilFixpoint");
 
         /* We will be using nodes instead of blocks in this fixpoint iterator
          * because this fixpoint is used for demonstration, and this is closer to the pseudocode. */
@@ -43,14 +49,12 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
             inWorklist.add(node);
         });
 
-        TransferFunction<Domain> transferFunction = payload.getTransferFunction();
-
         while (!worklist.isEmpty()) {
             Node current = worklist.poll();
             inWorklist.remove(current);
 
             /* Analyze the node */
-            transferFunction.analyzeNode(current, abstractStateMap, payload);
+            transferFunction.analyzeNode(current, abstractStateMap);
 
             /* We don't know if we are at a head of a cycle in this iterator, so we always extrapolate (join/widen) */
             extrapolate(current);
@@ -69,7 +73,6 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
             }
         }
 
-        payload.getCheckerManager().checkAll(abstractStateMap);
         return abstractStateMap;
     }
 
