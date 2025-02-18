@@ -1704,9 +1704,7 @@ public final class ObjectKlass extends Klass {
 
             ObjectKlass.KlassVersion[] transitiveInterfaceList = EspressoMethodTableBuilder.transitiveInterfaceList(superKlass, superInterfaces);
             EspressoMethodTableBuilder.EspressoTables tables = EspressoMethodTableBuilder.create(
-                            isInterface(),
-                            getName(),
-                            superKlass,
+                            this,
                             transitiveInterfaceList,
                             methods,
                             getContext().getJavaVersion().java8OrEarlier());
@@ -1810,9 +1808,7 @@ public final class ObjectKlass extends Klass {
             // create new tables
             ObjectKlass.KlassVersion[] transitiveInterfaceList = EspressoMethodTableBuilder.transitiveInterfaceList(superKlass, superInterfaces);
             EspressoMethodTableBuilder.EspressoTables tables = EspressoMethodTableBuilder.create(
-                            isInterface(),
-                            getName(),
-                            superKlass,
+                            this,
                             transitiveInterfaceList,
                             methods,
                             getContext().getJavaVersion().java8OrEarlier());

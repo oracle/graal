@@ -66,6 +66,12 @@ public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAcce
     List<? extends PartialMethod<C, M, F>> getDeclaredMethodsList();
 
     /**
+     * Whether {@link PartialType this type} will share the same runtime package as the given
+     * {@link TypeAccess otherType}.
+     */
+    boolean sameRuntimePackage(C otherType);
+
+    /**
      * If the runtime allows selecting private methods for interface invokes (For java versions <=
      * 8), this method should be implemented.
      * <p>

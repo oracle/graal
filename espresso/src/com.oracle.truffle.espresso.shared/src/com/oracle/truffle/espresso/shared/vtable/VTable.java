@@ -62,7 +62,8 @@ public final class VTable {
      *
      * @param targetClass The type for which method tables should be created
      * @param verbose Whether all declared methods should be unconditionally added to the vtable.
-     *            See {@link PartialMethod#sameAccess(MethodAccess)} for more details.
+     *            See {@link PartialMethod#sameOverrideAccess(PartialType, MethodAccess)} for more
+     *            details.
      * @param allowInterfaceResolvingToPrivate Whether the runtime allows selection of interface
      *            invokes to select private methods. Requires implementing
      *            {@link PartialType#lookupOverrideWithPrivate(Symbol, Symbol)}.
@@ -148,7 +149,7 @@ public final class VTable {
                     continue;
                 }
                 assert currentLocations.vLookup(i) == m : "Should have been populated with super table.";
-                if (target.canOverride(m, i)) {
+                if (canOverride(target, m, i)) {
                     if (m.isFinalFlagSet()) {
                         throw new MethodTableException(
                                         "Method " + target.getSymbolicName() + target.getSymbolicSignature() +
@@ -158,7 +159,7 @@ public final class VTable {
                                         MethodTableException.Kind.IllegalClassChangeError);
                     }
                     vtable.add(target);
-                    if (!target.sameAccess(m)) {
+                    if (!target.sameOverrideAccess(targetClass, m)) {
                         currentLocations.markForPopulation();
                     }
                 } else {
@@ -218,6 +219,22 @@ public final class VTable {
                 locations.get(k).register(kind, m, index);
                 index++;
             }
+        }
+
+        private boolean canOverride(PartialMethod<C, M, F> candidate, M parentMethod, int vtableIndex) {
+            if (candidate.canOverride(targetClass, parentMethod)) {
+                return true;
+            }
+            C parentClass = parentMethod.getDeclaringClass().getSuperClass();
+            M currentMethod;
+            while (parentClass != null &&
+                            (currentMethod = parentClass.lookupVTableEntry(vtableIndex)) != null) {
+                if (candidate.canOverride(targetClass, currentMethod)) {
+                    return true;
+                }
+                parentClass = parentClass.getSuperClass();
+            }
+            return false;
         }
 
         private record MethodKey(Symbol<Name> name, Symbol<Signature> signature) {

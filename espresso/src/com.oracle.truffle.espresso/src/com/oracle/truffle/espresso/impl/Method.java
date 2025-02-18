@@ -442,9 +442,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     public boolean canOverride(Method other) {
-        if (other.isPrivate() || other.isStatic() || isPrivate() || isStatic()) {
-            return false;
-        }
+        assert !isPrivate() && !isStatic() && !other.isPrivate() && !other.isStatic();
         if (other.isPublic() || other.isProtected()) {
             return true;
         }
@@ -1350,35 +1348,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     @Override
     public boolean shouldSkipLoadingConstraints() {
         return isPolySignatureIntrinsic();
-    }
-
-    @Override
-    public boolean canOverride(Method parentMethod, int vtableIndex) {
-        assert getName() == parentMethod.getName() && getRawSignature() == parentMethod.getRawSignature();
-        assert !parentMethod.isPrivate() && !parentMethod.isStatic();
-        if (this.canOverride(parentMethod)) {
-            return true;
-        }
-        Method currentCandidate;
-        ObjectKlass currentParent = parentMethod.getDeclaringKlass();
-        while (currentParent != null && vtableIndex < currentParent.getVTable().length) {
-            currentCandidate = currentParent.vtableLookupImpl(vtableIndex);
-            if (this.canOverride(currentCandidate)) {
-                return true;
-            }
-            currentParent = currentParent.getSuperKlass();
-        }
-        return false;
-    }
-
-    @Override
-    public boolean sameAccess(Method parentMethod) {
-        assert !isPrivate() && !parentMethod.isPrivate();
-        if (isPublic() || isProtected()) {
-            return parentMethod.isPublic() || parentMethod.isProtected();
-        }
-        assert isPackagePrivate();
-        return parentMethod.isPackagePrivate() && getDeclaringKlass().sameRuntimePackage(parentMethod.getDeclaringKlass());
     }
 
     @Override

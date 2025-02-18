@@ -39,13 +39,6 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
  */
 public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named, Signed, ModifiersProvider {
     /**
-     * @return Whether this method appears in a method table.
-     */
-    default boolean isVirtualEntry() {
-        return !isPrivate() && !isStatic() && !isConstructor() && !isClassInitializer();
-    }
-
-    /**
      * @return {@code true} if this method represents an instance initialization method (its
      *         {@link #getSymbolicName() name} is {@code "<init>"}), {@code false} otherwise.
      */
@@ -59,23 +52,48 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
     boolean isClassInitializer();
 
     /**
-     * Returns whether the current considered {@link PartialMethod method} overrides the method
-     * {@code parentMethod} at vtable index {@code vtableIndex}.
-     * <p>
-     * Typically, this information can be obtained by checking if the declaring class of this method
-     * has access to {@code parentMethod}, or any of the methods present in any one of its
-     * superclasses' vtables at index {@code vtableIndex}.
-     * <p>
-     * The callers must ensure this method and {@code parent method} have the same
-     * {@link #getSymbolicName()} and {@link #getSymbolicSignature()}.
-     * <p>
-     * This check should be done in accordance to the definition of method overriding of the JVM
-     * Specification (jvms-5.4.5). In particular, the {@link ModifiersProvider#isFinalFlagSet()
-     * final flag} is irrelevant to the definition, and will be checked separately to appropriately
-     * throw {@link MethodTableException} with the
-     * {@link MethodTableException.Kind#IllegalClassChangeError} kind set.
+     * @return Whether this method appears in a method table.
      */
-    boolean canOverride(M parentMethod, int vtableIndex);
+    default boolean isVirtualEntry() {
+        return !isPrivate() && !isStatic() && !isConstructor() && !isClassInitializer();
+    }
+
+    /**
+     * Returns whether the current considered {@link PartialMethod method} overrides the method
+     * {@code parentMethod}.
+     * <p>
+     * This check should be done in accordance to the first two cases of the definition of method
+     * overriding of the JVM Specification (jvms-5.4.5).
+     * <p>
+     * In practice, this method simply needs to check whether the declaring class of {@code this}
+     * can access {@code parentMethod}.
+     * <p>
+     * In particular, implementations does not need to check whether there exists a method
+     * in-between the two methods considered, for which {@code this} can override.
+     * <p>
+     * The callers must ensure both {@code this} method and {@code parentMethod}:
+     * <ul>
+     * <li>{@link #isVirtualEntry() Appears in method tables}</li>
+     * <li>Have the same {@link #getSymbolicName() name} and {@link #getSymbolicSignature()
+     * signature}.</li>
+     * </ul>
+     *
+     * @param declaredType The {@link PartialType} provided to the virtual table builder. Should
+     *            represent the declaring type of this {@link PartialMethod}.
+     *
+     * @implNote the {@link ModifiersProvider#isFinalFlagSet() final flag} is irrelevant to the
+     *           definition, and will be checked separately to appropriately throw
+     *           {@link MethodTableException} with the
+     *           {@link MethodTableException.Kind#IllegalClassChangeError} kind set.
+     */
+    default boolean canOverride(PartialType<C, M, F> declaredType, M parentMethod) {
+        assert isVirtualEntry() && parentMethod.isVirtualEntry();
+        assert getSymbolicName() == parentMethod.getSymbolicName() && getSymbolicSignature() == parentMethod.getSymbolicSignature();
+        if (parentMethod.isPublic() || parentMethod.isProtected()) {
+            return true;
+        }
+        return declaredType.sameRuntimePackage(parentMethod.getDeclaringClass());
+    }
 
     /**
      * Returns whether {@link PartialMethod this method} and the given {@code parentMethod} obey the
@@ -98,9 +116,18 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
      * And returns {@code false} otherwise.
      * <p>
      * Note that the callers must ensure both methods are not private.
+     *
+     * @param declaredType The {@link PartialType} provided to the virtual table builder. Should
+     *            represent the declaring type of this {@link PartialMethod}.
      */
-    default boolean sameAccess(@SuppressWarnings("unused") M parentMethod) {
-        return false;
+    default boolean sameOverrideAccess(PartialType<C, M, F> declaredType, M parentMethod) {
+        assert isVirtualEntry() && parentMethod.isVirtualEntry();
+        assert getSymbolicName() == parentMethod.getSymbolicName() && getSymbolicSignature() == parentMethod.getSymbolicSignature();
+        if (isPublic() || isProtected()) {
+            return parentMethod.isPublic() || parentMethod.isProtected();
+        }
+        assert isPackagePrivate();
+        return parentMethod.isPackagePrivate() && declaredType.sameRuntimePackage(parentMethod.getDeclaringClass());
     }
 
     /**

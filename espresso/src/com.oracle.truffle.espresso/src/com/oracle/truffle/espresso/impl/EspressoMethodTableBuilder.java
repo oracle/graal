@@ -46,24 +46,22 @@ import com.oracle.truffle.espresso.shared.vtable.VTable;
 
 public final class EspressoMethodTableBuilder {
     public static EspressoTables create(
-                    boolean isInterface,
-                    Symbol<Name> name,
-                    ObjectKlass superKlass,
+                    ObjectKlass.KlassVersion thisKlass,
                     ObjectKlass.KlassVersion[] transitiveInterfaces,
                     Method.MethodVersion[] declaredMethods,
                     boolean allowInterfaceResolutionToPrivete) {
         try {
             Tables<Klass, Method, Field> tables;
-            if (isInterface) {
+            if (thisKlass.isInterface()) {
                 tables = new Tables<>(filterInterfaceMethods(declaredMethods), null, null, null);
             } else {
                 tables = VTable.create(
-                                new PartialKlass(name, superKlass, transitiveInterfaces, declaredMethods),
+                                new PartialKlass(thisKlass, thisKlass.getSuperKlass(), transitiveInterfaces, declaredMethods),
                                 false,
                                 allowInterfaceResolutionToPrivete);
             }
             return new EspressoTables(
-                            assignTableIndexes(isInterface, vtable(tables)),
+                            assignTableIndexes(thisKlass.isInterface(), vtable(tables)),
                             itable(tables, transitiveInterfaces),
                             mirandas(tables));
         } catch (MethodTableException e) {
@@ -243,14 +241,14 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static class PartialKlass implements PartialType<Klass, Method, Field> {
-        private final Symbol<Name> targetName;
+        private final ObjectKlass thisKlass;
         private final ObjectKlass superKlass;
         private final List<Method> parentTable;
         private final List<? extends PartialMethod<Klass, Method, Field>> declaredMethods;
         private final EconomicMap<Klass, List<Method>> interfacesData;
 
-        PartialKlass(Symbol<Name> targetName, ObjectKlass superKlass, ObjectKlass.KlassVersion[] transitiveInterfaces, Method.MethodVersion[] declaredMethods) {
-            this.targetName = targetName;
+        PartialKlass(ObjectKlass.KlassVersion thisKlass, ObjectKlass superKlass, ObjectKlass.KlassVersion[] transitiveInterfaces, Method.MethodVersion[] declaredMethods) {
+            this.thisKlass = thisKlass.getKlass();
             this.superKlass = superKlass;
             this.parentTable = superKlass == null ? Collections.emptyList() : new VersionToMethodList(superKlass.getVTable());
             this.declaredMethods = new VersionToMethodList(declaredMethods);
@@ -263,7 +261,7 @@ public final class EspressoMethodTableBuilder {
 
         @Override
         public Symbol<Name> getSymbolicName() {
-            return targetName;
+            return thisKlass.getSymbolicName();
         }
 
         @Override
@@ -279,6 +277,11 @@ public final class EspressoMethodTableBuilder {
         @Override
         public List<? extends PartialMethod<Klass, Method, Field>> getDeclaredMethodsList() {
             return declaredMethods;
+        }
+
+        @Override
+        public boolean sameRuntimePackage(Klass otherType) {
+            return thisKlass.sameRuntimePackage(otherType);
         }
 
         @Override
