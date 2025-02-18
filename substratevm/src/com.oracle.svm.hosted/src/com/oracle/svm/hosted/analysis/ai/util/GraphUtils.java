@@ -16,7 +16,7 @@ public final class GraphUtils {
     public static ControlFlowGraph getGraph(AnalysisMethod root, DebugContext debug) {
         StructuredGraph structuredGraph = root.decodeAnalyzedGraph(debug, null);
         if (structuredGraph == null) {
-            return null;
+            throw AnalysisError.interruptAnalysis("unable to decode analyzed graph");
         }
         return new ControlFlowGraphBuilder(structuredGraph).build();
     }
@@ -27,7 +27,7 @@ public final class GraphUtils {
                 return invokeInfo.getTargetMethod();
             }
         }
-        throw AnalysisError.interruptAnalysis("Invoke not found in method");
+        throw AnalysisError.interruptAnalysis("Invoke not found in analysisMethod");
     }
 
     public static void printGraph(AnalysisMethod root, DebugContext debug) {
