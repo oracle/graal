@@ -2,6 +2,7 @@ package com.oracle.svm.hosted.analysis.ai.checker;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,16 +10,13 @@ import java.util.List;
 public final class CheckerManager {
 
     private final List<Checker> checkers;
-    private final List<CheckerSummary> summaries;
 
     public CheckerManager() {
         this.checkers = new ArrayList<>();
-        this.summaries = new ArrayList<>();
     }
 
     public CheckerManager(List<Checker> checkers) {
         this.checkers = checkers;
-        this.summaries = new ArrayList<>(checkers.size());
     }
 
     /**
@@ -31,38 +29,59 @@ public final class CheckerManager {
     }
 
     /**
-     * Run all compatible checkers for the given abstract state map
+     * Executes all registered checkers on the given abstract state map and collects the summary of results.
+     *
+     * @param abstractStateMap the abstract state map to be checked, representing the state after the fixpoint iteration
+     * @return a list of {@code CheckerSummary} instances, each summarizing the results (e.g. warnings or errors) of a checker
      */
-    public List<CheckerResult> checkAll(AbstractStateMap<?> abstractStateMap) {
-        List<CheckerResult> results = new ArrayList<>();
-
-        for (int i = 0; i < checkers.size(); i++) {
-            Checker checker = checkers.get(i);
-            CheckerResult result = checker.check(abstractStateMap);
-            results.add(result);
-            summaries.get(i).addResult(result);
+    public List<CheckerSummary> checkAll(AbstractStateMap<?> abstractStateMap) {
+        List<CheckerSummary> checkerSummaries = new ArrayList<>();
+        for (Checker checker : checkers) {
+            List<CheckerResult> checkerResults = checker.check(abstractStateMap);
+            CheckerSummary summary = new CheckerSummary(checkerResults);
+            checkerSummaries.add(summary);
+            printCheckResult(checker, summary);
         }
 
-        return results;
+        return checkerSummaries;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < checkers.size(); i++) {
-            Checker checker = checkers.get(i);
-            CheckerSummary summary = summaries.get(i);
-            sb.append(checker.getDescription()).append(":\n");
-            sb.append(summary.toString()).append("\n");
-        }
-        return sb.toString();
-    }
-
-    public String printCheckers() {
-        StringBuilder sb = new StringBuilder();
         for (Checker checker : checkers) {
             sb.append(checker.getDescription()).append(":\n");
         }
         return sb.toString();
+    }
+
+    private void printCheckResult(Checker checker, CheckerSummary summary) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.logDebugInfo("Checker: " + checker.getDescription());
+
+        List<CheckerResult> errors = summary.getErrors();
+        List<CheckerResult> warnings = summary.getWarnings();
+
+        if (!errors.isEmpty()) {
+            logger.logDebugInfo("Number of errors: " + errors.size());
+            for (CheckerResult error : errors) {
+                logger.logDebugError("Error: " + error);
+            }
+        } else {
+            logger.logDebugInfo("No errors reported");
+        }
+
+        if (!warnings.isEmpty()) {
+            logger.logDebugInfo("Number of warnings: " + warnings.size());
+            for (CheckerResult warning : warnings) {
+                logger.logDebugInfo("Warning: " + warning);
+            }
+        } else {
+            logger.logDebugInfo("No warnings reported");
+        }
+
+        if (errors.isEmpty() && warnings.isEmpty()) {
+            logger.logDebugInfo("Everything is OK");
+        }
     }
 }

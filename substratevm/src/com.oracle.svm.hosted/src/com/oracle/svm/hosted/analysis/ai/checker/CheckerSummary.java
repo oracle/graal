@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -8,8 +9,29 @@ import java.util.List;
  */
 public final class CheckerSummary {
 
-    private List<CheckerResult> warnings;
-    private List<CheckerResult> errors;
+    private final List<CheckerResult> warnings;
+    private final List<CheckerResult> errors;
+
+    public CheckerSummary(List<CheckerResult> checkerResults) {
+        this.warnings = new LinkedList<>();
+        this.errors = new LinkedList<>();
+        for (var result : checkerResults) {
+            addResult(result);
+        }
+    }
+
+    public CheckerSummary() {
+        this.warnings = new LinkedList<>();
+        this.errors = new LinkedList<>();
+    }
+
+    public List<CheckerResult> getWarnings() {
+        return warnings;
+    }
+
+    public List<CheckerResult> getErrors() {
+        return errors;
+    }
 
     public void addResult(CheckerResult result) {
         switch (result.result()) {
