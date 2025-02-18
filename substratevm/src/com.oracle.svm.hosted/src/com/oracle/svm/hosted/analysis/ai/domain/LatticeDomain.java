@@ -149,8 +149,8 @@ public class LatticeDomain<
 
     /**
      * NOTE:
-     * This method is used for keeping the kind in a consistent state after performing operations
-     * Use this in the derived domain in every method that somehow modifies the internal state
+     * This analysisMethod is used for keeping the kind in a consistent state after performing operations
+     * Use this in the derived domain in every analysisMethod that somehow modifies the internal state
      */
     protected void updateKind() {
         kind = value.getKind();

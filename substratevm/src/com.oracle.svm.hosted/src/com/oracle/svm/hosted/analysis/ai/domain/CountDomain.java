@@ -37,6 +37,20 @@ public final class CountDomain extends AbstractDomain<CountDomain> {
         }
     }
 
+    public CountDomain getIncremented() {
+        if (value < maxCount) {
+            return new CountDomain(value + 1, maxCount);
+        }
+        return new CountDomain(value, maxCount);
+    }
+
+    public CountDomain getDecremented() {
+        if (value > 0) {
+            return new CountDomain(value - 1, maxCount);
+        }
+        return new CountDomain(value, maxCount);
+    }
+
     @Override
     public boolean isBot() {
         return value == 0;

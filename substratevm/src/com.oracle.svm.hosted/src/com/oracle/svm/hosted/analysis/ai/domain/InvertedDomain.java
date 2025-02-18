@@ -6,6 +6,10 @@ import java.util.Objects;
  * Reverse Adaptor of an {@link AbstractDomain}
  * Reverses the top and bottom elements of an abstract domain
  * and also reverses meet and join operations
+ * NOTE: Our framework doesn't use narrowing ( yet ) so we don't have a counterpart for widening.
+ *       We can overcome this obstacle by implementing widening as a meet operation. But this is not ideal,
+ *       since programs that do not terminate will not be able to use this domain
+ *       + the fixpoint computation may be much slower on programs that use loops.
  */
 public final class InvertedDomain<Domain extends AbstractDomain<Domain>>
         extends AbstractDomain<InvertedDomain<Domain>> {
@@ -64,8 +68,7 @@ public final class InvertedDomain<Domain extends AbstractDomain<Domain>>
 
     @Override
     public void widenWith(InvertedDomain<Domain> other) {
-        // Since we do not have narrowing as a counterpart to widening,
-        // we don't do anything here
+        domain.meetWith(other.getDomain());
     }
 
     @Override

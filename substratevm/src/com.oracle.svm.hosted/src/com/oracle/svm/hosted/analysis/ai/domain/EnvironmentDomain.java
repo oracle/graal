@@ -1,28 +1,21 @@
 package com.oracle.svm.hosted.analysis.ai.domain;
 
-import com.oracle.svm.hosted.analysis.ai.access.AccessPath;
+import com.oracle.svm.hosted.analysis.ai.domain.access.AccessPath;
 
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * An abstract domain for tracking properties of access paths by leveraging the existing MapDomain.
- * This implementation maps AccessPath objects to some abstract domain Value, using MapDomain
- * to handle the core lattice operations. We should also be able to create and resolve aliases
- *
- * @param <Domain> type of the derived {@link AbstractDomain} we are mapping access paths to
- */
-public final class AccessPathMapDomain<Domain extends AbstractDomain<Domain>>
-        extends MapDomain<AccessPath, Domain, AccessPathMapDomain<Domain>> {
+public final class EnvironmentDomain<Domain extends AbstractDomain<Domain>>
+        extends MapDomain<AccessPath, Domain, EnvironmentDomain<Domain>> {
 
     private final Map<AccessPath, AccessPath> aliasMap;
 
-    public AccessPathMapDomain(Domain initialDomain) {
+    public EnvironmentDomain(Domain initialDomain) {
         super(initialDomain);
         this.aliasMap = new HashMap<>();
     }
 
-    public AccessPathMapDomain(AccessPathMapDomain<Domain> other) {
+    public EnvironmentDomain(EnvironmentDomain<Domain> other) {
         super(other);
         this.aliasMap = new HashMap<>(other.aliasMap);
     }
@@ -54,8 +47,8 @@ public final class AccessPathMapDomain<Domain extends AbstractDomain<Domain>>
     }
 
     @Override
-    public AccessPathMapDomain<Domain> copyOf() {
-        return new AccessPathMapDomain<>(this);
+    public EnvironmentDomain<Domain> copyOf() {
+        return new EnvironmentDomain<>(this);
     }
 
     @Override
