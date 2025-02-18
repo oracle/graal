@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.access;
+package com.oracle.svm.hosted.analysis.ai.domain.access;
 
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
