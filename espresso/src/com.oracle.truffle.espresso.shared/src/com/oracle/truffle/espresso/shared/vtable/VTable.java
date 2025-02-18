@@ -62,8 +62,6 @@ public final class VTable {
      *
      * @param targetClass The type for which method tables should be created
      * @param verbose Whether all declared methods should be unconditionally added to the vtable.
-     *            See {@link PartialMethod#sameOverrideAccess(PartialType, MethodAccess)} for more
-     *            details.
      * @param allowInterfaceResolvingToPrivate Whether the runtime allows selection of interface
      *            invokes to select private methods. Requires implementing
      *            {@link PartialType#lookupOverrideWithPrivate(Symbol, Symbol)}.
@@ -77,6 +75,13 @@ public final class VTable {
                     boolean verbose,
                     boolean allowInterfaceResolvingToPrivate) throws MethodTableException {
         return new Builder<>(targetClass, verbose, allowInterfaceResolvingToPrivate).build();
+    }
+
+    /**
+     * Returns whether a given method may appear in a vtable.
+     */
+    public static <C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> boolean isVirtualEntry(PartialMethod<C, M, F> m) {
+        return !m.isPrivate() && !m.isStatic() && !m.isConstructor() && !m.isClassInitializer();
     }
 
     private static final class Builder<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
@@ -124,7 +129,7 @@ public final class VTable {
 
         private void assignCandidateTargets() {
             for (PartialMethod<C, M, F> impl : targetClass.getDeclaredMethodsList()) {
-                if (!impl.isVirtualEntry()) {
+                if (!isVirtualEntry(impl)) {
                     continue;
                 }
                 MethodKey k = MethodKey.of(impl);
@@ -159,7 +164,7 @@ public final class VTable {
                                         MethodTableException.Kind.IllegalClassChangeError);
                     }
                     vtable.add(target);
-                    if (!target.sameOverrideAccess(targetClass, m)) {
+                    if (!sameOverrideAccess(target, m)) {
                         currentLocations.markForPopulation();
                     }
                 } else {
@@ -169,7 +174,7 @@ public final class VTable {
             }
             assert vtable.size() == parentTable.size();
             for (PartialMethod<C, M, F> impl : targetClass.getDeclaredMethodsList()) {
-                if (!impl.isVirtualEntry()) {
+                if (!isVirtualEntry(impl)) {
                     continue;
                 }
                 if (verbose) {
@@ -191,7 +196,7 @@ public final class VTable {
                 List<PartialMethod<C, M, F>> table = new ArrayList<>(cursor.getValue().size());
 
                 for (M m : parentTable) {
-                    if (!m.isVirtualEntry()) {
+                    if (!isVirtualEntry(m)) {
                         // This should ideally not happen, but we must respect the decisions
                         // previously made for the tables of our super-interfaces.
                         table.add(m);
@@ -208,7 +213,7 @@ public final class VTable {
         private void registerFromTable(List<M> table, LocationKind kind) {
             int index = 0;
             for (M m : table) {
-                if (!m.isVirtualEntry()) {
+                if (!isVirtualEntry(m)) {
                     continue;
                 }
                 MethodKey k = MethodKey.of(m);
@@ -222,19 +227,38 @@ public final class VTable {
         }
 
         private boolean canOverride(PartialMethod<C, M, F> candidate, M parentMethod, int vtableIndex) {
-            if (candidate.canOverride(targetClass, parentMethod)) {
+            if (canOverride(candidate, parentMethod)) {
                 return true;
             }
             C parentClass = parentMethod.getDeclaringClass().getSuperClass();
             M currentMethod;
             while (parentClass != null &&
                             (currentMethod = parentClass.lookupVTableEntry(vtableIndex)) != null) {
-                if (candidate.canOverride(targetClass, currentMethod)) {
+                if (canOverride(candidate, currentMethod)) {
                     return true;
                 }
                 parentClass = parentClass.getSuperClass();
             }
             return false;
+        }
+
+        private boolean canOverride(PartialMethod<C, M, F> candidate, M parentMethod) {
+            assert isVirtualEntry(candidate) && isVirtualEntry(parentMethod);
+            assert candidate.getSymbolicName() == parentMethod.getSymbolicName() && candidate.getSymbolicSignature() == parentMethod.getSymbolicSignature();
+            if (parentMethod.isPublic() || parentMethod.isProtected()) {
+                return true;
+            }
+            return targetClass.sameRuntimePackage(parentMethod.getDeclaringClass());
+        }
+
+        private boolean sameOverrideAccess(PartialMethod<C, M, F> candidate, M parentMethod) {
+            assert isVirtualEntry(candidate) && isVirtualEntry(parentMethod);
+            assert candidate.getSymbolicName() == parentMethod.getSymbolicName() && candidate.getSymbolicSignature() == parentMethod.getSymbolicSignature();
+            if (candidate.isPublic() || candidate.isProtected()) {
+                return parentMethod.isPublic() || parentMethod.isProtected();
+            }
+            assert candidate.isPackagePrivate();
+            return parentMethod.isPackagePrivate() && targetClass.sameRuntimePackage(parentMethod.getDeclaringClass());
         }
 
         private record MethodKey(Symbol<Name> name, Symbol<Signature> signature) {

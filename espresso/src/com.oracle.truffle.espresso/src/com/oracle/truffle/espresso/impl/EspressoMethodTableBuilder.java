@@ -144,7 +144,7 @@ public final class EspressoMethodTableBuilder {
     private static List<PartialMethod<Klass, Method, Field>> filterInterfaceMethods(Method.MethodVersion[] declaredMethods) {
         List<PartialMethod<Klass, Method, Field>> table = new ArrayList<>(declaredMethods.length);
         for (Method.MethodVersion m : declaredMethods) {
-            if (m.getMethod().isVirtualEntry()) {
+            if (VTable.isVirtualEntry(m.getMethod())) {
                 table.add(m.getMethod());
             }
         }
