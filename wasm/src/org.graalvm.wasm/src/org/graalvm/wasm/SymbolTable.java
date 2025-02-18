@@ -86,9 +86,9 @@ public abstract class SymbolTable {
     private static final int NO_EQUIVALENCE_CLASS = 0;
     static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
-    public static class FunctionType {
-        private final byte[] paramTypes;
-        private final byte[] resultTypes;
+    public static final class FunctionType {
+        @CompilationFinal(dimensions = 1) private final byte[] paramTypes;
+        @CompilationFinal(dimensions = 1) private final byte[] resultTypes;
         private final int hashCode;
 
         FunctionType(byte[] paramTypes, byte[] resultTypes) {
@@ -112,10 +112,9 @@ public abstract class SymbolTable {
 
         @Override
         public boolean equals(Object object) {
-            if (!(object instanceof FunctionType)) {
+            if (!(object instanceof FunctionType that)) {
                 return false;
             }
-            FunctionType that = (FunctionType) object;
             if (this.paramTypes.length != that.paramTypes.length) {
                 return false;
             }
@@ -146,7 +145,7 @@ public abstract class SymbolTable {
             for (int i = 0; i < resultTypes.length; i++) {
                 resultNames[i] = WasmType.toString(resultTypes[i]);
             }
-            return Arrays.toString(paramNames) + " -> " + Arrays.toString(resultNames);
+            return "(" + String.join(" ", paramNames) + ")->(" + String.join(" ", resultNames) + ")";
         }
     }
 

@@ -466,7 +466,8 @@ public class Linker {
     }
 
     void resolveFunctionExport(WasmModule module, int functionIndex, String exportedFunctionName) {
-        final ImportDescriptor importDescriptor = module.symbolTable().function(functionIndex).importDescriptor();
+        final WasmFunction function = module.symbolTable().function(functionIndex);
+        final ImportDescriptor importDescriptor = function.importDescriptor();
         final Sym[] dependencies = (importDescriptor != null) ? new Sym[]{new ImportFunctionSym(module.name(), importDescriptor, functionIndex)} : ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
