@@ -1361,7 +1361,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
         Method currentCandidate;
         ObjectKlass currentParent = parentMethod.getDeclaringKlass();
-        while (vtableIndex < currentParent.getVTable().length) {
+        while (currentParent != null && vtableIndex < currentParent.getVTable().length) {
             currentCandidate = currentParent.vtableLookupImpl(vtableIndex);
             if (this.canOverride(currentCandidate)) {
                 return true;
@@ -1374,12 +1374,10 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     @Override
     public boolean sameAccess(Method parentMethod) {
         assert !isPrivate() && !parentMethod.isPrivate();
-        if (isPublic()) {
-            return parentMethod.isPublic();
+        if (isPublic() || isProtected()) {
+            return parentMethod.isPublic() || parentMethod.isProtected();
         }
-        if (isProtected()) {
-            return parentMethod.isProtected();
-        }
+        assert isPackagePrivate();
         return parentMethod.isPackagePrivate() && getDeclaringKlass().sameRuntimePackage(parentMethod.getDeclaringKlass());
     }
 

@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.shared.vtable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -47,8 +48,17 @@ public final class VTable {
      * <p>
      * The returned object is a {@link Tables} containing the {@link Tables#getVtable() virtual
      * table} and the {@link Tables#getItables() interface tables}. That object also makes known the
-     * {@link Tables#getImplicitInterfaceMethods() implicit interface methods} that do not have a
-     * concrete implementation in the type hierarchy of {@code targetClass}.
+     * {@link Tables#getSuccessfulImplicitInterfaceMethods() implicit interface methods} that do not
+     * have a concrete implementation in the type hierarchy of {@code targetClass}.
+     * {@link Tables#getFailingImplicitInterfaceMethods()} returns the implicit interface methods
+     * for which there exists multiple non-abstract maximally-specific methods.
+     * <p>
+     * All the methods of a {@link Tables} returned by this method are guaranteed to return non-null
+     * results, though returned {@link List lists} may be empty if appropriate.
+     * <p>
+     * Only lists appearing in the resulting {@link Tables#getItables() interface tables map} may
+     * contain {@code null}. This encodes that the result of method selection failed due to multiple
+     * non-abstract maximally-specific methods.
      *
      * @param targetClass The type for which method tables should be created
      * @param verbose Whether all declared methods should be unconditionally added to the vtable.
@@ -77,7 +87,8 @@ public final class VTable {
 
         private final List<PartialMethod<C, M, F>> vtable = new ArrayList<>();
         private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables = EconomicMap.create(Equivalence.IDENTITY);
-        private final List<Tables.MethodWrapper<C, M, F>> mirandas = new ArrayList<>();
+        private final List<PartialMethod<C, M, F>> mirandas = new ArrayList<>();
+        private final List<PartialMethod<C, M, F>> failMirandas = new ArrayList<>();
 
         Builder(PartialType<C, M, F> targetClass, boolean verbose, boolean allowInterfaceResolvingToPrivate) {
             this.targetClass = targetClass;
@@ -99,7 +110,7 @@ public final class VTable {
             // This step also detect miranda methods.
             resolveInterfaces();
 
-            return new Tables<>(vtable, itables, mirandas);
+            return new Tables<>(vtable, itables, mirandas, failMirandas);
         }
 
         private void buildLocations() {
@@ -155,6 +166,7 @@ public final class VTable {
                     currentLocations.markForPopulation();
                 }
             }
+            assert vtable.size() == parentTable.size();
             for (PartialMethod<C, M, F> impl : targetClass.getDeclaredMethodsList()) {
                 if (!impl.isVirtualEntry()) {
                     continue;
@@ -179,6 +191,8 @@ public final class VTable {
 
                 for (M m : parentTable) {
                     if (!m.isVirtualEntry()) {
+                        // This should ideally not happen, but we must respect the decisions
+                        // previously made for the tables of our super-interfaces.
                         table.add(m);
                         continue;
                     }
@@ -242,12 +256,12 @@ public final class VTable {
             }
 
             M vLookup(int index) {
-                for (Location loc : vLocations) {
-                    if (loc.index == index) {
-                        return loc.value;
-                    }
+                assert isSorted();
+                int locIdx = Collections.binarySearch(vLocations, new Location(null, index));
+                if (locIdx < 0) {
+                    return null;
                 }
-                return null;
+                return vLocations.get(locIdx).value;
             }
 
             PartialMethod<C, M, F> resolveInterface(MethodKey k, Builder<C, M, F> b) {
@@ -259,12 +273,19 @@ public final class VTable {
                 return resolvedInterfaceMethod;
             }
 
-            public void markForPopulation() {
+            void markForPopulation() {
                 shouldPopulate = true;
             }
 
-            public boolean shouldPopulate() {
+            boolean shouldPopulate() {
                 return shouldPopulate || vLocations.isEmpty();
+            }
+
+            private boolean isSorted() {
+                for (int i = 1; i < vLocations.size(); i++) {
+                    assert vLocations.get(i).index > vLocations.get(i - 1).index;
+                }
+                return true;
             }
 
             private PartialMethod<C, M, F> resolveInterfaceImpl(MethodKey k, Builder<C, M, F> b) {
@@ -285,16 +306,18 @@ public final class VTable {
                 if (result != null) {
                     return result;
                 }
-                // No method in classes. Lookup in interfaces. This will be a miranda method.
                 /*
+                 * No method in classes. Lookup in interfaces. This will be a miranda method. This
+                 * also handles default method selection, if appropriate.
+                 *
                  * Note: By construction of the locations map, each MethodKey is added only once to
                  * the miranda list, so it does not need to be a Set.
                  */
                 M miranda = resolveMaximallySpecific();
                 if (miranda == null) {
-                    b.mirandas.add(new Tables.MethodWrapper<>(iLocations.get(0).value, true));
+                    b.failMirandas.add(iLocations.get(0).value);
                 } else {
-                    b.mirandas.add(new Tables.MethodWrapper<>(miranda, false));
+                    b.mirandas.add(miranda);
                 }
                 return miranda;
             }
@@ -328,24 +351,29 @@ public final class VTable {
                     }
                     maximallySpecific.add(loc.value);
                 }
-                EconomicSet<M> nonAbstractMaximallySpecific = EconomicSet.create(Equivalence.IDENTITY);
+                M nonAbstractMaximallySpecific = null;
                 for (M m : maximallySpecific) {
                     if (!m.isAbstract()) {
-                        nonAbstractMaximallySpecific.add(m);
+                        if (nonAbstractMaximallySpecific != null) {
+                            /*
+                             * Multiple maximally specific non-abstract methods: mark the slot as
+                             * null.
+                             *
+                             * Will require handling from runtime.
+                             */
+                            return null;
+                        }
+                        nonAbstractMaximallySpecific = m;
                     }
                 }
-                if (nonAbstractMaximallySpecific.size() == 1) {
-                    return nonAbstractMaximallySpecific.iterator().next();
+                if (nonAbstractMaximallySpecific != null) {
+                    // A single non-abstract maximally-specific method.
+                    return nonAbstractMaximallySpecific;
                 }
-                if (nonAbstractMaximallySpecific.isEmpty()) {
-                    // No non-abstract maximally specific: select an abstract method to fail on
-                    // invoke
-                    assert !maximallySpecific.isEmpty();
-                    return maximallySpecific.iterator().next();
-                }
-                // Multiple maximally specific non-abstract methods, mark the slot as null.
-                // Will require handling from runtime.
-                return null;
+                // No non-abstract maximally specific: select an abstract method to fail on
+                // invoke
+                assert !maximallySpecific.isEmpty();
+                return maximallySpecific.iterator().next();
             }
 
             private M mostSpecific(M m1, M m2, boolean totalOrder) {
@@ -357,6 +385,7 @@ public final class VTable {
                     return m1;
                 }
                 if (totalOrder) {
+                    assert m1.getDeclaringClass().isAssignableFrom(m2.getDeclaringClass());
                     return m2;
                 }
                 if (m1.getDeclaringClass().isAssignableFrom(m2.getDeclaringClass())) {
@@ -365,13 +394,18 @@ public final class VTable {
                 return null;
             }
 
-            private class Location {
+            private class Location implements Comparable<Location> {
                 private final M value;
                 private final int index;
 
                 Location(M value, int index) {
                     this.value = value;
                     this.index = index;
+                }
+
+                @Override
+                public int compareTo(Location o) {
+                    return Integer.compare(this.index, o.index);
                 }
             }
         }

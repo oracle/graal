@@ -28,6 +28,7 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.shared.meta.FieldAccess;
 import com.oracle.truffle.espresso.shared.meta.MethodAccess;
+import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
@@ -41,12 +42,16 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
     private final List<PartialMethod<C, M, F>> vtable;
     private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables;
-    private final List<MethodWrapper<C, M, F>> mirandas;
+    private final List<PartialMethod<C, M, F>> successMirandas;
+    private final List<PartialMethod<C, M, F>> failureMirandas;
 
-    public Tables(List<PartialMethod<C, M, F>> vtable, EconomicMap<C, List<PartialMethod<C, M, F>>> itables, List<MethodWrapper<C, M, F>> mirandas) {
+    public Tables(List<PartialMethod<C, M, F>> vtable, EconomicMap<C, List<PartialMethod<C, M, F>>> itables,
+                    List<PartialMethod<C, M, F>> successMirandas,
+                    List<PartialMethod<C, M, F>> failureMirandas) {
         this.vtable = vtable;
         this.itables = itables;
-        this.mirandas = mirandas;
+        this.successMirandas = successMirandas;
+        this.failureMirandas = failureMirandas;
     }
 
     /**
@@ -91,14 +96,31 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * <p>
      * Such methods are also sometimes referred to as {@code miranda methods}.
      * <p>
-     * if {@link MethodWrapper#isSelectionFailure()}, this means that more than one
-     * maximally-specific non-abstract methods existed for the resolution of that implicit interface
-     * method.
+     * The methods in this list are safe to use as-is for the interface table. each entry in this
+     * list is either:
+     * <ul>
+     * <li>A default interface method (ie: an interface method that is
+     * non-{@link ModifiersProvider#isAbstract() abstract}).</li>
+     * <li>An {@link ModifiersProvider#isAbstract() abstract} methods, in which case the runtime
+     * should throw {@link AbstractMethodError}.</li>
+     * </ul>
+     * <p>
+     * Note that none of the methods in this list are either {@link ModifiersProvider#isPrivate()
+     * private} or {@link ModifiersProvider#isStatic() static}.
      */
-    public List<MethodWrapper<C, M, F>> getImplicitInterfaceMethods() {
-        return mirandas;
+    public List<PartialMethod<C, M, F>> getSuccessfulImplicitInterfaceMethods() {
+        return successMirandas;
     }
 
-    public record MethodWrapper<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>>(M method, boolean isSelectionFailure) {
+    /**
+     * Similar to {@link #getSuccessfulImplicitInterfaceMethods()}, except these contain the methods
+     * for which interface lookup would have to select between multiple non-abstract
+     * maximally-specific methods.
+     * <p>
+     * Should this list be used for method resolution, the runtime should handle calls to these by
+     * throwing {@link IncompatibleClassChangeError}, as specified in JVMS-6.5.invokeinterface.
+     */
+    public List<PartialMethod<C, M, F>> getFailingImplicitInterfaceMethods() {
+        return failureMirandas;
     }
 }

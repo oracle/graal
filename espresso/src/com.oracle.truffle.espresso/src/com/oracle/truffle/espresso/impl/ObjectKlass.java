@@ -1693,9 +1693,9 @@ public final class ObjectKlass extends Klass {
 
             LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
 
-            Method[] methods = new Method[linkedMethods.length];
+            Method.MethodVersion[] methods = new Method.MethodVersion[linkedMethods.length];
             for (int i = 0; i < linkedMethods.length; i++) {
-                methods[i] = new Method(this, linkedMethods[i], pool);
+                methods[i] = new Method(this, linkedMethods[i], pool).getMethodVersion();
             }
 
             // Package initialization must be done before vtable creation,
@@ -1715,7 +1715,7 @@ public final class ObjectKlass extends Klass {
             this.vtable = tables.getVTable();
             this.itable = tables.getITable();
             this.mirandaMethods = tables.getMirandas();
-            this.declaredMethods = EspressoMethodTableBuilder.toEspressoTable(Arrays.asList(methods));
+            this.declaredMethods = methods;
 
             this.hasDeclaredDefaultMethods = isInterface() && EspressoMethodTableBuilder.declaresDefaultMethod(methods);
             this.hasDefaultMethods = EspressoMethodTableBuilder.hasDefaultMethods(hasDeclaredDefaultMethods, superKlass, superInterfaces);
@@ -1795,8 +1795,14 @@ public final class ObjectKlass extends Klass {
                 }
             }
 
-            Method[] declared = EspressoMethodTableBuilder.versionToRegularArray(methods);
-
+            /*
+             * For some methods whose modifiers are redefined, they might be occupying an additional
+             * slot in the vtable, which would move the entire vtable indexes.
+             *
+             * To not have to worry about that, we will simply recompute the entire indexes on
+             * vtable recreation. On the bright side, it less expensive to completely recompute than
+             * to try and detect such cases.
+             */
             for (Method.MethodVersion m : methods) {
                 m.resetTableIndexes();
             }
@@ -1808,7 +1814,7 @@ public final class ObjectKlass extends Klass {
                             getName(),
                             superKlass,
                             transitiveInterfaceList,
-                            declared,
+                            methods,
                             getContext().getJavaVersion().java8OrEarlier());
 
             this.iKlassTable = transitiveInterfaceList;
@@ -1817,7 +1823,7 @@ public final class ObjectKlass extends Klass {
             this.mirandaMethods = tables.getMirandas();
             this.declaredMethods = methods;
 
-            this.hasDeclaredDefaultMethods = isInterface() && EspressoMethodTableBuilder.declaresDefaultMethod(declared);
+            this.hasDeclaredDefaultMethods = isInterface() && EspressoMethodTableBuilder.declaresDefaultMethod(methods);
             this.hasDefaultMethods = EspressoMethodTableBuilder.hasDefaultMethods(hasDeclaredDefaultMethods, superKlass, superInterfaces);
 
             // check and replace copied methods too

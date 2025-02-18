@@ -66,8 +66,14 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
      * has access to {@code parentMethod}, or any of the methods present in any one of its
      * superclasses' vtables at index {@code vtableIndex}.
      * <p>
-     * this method and {@code parentMethod} are guaranteed to have the same
+     * The callers must ensure this method and {@code parent method} have the same
      * {@link #getSymbolicName()} and {@link #getSymbolicSignature()}.
+     * <p>
+     * This check should be done in accordance to the definition of method overriding of the JVM
+     * Specification (jvms-5.4.5). In particular, the {@link ModifiersProvider#isFinalFlagSet()
+     * final flag} is irrelevant to the definition, and will be checked separately to appropriately
+     * throw {@link MethodTableException} with the
+     * {@link MethodTableException.Kind#IllegalClassChangeError} kind set.
      */
     boolean canOverride(M parentMethod, int vtableIndex);
 
@@ -84,12 +90,14 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
      * <p>
      * This method should return {@code true} if:
      * <ul>
-     * <li>Both methods are {@link ModifiersProvider#isPublic() public}</li>
-     * <li>Both methods are {@link ModifiersProvider#isProtected()} protected}</li>
+     * <li>Both methods are either {@link ModifiersProvider#isPublic() public} or
+     * {@link ModifiersProvider#isProtected()} protected}</li>
      * <li>Both methods are {@link ModifiersProvider#isPackagePrivate()} package-private} and the
      * declaring classes of both method are in the same runtime package.</li>
      * </ul>
      * And returns {@code false} otherwise.
+     * <p>
+     * Note that the callers must ensure both methods are not private.
      */
     default boolean sameAccess(@SuppressWarnings("unused") M parentMethod) {
         return false;

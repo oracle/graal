@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,6 +35,7 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Signature;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.shared.vtable.MethodTableException;
@@ -48,14 +50,13 @@ public final class EspressoMethodTableBuilder {
                     Symbol<Name> name,
                     ObjectKlass superKlass,
                     ObjectKlass.KlassVersion[] transitiveInterfaces,
-                    Method[] declaredMethods,
+                    Method.MethodVersion[] declaredMethods,
                     boolean allowInterfaceResolutionToPrivete) {
         try {
             Tables<Klass, Method, Field> tables;
             if (isInterface) {
-                tables = new Tables<>(filterInterfaceMethods(declaredMethods), null, null);
+                tables = new Tables<>(filterInterfaceMethods(declaredMethods), null, null, null);
             } else {
-
                 tables = VTable.create(
                                 new PartialKlass(name, superKlass, transitiveInterfaces, declaredMethods),
                                 false,
@@ -71,7 +72,7 @@ public final class EspressoMethodTableBuilder {
                 case IllegalClassChangeError:
                     meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
             }
-            return null;
+            throw EspressoError.shouldNotReachHere("Unknown exception kind: " + e.getKind(), e);
         }
     }
 
@@ -93,18 +94,8 @@ public final class EspressoMethodTableBuilder {
         return array;
     }
 
-    public static Method.MethodVersion[] toEspressoTable(List<? extends PartialMethod<Klass, Method, Field>> table) {
-        Method.MethodVersion[] vtable = new Method.MethodVersion[table.size()];
-        int vtableIndex = 0;
-        for (PartialMethod<Klass, Method, Field> m : table) {
-            vtable[vtableIndex] = m.asMethodAccess().getMethodVersion();
-            vtableIndex++;
-        }
-        return vtable;
-    }
-
-    public static boolean declaresDefaultMethod(Method[] declared) {
-        for (Method method : declared) {
+    public static boolean declaresDefaultMethod(Method.MethodVersion[] declared) {
+        for (Method.MethodVersion method : declared) {
             if (!method.isAbstract() && !method.isStatic()) {
                 return true;
             }
@@ -125,14 +116,6 @@ public final class EspressoMethodTableBuilder {
             }
         }
         return false;
-    }
-
-    public static Method[] versionToRegularArray(Method.MethodVersion[] methods) {
-        List<Method> table = new ArrayList<>(methods.length);
-        for (Method.MethodVersion m : methods) {
-            table.add(m.getMethod());
-        }
-        return table.toArray(Method.EMPTY_ARRAY);
     }
 
     public static final class EspressoTables {
@@ -160,6 +143,16 @@ public final class EspressoMethodTableBuilder {
         }
     }
 
+    private static List<PartialMethod<Klass, Method, Field>> filterInterfaceMethods(Method.MethodVersion[] declaredMethods) {
+        List<PartialMethod<Klass, Method, Field>> table = new ArrayList<>(declaredMethods.length);
+        for (Method.MethodVersion m : declaredMethods) {
+            if (m.getMethod().isVirtualEntry()) {
+                table.add(m.getMethod());
+            }
+        }
+        return table;
+    }
+
     private static Method.MethodVersion[] assignTableIndexes(boolean isInterface, Method.MethodVersion[] vtable) {
         if (vtable == null) {
             return null;
@@ -179,50 +172,22 @@ public final class EspressoMethodTableBuilder {
         return vtable;
     }
 
-    private static Method.MethodVersion[] toEspressoITable(Method.MethodVersion[] intfTable, List<? extends PartialMethod<Klass, Method, Field>> table) {
-        Method.MethodVersion[] itable = new Method.MethodVersion[table.size()];
-        int itableIndex = 0;
-        for (PartialMethod<Klass, Method, Field> m : table) {
-            if (m != null) {
-                itable[itableIndex] = m.asMethodAccess().getMethodVersion();
-            } else {
-                itable[itableIndex] = new Method(intfTable[itableIndex].getMethod()).setPoisonPill().getMethodVersion();
-            }
-            itableIndex++;
-        }
-        return itable;
-    }
-
-    private static Method.MethodVersion[] toEspressoMirandas(List<Tables.MethodWrapper<Klass, Method, Field>> mirandas) {
-        Method.MethodVersion[] table = new Method.MethodVersion[mirandas.size()];
-        int idx = 0;
-        for (Tables.MethodWrapper<Klass, Method, Field> m : mirandas) {
-            if (m.isSelectionFailure()) {
-                Method method = new Method(m.method());
-                method.setITableIndex(m.method().getITableIndex());
-                table[idx] = method.setPoisonPill().getMethodVersion();
-            } else {
-                table[idx] = m.method().getMethodVersion();
-            }
-            idx++;
-        }
-        return table;
-    }
-
-    private static List<Method> versionToRegular(Method.MethodVersion[] methods) {
-        List<Method> table = new ArrayList<>(methods.length);
-        for (Method.MethodVersion m : methods) {
-            table.add(m.getMethod());
-        }
-        return table;
-    }
-
     private static Method.MethodVersion[] vtable(Tables<Klass, Method, Field> tables) {
         List<PartialMethod<Klass, Method, Field>> table = tables.getVtable();
         if (table == null) {
             return null;
         }
-        return toEspressoTable(table);
+        return toEspressoVTable(table);
+    }
+
+    private static Method.MethodVersion[] toEspressoVTable(List<? extends PartialMethod<Klass, Method, Field>> table) {
+        Method.MethodVersion[] vtable = new Method.MethodVersion[table.size()];
+        int vtableIndex = 0;
+        for (PartialMethod<Klass, Method, Field> m : table) {
+            vtable[vtableIndex] = m.asMethodAccess().getMethodVersion();
+            vtableIndex++;
+        }
+        return vtable;
     }
 
     private static Method.MethodVersion[][] itable(Tables<Klass, Method, Field> tables, ObjectKlass.KlassVersion[] transitiveInterfaces) {
@@ -238,20 +203,41 @@ public final class EspressoMethodTableBuilder {
         return itable;
     }
 
-    private static Method.MethodVersion[] mirandas(Tables<Klass, Method, Field> tables) {
-        List<Tables.MethodWrapper<Klass, Method, Field>> implicitInterfaceMethods = tables.getImplicitInterfaceMethods();
-        if (implicitInterfaceMethods == null) {
-            return null;
+    private static Method.MethodVersion[] toEspressoITable(Method.MethodVersion[] intfTable, List<? extends PartialMethod<Klass, Method, Field>> table) {
+        Method.MethodVersion[] itable = new Method.MethodVersion[table.size()];
+        int itableIndex = 0;
+        for (PartialMethod<Klass, Method, Field> m : table) {
+            if (m != null) {
+                itable[itableIndex] = m.asMethodAccess().getMethodVersion();
+            } else {
+                itable[itableIndex] = new Method(intfTable[itableIndex].getMethod()).setPoisonPill().getMethodVersion();
+            }
+            itableIndex++;
         }
-        return toEspressoMirandas(implicitInterfaceMethods);
+        return itable;
     }
 
-    private static List<PartialMethod<Klass, Method, Field>> filterInterfaceMethods(Method[] declaredMethods) {
-        List<PartialMethod<Klass, Method, Field>> table = new ArrayList<>(declaredMethods.length);
-        for (Method m : declaredMethods) {
-            if (m.isVirtualEntry()) {
-                table.add(m);
-            }
+    private static Method.MethodVersion[] mirandas(Tables<Klass, Method, Field> tables) {
+        List<PartialMethod<Klass, Method, Field>> successfulMirandas = tables.getSuccessfulImplicitInterfaceMethods();
+        List<PartialMethod<Klass, Method, Field>> failingMirandas = tables.getFailingImplicitInterfaceMethods();
+        if (successfulMirandas == null && failingMirandas == null) {
+            return null;
+        }
+        assert successfulMirandas != null && failingMirandas != null;
+        return toEspressoMirandas(successfulMirandas, failingMirandas);
+    }
+
+    private static Method.MethodVersion[] toEspressoMirandas(List<PartialMethod<Klass, Method, Field>> successMirandas, List<PartialMethod<Klass, Method, Field>> failingMirandas) {
+        Method.MethodVersion[] table = new Method.MethodVersion[successMirandas.size() + failingMirandas.size()];
+        int idx = 0;
+        for (PartialMethod<Klass, Method, Field> m : successMirandas) {
+            table[idx] = m.asMethodAccess().getMethodVersion();
+            idx++;
+        }
+        for (PartialMethod<Klass, Method, Field> m : failingMirandas) {
+            Method method = new Method(m.asMethodAccess());
+            method.setITableIndex(m.asMethodAccess().getITableIndex());
+            table[idx] = method.setPoisonPill().getMethodVersion();
         }
         return table;
     }
@@ -260,29 +246,24 @@ public final class EspressoMethodTableBuilder {
         private final Symbol<Name> targetName;
         private final ObjectKlass superKlass;
         private final List<Method> parentTable;
-        private final List<PartialMethod<Klass, Method, Field>> declaredMethods;
+        private final List<? extends PartialMethod<Klass, Method, Field>> declaredMethods;
         private final EconomicMap<Klass, List<Method>> interfacesData;
 
-        PartialKlass(Symbol<Name> targetName, ObjectKlass superKlass, ObjectKlass.KlassVersion[] transitiveInterfaces, Method[] declaredMethods) {
+        PartialKlass(Symbol<Name> targetName, ObjectKlass superKlass, ObjectKlass.KlassVersion[] transitiveInterfaces, Method.MethodVersion[] declaredMethods) {
             this.targetName = targetName;
             this.superKlass = superKlass;
-            this.parentTable = superKlass == null ? Collections.emptyList() : versionToRegular(superKlass.getVTable());
-            this.declaredMethods = List.of(declaredMethods);
+            this.parentTable = superKlass == null ? Collections.emptyList() : new VersionToMethodList(superKlass.getVTable());
+            this.declaredMethods = new VersionToMethodList(declaredMethods);
             this.interfacesData = EconomicMap.create(Equivalence.IDENTITY, transitiveInterfaces.length);
             for (ObjectKlass.KlassVersion intfVersion : transitiveInterfaces) {
                 ObjectKlass intf = intfVersion.getKlass();
-                interfacesData.put(intf, versionToRegular(intf.getInterfaceMethodsTable()));
+                interfacesData.put(intf, new VersionToMethodList(intf.getInterfaceMethodsTable()));
             }
         }
 
         @Override
         public Symbol<Name> getSymbolicName() {
             return targetName;
-        }
-
-        @Override
-        public Klass getParentClass() {
-            return superKlass;
         }
 
         @Override
@@ -296,7 +277,7 @@ public final class EspressoMethodTableBuilder {
         }
 
         @Override
-        public List<PartialMethod<Klass, Method, Field>> getDeclaredMethodsList() {
+        public List<? extends PartialMethod<Klass, Method, Field>> getDeclaredMethodsList() {
             return declaredMethods;
         }
 
@@ -309,6 +290,27 @@ public final class EspressoMethodTableBuilder {
             }
             return superKlass.lookupInstanceMethod(name, signature);
         }
+    }
 
+    /**
+     * Helper list implementation to serve a {@link Method} from an array of
+     * {@link Method.MethodVersion}.
+     */
+    private static final class VersionToMethodList extends AbstractList<Method> {
+        private final Method.MethodVersion[] table;
+
+        VersionToMethodList(Method.MethodVersion[] table) {
+            this.table = table;
+        }
+
+        @Override
+        public Method get(int index) {
+            return table[index].getMethod();
+        }
+
+        @Override
+        public int size() {
+            return table.length;
+        }
     }
 }

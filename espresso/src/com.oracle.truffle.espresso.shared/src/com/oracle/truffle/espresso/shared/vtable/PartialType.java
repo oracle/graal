@@ -45,11 +45,6 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
  */
 public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named {
     /**
-     * @return The declared superclass of this type.
-     */
-    C getParentClass();
-
-    /**
      * @return The vtable of the declared superclass of this type, as would be constructed by a
      *         previous call to {@link VTable#create(PartialType, boolean, boolean)}.
      */
@@ -68,7 +63,7 @@ public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAcce
     /**
      * The list of methods this type declares.
      */
-    List<PartialMethod<C, M, F>> getDeclaredMethodsList();
+    List<? extends PartialMethod<C, M, F>> getDeclaredMethodsList();
 
     /**
      * If the runtime allows selecting private methods for interface invokes (For java versions <=
