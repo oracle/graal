@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,8 @@ public class MultiChoiceValue<T> extends OptionValue<T> {
     @Override
     public boolean parseValue(String arg) throws InvalidArgumentException {
         if (arg == null) {
-            throw new InvalidArgumentException(getName(), "no value provided");
+            value = defaultValue;
+            return false;
         }
         value = choices.get(arg);
         if (value == null) {
