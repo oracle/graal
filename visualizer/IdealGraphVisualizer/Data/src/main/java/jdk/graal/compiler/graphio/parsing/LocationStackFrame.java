@@ -49,7 +49,7 @@ public final class LocationStackFrame {
         String sep = "";
         for (LocationStackFrame t = this; t != null; t = t.parent) {
             sb.append(sep);
-            sb.append(methodHolderName(t)).append(".").append(t.method.name);
+            sb.append(methodHolderName(t)).append(".").append(methodName(t));
             for (LocationStratum s : t.strata) {
                 if (s.file != null) {
                     sb.append("(").append(s.file).append(":").append(s.line).append(")");
@@ -63,6 +63,9 @@ public final class LocationStackFrame {
         return sb.toString();
     }
 
+    private static String methodName(LocationStackFrame t) {
+        return t != null && t.method != null ? t.method.name : null;
+    }
     private static String methodHolderName(LocationStackFrame t) {
         if (t != null && t.method != null && t.method.holder != null) {
             return t.method.holder.name;
