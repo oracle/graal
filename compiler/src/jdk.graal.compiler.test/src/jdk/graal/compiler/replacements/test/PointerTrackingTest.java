@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,10 +93,9 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
     }
 
     @Test(expected = GraalError.class)
-    @SuppressWarnings("try")
     public void testVerification() {
         DebugContext debug = getDebugContext();
-        try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PointerTrackingTest")) {
+        try (DebugCloseable _ = debug.disableIntercept(); DebugContext.Scope _ = debug.scope("PointerTrackingTest")) {
             compile(getResolvedJavaMethod("verificationSnippet"), null);
         }
     }

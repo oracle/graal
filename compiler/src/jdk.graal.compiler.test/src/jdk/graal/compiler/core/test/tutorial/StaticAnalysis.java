@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -235,7 +235,6 @@ public class StaticAnalysis {
         }
 
         @Override
-        @SuppressWarnings("try")
         protected void process() {
             if (!processed) {
                 /* We want to process a method only once. */
@@ -252,7 +251,7 @@ public class StaticAnalysis {
                  * Support for graph dumping, IGV uses this information to show the method name of a
                  * graph.
                  */
-                try (DebugContext.Scope scope = debug.scope("graph building", graph)) {
+                try (DebugContext.Scope _ = debug.scope("graph building", graph)) {
                     /*
                      * We want all types to be resolved by the graph builder, i.e., we want classes
                      * referenced by the bytecodes to be loaded and initialized. Since we do not run

@@ -534,7 +534,7 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
             FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap());
             Path top = fs.getPath("/modules/");
             Files.find(top, Integer.MAX_VALUE,
-                            (path, attrs) -> attrs.isRegularFile()).forEach(p -> {
+                            (_, attrs) -> attrs.isRegularFile()).forEach(p -> {
                                 int nameCount = p.getNameCount();
                                 if (nameCount > 2) {
                                     String base = p.getName(nameCount - 1).toString();
@@ -971,7 +971,6 @@ public final class CompileTheWorld extends LibGraalCompilationDriver {
      * Prepares a compilation of the methods in the classes in {@link #inputClassPath}. If
      * {@link #inputClassPath} equals {@link #SUN_BOOT_CLASS_PATH} the boot classes are used.
      */
-    @SuppressWarnings("try")
     public List<Compilation> prepare() throws IOException {
         String classPath = SUN_BOOT_CLASS_PATH.equals(inputClassPath) ? JRT_CLASS_PATH_ENTRY : inputClassPath;
         final String[] entries = getEntries(classPath);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import java.math.BigInteger;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.objectweb.asm.Type;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -59,7 +58,7 @@ public class LambdaStableNameTest {
 
         assertNotEquals("The two stable lambda names should not be the same as they reference the same method but implement different interfaces", r0Name, acName);
 
-        String myName = Type.getInternalName(getClass());
+        String myName = getClass().getName().replace('.', '/');
         assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x59cf38d78b5471f8ea57f1c28b37039c;", r0Name);
 
         Function<String, Integer> f0 = (str) -> str.hashCode();

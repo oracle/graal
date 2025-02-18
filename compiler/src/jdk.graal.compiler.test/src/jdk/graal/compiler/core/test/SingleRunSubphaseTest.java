@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,10 +69,9 @@ public class SingleRunSubphaseTest extends GraalCompilerTest {
         phase.apply(graph, getProviders());
     }
 
-    @SuppressWarnings("try")
     @Test
     public void testMultipleRuns() {
-        try (AutoCloseable c = new TTY.Filter()) {
+        try (AutoCloseable _ = new TTY.Filter()) {
             OptionValues noDumpOnError = new OptionValues(getInitialOptions(), DumpOnError, false);
             StructuredGraph graph = parseForCompile(getResolvedJavaMethod("testSnippet"), noDumpOnError);
             EmptyPhase phase = new EmptyPhase();

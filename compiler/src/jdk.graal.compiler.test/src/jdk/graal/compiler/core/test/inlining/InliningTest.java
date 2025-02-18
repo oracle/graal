@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -216,11 +216,10 @@ public class InliningTest extends GraalCompilerTest {
     }
 
     @Test
-    @SuppressWarnings("try")
     public void testTracing() {
         OptionValues options = new OptionValues(getInitialOptions(), GraalOptions.TraceInlining, true);
         StructuredGraph graph;
-        try (TTY.Filter f = new TTY.Filter()) {
+        try (TTY.Filter _ = new TTY.Filter()) {
             graph = getGraph("traceInliningTest", options, false);
         }
         String inliningTree = graph.getInliningLog().formatAsTree(false);
@@ -272,14 +271,13 @@ public class InliningTest extends GraalCompilerTest {
         return getGraph(snippet, null, eagerInfopointMode);
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph getGraph(final String snippet, OptionValues options, final boolean eagerInfopointMode) {
         DebugContext debug = options == null ? getDebugContext() : getDebugContext(options, null, null);
-        try (DebugContext.Scope s = debug.scope("InliningTest", new DebugDumpScope(snippet, true))) {
+        try (DebugContext.Scope _ = debug.scope("InliningTest", new DebugDumpScope(snippet, true))) {
             ResolvedJavaMethod method = getResolvedJavaMethod(snippet);
             Builder builder = builder(method, AllowAssumptions.YES, debug);
             StructuredGraph graph = eagerInfopointMode ? parse(builder, getDebugGraphBuilderSuite()) : parse(builder, getEagerGraphBuilderSuite());
-            try (DebugContext.Scope s2 = debug.scope("Inlining", graph)) {
+            try (DebugContext.Scope _ = debug.scope("Inlining", graph)) {
                 PhaseSuite<HighTierContext> graphBuilderSuite = eagerInfopointMode
                                 ? getCustomGraphBuilderSuite(GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withFullInfopoints(true))
                                 : getDefaultGraphBuilderSuite();
