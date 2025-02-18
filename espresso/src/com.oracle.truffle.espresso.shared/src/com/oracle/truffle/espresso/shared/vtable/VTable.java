@@ -260,6 +260,7 @@ public final class VTable {
             void register(LocationKind kind, M method, int index) {
                 switch (kind) {
                     case V:
+                        assert vLocations.isEmpty() || vLocations.getLast().index < index;
                         vLocations.add(new Location(method, index));
                         break;
                     case I:
@@ -273,7 +274,6 @@ public final class VTable {
             }
 
             M vLookup(int index) {
-                assert isSorted();
                 int locIdx = Collections.binarySearch(vLocations, new Location(null, index));
                 if (locIdx < 0) {
                     return null;
@@ -296,13 +296,6 @@ public final class VTable {
 
             boolean shouldPopulate() {
                 return shouldPopulate || vLocations.isEmpty();
-            }
-
-            private boolean isSorted() {
-                for (int i = 1; i < vLocations.size(); i++) {
-                    assert vLocations.get(i).index > vLocations.get(i - 1).index;
-                }
-                return true;
             }
 
             private PartialMethod<C, M, F> resolveInterfaceImpl(MethodKey k, Builder<C, M, F> b) {
