@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.domain.access;
 
+import jdk.graal.compiler.nodes.ParameterNode;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import jdk.graal.compiler.nodes.java.LoadIndexedNode;
@@ -23,6 +24,10 @@ public final class AccessPath {
     public AccessPath(String baseVariable) {
         this.baseVariable = baseVariable;
         this.elements = new ArrayList<>();
+    }
+
+    public static AccessPath fromParameterNode(ParameterNode parameterNode) {
+        return new AccessPath("param_" + parameterNode.index());
     }
 
     public AccessPath appendField(String fieldName) {
