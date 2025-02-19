@@ -751,7 +751,7 @@ public class Linker {
     void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int memoryIndex, long offsetAddress, byte[] offsetBytecode, int byteLength, int bytecodeOffset,
                     int droppedDataInstanceOffset) {
         assertUnsignedIntLess(memoryIndex, instance.symbolTable().memoryCount(), Failure.UNSPECIFIED_MALFORMED,
-                        String.format("Specified memory was not declared or imported in the module '%s'", instance.name()));
+                        "Specified memory was not declared or imported in the module '%s'", instance.name());
         final Runnable resolveAction = () -> {
             if (context.getContextOptions().memoryOverheadMode()) {
                 // Do not initialize the data segment when in memory overhead mode.
