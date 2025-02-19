@@ -598,7 +598,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                MethodRef[] declaredMethods = klass.getDeclaredMethodRefs();
+                MethodRef[] declaredMethods = klass.getDeclaredMethods();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
                 for (MethodRef method : declaredMethods) {
@@ -669,7 +669,7 @@ public final class JDWP {
                 }
 
                 String sourceFile = null;
-                MethodRef[] methods = klass.getDeclaredMethodRefs();
+                MethodRef[] methods = klass.getDeclaredMethods();
                 for (MethodRef method : methods) {
                     // we need only look at one method to find
                     // the source file of the declaring class
@@ -889,7 +889,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                MethodRef[] declaredMethods = klass.getDeclaredMethodRefs();
+                MethodRef[] declaredMethods = klass.getDeclaredMethods();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
                 for (MethodRef method : declaredMethods) {
@@ -1012,7 +1012,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                ModuleRef module = klass.getModule();
+                ModuleRef module = klass.module();
                 long moduleID = context.getIds().getIdAsLong(module);
                 reply.writeLong(moduleID);
 
