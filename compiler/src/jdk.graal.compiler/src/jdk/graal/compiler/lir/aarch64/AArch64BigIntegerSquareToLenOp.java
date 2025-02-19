@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.aarch64.AArch64.r13;
@@ -37,6 +36,7 @@ import static jdk.vm.ci.aarch64.AArch64.r20;
 import static jdk.vm.ci.aarch64.AArch64.r21;
 import static jdk.vm.ci.aarch64.AArch64.r22;
 import static jdk.vm.ci.aarch64.AArch64.r23;
+import static jdk.vm.ci.aarch64.AArch64.r24;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
@@ -82,7 +82,6 @@ public final class AArch64BigIntegerSquareToLenOp extends AArch64LIRInstruction 
         this.temps = new Value[]{
                         r5.asValue(),
                         r6.asValue(),
-                        r10.asValue(),
                         r11.asValue(),
                         r12.asValue(),
                         r13.asValue(),
@@ -95,6 +94,7 @@ public final class AArch64BigIntegerSquareToLenOp extends AArch64LIRInstruction 
                         r21.asValue(),
                         r22.asValue(),
                         r23.asValue(),
+                        r24.asValue(),
         };
     }
 
@@ -116,8 +116,8 @@ public final class AArch64BigIntegerSquareToLenOp extends AArch64LIRInstruction 
         masm.mov(32, ylen, xlen);
 
         AArch64BigIntegerMultiplyToLenOp.multiplyToLen(masm, x, xlen, y, ylen, z, zlen,
-                        r10, r11, r12, r13, r14, r15, r16, r17,
-                        r19, r20, r21, r22, r23);
+                        r11, r12, r13, r14, r15, r16, r17, r19,
+                        r20, r21, r22, r23, r24);
     }
 
 }

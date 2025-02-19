@@ -33,13 +33,14 @@ import java.util.Collection;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs;
 import com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig;
 import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.graal.aarch64.AArch64InterpreterStubs;
-import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.hosted.image.NativeImage;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 
 import jdk.graal.compiler.asm.Assembler;
 import jdk.graal.compiler.asm.Label;
@@ -57,7 +58,7 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
 
     @Override
     protected byte[] generateEnterStubs(Collection<InterpreterResolvedJavaMethod> methods) {
-        AArch64MacroAssembler masm = new AArch64MacroAssembler(target);
+        AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(target);
 
         Label interpEnterStub = new Label();
         masm.bind(interpEnterStub);
@@ -96,7 +97,7 @@ public class AArch64InterpreterStubSection extends InterpreterStubSection {
 
     @Override
     protected byte[] generateVtableEnterStubs(int maxVtableIndex) {
-        AArch64MacroAssembler masm = new AArch64MacroAssembler(target);
+        AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(target);
 
         Label interpEnterStub = new Label();
         masm.bind(interpEnterStub);

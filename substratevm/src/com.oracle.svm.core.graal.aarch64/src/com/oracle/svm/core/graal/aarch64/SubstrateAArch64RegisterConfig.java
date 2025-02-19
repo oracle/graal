@@ -48,8 +48,6 @@ import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
 import static jdk.vm.ci.aarch64.AArch64.r7;
-import static jdk.vm.ci.aarch64.AArch64.r8;
-import static jdk.vm.ci.aarch64.AArch64.r9;
 import static jdk.vm.ci.aarch64.AArch64.v0;
 import static jdk.vm.ci.aarch64.AArch64.v1;
 import static jdk.vm.ci.aarch64.AArch64.v10;
@@ -70,6 +68,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
 
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.ReservedRegisters;
@@ -133,9 +132,11 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         ArrayList<Register> regs = new ArrayList<>(allRegisters.asList());
         regs.remove(ReservedRegisters.singleton().getFrameRegister()); // sp
         regs.remove(zr);
+
         // Scratch registers.
-        regs.remove(r8);
-        regs.remove(r9);
+        regs.remove(SubstrateAArch64MacroAssembler.scratch1);
+        regs.remove(SubstrateAArch64MacroAssembler.scratch2);
+
         if (preserveFramePointer) {
             regs.remove(fp); // r29
         }

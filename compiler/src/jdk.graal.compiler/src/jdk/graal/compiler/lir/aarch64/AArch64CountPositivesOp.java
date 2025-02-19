@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r10;
+import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r3;
 import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r5;
@@ -108,8 +108,8 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
                         r5.asValue(),
                         r6.asValue(),
                         r7.asValue(),
-                        // r8 and r9 are scratch registers
-                        r10.asValue(),
+                        // r8 and r9 are scratch registers on HotSpot, r9/r10 on SubstrateVM
+                        r11.asValue(),
                         v0.asValue(),
                         v1.asValue(),
                         v2.asValue(),
@@ -217,7 +217,7 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
         Register tmp3 = r5;
         Register tmp4 = r6;
         Register tmp5 = r7;
-        Register tmp6 = r10;
+        Register tmp6 = r11;
 
         Register vtmp0 = v0;
         Register vtmp1 = v1;
