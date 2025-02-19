@@ -49,6 +49,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16Or32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -194,23 +195,26 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     @TruffleBoundary
-    public long calcStringAttributes(Node location, AbstractTruffleString a, Object arrayA, long offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA) {
+    public long calcStringAttributes(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA) {
         if (TStringGuards.is7BitCompatible(encodingA) && TStringOps.calcStringAttributesLatin1(location, arrayA, offsetA + fromIndexA, lengthA) == TSCodeRange.get7Bit()) {
             return StringAttributes.create(lengthA, TSCodeRange.get7Bit());
         }
         final byte[] bytes;
-        // TODO: baseOffset
         final int offsetBytes;
-        if (arrayA instanceof AbstractTruffleString.NativePointer nativePointer) {
+        if (arrayA == null) {
             if (a == null) {
-                bytes = nativePointer.materializeByteArray((int) offsetA, lengthA);
+                // TODO: fix
+                // bytes = ((AbstractTruffleString.NativePointer)
+                // a.data()).materializeByteArray((int) offsetA, lengthA);
+                bytes = new byte[lengthA];
+                TStringUnsafe.copyFromNative(offsetA, 0, bytes, 0, lengthA);
             } else {
-                bytes = nativePointer.materializeByteArray(a);
+                bytes = ((AbstractTruffleString.NativePointer) a.data()).materializeByteArray(a);
             }
             offsetBytes = fromIndexA;
         } else {
-            bytes = (byte[]) arrayA;
-            offsetBytes = (int) (offsetA + fromIndexA);
+            bytes = arrayA;
+            offsetBytes = (int) ((offsetA - byteArrayBaseOffset()) + fromIndexA);
         }
         Encoding enc = get(encodingA);
         int codeRange = TSCodeRange.getValid(enc.isSingleByte());
@@ -267,7 +271,7 @@ final class JCodingsImpl implements JCodings {
 
     @Override
     @TruffleBoundary
-    public TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
+    public TruffleString transcode(Node location, AbstractTruffleString a, byte[] arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
                     TranscodingErrorHandler errorHandler) {
         final Encoding jCodingSrc = getBytesEncoding(a);
         final Encoding jCodingDst = get(targetEncoding);
@@ -285,6 +289,10 @@ final class JCodingsImpl implements JCodings {
     }
 
     private static byte[] asBytesMaterializeNative(AbstractTruffleString replacementString) {
-        return JCodings.asByteArray(replacementString, TStringInternalNodes.ToIndexableNode.getUncached().execute(null, replacementString, replacementString.data()));
+        Object dataA = TStringInternalNodes.ToIndexableNode.getUncached().execute(null, replacementString, replacementString.data());
+        if (dataA instanceof AbstractTruffleString.NativePointer nativePointer) {
+            return nativePointer.materializeByteArray(replacementString);
+        }
+        return (byte[]) dataA;
     }
 }

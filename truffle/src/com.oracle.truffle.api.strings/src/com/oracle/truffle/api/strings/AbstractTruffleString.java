@@ -56,6 +56,7 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF32FE;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidMultiByte;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import java.lang.ref.Reference;
 
@@ -420,19 +421,19 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         return data instanceof String;
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding) {
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding) {
         return forwardIterator(a, arrayA, offsetA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator forwardIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
+    static TruffleStringIterator forwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
         return new TruffleStringIterator(a, arrayA, offsetA, codeRangeA, encoding, errorHandling, 0);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding) {
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding) {
         return backwardIterator(a, arrayA, offsetA, codeRangeA, encoding, TruffleString.ErrorHandling.BEST_EFFORT);
     }
 
-    static TruffleStringIterator backwardIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
+    static TruffleStringIterator backwardIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling) {
         return new TruffleStringIterator(a, arrayA, offsetA, codeRangeA, encoding, errorHandling, a.length());
     }
 
@@ -485,15 +486,15 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
         return rawIndex << expectedEncoding.naturalStride;
     }
 
-    final void boundsCheck(Node node, Object arrayA, long offsetA, int index, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
+    final void boundsCheck(Node node, byte[] arrayA, long offsetA, int index, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
         boundsCheckI(index, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
-    final void boundsCheck(Node node, Object arrayA, long offsetA, int fromIndex, int toIndex, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
+    final void boundsCheck(Node node, byte[] arrayA, long offsetA, int fromIndex, int toIndex, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
         boundsCheckI(fromIndex, toIndex, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
-    final void boundsCheckRegion(Node node, Object arrayA, long offsetA, int fromIndex, int regionLength, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
+    final void boundsCheckRegion(Node node, byte[] arrayA, long offsetA, int fromIndex, int regionLength, Encoding expectedEncoding, TStringInternalNodes.GetCodePointLengthNode codePointLengthNode) {
         boundsCheckRegionI(fromIndex, regionLength, codePointLengthNode.execute(node, this, arrayA, offsetA, expectedEncoding));
     }
 
@@ -1302,8 +1303,10 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
             }
         }
         return TruffleString.EqualNode.checkContentEquals(TruffleString.EqualNode.getUncached(), this, b,
-                        TStringInternalNodes.ToIndexableNode.getUncached(),
-                        TStringInternalNodes.ToIndexableNode.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
+                        InlinedConditionProfile.getUncached(),
                         InlinedConditionProfile.getUncached(),
                         InlinedBranchProfile.getUncached(),
                         InlinedConditionProfile.getUncached());
@@ -1449,13 +1452,27 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
         @TruffleBoundary
         private static void copy(Node location, TruffleString src, byte[] dst, int dstFrom, int dstStride) {
-            Object dataA = TStringInternalNodes.ToIndexableNode.getUncached().execute(location, src, src.data());
-            int offsetA = src.offset();
-            // TODO: baseOffset
-            int offsetB = 0;
-            TStringOps.arraycopyWithStride(location,
-                            dataA, offsetA, src.stride(), 0,
-                            dst, offsetB, dstStride, dstFrom, src.length());
+            Object dataA = src.data();
+            try {
+                final byte[] arrayA;
+                final long addOffsetA;
+                if (dataA instanceof byte[]) {
+                    arrayA = (byte[]) dataA;
+                    addOffsetA = byteArrayBaseOffset();
+                } else if (dataA instanceof NativePointer) {
+                    arrayA = null;
+                    addOffsetA = NativePointer.unwrap(dataA);
+                } else {
+                    arrayA = src.materializeLazy(location, dataA);
+                    addOffsetA = byteArrayBaseOffset();
+                }
+                final long offsetA = src.offset() + addOffsetA;
+                TStringOps.arraycopyWithStride(location,
+                                arrayA, offsetA, src.stride(), 0,
+                                dst, byteArrayBaseOffset(), dstStride, dstFrom, src.length());
+            } finally {
+                Reference.reachabilityFence(dataA);
+            }
         }
     }
 

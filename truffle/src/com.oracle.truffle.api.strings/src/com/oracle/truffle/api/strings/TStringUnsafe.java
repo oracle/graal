@@ -121,7 +121,7 @@ final class TStringUnsafe {
         }
     }
 
-    static int getArrayByteBaseOffset() {
+    static int byteArrayBaseOffset() {
         return Unsafe.ARRAY_BYTE_BASE_OFFSET;
     }
 
@@ -168,19 +168,19 @@ final class TStringUnsafe {
         return new String(chars).equals(ret);
     }
 
-    static byte getByte(Object array, long byteOffset) {
+    static byte getByte(byte[] array, long byteOffset) {
         return UNSAFE.getByte(array, byteOffset);
     }
 
-    static char getChar(Object array, long byteOffset) {
+    static char getChar(byte[] array, long byteOffset) {
         return UNSAFE.getChar(array, byteOffset);
     }
 
-    static int getInt(Object array, long byteOffset) {
+    static int getInt(byte[] array, long byteOffset) {
         return UNSAFE.getInt(array, byteOffset);
     }
 
-    static long getLong(Object array, long byteOffset) {
+    static long getLong(byte[] array, long byteOffset) {
         return UNSAFE.getLong(array, byteOffset);
     }
 
@@ -197,6 +197,6 @@ final class TStringUnsafe {
     }
 
     static void copyFromNative(long arraySrc, int offsetSrc, byte[] arrayDst, long offsetDst, int byteLength) {
-        UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, TStringUnsafe.getArrayByteBaseOffset() + offsetDst, byteLength);
+        UNSAFE.copyMemory(null, arraySrc + offsetSrc, arrayDst, TStringUnsafe.byteArrayBaseOffset() + offsetDst, byteLength);
     }
 }

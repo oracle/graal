@@ -82,11 +82,11 @@ sealed interface JCodings permits JCodingsImpl {
         return INSTANCE;
     }
 
-    static byte[] asByteArray(AbstractTruffleString a, Object arrayA) {
-        if (arrayA instanceof AbstractTruffleString.NativePointer) {
-            return ((AbstractTruffleString.NativePointer) arrayA).materializeByteArray(a);
+    static byte[] asByteArray(AbstractTruffleString a, byte[] arrayA) {
+        if (arrayA == null) {
+            return ((AbstractTruffleString.NativePointer) a.data()).materializeByteArray(a);
         }
-        return (byte[]) arrayA;
+        return arrayA;
     }
 
     /**
@@ -134,10 +134,10 @@ sealed interface JCodings permits JCodingsImpl {
     int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, TruffleString.Encoding encoding, TruffleString.ErrorHandling errorHandling);
 
     @TruffleBoundary
-    long calcStringAttributes(Node location, AbstractTruffleString a, Object arrayA, long offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA);
+    long calcStringAttributes(Node location, AbstractTruffleString a, byte[] arrayA, long offsetA, int lengthA, TruffleString.Encoding encodingA, int fromIndexA);
 
     @TruffleBoundary
-    TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding, TranscodingErrorHandler errorHandler);
+    TruffleString transcode(Node location, AbstractTruffleString a, byte[] arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding, TranscodingErrorHandler errorHandler);
 
     static TruffleString.Encoding fromJCodingsName(String jCodingsName) {
         // This mapping does not actually require JCodings to be present to work.

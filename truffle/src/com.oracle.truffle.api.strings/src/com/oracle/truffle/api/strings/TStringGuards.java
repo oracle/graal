@@ -117,7 +117,7 @@ final class TStringGuards {
     }
 
     static boolean indexOfCannotMatch(Node node, int codeRangeA,
-                    AbstractTruffleString b, Object arrayB, long offsetB, int codeRangeB,
+                    AbstractTruffleString b, byte[] arrayB, long offsetB, int codeRangeB,
                     int regionLength, Encoding encoding, TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNodeB) {
         return regionLength < getCodePointLengthNodeB.execute(node, b, arrayB, offsetB, encoding) || codeRangesCannotMatch(codeRangeA, codeRangeB, null);
     }

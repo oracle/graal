@@ -120,7 +120,8 @@ public class TStringBasicTests extends TStringTestBase {
                             TruffleString.ErrorHandling.BEST_EFFORT));
             for (int first : new int[]{'x', codepoint}) {
                 TruffleString tStringFirst = TruffleString.fromCodePointUncached(first, encoding);
-                Assert.assertEquals(codepoint, tStringFirst.concatUncached(tStringCP, encoding, true).codePointAtIndexUncached(1, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
+                TruffleString conc = tStringFirst.concatUncached(tStringCP, encoding, true);
+                Assert.assertEquals(codepoint, conc.codePointAtIndexUncached(1, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
                 Assert.assertEquals(codepoint, tStringFirst.concatUncached(tStringCP, encoding, true).substringUncached(1, 1, encoding, true).codePointAtIndexUncached(0, encoding,
                                 TruffleString.ErrorHandling.BEST_EFFORT));
                 TruffleStringIterator it = tStringFirst.concatUncached(tStringCP, encoding, true).createCodePointIteratorUncached(encoding);

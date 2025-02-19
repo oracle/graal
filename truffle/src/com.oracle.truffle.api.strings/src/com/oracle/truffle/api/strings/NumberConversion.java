@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.strings;
 
 import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
+import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -103,11 +104,11 @@ final class NumberConversion {
         return parseNum(node, it, encoding, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE, nextNode);
     }
 
-    static int parseInt7Bit(Node node, AbstractTruffleString a, Object arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
+    static int parseInt7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
         return (int) parseNum7Bit(node, a, arrayA, offsetA, stride, radix, errorProfile, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
-    static long parseLong7Bit(Node node, AbstractTruffleString a, Object arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
+    static long parseLong7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile) throws TruffleString.NumberFormatException {
         return parseNum7Bit(node, a, arrayA, offsetA, stride, radix, errorProfile, Long.MIN_VALUE, Long.MAX_VALUE);
     }
 
@@ -170,7 +171,7 @@ final class NumberConversion {
         return negative ? result : -result;
     }
 
-    private static long parseNum7Bit(Node node, AbstractTruffleString a, Object arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile, long min, long max)
+    private static long parseNum7Bit(Node node, AbstractTruffleString a, byte[] arrayA, long offsetA, int stride, int radix, InlinedBranchProfile errorProfile, long min, long max)
                     throws TruffleString.NumberFormatException {
         CompilerAsserts.partialEvaluationConstant(stride);
         assert TStringGuards.is7Bit(a.codeRange());
@@ -355,10 +356,9 @@ final class NumberConversion {
     @InliningCutoff
     static void writeLongToBytes(Node location, long i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Long.MIN_VALUE) {
-            // TODO: baseOffset
             TStringOps.arraycopyWithStride(location,
-                            LONG_MIN_VALUE_BYTES, 0, 0, 0,
-                            buf, 0, stride, fromIndex, LONG_MIN_VALUE_BYTES.length);
+                            LONG_MIN_VALUE_BYTES, byteArrayBaseOffset(), 0, 0,
+                            buf, byteArrayBaseOffset(), stride, fromIndex, LONG_MIN_VALUE_BYTES.length);
         } else {
             writeLongToBytesIntl(i, fromIndex + length, buf, stride);
         }
@@ -416,10 +416,9 @@ final class NumberConversion {
 
     static void writeIntToBytes(Node location, int i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Integer.MIN_VALUE) {
-            // TODO: baseOffset
             TStringOps.arraycopyWithStride(location,
-                            INT_MIN_VALUE_BYTES, 0, 0, 0,
-                            buf, 0, stride, fromIndex, INT_MIN_VALUE_BYTES.length);
+                            INT_MIN_VALUE_BYTES, byteArrayBaseOffset(), 0, 0,
+                            buf, byteArrayBaseOffset(), stride, fromIndex, INT_MIN_VALUE_BYTES.length);
         } else {
             writeIntToBytesIntl(i, fromIndex + length, buf, stride);
         }

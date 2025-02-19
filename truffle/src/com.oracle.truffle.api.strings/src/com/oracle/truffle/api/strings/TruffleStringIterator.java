@@ -121,7 +121,7 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 public final class TruffleStringIterator {
 
     final AbstractTruffleString a;
-    final Object arrayA;
+    final byte[] arrayA;
     final long offsetA;
     final byte strideA;
     final byte codeRangeA;
@@ -129,7 +129,7 @@ public final class TruffleStringIterator {
     final TruffleString.ErrorHandling errorHandling;
     private int rawIndex;
 
-    TruffleStringIterator(AbstractTruffleString a, Object arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling, int rawIndex) {
+    TruffleStringIterator(AbstractTruffleString a, byte[] arrayA, long offsetA, int codeRangeA, Encoding encoding, TruffleString.ErrorHandling errorHandling, int rawIndex) {
         assert TSCodeRange.isCodeRange(codeRangeA);
         this.a = a;
         this.arrayA = arrayA;
