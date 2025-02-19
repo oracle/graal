@@ -1,56 +1,65 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.payload;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.summary.Summary;
 
 import java.util.Deque;
 import java.util.LinkedList;
 
 /**
- * Represents the call stack of an abstract interpretation analysis
- *
- * @param <Domain> the type of derived {@link AbstractDomain} the analysis is running on
+ * Represents a call stack used to manage stack frames during execution or analysis processes.
+ * This class provides functionality to push, pop, and query stack records. It also manages
+ * recursion depth and provides mechanisms to count recursive invocations of specified methods.
+ * Instances of this class are immutable with respect to their maximum recursion depth.
  */
-public final class CallStack<Domain extends AbstractDomain<Domain>> {
+public final class CallStack {
 
-    private final Deque<StackRecord<Domain>> callStack = new LinkedList<>();
+    private final Deque<AnalysisMethod> callStack = new LinkedList<>();
+    private final int maxRecursionDepth;
+    public static final int DEFAULT_MAX_RECURSION_DEPTH = 10;
 
-    public void push(StackRecord<Domain> stackRecord) {
-        callStack.push(stackRecord);
+    public CallStack(int maxRecursionDepth) {
+        this.maxRecursionDepth = maxRecursionDepth;
     }
 
-    public void push(AnalysisMethod method, Summary<Domain> preConditionSummary) {
-        callStack.push(new StackRecord<>(method, preConditionSummary));
+    public CallStack() {
+        this(10);
+    }
+
+    public void push(AnalysisMethod analysisMethod) {
+        callStack.push(analysisMethod);
     }
 
     public void pop() {
         callStack.pop();
     }
 
-    StackRecord<Domain> getCurrentStackRecord() {
+    public AnalysisMethod getCurrentAnalysisMethod() {
         return callStack.peek();
     }
 
-    AnalysisMethod getCurrentMethod() {
-        return getCurrentStackRecord().method();
+    public int getMaxRecursionDepth() {
+        return maxRecursionDepth;
     }
 
-    Summary<Domain> getCurrentPreConditionSummary() {
-        return getCurrentStackRecord().preConditionSummary();
+    public String getCallStackString() {
+        StringBuilder sb = new StringBuilder();
+        for (AnalysisMethod method : callStack) {
+            sb.append(method.getQualifiedName()).append(" -> ");
+        }
+        return sb.toString();
     }
 
     /**
-     * Counts the number of recursive calls of the specified method in the call stack.
+     * Counts the number of recursive calls of the specified analysisMethod in the call stack.
      *
-     * @param method the method to count recursive calls for
-     * @return the number of recursive calls of the specified method
+     * @param method the analysisMethod to count recursive calls for
+     * @return the number of recursive calls of the specified analysisMethod
      */
     public int countRecursiveCalls(AnalysisMethod method) {
         int count = 0;
         String qualifiedName = method.getQualifiedName();
-        for (StackRecord<Domain> record : callStack) {
-            if (record.method().getQualifiedName().equals(qualifiedName)) {
+        for (AnalysisMethod callStackMethod : callStack) {
+            if (callStackMethod.getQualifiedName().equals(qualifiedName)) {
                 count++;
             }
         }
@@ -59,17 +68,9 @@ public final class CallStack<Domain extends AbstractDomain<Domain>> {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (StackRecord<Domain> record : callStack) {
-            Summary<Domain> preConditionSummary = record.preConditionSummary();
-            sb.append("Method: ").append(record.method().toString()).append(", Summary: ");
-            if (preConditionSummary == null) {
-                sb.append("[ ]");
-            } else {
-                sb.append(record.preConditionSummary());
-            }
-            sb.append("\n");
-        }
-        return sb.toString();
+        return "CallStack{" +
+                "callStack=" + callStack +
+                ", maxRecursionDepth=" + maxRecursionDepth +
+                '}';
     }
 }
