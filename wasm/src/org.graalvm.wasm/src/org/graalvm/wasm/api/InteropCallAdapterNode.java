@@ -53,6 +53,7 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -71,6 +72,9 @@ import com.oracle.truffle.api.profiles.BranchProfile;
  * the call target to be reused by different functions of the same type (equivalence class).
  */
 public final class InteropCallAdapterNode extends RootNode {
+
+    private static final int MAX_UNROLL = 32;
+
     private final SymbolTable.FunctionType functionType;
     private final BranchProfile errorBranch = BranchProfile.create();
     @Child private WasmIndirectCallNode callNode;
@@ -105,7 +109,6 @@ public final class InteropCallAdapterNode extends RootNode {
         }
     }
 
-    @ExplodeLoop
     private Object[] validateArguments(Object[] arguments, int offset) throws ArityException, UnsupportedTypeException {
         final byte[] paramTypes = functionType.paramTypes();
         final int paramCount = paramTypes.length;
@@ -113,51 +116,65 @@ public final class InteropCallAdapterNode extends RootNode {
         if (arguments.length - offset != paramCount) {
             throw ArityException.create(paramCount, paramCount, arguments.length - offset);
         }
-        for (int i = 0; i < paramCount; i++) {
-            byte paramType = paramTypes[i];
-            Object value = arguments[i + offset];
-            switch (paramType) {
-                case WasmType.I32_TYPE -> {
-                    if (value instanceof Integer) {
-                        continue;
-                    }
-                }
-                case WasmType.I64_TYPE -> {
-                    if (value instanceof Long) {
-                        continue;
-                    }
-                }
-                case WasmType.F32_TYPE -> {
-                    if (value instanceof Float) {
-                        continue;
-                    }
-                }
-                case WasmType.F64_TYPE -> {
-                    if (value instanceof Double) {
-                        continue;
-                    }
-                }
-                case WasmType.V128_TYPE -> {
-                    if (value instanceof Vector128) {
-                        continue;
-                    }
-                }
-                case WasmType.FUNCREF_TYPE -> {
-                    if (value instanceof WasmFunctionInstance || value == WasmConstant.NULL) {
-                        continue;
-                    }
-                }
-                case WasmType.EXTERNREF_TYPE -> {
-                    continue;
-                }
-                default -> throw WasmException.create(Failure.UNKNOWN_TYPE);
+        if (CompilerDirectives.inCompiledCode() && paramCount <= MAX_UNROLL) {
+            validateArgumentsUnroll(arguments, offset, paramTypes, paramCount);
+        } else {
+            for (int i = 0; i < paramCount; i++) {
+                validateArgument(arguments, offset, paramTypes, i);
             }
-            throw UnsupportedTypeException.create(arguments);
         }
         return arguments;
     }
 
     @ExplodeLoop
+    private static void validateArgumentsUnroll(Object[] arguments, int offset, byte[] paramTypes, int paramCount) throws UnsupportedTypeException {
+        for (int i = 0; i < paramCount; i++) {
+            validateArgument(arguments, offset, paramTypes, i);
+        }
+    }
+
+    private static void validateArgument(Object[] arguments, int offset, byte[] paramTypes, int i) throws UnsupportedTypeException {
+        byte paramType = paramTypes[i];
+        Object value = arguments[i + offset];
+        switch (paramType) {
+            case WasmType.I32_TYPE -> {
+                if (value instanceof Integer) {
+                    return;
+                }
+            }
+            case WasmType.I64_TYPE -> {
+                if (value instanceof Long) {
+                    return;
+                }
+            }
+            case WasmType.F32_TYPE -> {
+                if (value instanceof Float) {
+                    return;
+                }
+            }
+            case WasmType.F64_TYPE -> {
+                if (value instanceof Double) {
+                    return;
+                }
+            }
+            case WasmType.V128_TYPE -> {
+                if (value instanceof Vector128) {
+                    return;
+                }
+            }
+            case WasmType.FUNCREF_TYPE -> {
+                if (value instanceof WasmFunctionInstance || value == WasmConstant.NULL) {
+                    return;
+                }
+            }
+            case WasmType.EXTERNREF_TYPE -> {
+                return;
+            }
+            default -> throw WasmException.create(Failure.UNKNOWN_TYPE);
+        }
+        throw UnsupportedTypeException.create(arguments);
+    }
+
     private Object multiValueStackAsArray(WasmLanguage language) {
         final var multiValueStack = language.multiValueStack();
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
@@ -168,22 +185,37 @@ public final class InteropCallAdapterNode extends RootNode {
         assert objectMultiValueStack.length >= resultCount;
         final Object[] values = new Object[resultCount];
         CompilerAsserts.partialEvaluationConstant(resultCount);
-        for (int i = 0; i < resultCount; i++) {
-            byte resultType = resultTypes[i];
-            values[i] = switch (resultType) {
-                case WasmType.I32_TYPE -> (int) primitiveMultiValueStack[i];
-                case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
-                case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
-                case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
-                case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
-                    Object obj = objectMultiValueStack[i];
-                    objectMultiValueStack[i] = null;
-                    yield obj;
-                }
-                default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
-            };
+        if (CompilerDirectives.inCompiledCode() && resultCount <= MAX_UNROLL) {
+            popMultiValueResultUnroll(values, primitiveMultiValueStack, objectMultiValueStack, resultTypes, resultCount);
+        } else {
+            for (int i = 0; i < resultCount; i++) {
+                values[i] = popMultiValueResult(primitiveMultiValueStack, objectMultiValueStack, resultTypes, i);
+            }
         }
         return InteropArray.create(values);
+    }
+
+    @ExplodeLoop
+    private static void popMultiValueResultUnroll(Object[] values, long[] primitiveMultiValueStack, Object[] objectMultiValueStack, byte[] resultTypes, int resultCount) {
+        for (int i = 0; i < resultCount; i++) {
+            values[i] = popMultiValueResult(primitiveMultiValueStack, objectMultiValueStack, resultTypes, i);
+        }
+    }
+
+    private static Object popMultiValueResult(long[] primitiveMultiValueStack, Object[] objectMultiValueStack, byte[] resultTypes, int i) {
+        final byte resultType = resultTypes[i];
+        return switch (resultType) {
+            case WasmType.I32_TYPE -> (int) primitiveMultiValueStack[i];
+            case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
+            case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
+            case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
+            case WasmType.V128_TYPE, WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
+                Object obj = objectMultiValueStack[i];
+                objectMultiValueStack[i] = null;
+                yield obj;
+            }
+            default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
+        };
     }
 
     // TODO: Do we need the 3 overrides below?
