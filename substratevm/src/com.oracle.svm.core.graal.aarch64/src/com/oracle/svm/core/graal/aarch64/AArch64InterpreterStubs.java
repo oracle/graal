@@ -71,7 +71,7 @@ import static jdk.vm.ci.aarch64.AArch64.v7;
 
 public class AArch64InterpreterStubs {
 
-    public static final Register TRAMPOLINE_ARGUMENT = AArch64.r10;
+    public static final Register TRAMPOLINE_ARGUMENT = AArch64.r12;
 
     public static class InterpreterEnterStubContext extends SubstrateAArch64Backend.SubstrateAArch64FrameContext {
 
@@ -167,7 +167,7 @@ public class AArch64InterpreterStubs {
         @Override
         public void leave(CompilationResultBuilder crb) {
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
-            Register callTarget = AArch64.r10;
+            Register callTarget = AArch64.r11;
 
             /* Save call target */
             masm.mov(64, callTarget, r0);
@@ -220,24 +220,26 @@ public class AArch64InterpreterStubs {
             /* Call into target method */
             masm.blr(callTarget);
 
-            Register resultCopy = AArch64.r8;
-            masm.mov(64, resultCopy, r0);
+            try (AArch64MacroAssembler.ScratchRegister scratchRegister = masm.getScratchRegister()) {
+                Register resultCopy = scratchRegister.getRegister();
+                masm.mov(64, resultCopy, r0);
 
-            /* Obtain stack size from deopt slot */
-            masm.ldr(64, r2, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 0));
+                /* Obtain stack size from deopt slot */
+                masm.ldr(64, r2, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 0));
 
-            /* Assumption of deopt slot encoding */
-            assert crb.target.stackAlignment == 0x10;
-            masm.lsr(64, r2, r2, DeoptimizationSlotPacking.POS_VARIABLE_FRAMESIZE - DeoptimizationSlotPacking.STACK_ALIGNMENT);
+                /* Assumption of deopt slot encoding */
+                assert crb.target.stackAlignment == 0x10;
+                masm.lsr(64, r2, r2, DeoptimizationSlotPacking.POS_VARIABLE_FRAMESIZE - DeoptimizationSlotPacking.STACK_ALIGNMENT);
 
-            /* Restore stack pointer */
-            masm.add(64, sp, sp, r2);
+                /* Restore stack pointer */
+                masm.add(64, sp, sp, r2);
 
-            /* Pointer InterpreterData struct */
-            masm.ldr(64, r0, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 0));
+                /* Pointer InterpreterData struct */
+                masm.ldr(64, r0, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, sp, 0));
 
-            /* Save gp ABI register into InterpreterData struct */
-            masm.str(64, resultCopy, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r0, offsetAbiGpRet()));
+                /* Save gp ABI register into InterpreterData struct */
+                masm.str(64, resultCopy, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r0, offsetAbiGpRet()));
+            }
 
             /* Save fp ABI register into InterpreterData struct */
             masm.fstr(64, v0, createImmediateAddress(64, IMMEDIATE_UNSIGNED_SCALED, r0, offsetAbiFpRet()));

@@ -28,7 +28,7 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMED
 import static jdk.graal.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
 import static jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.vm.ci.aarch64.AArch64.r10;
+import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
 import static jdk.vm.ci.aarch64.AArch64.r7;
@@ -89,7 +89,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
                         r5.asValue(),
                         r6.asValue(),
                         r7.asValue(),
-                        r10.asValue()};
+                        r11.asValue()};
     }
 
     @Override
@@ -102,7 +102,7 @@ public final class AArch64ArrayFillOp extends AArch64ComplexVectorOp {
             Register targetArray = r7;
             Register valueToFillWith = sc1.getRegister();
             Register numberOfElements = sc2.getRegister();
-            Register numberOfEightByteWords = r10;
+            Register numberOfEightByteWords = r11;
 
             Label fillElementsLabel = new Label();
             Label skipAlign1Label = new Label();
