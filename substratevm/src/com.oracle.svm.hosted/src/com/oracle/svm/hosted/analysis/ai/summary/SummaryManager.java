@@ -1,7 +1,8 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
 /**
@@ -13,24 +14,19 @@ import jdk.graal.compiler.nodes.Invoke;
 public record SummaryManager<Domain extends AbstractDomain<Domain>>(SummaryFactory<Domain> summaryFactory,
                                                                     SummaryCache<Domain> summaryCache) {
 
-    /**
-     * Creates a summary using the summary factory.
-     *
-     * @param invoke the invocation we are creating the summary for
-     * @param callerStateMap the abstract context we entered {@code invokeNode} with
-     * @return a {@link Summary} containing only the pre-condition of the summary
-     */
-    public Summary<Domain> createSummary(Invoke invoke, AbstractState<Domain> callerStateMap) {
-        return summaryFactory.createSummary(invoke, callerStateMap);
+    public SummaryManager(SummaryFactory<Domain> summaryFactory) {
+        this(summaryFactory, new SummaryCache<>());
     }
 
     /**
-     * Creates an empty summary using the summary factory.
+     * Creates a summary using the summary factory.
      *
-     * @return an empty {@link Summary} instance for the specified {@code Domain}
+     * @param invoke contains information about the invocation
+     * @param invokeNode the node where the invocation happens
+     * @param callerStateMap the abstract context of the caller at the invocation point
      */
-    public Summary<Domain> createEmptySummary() {
-        return summaryFactory.createEmptySummary();
+    public Summary<Domain> createSummary(Invoke invoke, Node invokeNode, AbstractStateMap<Domain> callerStateMap) {
+        return summaryFactory.createSummary(invoke, invokeNode, callerStateMap);
     }
 
     /**

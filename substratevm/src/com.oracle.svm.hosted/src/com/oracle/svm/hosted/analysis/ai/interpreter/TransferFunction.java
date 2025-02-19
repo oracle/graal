@@ -1,12 +1,10 @@
 package com.oracle.svm.hosted.analysis.ai.interpreter;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
+import com.oracle.svm.hosted.analysis.ai.analyzer.call.CallCallback;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
-import com.oracle.svm.hosted.analysis.ai.interpreter.call.CallInterpreter;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.ControlSplitNode;
-import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
@@ -16,31 +14,28 @@ import jdk.graal.compiler.nodes.cfg.HIRBlock;
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in the analysis
  */
-public record TransferFunction<Domain extends AbstractDomain<Domain>>(
-        NodeInterpreter<Domain> nodeInterpreter,
-        CallInterpreter<Domain> callInterpreter) {
+public record TransferFunction<Domain extends AbstractDomain<Domain>>(NodeInterpreter<Domain> nodeInterpreter,
+                                                                      CallCallback<Domain> analyzeDependencyCallback) {
 
     /**
      * Perform semantic transformation of the given {@link Node},
-     * NOTE: This method should modify the postCondition of node directly to avoid creating copies.
      *
      * @param node             to analyze
      * @param abstractStateMap current state of the analysis
+     *
+     * @return the {@link AbstractDomain} after analyzing the node
      */
-    public void analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap, AnalysisPayload<Domain> payload) {
-        nodeInterpreter.execNode(node, abstractStateMap);
-        if (node instanceof Invoke invoke) {
-            payload.getLogger().logToFile("Encountered invoke: " + invoke);
-            callInterpreter.execInvoke(invoke, node, abstractStateMap, payload);
-        }
+    public Domain analyzeNode(Node node, AbstractStateMap<Domain> abstractStateMap) {
+        Domain result = nodeInterpreter.execNode(node, abstractStateMap, analyzeDependencyCallback);
         abstractStateMap.incrementVisitCount(node);
+        return result;
     }
 
     /**
      * Perform semantic transformation of an edge between two {@link Node}s.
      * This is done because some nodes, like {@link ControlSplitNode},
      * have multiple outgoing edges and the destination node can't just simply join with the abstract domain of the source node.
-     * NOTE: This method should modify the precondition of the destination node directly, to avoid creating copies.
+     * NOTE: This analysisMethod should modify the precondition of the destination node directly, to avoid creating copies.
      *
      * @param sourceNode       the node from which the edge originates
      * @param destinationNode  the node to which the edge goes
@@ -52,7 +47,7 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(
 
     /**
      * Collect invariants from CFG predecessors of the given node (joining incoming states).
-     * NOTE: This method should modify the precondition of the destination node directly, to avoid creating copies.
+     * NOTE: This analysisMethod should modify the precondition of the destination node directly, to avoid creating copies.
      *
      * @param destinationNode  the node to which the edge goes
      * @param abstractStateMap current state of the analysis
@@ -83,13 +78,11 @@ public record TransferFunction<Domain extends AbstractDomain<Domain>>(
      *
      * @param block the block to analyze
      * @param abstractStateMap current state of the analysis
-     * @param payload the analysis payload
      */
-    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap, AnalysisPayload<Domain> payload) {
-        payload.getLogger().logToFile("Analyzing block: " + block);
+    public void analyzeBlock(HIRBlock block, AbstractStateMap<Domain> abstractStateMap) {
         for (Node node : block.getNodes()) {
             collectInvariantsFromPredecessors(node, abstractStateMap);
-            analyzeNode(node, abstractStateMap, payload);
+            analyzeNode(node, abstractStateMap);
         }
     }
 }
