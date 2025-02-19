@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.api.TruffleContext;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
@@ -57,12 +56,14 @@ import org.graalvm.wasm.nodes.WasmFixedMemoryImplFunctionNode;
 import org.graalvm.wasm.nodes.WasmFunctionRootNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 import org.graalvm.wasm.nodes.WasmMemoryOverheadModeFunctionRootNode;
+import org.graalvm.wasm.parser.bytecode.BytecodeParser;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
@@ -427,16 +428,33 @@ public class WasmInstantiator {
 
     private void instantiateCodeEntries(WasmContext context, WasmInstance instance) {
         final WasmModule module = instance.module();
-        final CodeEntry[] codeEntries = module.codeEntries();
-        if (codeEntries == null) {
+        // If code entries have already been instantiated, we don't need to reread them.
+        if (context.language().isMultiContext() && module.hasBeenInstantiated()) {
+            for (int functionIndex = 0; functionIndex != module.numFunctions(); ++functionIndex) {
+                WasmFunction function = module.symbolTable().function(functionIndex);
+                CallTarget target = function.target();
+                if (target != null) {
+                    instance.setTarget(functionIndex, target);
+                    context.linker().resolveCodeEntry(module, functionIndex);
+                }
+            }
             return;
+        }
+        CodeEntry[] codeEntries = module.codeEntries();
+        if (codeEntries == null) {
+            // Reread code sections if module is instantiated multiple times
+            BytecodeParser.readCodeEntries(module);
+            codeEntries = module.codeEntries();
         }
         for (int entry = 0; entry != codeEntries.length; ++entry) {
             CodeEntry codeEntry = codeEntries[entry];
             var callTarget = instantiateCodeEntry(context, module, instance, codeEntry);
             instance.setTarget(codeEntry.functionIndex(), callTarget);
-            context.linker().resolveCodeEntry(module, entry);
+            context.linker().resolveCodeEntry(module, codeEntry.functionIndex());
         }
+        // Remove code entries from module to reduce memory footprint at runtime
+        module.setCodeEntries(null);
+        module.setHasBeenInstantiated();
     }
 
     private static FrameDescriptor createFrameDescriptor(byte[] localTypes, int maxStackSize) {
