@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm.nodes;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.NeverDefault;
 
@@ -49,7 +51,7 @@ public final class WasmDirectCallNode extends WasmCallNode {
 
     WasmDirectCallNode(CallTarget target, int bytecodeOffset) {
         super(bytecodeOffset);
-        this.target = target;
+        this.target = Objects.requireNonNull(target);
     }
 
     public CallTarget getTarget() {
