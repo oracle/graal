@@ -80,6 +80,7 @@ import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -626,9 +627,17 @@ final class TStringInternalNodes {
             int regionLength = a.length() - extraOffsetRaw;
             int byteIndex = TStringOps.codePointIndexToByteIndexUTF8Valid(this, arrayA, regionOffset, regionLength, index);
             if (byteIndex < 0 || !isLength && byteIndex == regionLength) {
-                throw InternalErrors.indexOutOfBounds(regionLength, byteIndex);
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw debugException(a, regionOffset, regionLength, index, isLength, byteIndex);
             }
             return byteIndex;
+        }
+
+        @TruffleBoundary
+        private static RuntimeException debugException(AbstractTruffleString a, int regionOffset, int regionLength, int index, boolean isLength, int byteIndex) {
+            String msg = String.format("string: %s, regionOffset: %d, regionLength: %d, index: %d, isLength: %b, byteIndex: %d",
+                            a.toStringDebug(), regionOffset, regionLength, index, isLength, byteIndex);
+            return new IndexOutOfBoundsException(msg);
         }
 
         @Specialization(guards = {"isUTF8(encoding)", "isBroken(codeRangeA)"})
