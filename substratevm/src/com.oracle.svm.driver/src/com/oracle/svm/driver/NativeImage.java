@@ -646,12 +646,13 @@ public class NativeImage {
          */
         public List<Path> getBuilderModulePath() {
             List<Path> result = new ArrayList<>();
-            // Non-jlinked JDKs need truffle and word, collections, nativeimage on the
-            // module path since they don't have those modules as part of the JDK. Note
-            // that graal-sdk is now obsolete after the split in GR-43819 (#7171)
+            // Non-jlinked JDKs need truffle and word, collections, nativeimage,
+            // nativeimage-libgraal on the module path since they don't have those
+            // modules as part of the JDK. Note that graal-sdk is now obsolete
+            // after the split in GR-43819 (#7171)
             if (libJvmciDir != null) {
                 result.addAll(getJars(libJvmciDir, "enterprise-graal"));
-                result.addAll(getJars(libJvmciDir, "word", "collections", "nativeimage"));
+                result.addAll(getJars(libJvmciDir, "word", "collections", "nativeimage", "nativeimage-libgraal"));
             }
             if (modulePathBuild) {
                 result.addAll(createTruffleBuilderModulePath());
