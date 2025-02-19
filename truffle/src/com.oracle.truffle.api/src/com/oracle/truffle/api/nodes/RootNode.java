@@ -651,15 +651,15 @@ public abstract class RootNode extends ExecutableNode {
     /**
      * Provide a list of stack frames that led to a schedule of asynchronous execution of this root
      * node on the provided frame. The asynchronous frames are expected to be found here when
-     * {@link Env#getAsynchronousStackDepth()} is positive. The language is free to provide
-     * asynchronous frames or longer list of frames when it's of no performance penalty, or if
-     * requested by other options. This method is invoked on slow-paths only and with a context
+     * {@link TruffleLanguage#getAsynchronousStackDepth()} is positive. The language is free to
+     * provide asynchronous frames or longer list of frames when it's of no performance penalty, or
+     * if requested by other options. This method is invoked on slow-paths only and with a context
      * entered.
      *
      * @param frame A frame, never <code>null</code>
      * @return a list of {@link TruffleStackTraceElement}, or <code>null</code> when no asynchronous
      *         stack is available.
-     * @see Env#getAsynchronousStackDepth()
+     * @see TruffleLanguage#getAsynchronousStackDepth()
      * @since 20.1.0
      */
     protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {

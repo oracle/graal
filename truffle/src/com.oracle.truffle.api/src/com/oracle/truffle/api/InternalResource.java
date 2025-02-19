@@ -105,7 +105,7 @@ import org.graalvm.nativeimage.ImageInfo;
  *
  * The resource files are listed in the
  * {@code META-INF/resources/<language-id>/<resource-id>/<os>/<arch>/file-list} file. For the file
- * list format, refer to {@link InternalResource.Env#unpackFiles(Env, Path)}. Additionally, the
+ * list format, refer to {@link InternalResource#unpackFiles(Env, Path)}. Additionally, the
  * {@code META-INF/resources/<language-id>/<resource-id>/<os>/<arch>/sha256} file contains an
  * SHA-256 hash of the resource files. It is recommended to use non-encapsulated resource paths that
  * include the component ID and resource ID, as this helps prevent ambiguity when the language or
