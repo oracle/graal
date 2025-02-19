@@ -92,7 +92,7 @@ public abstract class Instruction {
      * {@link BytecodeNode}, it is therefore recommended to use {@link #getLocation()} instead
      * whenever possible.
      *
-     * @ee {@link #getLocation()}
+     * @see #getLocation()
      * @since 24.2
      */
     public abstract int getBytecodeIndex();
