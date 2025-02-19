@@ -85,8 +85,8 @@ public class SyncPortProcessor extends AbstractProcessor {
     static final String SYNC_PORT_CLASS_NAME = "jdk.graal.compiler.lir.SyncPort";
     static final String SYNC_PORTS_CLASS_NAME = "jdk.graal.compiler.lir.SyncPorts";
 
-    static final Pattern URL_PATTERN = Pattern.compile("^https://github.com/openjdk/jdk/blob/(?<commit>[0-9a-fA-F]{40})/(?<path>[-_./A-Za-z0-9]+)#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+)$");
-    static final Pattern URL_RAW_PATTERN = Pattern.compile("^https://raw.githubusercontent.com/openjdk/jdk/(?<commit>[0-9a-fA-F]{40})/$");
+    static final Pattern URL_PATTERN = Pattern.compile("^https://github.com/(?<user>[^/]+)/jdk/blob/(?<commit>[0-9a-fA-F]{40})/(?<path>[-_./A-Za-z0-9]+)#L(?<lineStart>[0-9]+)-L(?<lineEnd>[0-9]+)$");
+    static final Pattern URL_RAW_PATTERN = Pattern.compile("^https://raw.githubusercontent.com/(?<user>[^/]+)/jdk/(?<commit>[0-9a-fA-F]{40})/$");
 
     static final int DEFAULT_SEARCH_RANGE = 200;
 
@@ -128,6 +128,7 @@ public class SyncPortProcessor extends AbstractProcessor {
             return;
         }
 
+        String user = matcher.group("user");
         String commit = matcher.group("commit");
         String path = matcher.group("path");
         int lineStart = Integer.parseInt(matcher.group("lineStart"));
@@ -165,7 +166,7 @@ public class SyncPortProcessor extends AbstractProcessor {
 
             String extraMessage = "";
 
-            String urlOld = String.format("https://raw.githubusercontent.com/openjdk/jdk/%s/%s", commit, path);
+            String urlOld = String.format("https://raw.githubusercontent.com/%s/jdk/%s/%s", user, commit, path);
             String sha1Old = digest(proxy, md, urlOld, lineStart - 1, lineEnd);
 
             if (sha1.equals(sha1Old)) {
@@ -176,8 +177,8 @@ public class SyncPortProcessor extends AbstractProcessor {
                     if ("UNKNOWN".equals(latestCommit)) {
                         extraMessage = " The original code snippet is shifted.";
                     } else {
-                        String urlFormat = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d";
-                        String newUrl = String.format(urlFormat, latestCommit, path, idxInclusive, idxInclusive + (lineEnd - lineStart));
+                        String urlFormat = "https://github.com/%s/jdk/blob/%s/%s#L%d-L%d";
+                        String newUrl = String.format(urlFormat, user, latestCommit, path, idxInclusive, idxInclusive + (lineEnd - lineStart));
                         extraMessage = String.format("""
                                          The original code snippet is shifted. Update with:
                                         @SyncPort(from = "%s",
@@ -186,7 +187,7 @@ public class SyncPortProcessor extends AbstractProcessor {
                                         newUrl,
                                         sha1);
                         if (dumpUpdateCommands != null) {
-                            String oldUrl = String.format(urlFormat, commit, path, lineStart, lineEnd);
+                            String oldUrl = String.format(urlFormat, user, commit, path, lineStart, lineEnd);
                             assert !oldUrl.contains("+");
                             assert !newUrl.contains("+");
                             dumpUpdateCommands.printf("sed -i s+%s+%s+g $(git grep --files-with-matches %s)%n", oldUrl, newUrl, sha1);
@@ -195,11 +196,13 @@ public class SyncPortProcessor extends AbstractProcessor {
                 } else {
                     extraMessage = String.format("""
                                      See also:
-                                    https://github.com/openjdk/jdk/compare/%s...%s
-                                    https://github.com/openjdk/jdk/commits/%s/%s
+                                    https://github.com/%s/jdk/compare/%s...%s
+                                    https://github.com/%s/jdk/commits/%s/%s
                                     """,
+                                    user,
                                     commit,
                                     latestCommit,
+                                    user,
                                     latestCommit,
                                     path);
                     if (shouldDump) {
@@ -210,9 +213,10 @@ public class SyncPortProcessor extends AbstractProcessor {
             } else {
                 extraMessage = String.format("""
                                  New SyncPort? Then:
-                                @SyncPort(from = "https://github.com/openjdk/jdk/blob/%s/%s#L%d-L%d",
+                                @SyncPort(from = "https://github.com/%s/jdk/blob/%s/%s#L%d-L%d",
                                           sha1 = "%s")
                                 """,
+                                user,
                                 latestCommit,
                                 path,
                                 lineStart,
@@ -220,9 +224,10 @@ public class SyncPortProcessor extends AbstractProcessor {
                                 sha1Latest);
             }
             env().getMessager().printMessage(kind,
-                            String.format("Sha1 digest of %s (ported by %s) does not match https://github.com/openjdk/jdk/blob%s/%s#L%d-L%d : expected %s but was %s.%s",
+                            String.format("Sha1 digest of %s (ported by %s) does not match https://github.com/%s/jdk/blob%s/%s#L%d-L%d : expected %s but was %s.%s",
                                             from,
                                             toString(element),
+                                            user,
                                             isURLOverwritten ? "/" + latestCommit : "/master",
                                             path,
                                             lineStart,
