@@ -1,4 +1,4 @@
-package com.oracle.svm.hosted.analysis.ai.log;
+package com.oracle.svm.hosted.analysis.ai.util;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import jdk.graal.compiler.debug.DebugContext;
@@ -12,17 +12,15 @@ import java.util.Date;
 /**
  * Represents a logger for abstract interpretation analysis.
  */
-public class AbstractInterpretationLogger {
+public final class AbstractInterpretationLogger {
+
+    private static AbstractInterpretationLogger instance;
 
     private final String fileName;
     private final PrintWriter fileWriter;
     private final DebugContext debugContext;
 
-    public AbstractInterpretationLogger(AnalysisMethod method, DebugContext debugContext) throws IOException {
-        this(method, debugContext, null);
-    }
-
-    public AbstractInterpretationLogger(AnalysisMethod method, DebugContext debugContext, String customFileName) throws IOException {
+    private AbstractInterpretationLogger(AnalysisMethod method, DebugContext debugContext, String customFileName) throws IOException {
         if (customFileName != null && !customFileName.isEmpty()) {
             this.fileName = customFileName + ".log";
         } else {
@@ -31,6 +29,20 @@ public class AbstractInterpretationLogger {
         }
         this.fileWriter = new PrintWriter(new FileWriter(fileName, true));
         this.debugContext = debugContext;
+    }
+
+    public static AbstractInterpretationLogger getInstance(AnalysisMethod method, DebugContext debugContext, String customFileName) throws IOException {
+        if (instance == null) {
+            instance = new AbstractInterpretationLogger(method, debugContext, customFileName);
+        }
+        return instance;
+    }
+
+    public static AbstractInterpretationLogger getInstance() {
+        if (instance == null) {
+            throw new IllegalStateException("Logger not initialized. Call getInstance(AnalysisMethod, DebugContext, String) first.");
+        }
+        return instance;
     }
 
     public String fileName() {
