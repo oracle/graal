@@ -626,7 +626,7 @@ final class TStringInternalNodes {
             int regionLength = a.length() - extraOffsetRaw;
             int byteIndex = TStringOps.codePointIndexToByteIndexUTF8Valid(this, arrayA, regionOffset, regionLength, index);
             if (byteIndex < 0 || !isLength && byteIndex == regionLength) {
-                throw InternalErrors.indexOutOfBounds();
+                throw InternalErrors.indexOutOfBounds(regionLength, byteIndex);
             }
             return byteIndex;
         }
@@ -654,7 +654,7 @@ final class TStringInternalNodes {
             int regionLength = a.length() - extraOffsetRaw;
             int result = TStringOps.codePointIndexToByteIndexUTF16Valid(this, arrayA, regionOffset, regionLength, index);
             if (result < 0 || !isLength && result == regionLength) {
-                throw InternalErrors.indexOutOfBounds();
+                throw InternalErrors.indexOutOfBounds(regionLength, result);
             }
             return result;
         }
@@ -703,10 +703,11 @@ final class TStringInternalNodes {
         }
 
         static int atEnd(AbstractTruffleString a, int extraOffsetRaw, int index, boolean isLength, int cpi) {
+            int regionLength = a.length() - extraOffsetRaw;
             if (isLength && cpi == index) {
-                return a.length() - extraOffsetRaw;
+                return regionLength;
             }
-            throw InternalErrors.indexOutOfBounds();
+            throw InternalErrors.indexOutOfBounds(regionLength, index);
         }
     }
 

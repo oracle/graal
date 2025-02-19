@@ -460,23 +460,23 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     static int rawIndex(int byteIndex, TruffleString.Encoding expectedEncoding) {
         if (isUTF16(expectedEncoding) && (byteIndex & 1) != 0) {
-            throw InternalErrors.illegalArgument("misaligned byte index on UTF-16 string");
+            throw InternalErrors.illegalArgument("misaligned byte index %d on UTF-16 string", byteIndex);
         } else if (isUTF32(expectedEncoding) && (byteIndex & 3) != 0) {
-            throw InternalErrors.illegalArgument("misaligned byte index on UTF-32 string");
+            throw InternalErrors.illegalArgument("misaligned byte index %d on UTF-32 string", byteIndex);
         }
         return byteIndex >> expectedEncoding.naturalStride;
     }
 
     static int rawIndexUTF16(int byteIndex) {
         if ((byteIndex & 1) != 0) {
-            throw InternalErrors.illegalArgument("misaligned byte index on UTF-16 string");
+            throw InternalErrors.illegalArgument("misaligned byte index %d on UTF-16 string", byteIndex);
         }
         return byteIndex >> Encoding.UTF_16.naturalStride;
     }
 
     static int rawIndexUTF32(int byteIndex) {
         if ((byteIndex & 3) != 0) {
-            throw InternalErrors.illegalArgument("misaligned byte index on UTF-32 string");
+            throw InternalErrors.illegalArgument("misaligned byte index %d on UTF-32 string", byteIndex);
         }
         return byteIndex >> Encoding.UTF_32.naturalStride;
     }
@@ -518,7 +518,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     final void boundsCheckRawLength(int index) {
         if (Integer.compareUnsigned(index, length()) > 0) {
-            throw InternalErrors.indexOutOfBounds();
+            throw InternalErrors.indexOutOfBounds(length(), index);
         }
     }
 
@@ -533,21 +533,21 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
     static void boundsCheckI(int index, int arrayLength) {
         assert arrayLength >= 0;
         if (Integer.compareUnsigned(index, arrayLength) >= 0) {
-            throw InternalErrors.indexOutOfBounds();
+            throw InternalErrors.indexOutOfBounds(arrayLength, index);
         }
     }
 
     static void boundsCheckI(int fromIndex, int toIndex, int arrayLength) {
         assert arrayLength >= 0;
         if (Integer.compareUnsigned(fromIndex, arrayLength) >= 0 || Integer.compareUnsigned(toIndex, arrayLength) > 0) {
-            throw InternalErrors.indexOutOfBounds();
+            throw InternalErrors.indexRegionOutOfBounds(arrayLength, fromIndex, toIndex);
         }
     }
 
     static void boundsCheckRegionI(int fromIndex, int regionLength, int arrayLength) {
         assert arrayLength >= 0;
         if (Integer.toUnsignedLong(fromIndex) + Integer.toUnsignedLong(regionLength) > arrayLength) {
-            throw InternalErrors.indexOutOfBounds();
+            throw InternalErrors.regionOutOfBounds(arrayLength, fromIndex, regionLength);
         }
     }
 
@@ -561,13 +561,13 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     static void checkByteLengthUTF16(int byteLength) {
         if ((byteLength & 1) != 0) {
-            throw InternalErrors.illegalByteArrayLength("UTF-16 string byte length is not a multiple of 2");
+            throw InternalErrors.illegalByteArrayLength("UTF-16 string byte length (%d) is not a multiple of 2", byteLength);
         }
     }
 
     static void checkByteLengthUTF32(int byteLength) {
         if ((byteLength & 3) != 0) {
-            throw InternalErrors.illegalByteArrayLength("UTF-32 string byte length is not a multiple of 4");
+            throw InternalErrors.illegalByteArrayLength("UTF-32 string byte length (%d) is not a multiple of 4", byteLength);
         }
     }
 
@@ -577,7 +577,7 @@ public abstract sealed class AbstractTruffleString permits TruffleString, Mutabl
 
     static void checkArrayRange(int arrayLength, int byteOffset, int byteLength) {
         if (Integer.toUnsignedLong(byteOffset) + Integer.toUnsignedLong(byteLength) > arrayLength) {
-            throw InternalErrors.substringOutOfBounds();
+            throw InternalErrors.regionOutOfBounds(arrayLength, byteOffset, byteLength);
         }
     }
 
