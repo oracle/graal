@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1148,6 +1148,7 @@ public final class Meta extends ContextAccessImpl
             java_lang_module_ModuleFinder_compose = java_lang_module_ModuleFinder.requireDeclaredMethod(Names.compose, Signatures.ModuleFinder_ModuleFinder_array);
             jdk_internal_module_Modules = knownKlass(Types.jdk_internal_module_Modules);
             jdk_internal_module_Modules_defineModule = jdk_internal_module_Modules.requireDeclaredMethod(Names.defineModule, Signatures.Module_ClassLoader_ModuleDescriptor_URI);
+            jdk_internal_module_Modules_transformedByAgent = jdk_internal_module_Modules.requireDeclaredMethod(Names.transformedByAgent, Signatures._void_Module);
         } else {
             jdk_internal_module_ModuleLoaderMap = null;
             jdk_internal_module_ModuleLoaderMap_bootModules = null;
@@ -1161,6 +1162,7 @@ public final class Meta extends ContextAccessImpl
             java_lang_module_ModuleFinder_compose = null;
             jdk_internal_module_Modules = null;
             jdk_internal_module_Modules_defineModule = null;
+            jdk_internal_module_Modules_transformedByAgent = null;
         }
 
         if (getJavaVersion().java20OrLater()) {
@@ -1285,7 +1287,13 @@ public final class Meta extends ContextAccessImpl
                             .method(VERSION_9_OR_HIGHER, Names.transform, Signatures._byte_array_Module_ClassLoader_String_Class_ProtectionDomain_byte_array_boolean) //
                             .method(sun_instrument_InstrumentationImpl);
         }
-
+        java_lang_instrument_ClassDefinition = loadPlatformKlassOrNull(Types.java_lang_instrument_ClassDefinition);
+        if (java_lang_instrument_ClassDefinition != null) {
+            java_lang_instrument_UnmodifiableClassException = knownPlatformKlass(Types.java_lang_instrument_UnmodifiableClassException);
+            java_lang_instrument_ClassDefinition_getDefinitionClass = java_lang_instrument_ClassDefinition.requireDeclaredMethod(Names.getDefinitionClass, Signatures.Class);
+            java_lang_instrument_ClassDefinition_getDefinitionClassFile = java_lang_instrument_ClassDefinition.requireDeclaredMethod(Names.getDefinitionClassFile,
+                            Signatures._byte_array);
+        }
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEspressoEnv().Polyglot;
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
@@ -1840,6 +1848,7 @@ public final class Meta extends ContextAccessImpl
     public final Method java_lang_module_ModuleFinder_compose;
     public final ObjectKlass jdk_internal_module_Modules;
     public final Method jdk_internal_module_Modules_defineModule;
+    public final Method jdk_internal_module_Modules_transformedByAgent;
 
     // Interop conversions.
     public final ObjectKlass java_time_Duration;
@@ -2029,6 +2038,10 @@ public final class Meta extends ContextAccessImpl
     @CompilationFinal public Method sun_instrument_InstrumentationImpl_init;
     @CompilationFinal public Method sun_instrument_InstrumentationImpl_loadClassAndCallPremain;
     @CompilationFinal public Method sun_instrument_InstrumentationImpl_transform;
+    @CompilationFinal public ObjectKlass java_lang_instrument_ClassDefinition;
+    @CompilationFinal public Method java_lang_instrument_ClassDefinition_getDefinitionClass;
+    @CompilationFinal public Method java_lang_instrument_ClassDefinition_getDefinitionClassFile;
+    @CompilationFinal public ObjectKlass java_lang_instrument_UnmodifiableClassException;
 
     public final class ContinuumSupport {
         public final Method org_graalvm_continuations_ContinuationImpl_run;

@@ -29,6 +29,7 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.Attributes;
@@ -39,11 +40,16 @@ import org.graalvm.options.OptionMap;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -52,6 +58,8 @@ import com.oracle.truffle.espresso.substitutions.Target_sun_instrument_Instrumen
 public final class JavaAgents extends ContextAccessImpl {
     @CompilationFinal(dimensions = 1) private JavaAgent[] agents;
     private boolean hasTransformers = false;
+    private boolean hasReTransformers = false;
+    private boolean hasNativePrefixes = false;
 
     private JavaAgents(EspressoContext context, List<String> agentOptions) {
         super(context);
@@ -116,42 +124,29 @@ public final class JavaAgents extends ContextAccessImpl {
          * class path, and if the Boot-Class-Path attribute is present then all relative URLs in the
          * value are processed to create boot class path segments to append to the boot class path.
          */
-        JarFile jarFile = new JarFile(jarPath.toFile());
-        Attributes mainAttributes = jarFile.getManifest().getMainAttributes();
+        try (JarFile jarFile = new JarFile(jarPath.toFile())) {
+            Attributes mainAttributes = jarFile.getManifest().getMainAttributes();
 
-        // If we encounter any unsupported features, we don't enable the agent. Enabling agents with
-        // unsupported features might cause fatal runtime exceptions.
+            // Can-Redefine-Classes
+            boolean canRedefine = "true".equals(mainAttributes.getValue("Can-Redefine-Classes"));
+            // Can-Retransform-Classes
+            boolean canRetransform = "true".equals(mainAttributes.getValue("Can-Retransform-Classes"));
+            // Can-Set-Native-Method-Prefix
+            boolean canSetNativePrefix = "true".equals(mainAttributes.getValue("Can-Set-Native-Method-Prefix"));
 
-        // Can-Redefine-Classes
-        if ("true".equals(mainAttributes.getValue("Can-Redefine-Classes"))) {
-            getContext().getLogger().warning("Espresso doesn't support redefining classes from Java agents. Java agent: " + jarFile.getName() + " will not be enabled");
-            return null;
+            // Premain-Class
+            String preMainClass = mainAttributes.getValue("Premain-Class");
+            if (preMainClass == null) {
+                throw getContext().abort("Failed to find Premain-Class manifest attribute in " + jarFile.getName());
+            }
+            // Boot-Class-Path
+            String appendToBootClassPath = mainAttributes.getValue("Boot-Class-Path");
+            // append to the boot classpath if attribute is set
+            if (appendToBootClassPath != null) {
+                appendToBootClassPath(appendToBootClassPath, jarPath);
+            }
+            return new JavaAgent(jarPath, agentOptions, preMainClass, canRedefine, canRetransform, canSetNativePrefix);
         }
-
-        // Can-Retransform-Classes
-        if ("true".equals(mainAttributes.getValue("Can-Retransform-Classes"))) {
-            getContext().getLogger().warning("Espresso doesn't support retransforming classes from Java agents. Java agent: " + jarFile.getName() + " will not be enabled");
-            return null;
-        }
-
-        // Can-Set-Native-Method-Prefix
-        if ("true".equals(mainAttributes.getValue("Can-Set-Native-Method-Prefix"))) {
-            getContext().getLogger().warning("Espresso doesn't support setting native prefix defined in Java agents. Java agent: " + jarFile.getName() + " will not be enabled");
-            return null;
-        }
-        // Premain-Class
-        String preMainClass = mainAttributes.getValue("Premain-Class");
-        if (preMainClass == null) {
-            throw getContext().abort("Failed to find Premain-Class manifest attribute in " + jarFile.getName());
-        }
-
-        // Boot-Class-Path
-        String appendToBootClassPath = mainAttributes.getValue("Boot-Class-Path");
-        // append to the boot classpath if attribute is set
-        if (appendToBootClassPath != null) {
-            appendToBootClassPath(appendToBootClassPath, jarPath);
-        }
-        return new JavaAgent(jarPath, agentOptions, preMainClass);
     }
 
     @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "agentJarPath passed always has a parent path.")
@@ -207,15 +202,15 @@ public final class JavaAgents extends ContextAccessImpl {
                 getMeta().sun_instrument_InstrumentationImpl_init.invokeDirectSpecial(
                                 guestInstrument,
                                 /* agent ID */ (long) i,
-                                /* canRedefineClasses */ false,
-                                /* native prefix */ false,
+                                initializedAgent.canRedefine,
+                                initializedAgent.canSetNativePrefix,
                                 /* print warning */ false);
             } else {
                 getMeta().sun_instrument_InstrumentationImpl_init.invokeDirectSpecial(
                                 guestInstrument,
                                 /* agent ID */ (long) i,
-                                /* canRedefineClasses */ false,
-                                /* native prefix */ false);
+                                initializedAgent.canRedefine,
+                                initializedAgent.canSetNativePrefix);
             }
             initializedAgent.setInstrumentation(guestInstrument);
         }
@@ -241,7 +236,7 @@ public final class JavaAgents extends ContextAccessImpl {
         return agents[agentId].jarPath.toString();
     }
 
-    public void setHasTransformer(int agentId, boolean has) {
+    public void setHasTransformers(int agentId, boolean has) {
         agents[agentId].setHasTransformer(has);
         if (has) {
             hasTransformers = true;
@@ -261,40 +256,196 @@ public final class JavaAgents extends ContextAccessImpl {
         }
     }
 
-    public boolean hasTransformer() {
-        return hasTransformers;
+    public boolean hasTransformers() {
+        return hasTransformers || hasReTransformers;
     }
 
-    public byte[] transformClass(
+    public void setHasRetransformers(int agentId, boolean has) {
+        agents[agentId].setHasRetransformer(has);
+        if (has) {
+            hasReTransformers = true;
+        } else {
+            // slow check if any agent still has reTransformer
+            // if not, clear the "global" hasReTransformers
+            boolean anyAgentHasReTransformers = false;
+            for (JavaAgent agent : agents) {
+                if (agent.hasReTransformer) {
+                    anyAgentHasReTransformers = true;
+                    break;
+                }
+            }
+            if (!anyAgentHasReTransformers) {
+                hasReTransformers = false;
+            }
+        }
+    }
+
+    public boolean isRetransformSupported(int agentId) {
+        return agents[agentId].canRetransform;
+    }
+
+    public void retransformClasses(Klass[] klasses) {
+        RedefineInfo[] redefineInfos = new RedefineInfo[klasses.length];
+        for (int i = 0; i < klasses.length; i++) {
+            Klass klass = klasses[i];
+            redefineInfos[i] = new RedefineInfo(klass, retransformClass(klass));
+        }
+        // install the new bytes by redefinition
+        getContext().getClassRedefinition().redefineClasses(redefineInfos, false);
+    }
+
+    private byte[] retransformClass(Klass klass) {
+        byte[] retransformBytes = getContext().getRegistries().getClassRegistry(klass.getDefiningClassLoader()).getRetransformBytes(klass);
+        return applyRetransformers(klass.mirror(), klass.module().module(), klass.getDefiningClassLoader(), klass.getType(), klass.protectionDomain(), retransformBytes);
+    }
+
+    public byte[] transformClass(Klass klass, byte[] bytes) {
+        byte[] retransformBytes = applyTransformers(klass.mirror(), klass.module().module(), klass.getDefiningClassLoader(), klass.getType(), klass.protectionDomain(), bytes);
+        return applyRetransformers(klass.mirror(), klass.module().module(), klass.getDefiningClassLoader(), klass.getType(), klass.protectionDomain(), retransformBytes);
+    }
+
+    public byte[] applyTransformers(
+                    StaticObject classBeingRedefined,
                     StaticObject module,
                     StaticObject loader,
                     Symbol<Type> typeOrNull,
                     StaticObject protectionDomain,
                     byte[] bytes) {
+        if (!hasTransformers) {
+            // either no transformers added by agents, or we're in the bootstrap process
+            return bytes;
+        }
         // get the guest class internal class name once outside the loop
         StaticObject className = typeOrNull == null ? StaticObject.NULL : getMeta().toGuestString(TypeSymbols.typeToName(typeOrNull));
-        StaticObject wrappedBytes = StaticObject.wrap(bytes, getMeta());
-        // transform bytes in sequence
+        StaticObject wrappedBytes;
+
+        wrappedBytes = StaticObject.wrap(bytes, getMeta());
         for (JavaAgent agent : agents) {
-            StaticObject result = agent.transformClass(getMeta(), module, loader, className, protectionDomain, wrappedBytes);
-            if (result != StaticObject.NULL) {
-                wrappedBytes = result;
+            // short-circuit if no transformers registered with this agent - no reason to call
+            // into the guest
+            if (agent.hasTransformer) {
+                StaticObject result = agent.transformClass(getMeta(), classBeingRedefined, module, loader, className, protectionDomain, wrappedBytes, false);
+                if (StaticObject.notNull(result)) {
+                    wrappedBytes = result;
+                }
             }
         }
         return wrappedBytes.unwrap(getLanguage());
+    }
+
+    public byte[] applyRetransformers(
+                    StaticObject classBeingRedefined,
+                    StaticObject module,
+                    StaticObject loader,
+                    Symbol<Type> typeOrNull,
+                    StaticObject protectionDomain,
+                    byte[] bytes) {
+        if (!hasReTransformers) {
+            // either no retransformers added by agents, or we're in the bootstrap process
+            return bytes;
+        }
+
+        // get the guest class internal class name once outside the loop
+        StaticObject className = typeOrNull == null ? StaticObject.NULL : getMeta().toGuestString(TypeSymbols.typeToName(typeOrNull));
+        StaticObject wrappedBytes = StaticObject.wrap(bytes, getMeta());
+        // then transformation applies all retransformation capable transformers
+        for (JavaAgent agent : agents) {
+            // short-circuit if no retransformers registered with this agent - no reason to call
+            // into the guest
+            if (agent.hasReTransformer) {
+                StaticObject result = agent.transformClass(getMeta(), classBeingRedefined, module, loader, className, protectionDomain, wrappedBytes, true);
+                if (StaticObject.notNull(result)) {
+                    wrappedBytes = result;
+                }
+            }
+        }
+        return wrappedBytes.unwrap(getLanguage());
+    }
+
+    public void setNativePrefixes(int agentId, Symbol<Name>[] prefixes) {
+        agents[agentId].nativePrefixes = prefixes;
+        hasNativePrefixes = true;
+    }
+
+    @TruffleBoundary
+    public Symbol<Name> resolveMethodNameFromPrefixes(Symbol<Name> originalName) {
+        if (!hasNativePrefixes) {
+            return originalName;
+        }
+        ByteSequence resolvedName = originalName;
+        // starting from the original method name which might include one or more prefixes,
+        // strip the prefix in order, for each agent, if present
+        Symbol<Name>[] allNativePrefixes = getAllNativePrefixes();
+        for (int i = allNativePrefixes.length - 1; i >= 0; i--) {
+            Symbol<Name> prefix = allNativePrefixes[i];
+            if (resolvedName.contentStartsWith(prefix)) {
+                resolvedName = resolvedName.subSequence(prefix.length(), resolvedName.length() - prefix.length());
+            }
+        }
+        return getContext().getNames().getOrCreate(resolvedName);
+    }
+
+    @TruffleBoundary
+    @SuppressWarnings({"unchecked"})
+    public Symbol<Name>[] getAllNativePrefixes() {
+        if (!hasNativePrefixes) {
+            return Symbol.EMPTY_ARRAY;
+        }
+        ArrayList<Symbol<Name>> prefixes = new ArrayList<>();
+        for (JavaAgent agent : agents) {
+            prefixes.addAll(Arrays.asList(agent.nativePrefixes));
+        }
+        return prefixes.toArray(Symbol.EMPTY_ARRAY);
+    }
+
+    public boolean hasNativePrefixes() {
+        return hasNativePrefixes;
+    }
+
+    public boolean shouldEnableRedefinition() {
+        // check if at least one agent can redefine or retransform
+        for (JavaAgent agent : agents) {
+            if (agent.canRedefine || agent.canRetransform) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void grantReadAccessToUnnamedModules(ModuleTable.ModuleEntry module) {
+        if (module != null && module.isNamed() && !module.hasDefaultReads()) {
+            synchronized (module) {
+                if (module.hasDefaultReads()) {
+                    // we lost the race, so nothing to do
+                    return;
+                }
+                getContext().getMeta().jdk_internal_module_Modules_transformedByAgent.invokeDirect(module.module());
+                // no reason to call into guest for a module more than once,
+                // so flip the hasDefaultReads flag
+                module.setHasDefaultReads();
+            }
+        }
     }
 
     private static final class JavaAgent {
         private final Path jarPath;
         private final String agentOptions;
         private final String preMainClass;
+        private final boolean canRedefine;
+        private final boolean canRetransform;
+        private final boolean canSetNativePrefix;
         private boolean hasTransformer;
+        private boolean hasReTransformer;
         private StaticObject instrumentation;
+        @SuppressWarnings({"unchecked"}) private Symbol<Name>[] nativePrefixes = Symbol.EMPTY_ARRAY;
 
-        private JavaAgent(Path jarPath, String agentOptions, String preMainClass) {
+        private JavaAgent(Path jarPath, String agentOptions, String preMainClass, boolean canRedefine, boolean canRetransform, boolean canSetNativePrefix) {
             this.jarPath = jarPath;
             this.agentOptions = agentOptions;
             this.preMainClass = preMainClass;
+            this.canRedefine = canRedefine;
+            this.canRetransform = canRetransform;
+            this.canSetNativePrefix = canSetNativePrefix;
         }
 
         public Path getJarPath() {
@@ -309,26 +460,31 @@ public final class JavaAgents extends ContextAccessImpl {
             this.hasTransformer = has;
         }
 
-        public StaticObject transformClass(Meta meta, StaticObject module, StaticObject loader, @JavaType(String.class) StaticObject className, StaticObject protectionDomain, StaticObject bytes) {
+        public void setHasRetransformer(boolean has) {
+            this.hasReTransformer = has;
+        }
+
+        public StaticObject transformClass(Meta meta, StaticObject classBeingRedefined, StaticObject module, StaticObject loader, @JavaType(String.class) StaticObject className,
+                        StaticObject protectionDomain, StaticObject bytes, boolean isRetransformer) {
             if (meta.getContext().getJavaVersion().java9OrLater()) {
                 return (StaticObject) meta.sun_instrument_InstrumentationImpl_transform.invokeDirectSpecial(
                                 instrumentation,
                                 module,
                                 loader,
                                 className,
-                                StaticObject.NULL, /* class being redefined */
+                                classBeingRedefined,
                                 protectionDomain,
                                 bytes,
-                                false /* isRetransformer */);
+                                isRetransformer);
             } else { // no modules in JDK 8
                 return (StaticObject) meta.sun_instrument_InstrumentationImpl_transform.invokeDirectSpecial(
                                 instrumentation,
                                 loader,
                                 className,
-                                StaticObject.NULL, /* class being redefined */
+                                classBeingRedefined,
                                 protectionDomain,
                                 bytes,
-                                false /* isRetransformer */);
+                                isRetransformer);
             }
         }
     }

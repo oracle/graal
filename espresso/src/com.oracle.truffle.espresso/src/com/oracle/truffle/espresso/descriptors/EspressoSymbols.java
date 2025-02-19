@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,8 @@ public class EspressoSymbols {
         public static final Symbol<Type> jdk_internal_loader_NativeLibraries = SYMBOLS.putType("Ljdk/internal/loader/NativeLibraries;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = SYMBOLS.putType("Lsun/misc/Launcher$ExtClassLoader;");
         public static final Symbol<Type> sun_instrument_InstrumentationImpl = SYMBOLS.putType("Lsun/instrument/InstrumentationImpl;");
+        public static final Symbol<Type> java_lang_instrument_ClassDefinition = SYMBOLS.putType("Ljava/lang/instrument/ClassDefinition;");
+        public static final Symbol<Type> java_lang_instrument_UnmodifiableClassException = SYMBOLS.putType("Ljava/lang/instrument/UnmodifiableClassException;");
         public static final Symbol<Type> jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = SYMBOLS.putType("Ljdk/internal/loader/RawNativeLibraries$RawNativeLibraryImpl;");
         public static final Symbol<Type> jdk_internal_util_ArraysSupport = SYMBOLS.putType("Ljdk/internal/util/ArraysSupport;");
         public static final Symbol<Type> java_io_InputStream = SYMBOLS.putType("Ljava/io/InputStream;");
@@ -524,6 +526,8 @@ public class EspressoSymbols {
         // java agents premain
         public static final Symbol<Name> loadClassAndCallPremain = SYMBOLS.putName("loadClassAndCallPremain");
         public static final Symbol<Name> transform = SYMBOLS.putName("transform");
+        public static final Symbol<Name> getDefinitionClass = SYMBOLS.putName("getDefinitionClass");
+        public static final Symbol<Name> getDefinitionClassFile = SYMBOLS.putName("getDefinitionClassFile");
         public static final Symbol<Name> appendToClassPathForInstrumentation = SYMBOLS.putName("appendToClassPathForInstrumentation");
 
         public static final Symbol<Name> main = SYMBOLS.putName("main");
@@ -935,6 +939,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> descriptor = SYMBOLS.putName("descriptor");
         public static final Symbol<Name> ofSystem = SYMBOLS.putName("ofSystem");
         public static final Symbol<Name> defineModule = SYMBOLS.putName("defineModule");
+        public static final Symbol<Name> transformedByAgent = SYMBOLS.putName("transformedByAgent");
         // Continuations
         public static final Symbol<Name> suspend = SYMBOLS.putName("suspend");
         public static final Symbol<Name> stackFrameHead = SYMBOLS.putName("stackFrameHead");
