@@ -120,7 +120,7 @@ public class SourceOptionsTest {
                             IllegalArgumentException.class, (e) -> {
                                 assertEquals("""
                                                 Failed to parse source option 'invalid-component.option=43': Could not find option with name invalid-component.option.
-                                                 """.trim(), e.getMessage());
+                                                """.trim(), e.getMessage());
                             });
 
             assertFails(() -> c.eval(Source.newBuilder(SourceOptionsOtherLanguage.ID, OTHER_STABLE_OPTION_NAME, "test").option(SourceOptionsTestLanguage.ID + ".invalid-option", "43").buildLiteral()),
@@ -174,7 +174,7 @@ public class SourceOptionsTest {
                             IllegalArgumentException.class, (e) -> {
                                 assertEquals("""
                                                 Failed to parse source option 'SourceOptionsTest_SourceOptionsTestInstrument.StableOption=not-a-number': For input string: "not-a-number"
-                                                 """.trim(), e.getMessage());
+                                                """.trim(), e.getMessage());
                             });
         }
     }
@@ -212,7 +212,7 @@ public class SourceOptionsTest {
                             IllegalArgumentException.class, (e) -> {
                                 assertEquals("""
                                                 Failed to parse source option 'SourceOptionsTest_SourceOptionsTestLanguage.StableOption=not-a-number': For input string: "not-a-number"
-                                                 """.trim(), e.getMessage());
+                                                """.trim(), e.getMessage());
                             });
         }
     }
