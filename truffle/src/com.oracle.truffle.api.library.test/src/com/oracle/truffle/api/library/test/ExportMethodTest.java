@@ -452,6 +452,9 @@ public class ExportMethodTest extends AbstractLibraryTest {
             return "foo1";
         }
 
+        private static String foo2() {
+            return "foo2";
+        }
     }
 
     @ExpectError("Exported library ExportsTestLibrary3 does not export any messages and therefore has no effect. Remove the export declaration to resolve this.")
