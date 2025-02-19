@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.pltgot.aarch64;
 
 import java.lang.reflect.Method;
 
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.core.pltgot.aarch64.AArch64ExitMethodAddressResolutionOp;
 import com.oracle.svm.core.pltgot.aarch64.AArch64MethodAddressResolutionDispatcher;
 import com.oracle.svm.hosted.pltgot.HostedPLTGOTConfiguration;
@@ -33,7 +34,6 @@ import com.oracle.svm.hosted.pltgot.PLTStubGenerator;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.lir.LIRInstruction;
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
@@ -52,7 +52,7 @@ public final class AArch64HostedPLTGOTConfiguration extends HostedPLTGOTConfigur
 
     @Override
     public Register getExitMethodAddressResolutionRegister(RegisterConfig registerConfig) {
-        return AArch64.rscratch2;
+        return SubstrateAArch64MacroAssembler.scratch2;
     }
 
     @Override

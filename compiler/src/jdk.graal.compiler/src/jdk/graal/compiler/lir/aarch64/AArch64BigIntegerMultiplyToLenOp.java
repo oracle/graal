@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.aarch64.AArch64.r13;
@@ -37,6 +36,7 @@ import static jdk.vm.ci.aarch64.AArch64.r20;
 import static jdk.vm.ci.aarch64.AArch64.r21;
 import static jdk.vm.ci.aarch64.AArch64.r22;
 import static jdk.vm.ci.aarch64.AArch64.r23;
+import static jdk.vm.ci.aarch64.AArch64.r24;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.ConditionFlag.MI;
@@ -94,7 +94,6 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
         this.zlenValue = zlenValue;
 
         this.temps = new Value[]{
-                        r10.asValue(),
                         r11.asValue(),
                         r12.asValue(),
                         r13.asValue(),
@@ -107,6 +106,7 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
                         r21.asValue(),
                         r22.asValue(),
                         r23.asValue(),
+                        r24.asValue(),
         };
     }
 
@@ -127,8 +127,8 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
         Register zlen = asRegister(zlenValue);
 
         multiplyToLen(masm, x, xlen, y, ylen, z, zlen,
-                        r10, r11, r12, r13, r14, r15, r16, r17,
-                        r19, r20, r21, r22, r23);
+                        r11, r12, r13, r14, r15, r16, r17, r19,
+                        r20, r21, r22, r23, r24);
     }
 
     private static void add2WithCarry(AArch64MacroAssembler masm,

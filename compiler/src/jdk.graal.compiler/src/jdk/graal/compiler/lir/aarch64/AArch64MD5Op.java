@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.aarch64.AArch64.r13;
@@ -36,6 +35,7 @@ import static jdk.vm.ci.aarch64.AArch64.r19;
 import static jdk.vm.ci.aarch64.AArch64.r20;
 import static jdk.vm.ci.aarch64.AArch64.r21;
 import static jdk.vm.ci.aarch64.AArch64.r22;
+import static jdk.vm.ci.aarch64.AArch64.r23;
 import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
@@ -113,8 +113,7 @@ public final class AArch64MD5Op extends AArch64LIRInstruction {
                         r5.asValue(),
                         r6.asValue(),
                         r7.asValue(),
-                        // r8, r9 are scratch registers
-                        r10.asValue(),
+                        // r8/r9 are scratch registers on HotSpot, r9/r10 on SubstrateVM
                         r11.asValue(),
                         r12.asValue(),
                         r13.asValue(),
@@ -127,6 +126,7 @@ public final class AArch64MD5Op extends AArch64LIRInstruction {
                         r20.asValue(),
                         r21.asValue(),
                         r22.asValue(),
+                        r23.asValue(),
         };
     }
 
@@ -135,7 +135,7 @@ public final class AArch64MD5Op extends AArch64LIRInstruction {
     }
 
     // Utility routines for md5.
-    // Clobbers r10 and r11.
+    // Clobbers r23 and r11.
     private static void md5FF(AArch64MacroAssembler masm, Register[] regCache, Register reg1, Register reg2, Register reg3, Register reg4,
                     int k, int s, int t, Register rscratch1, Register rscratch2, Register rscratch3, Register rscratch4) {
         masm.eor(32, rscratch3, reg3, reg4);
@@ -221,7 +221,7 @@ public final class AArch64MD5Op extends AArch64LIRInstruction {
         Register b = r5;
         Register c = r6;
         Register d = r7;
-        Register rscratch3 = r10;
+        Register rscratch3 = r23;
         Register rscratch4 = r11;
 
         Register[] stateRegs = new Register[]{r12, r13};

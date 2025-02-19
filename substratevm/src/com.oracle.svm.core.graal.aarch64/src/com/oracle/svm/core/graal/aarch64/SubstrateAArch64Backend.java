@@ -39,6 +39,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import java.util.function.BiConsumer;
 
 import com.oracle.svm.core.interpreter.InterpreterSupport;
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
@@ -1225,7 +1226,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     @Override
     public CompilationResultBuilder newCompilationResultBuilder(LIRGenerationResult lirGenResult, FrameMap frameMap, CompilationResult compilationResult, CompilationResultBuilderFactory factory,
                     EntryPointDecorator entryPointDecorator) {
-        AArch64MacroAssembler masm = new AArch64MacroAssembler(getTarget());
+        AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(getTarget());
         PatchConsumerFactory patchConsumerFactory;
         if (SubstrateUtil.HOSTED) {
             patchConsumerFactory = PatchConsumerFactory.HostedPatchConsumerFactory.factory();
@@ -1322,7 +1323,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                     RegisterValue threadArg, int threadIsolateOffset, RegisterValue methodIdArg, int methodObjEntryPointOffset) {
 
         CompilationResult result = new CompilationResult(identifier);
-        AArch64MacroAssembler asm = new AArch64MacroAssembler(getTarget());
+        AArch64MacroAssembler asm = new SubstrateAArch64MacroAssembler(getTarget());
         try (ScratchRegister scratch = asm.getScratchRegister()) {
             Register scratchRegister = scratch.getRegister();
             asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));

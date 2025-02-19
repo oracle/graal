@@ -5,8 +5,3 @@ all = [
     "peter.hofer@oracle.com",
     "bernhard.urban-forster@oracle.com",
 ]
-any = [
-    "marko.spasic@oracle.com",
-    "peter.hofer@oracle.com",
-    "bernhard.urban-forster@oracle.com",
-]

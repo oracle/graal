@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r12;
+import static jdk.vm.ci.aarch64.AArch64.r13;
 import static jdk.vm.ci.aarch64.AArch64.r7;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.v0;
@@ -120,9 +120,9 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 
         this.gpTemps = new Value[]{
                         r7.asValue(),
-                        r10.asValue(),
                         r11.asValue(),
                         r12.asValue(),
+                        r13.asValue(),
         };
         this.simdTemps = Arrays.stream(AArch64.simdRegisters.toArray()).map(Register::asValue).toArray(Value[]::new);
     }
@@ -146,7 +146,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
         Register savedEncryptedCtr = asRegister(encryptedCounterValue);
         Register usedPtr = asRegister(usedPtrValue);
 
-        Register len = r10;
+        Register len = r13;
         Register used = r12;
         Register offset = r7;
         Register keylen = r11;
