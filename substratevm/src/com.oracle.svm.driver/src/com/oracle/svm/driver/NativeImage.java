@@ -1339,6 +1339,10 @@ public class NativeImage {
                 }
             }
 
+            if (mainClass != null && !mainClass.isEmpty() && !Character.isJavaIdentifierStart(mainClass.charAt(0))) {
+                showError("'%s' is not a valid mainclass. Specify a valid classname for the class that contains the main method.".formatted(mainClass));
+            }
+
             if (!extraImageArgs.isEmpty()) {
                 showError("Unrecognized option(s): " + StringUtil.joinSingleQuoted(extraImageArgs.stream().map(ArgumentEntry::value).toList()));
             }
