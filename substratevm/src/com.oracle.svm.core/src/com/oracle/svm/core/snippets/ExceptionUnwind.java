@@ -236,7 +236,8 @@ public abstract class ExceptionUnwind {
                         /* Deoptimization entry points always have an exception handler. */
                         deoptTakeExceptionInterruptible(deoptFrame);
                         jumpToHandler(sp, DeoptimizationSupport.getEagerDeoptStubPointer(), hasCalleeSavedRegisters);
-                        throw UnreachableNode.unreachable();
+                        UnreachableNode.unreachable();
+                        return; /* Unreachable */
                     } else if (Deoptimizer.checkLazyDeoptimized(frame)) {
                         long exceptionOffset = frame.getExceptionOffset();
                         if (exceptionOffset != CodeInfoQueryResult.NO_EXCEPTION_OFFSET) {
@@ -247,7 +248,8 @@ public abstract class ExceptionUnwind {
                              * return value.
                              */
                             jumpToHandler(sp, DeoptimizationSupport.getLazyDeoptStubObjectReturnPointer(), hasCalleeSavedRegisters);
-                            throw UnreachableNode.unreachable();
+                            UnreachableNode.unreachable();
+                            return; /* Unreachable */
                         }
                     }
                 }
@@ -256,7 +258,8 @@ public abstract class ExceptionUnwind {
                 if (exceptionOffset != CodeInfoQueryResult.NO_EXCEPTION_OFFSET) {
                     CodePointer handlerIP = (CodePointer) ((UnsignedWord) frame.getIP()).add(Word.signed(exceptionOffset));
                     jumpToHandler(sp, handlerIP, hasCalleeSavedRegisters);
-                    throw UnreachableNode.unreachable();
+                    UnreachableNode.unreachable();
+                    return; /* Unreachable */
                 }
             } else {
                 skipFrame = false;

@@ -209,12 +209,12 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean shouldIgnoreOutOfMemory() {
-        return SerialGCOptions.IgnoreMaxHeapSizeWhileInVMInternalCode.getValue() && inVMInternalCode();
+        return SerialGCOptions.IgnoreMaxHeapSizeWhileInVMInternalCode.getValue() && (inVMInternalCode() || SuspendSerialGCMaxHeapSize.isSuspended());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     private static boolean inVMInternalCode() {
-        return VMOperation.isInProgress() || ReferenceHandlerThread.isReferenceHandlerThread() || SuspendSerialGCMaxHeapSize.isSuspended();
+        return VMOperation.isInProgress() || ReferenceHandlerThread.isReferenceHandlerThread();
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
