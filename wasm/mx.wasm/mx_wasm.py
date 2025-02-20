@@ -60,7 +60,7 @@ _suite = mx.suite("wasm")
 
 emcc_dir = mx.get_env("EMCC_DIR", None)
 gcc_dir = mx.get_env("GCC_DIR", "")
-wabt_dir = mx.get_env("WABT_DIR", None)
+wabt_dir = mx.get_env("WABT_DIR", "")
 
 NODE_BENCH_DIR = "node"
 NATIVE_BENCH_DIR = "native"
@@ -96,14 +96,11 @@ class GraalWasmDefaultTags:
     coverage = "coverage"
 
 
-def wat2wasm_binary():
-    return mx.exe_suffix("wat2wasm")
-
 def wabt_test_args():
     if not wabt_dir:
         mx.warn("No WABT_DIR specified")
         return []
-    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary())]
+    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, mx.exe_suffix("wat2wasm"))]
 
 
 def graal_wasm_gate_runner(args, tasks):
@@ -277,14 +274,15 @@ class WatBuildTask(GraalWasmBuildTask):
     def build(self):
         source_dir = self.subject.getSourceDir()
         output_dir = self.subject.getOutputDir()
-        if not wabt_dir:
-            mx.abort("No WABT_DIR specified - the source programs will not be compiled to .wasm.")
-        wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
 
-        wat2wasm_version_cmd = [wat2wasm_cmd] + ["--version"]
+        wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
         out = mx.OutputCapture()
         bulk_memory_option = None
-        mx.run(wat2wasm_version_cmd, nonZeroIsFatal=False, out=out)
+        if mx.run([wat2wasm_cmd, "--version"], nonZeroIsFatal=False, out=out) != 0:
+            if not wabt_dir:
+                mx.warn("No WABT_DIR specified.")
+            mx.abort("Could not check the wat2wasm version.")
+
         wat2wasm_version = str(out.data).split(".")
         major = int(wat2wasm_version[0])
         build = int(wat2wasm_version[2])
@@ -407,12 +405,17 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             mx.abort("No EMCC_DIR specified - the source programs will not be compiled to .wasm.")
         emcc_cmd = os.path.join(emcc_dir, "emcc")
         gcc_cmd = os.path.join(gcc_dir, "gcc")
+        wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
+        wasm2wat_cmd = os.path.join(wabt_dir, "wasm2wat")
         if mx.run([emcc_cmd, "-v"], nonZeroIsFatal=False) != 0:
             mx.abort("Could not check the emcc version.")
         if mx.run([gcc_cmd, "--version"], nonZeroIsFatal=False) != 0:
             mx.abort("Could not check the gcc version.")
-        if not wabt_dir:
-            mx.abort("Set WABT_DIR if you want the binary to include .wat files.")
+        if mx.run([wat2wasm_cmd, "--version"], nonZeroIsFatal=False) != 0:
+            if not wabt_dir:
+                mx.warn("No WABT_DIR specified.")
+            mx.abort("Could not check the wat2wasm version.")
+
         mx.log("Building files from the source dir: " + source_dir)
         cc_flags = ["-g2", "-O3"]
         include_flags = []
@@ -448,7 +451,6 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
                         mx.abort("Could not build the wasm-only output of " + filename + " with emcc.")
                 elif filename.endswith(".wat"):
                     # Step 1: compile the .wat file to .wasm.
-                    wat2wasm_cmd = os.path.join(wabt_dir, "wat2wasm")
                     build_cmd_line = [wat2wasm_cmd, "-o", output_wasm_path, source_path]
                     if mx.run(build_cmd_line, nonZeroIsFatal=False) != 0:
                         mx.abort("Could not translate " + filename + " to binary format.")
@@ -474,7 +476,6 @@ class EmscriptenBuildTask(GraalWasmBuildTask):
             if mustRebuild:
                 if filename.endswith(".c"):
                     # Step 4: produce the .wat files, for easier debugging.
-                    wasm2wat_cmd = os.path.join(wabt_dir, "wasm2wat")
                     if mx.run([wasm2wat_cmd, "-o", output_wat_path, output_wasm_path], nonZeroIsFatal=False) != 0:
                         mx.abort("Could not compile .wat file for " + filename)
                 elif filename.endswith(".wat"):
