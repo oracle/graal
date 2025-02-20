@@ -158,8 +158,8 @@ public class GetCompilerConfig {
             byte[] encodedConfig = Files.readAllBytes(encodedConfigPath);
             if (DEBUG) {
                 System.out.printf("[%d] Executed: %s%n", p.pid(), quotedCommand);
-                System.out.printf("[%d] Output saved in %s%n", p.pid(), encodedConfigPath);
-                System.out.printf("[%d] Debug output saved in %s%n", p.pid(), debugPath);
+                System.out.printf("[%d] Compiler config output saved in '%s'%n", p.pid(), encodedConfigPath);
+                System.out.printf("[%d] Compiler config debug output saved in '%s'%n", p.pid(), debugPath);
             } else {
                 Files.deleteIfExists(encodedConfigPath);
                 Files.deleteIfExists(debugPath);
