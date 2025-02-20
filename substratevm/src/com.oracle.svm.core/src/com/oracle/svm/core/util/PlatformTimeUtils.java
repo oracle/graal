@@ -24,9 +24,14 @@
  */
 package com.oracle.svm.core.util;
 
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.Uninterruptible;
 
@@ -48,26 +53,16 @@ public abstract class PlatformTimeUtils {
 
     private long last = 0;
 
-    public record SecondsNanos(long seconds, long nanos) {
-    }
-
-    @Uninterruptible(reason = "Wrap the now safe call to interruptibly allocate a SecondsNanos object.", calleeMustBe = false)
-    protected static SecondsNanos allocateSecondsNanosInterruptibly(long seconds, long nanos) {
-        return allocateSecondsNanos0(seconds, nanos);
-    }
-
-    private static SecondsNanos allocateSecondsNanos0(long seconds, long nanos) {
-        return new SecondsNanos(seconds, nanos);
-    }
-
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/jfr/recorder/repository/jfrChunk.cpp#L38-L52")
     public long nanosNow() {
         // Use same clock source as Instant.now() to ensure
         // that Recording::getStopTime() returns an Instant that
         // is in sync.
-        var t = javaTimeSystemUTC();
-        long seconds = t.seconds;
-        long nanos = t.nanos;
+        SecondsNanos t = UnsafeStackValue.get(SecondsNanos.class);
+        PlatformTimeUtils.singleton().javaTimeSystemUTC(t);
+        javaTimeSystemUTC(t);
+        long seconds = t.getSeconds();
+        long nanos = t.getNanos();
         long now = seconds * 1000000000 + nanos;
         if (now > last) {
             last = now;
@@ -75,5 +70,17 @@ public abstract class PlatformTimeUtils {
         return last;
     }
 
-    public abstract SecondsNanos javaTimeSystemUTC();
+    public abstract void javaTimeSystemUTC(SecondsNanos secondsNanos);
+
+    @RawStructure
+    public interface SecondsNanos extends PointerBase {
+        @RawField
+        void setNanos(long value);
+        @RawField
+        long getNanos();
+        @RawField
+        void setSeconds(long value);
+        @RawField
+        long getSeconds();
+    }
 }

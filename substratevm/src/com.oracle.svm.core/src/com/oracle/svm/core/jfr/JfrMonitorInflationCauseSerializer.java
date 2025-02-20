@@ -32,15 +32,17 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 
 public class JfrMonitorInflationCauseSerializer implements JfrSerializer {
+    private MonitorInflationCause[] inflationCauses;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrMonitorInflationCauseSerializer() {
+        inflationCauses = MonitorInflationCause.values();
     }
 
     @Override
     public void write(JfrChunkWriter writer) {
         writer.writeCompressedLong(JfrType.MonitorInflationCause.getId());
 
-        MonitorInflationCause[] inflationCauses = MonitorInflationCause.values();
         writer.writeCompressedLong(inflationCauses.length);
         for (int i = 0; i < inflationCauses.length; i++) {
             writer.writeCompressedInt(i);

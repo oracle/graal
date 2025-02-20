@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
@@ -335,6 +336,9 @@ public class SubstrateJVM {
         if (recording) {
             return;
         }
+
+        // Cache all classes in preparation for TypeRepository TODO maybe there is a better way
+        Heap.getHeap().visitLoadedClasses(clazz -> {});
 
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {

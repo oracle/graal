@@ -171,6 +171,13 @@ public abstract class AbstractUninterruptibleHashtable implements Uninterruptibl
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean contains(UninterruptibleEntry valueOnStack) {
+        assert valueOnStack.isNonNull();
+        UninterruptibleEntry existingEntry = get(valueOnStack);
+        return existingEntry.isNonNull();
+    }
+
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UninterruptibleEntry putNew(UninterruptibleEntry valueOnStack) {

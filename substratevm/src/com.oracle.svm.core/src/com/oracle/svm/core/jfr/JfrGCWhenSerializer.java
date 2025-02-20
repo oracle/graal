@@ -28,18 +28,19 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 public class JfrGCWhenSerializer implements JfrSerializer {
+    private JfrGCWhen[] values;
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrGCWhenSerializer() {
+        values = JfrGCWhen.values();
     }
 
     @Override
     public void write(JfrChunkWriter writer) {
-        JfrGCWhen[] values = JfrGCWhen.values();
         writer.writeCompressedLong(JfrType.GCWhen.getId());
         writer.writeCompressedLong(values.length);
-        for (JfrGCWhen value : values) {
-            writer.writeCompressedLong(value.getId());
-            writer.writeString(value.getText());
+        for (int i = 0; i < values.length; i++) {
+            writer.writeCompressedLong(values[i].getId());
+            writer.writeString(values[i].getText());
         }
     }
 }

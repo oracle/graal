@@ -121,7 +121,7 @@ public final class HeapImpl extends Heap {
     private volatile long refListWaiterWakeUpCounter;
 
     /** A cached list of all the classes, if someone asks for it. */
-    private List<Class<?>> classList;
+    private Class<?>[] classList;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl() {
@@ -324,15 +324,26 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    protected List<Class<?>> getAllClasses() {
+    protected Class<?>[] getAllClasses() {
         /* Two threads might race to set classList, but they compute the same result. */
-        if (classList == null) {
+        if (getCachedClasses() == null) {
             ArrayList<Class<?>> list = findAllDynamicHubs();
             /* Ensure that other threads see consistent values once the list is published. */
             MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
-            classList = list;
+            setCachedClasses(list);
         }
+        return getCachedClasses();
+    }
+
+    @Override
+    public Class<?>[] getCachedClasses() {
         return classList;
+    }
+
+
+    private void setCachedClasses(List<Class<?>> list) {
+        classList = new Class[list.size()];
+        list.toArray(classList);
     }
 
     private ArrayList<Class<?>> findAllDynamicHubs() {

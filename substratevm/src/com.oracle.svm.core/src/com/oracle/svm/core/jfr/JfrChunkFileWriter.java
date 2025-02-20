@@ -32,11 +32,16 @@ import java.nio.charset.StandardCharsets;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.oldobject.JfrOldObjectRepository;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
@@ -192,6 +197,7 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         }
     }
 
+//    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Used on OOME for emergency dumps")
     @Override
     public void flush() {
         assert lock.isOwner();
@@ -355,8 +361,8 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
 
     private int writeSerializers() {
         JfrSerializer[] serializers = JfrSerializerSupport.get().getSerializers();
-        for (JfrSerializer serializer : serializers) {
-            serializer.write(this);
+        for (int i =0; i <serializers.length; i++) {
+            serializers[i].write(this);
         }
         return serializers.length;
     }
@@ -524,10 +530,15 @@ public final class JfrChunkFileWriter implements JfrChunkWriter {
         if (str.isEmpty()) {
             getFileSupport().writeByte(fd, StringEncoding.EMPTY_STRING.getValue());
         } else {
-            byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
             getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.getValue());
-            writeCompressedInt(bytes.length);
-            getFileSupport().write(fd, bytes);
+
+            int length = UninterruptibleUtils.String.modifiedUTF8Length(str, false);
+            writeCompressedInt(length);
+            int bufferSize = 512; //must be a compile time constant. Or use malloc.
+            Pointer buffer = UnsafeStackValue.get(bufferSize);
+            Pointer bufferEnd = buffer.add(bufferSize);
+            UninterruptibleUtils.String.toModifiedUTF8(str, buffer, bufferEnd, false);
+            getFileSupport().write(fd, buffer, WordFactory.unsigned(length));
         }
     }
 
