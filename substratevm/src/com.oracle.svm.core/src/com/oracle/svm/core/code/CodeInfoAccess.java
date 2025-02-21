@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Provides functionality to query information about a unit of compiled code from a {@link CodeInfo}
@@ -422,6 +422,20 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAOTImageCode(CodeInfo info) {
         return cast(info).getIsAOTImageCode();
+    }
+
+    /**
+     * In some callers, we can't necessarily assume that we have a valid {@link CodeInfo} object.
+     * So, this method explicitly avoids any {@link CodeInfo} field accesses.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isAOTImageCodeSlow(CodeInfo info) {
+        for (CodeInfo imageCodeInfo = CodeInfoTable.getFirstImageCodeInfo(); imageCodeInfo.isNonNull(); imageCodeInfo = getNextImageCodeInfo(imageCodeInfo)) {
+            if (info == imageCodeInfo) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
