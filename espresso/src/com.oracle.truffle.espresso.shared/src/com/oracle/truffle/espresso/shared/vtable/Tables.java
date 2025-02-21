@@ -42,16 +42,17 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
     private final List<PartialMethod<C, M, F>> vtable;
     private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables;
-    private final List<PartialMethod<C, M, F>> successMirandas;
-    private final List<PartialMethod<C, M, F>> failureMirandas;
+    private final List<PartialMethod<C, M, F>> mirandas;
+    private final List<Integer> equivalentEntries;
 
-    public Tables(List<PartialMethod<C, M, F>> vtable, EconomicMap<C, List<PartialMethod<C, M, F>>> itables,
-                    List<PartialMethod<C, M, F>> successMirandas,
-                    List<PartialMethod<C, M, F>> failureMirandas) {
+    public Tables(List<PartialMethod<C, M, F>> vtable,
+                    EconomicMap<C, List<PartialMethod<C, M, F>>> itables,
+                    List<PartialMethod<C, M, F>> mirandas,
+                    List<Integer> equivalentEntries) {
         this.vtable = vtable;
         this.itables = itables;
-        this.successMirandas = successMirandas;
-        this.failureMirandas = failureMirandas;
+        this.mirandas = mirandas;
+        this.equivalentEntries = equivalentEntries;
     }
 
     /**
@@ -62,6 +63,17 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * {@code m} is the result of method selection (according to JVMS-5.4.6) with respect to
      * {@code type}, and any method appearing in slot {@code i} of all the vtables of the
      * superclasses of {@code type}.
+     * <p>
+     * It may happen that {@link PartialMethod#isSelectionFailure() m.isSelectionFailure()} returns
+     * {@code true} if the runtime adds the implicit interface methods to the vtable:
+     * <p>
+     * <ul>
+     * <li>One of this type's supertype may have added an interface method that fails
+     * selection.</li>
+     * <li>One of this type's supertype may have added an interface method that succeeds selection,
+     * but this type adds a new interface that makes it fail.</li>
+     * </ul>
+     *
      */
     public List<PartialMethod<C, M, F>> getVtable() {
         return vtable;
@@ -76,10 +88,11 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * selection (according to JVMS-5.4.6) with respect to {@code type} and the method that appears
      * at index {@code i} in the method table of {@code interface}.
      * <p>
-     * If {@code m} is {@code null}, this means that more than one maximally-specific non-abstract
-     * methods existed for the resolution of that table slot. The runtime must make sure to handle
-     * that case accordingly (likely by throwing {@link IncompatibleClassChangeError} at the
-     * call-site, according to JVMS-6.5.invokeinterface).
+     * If {@code m} returns {@code true} for {@link PartialMethod#isSelectionFailure()}, this means
+     * that more than one maximally-specific non-abstract methods existed for the resolution of that
+     * table slot. The runtime must make sure to handle that case accordingly (likely by throwing
+     * {@link IncompatibleClassChangeError} at the call-site, according to
+     * JVMS-6.5.invokeinterface).
      * <p>
      * Node: When there are zero maximally-specific non-abstract methods for the resolution of that
      * slot, an arbitrary maximally-specific abstract method is used to populate the slot. This is
@@ -103,24 +116,48 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * non-{@link ModifiersProvider#isAbstract() abstract}).</li>
      * <li>An {@link ModifiersProvider#isAbstract() abstract} methods, in which case the runtime
      * should throw {@link AbstractMethodError}.</li>
+     * <li>A {@link PartialMethod method} for which {@link PartialMethod#isSelectionFailure()}
+     * returns true, in which case the runtime should throw
+     * {@link IncompatibleClassChangeError}.</li>
      * </ul>
      * <p>
      * Note that none of the methods in this list are either {@link ModifiersProvider#isPrivate()
      * private} or {@link ModifiersProvider#isStatic() static}.
      */
-    public List<PartialMethod<C, M, F>> getSuccessfulImplicitInterfaceMethods() {
-        return successMirandas;
+    public List<PartialMethod<C, M, F>> getImplicitInterfaceMethods() {
+        return mirandas;
     }
 
     /**
-     * Similar to {@link #getSuccessfulImplicitInterfaceMethods()}, except these contain the methods
-     * for which interface lookup would have to select between multiple non-abstract
-     * maximally-specific methods.
+     * A list of indexes in the VTable. Every method in the {@link #getVtable()} with indexes in
+     * this list were not appended to the vtable. Instead, they should be using that index as their
+     * {@code vtable index}.
      * <p>
-     * Should this list be used for method resolution, the runtime should handle calls to these by
-     * throwing {@link IncompatibleClassChangeError}, as specified in JVMS-6.5.invokeinterface.
+     * More precisely, this list of indexes in the VTable is defined as follows:
+     * <p>
+     * For every index {@code i} in the list:
+     * <ul>
+     * <li>The {@link PartialMethod method} {@code m} at index {@code i} is a method found in the
+     * {@link PartialType#getDeclaredMethodsList() declared method list} of the {@link PartialType
+     * type} used for VTable creation.</li>
+     * <li>{@code m} overrides the {@link MethodAccess method} {@code m'} found in the
+     * {@link PartialType#getParentTable() super class VTable} at index {code i}</li>
+     * <li>{@code m} and {@code m'} have the {@code same access control constraints}</li>
+     * </ul>
+     * <p>
+     * Two methods are said to have the {@code same access control constraints} if either:
+     * <ul>
+     * <li>Both methods are either {@link ModifiersProvider#isPublic() public} or
+     * {@link ModifiersProvider#isProtected() protected}.</li>
+     * <li>Both methods are package-private, and are declared in the
+     * {@link PartialType#sameRuntimePackage(TypeAccess) same runtime package}.</li>
+     * </ul>
+     * <p>
+     * In practice, this means that any method that would override one of the method will also
+     * override the other. As such, the declared method can be assigned the same
+     * {@code vtable index} as the method it is overriding.
      */
-    public List<PartialMethod<C, M, F>> getFailingImplicitInterfaceMethods() {
-        return failureMirandas;
+    public List<Integer> getEquivalentEntries() {
+        return equivalentEntries;
     }
 }

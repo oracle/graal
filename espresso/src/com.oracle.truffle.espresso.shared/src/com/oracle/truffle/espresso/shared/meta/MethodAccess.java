@@ -57,6 +57,11 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
     boolean shouldSkipLoadingConstraints();
 
     /**
+     * Whether this method appears in a VTable, and its VTable index is initialized.
+     */
+    boolean hasVTableIndex();
+
+    /**
      * The {@link CodeAttribute} associated with this method.
      */
     CodeAttribute getCodeAttribute();

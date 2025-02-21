@@ -495,10 +495,13 @@ public final class LinkResolver {
                 }
                 if (resolved.isFinalFlagSet() || resolved.getDeclaringClass().isFinalFlagSet() || resolved.isPrivate()) {
                     callKind = CallKind.DIRECT;
-                } else if (resolved.getDeclaringClass().isInterface()) {
-                    callKind = CallKind.ITABLE_LOOKUP;
-                } else {
+                } else if (resolved.hasVTableIndex()) {
                     callKind = CallKind.VTABLE_LOOKUP;
+                } else {
+                    // This case can only happen if implicit interface methods are not added to the
+                    // vtables.
+                    assert resolved.getDeclaringClass().isInterface();
+                    callKind = CallKind.ITABLE_LOOKUP;
                 }
                 break;
             case Special:

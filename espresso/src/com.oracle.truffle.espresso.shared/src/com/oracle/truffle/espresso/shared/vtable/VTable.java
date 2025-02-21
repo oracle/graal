@@ -48,17 +48,12 @@ public final class VTable {
      * <p>
      * The returned object is a {@link Tables} containing the {@link Tables#getVtable() virtual
      * table} and the {@link Tables#getItables() interface tables}. That object also makes known the
-     * {@link Tables#getSuccessfulImplicitInterfaceMethods() implicit interface methods} that do not
-     * have a concrete implementation in the type hierarchy of {@code targetClass}.
-     * {@link Tables#getFailingImplicitInterfaceMethods()} returns the implicit interface methods
-     * for which there exists multiple non-abstract maximally-specific methods.
+     * {@link Tables#getImplicitInterfaceMethods() implicit interface methods} that do not have a
+     * concrete implementation in the type hierarchy of {@code targetClass}.
      * <p>
      * All the methods of a {@link Tables} returned by this method are guaranteed to return non-null
-     * results, though returned {@link List lists} may be empty if appropriate.
-     * <p>
-     * Only lists appearing in the resulting {@link Tables#getItables() interface tables map} may
-     * contain {@code null}. This encodes that the result of method selection failed due to multiple
-     * non-abstract maximally-specific methods.
+     * results, though returned {@link List lists} may be empty if appropriate. All lists in the
+     * returned table will never contain {@code null} elements.
      *
      * @param targetClass The type for which method tables should be created
      * @param verbose Whether all declared methods should be unconditionally added to the vtable.
@@ -94,7 +89,7 @@ public final class VTable {
         private final List<PartialMethod<C, M, F>> vtable = new ArrayList<>();
         private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables = EconomicMap.create(Equivalence.IDENTITY);
         private final List<PartialMethod<C, M, F>> mirandas = new ArrayList<>();
-        private final List<PartialMethod<C, M, F>> failMirandas = new ArrayList<>();
+        private final List<Integer> equivalentEntries = new ArrayList<>();
 
         Builder(PartialType<C, M, F> targetClass, boolean verbose, boolean allowInterfaceResolvingToPrivate) {
             this.targetClass = targetClass;
@@ -116,14 +111,14 @@ public final class VTable {
             // This step also detect miranda methods.
             resolveInterfaces();
 
-            return new Tables<>(vtable, itables, mirandas, failMirandas);
+            return new Tables<>(vtable, itables, mirandas, equivalentEntries);
         }
 
         private void buildLocations() {
-            registerFromTable(targetClass.getParentTable(), LocationKind.V);
+            registerFromTable(targetClass.getParentTable());
             MapCursor<C, List<M>> cursor = targetClass.getInterfacesData().getEntries();
             while (cursor.advance()) {
-                registerFromTable(cursor.getValue(), LocationKind.I);
+                registerFromTable(cursor.getValue());
             }
         }
 
@@ -148,29 +143,35 @@ public final class VTable {
                 assert locations.containsKey(k) : "Should have been populated with super table.";
                 Locations<C, M, F> currentLocations = locations.get(k);
                 PartialMethod<C, M, F> target = currentLocations.target;
-                if (target == null) {
-                    // No declared method to override parent's
-                    vtable.add(m);
-                    continue;
+                if (target != null) {
+                    assert m.getDeclaringClass().isInterface() || currentLocations.vLookup(i) == m : "Should have been populated with super table.";
+                    if (canOverride(target, m, i)) {
+                        if (m.isFinalFlagSet()) {
+                            throw new MethodTableException(
+                                            "Method " + target.getSymbolicName() + target.getSymbolicSignature() +
+                                                            " from type " + targetClass.getSymbolicName() +
+                                                            " overrides final method " + m.getSymbolicName() + target.getSymbolicSignature() +
+                                                            " from type " + m.getDeclaringClass().getSymbolicName(),
+                                            MethodTableException.Kind.IllegalClassChangeError);
+                        }
+                        vtable.add(target);
+                        if (!verbose && sameOverrideAccess(target, m)) {
+                            currentLocations.markEquivalentEntry(this, i);
+                        }
+                        continue;
+                    }
                 }
-                assert currentLocations.vLookup(i) == m : "Should have been populated with super table.";
-                if (canOverride(target, m, i)) {
-                    if (m.isFinalFlagSet()) {
-                        throw new MethodTableException(
-                                        "Method " + target.getSymbolicName() + target.getSymbolicSignature() +
-                                                        " from type " + targetClass.getSymbolicName() +
-                                                        " overrides final method " + m.getSymbolicName() + target.getSymbolicSignature() +
-                                                        " from type " + m.getDeclaringClass().getSymbolicName(),
-                                        MethodTableException.Kind.IllegalClassChangeError);
-                    }
-                    vtable.add(target);
-                    if (!sameOverrideAccess(target, m)) {
-                        currentLocations.markForPopulation();
-                    }
+                PartialMethod<C, M, F> entry;
+                if (m.getDeclaringClass().isInterface()) {
+                    // This is a miranda method from the parent's. Though this type does not declare
+                    // a method that can override it, one of its interfaces may be more specific, so
+                    // we need a full resolution here.
+                    // The result may be failing (PartialMethod.isSelectionFailure == true)
+                    entry = currentLocations.resolve(k, this, true);
                 } else {
-                    vtable.add(m);
-                    currentLocations.markForPopulation();
+                    entry = m;
                 }
+                vtable.add(entry);
             }
             assert vtable.size() == parentTable.size();
             for (PartialMethod<C, M, F> impl : targetClass.getDeclaredMethodsList()) {
@@ -203,14 +204,14 @@ public final class VTable {
                         continue;
                     }
                     MethodKey k = MethodKey.of(m);
-                    table.add(locations.get(k).resolveInterface(k, this));
+                    table.add(locations.get(k).resolve(k, this, false));
                 }
 
                 itables.put(cursor.getKey(), table);
             }
         }
 
-        private void registerFromTable(List<M> table, LocationKind kind) {
+        private void registerFromTable(List<M> table) {
             int index = 0;
             for (M m : table) {
                 if (!isVirtualEntry(m)) {
@@ -221,11 +222,15 @@ public final class VTable {
                     locations.put(k, new Locations<>());
                 }
                 assert locations.containsKey(k);
-                locations.get(k).register(kind, m, index);
+                locations.get(k).register(LocationKind.of(m), m, index);
                 index++;
             }
         }
 
+        /**
+         * Whether the method {@code candidate} overrides the method {@code parentMethod} at index
+         * {@code vtableIndex}, according to the definition from {@code jvms-5.4.5}.
+         */
         private boolean canOverride(PartialMethod<C, M, F> candidate, M parentMethod, int vtableIndex) {
             if (canOverride(candidate, parentMethod)) {
                 return true;
@@ -251,6 +256,9 @@ public final class VTable {
             return targetClass.sameRuntimePackage(parentMethod.getDeclaringClass());
         }
 
+        /**
+         * If two methods have equivalent access rules, they can safely share the same vtable slot.
+         */
         private boolean sameOverrideAccess(PartialMethod<C, M, F> candidate, M parentMethod) {
             assert isVirtualEntry(candidate) && isVirtualEntry(parentMethod);
             assert candidate.getSymbolicName() == parentMethod.getSymbolicName() && candidate.getSymbolicSignature() == parentMethod.getSymbolicSignature();
@@ -276,7 +284,7 @@ public final class VTable {
             // Implementation of this class.
             private PartialMethod<C, M, F> target;
             // Whether the declaration should be added to the vtable.
-            boolean shouldPopulate = false;
+            boolean shouldPopulate = true;
             // Cached result of itable resolution.
             boolean resolved = false;
             private PartialMethod<C, M, F> resolvedInterfaceMethod;
@@ -305,31 +313,35 @@ public final class VTable {
                 return vLocations.get(locIdx).value;
             }
 
-            PartialMethod<C, M, F> resolveInterface(MethodKey k, Builder<C, M, F> b) {
+            PartialMethod<C, M, F> resolve(MethodKey k, Builder<C, M, F> b, boolean inVTable) {
                 if (resolved) {
                     return resolvedInterfaceMethod;
                 }
-                resolvedInterfaceMethod = resolveInterfaceImpl(k, b);
+                resolvedInterfaceMethod = resolveImpl(k, b, inVTable);
                 resolved = true;
                 return resolvedInterfaceMethod;
             }
 
-            void markForPopulation() {
-                shouldPopulate = true;
+            void markEquivalentEntry(Builder<?, ?, ?> b, int idx) {
+                assert idx >= 0;
+                if (shouldPopulate) {
+                    b.equivalentEntries.add(idx);
+                    shouldPopulate = false;
+                }
             }
 
             boolean shouldPopulate() {
-                return shouldPopulate || vLocations.isEmpty();
+                return shouldPopulate;
             }
 
-            private PartialMethod<C, M, F> resolveInterfaceImpl(MethodKey k, Builder<C, M, F> b) {
+            private PartialMethod<C, M, F> resolveImpl(MethodKey k, Builder<C, M, F> b, boolean inVTable) {
                 if (target != null) {
                     // simple case: This class declares a method that implements our interface
                     // method.
                     return target;
                 }
                 PartialMethod<C, M, F> result;
-                if (b.allowInterfaceResolvingToPrivate) {
+                if (!inVTable && b.allowInterfaceResolvingToPrivate) {
                     // Unfortunately, our representation does not take into account private methods.
                     // Ask the runtime for help.
                     result = b.targetClass.lookupOverrideWithPrivate(k.name(), k.signature());
@@ -347,10 +359,9 @@ public final class VTable {
                  * Note: By construction of the locations map, each MethodKey is added only once to
                  * the miranda list, so it does not need to be a Set.
                  */
-                M miranda = resolveMaximallySpecific();
-                if (miranda == null) {
-                    b.failMirandas.add(iLocations.get(0).value);
-                } else {
+                PartialMethod<C, M, F> miranda = resolveMaximallySpecific();
+                if (!inVTable) {
+                    // Handling a miranda NOT from a parent's table, we can add it
                     b.mirandas.add(miranda);
                 }
                 return miranda;
@@ -364,7 +375,7 @@ public final class VTable {
                 return candidate;
             }
 
-            private M resolveMaximallySpecific() {
+            private PartialMethod<C, M, F> resolveMaximallySpecific() {
                 EconomicSet<M> maximallySpecific = EconomicSet.create(Equivalence.IDENTITY);
                 locationLoop: //
                 for (Location loc : iLocations) {
@@ -395,7 +406,7 @@ public final class VTable {
                              *
                              * Will require handling from runtime.
                              */
-                            return null;
+                            return new FailingPartialMethod<>(nonAbstractMaximallySpecific);
                         }
                         nonAbstractMaximallySpecific = m;
                     }
@@ -447,6 +458,15 @@ public final class VTable {
         private enum LocationKind {
             V,
             I,
+            ;
+
+            public static <M extends MethodAccess<?, ?, ?>> LocationKind of(M m) {
+                if (m.getDeclaringClass().isInterface()) {
+                    return I;
+                } else {
+                    return V;
+                }
+            }
         }
     }
 }

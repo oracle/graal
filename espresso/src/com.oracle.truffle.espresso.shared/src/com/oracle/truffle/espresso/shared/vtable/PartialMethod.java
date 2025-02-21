@@ -52,6 +52,17 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
     boolean isClassInitializer();
 
     /**
+     * Whether this {@link PartialMethod method} is a failing entry in a {@link Tables method
+     * table}. Any call-site that selects this method should throw
+     * {@link IncompatibleClassChangeError}.
+     * <p>
+     * This method should not be overridden, except by {@link FailingPartialMethod}.
+     */
+    default boolean isSelectionFailure() {
+        return false;
+    }
+
+    /**
      * This method is not used as part of the vtable creation process, and is provided simply for
      * simplifying the translation from {@link PartialMethod} to {@link MethodAccess} once the
      * tables have been obtained and the methods fully created.

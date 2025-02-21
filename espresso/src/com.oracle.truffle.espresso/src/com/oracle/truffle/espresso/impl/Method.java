@@ -843,7 +843,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     public Method setPoisonPill() {
-        getMethodVersion().poisonPill = true;
+        getMethodVersion().setPoisonPill();
         return this;
     }
 
@@ -1351,6 +1351,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     @Override
+    public boolean hasVTableIndex() {
+        return getVTableIndex() != -1;
+    }
+
+    @Override
     public Method asMethodAccess() {
         return this;
     }
@@ -1717,6 +1722,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
         public int getITableIndex() {
             return itableIndex;
+        }
+
+        public Method.MethodVersion setPoisonPill() {
+            poisonPill = true;
+            return this;
         }
 
         public ExceptionHandler[] getExceptionHandlers() {

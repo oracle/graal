@@ -37,7 +37,8 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
  * A representation of a type in the process of being created, providing access to the data
- * necessary for building method tables.
+ * necessary for building method tables. There should be no {@code null} entries in any of the
+ * {@link List} or {@link EconomicMap} returned by the methods of this interface.
  *
  * @param <C> The class providing access to the VM-side java {@link Class}.
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
@@ -45,8 +46,11 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
  */
 public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named {
     /**
-     * @return The vtable of the declared superclass of this type, as would be constructed by a
-     *         previous call to {@link VTable#create(PartialType, boolean, boolean)}.
+     * The vtable of the declared superclass of this type, as would be constructed by a previous
+     * call to {@link VTable#create(PartialType, boolean, boolean)}.
+     * <p>
+     * If this type does not have a superclass, this method should return an empty list, and not
+     * {@code null}.
      */
     List<M> getParentTable();
 
