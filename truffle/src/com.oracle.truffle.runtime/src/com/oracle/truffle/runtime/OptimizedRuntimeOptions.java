@@ -336,6 +336,9 @@ public final class OptimizedRuntimeOptions {
     @Option(help = "Controls how much of a priority should be given to compilations after invalidations (default: 1.0, no bonus).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Double> TraversingQueueInvalidatedBonus = new OptionKey<>(1.0);
 
+    @Option(help = "Controls how much of a priority should be given to OSR compilations (default: 1.0, no bonus).", usageSyntax = "[0.0, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Double> TraversingQueueOSRBonus = new OptionKey<>(1.0);
+
     @Option(help = "Traversing queue uses rate as priority for both tier. (default: true)", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraversingQueueWeightingBothTiers = new OptionKey<>(true);
 
