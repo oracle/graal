@@ -82,6 +82,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
+import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -211,7 +212,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static boolean shouldIgnoreOutOfMemory() {
-        return SerialGCOptions.IgnoreMaxHeapSizeWhileInVMInternalCode.getValue() && inVMInternalCode();
+        return SerialGCOptions.IgnoreMaxHeapSizeWhileInVMInternalCode.getValue() && (inVMInternalCode() || SuspendSerialGCMaxHeapSize.isSuspended());
     }
 
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
