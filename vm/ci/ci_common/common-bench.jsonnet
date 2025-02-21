@@ -10,7 +10,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 {
   vm_bench_common_gate: {
     result_file:: 'results.json',
-    capabilities+: ['e3'],
+    capabilities+: ['x52'],
     timelimit: '1:30:00',
   },
   vm_bench_common: self.vm_bench_common_gate + {
@@ -117,7 +117,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
   } + (if is_gate then self.vm_bench_common_gate else self.vm_bench_common),
 
   vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*', polybench_vm_config='native-interpreter'): self.vm_bench_polybench_linux_common(env=env) + self.polybench_hpc_linux_common + {
-    local machine_name = "e3",     // restricting ourselves to specific hardware to ensure performance counters work there
+    local machine_name = "x52",     // restricting ourselves to specific hardware to ensure performance counters work there
     machine_name_prefix:: "gate-",
     capabilities+: [machine_name],
     run+: [
