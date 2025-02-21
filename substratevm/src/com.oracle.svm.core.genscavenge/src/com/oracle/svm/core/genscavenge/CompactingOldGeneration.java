@@ -435,6 +435,11 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
+    boolean printLocationInfo(Log log, Pointer ptr) {
+        return space.printLocationInfo(log, ptr);
+    }
+
+    @Override
     public boolean walkObjects(ObjectVisitor visitor) {
         return space.walkObjects(visitor);
     }

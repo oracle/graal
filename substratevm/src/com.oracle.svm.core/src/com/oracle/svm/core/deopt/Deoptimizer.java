@@ -467,7 +467,7 @@ public final class Deoptimizer {
                     "Note that we could start the stack frame also further down the stack, because VM operation frames never need deoptimization. " +
                     "But we don't store stack frame information for the first frame we would need to process.")
     private static void deoptimizeInRangeOperation(CodePointer fromIp, CodePointer toIp, boolean deoptAll) {
-        VMOperation.guaranteeInProgress("Deoptimizer.deoptimizeInRangeOperation, but not in VMOperation.");
+        VMOperation.guaranteeInProgressAtSafepoint("Deoptimizer.deoptimizeInRangeOperation, but not in VMOperation.");
         /* Handle my own thread specially, because I do not have a JavaFrameAnchor. */
         Pointer sp = KnownIntrinsics.readCallerStackPointer();
 
@@ -573,7 +573,6 @@ public final class Deoptimizer {
 
         @Override
         protected void operate() {
-            VMOperation.guaranteeInProgress("doDeoptimizeFrame");
             CodePointer ip = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
             deoptimizeFrame(targetThread, sourceSp, ip, ignoreNonDeoptimizable, speculation, deoptEagerly);
         }
@@ -997,7 +996,7 @@ public final class Deoptimizer {
      * @param pc A code address inside the source method (= the method to deoptimize)
      */
     public void deoptSourceFrameLazily(CodePointer pc, boolean ignoreNonDeoptimizable) {
-        assert VMOperation.isInProgress();
+        assert VMOperation.isInProgressAtSafepoint();
         if (!Options.LazyDeoptimization.getValue()) {
             deoptSourceFrameEagerly(pc, ignoreNonDeoptimizable);
             return;
@@ -1043,7 +1042,7 @@ public final class Deoptimizer {
     @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
     private static void installLazyDeoptStubReturnAddress(boolean returnValueIsObject, Pointer sourceSp, IsolateThread targetThread) {
         assert Options.LazyDeoptimization.getValue();
-        assert VMOperation.isInProgress();
+        assert VMOperation.isInProgressAtSafepoint();
         CodePointer oldReturnAddress = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
 
         // Replace the return address to the deoptimized method with a pointer to the lazyDeoptStub.
@@ -1059,7 +1058,7 @@ public final class Deoptimizer {
     @Uninterruptible(reason = "Prevent stack walks from seeing an inconsistent stack.")
     private static void uninstallLazyDeoptStubReturnAddress(Pointer sourceSp, IsolateThread thread) {
         assert Options.LazyDeoptimization.getValue();
-        assert VMOperation.isInProgress();
+        assert VMOperation.isInProgressAtSafepoint();
         CodePointer oldReturnAddress = sourceSp.readWord(0);
         assert oldReturnAddress.isNonNull();
         // Clear the old return address from the deopt slot

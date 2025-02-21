@@ -906,6 +906,9 @@ public class UniverseBuilder {
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
+            ReferenceMapEncoder.OffsetIterator iter = referenceMap.getOffsets();
+            assert !iter.hasNext() || iter.nextInt() >= ConfigurationValues.getObjectLayout().getFirstFieldOffset();
+
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
             DynamicHub hub = type.getHub();
@@ -968,7 +971,6 @@ public class UniverseBuilder {
 
     private static ReferenceMapEncoder.Input createReferenceMap(HostedType type) {
         HostedField[] fields = type.getInstanceFields(true);
-
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
         for (HostedField field : fields) {
             if (field.getType().getStorageKind() == JavaKind.Object && field.hasLocation() && !excludeFromReferenceMap(field)) {

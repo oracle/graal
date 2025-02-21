@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.function.IntUnaryOperator;
 
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldAddress;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
 import org.graalvm.word.ComparableWord;
@@ -166,6 +167,12 @@ public final class HeapChunk {
 
         @RawField
         void setIdentityHashSalt(UnsignedWord value, LocationIdentity identity);
+
+        @RawField
+        int getPinnedObjectCount();
+
+        @RawFieldAddress
+        Pointer addressOfPinnedObjectCount();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

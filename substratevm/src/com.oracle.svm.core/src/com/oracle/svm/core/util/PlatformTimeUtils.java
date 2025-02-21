@@ -28,6 +28,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Uninterruptible;
+
 import jdk.graal.compiler.api.replacements.Fold;
 
 /**
@@ -47,6 +49,15 @@ public abstract class PlatformTimeUtils {
     private long last = 0;
 
     public record SecondsNanos(long seconds, long nanos) {
+    }
+
+    @Uninterruptible(reason = "Wrap the now safe call to interruptibly allocate a SecondsNanos object.", calleeMustBe = false)
+    protected static SecondsNanos allocateSecondsNanosInterruptibly(long seconds, long nanos) {
+        return allocateSecondsNanos0(seconds, nanos);
+    }
+
+    private static SecondsNanos allocateSecondsNanos0(long seconds, long nanos) {
+        return new SecondsNanos(seconds, nanos);
     }
 
     @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-24+5/src/hotspot/share/jfr/recorder/repository/jfrChunk.cpp#L38-L52")
