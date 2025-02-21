@@ -108,6 +108,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 public class Linker {
@@ -305,10 +306,12 @@ public class Linker {
     private static void checkFailures(ArrayList<Throwable> failures) {
         if (!failures.isEmpty()) {
             final Throwable first = failures.get(0);
-            if (first instanceof WasmException) {
-                throw (WasmException) first;
-            } else if (first instanceof RuntimeException) {
-                throw (RuntimeException) first;
+            if (first instanceof AbstractTruffleException e) {
+                throw e;
+            } else if (first instanceof RuntimeException e) {
+                throw e;
+            } else if (first instanceof Error e) { // includes ThreadDeath
+                throw e;
             } else {
                 throw new RuntimeException(first);
             }
