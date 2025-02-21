@@ -61,6 +61,11 @@ public class Fields {
 
     private final Class<?>[] declaringClasses;
 
+    /**
+     * @see #getStableOrder()
+     */
+    private final int[] stableOrder;
+
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
@@ -74,6 +79,13 @@ public class Fields {
             types[index] = f.type;
             declaringClasses[index] = f.declaringClass;
             index++;
+        }
+        this.stableOrder = new int[fields.size()];
+        List<FieldsScanner.FieldInfo> stableFields = new ArrayList<>(fields);
+        stableFields.sort(FieldsScanner.FieldInfo.STABLE_COMPARATOR);
+        for (int i = 0; i < fields.size(); i++) {
+            FieldsScanner.FieldInfo f = stableFields.get(i);
+            stableOrder[i] = fields.indexOf(f);
         }
     }
 
@@ -272,6 +284,21 @@ public class Fields {
 
     public long[] getOffsets() {
         return offsets;
+    }
+
+    /**
+     * Gets the indexes of the fields sorted by {@link FieldsScanner.FieldInfo#STABLE_COMPARATOR}.
+     * Here's an example of how to use this ordering:
+     *
+     * <pre>
+     * for (int idx : fields.getStableOrder()) {
+     *     String fieldName = fields.getName(idx);
+     *     // use fieldName
+     * }
+     * </pre>
+     */
+    public int[] getStableOrder() {
+        return stableOrder;
     }
 
     /**
