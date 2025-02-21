@@ -309,7 +309,6 @@ public class LabeledBlockGeneration {
      */
     private static boolean isJumpingOverCatchBlock(HIRBlock block, HIRBlock successor, StackifierData stackifierData) {
         assert block.getEndNode() instanceof InvokeWithExceptionNode : Assertions.errorMessage(block, block.getEndNode());
-        assert block.getFirstSuccessor() == successor : Assertions.errorMessage(block, successor);
         CatchScopeContainer catchScopeContainer = (CatchScopeContainer) stackifierData.getScopeEntry(block.getEndNode());
         Scope catchScope = catchScopeContainer.getCatchScope();
 
@@ -464,15 +463,15 @@ public class LabeledBlockGeneration {
         Scope startScope = stackifierData.getEnclosingScope().get(earliestStart);
         Scope endScope = stackifierData.getEnclosingScope().get(successor);
         if (successor.isLoopHeader()) {
-            /**
+            /*
              * Special case when successor is a loop header: A loop scope includes the loopHeader
-             * (see {@link StackifierScopeComputation#computeLoopScopes()}), whereas other scopes do
+             * (see {@code StackifierScopeComputation#computeLoopScopes()}), whereas other scopes do
              * not include the basic block that creates a scope. For example, a basic block
              * containing an {@link IfNode} does not belong to the respective then-scope a
              * else-scope. Consequently, if successor is a loop Header, {@code endScope} is the
-             * loopScope created by {@code successor}. But we want to jump to just before
-             * {@code successor}. Therefore, {@code endScope} should be the scope that contains the
-             * loop created by {@code successor} which is the parent scope.
+             * loopScope created by {@code successor}. But we want to jump to just before {@code
+             * successor}. Therefore, {@code endScope} should be the scope that contains the loop
+             * created by {@code successor} which is the parent scope.
              */
             endScope = endScope.getParentScope();
         }
