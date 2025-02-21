@@ -817,6 +817,14 @@ public class NativeImageGenerator {
                 try {
                     ConcurrentAnalysisAccessImpl concurrentConfig = new ConcurrentAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                     aUniverse.setConcurrentAnalysisAccess(concurrentConfig);
+                    if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                        /*
+                         * All the field value transformers should be installed by this point.
+                         * Accessing some fields can trigger reachability callbacks, meaning the
+                         * concurrent analysis access needs to be set.
+                         */
+                        HostedImageLayerBuildingSupport.singleton().getLoader().relinkTransformedStaticFinalFieldValues();
+                    }
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
@@ -1165,6 +1173,14 @@ public class NativeImageGenerator {
             SubstitutionProcessor.extendsTheChain(substitutions, new SubstitutionProcessor[]{nativeSubstitutionProcessor});
         }
         SubstitutionProcessor.extendsTheChain(substitutions, aUniverse.getFeatureSubstitutions());
+
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            /*
+             * The substitution processor need to be installed as some substituted types can be
+             * loaded at this point.
+             */
+            HostedImageLayerBuildingSupport.singleton().getLoader().relinkNonTransformedStaticFinalFieldValues();
+        }
 
         /*
          * System classes and fields are necessary to tell the static analysis that certain things

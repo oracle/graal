@@ -2759,6 +2759,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         _setShortField(16, (short)PersistedConstant.Which.OBJECT.ordinal());
         _setShortField(7,(short)0);
         _setShortField(12,(short)0);
+        _setBooleanField(208,false);
         _setIntField(7,0);
         _clearPointerField(0);
         _clearPointerField(1);
@@ -2961,6 +2962,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
         }
         public final Relinking.Builder initRelinking() {
           _setShortField(12,(short)0);
+          _setBooleanField(208,false);
           _setIntField(7,0);
           _clearPointerField(1);
           _clearPointerField(2);
@@ -3048,6 +3050,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
               case 1 : return Which.STRING_CONSTANT;
               case 2 : return Which.ENUM_CONSTANT;
               case 3 : return Which.CLASS_CONSTANT;
+              case 4 : return Which.FIELD_CONSTANT;
               default: return Which._NOT_IN_SCHEMA;
             }
           }
@@ -3103,6 +3106,19 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
   return new PersistedConstant.Object.Relinking.ClassConstant.Builder(segment, data, pointers, dataSize, pointerCount);
           }
 
+          public final boolean isFieldConstant() {
+            return which() == PersistedConstant.Object.Relinking.Which.FIELD_CONSTANT;
+          }
+          public final FieldConstant.Builder getFieldConstant() {
+            return new PersistedConstant.Object.Relinking.FieldConstant.Builder(segment, data, pointers, dataSize, pointerCount);
+          }
+          public final FieldConstant.Builder initFieldConstant() {
+            _setShortField(12, (short)PersistedConstant.Object.Relinking.Which.FIELD_CONSTANT.ordinal());
+            _setBooleanField(208,false);
+            _setIntField(7,0);
+  return new PersistedConstant.Object.Relinking.FieldConstant.Builder(segment, data, pointers, dataSize, pointerCount);
+          }
+
         }
 
         public static final class Reader extends org.capnproto.StructReader {
@@ -3116,6 +3132,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
               case 1 : return Which.STRING_CONSTANT;
               case 2 : return Which.ENUM_CONSTANT;
               case 3 : return Which.CLASS_CONSTANT;
+              case 4 : return Which.FIELD_CONSTANT;
               default: return Which._NOT_IN_SCHEMA;
             }
           }
@@ -3149,6 +3166,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
             return new PersistedConstant.Object.Relinking.ClassConstant.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
           }
 
+          public final boolean isFieldConstant() {
+            return which() == PersistedConstant.Object.Relinking.Which.FIELD_CONSTANT;
+          }
+          public FieldConstant.Reader getFieldConstant() {
+            return new PersistedConstant.Object.Relinking.FieldConstant.Reader(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+          }
+
         }
 
         public enum Which {
@@ -3156,6 +3180,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
           STRING_CONSTANT,
           ENUM_CONSTANT,
           CLASS_CONSTANT,
+          FIELD_CONSTANT,
           _NOT_IN_SCHEMA,
         }
         public static class StringConstant {
@@ -3348,6 +3373,68 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
             public final int getTypeId() {
               return _getIntField(7);
+            }
+
+          }
+
+        }
+
+
+        public static class FieldConstant {
+          public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)6,(short)3);
+          public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
+            public Factory() {
+            }
+            public final Reader constructReader(org.capnproto.SegmentReader segment, int data,int pointers, int dataSize, short pointerCount, int nestingLimit) {
+              return new Reader(segment,data,pointers,dataSize,pointerCount,nestingLimit);
+            }
+            public final Builder constructBuilder(org.capnproto.SegmentBuilder segment, int data,int pointers, int dataSize, short pointerCount) {
+              return new Builder(segment, data, pointers, dataSize, pointerCount);
+            }
+            public final org.capnproto.StructSize structSize() {
+              return PersistedConstant.Object.Relinking.FieldConstant.STRUCT_SIZE;
+            }
+            public final Reader asReader(Builder builder) {
+              return builder.asReader();
+            }
+          }
+          public static final Factory factory = new Factory();
+          public static final org.capnproto.StructList.Factory<Builder,Reader> listFactory =
+            new org.capnproto.StructList.Factory<Builder, Reader>(factory);
+          public static final class Builder extends org.capnproto.StructBuilder {
+            Builder(org.capnproto.SegmentBuilder segment, int data, int pointers,int dataSize, short pointerCount){
+              super(segment, data, pointers, dataSize, pointerCount);
+            }
+            public final Reader asReader() {
+              return new Reader(segment, data, pointers, dataSize, pointerCount, 0x7fffffff);
+            }
+            public final int getOriginFieldId() {
+              return _getIntField(7);
+            }
+            public final void setOriginFieldId(int value) {
+              _setIntField(7, value);
+            }
+
+            public final boolean getRequiresLateLoading() {
+              return _getBooleanField(208);
+            }
+            public final void setRequiresLateLoading(boolean value) {
+              _setBooleanField(208, value);
+            }
+
+          }
+
+          public static final class Reader extends org.capnproto.StructReader {
+            Reader(org.capnproto.SegmentReader segment, int data, int pointers,int dataSize, short pointerCount, int nestingLimit){
+              super(segment, data, pointers, dataSize, pointerCount, nestingLimit);
+            }
+
+            public final int getOriginFieldId() {
+              return _getIntField(7);
+            }
+
+            public final boolean getRequiresLateLoading() {
+              return _getBooleanField(208);
             }
 
           }

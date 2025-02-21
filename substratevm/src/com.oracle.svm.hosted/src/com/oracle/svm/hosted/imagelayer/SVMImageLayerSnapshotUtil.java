@@ -151,26 +151,31 @@ public class SVMImageLayerSnapshotUtil {
             for (String className : imageClassLoader.classLoaderSupport.classes(svmURI)) {
                 try {
                     Class<?> clazz = imageClassLoader.forName(className);
-
-                    String packageName = clazz.getPackageName();
-                    if (!shouldScanPackage(packageName)) {
-                        continue;
-                    }
-
-                    if (!shouldScanClass(clazz)) {
-                        continue;
-                    }
-
-                    /* The ObjectCopier needs to access the static fields by reflection */
-                    Module module = clazz.getModule();
-                    ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, module.getName(), packageName);
-
-                    ObjectCopier.addStaticFinalObjectFields(clazz, externalValueFields);
+                    externalValueFields.addAll(getStaticFinalObjectFields(clazz));
                 } catch (ClassNotFoundException e) {
                     throw AnalysisError.shouldNotReachHere("The class %s from the modulePath %s was not found".formatted(className, svmURI.getPath()), e);
                 }
             }
         }
+    }
+
+    public List<Field> getStaticFinalObjectFields(Class<?> clazz) {
+        String packageName = clazz.getPackageName();
+        if (!shouldScanPackage(packageName)) {
+            return List.of();
+        }
+
+        if (!shouldScanClass(clazz)) {
+            return List.of();
+        }
+
+        /* The ObjectCopier needs to access the static fields by reflection */
+        Module module = clazz.getModule();
+        if (module.getName() != null) {
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, module.getName(), packageName);
+        }
+
+        return ObjectCopier.getStaticFinalObjectFields(clazz);
     }
 
     protected Set<URI> getBuilderLocations() {
