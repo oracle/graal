@@ -61,6 +61,7 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame.VirtualFrame;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.StringBuilderLog;
@@ -85,6 +86,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.nodes.UnreachableNode;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.word.BarrieredAccess;
 import jdk.graal.compiler.word.Word;
@@ -797,53 +799,51 @@ public final class Deoptimizer {
     @Uninterruptible(reason = "frame will hold objects in unmanaged storage")
     private static UnsignedWord lazyDeoptStubCore(Pointer framePointer, UnsignedWord gpReturnValue, UnsignedWord fpReturnValue, boolean hasException, Object gpReturnValueObject) {
         DeoptimizedFrame deoptFrame;
-        Pointer newSp;
 
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        /* The original return address is at offset 0 from the stack pointer */
+        CodePointer originalReturnAddress = framePointer.readWord(0);
+        VMError.guarantee(originalReturnAddress.isNonNull());
+
+        /* Clear the deoptimization slot. */
+        framePointer.writeWord(0, Word.nullPointer());
+
+        /*
+         * Write the old return address to the return address slot, so that stack walks see a
+         * consistent stack.
+         */
+        FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), framePointer, originalReturnAddress);
+
         try {
-            /* The original return address is at offset 0 from the stack pointer */
-            CodePointer originalReturnAddress = framePointer.readWord(0);
-            assert originalReturnAddress.isNonNull();
-
-            /* Clear the deoptimization slot. */
-            framePointer.writeWord(0, Word.nullPointer());
-
+            deoptFrame = constructLazilyDeoptimizedFrameInterruptibly(framePointer, originalReturnAddress, hasException);
+        } catch (OutOfMemoryError ex) {
             /*
-             * Write the old return address to the return address slot, so that stack walks see a
-             * consistent stack.
+             * If a OutOfMemoryError occurs during lazy deoptimization, we cannot let the frame
+             * being deoptimized handle the exception, because it might have been invalidated due to
+             * incorrect assumptions. Note that since unwindExceptionSkippingCaller does not return,
+             * this try...catch must not have a finally block, as it will not be executed.
              */
-            FrameAccess.singleton().writeReturnAddress(CurrentIsolate.getCurrentThread(), framePointer, originalReturnAddress);
-
-            UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(originalReturnAddress);
-            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            try {
-                CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-                deoptFrame = constructLazilyDeoptimizedFrameInterruptibly(framePointer, info, originalReturnAddress, hasException);
-            } finally {
-                CodeInfoAccess.releaseTether(untetheredInfo, tether);
-            }
-
-            DeoptimizationCounters.counters().deoptCount.inc();
-            assert deoptFrame != null : "was not able to lazily construct a deoptimized frame";
-
-            newSp = computeNewFramePointer(framePointer, deoptFrame);
-
-            /* Build the content of the deopt target stack frames. */
-            deoptFrame.buildContent(newSp);
-
-            /*
-             * We fail fatally if eager deoptimization is invoked when the lazy deopt stub is
-             * executing, because eager deoptimization should only be invoked through stack
-             * introspection, which can only be called from the current thread. Thus, there is no
-             * use case for eager deoptimization to happen if the current thread is executing the
-             * lazy deopt stub.
-             */
-            VMError.guarantee(framePointer.readWord(0) == Word.nullPointer(), "Eager deoptimization should not occur when lazy deoptimization is in progress");
-
-            recentDeoptimizationEvents.append(deoptFrame.getCompletedMessage());
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
+            ExceptionUnwind.unwindExceptionSkippingCaller(ex, framePointer);
+            throw UnreachableNode.unreachable();
         }
+
+        DeoptimizationCounters.counters().deoptCount.inc();
+        VMError.guarantee(deoptFrame != null, "was not able to lazily construct a deoptimized frame");
+
+        Pointer newSp = computeNewFramePointer(framePointer, deoptFrame);
+
+        /* Build the content of the deopt target stack frames. */
+        deoptFrame.buildContent(newSp);
+
+        /*
+         * We fail fatally if eager deoptimization is invoked when the lazy deopt stub is executing,
+         * because eager deoptimization should only be invoked through stack introspection, which
+         * can only be called from the current thread. Thus, there is no use case for eager
+         * deoptimization to happen if the current thread is executing the lazy deopt stub.
+         */
+        VMError.guarantee(framePointer.readWord(0) == Word.nullPointer(), "Eager deoptimization should not occur when lazy deoptimization is in progress");
+
+        recentDeoptimizationEvents.append(deoptFrame.getCompletedMessage());
+
         // From this point on, only uninterruptible code may be executed.
         UnsignedWord updatedGpReturnValue = gpReturnValue;
         if (gpReturnValueObject != null) {
@@ -855,8 +855,23 @@ public final class Deoptimizer {
     }
 
     @Uninterruptible(reason = "Wrapper to call interruptible methods", calleeMustBe = false)
-    private static DeoptimizedFrame constructLazilyDeoptimizedFrameInterruptibly(Pointer sourceSp, CodeInfo info, CodePointer ip, boolean hasException) {
-        return constructLazilyDeoptimizedFrameInterruptibly0(sourceSp, info, ip, hasException);
+    private static DeoptimizedFrame constructLazilyDeoptimizedFrameInterruptibly(Pointer sourceSp, CodePointer ip, boolean hasException) {
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        SuspendSerialGCMaxHeapSize.suspendInCurrentThread();
+
+        try {
+            UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+            try {
+                CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
+                return constructLazilyDeoptimizedFrameInterruptibly0(sourceSp, info, ip, hasException);
+            } finally {
+                CodeInfoAccess.releaseTether(untetheredInfo, tether);
+            }
+        } finally {
+            SuspendSerialGCMaxHeapSize.resumeInCurrentThread();
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 
     private static DeoptimizedFrame constructLazilyDeoptimizedFrameInterruptibly0(Pointer sourceSp, CodeInfo info, CodePointer ip, boolean hasException) {
