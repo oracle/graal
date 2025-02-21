@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.util.args;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -65,7 +66,9 @@ public class ListValue<T> extends OptionValue<List<T>> {
     }
 
     @Override
-    public String getUsage() {
-        return String.format("[%s ...]", getName());
+    public void printUsage(PrintWriter writer, boolean detailed) {
+        writer.append('[');
+        writer.append(getName());
+        writer.append(" ...]");
     }
 }
