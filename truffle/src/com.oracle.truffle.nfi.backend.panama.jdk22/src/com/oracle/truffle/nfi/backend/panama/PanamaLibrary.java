@@ -63,20 +63,19 @@ final class PanamaLibrary implements TruffleObject {
 
     private static final EmptyKeysArray KEYS = new EmptyKeysArray();
 
-    private final @SuppressWarnings("preview") SymbolLookup library;
+    private final SymbolLookup library;
 
     static PanamaLibrary createDefault() {
-        @SuppressWarnings("preview")
         SymbolLookup lookup = Linker.nativeLinker().defaultLookup();
         return new PanamaLibrary(lookup);
     }
 
-    static PanamaLibrary create(@SuppressWarnings("preview") SymbolLookup library) {
+    static PanamaLibrary create(SymbolLookup library) {
         assert library != null;
         return new PanamaLibrary(library);
     }
 
-    private PanamaLibrary(@SuppressWarnings("preview") SymbolLookup library) {
+    private PanamaLibrary(SymbolLookup library) {
         this.library = library;
     }
 
@@ -99,7 +98,6 @@ final class PanamaLibrary implements TruffleObject {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("preview")
     Optional<MemorySegment> doLookup(String name) {
         return library.find(name);
     }
@@ -108,7 +106,6 @@ final class PanamaLibrary implements TruffleObject {
     Object readMember(String symbol,
                     @Bind Node node,
                     @Cached InlinedBranchProfile exception) throws UnknownIdentifierException {
-        @SuppressWarnings("preview")
         Optional<MemorySegment> ret = doLookup(symbol);
         if (ret.isEmpty()) {
             exception.enter(node);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,54 +40,31 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 
-import java.lang.foreign.Arena;
+public abstract class PanamaAccessor {
 
-class PanamaNFIContext {
-
-    final PanamaNFILanguage language;
-    @SuppressWarnings("preview") Arena arena;
-    @CompilationFinal Env env;
-
-    PanamaNFIContext(PanamaNFILanguage language, Env env) {
-        this.language = language;
-        this.env = env;
+    private PanamaAccessor() {
+        // No instances.
     }
 
-    @SuppressWarnings("preview")
-    void initialize() {
-        arena = Arena.ofShared();
+    static boolean isSupported() {
+        return false;
     }
 
-    void patchEnv(Env env) {
-        this.env = env;
+    @SuppressWarnings("unused")
+    static NFIBackend createNFIBackend(PanamaNFILanguage language) {
+        throw new UnsupportedOperationException();
     }
 
-    void dispose() {
-        if (arena != null) {
-            arena.close();
-        }
+    @SuppressWarnings("unused")
+    static AbstractPanamaNFIContext createPanamaNFIContext(PanamaNFILanguage language, Env env) {
+        throw new UnsupportedOperationException();
     }
 
-    @SuppressWarnings("preview")
-    Arena getContextArena() {
-        return arena;
+    static AbstractErrorContext createErrorContext() {
+        throw new UnsupportedOperationException();
     }
 
-    @TruffleBoundary
-    PanamaType lookupEnvType() {
-        // TODO
-        return null;
-    }
-
-    private static final ContextReference<PanamaNFIContext> REFERENCE = ContextReference.create(PanamaNFILanguage.class);
-
-    static PanamaNFIContext get(Node node) {
-        return REFERENCE.get(node);
-    }
 }
