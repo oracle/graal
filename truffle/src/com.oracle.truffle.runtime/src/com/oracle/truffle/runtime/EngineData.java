@@ -79,6 +79,7 @@ import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraceTransferTo
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierPriority;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueInvalidatedBonus;
+import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueOSRBonus;
 import static com.oracle.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
 import static com.oracle.truffle.runtime.OptimizedTruffleRuntime.getRuntime;
 
@@ -160,6 +161,7 @@ public final class EngineData {
     @CompilationFinal public boolean traversingFirstTierPriority;
     @CompilationFinal public double traversingFirstTierBonus;
     @CompilationFinal public double traversingInvalidatedBonus;
+    @CompilationFinal public double traversingOSRBonus;
     @CompilationFinal public boolean propagateCallAndLoopCount;
     @CompilationFinal public int propagateCallAndLoopCountMaxDepth;
     @CompilationFinal public int maximumCompilations;
@@ -322,6 +324,7 @@ public final class EngineData {
         traversingFirstTierBonus = options.get(TraversingQueueFirstTierBonus) * options.get(LastTierCompilationThreshold) / options.get(FirstTierCompilationThreshold);
         maximumCompilations = options.get(MaximumCompilations);
         traversingInvalidatedBonus = options.get(TraversingQueueInvalidatedBonus);
+        traversingOSRBonus = options.get(TraversingQueueOSRBonus);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);

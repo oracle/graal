@@ -256,10 +256,6 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             // Any non-compilation action (e.g. compiler init) is higher priority.
             return action != COMPILATION_ACTION;
         }
-        if ((this.isOSR ^ other.isOSR) && this.isLastTier() && other.isLastTier()) {
-            // Any OSR task has higher priority than any non-OSR last tier task
-            return this.isOSR;
-        }
         int tier = tier();
         if (engineData.traversingFirstTierPriority && tier != other.tier()) {
             return tier < other.tier();
@@ -319,18 +315,32 @@ public final class CompilationTask extends AbstractCompilationTask implements Ca
             // This bonus is 1.0 by default, i.e. it has no effect.
             bonus *= engineData.traversingInvalidatedBonus;
         }
+        if (isOSR) {
+            // Boost OSR tasks' priority. This bonus is 1.0 by default, i.e. it has no effect.
+            bonus *= engineData.traversingOSRBonus;
+        }
         return bonus;
     }
 
     public List<String> bonusDescriptors() {
-        List<String> bonuses = new ArrayList<>(2);
-        if (!engineData.traversingFirstTierPriority && isFirstTier()) {
+        List<String> bonuses = new ArrayList<>(3);
+        if (!engineData.traversingFirstTierPriority && isFirstTier() && hasEffect(engineData.traversingFirstTierBonus)) {
             bonuses.add("first tier");
         }
-        if (targetHighestCompiledTier() >= tier()) {
+        if (targetHighestCompiledTier() >= tier() && hasEffect(engineData.traversingInvalidatedBonus)) {
             bonuses.add("invalidation");
         }
+        if (isOSR && hasEffect(engineData.traversingOSRBonus)) {
+            bonuses.add("OSR");
+        }
         return bonuses;
+    }
+
+    private static final double EPSILON = 1E-6;
+
+    private static boolean hasEffect(double bonus) {
+        // Checks if the given bonus differs from 1.
+        return Math.abs(bonus - 1.0) > EPSILON;
     }
 
     private double rate(int count, long elapsed) {

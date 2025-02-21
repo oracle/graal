@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -264,6 +264,9 @@ public final class BytecodeOSRMetadata {
                         requestOSRCompilation(target, lockedTarget, (FrameWithoutBoxing) parentFrame);
                         stage = HOT_STAGE;
                     }
+                    // Set the OSR target's loop count to the count of the non OSR call target
+                    OptimizedCallTarget nonOSRCallTarget = (OptimizedCallTarget) ((Node) osrNode).getRootNode().getCallTarget();
+                    lockedTarget.onLoopCount(nonOSRCallTarget.getCallAndLoopCount());
                 }
                 return lockedTarget;
             });
@@ -271,6 +274,9 @@ public final class BytecodeOSRMetadata {
 
         // Case 1: code is still being compiled
         if (callTarget.isCompiling()) {
+            // Report loop count to the OSR target. Since this function is called every
+            // OSR_POLL_INTERVAL times, OSR_POLL_INTERVAL is reported as a loop count
+            callTarget.onLoopCount(OSR_POLL_INTERVAL);
             return null;
         }
         // Case 2: code is compiled and valid
