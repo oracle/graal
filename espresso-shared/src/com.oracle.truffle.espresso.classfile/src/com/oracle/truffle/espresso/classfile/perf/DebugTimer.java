@@ -27,9 +27,9 @@ package com.oracle.truffle.espresso.classfile.perf;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.classfile.descriptors.ErrorUtil;
 
 public final class DebugTimer {
@@ -90,7 +90,7 @@ public final class DebugTimer {
     abstract static class DebugTimerImpl {
         abstract void tick(long tick);
 
-        abstract void report(TruffleLogger logger, String name);
+        abstract void report(Consumer<String> logger, String name);
 
         abstract void enter();
     }
@@ -114,11 +114,11 @@ public final class DebugTimer {
         }
 
         @Override
-        void report(TruffleLogger logger, String name) {
+        void report(Consumer<String> logger, String name) {
             if (counter.get() == 0) {
-                logger.info(name + ": " + 0);
+                logger.accept(name + ": " + 0);
             } else {
-                logger.info(name + " total : " + getAsMillis(total()) + " | avg : " + getAsMillis(avg()));
+                logger.accept(name + " total : " + getAsMillis(total()) + " | avg : " + getAsMillis(avg()));
             }
         }
 

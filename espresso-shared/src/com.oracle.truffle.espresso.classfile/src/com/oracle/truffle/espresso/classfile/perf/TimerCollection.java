@@ -24,7 +24,7 @@
  */
 package com.oracle.truffle.espresso.classfile.perf;
 
-import com.oracle.truffle.api.TruffleLogger;
+import java.util.function.Consumer;
 
 public abstract class TimerCollection {
     private static final TimerCollection NO_TIMER = new TimerCollectionImpl.NoTimer();
@@ -37,7 +37,7 @@ public abstract class TimerCollection {
         }
     }
 
-    public abstract void report(TruffleLogger logger);
+    public abstract void report(Consumer<String> logger);
 
     abstract DebugCloseable scope(DebugTimer timer);
 }

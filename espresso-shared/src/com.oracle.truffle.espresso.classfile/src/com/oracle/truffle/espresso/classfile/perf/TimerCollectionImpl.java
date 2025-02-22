@@ -28,8 +28,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import com.oracle.truffle.api.TruffleLogger;
+import java.util.function.Consumer;
 
 class TimerCollectionImpl extends TimerCollection {
     private Map<DebugTimer, DebugTimer.DebugTimerImpl> mapping = new ConcurrentHashMap<>();
@@ -49,12 +48,12 @@ class TimerCollectionImpl extends TimerCollection {
     }
 
     @Override
-    public void report(TruffleLogger logger) {
+    public void report(Consumer<String> logger) {
         Set<DebugTimer> visited = new HashSet<>();
         report(mapping.keySet(), logger, visited, "");
     }
 
-    private void report(Iterable<DebugTimer> timers, TruffleLogger logger, Set<DebugTimer> visited, String prefix) {
+    private void report(Iterable<DebugTimer> timers, Consumer<String> logger, Set<DebugTimer> visited, String prefix) {
         for (DebugTimer timer : timers) {
             if (shouldProcess(visited, timer)) {
                 visited.add(timer);
@@ -86,7 +85,7 @@ class TimerCollectionImpl extends TimerCollection {
         }
 
         @Override
-        public void report(TruffleLogger logger) {
+        public void report(Consumer<String> logger) {
         }
     }
 }
