@@ -3,6 +3,8 @@ package com.oracle.svm.hosted.analysis.ai.util;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
+import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
@@ -37,24 +39,35 @@ public final class GraphUtils {
             throw AnalysisError.interruptAnalysis("ControlFlowGraph is null");
         }
 
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.logToFile("Printing the graph of AnalysisMethod " + root);
         for (HIRBlock block : graph.getBlocks()) {
-            debug.log("\t" + block);
+            logger.logToFile(block.toString());
 
             for (Node node : block.getNodes()) {
-                debug.log("\t\t" + node);
-
+                logger.logToFile(node.toString());
+                logger.logToFile("Successors: " + System.lineSeparator());
                 for (Node successor : node.successors()) {
-                    debug.log("\t\t\t" + successor);
+                    logger.logToFile(successor + System.lineSeparator());
                 }
             }
         }
 
-        debug.log("Printing the invokes");
+        logger.logToFile("Printing the invokes");
         for (InvokeInfo invoke : root.getInvokes()) {
-            debug.log("Has invoke: " + invoke);
+            logger.logToFile("Invoke: " + invoke);
             for (AnalysisMethod callee : invoke.getOriginalCallees()) {
-                debug.log("\tCallee: " + callee);
+                logger.logToFile("\tCallee: " + callee);
             }
+        }
+    }
+
+    public static void printInferredGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractStateMap<?> abstractStateMap) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.logToFile("Printing the inferred graph of AnalysisMethod " + analysisMethod);
+        for (Node node : graph.getNodes()) {
+            AbstractState<?> abstractState = abstractStateMap.getState(node);
+            logger.logToFile(node + " -> " + abstractState);
         }
     }
 }
