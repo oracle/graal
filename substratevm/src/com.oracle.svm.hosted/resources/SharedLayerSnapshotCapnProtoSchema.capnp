@@ -117,7 +117,7 @@ struct PersistedAnalysisMethod {
       argumentTypeNames @38 :List(Text);
     }
     polymorphicSignature :group {
-      callers @38 :List(MethodId);
+      callers @39 :List(MethodId);
     }
   }
 }
@@ -187,15 +187,19 @@ struct PersistedConstant {
         classConstant :group {
           typeId @12 :TypeId;
         }
+        fieldConstant :group {
+          originFieldId @13 :FieldId;
+          requiresLateLoading @14 :Bool;
+        }
       }
     }
-    primitiveData @13 :PrimitiveArray;
+    primitiveData @15 :PrimitiveArray;
     relocatable :group {
-      key @14 :Text;
+      key @16 :Text;
     }
   }
-  parentConstantId @15 :ConstantId;
-  parentIndex @16 :Int32;
+  parentConstantId @17 :ConstantId;
+  parentIndex @18 :Int32;
 }
 
 struct KeyStoreEntry {

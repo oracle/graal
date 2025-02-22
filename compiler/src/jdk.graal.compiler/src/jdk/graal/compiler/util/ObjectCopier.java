@@ -937,7 +937,7 @@ public class ObjectCopier {
     public static List<Field> getExternalValueFields() throws IOException {
         List<Field> externalValues = new ArrayList<>();
         addImmutableCollectionsFields(externalValues);
-        addStaticFinalObjectFields(LocationIdentity.class, externalValues);
+        externalValues.addAll(getStaticFinalObjectFields(LocationIdentity.class));
 
         try (FileSystem fs = FileSystems.newFileSystem(URI.create("jrt:/"), Collections.emptyMap())) {
             for (String module : List.of("jdk.internal.vm.ci", "jdk.graal.compiler", "com.oracle.graal.graal_enterprise")) {
@@ -953,7 +953,7 @@ public class ObjectCopier {
                             className = className.replace('/', '.').substring(0, className.length() - ".class".length());
                             try {
                                 Class<?> graalClass = Class.forName(className);
-                                addStaticFinalObjectFields(graalClass, externalValues);
+                                externalValues.addAll(getStaticFinalObjectFields(graalClass));
                             } catch (ClassNotFoundException e) {
                                 throw new GraalError(e);
                             }
@@ -970,10 +970,11 @@ public class ObjectCopier {
      * {@code fields}. In the process, the fields are made {@linkplain Field#setAccessible
      * accessible}.
      */
-    public static void addStaticFinalObjectFields(Class<?> declaringClass, List<Field> fields) {
+    public static List<Field> getStaticFinalObjectFields(Class<?> declaringClass) {
         if (Enum.class.isAssignableFrom(declaringClass)) {
-            return;
+            return List.of();
         }
+        List<Field> fields = new ArrayList<>();
         for (Field field : declaringClass.getDeclaredFields()) {
             int fieldModifiers = field.getModifiers();
             int fieldMask = Modifier.STATIC | Modifier.FINAL;
@@ -986,6 +987,7 @@ public class ObjectCopier {
             field.setAccessible(true);
             fields.add(field);
         }
+        return fields;
     }
 
     /**

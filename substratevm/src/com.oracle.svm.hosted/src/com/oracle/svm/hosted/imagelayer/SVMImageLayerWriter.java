@@ -112,10 +112,13 @@ import com.oracle.svm.core.layeredimagesingleton.LayeredImageSingleton;
 import com.oracle.svm.core.layeredimagesingleton.RuntimeOnlyWrapper;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationMetadata;
+import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
@@ -826,8 +829,39 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
                 enumBuilder.setEnumClass(value.getDeclaringClass().getName());
                 enumBuilder.setEnumName(value.name());
                 constantsToRelink.add(id);
+            } else if (shouldRelinkConstant(imageHeapConstant) && imageHeapConstant.getOrigin() != null) {
+                AnalysisField field = imageHeapConstant.getOrigin();
+                if (shouldRelinkField(field)) {
+                    Relinking.FieldConstant.Builder fieldConstantBuilder = relinkingBuilder.initFieldConstant();
+                    fieldConstantBuilder.setOriginFieldId(field.getId());
+                    fieldConstantBuilder.setRequiresLateLoading(requiresLateLoading(imageHeapConstant, field));
+                }
             }
         }
+    }
+
+    private boolean shouldRelinkConstant(ImageHeapConstant heapConstant) {
+        /*
+         * FastThreadLocals need to be registered by the object replacer and relinking constants
+         * from the CrossLayerRegistry would skip the custom code associated.
+         */
+        Object o = aUniverse.getHostedValuesProvider().asObject(Object.class, heapConstant.getHostedObject());
+        return !(o instanceof FastThreadLocal) && !CrossLayerConstantRegistryFeature.singleton().isConstantRegistered(o);
+    }
+
+    private static boolean shouldRelinkField(AnalysisField field) {
+        return ClassInitializationSupport.singleton().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
+                        field.isStatic() && field.isFinal() && field.isTrackedAcrossLayers();
+    }
+
+    private static boolean requiresLateLoading(ImageHeapConstant imageHeapConstant, AnalysisField field) {
+        /*
+         * CustomSubstitutionTypes need to be loaded after the substitution are installed.
+         *
+         * Intercepted fields need to be loaded after the interceptor is installed.
+         */
+        return imageHeapConstant.getType().getWrapped() instanceof CustomSubstitutionType ||
+                        FieldValueInterceptionSupport.hasFieldValueInterceptor(field);
     }
 
     private static void persistConstantPrimitiveArray(PrimitiveArray.Builder builder, JavaKind componentKind, Object array) {
