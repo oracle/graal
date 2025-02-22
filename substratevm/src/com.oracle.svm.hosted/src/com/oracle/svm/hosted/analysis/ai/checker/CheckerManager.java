@@ -35,6 +35,7 @@ public final class CheckerManager {
      * @return a list of {@code CheckerSummary} instances, each summarizing the results (e.g. warnings or errors) of a checker
      */
     public List<CheckerSummary> checkAll(AbstractStateMap<?> abstractStateMap) {
+        logUsedCheckers();
         List<CheckerSummary> checkerSummaries = new ArrayList<>();
         for (Checker checker : checkers) {
             List<CheckerResult> checkerResults = checker.check(abstractStateMap);
@@ -82,6 +83,18 @@ public final class CheckerManager {
 
         if (errors.isEmpty() && warnings.isEmpty()) {
             logger.logDebugInfo("Everything is OK");
+        }
+    }
+
+    private void logUsedCheckers() {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        if (checkers.isEmpty()) {
+            logger.logToFile("No checkers were provided in the current analysis");
+        }
+
+        logger.logToFile("Using the following checkers: ");
+        for (Checker checker : checkers) {
+            logger.logToFile(checker.getDescription());
         }
     }
 }
