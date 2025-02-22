@@ -83,6 +83,7 @@ import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.SuspendSerialGCMaxHeapSize;
+import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.interpreter.InterpreterSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -885,13 +886,13 @@ public final class GCImpl implements GC {
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-                blackenDirtyImageHeapChunkRoots(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk());
+                blackenDirtyImageHeapChunkRoots(info);
             }
 
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxInfo != null) {
-                    blackenDirtyImageHeapChunkRoots(auxInfo.getFirstWritableAlignedChunk(), auxInfo.getFirstWritableUnalignedChunk(), auxInfo.getLastWritableUnalignedChunk());
+                    blackenDirtyImageHeapChunkRoots(auxInfo);
                 }
             }
         } finally {
@@ -899,29 +900,22 @@ public final class GCImpl implements GC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned, UnalignedHeader lastUnaligned) {
+    @NeverInline("Split GC into reasonable compilation units: object walk is force-inlined.")
+    @Uninterruptible(reason = "Visitor requires uninterruptible walk.")
+    private void blackenDirtyImageHeapChunkRoots(ImageHeapInfo info) {
         /*
          * We clean and remark cards of the image heap only during complete collections when we also
          * collect the old generation and can easily remark references into it. It also only makes a
          * difference after references to the runtime heap were nulled, which is assumed to be rare.
          */
         boolean clean = completeCollection;
+        walkDirtyImageHeapChunkRoots(info, greyToBlackObjectVisitor, clean);
+    }
 
-        AlignedHeader aligned = firstAligned;
-        while (aligned.isNonNull()) {
-            RememberedSet.get().walkDirtyObjects(aligned, greyToBlackObjectVisitor, clean);
-            aligned = HeapChunk.getNext(aligned);
-        }
-
-        UnalignedHeader unaligned = firstUnaligned;
-        while (unaligned.isNonNull()) {
-            RememberedSet.get().walkDirtyObjects(unaligned, greyToBlackObjectVisitor, clean);
-            if (unaligned.equal(lastUnaligned)) {
-                break;
-            }
-            unaligned = HeapChunk.getNext(unaligned);
-        }
+    @AlwaysInline("De-virtualize calls to visitor and get concrete visitor object.")
+    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    static void walkDirtyImageHeapChunkRoots(ImageHeapInfo info, UninterruptibleObjectVisitor visitor, boolean clean) {
+        RememberedSet.get().walkDirtyObjects(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk(), visitor, clean);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -962,13 +956,14 @@ public final class GCImpl implements GC {
         ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableHugeObject, imageHeapInfo.lastWritableHugeObject, visitor, false);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @NeverInline("Split GC into reasonable compilation units: object walk is force-inlined.")
+    @Uninterruptible(reason = "Visitor requires uninterruptible walk.")
     private void blackenDirtyCardRoots() {
         Timer blackenDirtyCardRootsTimer = timers.blackenDirtyCardRoots.open();
         try {
             /*
-             * Walk To-Space looking for dirty cards, and within those for old-to-young pointers.
-             * Promote any referenced young objects.
+             * Walk old generation looking for dirty cards, and within those for old-to-young
+             * pointers. Promote any referenced young objects.
              */
             HeapImpl.getHeapImpl().getOldGeneration().blackenDirtyCardRoots(greyToBlackObjectVisitor);
         } finally {

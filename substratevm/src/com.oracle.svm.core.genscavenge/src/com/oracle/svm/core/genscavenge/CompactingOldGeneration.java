@@ -145,9 +145,10 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @AlwaysInline("Concrete visitor object.")
+    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(space, visitor, true);
+        RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, true);
     }
 
     @Override
@@ -294,12 +295,12 @@ final class CompactingOldGeneration extends OldGeneration {
         Timer oldFixupImageHeapTimer = timers.oldFixupImageHeap.open();
         try {
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-                GCImpl.walkImageHeapRoots(info, fixupVisitor);
+                fixupImageHeapRoots(info);
             }
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxImageHeapInfo != null) {
-                    GCImpl.walkImageHeapRoots(auxImageHeapInfo, fixupVisitor);
+                    fixupImageHeapRoots(auxImageHeapInfo);
                 }
             }
         } finally {
@@ -341,6 +342,13 @@ final class CompactingOldGeneration extends OldGeneration {
         } finally {
             oldFixupRuntimeCodeCacheTimer.close();
         }
+    }
+
+    @NeverInline("Split GC into reasonable compilation units: object walk is force-inlined.")
+    @Uninterruptible(reason = "Visitor requires uninterruptible walk.")
+    private void fixupImageHeapRoots(ImageHeapInfo info) {
+        // Note that cards have already been cleaned and roots re-marked during the initial scan.
+        GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, false);
     }
 
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
