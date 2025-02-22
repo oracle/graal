@@ -33,10 +33,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -150,7 +148,7 @@ import org.graalvm.nativeimage.Platforms;
 public class SymbolicSnippetEncoder {
 
     /**
-     * A mapping from the method substitution method to the original method name. The string key and
+     * A mapping from the method substitution method to the original method name. The keys and
      * values are produced using {@link EncodedSnippets#methodKey(ResolvedJavaMethod)}.
      */
     private final EconomicMap<String, String> originalMethods = EconomicMap.create();
@@ -458,8 +456,7 @@ public class SymbolicSnippetEncoder {
             for (; i < info.getParameterCount(); i++) {
                 if (info.isConstantParameter(i) || info.isVarargsParameter(i)) {
                     JavaType type = method.getSignature().getParameterType(i - offset, method.getDeclaringClass());
-                    if (type instanceof ResolvedJavaType) {
-                        ResolvedJavaType resolvedJavaType = (ResolvedJavaType) type;
+                    if (type instanceof ResolvedJavaType resolvedJavaType) {
                         if (info.isVarargsParameter(i)) {
                             resolvedJavaType = resolvedJavaType.getElementalType();
                         }
@@ -967,8 +964,8 @@ public class SymbolicSnippetEncoder {
     }
 
     /**
-     * This horror show of classes exists solely get {@link HotSpotSnippetBytecodeParser} to be used
-     * as the parser for these snippets.
+     * This horror show of classes exists solely to get {@link HotSpotSnippetBytecodeParser} to be
+     * used as the parser for these snippets.
      */
     class HotSpotSnippetReplacementsImpl extends HotSpotReplacementsImpl {
         HotSpotSnippetReplacementsImpl(HotSpotReplacementsImpl replacements, HotSpotProviders providers) {
@@ -1068,7 +1065,7 @@ public class SymbolicSnippetEncoder {
      * {@link ObjectCopier#encode(ObjectCopier.Encoder, Object)}, it must <b>not</b> be
      * {@code final}.
      */
-    private static Map<Class<?>, SnippetResolvedJavaType> snippetTypes = new HashMap<>();
+    private static EconomicMap<Class<?>, SnippetResolvedJavaType> snippetTypes = EconomicMap.create();
 
     private static synchronized SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
         SnippetResolvedJavaType type = null;

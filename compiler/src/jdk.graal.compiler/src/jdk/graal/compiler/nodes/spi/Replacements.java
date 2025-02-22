@@ -69,7 +69,7 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     /**
      * Gets the snippet graph derived from a given method.
      *
-     * @param recursiveEntry XXX always null now?.
+     * @param recursiveEntry original method for which {@code method} is a substitute
      * @param args arguments to the snippet if available, otherwise {@code null}
      * @param nonNullParameters
      * @param trackNodeSourcePosition

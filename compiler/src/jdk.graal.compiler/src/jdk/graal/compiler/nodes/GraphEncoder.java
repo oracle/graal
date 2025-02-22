@@ -248,12 +248,20 @@ public class GraphEncoder {
      * Compresses a graph to a byte array. Multiple graphs can be compressed with the same
      * {@link GraphEncoder}.
      *
-     * @param graph The graph to encode
+     * @param graph graph to encode
+     * @return the offset of the encoded graph in {@link #getEncoding()}
      */
     public int encode(StructuredGraph graph) {
         return encode(graph, null);
     }
 
+    /**
+     * Compresses a graph to a byte array. Multiple graphs can be compressed with the same
+     * {@link GraphEncoder}.
+     *
+     * @param graph graph to encode
+     * @return the offset of the encoded graph
+     */
     protected int encode(StructuredGraph graph, Iterable<EncodedGraph.EncodedNodeReference> nodeReferences) {
         assert objectsArray != null && nodeClassesArray != null : "finishPrepare() must be called before encode()";
 
@@ -365,6 +373,9 @@ public class GraphEncoder {
         return metadataStart;
     }
 
+    /**
+     * Gets the encoded bytes for all graphs that were encoded by this encoder.
+     */
     public byte[] getEncoding() {
         return writer.toArray(new byte[TypeConversion.asS4(writer.getBytesWritten())]);
     }
