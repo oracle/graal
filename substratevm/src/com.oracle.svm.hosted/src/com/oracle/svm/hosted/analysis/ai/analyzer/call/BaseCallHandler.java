@@ -10,8 +10,9 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFacto
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
+import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
 public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>>
         implements CallHandler<Domain> {
@@ -53,12 +54,9 @@ public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>>
     @Override
     public void handleRootCall(AnalysisMethod root, DebugContext debug) {
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, debug, initialDomain, transferFunction, iteratorPayload);
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        String qualifiedName = root.getQualifiedName();
         AbstractStateMap<Domain> abstractStateMap = fixpointIterator.iterateUntilFixpoint();
-        logger.logToFile("Abstract state map after fixpoint iteration for analysisMethod " + qualifiedName + ":\n" + abstractStateMap);
-        logger.logDebugInfo("Running the provided checkers : " + checkerManager);
         checkerManager.checkAll(abstractStateMap);
-        logger.logToFile("Checker results for analysisMethod " + qualifiedName + ":\n");
+        ControlFlowGraph cfg = iteratorPayload.getMethodGraph().get(root);
+        GraphUtils.printInferredGraph(cfg.graph, root, abstractStateMap);
     }
 }
