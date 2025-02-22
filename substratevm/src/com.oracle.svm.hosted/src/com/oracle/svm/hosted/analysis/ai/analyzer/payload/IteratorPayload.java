@@ -20,13 +20,13 @@ public final class IteratorPayload {
 
     private final IteratorPolicy iteratorPolicy;
 
-    /* analysis method to the corresponding control flow graph mapping -> to avoid getting the cfg on every fixpoint creation */
+    /* analysis analysisMethod to the corresponding control flow graph mapping -> to avoid getting the cfg on every fixpoint creation */
     private final Map<AnalysisMethod, ControlFlowGraph> methodGraphMap = new HashMap<>();
 
-    /* analysis method to the corresponding weak topological ordering mapping -> to avoid computing WTO on every fixpoint creation */
+    /* analysis analysisMethod to the corresponding weak topological ordering mapping -> to avoid computing WTO on every fixpoint creation */
     private final Map<AnalysisMethod, WeakTopologicalOrdering> methodWtoMap = new HashMap<>();
 
-    /* analysis method to the corresponding weak partial ordering mapping -> to avoid computing WPO on every fixpoint creation */
+    /* analysis analysisMethod to the corresponding weak partial ordering mapping -> to avoid computing WPO on every fixpoint creation */
 
     private final Map<AnalysisMethod, WeakPartialOrdering> methodWpoMap = new HashMap<>();
 
