@@ -578,7 +578,7 @@ abstract class JavaMonitorQueuedSynchronizer {
 
         // see AbstractQueuedLongSynchronizer.ConditionObject.newConditionNode()
         private ConditionNode newConditionNode() {
-            long savedState;
+            long savedAcquisitions;
             if (tryInitializeHead() != null) {
                 try {
                     return new ConditionNode();
@@ -586,11 +586,11 @@ abstract class JavaMonitorQueuedSynchronizer {
                 }
             }
             // fall through if encountered OutOfMemoryError
-            if (!isHeldExclusively() || !release(savedState = getState())) {
+            if (!isHeldExclusively() || !release(savedAcquisitions = getAcquisitions())) {
                 throw new IllegalMonitorStateException();
             }
             U.park(false, OOME_COND_WAIT_DELAY);
-            acquireOnOOME(savedState);
+            acquireOnOOME(savedAcquisitions);
             return null;
         }
 
