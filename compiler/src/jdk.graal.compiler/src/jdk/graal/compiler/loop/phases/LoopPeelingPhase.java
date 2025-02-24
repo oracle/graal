@@ -80,27 +80,43 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
     @SuppressWarnings({"try", "deprecation"})
     protected void run(StructuredGraph graph, CoreProviders context) {
         DebugContext debug = graph.getDebug();
+        /*
+         * When guards are floating we need to update the CFG on every peeling operation because
+         * answering the question which floating guards are inside a loop potentially need cfg
+         * blocks for anchors which can change. See
+         * "NOTE: Guard Handling: Referenced by loop phases" in LoopFragment.java .
+         */
+        boolean floatingGuardsNeedCFGUpdates = graph.isAfterStage(StageFlag.HIGH_TIER_LOWERING) && graph.isBeforeStage(StageFlag.GUARD_LOWERING);
         if (graph.hasLoops()) {
-            LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             boolean shouldPeelAlot = LoopPolicies.Options.PeelALot.getValue(graph.getOptions());
             int shouldPeelOnly = LoopPolicies.Options.PeelOnlyLoopWithNodeID.getValue(graph.getOptions());
-            try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
-                for (Loop loop : data.outerFirst()) {
-                    if (canPeel(loop)) {
-                        for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
-                            if ((shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&
-                                            (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())) {
-                                LoopTransformations.peel(loop);
-                                loop.invalidateFragmentsAndIVs();
-                                data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
-                                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After peeling loop %s", loop);
+            boolean change = true;
+            outer: while (change) {
+                change = false;
+                LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
+                try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
+                    for (Loop loop : data.outerFirst()) {
+                        if (canPeel(loop)) {
+                            for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
+                                if ((shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&
+                                                (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())) {
+                                    LoopTransformations.peel(loop);
+                                    if (floatingGuardsNeedCFGUpdates) {
+                                        change = true;
+                                        continue outer;
+                                    } else {
+                                        loop.invalidateFragmentsAndIVs();
+                                        data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
+                                    }
+                                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After peeling loop %s", loop);
+                                }
                             }
                         }
                     }
+                    data.deleteUnusedNodes();
+                } catch (Throwable t) {
+                    throw debug.handle(t);
                 }
-                data.deleteUnusedNodes();
-            } catch (Throwable t) {
-                throw debug.handle(t);
             }
         }
     }
