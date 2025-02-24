@@ -26,9 +26,11 @@ package jdk.graal.compiler.loop.phases;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.debug.DebugContext;
+import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.loop.Loop;
 import jdk.graal.compiler.nodes.loop.LoopPolicies;
@@ -79,46 +81,48 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
     @Override
     @SuppressWarnings({"try", "deprecation"})
     protected void run(StructuredGraph graph, CoreProviders context) {
-        DebugContext debug = graph.getDebug();
+        final boolean shouldPeelAlot = LoopPolicies.Options.PeelALot.getValue(graph.getOptions());
+        final int shouldPeelOnly = LoopPolicies.Options.PeelOnlyLoopWithNodeID.getValue(graph.getOptions());
         /*
          * When guards are floating we need to update the CFG on every peeling operation because
          * answering the question which floating guards are inside a loop potentially need cfg
          * blocks for anchors which can change. See
          * "NOTE: Guard Handling: Referenced by loop phases" in LoopFragment.java .
          */
-        boolean floatingGuardsNeedCFGUpdates = graph.isAfterStage(StageFlag.HIGH_TIER_LOWERING) && graph.isBeforeStage(StageFlag.GUARD_LOWERING);
-        if (graph.hasLoops()) {
-            boolean shouldPeelAlot = LoopPolicies.Options.PeelALot.getValue(graph.getOptions());
-            int shouldPeelOnly = LoopPolicies.Options.PeelOnlyLoopWithNodeID.getValue(graph.getOptions());
-            boolean change = true;
-            outer: while (change) {
-                change = false;
-                LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
-                try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
-                    for (Loop loop : data.outerFirst()) {
-                        if (canPeel(loop)) {
-                            for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
-                                if ((shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&
-                                                (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())) {
-                                    LoopTransformations.peel(loop);
-                                    if (floatingGuardsNeedCFGUpdates) {
-                                        change = true;
-                                        continue outer;
-                                    } else {
-                                        loop.invalidateFragmentsAndIVs();
-                                        data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
-                                    }
-                                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After peeling loop %s", loop);
-                                }
-                            }
+        final boolean floatingGuardsNeedCFGUpdates = graph.isAfterStage(StageFlag.HIGH_TIER_LOWERING) && graph.isBeforeStage(StageFlag.GUARD_LOWERING);
+
+        /*
+         * Given that we potentially have to recompute the loops data between peeling iterations we
+         * design peeling the following way: We iterate all loops and decide for them if we want to
+         * peel them. If so, we peel them and compute the cfg in between if necessary, then redo the
+         * same logic again.
+         */
+
+        LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
+        EconomicSet<LoopBeginNode> toPeel = EconomicSet.create();
+        for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
+            toPeel.clear();
+            for (Loop loop : data.outerFirst()) {
+                if (canPeel(loop) && (shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&
+                                (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())) {
+                    toPeel.add(loop.loopBegin());
+                }
+            }
+            for (LoopBeginNode marked : toPeel) {
+                for (Loop loop : data.loops()) {
+                    if (loop.loopBegin() == marked) {
+                        LoopTransformations.peel(loop);
+                        if (floatingGuardsNeedCFGUpdates) {
+                            data = context.getLoopsDataProvider().getLoopsData(graph);
+                        } else {
+                            loop.invalidateFragmentsAndIVs();
+                            data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
                         }
                     }
-                    data.deleteUnusedNodes();
-                } catch (Throwable t) {
-                    throw debug.handle(t);
                 }
             }
         }
+        data.deleteUnusedNodes();
     }
 
     @Override
