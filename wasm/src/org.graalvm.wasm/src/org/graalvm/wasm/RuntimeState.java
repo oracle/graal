@@ -46,6 +46,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Represents the state of a WebAssembly module.
@@ -256,9 +257,15 @@ public abstract class RuntimeState {
         int functionIndex = function.index();
         WasmFunctionInstance functionInstance = functionInstances[functionIndex];
         if (functionInstance == null) {
-            functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
-            functionInstances[functionIndex] = functionInstance;
+            functionInstance = allocateFunctionInstance(function, functionIndex);
         }
+        return functionInstance;
+    }
+
+    @TruffleBoundary
+    private WasmFunctionInstance allocateFunctionInstance(WasmFunction function, int functionIndex) {
+        WasmFunctionInstance functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
+        functionInstances[functionIndex] = functionInstance;
         return functionInstance;
     }
 
