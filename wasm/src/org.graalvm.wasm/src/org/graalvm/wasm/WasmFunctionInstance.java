@@ -46,6 +46,7 @@ import org.graalvm.wasm.nodes.WasmCallNode;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
@@ -71,10 +72,6 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
      * Initialized during linking.
      */
     private Object importedFunction;
-    /**
-     * Interop call adapter for exported functions, converting parameter and result values.
-     */
-    private final CallTarget interopCallAdapter;
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
@@ -89,7 +86,6 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         this.function = Objects.requireNonNull(function, "function must be non-null");
         this.target = Objects.requireNonNull(target, "Call target must be non-null");
         this.truffleContext = context.environment().getContext();
-        this.interopCallAdapter = context.language().interopCallAdapterFor(function.type());
         assert ((RootCallTarget) target).getRootNode().getLanguage(WasmLanguage.class) == context.language();
     }
 
@@ -147,11 +143,25 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         TruffleContext c = getTruffleContext();
         Object prev = c.enter(self);
         try {
-            CallTarget callAdapter = Objects.requireNonNull(this.interopCallAdapter);
+            CallTarget callAdapter = this.function.getInteropCallAdapter();
+            if (callAdapter == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callAdapter = createInteropCallAdapter();
+            }
             return callNode.execute(callAdapter, WasmArguments.create(this, arguments));
             // throws ArityException, UnsupportedTypeException
         } finally {
             c.leave(self, prev);
         }
+    }
+
+    @TruffleBoundary
+    private CallTarget createInteropCallAdapter() {
+        CallTarget callAdapter = this.function.getInteropCallAdapter();
+        if (callAdapter == null) {
+            callAdapter = context.language().interopCallAdapterFor(function.type());
+            this.function.setInteropCallAdapter(callAdapter);
+        }
+        return callAdapter;
     }
 }
