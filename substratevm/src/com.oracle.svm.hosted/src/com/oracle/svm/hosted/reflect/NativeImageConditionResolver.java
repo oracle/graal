@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.hosted.reflect;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 import org.graalvm.nativeimage.impl.UnresolvedConfigurationCondition;
 
 import com.oracle.svm.configure.ConfigurationTypeDescriptor;
@@ -33,7 +34,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.TypeResult;
 
-public class NativeImageConditionResolver implements ConfigurationConditionResolver<ConfigurationCondition> {
+public class NativeImageConditionResolver implements ConfigurationConditionResolver<RegistrationCondition> {
     private final ImageClassLoader classLoader;
     @SuppressWarnings({"FieldCanBeLocal", "unused"}) private final ClassInitializationSupport classInitializationSupport;
 
@@ -43,7 +44,7 @@ public class NativeImageConditionResolver implements ConfigurationConditionResol
     }
 
     @Override
-    public TypeResult<ConfigurationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
+    public TypeResult<RegistrationCondition> resolveCondition(UnresolvedConfigurationCondition unresolvedCondition) {
         String canonicalizedName = ConfigurationTypeDescriptor.canonicalizeTypeName(unresolvedCondition.getTypeName());
         TypeResult<Class<?>> clazz = classLoader.findClass(canonicalizedName);
         return clazz.map(type -> {
@@ -52,12 +53,15 @@ public class NativeImageConditionResolver implements ConfigurationConditionResol
              * reachability checks.
              */
             var runtimeChecked = !classInitializationSupport.isAlwaysReached(type) && unresolvedCondition.isRuntimeChecked();
-            return ConfigurationCondition.create(type, runtimeChecked);
+            /*
+             * GR-62516, this should be deleted
+             */
+            return TypeReachabilityCondition.create(type, runtimeChecked);
         });
     }
 
     @Override
-    public ConfigurationCondition alwaysTrue() {
-        return ConfigurationCondition.alwaysTrue();
+    public RegistrationCondition alwaysTrue() {
+        return RegistrationCondition.always();
     }
 }

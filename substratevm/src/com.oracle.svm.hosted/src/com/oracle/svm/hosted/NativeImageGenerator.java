@@ -71,10 +71,10 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
@@ -1108,7 +1108,7 @@ public class NativeImageGenerator {
                 loader.classLoaderSupport.getClassesToPreserve().parallel()
                                 .filter(ClassInclusionPolicy::isClassIncludedBase)
                                 .filter(c -> !(classesOrPackagesToIgnore.contains(c.getPackageName()) || classesOrPackagesToIgnore.contains(c.getName())))
-                                .forEach(c -> runtimeReflection.registerClassFully(ConfigurationCondition.alwaysTrue(), c));
+                                .forEach(c -> runtimeReflection.registerClassFully(RegistrationCondition.always(), c));
                 for (String className : loader.classLoaderSupport.getClassNamesToPreserve()) {
                     RuntimeReflection.registerClassLookup(className);
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,10 @@ package org.graalvm.nativeimage.impl;
 
 import java.util.Objects;
 
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
+
 /**
- * Represents a {@link ConfigurationCondition} during parsing before it is resolved in a context of
+ * Represents a {@link RegistrationCondition} during parsing before it is resolved in a context of
  * the classpath.
  */
 public final class UnresolvedConfigurationCondition implements Comparable<UnresolvedConfigurationCondition> {
