@@ -53,9 +53,7 @@ public class NativeImageConditionResolver implements AccessConditionResolver<Acc
              * reachability checks.
              */
             var runtimeChecked = !classInitializationSupport.isAlwaysReached(type) && unresolvedCondition.isRuntimeChecked();
-            /*
-             * GR-62516, this should be deleted
-             */
+            /* This condition might be typeReachable */
             return TypeReachabilityCondition.create(type, runtimeChecked);
         });
     }
