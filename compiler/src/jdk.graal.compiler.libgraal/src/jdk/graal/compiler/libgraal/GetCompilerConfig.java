@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.CompilerConfig;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -127,6 +128,11 @@ public class GetCompilerConfig {
             for (String source : e.getValue()) {
                 command.add("--add-opens=%s/%s=jdk.graal.compiler".formatted(e.getKey(), source));
             }
+        }
+
+        if (Assertions.assertionsEnabled()) {
+            command.add("-esa");
+            command.add("-ea");
         }
 
         command.add(CompilerConfig.class.getName());
