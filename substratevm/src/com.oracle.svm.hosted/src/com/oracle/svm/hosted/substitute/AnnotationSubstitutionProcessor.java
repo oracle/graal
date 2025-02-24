@@ -632,9 +632,8 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             for (ResolvedJavaField f : type.getStaticFields()) {
                 registerAsDeleted(null, f, deleteAnnotation);
             }
-        } else {
-            deleteAnnotations.put(metaAccess.lookupJavaType(originalClass), deleteAnnotation);
         }
+        deleteAnnotations.put(metaAccess.lookupJavaType(originalClass), deleteAnnotation);
     }
 
     private void registerAsDeleted(ResolvedJavaMethod annotated, ResolvedJavaMethod original, Delete deleteAnnotation) {

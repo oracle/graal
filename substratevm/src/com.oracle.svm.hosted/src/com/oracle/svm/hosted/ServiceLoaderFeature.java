@@ -43,6 +43,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.hosted.analysis.Inflation;
 
 import jdk.graal.compiler.options.Option;
@@ -189,32 +190,8 @@ public class ServiceLoaderFeature implements InternalFeature {
              *
              * See ServiceLoader#loadProvider and ServiceLoader#findStaticProviderMethod.
              */
-            Constructor<?> nullaryConstructor = null;
-            Method nullaryProviderMethod = null;
-            try {
-                /* Only look for a provider() method if provider class is in an explicit module. */
-                if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
-                    for (Method method : providerClass.getDeclaredMethods()) {
-                        if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
-                                        method.getParameterCount() == 0 && method.getName().equals("provider")) {
-                            if (nullaryProviderMethod == null) {
-                                nullaryProviderMethod = method;
-                            } else {
-                                /* There must be at most one public static provider() method. */
-                                nullaryProviderMethod = null;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                Constructor<?> constructor = providerClass.getDeclaredConstructor();
-                if (Modifier.isPublic(constructor.getModifiers())) {
-                    nullaryConstructor = constructor;
-                }
-            } catch (NoSuchMethodException | SecurityException | LinkageError e) {
-                // ignore
-            }
+            Method nullaryProviderMethod = findProviderMethod(providerClass);
+            Constructor<?> nullaryConstructor = findNullaryConstructor(providerClass);
             if (nullaryConstructor != null || nullaryProviderMethod != null) {
                 RuntimeReflection.register(providerClass);
                 if (nullaryConstructor != null) {
@@ -257,5 +234,44 @@ public class ServiceLoaderFeature implements InternalFeature {
             byte[] serviceFileData = registeredProviders.stream().collect(Collectors.joining("\n")).getBytes(StandardCharsets.UTF_8);
             RuntimeResourceAccess.addResource(access.getApplicationClassLoader().getUnnamedModule(), serviceResourceLocation, serviceFileData);
         }
+    }
+
+    private static Constructor<?> findNullaryConstructor(Class<?> providerClass) {
+        Constructor<?> nullaryConstructor = null;
+        try {
+            Constructor<?> constructor = providerClass.getDeclaredConstructor();
+            if (Modifier.isPublic(constructor.getModifiers())) {
+                nullaryConstructor = constructor;
+            }
+        } catch (NoSuchMethodException | SecurityException | LinkageError e) {
+            // ignore
+        }
+        return nullaryConstructor;
+    }
+
+    @BasedOnJDKFile("https://github.com/openjdk/jdk/blob/jdk-25+9/src/java.base/share/classes/java/util/ServiceLoader.java#L583-L612")
+    private static Method findProviderMethod(Class<?> providerClass) {
+        Method nullaryProviderMethod = null;
+        try {
+            /* Only look for a provider() method if provider class is in an explicit module. */
+            if (providerClass.getModule().isNamed() && !providerClass.getModule().getDescriptor().isAutomatic()) {
+                for (Method method : providerClass.getDeclaredMethods()) {
+                    if (Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()) &&
+                                    method.getParameterCount() == 0 && method.getName().equals("provider")) {
+                        if (nullaryProviderMethod == null) {
+                            nullaryProviderMethod = method;
+                        } else {
+                            /* There must be at most one public static provider() method. */
+                            nullaryProviderMethod = null;
+                            break;
+                        }
+                    }
+                }
+            }
+
+        } catch (SecurityException | LinkageError e) {
+            // ignore
+        }
+        return nullaryProviderMethod;
     }
 }
