@@ -45,7 +45,6 @@ import static com.oracle.truffle.api.strings.Encodings.isUTF16LowSurrogate;
 import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
 import static com.oracle.truffle.api.strings.TStringUnsafe.byteArrayBaseOffset;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -95,27 +94,33 @@ final class TStringOps {
     }
 
     static int readS0(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        return readS0(arrayA, offsetA, a.length(), i);
+        validateRegionIndex(arrayA, offsetA, a.length(), 0, i);
+        return uInt(TStringUnsafe.getByte(arrayA, offsetA + i));
     }
 
     static char readS1(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        return readS1(arrayA, offsetA, a.length(), i);
+        validateRegionIndex(arrayA, offsetA, a.length(), 1, i);
+        return TStringUnsafe.getChar(arrayA, offsetA + ((long) i << 1));
     }
 
     static int readS2(AbstractTruffleString a, byte[] arrayA, long offsetA, int i) {
-        return readS2(arrayA, offsetA, a.length(), i);
+        validateRegionIndex(arrayA, offsetA, a.length(), 2, i);
+        return TStringUnsafe.getInt(arrayA, offsetA + ((long) i << 2));
     }
 
     static int readS0(byte[] array, long offset, int length, int i) {
-        return readValue(array, offset, length, 0, i);
+        validateRegionIndex(array, offset, length, 0, i);
+        return uInt(TStringUnsafe.getByte(array, offset + i));
     }
 
     static char readS1(byte[] array, long offset, int length, int i) {
-        return (char) readValue(array, offset, length, 1, i);
+        validateRegionIndex(array, offset, length, 1, i);
+        return TStringUnsafe.getChar(array, offset + ((long) i << 1));
     }
 
     static int readS2(byte[] array, long offset, int length, int i) {
-        return readValue(array, offset, length, 2, i);
+        validateRegionIndex(array, offset, length, 2, i);
+        return TStringUnsafe.getInt(array, offset + ((long) i << 2));
     }
 
     static long readS3(byte[] array, long offset, int length) {
@@ -137,21 +142,21 @@ final class TStringOps {
      * Does NOT perform bounds checks, use from within intrinsic candidate methods only!
      */
     private static int readValueS0(byte[] array, long offset, int i) {
-        return readValue(array, offset, 0, i);
+        return uInt(TStringUnsafe.getByte(array, offset + i));
     }
 
     /**
      * Does NOT perform bounds checks, use from within intrinsic candidate methods only!
      */
-    private static int readValueS1(byte[] array, long offset, int i) {
-        return readValue(array, offset, 1, i);
+    private static char readValueS1(byte[] array, long offset, int i) {
+        return TStringUnsafe.getChar(array, offset + ((long) i << 1));
     }
 
     /**
      * Does NOT perform bounds checks, use from within intrinsic candidate methods only!
      */
     private static int readValueS2(byte[] array, long offset, int i) {
-        return readValue(array, offset, 2, i);
+        return TStringUnsafe.getInt(array, offset + ((long) i << 2));
     }
 
     /**
@@ -854,7 +859,7 @@ final class TStringOps {
 
     private static int runIndexOfAnyByte(Node location, byte[] array, long offset, int length, int fromIndex, byte... needle) {
         for (int i = fromIndex; i < length; i++) {
-            int value = readValue(array, offset, 0, i);
+            int value = readValueS0(array, offset, i);
             for (int j = 0; j < needle.length; j++) {
                 if (value == uInt(needle[j])) {
                     return i;
@@ -1215,7 +1220,7 @@ final class TStringOps {
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int length) {
         for (int i = 0; i < length; i++) {
-            writeValue(arrayB, offsetB, 1, i, Character.reverseBytes((char) readValue(arrayA, offsetA, 1, i)));
+            writeValue(arrayB, offsetB, 1, i, Character.reverseBytes(readValueS1(arrayA, offsetA, i)));
             TStringConstants.truffleSafePointPoll(location, i + 1);
         }
     }
@@ -1227,7 +1232,7 @@ final class TStringOps {
                     byte[] arrayA, long offsetA, @SuppressWarnings("unused") boolean isNativeA,
                     byte[] arrayB, long offsetB, @SuppressWarnings("unused") boolean isNativeB, int length) {
         for (int i = 0; i < length; i++) {
-            writeValue(arrayB, offsetB, 2, i, Integer.reverseBytes(readValue(arrayA, offsetA, 2, i)));
+            writeValue(arrayB, offsetB, 2, i, Integer.reverseBytes(readValueS2(arrayA, offsetA, i)));
             TStringConstants.truffleSafePointPoll(location, i + 1);
         }
     }
@@ -1410,7 +1415,7 @@ final class TStringOps {
         if (array instanceof char[]) {
             return ((char[]) array)[((int) ((offset - Unsafe.ARRAY_CHAR_BASE_OFFSET) >> 1)) + i];
         }
-        return (char) readValueS1((byte[]) array, offset, i);
+        return readValueS1((byte[]) array, offset, i);
     }
 
     private static long runCalcStringAttributesUTF16AnyArray(Node location, Object array, long offset, int length, boolean assumeValid) {
@@ -1481,9 +1486,9 @@ final class TStringOps {
         int i = 0;
         int nCodePoints = length;
         for (; i < length; i++) {
-            char c = Character.reverseBytes((char) readValueS1(array, offset, i));
+            char c = Character.reverseBytes(readValueS1(array, offset, i));
             if (Encodings.isUTF16Surrogate(c)) {
-                if (Encodings.isUTF16LowSurrogate(c) || !(i + 1 < length && Encodings.isUTF16LowSurrogate(Character.reverseBytes((char) readValueS1(array, offset, i + 1))))) {
+                if (Encodings.isUTF16LowSurrogate(c) || !(i + 1 < length && Encodings.isUTF16LowSurrogate(Character.reverseBytes(readValueS1(array, offset, i + 1))))) {
                     codeRange = TSCodeRange.getBrokenMultiByte();
                 } else {
                     i++;
@@ -1552,29 +1557,21 @@ final class TStringOps {
     }
 
     static void validateRegion(byte[] array, long offset, int length, int stride) {
-        if (!validRegion(array, offset, length, stride)) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
+        assert validRegion(array, offset, length, stride) : String.format("array.length: %d, offset: %d, length: %d, stride: %d", array.length, offset, length, stride);
     }
 
     private static void validateRegion(char[] array, long offset, int length) {
         long charOffset = (offset - Unsafe.ARRAY_CHAR_BASE_OFFSET) >> 1;
-        if ((charOffset + (Integer.toUnsignedLong(length))) > array.length) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
+        assert ((charOffset + (Integer.toUnsignedLong(length))) <= array.length) : String.format("array.length: %d, offset: %d, length: %d", array.length, offset, length);
     }
 
     private static void validateRegion(int[] array, long offset, int length) {
         long intOffset = (offset - Unsafe.ARRAY_INT_BASE_OFFSET) >> 2;
-        if ((intOffset + (Integer.toUnsignedLong(length))) > array.length) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
+        assert ((intOffset + (Integer.toUnsignedLong(length))) <= array.length) : String.format("array.length: %d, offset: %d, length: %d", array.length, offset, length);
     }
 
     private static void validateRegionIndex(byte[] array, long offset, int length, int stride, int i) {
-        if (!validRegionIndex(array, offset, length, stride, i)) {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
+        assert validRegionIndex(array, offset, length, stride, i) : String.format("array.length: %d, offset: %d, length: %d, stride: %d, i: %d", array.length, offset, length, stride, i);
     }
 
     private static boolean validRegion(byte[] array, long offset, int length, int stride) {
