@@ -67,11 +67,11 @@ public final class ClassForNameSupport implements MultiLayeredImageSingleton, Un
     /**
      * The map used to collect registered classes.
      */
-    private final EconomicMap<String, ConditionalRuntimeValue<Object>> knownClasses = ImageHeapMap.create();
+    private final EconomicMap<String, ConditionalRuntimeValue<Object>> knownClasses = ImageHeapMap.create(null, true);
     /**
      * The map used to collect unsafe allocated classes.
      */
-    private final EconomicMap<Class<?>, RuntimeConditionSet> unsafeInstantiatedClasses = ImageHeapMap.create();
+    private final EconomicMap<Class<?>, RuntimeConditionSet> unsafeInstantiatedClasses = ImageHeapMap.create(null, true);
 
     private static final Object NEGATIVE_QUERY = new Object();
 

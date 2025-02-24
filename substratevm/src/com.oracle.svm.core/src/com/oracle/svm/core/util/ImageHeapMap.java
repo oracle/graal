@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 
 /**
  * A thread-safe map implementation that optimizes its run time representation for space efficiency.
@@ -57,15 +58,27 @@ public final class ImageHeapMap {
      * {@link EconomicMap} backed by a flat object array.
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static <K, V> EconomicMap<K, V> create() {
+    public static <K, V> EconomicMap<K, V> create(String key) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
-        return new HostedImageHeapMap<>(Equivalence.DEFAULT);
+        return new HostedImageHeapMap<>(Equivalence.DEFAULT, key, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
-    public static <K, V> EconomicMap<K, V> create(Equivalence strategy) {
+    public static <K, V> EconomicMap<K, V> create(String key, boolean isAlreadyLayered) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
-        return new HostedImageHeapMap<>(strategy);
+        return new HostedImageHeapMap<>(Equivalence.DEFAULT, key, isAlreadyLayered);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public static <K, V> EconomicMap<K, V> create(Equivalence strategy, String key) {
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
+        return new HostedImageHeapMap<>(strategy, key, false);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public static <K, V> EconomicMap<K, V> create(Equivalence strategy, String key, boolean isAlreadyLayered) {
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
+        return new HostedImageHeapMap<>(strategy, key, isAlreadyLayered);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -73,9 +86,16 @@ public final class ImageHeapMap {
 
         public final EconomicMap<Object, Object> runtimeMap;
 
-        HostedImageHeapMap(Equivalence strategy) {
+        /**
+         * The {code key} is only used in the Layered Image context, to link the maps across each
+         * layer. If an {@link ImageHeapMap} is in a singleton that is already layer aware, there is
+         * no need to use a {@link LayeredImageHeapMap}, as the singleton should already handle the
+         * link across layers. In this case, {@code isAlreadyLayered} should be true and the
+         * {@code key} can be {@code null}.
+         */
+        HostedImageHeapMap(Equivalence strategy, String key, boolean isAlreadyLayered) {
             super((strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>());
-            this.runtimeMap = EconomicMap.create(strategy);
+            this.runtimeMap = !isAlreadyLayered && ImageLayerBuildingSupport.buildingImageLayer() ? new LayeredImageHeapMap<>(strategy, key) : EconomicMap.create(strategy);
         }
     }
 }

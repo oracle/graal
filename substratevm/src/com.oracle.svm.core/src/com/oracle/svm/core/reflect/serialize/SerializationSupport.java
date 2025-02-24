@@ -136,7 +136,7 @@ public class SerializationSupport implements SerializationRegistry {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SerializationSupport() {
-        constructorAccessors = ImageHeapMap.create();
+        constructorAccessors = ImageHeapMap.create("constructorAccessors");
     }
 
     public void setStubConstructor(Constructor<?> stubConstructor) {

@@ -43,7 +43,7 @@ import com.oracle.svm.core.util.VMError;
  */
 public class CGlobalDataNonConstantRegistry {
 
-    private final EconomicMap<CGlobalDataImpl<?>, CGlobalDataInfo> cGlobalDataInfos = ImageHeapMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<CGlobalDataImpl<?>, CGlobalDataInfo> cGlobalDataInfos = ImageHeapMap.create(Equivalence.IDENTITY, "cGlobalDataInfos");
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final Lock lock = new ReentrantLock();
