@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 public interface RuntimeSerializationSupport<C> {
 
     @SuppressWarnings("unchecked")
-    static RuntimeSerializationSupport<ConfigurationCondition> singleton() {
+    static RuntimeSerializationSupport<AccessCondition> singleton() {
         return ImageSingletons.lookup(RuntimeSerializationSupport.class);
     }
 
