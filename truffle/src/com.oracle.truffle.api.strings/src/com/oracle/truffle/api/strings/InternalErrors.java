@@ -46,14 +46,19 @@ import com.oracle.truffle.api.TruffleLanguage;
 
 final class InternalErrors {
 
-    static RuntimeException substringOutOfBounds() {
+    static RuntimeException regionOutOfBounds(int arrayLength, int offset, int length) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return new IndexOutOfBoundsException("substring range (offset + length) is out of bounds!");
+        return new IndexOutOfBoundsException(String.format("array (length: %d) region (offset: %d, length: %d) is out of bounds!", arrayLength, offset, length));
     }
 
-    static RuntimeException indexOutOfBounds() {
+    static RuntimeException indexOutOfBounds(int arrayLength, int index) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return new IndexOutOfBoundsException("index is out of bounds!");
+        return new IndexOutOfBoundsException(String.format("array (length: %d) index (%d) is out of bounds!", arrayLength, index));
+    }
+
+    static RuntimeException indexRegionOutOfBounds(int arrayLength, int fromIndex, int toIndex) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return new IndexOutOfBoundsException(String.format("array (length: %d) region (fromIndex: %d, toIndex: %d) is out of bounds!", arrayLength, fromIndex, toIndex));
     }
 
     static RuntimeException invalidCodePoint(int c) {
@@ -76,9 +81,14 @@ final class InternalErrors {
         return new IllegalArgumentException(msg);
     }
 
-    static RuntimeException illegalByteArrayLength(String msg) {
+    static RuntimeException illegalArgument(String formatString, int n) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        return new TruffleString.IllegalByteArrayLengthException(msg);
+        return new IllegalArgumentException(String.format(formatString, n));
+    }
+
+    static RuntimeException illegalByteArrayLength(String formatString, int n) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return new TruffleString.IllegalByteArrayLengthException(String.format(formatString, n));
     }
 
     static RuntimeException illegalState(String msg) {
