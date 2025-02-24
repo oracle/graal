@@ -301,6 +301,12 @@ suite = {
       "digest" : "sha512:3707b0aee8b1f53828832a85d118981c9b0919c7c1f26dc86fd368d8092857a0b5b75cb5427fee791b0ea89bb7b60a66e2130f55a037c8b082235d3035d9e9cf",
     },
 
+    "DACAPO_23.11_MR2_chopin" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-23.11-MR2-chopin.zip"],
+      "digest" : "sha512:1399c9a743d4a52202372d7a5acef7e5d90181b79194484056cb716ba0284224c9bd7a7620b6db3a7a3c4ccdb8427ee4843fca4d23e37c0b13ada6ce9f041b6f",
+      "packedResource": True,
+    },
+
     "DACAPO_SCALA" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-scala-0.1.0-20120216.jar"],
       "digest" : "sha512:9a3908f3a0f2937bbc7edcd78f7e7e229bea8dee566d5f2d922bd4dc3c5b02cf97de294e479200372ff90bfbdf80e88dc7fc9fda9cb294088346e4a5ff28893e",

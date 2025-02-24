@@ -59,6 +59,9 @@
     logs+: [
         "*/gcutils_heapdump_*.hprof.gz",
     ],
+    catch_files+: [
+      "Report is located at: (?P<filename>.+\\.txt)"
+    ],
     targets: ["gate"],
     python_version: "3"
   },

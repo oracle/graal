@@ -41,7 +41,7 @@
     run+: [
       self.benchmark_cmd + ["dacapo:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "50:00",
+    timelimit: "1:30:00",
     forks_batches:: 2,
     bench_forks_per_batch:: 3,
     forks_timelimit:: "3:00:00",

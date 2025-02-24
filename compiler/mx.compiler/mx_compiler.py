@@ -425,11 +425,25 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
         return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
     vmargs += ['-Xmx8g', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
-    args = ['-n', str(iterations), '--preserve']
+    scratch_dir = os.path.abspath("./scratch")
+    args = ['-n', str(iterations), '--preserve', '--scratch-directory', scratch_dir]
+
+    # pmd validation fails on Windows, see official dacapobench issue #165
+    if name == 'pmd':
+        args += ['--no-validation']
+
     if threads is not None:
         args += ['-t', str(threads)]
-    return _run_benchmark('dacapo', name, args, vmargs)
 
+    # catch `*-report.txt` if the benchmark fails
+    try:
+        return _run_benchmark('dacapo', name, args, vmargs)
+    except BaseException as e:
+        file = os.path.join(scratch_dir, f"{name}-report.txt")
+        # not all benchmarks produce a report file
+        if os.path.isfile(file):
+            print("Report is located at: " + file)
+        raise e
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
