@@ -40,7 +40,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -152,7 +152,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
         final RuntimeProxyCreationSupport proxy = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
-        final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        final RegistrationCondition always = RegistrationCondition.always();
 
         /*
          * Sort descending by class hierarchy depth to avoid complexity related to field
@@ -178,7 +178,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
                 proxy.addProxyClass(always, c);
             }
 
-            jni.register(ConfigurationCondition.alwaysTrue(), c);
+            jni.register(RegistrationCondition.always(), c);
             try {
                 for (Method declaredMethod : c.getDeclaredMethods()) {
                     jni.register(always, false, declaredMethod);

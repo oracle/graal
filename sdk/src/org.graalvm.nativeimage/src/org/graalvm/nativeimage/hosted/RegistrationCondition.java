@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,37 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.impl;
+package org.graalvm.nativeimage.hosted;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import org.graalvm.nativeimage.impl.TypeReachabilityCondition;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.RegistrationCondition;
+/**
+ * Condition that must be satisfied for inclusion of elements for dynamic access (e.g., runtime
+ * reflection, serialization, JNI access, and resource access at runtime).
+ * {@link RegistrationCondition} is used together with {@link Feature} for programmatic registration
+ * of metadata.
+ * <p>
+ * Currently, there are two types of conditions:
+ * <ul>
+ * <li>{@link #typeReached} - signifies that the type must be both reachable by static analysis at
+ * build time, and reached at run time.</li>
+ * <li>{@link #always} - a condition that is always satisfied.</li>
+ * </ul>
+ * </p>
+ *
+ * Conditions can be created via the {@link #always} and {@link #typeReached} factory methods.
+ */
+public interface RegistrationCondition {
 
-public interface RuntimeSerializationSupport<C> {
-
-    @SuppressWarnings("unchecked")
-    static RuntimeSerializationSupport<RegistrationCondition> singleton() {
-        return ImageSingletons.lookup(RuntimeSerializationSupport.class);
+    /**
+     * Creates the condition that is always satisfied. Any element that is predicated with this
+     * condition will always be included.
+     * 
+     * @return instance of the condition
+     */
+    static RegistrationCondition always() {
+        return TypeReachabilityCondition.JAVA_LANG_OBJECT_REACHED;
     }
 
-    void registerIncludingAssociatedClasses(C condition, Class<?> clazz);
-
-    void register(C condition, Class<?> clazz);
-
-    void register(C condition, String clazz);
-
-    void registerLambdaCapturingClass(C condition, String lambdaCapturingClassName);
-
-    default void registerLambdaCapturingClass(C condition, Class<?> lambdaCapturingClass) {
-        registerLambdaCapturingClass(condition, lambdaCapturingClass.getName());
-    }
-
-    void registerProxyClass(C condition, List<String> implementedInterfaces);
-
-    default void registerProxyClass(C condition, Class<?>... implementedInterfaces) {
-        registerProxyClass(condition, Arrays.stream(implementedInterfaces).map(Class::getName).collect(Collectors.toList()));
+    /**
+     * Creates the {@code typeReached} condition, which is satisfied when the type is reached at
+     * runtime. A type is reached at runtime, right before the class-initialization routine starts
+     * for that type, or any of the type's subtypes are reached.
+     *
+     * @param type that has to be reached for this condition to be satisfied
+     * @return instance of the condition
+     */
+    static RegistrationCondition typeReached(Class<?> type) {
+        return TypeReachabilityCondition.create(type, true);
     }
 }
