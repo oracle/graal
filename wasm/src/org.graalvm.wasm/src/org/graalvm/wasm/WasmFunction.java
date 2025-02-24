@@ -52,6 +52,8 @@ public final class WasmFunction {
     @CompilationFinal private int typeEquivalenceClass;
     @CompilationFinal private String debugName;
     @CompilationFinal private CallTarget callTarget;
+    /** Interop call adapter for argument and return value validation and conversion. */
+    @CompilationFinal private volatile CallTarget interopCallAdapter;
 
     /**
      * Represents a WebAssembly function.
@@ -165,5 +167,13 @@ public final class WasmFunction {
     void setImportedFunctionCallTarget(CallTarget callTarget) {
         assert isImported() : this;
         this.callTarget = callTarget;
+    }
+
+    public CallTarget getInteropCallAdapter() {
+        return interopCallAdapter;
+    }
+
+    public void setInteropCallAdapter(CallTarget interopCallAdapter) {
+        this.interopCallAdapter = interopCallAdapter;
     }
 }
