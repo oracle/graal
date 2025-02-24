@@ -297,9 +297,7 @@ final class TStringGuards {
     }
 
     static boolean isBuiltin(DecodingErrorHandler errorHandler) {
-        boolean ret = errorHandler instanceof Encodings.BuiltinDecodingErrorHandler;
-        CompilerAsserts.partialEvaluationConstant(ret);
-        return ret;
+        return errorHandler instanceof Encodings.BuiltinDecodingErrorHandler;
     }
 
     static boolean isBuiltin(TranscodingErrorHandler errorHandler) {

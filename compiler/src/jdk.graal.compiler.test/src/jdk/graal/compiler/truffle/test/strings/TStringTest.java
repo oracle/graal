@@ -28,6 +28,7 @@ import java.nio.ByteOrder;
 
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.hotspot.HotSpotBackend;
 import jdk.graal.compiler.lir.amd64.AMD64ComplexVectorOp;
 import jdk.graal.compiler.nodes.FixedNode;
@@ -73,9 +74,12 @@ public abstract class TStringTest extends MethodSubstitutionTest {
         }
     }
 
-    protected static void assertConstantReturn(StructuredGraph graph) {
+    protected void assertConstantReturn(StructuredGraph graph) {
         StartNode start = graph.start();
         FixedNode next = start.next();
+        if (!(next instanceof ReturnNode) || !((ReturnNode) next).result().isConstant()) {
+            getDebugContext().dump(DebugContext.BASIC_LEVEL, graph, "non-constant return");
+        }
         assertTrue(next instanceof ReturnNode);
         assertTrue(((ReturnNode) next).result().isConstant());
     }

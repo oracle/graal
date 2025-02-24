@@ -88,9 +88,9 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
     }
 
     final Object arrayA;
-    final int offsetA;
+    final long offsetA;
     final int strideA;
-    final int offsetB;
+    final long offsetB;
     final int strideB;
     final int lengthCPY;
 
@@ -100,21 +100,23 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
                     int offsetB, int strideB, int lengthCPY) {
         super(ArrayCopyWithConversionsNode.class);
         this.arrayA = arrayA;
-        this.offsetA = offsetA;
+        this.offsetA = offsetA + byteArrayBaseOffset();
         this.strideA = strideA;
-        this.offsetB = offsetB;
+        this.offsetB = offsetB + byteArrayBaseOffset();
         this.strideB = strideB;
         this.lengthCPY = lengthCPY;
     }
 
     @Test
     public void testCopy() {
-        ArgSupplier arrayB = () -> new byte[128 + offsetB + (lengthCPY << strideB) + 128];
+        ArgSupplier arrayB = () -> new byte[(int) (128 + offsetB + (lengthCPY << strideB) + 128)];
         testWithNativeExcept(getArrayCopyWithStride(), null, 1 << 5, DUMMY_LOCATION, arrayA, offsetA, strideA, 0, arrayB, offsetB, strideB, 0, lengthCPY);
         if (strideA == 1) {
-            test(getArrayCopyWithStrideCB(), null, DUMMY_LOCATION, toCharArray((byte[]) arrayA), offsetA, arrayB, offsetB, strideB, lengthCPY);
+            test(getArrayCopyWithStrideCB(), null, DUMMY_LOCATION,
+                            toCharArray((byte[]) arrayA), (int) (offsetA - byteArrayBaseOffset()), arrayB, (int) (offsetB - byteArrayBaseOffset()), strideB, lengthCPY);
         } else if (strideA == 2) {
-            test(getArrayCopyWithStrideIB(), null, DUMMY_LOCATION, toIntArray((byte[]) arrayA), offsetA, arrayB, offsetB, strideB, lengthCPY);
+            test(getArrayCopyWithStrideIB(), null, DUMMY_LOCATION,
+                            toIntArray((byte[]) arrayA), (int) (offsetA - byteArrayBaseOffset()), arrayB, (int) (offsetB - byteArrayBaseOffset()), strideB, lengthCPY);
         }
     }
 
