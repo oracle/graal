@@ -239,7 +239,7 @@ public final class JVMCIVersionCheck {
         }
     }
 
-    public static final String OPEN_LABSJDK_RELEASE_URL_PATTERN = "https://github.com/graalvm/labs-openjdk-*/releases";
+    public static final String OPEN_LABSJDK_RELEASE_URL_PATTERN = "https://github.com/graalvm/labs-openjdk/releases";
 
     private final String javaSpecVersion;
     private final String vmVersion;
