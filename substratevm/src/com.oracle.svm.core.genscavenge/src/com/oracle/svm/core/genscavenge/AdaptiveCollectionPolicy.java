@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.shouldCollectYoungGenSeparately;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -34,6 +33,8 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.util.BasedOnJDKFile;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * A garbage collection policy that balances throughput and memory footprint.
@@ -163,7 +164,8 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
     public boolean shouldCollectCompletely(boolean followingIncrementalCollection) { // should_attempt_scavenge
         guaranteeSizeParametersInitialized();
 
-        if (!followingIncrementalCollection && shouldCollectYoungGenSeparately(!SerialGCOptions.useCompactingOldGen())) {
+        boolean collectYoungSeparately = shouldCollectYoungGenSeparately(!SerialGCOptions.useCompactingOldGen());
+        if (!followingIncrementalCollection && collectYoungSeparately) {
             /*
              * With a copying collector, default to always doing an incremental collection first
              * because we expect most of the objects in the young generation to be garbage, and we
@@ -181,6 +183,12 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
              */
             return true;
         }
+
+        if (!collectYoungSeparately && followingIncrementalCollection) {
+            // Don't override the earlier decision to not do a full GC below (and prolong the pause)
+            return false;
+        }
+
         if (minorCountSinceMajorCollection * avgMinorPause.getAverage() >= CONSECUTIVE_MINOR_TO_MAJOR_COLLECTION_PAUSE_TIME_RATIO * avgMajorPause.getPaddedAverage()) {
             /*
              * When we do many incremental collections in a row because they reclaim sufficient
