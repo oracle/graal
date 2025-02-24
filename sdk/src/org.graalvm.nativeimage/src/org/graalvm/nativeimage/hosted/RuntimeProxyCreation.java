@@ -43,7 +43,7 @@ package org.graalvm.nativeimage.hosted;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 
 /**
@@ -62,7 +62,7 @@ public final class RuntimeProxyCreation {
      * @since 22.3
      */
     public static void register(Class<?>... interfaces) {
-        ImageSingletons.lookup(RuntimeProxyRegistrySupport.class).registerProxy(ConfigurationCondition.alwaysTrue(), interfaces);
+        ImageSingletons.lookup(RuntimeProxyRegistrySupport.class).registerProxy(AccessCondition.unconditional(), interfaces);
     }
 
     private RuntimeProxyCreation() {
