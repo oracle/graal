@@ -45,6 +45,8 @@ import com.oracle.truffle.espresso.shared.vtable.Tables;
 import com.oracle.truffle.espresso.shared.vtable.VTable;
 
 public final class EspressoMethodTableBuilder {
+    private static final Method.MethodVersion[][] EMPTY_ITABLE = new Method.MethodVersion[0][];
+
     public static EspressoTables create(
                     ObjectKlass.KlassVersion thisKlass,
                     ObjectKlass.KlassVersion[] transitiveInterfaces,
@@ -71,7 +73,7 @@ public final class EspressoMethodTableBuilder {
         } catch (MethodTableException e) {
             Meta meta = EspressoContext.get(null).getMeta();
             switch (e.getKind()) {
-                case IllegalClassChangeError:
+                case IncompatibleClassChangeError:
                     meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
             }
             throw EspressoError.shouldNotReachHere("Unknown exception kind: " + e.getKind(), e);
@@ -174,21 +176,22 @@ public final class EspressoMethodTableBuilder {
         for (int i = vtable.length - 1; i >= 0; i--) {
             Method.MethodVersion m = vtable[i];
             if (m.getVTableIndex() == -1) {
-                // There are three cases here:
+                // There are four cases here:
                 // - m is a method declared in thisKlass.
                 // - m is a miranda method of thisKlass.
-                // - m is a miranda method of a parent of thisKlass.
+                // - m is a miranda method of a parent of thisKlass, and m is the un-proxied
+                // version of the method in the parent table (The proxied version would have a
+                // vtable index and not enter this branch).
+                // - m is a miranda method of a parent of thisKlass, but m is not the same method as
+                // in the parent's table (i.e.: a new interface from thisKlass changed the
+                // resolution result of the miranda).
                 /*
-                 * The 3rd case is a bit problematic for us, as it will be not the proxy in the
-                 * parent's table, but an actual method in an interface (not necessarily the same as
-                 * the one in the parent's table).
+                 * Case 1 and 2 are base cases, and can simply be added to the table.
                  *
-                 * We must detect that case, and simply put the parent's proxy back in this table.
-                 * This case can be detected by checking if m has its itable index set (resolved to
-                 * an interface method).
+                 * Case 3 should not happen, as the VTable builder should prioritize returning the
+                 * parent's entry.
                  *
-                 * Note that if m was a selection failure for thisKlass (but not for its parents),
-                 * it would have already been proxified, and would have its itable index not set.
+                 * Case 4 requires spawning a proxy.
                  */
                 if (m.getITableIndex() == -1) {
                     // 1st and 2nd case
@@ -196,22 +199,16 @@ public final class EspressoMethodTableBuilder {
                                     m.getDeclaringKlass().isInterface(); /*- mirandas are added as clean proxies */
                     m.setVTableIndex(i);
                 } else {
-                    // 3rd case
-                    // m is a miranda method from one of thisKlass parents
-                    Method.MethodVersion[] superTable = thisKlass.getSuperKlass().getVTable();
-                    assert i < superTable.length;
-                    Method.MethodVersion parentMethod = superTable[i];
-                    assert parentMethod.getVTableIndex() == i;
-                    if (parentMethod.getMethod().identity() == m.getMethod().identity()) {
-                        // If they resolve to the same method, we can re-use the parent's
-                        vtable[i] = parentMethod;
-                    } else {
-                        // One of the interfaces of thisKlass is more specific than all the
-                        // parent's, so we need to spawn a new proxy.
-                        Method.MethodVersion proxy = new Method(m.getMethod()).getMethodVersion();
-                        proxy.setVTableIndex(i);
-                        vtable[i] = proxy;
-                    }
+                    // Assert that 3rd case never happens
+                    assert i < thisKlass.getSuperKlass().getVTable().length;
+                    assert thisKlass.getSuperKlass().getVTable()[i].getVTableIndex() == i;
+                    assert thisKlass.getSuperKlass().getVTable()[i].getMethod().identity() != m.getMethod().identity();
+                    // 4th case:
+                    // One of the interfaces of thisKlass is more specific than all the
+                    // parent's, so we need to spawn a new proxy.
+                    Method.MethodVersion proxy = new Method(m.getMethod()).getMethodVersion();
+                    proxy.setVTableIndex(i);
+                    vtable[i] = proxy;
                 }
             }
         }
@@ -225,7 +222,11 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static Method.MethodVersion[] toEspressoVTable(List<? extends PartialMethod<Klass, Method, Field>> table, Method.MethodVersion[] mirandas) {
-        Method.MethodVersion[] vtable = new Method.MethodVersion[table.size() + mirandas.length];
+        int size = table.size() + mirandas.length;
+        if (size == 0) {
+            return Method.EMPTY_VERSION_ARRAY;
+        }
+        Method.MethodVersion[] vtable = new Method.MethodVersion[size];
         int vtableIndex = 0;
         for (PartialMethod<Klass, Method, Field> m : table) {
             Method entry = m.asMethodAccess();
@@ -245,6 +246,9 @@ public final class EspressoMethodTableBuilder {
     private static Method.MethodVersion[][] itable(Tables<Klass, Method, Field> tables, ObjectKlass.KlassVersion[] transitiveInterfaces) {
         EconomicMap<Klass, List<PartialMethod<Klass, Method, Field>>> table = tables.getItables();
         assert table != null && transitiveInterfaces != null;
+        if (table.isEmpty()) {
+            return EMPTY_ITABLE;
+        }
         Method.MethodVersion[][] itable = new Method.MethodVersion[transitiveInterfaces.length][];
         for (int i = 0; i < transitiveInterfaces.length; i++) {
             ObjectKlass intf = transitiveInterfaces[i].getKlass();
@@ -254,6 +258,9 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static Method.MethodVersion[] toEspressoITable(List<? extends PartialMethod<Klass, Method, Field>> table) {
+        if (table.isEmpty()) {
+            return Method.EMPTY_VERSION_ARRAY;
+        }
         Method.MethodVersion[] itable = new Method.MethodVersion[table.size()];
         int itableIndex = 0;
         for (PartialMethod<Klass, Method, Field> m : table) {
@@ -274,6 +281,9 @@ public final class EspressoMethodTableBuilder {
     }
 
     private static Method.MethodVersion[] toEspressoMirandas(List<PartialMethod<Klass, Method, Field>> mirandas) {
+        if (mirandas.isEmpty()) {
+            return Method.EMPTY_VERSION_ARRAY;
+        }
         Method.MethodVersion[] table = new Method.MethodVersion[mirandas.size()];
         int idx = 0;
         for (PartialMethod<Klass, Method, Field> m : mirandas) {

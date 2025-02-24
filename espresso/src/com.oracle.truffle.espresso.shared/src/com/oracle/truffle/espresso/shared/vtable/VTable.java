@@ -137,53 +137,66 @@ public final class VTable {
         private void resolveVirtual() throws MethodTableException {
             List<M> parentTable = targetClass.getParentTable();
             for (int i = 0; i < parentTable.size(); i++) {
-                M m = parentTable.get(i);
-                MethodKey k = MethodKey.of(m);
+                M parentMethod = parentTable.get(i);
+                MethodKey k = MethodKey.of(parentMethod);
                 assert locations.containsKey(k) : "Should have been populated with super table.";
                 Locations<C, M, F> currentLocations = locations.get(k);
-                PartialMethod<C, M, F> target = currentLocations.target;
-                if (target != null) {
-                    assert m.getDeclaringClass().isInterface() || currentLocations.vLookup(i) == m : "Should have been populated with super table.";
-                    if (canOverride(target, m, i)) {
-                        if (m.isFinalFlagSet()) {
+                // If this class declares a method with same name and signature, it might be the
+                // entry in the vtable for this slot.
+                PartialMethod<C, M, F> declaredMethod = currentLocations.target;
+                if (declaredMethod != null) {
+                    assert parentMethod.getDeclaringClass().isInterface() || currentLocations.vLookup(i) == parentMethod : "Should have been populated with super table.";
+                    if (canOverride(declaredMethod, parentMethod, i)) {
+                        if (parentMethod.isFinalFlagSet()) {
                             throw new MethodTableException(
-                                            "Method " + target.getSymbolicName() + target.getSymbolicSignature() +
+                                            "Method " + declaredMethod.getSymbolicName() + declaredMethod.getSymbolicSignature() +
                                                             " from type " + targetClass.getSymbolicName() +
-                                                            " overrides final method " + m.getSymbolicName() + target.getSymbolicSignature() +
-                                                            " from type " + m.getDeclaringClass().getSymbolicName(),
-                                            MethodTableException.Kind.IllegalClassChangeError);
+                                                            " overrides final method " + parentMethod.getSymbolicName() + declaredMethod.getSymbolicSignature() +
+                                                            " from type " + parentMethod.getDeclaringClass().getSymbolicName(),
+                                            MethodTableException.Kind.IncompatibleClassChangeError);
                         }
-                        vtable.add(target);
-                        if (!verbose && sameOverrideAccess(target, m)) {
-                            currentLocations.markEquivalentEntry(target, i);
+                        // Success: write this declared method in th table
+                        vtable.add(declaredMethod);
+                        if (!verbose && sameOverrideAccess(declaredMethod, parentMethod)) {
+                            // If this declared method overrides a method with equivalent access, we
+                            // don't need to add that method at the end.
+                            currentLocations.markEquivalentEntry(declaredMethod, i);
                         }
                         continue;
                     }
                 }
                 PartialMethod<C, M, F> entry;
-                if (m.getDeclaringClass().isInterface()) {
+                if (parentMethod.getDeclaringClass().isInterface()) {
                     // This is a miranda method from the parent's. Though this type does not declare
                     // a method that can override it, one of its interfaces may be more specific, so
                     // we need a full resolution here.
                     // The result may be failing (PartialMethod.isSelectionFailure == true)
                     entry = currentLocations.resolve(k, this, true);
+                    if (entry instanceof MethodAccess<C, M, F> ma) {
+                        // Sneaky optimization: if the parent's entry has the same identity as the
+                        // resolution, prefer inheriting the parent's.
+                        if (ma.getDeclaringClass() == parentMethod.getDeclaringClass()) {
+                            entry = parentMethod;
+                        }
+                    }
                 } else {
-                    entry = m;
+                    entry = parentMethod;
                 }
                 vtable.add(entry);
             }
             assert vtable.size() == parentTable.size();
-            for (PartialMethod<C, M, F> impl : targetClass.getDeclaredMethodsList()) {
-                if (!isVirtualEntry(impl)) {
+            for (PartialMethod<C, M, F> declaredMethod : targetClass.getDeclaredMethodsList()) {
+                if (!isVirtualEntry(declaredMethod)) {
                     continue;
                 }
                 if (verbose) {
-                    vtable.add(impl);
+                    vtable.add(declaredMethod);
                 } else {
-                    MethodKey k = MethodKey.of(impl);
+                    MethodKey k = MethodKey.of(declaredMethod);
                     Locations<C, M, F> loc = locations.get(k);
                     if (loc == null || loc.shouldPopulate()) {
-                        vtable.add(impl);
+                        // No equivalent slot was found, we must add the method to the vtable.
+                        vtable.add(declaredMethod);
                     }
                 }
             }
