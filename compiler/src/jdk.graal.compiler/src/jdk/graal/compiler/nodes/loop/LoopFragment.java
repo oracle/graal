@@ -449,7 +449,8 @@ public abstract class LoopFragment {
                 workList.pop();
                 boolean isLoopNode = currentEntry.isLoopNode;
                 Node current = currentEntry.n;
-                if (!isLoopNode && current instanceof GuardNode && !current.hasUsages()) {
+                // NOTE: Guard Handling: Referenced by loop phases.
+                if (!isLoopNode && current instanceof GuardNode g && !current.hasUsages()) {
                     GuardNode guard = (GuardNode) current;
                     if (isLoopNode(guard.getCondition(), loopNodes, nonLoopNodes) != TriState.FALSE) {
                         ValueNode anchor = guard.getAnchor().asNode();
@@ -466,6 +467,16 @@ public abstract class LoopFragment {
                         } else if (cfg.blockFor(anchor).strictlyDominates(cfg.blockFor(loopBeginNode))) {
                             // The anchor is above the loop. The no-usage guard can potentially be
                             // scheduled inside the loop.
+                            isLoopNode = true;
+                        }
+                    }
+                    if (!isLoopNode) {
+                        /*
+                         * If anchor or condition are inside a loop the guard should be in. We
+                         * schedule guards as early as possible for correctness.
+                         */
+                        if (isLoopNode(g.getAnchor().asNode(), loopNodes, nonLoopNodes) == TriState.TRUE ||
+                                        isLoopNode(g.getCondition(), loopNodes, nonLoopNodes) == TriState.TRUE) {
                             isLoopNode = true;
                         }
                     }
