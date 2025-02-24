@@ -38,6 +38,7 @@ import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_PERMITTED_
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_RECORD_COMPONENTS_FLAG;
 import static com.oracle.svm.core.code.RuntimeMetadataDecoderImpl.ALL_SIGNERS_FLAG;
 import static com.oracle.svm.core.configure.ConfigurationFiles.Options.TreatAllTypeReachableConditionsAsTypeReached;
+import static org.graalvm.nativeimage.dynamicaccess.AccessCondition.unconditional;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
@@ -651,7 +652,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
 
             if (declaringClass.isAnnotation()) {
-                processAnnotationField(cnd, reflectField);
+                processAnnotationField(reflectField);
             }
         }
 
@@ -692,12 +693,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         Class<?> annotationClass = method.getDeclaringClass();
         Class<?> proxyClass = Proxy.getProxyClass(annotationClass.getClassLoader(), annotationClass);
         try {
-            /*
-             * build-time condition as it is registered during analysis GR-62516, this should be
-             * deleted
-             */
-            var condition = TypeReachabilityCondition.create(proxyClass, false);
-            register(condition, queriedOnly, proxyClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
+            register(unconditional(), queriedOnly, proxyClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
         } catch (NoSuchMethodException e) {
             /*
              * The annotation member is not present in the proxy class so we don't add it.
@@ -706,11 +702,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @SuppressWarnings("deprecation")
-    private void processAnnotationField(AccessCondition cnd, Field field) {
+    private void processAnnotationField(Field field) {
         Class<?> annotationClass = field.getDeclaringClass();
         Class<?> proxyClass = Proxy.getProxyClass(annotationClass.getClassLoader(), annotationClass);
         try {
-            register(cnd, false, proxyClass.getDeclaredField(field.getName()));
+            register(unconditional(), false, proxyClass.getDeclaredField(field.getName()));
         } catch (NoSuchFieldException e) {
             /*
              * The annotation member is not present in the proxy class so we don't add it.
@@ -996,7 +992,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private void registerTypesForRecordComponent(RecordComponent recordComponent) {
         Method accessorOrNull = recordComponent.getAccessor();
         if (accessorOrNull != null) {
-            register(AccessCondition.unconditional(), true, accessorOrNull);
+            register(unconditional(), true, accessorOrNull);
         }
         registerTypesForAnnotations(recordComponent);
         registerTypesForTypeAnnotations(recordComponent);
@@ -1272,7 +1268,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (!reflectivityFilter.shouldExclude(reflectField)) {
                 registerTypesForField(analysisField, reflectField, false);
                 if (analysisField.getDeclaringClass().isAnnotation()) {
-                    processAnnotationField(AccessCondition.unconditional(), reflectField);
+                    processAnnotationField(reflectField);
                 }
             }
         }
@@ -1398,7 +1394,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     public static class TestBackdoor {
         public static void registerField(ReflectionDataBuilder reflectionDataBuilder, boolean queriedOnly, Field field) {
-            reflectionDataBuilder.runConditionalInAnalysisTask(AccessCondition.unconditional(), (cnd) -> reflectionDataBuilder.registerField(cnd, queriedOnly, field));
+            reflectionDataBuilder.runConditionalInAnalysisTask(unconditional(), (cnd) -> reflectionDataBuilder.registerField(cnd, queriedOnly, field));
         }
     }
 
