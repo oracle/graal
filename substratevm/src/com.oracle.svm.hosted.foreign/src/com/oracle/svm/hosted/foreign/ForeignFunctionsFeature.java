@@ -53,9 +53,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -199,7 +199,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
 
         @Override
-        public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+        public void registerForDowncall(AccessCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forDowncall(desc, options);
@@ -211,7 +211,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
 
         @Override
-        public void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+        public void registerForUpcall(AccessCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
             try {
                 LinkerOptions linkerOptions = LinkerOptions.forUpcall(desc, options);
@@ -223,7 +223,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
         }
 
         @Override
-        public void registerForDirectUpcall(ConfigurationCondition condition, MethodHandle target, FunctionDescriptor desc, Linker.Option... options) {
+        public void registerForDirectUpcall(AccessCondition condition, MethodHandle target, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
             DirectMethodHandleDesc directMethodHandleDesc = target.describeConstable()
                             .filter(x -> x instanceof DirectMethodHandleDesc dmh && dmh.kind() == Kind.STATIC)
