@@ -44,7 +44,7 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
     private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables;
     private final List<PartialMethod<C, M, F>> mirandas;
 
-    public Tables(List<PartialMethod<C, M, F>> vtable,
+    Tables(List<PartialMethod<C, M, F>> vtable,
                     EconomicMap<C, List<PartialMethod<C, M, F>>> itables,
                     List<PartialMethod<C, M, F>> mirandas) {
         this.vtable = vtable;
@@ -70,7 +70,6 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * <li>One of this type's supertype may have added an interface method that succeeds selection,
      * but this type adds a new interface that makes it fail.</li>
      * </ul>
-     *
      */
     public List<PartialMethod<C, M, F>> getVtable() {
         return vtable;
@@ -106,12 +105,14 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      * <p>
      * Such methods are also sometimes referred to as {@code miranda methods}.
      * <p>
-     * The methods in this list are safe to use as-is for the interface table. each entry in this
-     * list is either:
+     * These are not eagerly added to the {@link #getVtable() vtable}, such that the runtime can
+     * decide to add them or not.
+     * <p>
+     * Each entry in this list is either:
      * <ul>
      * <li>A default interface method (ie: an interface method that is
      * non-{@link ModifiersProvider#isAbstract() abstract}).</li>
-     * <li>An {@link ModifiersProvider#isAbstract() abstract} methods, in which case the runtime
+     * <li>An {@link ModifiersProvider#isAbstract() abstract} method, in which case the runtime
      * should throw {@link AbstractMethodError}.</li>
      * <li>A {@link PartialMethod method} for which {@link PartialMethod#isSelectionFailure()}
      * returns true, in which case the runtime should throw

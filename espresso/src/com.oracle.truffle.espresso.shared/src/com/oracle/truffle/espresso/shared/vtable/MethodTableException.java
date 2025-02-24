@@ -24,11 +24,20 @@ package com.oracle.truffle.espresso.shared.vtable;
 
 import java.io.Serial;
 
+/**
+ * Indicates that the method table builder detected an error that the runtime should report.
+ * <p>
+ * This exception is intended to be caught and translated to the corresponding runtime
+ * representation.
+ */
 public class MethodTableException extends Exception {
     @Serial private static final long serialVersionUID = -764636424050515674L;
 
     public enum Kind {
-        IllegalClassChangeError,
+        /**
+         * Should be translated to {@link IncompatibleClassChangeError}.
+         */
+        IncompatibleClassChangeError,
     }
 
     private final Kind kind;

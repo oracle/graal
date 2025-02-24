@@ -75,6 +75,9 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
      * In practice, this means that any method that would override one of the methods will also
      * override the other. As such, the declared method can be assigned the same
      * {@code vtable index} as the method it is overriding.
+     * <p>
+     * Note: This method will not be called by the VTable builder if {@code verbose} is set to
+     * {@code true}
      */
     void equivalentVTableIndex(int index);
 
