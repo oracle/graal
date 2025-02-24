@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,67 +38,84 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.nativeimage.hosted;
+package org.graalvm.nativeimage.dynamicaccess;
+
+import org.graalvm.nativeimage.hosted.Feature;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
-import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
-
-@Platforms(Platform.HOSTED_ONLY.class)
+/**
+ * This interface is used to register classes, methods, and fields for foreign access at run time.
+ * An instance of this interface is acquired via
+ * {@link Feature.AfterRegistrationAccess#getForeignAccess()}.
+ * <p>
+ * All methods in {@link ForeignAccess} require a {@link AccessCondition} as their first parameter.
+ * Registration for foreign access will happen only if the specified condition is satisfied.
+ *
+ * <h3>How to use</h3>
+ *
+ * {@link ForeignAccess} should only be used during {@link Feature#afterRegistration}. Any attempt
+ * to register metadata in any other phase will result in an error.
+ * <p>
+ * <strong>Example:</strong>
+ *
+ * <pre>{@code @Override
+ * public void afterRegistration(AfterRegistrationAccess access) {
+ *     ForeignAccess foreignAccess = access.getForeignAccess();
+ *     AccessCondition condition = AccessCondition.typeReached(ConditionType.class);
+ *     foreignAccess.registerForDowncall(condition, java.lang.foreign.ValueLayout.JAVA_INT);
+ * }
+ * }</pre>
+ *
+ * @since 25.0.1
+ */
 @SuppressWarnings("all")
-public final class RuntimeForeignAccess {
+public interface ForeignAccess {
 
     /**
      * Registers the provided function descriptor and options pair at image build time for downcalls
-     * into foreign code. Required to get a downcall method handle using
-     * {@link java.lang.foreign.Linker#downcallHandle} for the same descriptor and options at
-     * runtime.
+     * into foreign code, if the {@code condition} is satisfied. Required to get a downcall method
+     * handle using {@link java.lang.foreign.Linker#downcallHandle} for the same descriptor and
+     * options at run time.
      * <p>
-     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * Even though this method is weakly typed for compatibility reasons, run-time checks will be
      * performed to ensure that the arguments have the expected type. It will be deprecated in favor
      * of strongly typed variant as soon as possible.
-     * <p>
-     * This API is deprecated; use the {@link ForeignAccess} instead.
      *
+     * @param condition represents the condition that needs to be satisfied in order to access
+     *            target resources.
      * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for downcalls.
      * @param options An array of {@link java.lang.foreign.Linker.Option} used for the downcalls.
      *
-     * @since 23.1
+     * @since 25.0.1
      */
-    public static void registerForDowncall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDowncall(AccessCondition.unconditional(), desc, options);
-    }
+    void registerForDowncall(AccessCondition condition, Object desc, Object... options);
 
     /**
      * Registers the provided function descriptor and options pair at image build time for upcalls
-     * from foreign code. Required to get an upcall stub function pointer using
-     * {@link java.lang.foreign.Linker#upcallStub} for the same descriptor and options at runtime.
+     * from foreign code, if the {@code condition} is satisfied. Required to get an upcall stub
+     * function pointer using {@link java.lang.foreign.Linker#upcallStub} for the same descriptor
+     * and options at run time.
      * <p>
-     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * Even though this method is weakly typed for compatibility reasons, run-time checks will be
      * performed to ensure that the arguments have the expected type. It will be deprecated in favor
      * of strongly typed variant as soon as possible.
-     * <p>
-     * This API is deprecated; use the {@link ForeignAccess} instead.
      *
+     * @param condition represents the condition that needs to be satisfied in order to access
+     *            target resources.
      * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for upcalls.
      * @param options An array of {@link java.lang.foreign.Linker.Option} used for the upcalls.
      *
-     * @since 24.1
+     * @since 25.0.1
      */
-    public static void registerForUpcall(Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForUpcall(AccessCondition.unconditional(), desc, options);
-    }
+    void registerForUpcall(AccessCondition condition, Object desc, Object... options);
 
     /**
-     * Registers a specific static method (denoted by a method handle) as a fast upcall target. This
-     * will create a specialized upcall stub that will invoke only the specified method, which is
-     * much faster than using {@link #registerForUpcall(Object, Object...)}).
+     * Registers a specific static method (denoted by a method handle) as a fast upcall target, if
+     * the {@code condition} is satisfied. This will create a specialized upcall stub that will
+     * invoke only the specified method, which is much faster than using
+     * {@link #registerForUpcall(AccessCondition, Object, Object...)}).
      * <p>
      * The provided method handle must be a direct method handle. Those are most commonly created
      * using {@link java.lang.invoke.MethodHandles.Lookup#findStatic(Class, String, MethodType)}.
@@ -108,23 +125,18 @@ public final class RuntimeForeignAccess {
      * method handle to denoted static method.
      * </p>
      * <p>
-     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * Even though this method is weakly typed for compatibility reasons, run-time checks will be
      * performed to ensure that the arguments have the expected type. It will be deprecated in favor
      * of strongly typed variant as soon as possible.
      * </p>
-     * <p>
-     * This API is deprecated; use the {@link ForeignAccess} instead.
      *
+     * @param condition represents the condition that needs to be satisfied in order to access
+     *            target resources.
      * @param target A direct method handle denoting a static method.
      * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for upcalls.
      * @param options An array of {@link java.lang.foreign.Linker.Option} used for the upcalls.
      *
-     * @since 24.2
+     * @since 25.0.1
      */
-    public static void registerForDirectUpcall(MethodHandle target, Object desc, Object... options) {
-        ImageSingletons.lookup(RuntimeForeignAccessSupport.class).registerForDirectUpcall(AccessCondition.unconditional(), target, desc, options);
-    }
-
-    private RuntimeForeignAccess() {
-    }
+    void registerForDirectUpcall(AccessCondition condition, MethodHandle target, Object desc, Object... options);
 }

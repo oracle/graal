@@ -48,10 +48,10 @@ import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 
 public interface ReflectionRegistry {
     default void register(AccessCondition condition, Class<?>... classes) {
-        Arrays.stream(classes).forEach(clazz -> register(condition, false, false, clazz));
+        Arrays.stream(classes).forEach(clazz -> register(condition, false, clazz));
     }
 
-    void register(AccessCondition condition, boolean unsafeAllocated, boolean preserved, Class<?> clazz);
+    void register(AccessCondition condition, boolean preserved, Class<?> clazz);
 
     void register(AccessCondition condition, boolean queriedOnly, boolean preserved, Executable... methods);
 

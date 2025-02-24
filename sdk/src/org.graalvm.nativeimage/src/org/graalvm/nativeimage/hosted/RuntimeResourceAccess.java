@@ -47,14 +47,13 @@ import java.util.Objects;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 /**
  * This class can be used to register Java resources and ResourceBundles that should be accessible
  * at run time.
- *
- * @since 22.3
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class RuntimeResourceAccess {
@@ -62,6 +61,8 @@ public final class RuntimeResourceAccess {
     /**
      * Make Java resource {@code resourcePath} from {@code module} available at run time. If the
      * given {@code module} is unnamed, the resource is looked up on the classpath instead.
+     * <p>
+     * This API is deprecated; use the {@link ResourceAccess} instead.
      *
      * @since 22.3
      */
@@ -76,6 +77,8 @@ public final class RuntimeResourceAccess {
      * {@code resourceContent}. At runtime the resource can be accessed as if it was part of the
      * original application. If the given {@code module} is unnamed, the resource is placed on the
      * classpath instead.
+     * <p>
+     * This API is deprecated; use the {@link ResourceAccess} instead.
      *
      * @since 22.3
      */
@@ -91,6 +94,8 @@ public final class RuntimeResourceAccess {
      * Make Java ResourceBundle that is specified by a {@code baseBundleName} and {@code locales}
      * from module {@code module} available at run time. If the given {@code module} is unnamed, the
      * ResourceBundle is looked up on the classpath instead.
+     * <p>
+     * This API is deprecated; use the {@link ResourceAccess} instead.
      *
      * @since 22.3
      */
@@ -104,6 +109,8 @@ public final class RuntimeResourceAccess {
      * Make Java ResourceBundle that is specified by a {@code bundleName} from module {@code module}
      * available at run time. If the given {@code module} is unnamed, the ResourceBundle is looked
      * up on the classpath instead.
+     * <p>
+     * This API is deprecated; use the {@link ResourceAccess} instead.
      *
      * @since 22.3
      */

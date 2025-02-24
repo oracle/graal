@@ -127,7 +127,7 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
-                public void addCondition(AccessCondition configurationCondition, Module module, String resourcePath) {
+                public void addCondition(AccessCondition accessCondition, Module module, String resourcePath) {
 
                 }
 

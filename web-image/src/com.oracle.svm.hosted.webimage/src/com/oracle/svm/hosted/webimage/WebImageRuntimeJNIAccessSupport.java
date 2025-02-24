@@ -40,7 +40,7 @@ import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
  */
 public class WebImageRuntimeJNIAccessSupport implements RuntimeJNIAccessSupport {
     @Override
-    public void register(AccessCondition condition, boolean unsafeAllocated, boolean preserved, Class<?> clazz) {
+    public void register(AccessCondition condition, boolean preserved, Class<?> clazz) {
         // Do nothing.
     }
 

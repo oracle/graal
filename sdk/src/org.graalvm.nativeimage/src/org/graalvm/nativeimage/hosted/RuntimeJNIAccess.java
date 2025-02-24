@@ -46,6 +46,7 @@ import java.lang.reflect.Field;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 
@@ -62,6 +63,8 @@ public final class RuntimeJNIAccess {
      * Makes the provided classes available for JNI access at run time. Needed when native code
      * looks up Java classes via <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#findclass">FindClass</a>.
+     * <p>
+     * This API is deprecated; use the {@link JNIAccess} instead.
      *
      * @since 22.3
      */
@@ -75,6 +78,8 @@ public final class RuntimeJNIAccess {
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getmethodid">GetMethodID</a>
      * or <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getstaticmethodid">GetStaticMethodID</a>.
+     * <p>
+     * This API is deprecated; use the {@link JNIAccess} instead.
      *
      * @since 22.3
      */
@@ -88,6 +93,8 @@ public final class RuntimeJNIAccess {
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getfieldid">GetFieldID</a>
      * or <a href=
      * "https://docs.oracle.com/en/java/javase/17/docs/specs/jni/functions.html#getstaticfieldid">GetStaticFieldID</a>.
+     * <p>
+     * This API is deprecated; use the {@link JNIAccess} instead.
      *
      * @since 22.3
      */

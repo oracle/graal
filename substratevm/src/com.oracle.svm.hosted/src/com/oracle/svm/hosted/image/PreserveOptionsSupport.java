@@ -229,7 +229,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
             }
             if (SubstrateOptions.JNI.getValue()) {
                 final RuntimeJNIAccessSupport jni = ImageSingletons.lookup(RuntimeJNIAccessSupport.class);
-                jni.register(always, false, true, c);
+                jni.register(always, true, c);
                 try {
                     for (Method declaredMethod : c.getDeclaredMethods()) {
                         jni.register(always, false, true, declaredMethod);
@@ -247,7 +247,9 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
             // if we register as unsafe allocated earlier there are build-time
             // initialization errors
-            reflection.register(always, !(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers())), true, c);
+            if (!(c.isArray() || c.isInterface() || c.isPrimitive() || Modifier.isAbstract(c.getModifiers()))) {
+                reflection.registerUnsafeAllocation(always, true, c);
+            }
 
             /* Register resource bundles */
             if (BundleContentSubstitutedLocalizationSupport.isBundleSupported(c)) {
@@ -275,7 +277,7 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
     private static void registerType(RuntimeReflectionSupport reflection, Class<?> c) {
         AccessCondition always = AccessCondition.unconditional();
-        reflection.register(always, false, true, c);
+        reflection.register(always, true, c);
 
         reflection.registerAllDeclaredFields(always, true, c);
         reflection.registerAllDeclaredMethodsQuery(always, false, true, c);

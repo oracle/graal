@@ -47,7 +47,7 @@ public class JSEntryPointRegistry implements ReflectionRegistry {
     public final Set<Executable> entryPoints = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Override
-    public void register(AccessCondition condition, boolean unsafeAllocated, boolean preserved, Class<?> clazz) {
+    public void register(AccessCondition condition, boolean preserved, Class<?> clazz) {
         // Do nothing for types
     }
 

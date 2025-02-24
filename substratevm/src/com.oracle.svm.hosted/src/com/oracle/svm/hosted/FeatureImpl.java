@@ -48,10 +48,14 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.AnnotationAccess;
-import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
+import org.graalvm.nativeimage.dynamicaccess.ForeignAccess;
+import org.graalvm.nativeimage.dynamicaccess.JNIAccess;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
+import org.graalvm.nativeimage.dynamicaccess.ResourceAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
+import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -195,6 +199,26 @@ public class FeatureImpl {
 
         public Pair<Method, CEntryPointData> getMainEntryPoint() {
             return mainEntryPoint;
+        }
+
+        @Override
+        public ReflectiveAccess getReflectiveAccess() {
+            return ReflectiveAccessImpl.singleton();
+        }
+
+        @Override
+        public ResourceAccess getResourceAccess() {
+            return ResourceAccessImpl.singleton();
+        }
+
+        @Override
+        public JNIAccess getJNIAccess() {
+            return JNIAccessImpl.singleton();
+        }
+
+        @Override
+        public ForeignAccess getForeignAccess() {
+            return ForeignAccessImpl.singleton();
         }
     }
 
@@ -586,7 +610,7 @@ public class FeatureImpl {
          * before/during analysis only in some builds when the initialization happened fast enough,
          * resulting in unstable number of reachable methods and unstable decisions of the
          * simulation of class initializers.
-         * 
+         *
          * @see SVMHost#allowStableFieldFoldingBeforeAnalysis
          */
         public void allowStableFieldFoldingBeforeAnalysis(Field field) {
