@@ -68,6 +68,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -1087,7 +1088,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(init global %d in %s)", globalIndex, moduleName);
+                return String.format(Locale.ROOT, "(init global %d in %s)", globalIndex, moduleName);
             }
 
             @Override
@@ -1118,7 +1119,8 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import func %s from %s into %s at %d)", importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, destinationIndex);
+                return String.format(Locale.ROOT, "(import func %s from %s into %s at %d)",
+                                importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, destinationIndex);
             }
 
             @Override
@@ -1179,7 +1181,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(callsite at %d in %s)", instructionOffset, moduleName);
+                return String.format(Locale.ROOT, "(callsite %d at %d in %s)", controlTableOffset, instructionOffset, moduleName);
             }
 
             @Override
@@ -1207,7 +1209,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(code entry at %d in %s)", functionIndex, moduleName);
+                return String.format(Locale.ROOT, "(code entry at %d in %s)", functionIndex, moduleName);
             }
 
             @Override
@@ -1237,7 +1239,8 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(import memory %s from %s into %s with index %d)", importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, memoryIndex);
+                return String.format(Locale.ROOT, "(import memory %s from %s into %s with index %d)",
+                                importDescriptor.memberName(), importDescriptor.moduleName(), moduleName, memoryIndex);
             }
 
             @Override
@@ -1293,7 +1296,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(data %d in %s)", dataSegmentId, moduleName);
+                return String.format(Locale.ROOT, "(data %d in %s)", dataSegmentId, moduleName);
             }
 
             @Override
@@ -1377,7 +1380,7 @@ public class Linker {
 
             @Override
             public String toString() {
-                return String.format("(data %d in %s)", elemSegmentId, moduleName);
+                return String.format(Locale.ROOT, "(data %d in %s)", elemSegmentId, moduleName);
             }
 
             @Override

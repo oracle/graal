@@ -221,7 +221,7 @@ public class Assert {
 
     @TruffleBoundary
     private static String format(String format, Object... args) {
-        return String.format(format, args);
+        return String.format(Locale.ROOT, format, args);
     }
 
 }
