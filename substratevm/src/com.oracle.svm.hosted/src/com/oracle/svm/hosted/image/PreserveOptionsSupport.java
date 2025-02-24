@@ -40,7 +40,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.hosted.RegistrationCondition;
 import org.graalvm.nativeimage.impl.RuntimeJNIAccessSupport;
 import org.graalvm.nativeimage.impl.RuntimeProxyCreationSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -152,8 +152,8 @@ public class PreserveOptionsSupport extends IncludeOptionsSupport {
 
         final RuntimeReflectionSupport reflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         final RuntimeProxyCreationSupport proxy = ImageSingletons.lookup(RuntimeProxyCreationSupport.class);
-        final RuntimeSerializationSupport<ConfigurationCondition> serialization = RuntimeSerializationSupport.singleton();
-        final ConfigurationCondition always = ConfigurationCondition.alwaysTrue();
+        final RuntimeSerializationSupport<RegistrationCondition> serialization = RuntimeSerializationSupport.singleton();
+        final RegistrationCondition always = RegistrationCondition.always();
 
         /*
          * Sort descending by class hierarchy depth to avoid complexity related to field
