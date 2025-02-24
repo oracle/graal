@@ -89,7 +89,6 @@ public final class VTable {
         private final List<PartialMethod<C, M, F>> vtable = new ArrayList<>();
         private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables = EconomicMap.create(Equivalence.IDENTITY);
         private final List<PartialMethod<C, M, F>> mirandas = new ArrayList<>();
-        private final List<Integer> equivalentEntries = new ArrayList<>();
 
         Builder(PartialType<C, M, F> targetClass, boolean verbose, boolean allowInterfaceResolvingToPrivate) {
             this.targetClass = targetClass;
@@ -111,7 +110,7 @@ public final class VTable {
             // This step also detect miranda methods.
             resolveInterfaces();
 
-            return new Tables<>(vtable, itables, mirandas, equivalentEntries);
+            return new Tables<>(vtable, itables, mirandas);
         }
 
         private void buildLocations() {
@@ -156,7 +155,7 @@ public final class VTable {
                         }
                         vtable.add(target);
                         if (!verbose && sameOverrideAccess(target, m)) {
-                            currentLocations.markEquivalentEntry(this, i);
+                            currentLocations.markEquivalentEntry(target, i);
                         }
                         continue;
                     }
@@ -322,10 +321,10 @@ public final class VTable {
                 return resolvedInterfaceMethod;
             }
 
-            void markEquivalentEntry(Builder<?, ?, ?> b, int idx) {
+            void markEquivalentEntry(PartialMethod<?, ?, ?> declaredMethod, int idx) {
                 assert idx >= 0;
                 if (shouldPopulate) {
-                    b.equivalentEntries.add(idx);
+                    declaredMethod.equivalentVTableIndex(idx);
                     shouldPopulate = false;
                 }
             }

@@ -43,16 +43,13 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
     private final List<PartialMethod<C, M, F>> vtable;
     private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables;
     private final List<PartialMethod<C, M, F>> mirandas;
-    private final List<Integer> equivalentEntries;
 
     public Tables(List<PartialMethod<C, M, F>> vtable,
                     EconomicMap<C, List<PartialMethod<C, M, F>>> itables,
-                    List<PartialMethod<C, M, F>> mirandas,
-                    List<Integer> equivalentEntries) {
+                    List<PartialMethod<C, M, F>> mirandas) {
         this.vtable = vtable;
         this.itables = itables;
         this.mirandas = mirandas;
-        this.equivalentEntries = equivalentEntries;
     }
 
     /**
@@ -126,38 +123,5 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
      */
     public List<PartialMethod<C, M, F>> getImplicitInterfaceMethods() {
         return mirandas;
-    }
-
-    /**
-     * A list of indexes in the VTable. Every method in the {@link #getVtable()} with indexes in
-     * this list were not appended to the vtable. Instead, they should be using that index as their
-     * {@code vtable index}.
-     * <p>
-     * More precisely, this list of indexes in the VTable is defined as follows:
-     * <p>
-     * For every index {@code i} in the list:
-     * <ul>
-     * <li>The {@link PartialMethod method} {@code m} at index {@code i} is a method found in the
-     * {@link PartialType#getDeclaredMethodsList() declared method list} of the {@link PartialType
-     * type} used for VTable creation.</li>
-     * <li>{@code m} overrides the {@link MethodAccess method} {@code m'} found in the
-     * {@link PartialType#getParentTable() super class VTable} at index {code i}</li>
-     * <li>{@code m} and {@code m'} have the {@code same access control constraints}</li>
-     * </ul>
-     * <p>
-     * Two methods are said to have the {@code same access control constraints} if either:
-     * <ul>
-     * <li>Both methods are either {@link ModifiersProvider#isPublic() public} or
-     * {@link ModifiersProvider#isProtected() protected}.</li>
-     * <li>Both methods are package-private, and are declared in the
-     * {@link PartialType#sameRuntimePackage(TypeAccess) same runtime package}.</li>
-     * </ul>
-     * <p>
-     * In practice, this means that any method that would override one of the method will also
-     * override the other. As such, the declared method can be assigned the same
-     * {@code vtable index} as the method it is overriding.
-     */
-    public List<Integer> getEquivalentEntries() {
-        return equivalentEntries;
     }
 }

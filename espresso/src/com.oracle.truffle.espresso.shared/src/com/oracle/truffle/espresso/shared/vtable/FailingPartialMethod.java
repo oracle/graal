@@ -69,6 +69,11 @@ public final class FailingPartialMethod<C extends TypeAccess<C, M, F>, M extends
     }
 
     @Override
+    public void equivalentVTableIndex(int index) {
+        delegate.equivalentVTableIndex(index);
+    }
+
+    @Override
     public Symbol<Name> getSymbolicName() {
         return delegate.getSymbolicName();
     }

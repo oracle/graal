@@ -174,6 +174,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     Method(Method method) {
         this(method, method.getCodeAttribute());
+        assert method.getDeclaringKlass().isInterface();
     }
 
     private Method(Method method, CodeAttribute split) {
@@ -1353,6 +1354,12 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     @Override
     public boolean hasVTableIndex() {
         return getVTableIndex() != -1;
+    }
+
+    @Override
+    public void equivalentVTableIndex(int index) {
+        assert getVTableIndex() == -1;
+        getMethodVersion().setVTableIndex(index);
     }
 
     @Override

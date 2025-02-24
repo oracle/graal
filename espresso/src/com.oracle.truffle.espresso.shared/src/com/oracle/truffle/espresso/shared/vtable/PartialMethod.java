@@ -52,6 +52,33 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
     boolean isClassInitializer();
 
     /**
+     * When the {@link VTable} builder finds an {@code equivalent slot} for this method in the
+     * parent's table, this method will be used to make that information known to the runtime.
+     * <p>
+     * Methods for which this method is called are not appended to the VTable, instead they are
+     * present in the vtable at index {@code index}.
+     * <p>
+     * An {@code equivalent slot} at index {@code i} for a method {@code m} is defined as follows:
+     * <ul>
+     * <li>There exists a method {@code m'} in the parent's table at index {@code i}.</li>
+     * <li>Methods {@code m} and {@code m'} have the {@code same access control constraints}</li>
+     * </ul>
+     * <p>
+     * Two methods are said to have the {@code same access control constraints} if either:
+     * <ul>
+     * <li>Both methods are either {@link ModifiersProvider#isPublic() public} or
+     * {@link ModifiersProvider#isProtected() protected}.</li>
+     * <li>Both methods are package-private, and are declared in the
+     * {@link PartialType#sameRuntimePackage(TypeAccess) same runtime package}.</li>
+     * </ul>
+     * <p>
+     * In practice, this means that any method that would override one of the methods will also
+     * override the other. As such, the declared method can be assigned the same
+     * {@code vtable index} as the method it is overriding.
+     */
+    void equivalentVTableIndex(int index);
+
+    /**
      * Whether this {@link PartialMethod method} is a failing entry in a {@link Tables method
      * table}. Any call-site that selects this method should throw
      * {@link IncompatibleClassChangeError}.
