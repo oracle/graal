@@ -48,6 +48,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
@@ -65,6 +66,8 @@ public final class RuntimeReflection {
     /**
      * Makes the provided classes available for reflection at run time. A call to
      * {@link Class#forName} for the names of the classes will return the classes at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
@@ -76,6 +79,8 @@ public final class RuntimeReflection {
      * Makes the provided class available for reflection at run time. A call to
      * {@link Class#forName} for the name of the class will return the class (if it exists) or a
      * {@link ClassNotFoundException} at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -87,6 +92,8 @@ public final class RuntimeReflection {
      * Makes the provided methods available for reflection at run time. The methods will be returned
      * by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and all the
      * other methods on {@link Class} that return a single method.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
@@ -99,6 +106,8 @@ public final class RuntimeReflection {
      * returned by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and
      * all the other methods on {@link Class} that return a single method, but will not be invocable
      * and will not be considered reachable.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 21.3
      */
@@ -112,6 +121,8 @@ public final class RuntimeReflection {
      * all the other methods on {@link Class} that return a single method, but will not be invocable
      * and will not be considered reachable. If the method doesn't exist a
      * {@link NoSuchMethodException} will be thrown when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -126,6 +137,8 @@ public final class RuntimeReflection {
      * that return a single constructor, but will not be invocable and will not be considered
      * reachable. If the constructor doesn't exist a {@link NoSuchMethodException} will be thrown
      * when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -137,6 +150,8 @@ public final class RuntimeReflection {
      * Makes the provided fields available for reflection at run time. The fields will be returned
      * by {@link Class#getField}, {@link Class#getDeclaredField(String)},and all the other methods
      * on {@link Class} that return a single field.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
@@ -149,6 +164,8 @@ public final class RuntimeReflection {
      * {@link Class#getField}, {@link Class#getDeclaredField(String)}, and all the other methods on
      * {@link Class} that return a single field. If the field doesn't exist a
      * {@link NoSuchFieldException} will be thrown when calling these methods at run-time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */
@@ -158,6 +175,8 @@ public final class RuntimeReflection {
 
     /**
      * Allows calling {@link Class#getClasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -167,6 +186,8 @@ public final class RuntimeReflection {
 
     /**
      * Allows calling {@link Class#getDeclaredClasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -177,6 +198,8 @@ public final class RuntimeReflection {
     /**
      * Allows calling {@link Class#getMethods()} on the provided class at run time. The methods will
      * also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -187,6 +210,8 @@ public final class RuntimeReflection {
     /**
      * Allows calling {@link Class#getDeclaredMethods()} on the provided class at run time. The
      * methods will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -197,6 +222,8 @@ public final class RuntimeReflection {
     /**
      * Allows calling {@link Class#getConstructors()} on the provided class at run time. The
      * constructors will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -207,6 +234,8 @@ public final class RuntimeReflection {
     /**
      * Allows calling {@link Class#getDeclaredConstructors()} on the provided class at run time. The
      * constructors will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -217,6 +246,8 @@ public final class RuntimeReflection {
     /**
      * Allows calling {@link Class#getFields()} on the provided class at run time. The fields will
      * also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -227,6 +258,8 @@ public final class RuntimeReflection {
     /**
      * Allows calling {@link Class#getDeclaredFields()} on the provided class at run time. The
      * fields will also be registered for individual queries.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -236,6 +269,8 @@ public final class RuntimeReflection {
 
     /**
      * Allows calling {@link Class#getNestMembers()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -245,6 +280,8 @@ public final class RuntimeReflection {
 
     /**
      * Allows calling {@link Class#getPermittedSubclasses()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -254,6 +291,8 @@ public final class RuntimeReflection {
 
     /**
      * Allows calling {@link Class#getRecordComponents()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -263,6 +302,8 @@ public final class RuntimeReflection {
 
     /**
      * Allows calling {@link Class#getSigners()} on the provided class at run time.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 23.0
      */
@@ -296,6 +337,8 @@ public final class RuntimeReflection {
      * Makes the provided classes available for reflective instantiation by
      * {@link Class#newInstance}. This is equivalent to registering the nullary constructors of the
      * classes.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 19.0
      */

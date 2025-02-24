@@ -43,6 +43,7 @@ package org.graalvm.nativeimage.hosted;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.dynamicaccess.ReflectiveAccess;
 import org.graalvm.nativeimage.dynamicaccess.AccessCondition;
 import org.graalvm.nativeimage.impl.RuntimeProxyRegistrySupport;
 
@@ -58,6 +59,8 @@ public final class RuntimeProxyCreation {
      * Enables registering specifications of {@link java.lang.reflect.Proxy} classes during the
      * image build so that matching proxy objects can be created at runtime. The proxy class is
      * fully specified by the interfaces it implements.
+     * <p>
+     * This API is deprecated; use the {@link ReflectiveAccess} instead.
      *
      * @since 22.3
      */
