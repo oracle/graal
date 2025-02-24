@@ -213,10 +213,15 @@ public class ResourcesFeature implements InternalFeature {
                 return;
             }
 
+            String resPath = resourcePath;
+            if (resourcePath.startsWith("/")) {
+                resPath = resourcePath.substring(1);
+            }
+
             if (module != null && module.isNamed()) {
-                processResourceFromModule(module, resourcePath, origin);
+                processResourceFromModule(module, resPath, origin);
             } else {
-                processResourceFromClasspath(resourcePath, origin);
+                processResourceFromClasspath(resPath, origin);
             }
         }
 
