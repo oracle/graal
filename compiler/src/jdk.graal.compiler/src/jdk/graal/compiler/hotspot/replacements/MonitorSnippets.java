@@ -93,10 +93,10 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import static jdk.graal.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
-import static org.graalvm.word.LocationIdentity.any;
 import static jdk.graal.compiler.word.Word.nullPointer;
 import static jdk.graal.compiler.word.Word.unsigned;
 import static jdk.graal.compiler.word.Word.zero;
+import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.List;
 import java.util.Objects;
@@ -667,17 +667,11 @@ public class MonitorSnippets implements Snippets {
                 memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
                 monitor.writeWord(ownerOffset, zero());
                 memoryBarrier(MembarNode.FenceKind.STORE_LOAD);
-                // Note that we read the EntryList and then the cxq after dropping the
-                // lock, so the values need not form a stable snapshot. In particular,
-                // after reading the (empty) EntryList, another thread could acquire
-                // and release the lock, moving any entries in the cxq to the
-                // EntryList, causing the current thread to see an empty cxq and
-                // conclude there are no waiters. But this is okay as the thread that
-                // moved the cxq is responsible for waking the successor.
+                // Note that we read the entry list after dropping the lock, so the values need not
+                // form a stable snapshot.
                 Word entryList = monitor.readWord(objectMonitorEntryListOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_ENTRY_LIST_LOCATION);
-                Word cxq = monitor.readWord(objectMonitorCxqOffset(INJECTED_VMCONFIG), OBJECT_MONITOR_CXQ_LOCATION);
-                // Check if the entry lists are empty.
-                if (probability(FREQUENT_PROBABILITY, entryList.or(cxq).equal(0))) {
+                // Check if the entry list is empty.
+                if (probability(FREQUENT_PROBABILITY, entryList.isNull())) {
                     traceObject(trace, "-lock{heavyweight:simple}", object, false);
                     counters.unlockHeavySimple.inc();
                     return true;
