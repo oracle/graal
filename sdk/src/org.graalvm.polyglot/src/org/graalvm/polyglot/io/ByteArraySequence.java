@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,8 +83,7 @@ final class ByteArraySequence implements ByteSequence {
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
-        } else if (obj instanceof ByteArraySequence) {
-            ByteArraySequence other = ((ByteArraySequence) obj);
+        } else if (obj instanceof ByteArraySequence other) {
             if (buffer == other.buffer) {
                 return start == other.start && length == other.length;
             }
@@ -97,15 +96,10 @@ final class ByteArraySequence implements ByteSequence {
                 // hash was already computed and hash is not equal
                 return false;
             }
-            int otherStart = other.start;
-            for (int i = 0; i < length; i++) {
-                if (buffer[start + i] != other.buffer[otherStart + i]) {
-                    return false;
-                }
-            }
-            return true;
-        } else if (obj instanceof ByteSequence) {
-            ByteSequence other = ((ByteSequence) obj);
+            return Arrays.equals(
+                            this.buffer, this.start, this.start + this.length,
+                            other.buffer, other.start, other.start + other.length);
+        } else if (obj instanceof ByteSequence other) {
             if (length != other.length()) {
                 return false;
             }
