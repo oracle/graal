@@ -145,8 +145,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
-    @AlwaysInline("De-virtualize calls to visitor.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void walkDirtyObjects(AlignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);
         Pointer objectsLimit = HeapChunk.getTopPointer(chunk);
@@ -200,8 +199,7 @@ final class AlignedChunkRememberedSet {
         }
     }
 
-    @AlwaysInline("De-virtualize calls to visitor.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     private static void walkObjects(AlignedHeader chunk, Pointer start, Pointer end, UninterruptibleObjectVisitor visitor) {
         Pointer fotStart = getFirstObjectTableStart(chunk);
         Pointer objectsStart = AlignedHeapChunk.getObjectsStart(chunk);

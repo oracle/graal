@@ -30,7 +30,6 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -46,8 +45,7 @@ public abstract class OldGeneration extends Generation {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract void beginPromotion(boolean incrementalGc);
 
-    @AlwaysInline("Concrete visitor object.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     abstract void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

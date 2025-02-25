@@ -174,8 +174,7 @@ public class CardTableBasedRememberedSet implements RememberedSet {
     }
 
     @Override
-    @AlwaysInline("De-virtualize calls to visitor.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         AlignedHeader aChunk = firstAlignedChunk;
         while (aChunk.isNonNull()) {

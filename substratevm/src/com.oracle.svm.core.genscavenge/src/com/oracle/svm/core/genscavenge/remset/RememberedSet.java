@@ -139,8 +139,7 @@ public interface RememberedSet extends BarrierSetProvider {
      * Walk all dirty objects in {@linkplain com.oracle.svm.core.genscavenge.HeapChunk#getNext
      * linked lists} of aligned and unaligned chunks.
      */
-    @AlwaysInline("De-virtualize calls to visitor.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor, boolean clean);
 
     /**

@@ -900,8 +900,7 @@ public final class GCImpl implements GC {
         }
     }
 
-    @NeverInline("Split GC into reasonable compilation units: object walk is force-inlined.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenDirtyImageHeapChunkRoots(ImageHeapInfo info) {
         /*
          * We clean and remark cards of the image heap only during complete collections when we also
@@ -912,8 +911,7 @@ public final class GCImpl implements GC {
         walkDirtyImageHeapChunkRoots(info, greyToBlackObjectVisitor, clean);
     }
 
-    @AlwaysInline("De-virtualize calls to visitor and get concrete visitor object.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void walkDirtyImageHeapChunkRoots(ImageHeapInfo info, UninterruptibleObjectVisitor visitor, boolean clean) {
         RememberedSet.get().walkDirtyObjects(info.getFirstWritableAlignedChunk(), info.getFirstWritableUnalignedChunk(), info.getLastWritableUnalignedChunk(), visitor, clean);
     }
@@ -956,8 +954,7 @@ public final class GCImpl implements GC {
         ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableHugeObject, imageHeapInfo.lastWritableHugeObject, visitor, false);
     }
 
-    @NeverInline("Split GC into reasonable compilation units: object walk is force-inlined.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenDirtyCardRoots() {
         Timer blackenDirtyCardRootsTimer = timers.blackenDirtyCardRoots.open();
         try {

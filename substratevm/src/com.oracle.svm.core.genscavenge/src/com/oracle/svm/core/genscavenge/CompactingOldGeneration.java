@@ -145,8 +145,7 @@ final class CompactingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @AlwaysInline("Concrete visitor object.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
         RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, true);
     }
@@ -344,8 +343,7 @@ final class CompactingOldGeneration extends OldGeneration {
         }
     }
 
-    @NeverInline("Split GC into reasonable compilation units: object walk is force-inlined.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.")
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     private void fixupImageHeapRoots(ImageHeapInfo info) {
         // Note that cards have already been cleaned and roots re-marked during the initial scan.
         GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, false);

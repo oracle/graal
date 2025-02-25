@@ -157,8 +157,7 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
-    @AlwaysInline("Concrete visitor object.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
         RememberedSet.get().walkDirtyObjects(toSpace.getFirstAlignedHeapChunk(), toSpace.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, true);
     }

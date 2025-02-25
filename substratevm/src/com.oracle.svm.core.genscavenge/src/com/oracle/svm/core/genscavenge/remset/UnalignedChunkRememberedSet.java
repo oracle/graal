@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.HeapChunk;
@@ -92,8 +91,7 @@ final class UnalignedChunkRememberedSet {
         }
     }
 
-    @AlwaysInline("De-virtualize calls to visitor.")
-    @Uninterruptible(reason = "Visitor requires uninterruptible walk.", callerMustBe = true)
+    @Uninterruptible(reason = "Forced inlining (StoredContinuation objects must not move).")
     public static void walkDirtyObjects(UnalignedHeader chunk, UninterruptibleObjectVisitor visitor, boolean clean) {
         Pointer rememberedSetStart = getCardTableStart(chunk);
         UnsignedWord objectIndex = getObjectIndex();
