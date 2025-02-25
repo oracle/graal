@@ -32,6 +32,7 @@ import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.regist
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -71,9 +72,14 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
@@ -1076,11 +1082,59 @@ public class NativeImageGenerator {
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
+                loader.classLoaderSupport.getClassesToIncludeMetadata().parallelStream()
+                                .filter(ClassInclusionPolicy::isClassIncludedBase)
+                                .forEach(NativeImageGenerator::registerClassFullyForReflection);
+                for (String className : loader.classLoaderSupport.getClassNamesToIncludeMetadata()) {
+                    RuntimeReflection.registerClassLookup(className);
+                }
 
                 registerEntryPointStubs(entryPoints);
             }
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
+        }
+    }
+
+    private static void registerClassFullyForReflection(Class<?> clazz) {
+        RuntimeReflection.register(clazz);
+
+        /* Register every single-interface proxy */
+        // GR-62293 can't register proxies from jdk modules.
+        if (clazz.getModule() == null && clazz.isInterface()) {
+            RuntimeProxyCreation.register(clazz);
+        }
+
+        // GR-62143 Register all fields is very slow.
+        // RuntimeReflection.registerAllDeclaredFields(clazz);
+        RuntimeReflection.registerAllDeclaredMethods(clazz);
+        RuntimeReflection.registerAllDeclaredConstructors(clazz);
+
+        RuntimeJNIAccess.register(clazz);
+        try {
+            for (Method declaredMethod : clazz.getDeclaredMethods()) {
+                RuntimeReflection.register(declaredMethod);
+                RuntimeJNIAccess.register(declaredMethod);
+            }
+            for (Constructor<?> declaredConstructor : clazz.getDeclaredConstructors()) {
+                RuntimeReflection.register(declaredConstructor);
+                RuntimeJNIAccess.register(declaredConstructor);
+            }
+            for (Field declaredField : clazz.getDeclaredFields()) {
+                RuntimeJNIAccess.register(declaredField);
+                // GR-62143 Registering all fields is very slow.
+                // RuntimeSerialization.register(declaredField);
+            }
+        } catch (LinkageError e) {
+            /* If we can't link we can not register for JNI */
+        }
+
+        // GR-62143 Registering all fields is very slow.
+        // RuntimeSerialization.register(clazz);
+
+        // Missing an API for registering types as unsafe allocated
+        if (!(clazz.isArray() || clazz.isInterface() || clazz.isPrimitive() || Modifier.isAbstract(clazz.getModifiers()))) {
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), true, clazz);
         }
     }
 
