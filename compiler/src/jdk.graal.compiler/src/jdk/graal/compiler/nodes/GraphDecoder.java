@@ -1456,7 +1456,7 @@ public class GraphDecoder {
         try (DebugCloseable a = ReadPropertiesTimer.start(debug)) {
             NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
             Fields fields = node.getNodeClass().getData();
-            for (int pos = 0; pos < fields.getCount(); pos++) {
+            for (int pos : fields.getStableOrder()) {
                 if (fields.getType(pos).isPrimitive()) {
                     long primitive = methodScope.reader.getSV();
                     fields.setRawPrimitive(node, pos, primitive);

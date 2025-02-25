@@ -27,6 +27,7 @@ package jdk.graal.compiler.core.common;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 import jdk.internal.misc.Unsafe;
 
@@ -60,6 +61,21 @@ public class FieldsScanner {
      * Describes a field in a class during {@linkplain FieldsScanner scanning}.
      */
     public static class FieldInfo implements Comparable<FieldInfo> {
+
+        /**
+         * Sorts fields in ascending order by {@code field name + declaring class name + type name}.
+         */
+        public static final Comparator<FieldInfo> STABLE_COMPARATOR = (o1, o2) -> {
+            int res = o1.name.compareTo(o2.name);
+            if (res == 0) {
+                res = o1.declaringClass.getName().compareTo(o2.declaringClass.getName());
+                if (res == 0) {
+                    res = o1.type.getName().compareTo(o2.type.getName());
+                }
+            }
+            return res;
+        };
+
         public final long offset;
         public final String name;
         public final Class<?> type;
