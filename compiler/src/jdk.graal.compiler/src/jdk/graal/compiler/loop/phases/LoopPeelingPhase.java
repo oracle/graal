@@ -27,6 +27,7 @@ package jdk.graal.compiler.loop.phases;
 import java.util.ArrayList;
 import java.util.Optional;
 
+import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.LoopBeginNode;
@@ -39,6 +40,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
@@ -88,7 +90,8 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
          * blocks for anchors which can change. See
          * "NOTE: Guard Handling: Referenced by loop phases" in LoopFragment.java .
          */
-        final boolean floatingGuardsNeedCFGUpdates = graph.isAfterStage(StageFlag.HIGH_TIER_LOWERING) && graph.isBeforeStage(StageFlag.GUARD_LOWERING);
+        final boolean floatingGuardsNeedCFGUpdates = graph.isAfterStage(StageFlag.HIGH_TIER_LOWERING) &&
+                        graph.isBeforeStage(StageFlag.GUARD_LOWERING);
 
         /*
          * Given that we potentially have to recompute the loops data between peeling iterations we
@@ -99,29 +102,35 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
         // we use a list to preserve the outer first order
         ArrayList<LoopBeginNode> toPeel = new ArrayList<>();
+        EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
         for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
-            LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
-            toPeel.clear();
-            for (Loop loop : data.outerFirst()) {
-                if (canPeel(loop) && (shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&
-                                (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())) {
-                    toPeel.add(loop.loopBegin());
+            try (NodeEventScope s = graph.trackNodeEvents(ec)) {
+                LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
+                toPeel.clear();
+                for (Loop loop : data.outerFirst()) {
+                    if (canPeel(loop) && (shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context,
+                                    iteration)) &&
+                                    (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())) {
+                        toPeel.add(loop.loopBegin());
+                    }
                 }
-            }
-            for (LoopBeginNode marked : toPeel) {
-                for (Loop loop : data.loops()) {
-                    if (loop.loopBegin() == marked) {
-                        LoopTransformations.peel(loop);
-                        if (floatingGuardsNeedCFGUpdates) {
-                            data = context.getLoopsDataProvider().getLoopsData(graph);
-                        } else {
-                            loop.invalidateFragmentsAndIVs();
-                            data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
+                for (LoopBeginNode marked : toPeel) {
+                    for (Loop loop : data.loops()) {
+                        if (loop.loopBegin() == marked) {
+                            LoopTransformations.peel(loop);
+                            if (floatingGuardsNeedCFGUpdates) {
+                                data = context.getLoopsDataProvider().getLoopsData(graph);
+                            } else {
+                                loop.invalidateFragmentsAndIVs();
+                                data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
+                            }
                         }
                     }
                 }
+                data.deleteUnusedNodes();
             }
-            data.deleteUnusedNodes();
+            canonicalizer.applyIncremental(graph, context, ec.getNodes());
+            ec.getNodes().clear();
         }
     }
 
