@@ -827,6 +827,7 @@ suite = {
           "org.graalvm.nativeimage.c.constant",
           "org.graalvm.nativeimage.c",
           "org.graalvm.nativeimage",
+          "org.graalvm.nativeimage.impl.reflectiontags",
           """org.graalvm.nativeimage.impl to org.graalvm.nativeimage.pointsto,
                                              org.graalvm.nativeimage.base,
                                              org.graalvm.nativeimage.builder,
