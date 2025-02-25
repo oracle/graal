@@ -296,6 +296,20 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 iterations = iterations + int(self.getExtraIterationCount(iterations) * args.sf)
                 return ["-n", str(iterations)] + otherArgs
 
+    def jarPath(self, benchmark):
+        if self.version() == "23.11-MR2-chopin":
+            return os.path.join(self.dataLocation(), "launchers", benchmark + ".jar")
+        else:
+            return self.daCapoPath()
+
+    # The directory that contains `stats`, `launchers`, `dat` and `jar`
+    def dataLocation(self):
+        if self.version() == "23.11-MR2-chopin":
+            basePath = self.daCapoPath()
+            return os.path.join(basePath, "dacapo-23.11-MR2-chopin")
+        else:
+            raise "data location is only supported for version 23.11-MR2-chopin"
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
             raise RuntimeError(
@@ -303,12 +317,14 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         if len(benchmarks) != 1:
             raise RuntimeError(
                 "Suite runs only a single benchmark, got: {0}".format(benchmarks))
-        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+
+        benchmark = benchmarks[0]
+        runArgs = self.postprocessRunArgs(benchmark, self.runArgs(bmSuiteArgs))
         if runArgs is None:
             return None
-        return (
-                self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
-                [benchmarks[0]] + runArgs)
+
+        jarPath = self.jarPath(benchmark)
+        return self.vmArgs(bmSuiteArgs) + ["-jar"] + [jarPath, benchmark] + runArgs
 
     def benchmarkList(self, bmSuiteArgs):
         missing_sizes = set(self.daCapoIterations().keys()).difference(set(self.daCapoSizes().keys()))
@@ -455,7 +471,7 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
         return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["9.12-bach", "9.12-MR1-bach", "9.12-MR1-git+2baec49"]
+        return ["9.12-bach", "9.12-MR1-bach", "9.12-MR1-git+2baec49", "23.11-MR2-chopin"]
 
     def workloadSize(self):
         return "default"
@@ -470,6 +486,8 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             return "DACAPO_MR1_BACH"
         elif self.version() == "9.12-MR1-git+2baec49":  # commit from July 2018
             return "DACAPO_MR1_2baec49"
+        elif self.version() == "23.11-MR2-chopin":
+            return "DACAPO_23.11_MR2_chopin"
         else:
             return None
 
