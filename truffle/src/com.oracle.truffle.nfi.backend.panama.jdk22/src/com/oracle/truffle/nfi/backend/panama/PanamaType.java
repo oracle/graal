@@ -51,12 +51,11 @@ import java.lang.foreign.ValueLayout;
 
 class PanamaType {
 
-    @SuppressWarnings("preview") final MemoryLayout nativeLayout;
+    final MemoryLayout nativeLayout;
     final Class<?> javaType;
     final Class<?> javaRetType;
     final NativeSimpleType type;
 
-    @SuppressWarnings("preview")
     PanamaType(NativeSimpleType type) throws UnsupportedOperationException {
         this.type = type;
         switch (type) {

@@ -40,29 +40,14 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 
-import java.lang.foreign.MemorySegment;
+public abstract class AbstractPanamaNFIContext {
 
-@ExportLibrary(InteropLibrary.class)
-final class PanamaSymbol implements TruffleObject {
+    abstract void initialize();
 
-    @SuppressWarnings("preview") final MemorySegment symbol;
+    abstract void patchEnv(Env env);
 
-    PanamaSymbol(@SuppressWarnings("preview") MemorySegment symbol) {
-        this.symbol = symbol;
-    }
+    abstract void dispose();
 
-    @ExportMessage
-    boolean isPointer() {
-        return true;
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return symbol.address();
-    }
 }

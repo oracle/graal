@@ -101,7 +101,6 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
 
 import jdk.graal.compiler.core.common.NumUtil;
@@ -1190,14 +1189,9 @@ final class BreakpointInterceptor {
         }
         recursive.set(true);
         try {
-            JNIObjectHandle rectifiedThread = rectifyCurrentThread(thread);
-            if (rectifiedThread.equal(nullHandle())) {
-                return;
-            }
-
             Breakpoint bp = installedBreakpoints.get(method.rawValue());
             InterceptedState state = interceptedStateSupplier.get();
-            if (bp.specification.handler.dispatch(jni, rectifiedThread, bp, state)) {
+            if (bp.specification.handler.dispatch(jni, thread, bp, state)) {
                 guarantee(!testException(jni));
             }
         } catch (Throwable t) {
@@ -1205,28 +1199,6 @@ final class BreakpointInterceptor {
         } finally {
             recursive.set(false);
         }
-    }
-
-    /**
-     * The JVMTI implementation of JDK 19 can pass the platform thread as current thread for events
-     * in a virtual thread that happen while temporarily switching to the carrier thread (such as
-     * scheduling an unpark). It also ignores the frames of a virtual thread when passing
-     * {@code NULL} to {@code GetLocal*} to refer to the current thread (JDK-8292657). This method
-     * calls {@code GetCurrentThread}, which seems to always return the virtual thread and can be
-     * used to properly read the locals in the breakpoint.
-     */
-    private static JNIObjectHandle rectifyCurrentThread(JNIObjectHandle thread) {
-        if (Support.jvmtiVersion() != JvmtiInterface.JVMTI_VERSION_19) {
-            return thread;
-        }
-
-        WordPointer threadPtr = StackValue.get(WordPointer.class);
-        JvmtiError error = jvmtiFunctions().GetCurrentThread().invoke(jvmtiEnv(), threadPtr);
-        if (error == JvmtiError.JVMTI_ERROR_WRONG_PHASE) {
-            return nullHandle();
-        }
-        check(error);
-        return threadPtr.read();
     }
 
     @CEntryPoint

@@ -96,9 +96,11 @@ final class NFIContext {
                     env.initializeLanguage(language);
 
                     NFIBackend backend = backendFactory.createBackend(NFILanguage.get(null).nfiState);
-                    API api = new API(backendId, backend);
-                    apiCache.put(backendFactory.getBackendId(), api);
-                    return api;
+                    if (backend != null) {
+                        API api = new API(backendId, backend);
+                        apiCache.put(backendFactory.getBackendId(), api);
+                        return api;
+                    }
                 }
             }
         } finally {
