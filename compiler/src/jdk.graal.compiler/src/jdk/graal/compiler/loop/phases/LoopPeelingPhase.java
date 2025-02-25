@@ -24,9 +24,8 @@
  */
 package jdk.graal.compiler.loop.phases;
 
+import java.util.ArrayList;
 import java.util.Optional;
-
-import org.graalvm.collections.EconomicSet;
 
 import jdk.graal.compiler.nodes.GraphState;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
@@ -98,9 +97,10 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
          * same logic again.
          */
 
-        LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
-        EconomicSet<LoopBeginNode> toPeel = EconomicSet.create();
+        // we use a list to preserve the outer first order
+        ArrayList<LoopBeginNode> toPeel = new ArrayList<>();
         for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
+            LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             toPeel.clear();
             for (Loop loop : data.outerFirst()) {
                 if (canPeel(loop) && (shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) &&
@@ -121,8 +121,8 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
                     }
                 }
             }
+            data.deleteUnusedNodes();
         }
-        data.deleteUnusedNodes();
     }
 
     @Override
