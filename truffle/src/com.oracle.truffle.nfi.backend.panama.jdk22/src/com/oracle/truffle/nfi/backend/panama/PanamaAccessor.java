@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,67 +40,29 @@
  */
 package com.oracle.truffle.nfi.backend.panama;
 
-import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.lang.invoke.MethodHandle;
+import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 
-import com.oracle.truffle.api.InternalResource.OS;
+public abstract class PanamaAccessor {
 
-public class ErrorContext {
-    private static final String ERRNO_LOCATION;
-
-    static {
-        ERRNO_LOCATION = switch (OS.getCurrent()) {
-            case DARWIN -> "__error";
-            case LINUX -> "__errno_location";
-            case WINDOWS -> "_errno";
-        };
+    private PanamaAccessor() {
+        // No instances.
     }
 
-    @SuppressWarnings("preview") private MemorySegment errnoLocation;
-    final PanamaNFIContext ctx;
-
-    @SuppressWarnings({"preview", "restricted"})
-    MemorySegment lookupErrnoLocation() {
-        try {
-            Linker linker = Linker.nativeLinker();
-            FunctionDescriptor desc = FunctionDescriptor.of(ValueLayout.JAVA_LONG);
-            MemorySegment sym = linker.defaultLookup().find(ERRNO_LOCATION).orElseThrow();
-            MethodHandle handle = linker.downcallHandle(desc);
-            try {
-                return MemorySegment.ofAddress((long) handle.invokeExact(sym)).reinterpret(4);
-            } catch (Throwable e) {
-                throw new RuntimeException(e);
-            }
-        } catch (IllegalCallerException ic) {
-            throw NFIError.illegalNativeAccess(null);
-        }
+    static boolean isSupported() {
+        return true;
     }
 
-    void initialize() {
-        if (this.errnoLocation == null) {
-            errnoLocation = lookupErrnoLocation();
-        }
+    static NFIBackend createNFIBackend(PanamaNFILanguage language) {
+        return new PanamaNFIBackend(language);
     }
 
-    private MemorySegment getErrnoLocation() {
-        assert errnoLocation != null;
-        return errnoLocation;
+    static AbstractPanamaNFIContext createPanamaNFIContext(PanamaNFILanguage language, Env env) {
+        return new PanamaNFIContext(language, env);
     }
 
-    @SuppressWarnings("preview")
-    int getNativeErrno() {
-        return getErrnoLocation().get(ValueLayout.JAVA_INT, 0);
+    static AbstractErrorContext createErrorContext() {
+        return new ErrorContext();
     }
 
-    @SuppressWarnings("preview")
-    void setNativeErrno(int newErrno) {
-        getErrnoLocation().set(ValueLayout.JAVA_INT, 0, newErrno);
-    }
-
-    ErrorContext(PanamaNFIContext ctx, Thread thread) {
-        this.ctx = ctx;
-    }
 }

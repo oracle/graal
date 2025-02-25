@@ -72,9 +72,9 @@ import java.lang.invoke.MethodType;
 
 @ExportLibrary(InteropLibrary.class)
 final class PanamaClosure implements TruffleObject {
-    @SuppressWarnings("preview") final MemorySegment symbol;
+    final MemorySegment symbol;
 
-    PanamaClosure(@SuppressWarnings("preview") MemorySegment symbol) {
+    PanamaClosure(MemorySegment symbol) {
         this.symbol = symbol;
     }
 
@@ -239,7 +239,7 @@ final class PanamaClosure implements TruffleObject {
             // to avoid the JVM clobbering it
             PanamaNFILanguage language = PanamaNFILanguage.get(this);
             NFIState nfiState = language.getNFIState();
-            ErrorContext ctx = language.errorContext.get();
+            ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
             try {
                 Object ret = callClosure.execute(frame);
@@ -290,7 +290,7 @@ final class PanamaClosure implements TruffleObject {
             // to avoid the JVM clobbering it
             PanamaNFILanguage language = PanamaNFILanguage.get(this);
             NFIState nfiState = language.getNFIState();
-            ErrorContext ctx = language.errorContext.get();
+            ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
             try {
                 callClosure.execute(frame);
@@ -337,7 +337,7 @@ final class PanamaClosure implements TruffleObject {
             // to avoid the JVM clobbering it
             PanamaNFILanguage language = PanamaNFILanguage.get(this);
             NFIState nfiState = language.getNFIState();
-            ErrorContext ctx = language.errorContext.get();
+            ErrorContext ctx = (ErrorContext) language.errorContext.get();
             nfiState.setNFIErrno(ctx.getNativeErrno());
             try {
                 Object ret = callClosure.execute(frame);
