@@ -41,7 +41,7 @@ import jdk.graal.compiler.api.replacements.Fold;
 
 /**
  * Policy used to determine which classes, methods and fields need to be included in the image when
- * the {@code IncludeAllFromPath} and/or {@code IncludeAllFromModule} options are specified
+ * {@code LayerCreate} sub-options {@code module}, {@code package} or {@code path} are specified
  * depending on the configuration.
  */
 public abstract class ClassInclusionPolicy {

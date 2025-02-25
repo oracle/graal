@@ -79,7 +79,6 @@ import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.AccumulatingLocatableMultiOptionValue;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -125,9 +124,11 @@ public final class NativeImageClassLoaderSupport {
 
     private Path layerFile;
 
-    private Set<String> javaModuleNamesToInclude;
+    private final Set<String> javaModuleNamesToInclude;
     private final Set<PackageOptionValue> javaPackagesToInclude;
-    private Set<Path> javaPathsToInclude;
+    private final Set<Path> javaPathsToInclude;
+    private boolean includeConfigSealed;
+
     private boolean includeAllFromClassPath;
 
     private LoadClassHandler loadClassHandler;
@@ -210,7 +211,10 @@ public final class NativeImageClassLoaderSupport {
 
         annotationExtractor = new SubstrateAnnotationExtractor();
 
+        javaModuleNamesToInclude = new LinkedHashSet<>();
         javaPackagesToInclude = new LinkedHashSet<>();
+        javaPathsToInclude = new LinkedHashSet<>();
+        includeConfigSealed = false;
     }
 
     private static Stream<Path> toRealPath(Path p) {
@@ -243,33 +247,67 @@ public final class NativeImageClassLoaderSupport {
         return classLoaders;
     }
 
-    private static Path stringToPath(String path) {
-        return Path.of(Path.of(path).toAbsolutePath().toUri().normalize());
+    public void addJavaModuleToInclude(String moduleName) {
+        VMError.guarantee(!includeConfigSealed, "Class inclusion configuration is already sealed.");
+        javaModuleNamesToInclude.add(moduleName);
     }
 
     public void addJavaPackageToInclude(PackageOptionValue packageOptionValue) {
+        VMError.guarantee(!includeConfigSealed, "Class inclusion configuration is already sealed.");
         javaPackagesToInclude.add(packageOptionValue);
     }
 
-    public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-        VMError.guarantee(javaModuleNamesToInclude == null, "This method should be executed only once.");
-        javaModuleNamesToInclude = Collections.unmodifiableSet(new HashSet<>(SubstrateOptions.IncludeAllFromModule.getValue(parsedHostedOptions).values()));
-        /* Verify all modules are present */
-        final Set<String> allModules = Stream.concat(modulepathModuleFinder.findAll().stream(), upgradeAndSystemModuleFinder.findAll().stream())
-                        .map(m -> m.descriptor().name())
-                        .collect(Collectors.toSet());
-        javaModuleNamesToInclude.stream()
-                        .filter(m -> !allModules.contains(m))
-                        .findAny().ifPresent(m -> missingFromSetOfEntriesError(m, allModules, "module-path", SubstrateOptions.IncludeAllFromModule));
+    public void addClassPathEntryToInclude(String cpEntry) {
+        VMError.guarantee(!includeConfigSealed, "Class inclusion configuration is already sealed.");
+        javaPathsToInclude.add(Path.of(cpEntry));
+    }
 
-        javaPathsToInclude = SubstrateOptions.IncludeAllFromPath.getValue(parsedHostedOptions).values().stream()
-                        .map(NativeImageClassLoaderSupport::stringToPath)
-                        .map(Path::toAbsolutePath)
-                        .collect(Collectors.toUnmodifiableSet());
-        /* Verify all paths are present */
-        javaPathsToInclude.stream()
-                        .filter(p -> !classpath().contains(p))
-                        .findAny().ifPresent(p -> missingFromSetOfEntriesError(p, classpath(), "classpath", SubstrateOptions.IncludeAllFromPath));
+    public void loadAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
+        VMError.guarantee(!includeConfigSealed, "This method should be executed only once.");
+        includeConfigSealed = true;
+
+        /* Verify all requested modules are present */
+        List<String> missingModules = javaModuleNamesToInclude.stream().filter(mn -> findModule(mn).isEmpty()).toList();
+        if (!missingModules.isEmpty()) {
+            boolean plural = missingModules.size() > 1;
+            String pluralS = plural ? "s" : "";
+            throw UserError.abort("Module request%s (module=...) %s %s could not find requested module%s. " +
+                            "Provide a module-path that contains the specified module%s or remove %s from option.",
+                            pluralS, String.join(", ", missingModules), layerCreateOptionStr(), pluralS,
+                            pluralS, plural ? "entries" : "entry");
+        }
+
+        /* Verify all requested class-path entries are on the application class-path */
+        Set<Path> resolvedJavaPathsToInclude = new HashSet<>();
+        List<String> missingClassPathEntries = new ArrayList<>();
+        javaPathsToInclude.forEach(requestedCPEntry -> {
+            Optional<Path> optResolvedEntry = toRealPath(requestedCPEntry).findAny();
+            if (optResolvedEntry.isPresent()) {
+                Path resolvedEntry = optResolvedEntry.get();
+                if (applicationClassPath().contains(resolvedEntry)) {
+                    resolvedJavaPathsToInclude.add(resolvedEntry);
+                    return;
+                }
+            }
+            missingClassPathEntries.add(requestedCPEntry.toString());
+        });
+
+        if (!missingClassPathEntries.isEmpty()) {
+            boolean plural = missingModules.size() > 1;
+            String pluralS = plural ? "s" : "";
+            String pluralEntries = plural ? "entries" : "entry";
+            throw UserError.abort("Class-path entry request%s (path=...) %s do not match %s on application class-path. " +
+                            "Provide a class-path that contains the %s or remove %s from option.",
+                            pluralS, String.join(", ", missingClassPathEntries), layerCreateOptionStr(), pluralEntries,
+                            pluralEntries, pluralEntries);
+        } else {
+            /*
+             * Replace entries with resolved ones so that they are correctly matched in
+             * LoadClassHandler.loadClassesFromPath.
+             */
+            javaPathsToInclude.clear();
+            javaPathsToInclude.addAll(resolvedJavaPathsToInclude);
+        }
 
         includeAllFromClassPath = SubstrateOptions.IncludeAllFromClassPath.getValue(parsedHostedOptions);
 
@@ -290,18 +328,10 @@ public final class NativeImageClassLoaderSupport {
         }
     }
 
-    private static void missingFromSetOfEntriesError(Object entry, Collection<?> allEntries, String typeOfEntry,
-                    HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> option) {
-        String sortedEntries = allEntries.stream()
-                        .map(Object::toString)
-                        .collect(Collectors.joining(System.lineSeparator() + "   ", "   ", ""));
-
-        throw UserError.abort("The option %s does not match any of the %s entries. To fix, change the option to match one of the %s entries: %s%s",
-                        SubstrateOptionsParser.commandArgument(option, entry.toString()),
-                        typeOfEntry,
-                        typeOfEntry,
-                        System.lineSeparator(),
-                        sortedEntries);
+    private String layerCreateOptionStr() {
+        ValueWithOrigin<String> layerCreateValue = SubstrateOptions.LayerCreate.getValue(getParsedHostedOptions()).lastValueWithOrigin().orElseThrow();
+        String layerCreateArgument = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue.value());
+        return "specified with '%s' from %s".formatted(layerCreateArgument, layerCreateValue.origin());
     }
 
     private HostedOptionParser hostedOptionParser;
@@ -786,7 +816,7 @@ public final class NativeImageClassLoaderSupport {
             }
         }
 
-        /** Report package inclusion requests that did not have any effect */
+        /* Report package inclusion requests that did not have any effect. */
         void validatePackageInclusionRequests() {
             List<PackageOptionValue> unusedRequests = new ArrayList<>();
             for (String requestedPackage : requestedPackages) {
@@ -804,13 +834,12 @@ public final class NativeImageClassLoaderSupport {
                 var requestsStrings = Stream.concat(unusedRequests.stream(), unusedWildcardRequests.stream())
                                 .map(packageOptionValue -> '\'' + packageOptionValue.toString() + '\'')
                                 .toList();
-                ValueWithOrigin<String> layerCreateValue = SubstrateOptions.LayerCreate.getValue(getParsedHostedOptions()).lastValueWithOrigin().orElseThrow();
-                String layerCreateArgument = SubstrateOptionsParser.commandArgument(SubstrateOptions.LayerCreate, layerCreateValue.value());
                 boolean plural = requestsStrings.size() > 1;
-                throw UserError.abort("Package request%s %s specified with '%s' from %s could not find any packages. " +
-                                "Provide a class/module-path that contains the package or remove %s from the option.",
-                                plural ? "s" : "", String.join(", ", requestsStrings),
-                                layerCreateArgument, layerCreateValue.origin(), plural ? "those entries" : "the entry");
+                String pluralS = plural ? "s" : "";
+                throw UserError.abort("Package request%s (package=...) %s %s could not find requested package%s. " +
+                                "Provide a class/module-path that contains the package%s or remove %s from option.",
+                                pluralS, String.join(", ", requestsStrings), layerCreateOptionStr(), pluralS,
+                                pluralS, plural ? "entries" : "entry");
             }
         }
 

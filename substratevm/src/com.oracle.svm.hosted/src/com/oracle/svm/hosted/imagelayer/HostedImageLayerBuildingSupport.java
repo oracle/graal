@@ -169,19 +169,23 @@ public final class HostedImageLayerBuildingSupport extends ImageLayerBuildingSup
                 for (ExtendedOption option : layerOption.extendedOptions()) {
                     switch (option.key()) {
                         case LayerArchiveSupport.MODULE_OPTION -> {
-                            UserError.guarantee(option.value() != null, "Layer option %s specified with '%s' from %s requires a module name argument, e.g., %s=module-name.",
+                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
+                                            "Layer option %s specified with '%s' from %s requires a module name argument, e.g., %s=module-name.",
                                             option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
-                            SubstrateOptions.IncludeAllFromModule.update(values, option.value());
+                            classLoaderSupport.addJavaModuleToInclude(option.value());
+
                         }
                         case LayerArchiveSupport.PACKAGE_OPTION -> {
-                            UserError.guarantee(option.value() != null, "Layer option %s specified with '%s' from %s requires a package name argument, e.g., %s=package-name.",
+                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
+                                            "Layer option %s specified with '%s' from %s requires a package name argument, e.g., %s=package-name.",
                                             option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
                             classLoaderSupport.addJavaPackageToInclude(Objects.requireNonNull(PackageOptionValue.from(option)));
                         }
                         case LayerArchiveSupport.PATH_OPTION -> {
-                            UserError.guarantee(option.value() != null, "Layer option %s specified with '%s' from %s requires a class-path entry, e.g., %s=path/to/cp-entry.",
+                            UserError.guarantee(option.value() != null || option.value().isEmpty(),
+                                            "Layer option %s specified with '%s' from %s requires a class-path entry, e.g., %s=path/to/cp-entry.",
                                             option.key(), layerCreateArg, valueWithOrigin.origin(), option.key());
-                            SubstrateOptions.IncludeAllFromPath.update(values, option.value());
+                            classLoaderSupport.addClassPathEntryToInclude(option.value());
                         }
                         default ->
                             throw UserError.abort("Unknown layer option %s specified with '%s' from %s. Use --help-extra for usage instructions.",
