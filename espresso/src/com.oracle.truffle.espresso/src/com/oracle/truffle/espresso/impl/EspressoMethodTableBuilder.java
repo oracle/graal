@@ -56,7 +56,7 @@ public final class EspressoMethodTableBuilder {
             if (thisKlass.isInterface()) {
                 return new EspressoTables(
                                 assignITableIndexes(thisKlass,
-                                                toEspressoVTable(filterInterfaceMethods(declaredMethods), Method.EMPTY_VERSION_ARRAY)),
+                                                toEspressoVTable(filterInterfaceMethods(declaredMethods))),
                                 null,
                                 null);
             }
@@ -64,12 +64,12 @@ public final class EspressoMethodTableBuilder {
             tables = VTable.create(
                             new PartialKlass(thisKlass, thisKlass.getSuperKlass(), transitiveInterfaces, declaredMethods),
                             false,
-                            allowInterfaceResolutionToPrivete);
-            Method.MethodVersion[] mirandas = mirandas(tables);
+                            allowInterfaceResolutionToPrivete,
+                            true);
             return new EspressoTables(
-                            assignVTableIndexes(thisKlass, vtable(tables, mirandas)),
+                            vtable(tables),
                             itable(tables, transitiveInterfaces),
-                            mirandas);
+                            mirandas(tables));
         } catch (MethodTableException e) {
             Meta meta = EspressoContext.get(null).getMeta();
             switch (e.getKind()) {
@@ -171,58 +171,14 @@ public final class EspressoMethodTableBuilder {
         return table;
     }
 
-    private static Method.MethodVersion[] assignVTableIndexes(ObjectKlass.KlassVersion thisKlass, Method.MethodVersion[] vtable) {
-        assert !thisKlass.isInterface() && vtable != null;
-        for (int i = vtable.length - 1; i >= 0; i--) {
-            Method.MethodVersion m = vtable[i];
-            if (m.getVTableIndex() == -1) {
-                // There are four cases here:
-                // - m is a method declared in thisKlass.
-                // - m is a miranda method of thisKlass.
-                // - m is a miranda method of a parent of thisKlass, and m is the un-proxied
-                // version of the method in the parent table (The proxied version would have a
-                // vtable index and not enter this branch).
-                // - m is a miranda method of a parent of thisKlass, but m is not the same method as
-                // in the parent's table (i.e.: a new interface from thisKlass changed the
-                // resolution result of the miranda).
-                /*
-                 * Case 1 and 2 are base cases, and can simply be added to the table.
-                 *
-                 * Case 3 should not happen, as the VTable builder should prioritize returning the
-                 * parent's entry.
-                 *
-                 * Case 4 requires spawning a proxy.
-                 */
-                if (m.getITableIndex() == -1) {
-                    // 1st and 2nd case
-                    assert m.getDeclaringKlass() == thisKlass.getKlass() ||
-                                    m.getDeclaringKlass().isInterface(); /*- mirandas are added as clean proxies */
-                    m.setVTableIndex(i);
-                } else {
-                    // Assert that 3rd case never happens
-                    assert i < thisKlass.getSuperKlass().getVTable().length;
-                    assert thisKlass.getSuperKlass().getVTable()[i].getVTableIndex() == i;
-                    assert thisKlass.getSuperKlass().getVTable()[i].getMethod().identity() != m.getMethod().identity();
-                    // 4th case:
-                    // One of the interfaces of thisKlass is more specific than all the
-                    // parent's, so we need to spawn a new proxy.
-                    Method.MethodVersion proxy = new Method(m.getMethod()).getMethodVersion();
-                    proxy.setVTableIndex(i);
-                    vtable[i] = proxy;
-                }
-            }
-        }
-        return vtable;
-    }
-
-    private static Method.MethodVersion[] vtable(Tables<Klass, Method, Field> tables, Method.MethodVersion[] mirandas) {
+    private static Method.MethodVersion[] vtable(Tables<Klass, Method, Field> tables) {
         List<PartialMethod<Klass, Method, Field>> table = tables.getVtable();
-        assert table != null && mirandas != null;
-        return toEspressoVTable(table, mirandas);
+        assert table != null;
+        return toEspressoVTable(table);
     }
 
-    private static Method.MethodVersion[] toEspressoVTable(List<? extends PartialMethod<Klass, Method, Field>> table, Method.MethodVersion[] mirandas) {
-        int size = table.size() + mirandas.length;
+    private static Method.MethodVersion[] toEspressoVTable(List<? extends PartialMethod<Klass, Method, Field>> table) {
+        int size = table.size();
         if (size == 0) {
             return Method.EMPTY_VERSION_ARRAY;
         }
@@ -230,14 +186,12 @@ public final class EspressoMethodTableBuilder {
         int vtableIndex = 0;
         for (PartialMethod<Klass, Method, Field> m : table) {
             Method entry = m.asMethodAccess();
+            // Poison pill handling is done in Miranda translation.
             if (m.isSelectionFailure()) {
-                entry = new Method(entry).setPoisonPill();
+                assert entry.isProxy();
+                entry.setPoisonPill();
             }
             vtable[vtableIndex] = entry.getMethodVersion();
-            vtableIndex++;
-        }
-        for (Method.MethodVersion m : mirandas) {
-            vtable[vtableIndex] = m;
             vtableIndex++;
         }
         return vtable;
@@ -287,12 +241,14 @@ public final class EspressoMethodTableBuilder {
         Method.MethodVersion[] table = new Method.MethodVersion[mirandas.size()];
         int idx = 0;
         for (PartialMethod<Klass, Method, Field> m : mirandas) {
-            // Force proxy-ing to ensure methods have either an itable or vtable index, but not
-            // both.
-            Method entry = new Method(m.asMethodAccess());
-            if (m.isSelectionFailure()) {
-                entry.setPoisonPill();
-            }
+            Method entry = m.asMethodAccess();
+            // We add mirandas to the vtable in builder, they should have a vtable index by now.
+            assert entry.hasVTableIndex();
+            // Creating a proxy is handled in Method.withVTableIndex().
+            assert entry.isProxy();
+            // Ensure that the pass over vtable has already set poison pills.
+            assert !m.isSelectionFailure() || entry.hasPoisonPill();
+            // All good, just add.
             table[idx] = entry.getMethodVersion();
             idx++;
         }

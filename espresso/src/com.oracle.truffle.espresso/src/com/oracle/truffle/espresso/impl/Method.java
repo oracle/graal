@@ -133,6 +133,7 @@ import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
+import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM.EspressoStackElement;
@@ -1357,14 +1358,30 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     @Override
-    public void equivalentVTableIndex(int index) {
+    public PartialMethod<Klass, Method, Field> withVTableIndex(int index) {
         assert getVTableIndex() == -1;
-        getMethodVersion().setVTableIndex(index);
+        if (getDeclaringKlass().isInterface()) {
+            assert getITableIndex() != -1;
+            Method proxy = new Method(this);
+            proxy.getMethodVersion().setVTableIndex(index);
+            return proxy;
+        } else {
+            getMethodVersion().setVTableIndex(index);
+            return this;
+        }
     }
 
     @Override
     public Method asMethodAccess() {
         return this;
+    }
+
+    public boolean isProxy() {
+        return this != identity();
+    }
+
+    public boolean hasPoisonPill() {
+        return getMethodVersion().poisonPill;
     }
 
     // endregion MethodAccess impl

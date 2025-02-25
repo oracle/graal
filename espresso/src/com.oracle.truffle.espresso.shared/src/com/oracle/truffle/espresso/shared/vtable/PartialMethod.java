@@ -52,11 +52,15 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
     boolean isClassInitializer();
 
     /**
+     * When the {@link VTable} builder adds a method to the vtable, this method will be called to
+     * provide a hint to the runtime that the given {@code index} should be used as a vtable index
+     * for that method.
+     * <p>
+     * It may be called on interface methods, if the implicit interface methods are added to the
+     * virtual tables. The runtime decides how to interpret that hint.
+     * <p>
      * When the {@link VTable} builder finds an {@code equivalent slot} for this method in the
      * parent's table, this method will be used to make that information known to the runtime.
-     * <p>
-     * Methods for which this method is called are not appended to the VTable, instead they are
-     * present in the vtable at index {@code index}.
      * <p>
      * An {@code equivalent slot} at index {@code i} for a method {@code m} is defined as follows:
      * <ul>
@@ -76,10 +80,10 @@ public interface PartialMethod<C extends TypeAccess<C, M, F>, M extends MethodAc
      * override the other. As such, the declared method can be assigned the same
      * {@code vtable index} as the method it is overriding.
      * <p>
-     * Note: This method will not be called by the VTable builder if {@code verbose} is set to
-     * {@code true}
+     * Note: The {@link VTable} builder ensures that this method is only called once per declared
+     * method, but it may be called multiple times on interface methods.
      */
-    void equivalentVTableIndex(int index);
+    PartialMethod<C, M, F> withVTableIndex(int index);
 
     /**
      * Whether this {@link PartialMethod method} is a failing entry in a {@link Tables method

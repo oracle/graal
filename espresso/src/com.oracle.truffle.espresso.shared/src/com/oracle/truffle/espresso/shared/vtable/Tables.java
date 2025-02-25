@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 
 /**
  * Contains the result of method table creation from
- * {@link VTable#create(PartialType, boolean, boolean)}.
+ * {@link VTable#create(PartialType, boolean, boolean, boolean)}.
  *
  * @param <C> The class providing access to the VM-side java {@link java.lang.Class}.
  * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
@@ -54,7 +54,7 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
 
     /**
      * The virtual table associated with the type used for the call to
-     * {@link VTable#create(PartialType, boolean, boolean)}.
+     * {@link VTable#create(PartialType, boolean, boolean, boolean)}.
      * <p>
      * For a given type {@code type}, a method {@code m} appearing at index {@code i} means that
      * {@code m} is the result of method selection (according to JVMS-5.4.6) with respect to
@@ -77,7 +77,7 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
 
     /**
      * The interface tables associated with the type used for the call to
-     * {@link VTable#create(PartialType, boolean, boolean)}.
+     * {@link VTable#create(PartialType, boolean, boolean, boolean)}.
      * <p>
      * For a given type {@code type}, A method {@code m} appearing at index {@code i} in the table
      * corresponding to interface {@code interface} means that {@code m} is the result of method
@@ -100,8 +100,8 @@ public final class Tables<C extends TypeAccess<C, M, F>, M extends MethodAccess<
 
     /**
      * The list of methods that are declared in super interfaces, but do not have an implementation
-     * in the type associated with the call to {@link VTable#create(PartialType, boolean, boolean)}
-     * or its superclasses.
+     * in the type associated with the call to
+     * {@link VTable#create(PartialType, boolean, boolean, boolean)} or its superclasses.
      * <p>
      * Such methods are also sometimes referred to as {@code miranda methods}.
      * <p>

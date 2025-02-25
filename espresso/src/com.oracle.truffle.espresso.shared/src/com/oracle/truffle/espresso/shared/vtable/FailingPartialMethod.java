@@ -69,8 +69,12 @@ public final class FailingPartialMethod<C extends TypeAccess<C, M, F>, M extends
     }
 
     @Override
-    public void equivalentVTableIndex(int index) {
-        delegate.equivalentVTableIndex(index);
+    public PartialMethod<C, M, F> withVTableIndex(int index) {
+        PartialMethod<C, M, F> result = delegate.withVTableIndex(index);
+        if (result == delegate) {
+            return this;
+        }
+        return new FailingPartialMethod<>(result);
     }
 
     @Override

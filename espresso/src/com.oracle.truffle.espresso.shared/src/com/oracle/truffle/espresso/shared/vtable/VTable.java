@@ -60,6 +60,8 @@ public final class VTable {
      * @param allowInterfaceResolvingToPrivate Whether the runtime allows selection of interface
      *            invokes to select private methods. Requires implementing
      *            {@link PartialType#lookupOverrideWithPrivate(Symbol, Symbol)}.
+     * @param addImplicitInterfaceMethods Whether the builder should add implicit interface methods
+     *            to the VTable.
      *
      * @param <C> The class providing access to the VM-side java {@link java.lang.Class}.
      * @param <M> The class providing access to the VM-side java {@link java.lang.reflect.Method}.
@@ -68,8 +70,9 @@ public final class VTable {
     public static <C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> Tables<C, M, F> create(
                     PartialType<C, M, F> targetClass,
                     boolean verbose,
-                    boolean allowInterfaceResolvingToPrivate) throws MethodTableException {
-        return new Builder<>(targetClass, verbose, allowInterfaceResolvingToPrivate).build();
+                    boolean allowInterfaceResolvingToPrivate,
+                    boolean addImplicitInterfaceMethods) throws MethodTableException {
+        return new Builder<>(targetClass, verbose, allowInterfaceResolvingToPrivate, addImplicitInterfaceMethods).build();
     }
 
     /**
@@ -82,6 +85,7 @@ public final class VTable {
     private static final class Builder<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> {
         private final boolean verbose;
         private final boolean allowInterfaceResolvingToPrivate;
+        private final boolean addMirandas;
 
         private final PartialType<C, M, F> targetClass;
         private final EconomicMap<MethodKey, Locations<C, M, F>> locations = EconomicMap.create();
@@ -90,10 +94,11 @@ public final class VTable {
         private final EconomicMap<C, List<PartialMethod<C, M, F>>> itables = EconomicMap.create(Equivalence.IDENTITY);
         private final List<PartialMethod<C, M, F>> mirandas = new ArrayList<>();
 
-        Builder(PartialType<C, M, F> targetClass, boolean verbose, boolean allowInterfaceResolvingToPrivate) {
+        Builder(PartialType<C, M, F> targetClass, boolean verbose, boolean allowInterfaceResolvingToPrivate, boolean addMirandas) {
             this.targetClass = targetClass;
             this.verbose = verbose;
             this.allowInterfaceResolvingToPrivate = allowInterfaceResolvingToPrivate;
+            this.addMirandas = addMirandas;
         }
 
         Tables<C, M, F> build() throws MethodTableException {
@@ -109,15 +114,18 @@ public final class VTable {
             // concrete class methods, then from the maximally specific ones.
             // This step also detect miranda methods.
             resolveInterfaces();
+            if (addMirandas) {
+                resolveMirandas();
+            }
 
             return new Tables<>(vtable, itables, mirandas);
         }
 
         private void buildLocations() {
-            registerFromTable(targetClass.getParentTable());
+            registerFromTable(targetClass.getParentTable(), LocationKind.V);
             MapCursor<C, List<M>> cursor = targetClass.getInterfacesData().getEntries();
             while (cursor.advance()) {
-                registerFromTable(cursor.getValue());
+                registerFromTable(cursor.getValue(), LocationKind.I);
             }
         }
 
@@ -155,17 +163,17 @@ public final class VTable {
                                                             " from type " + parentMethod.getDeclaringClass().getSymbolicName(),
                                             MethodTableException.Kind.IncompatibleClassChangeError);
                         }
-                        // Success: write this declared method in th table
-                        vtable.add(declaredMethod);
                         if (!verbose && sameOverrideAccess(declaredMethod, parentMethod)) {
                             // If this declared method overrides a method with equivalent access, we
                             // don't need to add that method at the end.
-                            currentLocations.markEquivalentEntry(declaredMethod, i);
+                            declaredMethod = currentLocations.markEquivalentEntry(declaredMethod, i);
                         }
+                        // Success: write this declared method in the table
+                        vtable.add(declaredMethod);
                         continue;
                     }
                 }
-                PartialMethod<C, M, F> entry;
+                PartialMethod<C, M, F> entry = parentMethod;
                 if (parentMethod.getDeclaringClass().isInterface()) {
                     // This is a miranda method from the parent's. Though this type does not declare
                     // a method that can override it, one of its interfaces may be more specific, so
@@ -176,12 +184,17 @@ public final class VTable {
                         // Sneaky optimization: if the parent's entry has the same identity as the
                         // resolution, prefer inheriting the parent's.
                         if (ma.getDeclaringClass() == parentMethod.getDeclaringClass()) {
-                            entry = parentMethod;
+                            // Same non-failing method as parent, re-use it.
+                            assert parentMethod.hasVTableIndex();
+                            vtable.add(parentMethod);
+                            continue;
                         }
                     }
-                } else {
-                    entry = parentMethod;
+                    // This is a newly resolved miranda method, add it with a vtable index.
+                    vtable.add(entry.withVTableIndex(i));
+                    continue;
                 }
+                // An entry in parent's table, already has a vtable index.
                 vtable.add(entry);
             }
             assert vtable.size() == parentTable.size();
@@ -189,14 +202,15 @@ public final class VTable {
                 if (!isVirtualEntry(declaredMethod)) {
                     continue;
                 }
+                // Declared method do not have a vtable index yet, so assign it here.
                 if (verbose) {
-                    vtable.add(declaredMethod);
+                    vtable.add(declaredMethod.withVTableIndex(vtable.size()));
                 } else {
                     MethodKey k = MethodKey.of(declaredMethod);
                     Locations<C, M, F> loc = locations.get(k);
                     if (loc == null || loc.shouldPopulate()) {
                         // No equivalent slot was found, we must add the method to the vtable.
-                        vtable.add(declaredMethod);
+                        vtable.add(declaredMethod.withVTableIndex(vtable.size()));
                     }
                 }
             }
@@ -223,7 +237,17 @@ public final class VTable {
             }
         }
 
-        private void registerFromTable(List<M> table) {
+        private void resolveMirandas() {
+            for (int i = 0; i < mirandas.size(); i++) {
+                PartialMethod<C, M, F> m = mirandas.get(i);
+                // For leftover mirandas, add them to the table with the corresponding index.
+                PartialMethod<C, M, F> entry = m.withVTableIndex(vtable.size());
+                vtable.add(entry);
+                mirandas.set(i, entry);
+            }
+        }
+
+        private void registerFromTable(List<M> table, LocationKind kind) {
             int index = 0;
             for (M m : table) {
                 if (!isVirtualEntry(m)) {
@@ -234,7 +258,10 @@ public final class VTable {
                     locations.put(k, new Locations<>());
                 }
                 assert locations.containsKey(k);
-                locations.get(k).register(LocationKind.of(m), m, index);
+                if (LocationKind.of(m) == kind) {
+                    // Do not bother adding parent mirandas, they will be added later.
+                    locations.get(k).register(kind, m, index);
+                }
                 index++;
             }
         }
@@ -334,12 +361,13 @@ public final class VTable {
                 return resolvedInterfaceMethod;
             }
 
-            void markEquivalentEntry(PartialMethod<?, ?, ?> declaredMethod, int idx) {
+            PartialMethod<C, M, F> markEquivalentEntry(PartialMethod<C, M, F> declaredMethod, int idx) {
                 assert idx >= 0;
                 if (shouldPopulate) {
-                    declaredMethod.equivalentVTableIndex(idx);
                     shouldPopulate = false;
+                    target = declaredMethod.withVTableIndex(idx);
                 }
+                return target;
             }
 
             boolean shouldPopulate() {
@@ -469,8 +497,7 @@ public final class VTable {
 
         private enum LocationKind {
             V,
-            I,
-            ;
+            I,;
 
             public static <M extends MethodAccess<?, ?, ?>> LocationKind of(M m) {
                 if (m.getDeclaringClass().isInterface()) {

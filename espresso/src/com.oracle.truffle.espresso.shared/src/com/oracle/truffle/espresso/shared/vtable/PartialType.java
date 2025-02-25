@@ -47,7 +47,7 @@ import com.oracle.truffle.espresso.shared.meta.TypeAccess;
 public interface PartialType<C extends TypeAccess<C, M, F>, M extends MethodAccess<C, M, F>, F extends FieldAccess<C, M, F>> extends Named {
     /**
      * The vtable of the declared superclass of this type, as would be constructed by a previous
-     * call to {@link VTable#create(PartialType, boolean, boolean)}.
+     * call to {@link VTable#create(PartialType, boolean, boolean, boolean)}.
      * <p>
      * If this type does not have a superclass, this method should return an empty list, and not
      * {@code null}.
