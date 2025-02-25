@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,4 +84,27 @@ public class ByteSequenceBenchmark {
         return hash;
     }
 
+    @State(Scope.Thread)
+    public static class EqualsState {
+        final ByteSequence[] sequences = new ByteSequence[ITERATIONS];
+        private final byte[] buffer = new byte[4096];
+        {
+            for (int i = 0; i < buffer.length; i++) {
+                buffer[i] = (byte) i;
+            }
+            for (int i = 0; i < sequences.length; i++) {
+                sequences[i] = ByteSequence.create(buffer.clone());
+            }
+        }
+    }
+
+    @Benchmark
+    @OperationsPerInvocation(ITERATIONS)
+    public int testEquals(EqualsState state) {
+        int check = 0;
+        for (int i = 0; i < state.sequences.length - 1; i++) {
+            check += state.sequences[i].equals(state.sequences[i + 1]) ? 1 : 0;
+        }
+        return check;
+    }
 }
