@@ -786,6 +786,21 @@ suite = {
             "spotbugs" : "false",
         },
 
+        "com.oracle.svm.core.jfr": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core"
+            ],
+            "javaCompliance" : "21+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.hosted.foreign": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -2439,6 +2454,36 @@ suite = {
                 },
             },
             "maven" : False,
+        },
+
+        "SVM_JFR": {
+            "subDir": "src",
+            "description" : "SubstrateVM support for the JFR",
+            "dependencies": [
+                "com.oracle.svm.core.jfr",
+            ],
+            "distDependencies": [
+                "compiler:GRAAL",
+                "SVM"
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.jfr",
+                "requires" : [
+                    "org.graalvm.nativeimage.builder"
+                ],
+                # "exports" : [
+                #     "* to org.graalvm.nativeimage.builder"
+                # ],
+            },
+            "maven" : False,
+        },
+
+        "SVM_JFR_SUPPORT" : {
+            "native" : True,
+            "description" : "JFR support",
+            "layout" : {
+                "native-image.properties" : "file:mx.substratevm/macro-svmjfr.properties",
+            },
         },
 
         "SVM_LLVM" : {

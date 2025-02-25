@@ -1645,6 +1645,20 @@ libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
 
 mx_sdk_vm.register_graalvm_component(libsvmjdwp)
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+    suite=suite,
+    name='SubstrateVM JFR Support',
+    short_name='svmjfr',
+    dir_name="svmjfr",
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['SubstrateVM'],
+    builder_jar_distributions=['substratevm:SVM_JFR'],
+    support_distributions=['substratevm:SVM_JFR_SUPPORT'],
+    stability="experimental",
+    jlink=False,
+))
+
 def _native_image_configure_extra_jvm_args():
     packages = ['jdk.graal.compiler/jdk.graal.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.graal.compiler/jdk.graal.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
