@@ -52,6 +52,8 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
         // @formatter:off
         @Option(help = "Allow iterative peeling of loops up to this many times (each time the peeling phase runs).", type = OptionType.Debug)
         public static final OptionKey<Integer> IterativePeelingLimit = new OptionKey<>(2);
+        @Option(help = "Run the canonicalizer incrementally between iterative peelings to improve the heuristics.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> IncrementalCanonDuringPeel = new OptionKey<>(true);
         // @formatter:on
     }
 
@@ -88,6 +90,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
     protected void run(StructuredGraph graph, CoreProviders context) {
         final boolean shouldPeelAlot = LoopPolicies.Options.PeelALot.getValue(graph.getOptions());
         final int shouldPeelOnly = LoopPolicies.Options.PeelOnlyLoopWithNodeID.getValue(graph.getOptions());
+        final boolean incrementalCanon = Options.IncrementalCanonDuringPeel.getValue(graph.getOptions());
         /*
          * When guards are floating we need to update the CFG on every peeling operation because
          * answering the question which floating guards are inside a loop potentially need cfg
@@ -150,7 +153,9 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
                 }
                 data.deleteUnusedNodes();
             }
-            canonicalizer.applyIncremental(graph, context, ec.getNodes());
+            if (incrementalCanon) {
+                canonicalizer.applyIncremental(graph, context, ec.getNodes());
+            }
             ec.getNodes().clear();
         }
     }
