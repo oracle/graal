@@ -1056,7 +1056,7 @@ public final class Deoptimizer {
             if (ignoreNonDeoptimizable) {
                 return null;
             } else {
-                throw fatalDeoptimizationError("Deoptimization: cannot lazily deoptimize a method that has no deoptimization entry point", sourceChunk.getFrameInfo(), sourceChunk.getFrameInfo());
+                throw fatalDeoptimizationError("Deoptimization: cannot eagerly deoptimize a method that has no deoptimization entry point", sourceChunk.getFrameInfo(), sourceChunk.getFrameInfo());
             }
         }
 
