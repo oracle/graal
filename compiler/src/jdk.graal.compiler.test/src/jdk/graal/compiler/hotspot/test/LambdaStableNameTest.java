@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import static org.junit.Assert.fail;
 import java.math.BigInteger;
 
 import org.junit.Test;
-import org.objectweb.asm.Type;
 
 import jdk.graal.compiler.java.LambdaUtils;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -54,7 +53,7 @@ public class LambdaStableNameTest {
         String acName = LambdaUtils.findStableLambdaName(acType);
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
 
-        String myName = Type.getInternalName(getClass());
+        String myName = getClass().getName().replace('.', '/');
         assertEquals("The name known in 24.0 version is computed", "L" + myName + "$$Lambda.0x605511206480068bfd9e0bafd4f79e22;", name);
     }
 

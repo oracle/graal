@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,21 +25,23 @@
 
 package jdk.graal.compiler.core.test;
 
-import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static org.objectweb.asm.Opcodes.ACC_STATIC;
-import static org.objectweb.asm.Opcodes.ACC_SUPER;
-import static org.objectweb.asm.Opcodes.GOTO;
-import static org.objectweb.asm.Opcodes.ICONST_0;
-import static org.objectweb.asm.Opcodes.ICONST_1;
-import static org.objectweb.asm.Opcodes.ICONST_5;
-import static org.objectweb.asm.Opcodes.ICONST_M1;
-import static org.objectweb.asm.Opcodes.IFLT;
-import static org.objectweb.asm.Opcodes.ILOAD;
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
-import static org.objectweb.asm.Opcodes.IRETURN;
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.classfile.ClassFile.ACC_STATIC;
+import static java.lang.constant.ConstantDescs.CD_boolean;
+import static java.lang.constant.ConstantDescs.CD_int;
+
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.Label;
+import java.lang.classfile.instruction.SwitchCase;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.Assert;
+import org.junit.Test;
 
 import jdk.graal.compiler.api.directives.GraalDirectives;
-import jdk.graal.compiler.api.test.ExportingClassLoader;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -50,16 +52,10 @@ import jdk.graal.compiler.nodes.IfNode;
 import jdk.graal.compiler.nodes.ReturnNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
-import org.junit.Assert;
-import org.junit.Test;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-public class SwitchFoldingTest extends GraalCompilerTest {
+public class SwitchFoldingTest extends GraalCompilerTest implements CustomizedBytecodePattern {
 
     private static final String REFERENCE_SNIPPET = "referenceSnippet";
     private static final String REFERENCE_SNIPPET_2 = "reference2Snippet";
@@ -558,130 +554,98 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         return true;
     }
 
-    private static final String NAME = "D";
-    private static final byte[] clazz = makeClass();
+    public byte[] generateClass(String className) {
+        /*-
+         * public static int m(boolean, int) {
+         *     ILOAD_0
+         *     IFLT L1
+         *     ILOAD_1
+         *     LOOKUPSWITCH
+         *       [1, 2] ->
+         *         return some int
+         *       [5, 7] ->
+         *         GOTO L1
+         *       [3, 6, 9] ->
+         *         GOTO L2 (Different blocks)
+         *       [0, 4, 8] ->
+         *         GOTO L2 (Same block)
+         *     L1:
+         *       deopt
+         *       return 0
+         *     L2:
+         *       return 5
+         * }
+         *
+         * Optimization should coalesce branches [5, 7] and  [3, 6, 9]
+         */
+        return ClassFile.of().build(ClassDesc.of(className), classBuilder -> classBuilder
+                        .withMethod("m", MethodTypeDesc.of(CD_int, CD_boolean, CD_int), ACC_STATIC | ACC_PUBLIC, methodBuilder -> methodBuilder
+                                        .withCode(codeBuilder -> {
+                                            Label outMerge = codeBuilder.newLabel();
+                                            Label inMerge = codeBuilder.newLabel();
+                                            Label commonTarget = codeBuilder.newLabel();
+                                            Label def = codeBuilder.newLabel();
 
-    public static class MyClassLoader extends ExportingClassLoader {
-        @Override
-        protected Class<?> findClass(String className) throws ClassNotFoundException {
-            return defineClass(NAME.replace('/', '.'), clazz, 0, clazz.length);
-        }
-    }
+                                            Label[] inMerges = new Label[3];
+                                            Label[] outMerges = new Label[2];
+                                            Label[] simple = new Label[2];
 
-    private static byte[] makeClass() {
-        ClassWriter cw = new ClassWriter(0);
-        MethodVisitor mv;
-        String jvmName = NAME.replace('.', '/');
-        cw.visit(49, ACC_SUPER | ACC_PUBLIC, jvmName, null, "java/lang/Object", new String[]{});
+                                            for (int i = 0; i < inMerges.length; i++) {
+                                                inMerges[i] = codeBuilder.newLabel();
+                                            }
+                                            for (int i = 0; i < simple.length; i++) {
+                                                simple[i] = codeBuilder.newLabel();
+                                            }
+                                            for (int i = 0; i < outMerges.length; i++) {
+                                                outMerges[i] = codeBuilder.newLabel();
+                                            }
 
-        // Checkstyle: stop AvoidNestedBlocks
-        {
-            /*-
-             * public static int m(boolean, int) {
-             *     ILOAD_0
-             *     IFLT L1
-             *     ILOAD_1
-             *     LOOKUPSWITCH
-             *       [1, 2] -> 
-             *         return some int
-             *       [5, 7] ->
-             *         GOTO L1
-             *       [3, 6, 9] ->
-             *         GOTO L2 (Different blocks)
-             *       [0, 4, 8] ->
-             *         GOTO L2 (Same block)
-             *     L1:
-             *       deopt
-             *       return 0
-             *     L2:
-             *       return 5
-             * }
-             * 
-             * Optimization should coalesce branches [5, 7] and  [3, 6, 9]
-             */
-            Label outMerge = new Label();
-            Label inMerge = new Label();
-            Label commonTarget = new Label();
-            Label def = new Label();
+                                            int in = 0;
+                                            int out = 0;
+                                            int s = 0;
 
-            int[] keys = new int[10];
-            Label[] labels = new Label[10];
+                                            List<SwitchCase> cases = new ArrayList<>();
+                                            cases.add(SwitchCase.of(0, commonTarget));
+                                            cases.add(SwitchCase.of(1, simple[s++]));
+                                            cases.add(SwitchCase.of(2, simple[s++]));
+                                            cases.add(SwitchCase.of(3, inMerges[in++]));
+                                            cases.add(SwitchCase.of(4, commonTarget));
+                                            cases.add(SwitchCase.of(5, outMerges[out++]));
+                                            cases.add(SwitchCase.of(6, inMerges[in++]));
+                                            cases.add(SwitchCase.of(7, outMerges[out++]));
+                                            cases.add(SwitchCase.of(8, commonTarget));
+                                            cases.add(SwitchCase.of(9, inMerges[in++]));
 
-            Label[] inMerges = new Label[3];
-            Label[] outMerges = new Label[2];
-            Label[] simple = new Label[2];
+                                            codeBuilder
+                                                            .iload(0)
+                                                            .iflt(outMerge)
+                                                            .iload(1)
+                                                            .lookupswitch(def, cases);
 
-            for (int i = 0; i < inMerges.length; i++) {
-                inMerges[i] = new Label();
-            }
-            for (int i = 0; i < simple.length; i++) {
-                simple[i] = new Label();
-            }
-            for (int i = 0; i < outMerges.length; i++) {
-                outMerges[i] = new Label();
-            }
-            for (int i = 0; i < keys.length; i++) {
-                keys[i] = i;
-            }
-            int in = 0;
-            int out = 0;
-            int s = 0;
-            labels[0] = commonTarget;
-            labels[1] = simple[s++];
-            labels[2] = simple[s++];
-            labels[3] = inMerges[in++];
-            labels[4] = commonTarget;
-            labels[5] = outMerges[out++];
-            labels[6] = inMerges[in++];
-            labels[7] = outMerges[out++];
-            labels[8] = commonTarget;
-            labels[9] = inMerges[in++];
+                                            for (int i = 0; i < inMerges.length; i++) {
+                                                codeBuilder.labelBinding(inMerges[i]).goto_(inMerge);
+                                            }
 
-            mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "m", "(ZI)I", null, null);
-            mv.visitCode();
-            mv.visitIntInsn(ILOAD, 0);
-            mv.visitJumpInsn(IFLT, outMerge);
+                                            for (int i = 0; i < outMerges.length; i++) {
+                                                codeBuilder.labelBinding(outMerges[i]).goto_(outMerge);
+                                            }
+                                            for (int i = 0; i < simple.length; i++) {
+                                                codeBuilder.labelBinding(simple[i]).sipush(i).ireturn();
+                                            }
 
-            mv.visitIntInsn(ILOAD, 1);
-            mv.visitLookupSwitchInsn(def, keys, labels);
-
-            for (int i = 0; i < inMerges.length; i++) {
-                mv.visitLabel(inMerges[i]);
-                mv.visitJumpInsn(GOTO, inMerge);
-            }
-            for (int i = 0; i < outMerges.length; i++) {
-                mv.visitLabel(outMerges[i]);
-                mv.visitJumpInsn(GOTO, outMerge);
-            }
-            for (int i = 0; i < simple.length; i++) {
-                mv.visitLabel(simple[i]);
-                mv.visitInsn(ICONST_0 + i);
-                mv.visitInsn(IRETURN);
-            }
-
-            mv.visitLabel(def);
-            mv.visitInsn(ICONST_1);
-            mv.visitInsn(IRETURN);
-
-            mv.visitLabel(inMerge);
-            mv.visitInsn(ICONST_5);
-            mv.visitInsn(IRETURN);
-
-            mv.visitLabel(commonTarget);
-            mv.visitJumpInsn(GOTO, inMerge);
-
-            mv.visitLabel(outMerge);
-            mv.visitMethodInsn(INVOKESTATIC, GraalDirectives.class.getName().replace('.', '/'), "deoptimize", "()V", false);
-            mv.visitInsn(ICONST_M1);
-            mv.visitInsn(IRETURN);
-
-            mv.visitMaxs(3, 2);
-            mv.visitEnd();
-        }
-        // Checkstyle: resume AvoidNestedBlocks
-
-        cw.visitEnd();
-        return cw.toByteArray();
+                                            codeBuilder.labelBinding(def)
+                                                            .iconst_1()
+                                                            .ireturn()
+                                                            .labelBinding(inMerge)
+                                                            .iconst_5()
+                                                            .ireturn()
+                                                            .labelBinding(commonTarget)
+                                                            .goto_(inMerge)
+                                                            .labelBinding(outMerge)
+                                                            .invokestatic(cd(GraalDirectives.class), "deoptimize", MD_VOID)
+                                                            .iconst_m1()
+                                                            .ireturn();
+                                        })));
     }
 
     /**
@@ -691,8 +655,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
     @Test
     public void compileTest() {
         try {
-            MyClassLoader loader = new MyClassLoader();
-            Class<?> c = loader.findClass(NAME);
+            Class<?> c = getClass("D");
             ResolvedJavaMethod method = getResolvedJavaMethod(c, "m");
             StructuredGraph graph = parse(builder(method, StructuredGraph.AllowAssumptions.NO), getEagerGraphBuilderSuite());
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Graph");

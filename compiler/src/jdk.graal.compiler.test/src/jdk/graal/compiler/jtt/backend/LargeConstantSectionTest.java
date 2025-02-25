@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,32 +24,29 @@
  */
 package jdk.graal.compiler.jtt.backend;
 
-import static org.objectweb.asm.Opcodes.ACC_FINAL;
-import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static org.objectweb.asm.Opcodes.ACC_STATIC;
-import static org.objectweb.asm.Opcodes.ACC_SUPER;
-import static org.objectweb.asm.Opcodes.ILOAD;
-import static org.objectweb.asm.Opcodes.LRETURN;
+import static java.lang.constant.ConstantDescs.CD_int;
+import static java.lang.constant.ConstantDescs.CD_long;
 
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.Label;
+import java.lang.classfile.instruction.SwitchCase;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.jtt.JTTTest;
-import jdk.graal.compiler.api.test.ExportingClassLoader;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 
+import jdk.graal.compiler.api.test.ExportingClassLoader;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.jtt.JTTTest;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import junit.framework.AssertionFailedError;
 
@@ -107,39 +104,29 @@ public class LargeConstantSectionTest extends JTTTest {
         @Override
         protected Class<?> findClass(String name) throws ClassNotFoundException {
             if (name.equals(NAME)) {
-                ClassWriter cw = new ClassWriter(0);
-                MethodVisitor mv;
-                cw.visit(52, ACC_PUBLIC + ACC_SUPER, NAME, null, "java/lang/Object", null);
+                byte[] bytes = ClassFile.of().build(ClassDesc.of(NAME), classBuilder -> classBuilder
+                                .withMethod("run", MethodTypeDesc.of(CD_long, CD_int), ClassFile.ACC_PUBLIC | ClassFile.ACC_STATIC | ClassFile.ACC_FINAL, methodBuilder -> methodBuilder
+                                                .withCode(codeBuilder -> {
+                                                    Label defaultLabel = codeBuilder.newLabel();
+                                                    List<SwitchCase> cases = new ArrayList<>(numberBlocks);
 
-                mv = cw.visitMethod(ACC_PUBLIC + ACC_FINAL + ACC_STATIC, "run", "(I)J", null, null);
-                mv.visitCode();
-                Label begin = new Label();
-                mv.visitLabel(begin);
-                mv.visitVarInsn(ILOAD, 0);
-                Label[] labels = new Label[numberBlocks];
-                int[] keys = new int[numberBlocks];
-                for (int i = 0; i < labels.length; i++) {
-                    labels[i] = new Label();
-                    keys[i] = i;
-                }
-                Label defaultLabel = new Label();
-                mv.visitLookupSwitchInsn(defaultLabel, keys, labels);
-                for (int i = 0; i < labels.length; i++) {
-                    mv.visitLabel(labels[i]);
-                    mv.visitFrame(Opcodes.F_NEW, 1, new Object[]{Opcodes.INTEGER}, 0, new Object[]{});
-                    mv.visitLdcInsn(Long.valueOf(LARGE_CONSTANT + i));
-                    mv.visitInsn(LRETURN);
-                }
-                mv.visitLabel(defaultLabel);
-                mv.visitFrame(Opcodes.F_NEW, 1, new Object[]{Opcodes.INTEGER}, 0, new Object[]{});
-                mv.visitLdcInsn(Long.valueOf(3L));
-                mv.visitInsn(LRETURN);
-                Label end = new Label();
-                mv.visitLabel(end);
-                mv.visitLocalVariable("a", "I", null, begin, end, 0);
-                mv.visitMaxs(2, 1);
-                mv.visitEnd();
-                byte[] bytes = cw.toByteArray();
+                                                    for (int i = 0; i < cases.size(); i++) {
+                                                        cases.add(SwitchCase.of(i, codeBuilder.newLabel()));
+                                                    }
+
+                                                    codeBuilder.iload(0)
+                                                                    .lookupswitch(defaultLabel, cases);
+
+                                                    for (int i = 0; i < cases.size(); i++) {
+                                                        codeBuilder.labelBinding(cases.get(i).target())
+                                                                        .ldc(Long.valueOf(0xF0F0F0F0F0L + i))
+                                                                        .lreturn();
+                                                    }
+
+                                                    codeBuilder.labelBinding(defaultLabel)
+                                                                    .ldc(Long.valueOf(3L))
+                                                                    .lreturn();
+                                                })));
                 return defineClass(name, bytes, 0, bytes.length);
             } else {
                 return super.findClass(name);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,39 +24,40 @@
  */
 package jdk.graal.compiler.core.test;
 
+import static java.lang.classfile.ClassFile.ACC_PUBLIC;
+import static java.lang.classfile.ClassFile.ACC_STATIC;
+import static java.lang.constant.ConstantDescs.CD_void;
+
 import java.io.File;
 import java.io.IOException;
+import java.lang.constant.ClassDesc;
+import java.lang.constant.MethodTypeDesc;
 import java.nio.file.Files;
 import java.util.function.Function;
 
-import org.objectweb.asm.Opcodes;
+public interface CustomizedBytecodePattern {
 
-public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest implements Opcodes {
+    class CachedLoader extends ClassLoader {
 
-    protected Class<?> getClass(String className) throws ClassNotFoundException {
-        return new CachedLoader(CustomizedBytecodePatternTest.class.getClassLoader(), className, this::generateClass).findClass(className);
-    }
+        private static final File GENERATED_CLASS_FILE_OUTPUT_DIRECTORY;
 
-    private static final File GENERATED_CLASS_FILE_OUTPUT_DIRECTORY;
-    static {
-        String prop = System.getProperty("save.generated.classfile.dir");
-        File file = null;
-        if (prop != null) {
-            file = new File(prop);
-            ensureDirectoryExists(file);
-            assert file.exists() : file;
+        static {
+            String prop = System.getProperty("save.generated.classfile.dir");
+            File file = null;
+            if (prop != null) {
+                file = new File(prop);
+                ensureDirectoryExists(file);
+                assert file.exists() : file;
+            }
+            GENERATED_CLASS_FILE_OUTPUT_DIRECTORY = file;
         }
-        GENERATED_CLASS_FILE_OUTPUT_DIRECTORY = file;
-    }
 
-    private static File ensureDirectoryExists(File file) {
-        if (!file.exists()) {
-            file.mkdirs();
+        private static File ensureDirectoryExists(File file) {
+            if (!file.exists()) {
+                file.mkdirs();
+            }
+            return file;
         }
-        return file;
-    }
-
-    public static class CachedLoader extends ClassLoader {
 
         final String className;
         Class<?> loaded;
@@ -72,7 +73,7 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
         public Class<?> findClass(String name) throws ClassNotFoundException {
             if (name.equals(className)) {
                 if (loaded == null) {
-                    byte[] classfileBytes = classfileSupplier.apply(name.replace('.', '/'));
+                    byte[] classfileBytes = classfileSupplier.apply(name);
                     if (GENERATED_CLASS_FILE_OUTPUT_DIRECTORY != null) {
                         try {
                             File classfile = new File(GENERATED_CLASS_FILE_OUTPUT_DIRECTORY, name.replace('.', File.separatorChar) + ".class");
@@ -90,8 +91,19 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
                 return super.findClass(name);
             }
         }
-
     }
 
-    protected abstract byte[] generateClass(String internalClassName);
+    MethodTypeDesc MD_VOID = MethodTypeDesc.of(CD_void);
+
+    int ACC_PUBLIC_STATIC = ACC_PUBLIC | ACC_STATIC;
+
+    default ClassDesc cd(Class<?> klass) {
+        return klass.describeConstable().orElseThrow();
+    }
+
+    default Class<?> getClass(String className) throws ClassNotFoundException {
+        return new CachedLoader(CustomizedBytecodePattern.class.getClassLoader(), className, this::generateClass).findClass(className);
+    }
+
+    byte[] generateClass(String className);
 }
