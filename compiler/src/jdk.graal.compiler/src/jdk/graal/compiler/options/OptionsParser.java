@@ -38,10 +38,11 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.core.common.LibGraalSupport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+
+import jdk.graal.compiler.core.common.LibGraalSupport;
 
 /**
  * This class contains methods for parsing Graal options and matching them against a set of
@@ -343,6 +344,7 @@ public class OptionsParser {
      * @param toSearch the entries search
      * @param name the name to search for
      * @param matches the collection to which fuzzy matches of {@code name} will be added
+     * @param extractor functor that maps entry to String
      * @return whether any fuzzy matches were found
      */
     public static <T> boolean collectFuzzyMatches(Iterable<T> toSearch, String name, Collection<T> matches, Function<T, String> extractor) {

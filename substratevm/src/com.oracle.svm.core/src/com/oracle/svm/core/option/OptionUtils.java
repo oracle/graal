@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.option.LocatableMultiOptionValue.ValueWithOrigin;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.graal.compiler.options.OptionDescriptor;
@@ -45,8 +46,12 @@ import jdk.graal.compiler.options.OptionKey;
  */
 public class OptionUtils {
 
+    public static List<String> resolveOptionValuesRedirection(OptionKey<?> option, ValueWithOrigin<String> valueWithOrigin) {
+        return resolveOptionValuesRedirection(option, valueWithOrigin.value(), valueWithOrigin.origin());
+    }
+
     public static List<String> resolveOptionValuesRedirection(OptionKey<?> option, String optionValue, OptionOrigin origin) {
-        return Arrays.asList(SubstrateUtil.split(optionValue, ",")).stream()
+        return Arrays.stream(SubstrateUtil.split(optionValue, ","))
                         .flatMap(entry -> resolveOptionValueRedirection(option, optionValue, origin, entry))
                         .collect(Collectors.toList());
     }

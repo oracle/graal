@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.imagelayer;
 
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.List;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
@@ -38,16 +38,20 @@ public class LayerOptionsSupport {
             VMError.guarantee(!layerOptionValue.isEmpty());
             // Given an argument of form layer-file.nil,module=m1,package=p1
             // First get the list: [layer-file.nil, module=m1, package=p1]
-            String[] options = SubstrateUtil.split(layerOptionValue, ",");
+            return parse(List.of(SubstrateUtil.split(layerOptionValue, ",")));
+        }
+
+        public static LayerOption parse(List<String> options) {
+            VMError.guarantee(!options.isEmpty());
             // Check for the optional file name
-            String fileName = null;
+            Path fileName = null;
             int skip = 0;
-            if (options[0].endsWith(LayerArchiveSupport.LAYER_FILE_EXTENSION)) {
-                fileName = options[0];
+            if (options.getFirst().endsWith(LayerArchiveSupport.LAYER_FILE_EXTENSION)) {
+                fileName = Path.of(options.getFirst());
                 skip = 1;
             }
-            ExtendedOption[] extendedOptions = Arrays.stream(options).skip(skip).map(ExtendedOption::parse).toArray(ExtendedOption[]::new);
-            return new LayerOption(Path.of(fileName), extendedOptions);
+            ExtendedOption[] extendedOptions = options.stream().skip(skip).map(ExtendedOption::parse).toArray(ExtendedOption[]::new);
+            return new LayerOption(fileName, extendedOptions);
         }
     }
 
@@ -63,4 +67,24 @@ public class LayerOptionsSupport {
         }
     }
 
+    public record PackageOptionValue(String name, boolean isWildcard) {
+
+        static final String PACKAGE_WILDCARD_SUFFIX = ".*";
+
+        public static PackageOptionValue from(ExtendedOption extendedOption) {
+            if (!extendedOption.key().equals(LayerArchiveSupport.PACKAGE_OPTION)) {
+                return null;
+            }
+            String extendedOptionValue = extendedOption.value();
+            if (extendedOptionValue.endsWith(PACKAGE_WILDCARD_SUFFIX)) {
+                return new PackageOptionValue(extendedOptionValue.substring(0, extendedOptionValue.length() - PACKAGE_WILDCARD_SUFFIX.length()), true);
+            }
+            return new PackageOptionValue(extendedOptionValue, false);
+        }
+
+        @Override
+        public String toString() {
+            return name + (isWildcard ? PACKAGE_WILDCARD_SUFFIX : "");
+        }
+    }
 }

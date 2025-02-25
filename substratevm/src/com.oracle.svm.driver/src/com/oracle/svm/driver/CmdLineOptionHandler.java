@@ -31,14 +31,10 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
-import com.oracle.svm.hosted.imagelayer.LayerArchiveSupport;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
-import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
 import com.oracle.svm.util.LogUtils;
 
 import jdk.graal.compiler.options.OptionType;
@@ -140,25 +136,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (headArg.startsWith(BundleSupport.BUNDLE_OPTION)) {
             nativeImage.bundleSupport = BundleSupport.create(nativeImage, args.poll(), args);
             return true;
-        }
-
-        if (headArg.startsWith(SubstrateOptions.LAYER_CREATE_OPTION)) {
-            String layerCreateValue = headArg.substring(SubstrateOptions.LAYER_CREATE_OPTION.length());
-            if (!layerCreateValue.isEmpty()) {
-                LayerOption layerOption = LayerOption.parse(layerCreateValue);
-                for (ExtendedOption option : layerOption.extendedOptions()) {
-                    switch (option.key()) {
-                        case LayerArchiveSupport.PACKAGE_OPTION -> {
-                            String packageName = option.value();
-                            String moduleName = nativeImage.systemPackagesToModules.get(packageName);
-                            if (moduleName != null) {
-                                nativeImage.addAddedModules(moduleName);
-                            }
-                        }
-                    }
-                }
-            }
-            return false;
         }
 
         if (headArg.startsWith(DEBUG_ATTACH_OPTION)) {

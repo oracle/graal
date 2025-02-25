@@ -93,7 +93,7 @@ public final class ImageClassLoader {
                 }
             }
         }
-        classLoaderSupport.reportBuilderClassesInApplication();
+        classLoaderSupport.allClassesLoaded();
     }
 
     private void findSystemElements(Class<?> systemClass) {

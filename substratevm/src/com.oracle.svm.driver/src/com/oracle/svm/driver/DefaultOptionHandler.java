@@ -28,9 +28,15 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.OptionOrigin;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
+import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.ExtendedOption;
+import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.LayerOption;
+import com.oracle.svm.hosted.imagelayer.LayerOptionsSupport.PackageOptionValue;
 import com.oracle.svm.util.LogUtils;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -138,6 +144,32 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             processClasspathArgs(cpArgs);
             return true;
+        }
+        if (headArg.startsWith(nativeImage.oHLayerCreate)) {
+            String rawLayerCreateValue = headArg.substring(nativeImage.oHLayerCreate.length());
+            if (!rawLayerCreateValue.isEmpty()) {
+                List<String> layerCreateValue = OptionUtils.resolveOptionValuesRedirection(SubstrateOptions.LayerCreate, rawLayerCreateValue, OptionOrigin.from(args.argumentOrigin));
+                LayerOption layerOption = LayerOption.parse(layerCreateValue);
+                for (ExtendedOption option : layerOption.extendedOptions()) {
+                    var packageOptionValue = PackageOptionValue.from(option);
+                    if (packageOptionValue == null) {
+                        continue;
+                    }
+                    String packageName = packageOptionValue.name();
+                    if (packageOptionValue.isWildcard()) {
+                        nativeImage.systemPackagesToModules.forEach((systemPackageName, moduleName) -> {
+                            if (systemPackageName.startsWith(packageName)) {
+                                nativeImage.addAddedModules(moduleName);
+                            }
+                        });
+                    } else {
+                        String moduleName = nativeImage.systemPackagesToModules.get(packageName);
+                        if (moduleName != null) {
+                            nativeImage.addAddedModules(moduleName);
+                        }
+                    }
+                }
+            }
         }
         if (headArg.startsWith(NativeImage.oH)) {
             args.poll();
