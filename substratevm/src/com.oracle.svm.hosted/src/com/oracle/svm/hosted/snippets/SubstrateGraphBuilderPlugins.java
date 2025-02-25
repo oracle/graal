@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -122,9 +122,11 @@ import jdk.graal.compiler.nodes.LogicNode;
 import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.ClassIsArrayNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -159,6 +161,7 @@ import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
 import jdk.graal.compiler.replacements.nodes.MacroNode.MacroParams;
 import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
 import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.graal.compiler.word.WordCastNode;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -1093,6 +1096,17 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
+        if (JavaVersionUtil.JAVA_SPEC > 21) {
+            // In JDK 21, the same plugin is registered in StandardGraphBuilderPlugins
+            r.register(new InvocationPlugin("isArray", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    LogicNode isArray = b.add(ClassIsArrayNode.create(b.getConstantReflection(), receiver.get(true)));
+                    b.addPush(JavaKind.Boolean, ConditionalNode.create(isArray, NodeView.DEFAULT));
+                    return true;
+                }
+            });
+        }
 
         registerClassDesiredAssertionStatusPlugin(plugins);
     }
