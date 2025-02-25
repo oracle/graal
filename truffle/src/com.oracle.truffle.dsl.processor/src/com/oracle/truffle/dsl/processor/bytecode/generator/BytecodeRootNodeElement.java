@@ -760,9 +760,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startIf().string("node == null").end().startBlock();
             b.statement("return -1");
             b.end();
+            /*- TODO: GR-62198
             b.startAssert();
             b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
             b.end();
+             */
             b.startReturn();
             b.startCall("frame.getInt").string("BCI_INDEX").end();
             b.end();
