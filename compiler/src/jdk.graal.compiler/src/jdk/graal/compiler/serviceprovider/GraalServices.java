@@ -384,7 +384,6 @@ public final class GraalServices {
      *             measurement.
      */
     public static long getThreadAllocatedBytes(long id) {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             throw new UnsupportedOperationException();
         }
@@ -433,7 +432,6 @@ public final class GraalServices {
      *             the current thread
      */
     public static long getCurrentThreadCpuTime() {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             throw new UnsupportedOperationException();
         }
@@ -445,7 +443,6 @@ public final class GraalServices {
      * measurement.
      */
     public static boolean isThreadAllocatedMemorySupported() {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             return false;
         }
@@ -456,7 +453,6 @@ public final class GraalServices {
      * Determines if the Java virtual machine supports CPU time measurement for the current thread.
      */
     public static boolean isCurrentThreadCpuTimeSupported() {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             return false;
         }
@@ -478,7 +474,6 @@ public final class GraalServices {
      * @return the input arguments to the JVM or {@code null} if they are unavailable
      */
     public static List<String> getInputArguments() {
-        JMXService jmx = JMXService.instance;
         if (jmx == null) {
             return null;
         }
@@ -511,4 +506,6 @@ public final class GraalServices {
     public static int getJavaUpdateVersion() {
         return Runtime.version().update();
     }
+
+    private static final JMXService jmx = loadSingle(JMXService.class, libgraalServices != null);
 }
