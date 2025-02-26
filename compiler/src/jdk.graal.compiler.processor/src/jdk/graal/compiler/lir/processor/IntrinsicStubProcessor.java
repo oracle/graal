@@ -72,6 +72,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
     private TypeElement generateStub;
     private TypeElement generateStubs;
     private TypeMirror constantNodeParameter;
+    private boolean malformedInput = false;
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -182,7 +183,9 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                     }
                     classes.add(new GenerateStubClass(source, stubs, minimumFeatureGetters.keySet()));
                 }
-                createStubs(this, targetVM, (TypeElement) holder, classes);
+                if (!malformedInput) {
+                    createStubs(this, targetVM, (TypeElement) holder, classes);
+                }
             }
         }
         return true;
@@ -198,6 +201,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
         if (getAnnotation(method, nodeIntrinsic.asType()) == null) {
             String msg = String.format("methods annotated with %s must also be annotated with %s", annotation, nodeIntrinsic);
             env().getMessager().printMessage(Diagnostic.Kind.ERROR, msg, method, annotation);
+            malformedInput = true;
         }
         RuntimeCheckedFlagsMethod rtc = findRuntimeCheckedFlagsVariant(this, source, method, annotation);
         for (AnnotationMirror generateStubAnnotationValue : generateStubAnnotations) {
@@ -232,6 +236,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
         processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, method + ": Could not find runtime checked flags variant. " +
                         "For every method annotated with @GenerateStub, a second @NodeIntrinsic method with the same signature + an additional @ConstantNodeParameter EnumSet<CPUFeature> parameter for runtime checked CPU flags is required.",
                         method, annotation);
+        malformedInput = true;
         return null;
     }
 
