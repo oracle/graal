@@ -1360,11 +1360,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     @Override
     public PartialMethod<Klass, Method, Field> withVTableIndex(int index) {
         assert getVTableIndex() == -1;
-        if (getDeclaringKlass().isInterface()) {
+        if (getMethodVersion().isInterfaceMethod()) {
             assert getITableIndex() != -1;
-            Method proxy = new Method(this);
-            proxy.getMethodVersion().setVTableIndex(index);
-            return proxy;
+            Method proxied = new Method(this);
+            proxied.getMethodVersion().setVTableIndex(index);
+            return proxied;
         } else {
             getMethodVersion().setVTableIndex(index);
             return this;
@@ -1587,10 +1587,19 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
      * new MethodVersion object.
      */
     public final class MethodVersion implements ModifiersProvider {
+        private static final int CODE_FLAGS_MASK = 0b00001111;
         private static final int CODE_FLAGS_READY = 0x1;
         private static final int CODE_FLAGS_HAS_JSR = 0x2;
         private static final int CODE_FLAGS_USES_MONITORS = 0x4;
         private static final int CODE_FLAGS_HAS_INDY = 0x8;
+
+        /**
+         * During KlassVersion initialization, the ObjectKlass is not yet linked to the newest
+         * KlassVersion. We therefore use this flag to know during that time if this method is
+         * declared in an interface, rather than using
+         * {@link #getDeclaringClass()}.{@link ObjectKlass#isInterface() isInterface()}.
+         */
+        private static final int METHOD_FLAGS_IS_INTERFACE_METHOD = 0b01000000;
 
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
@@ -1606,7 +1615,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         @CompilationFinal private int itableIndex = -1;
 
         @CompilationFinal private byte refKind;
-        @CompilationFinal private byte codeFlags;
+        @CompilationFinal private byte methodFlags;
 
         @CompilationFinal(dimensions = 1) //
         private ObjectKlass[] checkedExceptions;
@@ -1624,6 +1633,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             this.codeAttribute = codeAttribute;
             this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
             this.poisonPill = poisonPill;
+            if (klassVersion.isInterface()) {
+                methodFlags |= METHOD_FLAGS_IS_INTERFACE_METHOD;
+            }
             initRefKind();
         }
 
@@ -1978,6 +1990,10 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + getRawSignature() + ">";
         }
 
+        public boolean isInterfaceMethod() {
+            return (methodFlags & METHOD_FLAGS_IS_INTERFACE_METHOD) != 0;
+        }
+
         public boolean usesMonitors() {
             // Whether we need to use an additional frame slot for monitor unlock on kill.
             return isSynchronized() || (getCodeFlags() & CODE_FLAGS_USES_MONITORS) != 0;
@@ -1995,21 +2011,22 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         private byte getCodeFlags() {
-            byte localFlags = codeFlags;
-            if (localFlags == 0) {
+            byte localFlags = (byte) (methodFlags & CODE_FLAGS_MASK);
+            if ((localFlags & CODE_FLAGS_READY) == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (codeAttribute == null) {
                     localFlags = CODE_FLAGS_READY;
                 } else {
-                    localFlags = computeFlags(codeAttribute.getOriginalCode());
+                    localFlags = computeCodeFlags(codeAttribute.getOriginalCode());
                 }
-                assert localFlags != 0;
-                codeFlags = localFlags;
+                assert (localFlags & CODE_FLAGS_READY) != 0;
+                assert localFlags == (localFlags & CODE_FLAGS_MASK);
+                methodFlags |= localFlags;
             }
             return localFlags;
         }
 
-        private static byte computeFlags(byte[] code) {
+        private static byte computeCodeFlags(byte[] code) {
             BytecodeStream bs = new BytecodeStream(code);
             int bci = 0;
             int flags = CODE_FLAGS_READY;
