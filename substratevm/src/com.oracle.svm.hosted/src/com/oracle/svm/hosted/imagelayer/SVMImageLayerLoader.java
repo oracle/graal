@@ -304,7 +304,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return IntStream.range(0, reader.size()).map(reader::get);
     }
 
-    private static Stream<String> streamStrings(TextList.Reader reader) {
+    public static Stream<String> streamStrings(TextList.Reader reader) {
         return IntStream.range(0, reader.size()).mapToObj(i -> reader.get(i).toString());
     }
 

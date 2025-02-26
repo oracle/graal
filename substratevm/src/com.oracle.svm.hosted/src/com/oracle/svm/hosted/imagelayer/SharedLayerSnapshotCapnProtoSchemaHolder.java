@@ -4539,7 +4539,7 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
 
 
   public static class SharedLayerSnapshot {
-    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)5,(short)8);
+    public static final org.capnproto.StructSize STRUCT_SIZE = new org.capnproto.StructSize((short)5,(short)9);
     public static final class Factory extends org.capnproto.StructFactory<Builder, Reader> {
       public Factory() {
       }
@@ -4715,6 +4715,18 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       public final com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.Builder initStaticFinalFieldFoldingSingleton() {
         return _initPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.factory,7, 0);
       }
+      public final boolean hasRegisteredJNILibraries() {
+        return !_pointerFieldIsNull(8);
+      }
+      public final org.capnproto.TextList.Builder getRegisteredJNILibraries() {
+        return _getPointerField(org.capnproto.TextList.factory, 8, null, 0);
+      }
+      public final void setRegisteredJNILibraries(org.capnproto.TextList.Reader value) {
+        _setPointerField(org.capnproto.TextList.factory, 8, value);
+      }
+      public final org.capnproto.TextList.Builder initRegisteredJNILibraries(int size) {
+        return _initPointerField(org.capnproto.TextList.factory, 8, size);
+      }
     }
 
     public static final class Reader extends org.capnproto.StructReader {
@@ -4808,6 +4820,13 @@ public final class SharedLayerSnapshotCapnProtoSchemaHolder {
       }
       public com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.Reader getStaticFinalFieldFoldingSingleton() {
         return _getPointerField(com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.StaticFinalFieldFoldingSingleton.factory,7,null, 0);
+      }
+
+      public final boolean hasRegisteredJNILibraries() {
+        return !_pointerFieldIsNull(8);
+      }
+      public final org.capnproto.TextList.Reader getRegisteredJNILibraries() {
+        return _getPointerField(org.capnproto.TextList.factory, 8, null, 0);
       }
 
     }

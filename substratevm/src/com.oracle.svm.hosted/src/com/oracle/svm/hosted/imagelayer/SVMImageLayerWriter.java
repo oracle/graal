@@ -372,7 +372,7 @@ public class SVMImageLayerWriter extends ImageLayerWriter {
         }
     }
 
-    private static void initStringList(IntFunction<TextList.Builder> builderSupplier, Stream<String> strings) {
+    public static void initStringList(IntFunction<TextList.Builder> builderSupplier, Stream<String> strings) {
         Object[] array = strings.toArray();
         TextList.Builder builder = builderSupplier.apply(array.length);
         for (int i = 0; i < array.length; i++) {

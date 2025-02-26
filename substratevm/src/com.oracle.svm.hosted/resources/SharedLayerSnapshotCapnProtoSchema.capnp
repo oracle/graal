@@ -268,6 +268,7 @@ struct SharedLayerSnapshot {
   fields @13 :List(PersistedAnalysisField);
   nextLayerNumber @14 :Int32;
   staticFinalFieldFoldingSingleton @15 :StaticFinalFieldFoldingSingleton;
+  registeredJNILibraries @16 :List(Text);
 }
 
 struct StaticFinalFieldFoldingSingleton {
