@@ -32,6 +32,7 @@ import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph.Mark;
 import jdk.graal.compiler.graph.Graph.NodeEventScope;
 import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.LoopBeginNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
@@ -97,8 +98,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
          * blocks for anchors which can change. See
          * "NOTE: Guard Handling: Referenced by loop phases" in LoopFragment.java .
          */
-        final boolean floatingGuardsNeedCFGUpdates = graph.isAfterStage(StageFlag.HIGH_TIER_LOWERING) &&
-                        graph.isBeforeStage(StageFlag.GUARD_LOWERING);
+        final boolean floatingGuardsNeedCFGUpdates = graph.getGuardsStage() == GuardsStage.FLOATING_GUARDS;
 
         /*
          * Given that we potentially have to recompute the loops data between peeling iterations we
@@ -117,9 +117,14 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
                 Mark before = graph.getMark();
                 toPeel.clear();
                 for (Loop loop : data.outerFirst()) {
-                    if (canPeel(loop) && (shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context,
-                                    iteration)) &&
-                                    (shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId())) {
+                    if (!canPeel(loop)) {
+                        continue;
+                    }
+                    final boolean forcePeelBasedOnID = shouldPeelOnly == -1 || shouldPeelOnly == loop.loopBegin().getId();
+                    if (!forcePeelBasedOnID) {
+                        continue;
+                    }
+                    if (shouldPeelAlot || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) {
                         toPeel.add(loop.loopBegin());
                     }
                 }
