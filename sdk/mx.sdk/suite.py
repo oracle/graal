@@ -430,6 +430,8 @@ suite = {
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "org.graalvm.nativeimage" : {
@@ -475,6 +477,8 @@ suite = {
       "workingSets" : "SDK",
       "checkstyle" : "org.graalvm.word",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.launcher" : {
       "subDir" : "src",
@@ -505,6 +509,8 @@ suite = {
       "workingSets" : "Truffle,Tools,Test",
       "checkstyle" : "org.graalvm.word",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.polyglot.tck" : {
       "subDir" : "src",
@@ -535,6 +541,8 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK,Test",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.home" : {
       "subDir" : "src",
@@ -558,6 +566,8 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
       "graalCompilerSourceEdition": "ignore",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
     "org.graalvm.jniutils" : {
       "subDir" : "src",

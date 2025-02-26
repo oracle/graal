@@ -487,6 +487,7 @@ suite = {
       "javaCompliance" : "21+",
       "dependencies" : [
         "GRAAL",
+        "GRAAL_MANAGEMENT",
         "sdk:NATIVEIMAGE_LIBGRAAL",
         "sdk:JNIUTILS",
         "sdk:NATIVEBRIDGE"
@@ -697,6 +698,7 @@ suite = {
       ],
       "distDependencies": [
         "GRAAL",
+        "GRAAL_MANAGEMENT",
         "sdk:NATIVEIMAGE_LIBGRAAL",
         "sdk:JNIUTILS",
         "sdk:NATIVEIMAGE",
