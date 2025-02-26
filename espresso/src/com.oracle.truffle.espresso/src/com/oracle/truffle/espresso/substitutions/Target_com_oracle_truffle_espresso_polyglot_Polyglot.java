@@ -174,7 +174,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
 
         @Specialization(guards = {
                         "!isNull(targetType)",
-                        "getEspressoType(targetType, context.getMeta()) == cachedTargetType"}, limit = "2")
+                        "getEspressoType(targetType, context.getMeta()) == cachedTargetType"}, limit = "1")
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject value,
