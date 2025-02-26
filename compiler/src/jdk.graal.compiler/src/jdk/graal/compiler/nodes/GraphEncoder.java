@@ -447,7 +447,7 @@ public class GraphEncoder {
 
     protected void writeProperties(Node node, Fields fields) {
         writeObjectId(node.getNodeSourcePosition());
-        for (int idx = 0; idx < fields.getCount(); idx++) {
+        for (int idx : fields.getStableOrder()) {
             if (fields.getType(idx).isPrimitive()) {
                 long primitive = fields.getRawPrimitive(node, idx);
                 writer.putSV(primitive);
