@@ -40,7 +40,7 @@ public class PermittedSubclassesAttribute extends Attribute {
     private final char[] classes;
 
     public PermittedSubclassesAttribute(Symbol<Name> name, char[] classes) {
-        super(name, null);
+        assert name == NAME;
         this.classes = classes;
     }
 
@@ -63,8 +63,13 @@ public class PermittedSubclassesAttribute extends Attribute {
     private static Set<Symbol<Name>> fillSymbols(char[] classIndices, ConstantPool pool) {
         Set<Symbol<Name>> symbols = new HashSet<>();
         for (int classIndex : classIndices) {
-            symbols.add(pool.classAt(classIndex).getName(pool));
+            symbols.add(pool.className(classIndex));
         }
         return symbols;
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

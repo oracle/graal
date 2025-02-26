@@ -204,7 +204,7 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
      *
      * @param cpi The constant pool index in which to find the class constant
      * @throws IllegalArgumentException If there is no
-     *             {@link com.oracle.truffle.espresso.classfile.constantpool.ClassConstant} in the
+     *             {@link com.oracle.truffle.espresso.classfile.ConstantPool.Tag#CLASS} in the
      *             constant pool at index {@code cpi}.
      */
     C resolveClassConstantInPool(int cpi);

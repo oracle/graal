@@ -44,11 +44,10 @@ import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
  */
 public final class ConstantValueAttribute extends Attribute {
     public static final Symbol<Name> NAME = ParserNames.ConstantValue;
-    private final int constantValueIndex;
+    private final char constantValueIndex;
 
     public ConstantValueAttribute(int constantValueIndex) {
-        super(NAME, null);
-        this.constantValueIndex = constantValueIndex;
+        this.constantValueIndex = (char) constantValueIndex;
     }
 
     public int getConstantValueIndex() {
@@ -61,6 +60,11 @@ public final class ConstantValueAttribute extends Attribute {
             return false;
         }
         ConstantValueAttribute that = (ConstantValueAttribute) other;
-        return thisPool.at(constantValueIndex).isSame(otherPool.at(that.constantValueIndex), thisPool, otherPool);
+        return thisPool.isSame(constantValueIndex, that.constantValueIndex, otherPool);
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return NAME;
     }
 }

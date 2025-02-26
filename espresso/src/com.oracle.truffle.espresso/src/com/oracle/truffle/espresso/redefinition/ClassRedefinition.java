@@ -60,7 +60,6 @@ import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttri
 import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.classfile.bytecode.Bytecodes;
-import com.oracle.truffle.espresso.classfile.constantpool.ImmutablePoolConstant;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
@@ -481,12 +480,12 @@ public final class ClassRedefinition {
         Map<Method, ParserMethod> bodyChanges = new HashMap<>();
         List<ParserMethod> newSpecialMethods = new ArrayList<>(1);
 
-        boolean constantPoolChanged = !Arrays.equals(oldConstantPool.getRawBytes(), newConstantPool.getRawBytes());
+        boolean constantPoolChanged = !oldConstantPool.immutableContentEquals(newConstantPool);
         Iterator<Method> oldIt = oldMethods.iterator();
         Iterator<ParserMethod> newIt;
         while (oldIt.hasNext()) {
             Method oldMethod = oldIt.next();
-            ParserMethod oldParserMethod = oldMethod.getLinkedMethod().getParserMethod();
+            ParserMethod oldParserMethod = oldMethod.getParserMethod();
             // verify that there is a new corresponding method
             newIt = newMethods.iterator();
             while (newIt.hasNext()) {
@@ -783,10 +782,8 @@ public final class ClassRedefinition {
                             opcode == Bytecodes.PUTSTATIC ||
                             Bytecodes.isInvoke(opcode)) {
                 int oldCPI = oldCode.readCPI(bci);
-                ImmutablePoolConstant oldConstant = oldPool.at(oldCPI);
                 int newCPI = newCode.readCPI(bci);
-                ImmutablePoolConstant newConstant = newPool.at(newCPI);
-                if (!newConstant.isSame(oldConstant, newPool, oldPool)) {
+                if (!newPool.isSame(newCPI, oldCPI, oldPool)) {
                     return false;
                 }
             }

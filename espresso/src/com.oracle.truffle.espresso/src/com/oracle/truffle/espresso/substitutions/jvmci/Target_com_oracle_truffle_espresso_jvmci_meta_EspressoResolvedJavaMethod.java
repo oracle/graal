@@ -40,15 +40,19 @@ import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
-import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
-import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
+import com.oracle.truffle.espresso.classfile.descriptors.Type;
 import com.oracle.truffle.espresso.classfile.descriptors.TypeSymbols;
+import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
+import com.oracle.truffle.espresso.constantpool.ResolvedConstant;
+import com.oracle.truffle.espresso.constantpool.RuntimeConstantPool;
 import com.oracle.truffle.espresso.descriptors.EspressoSymbols.Names;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jvmci.JVMCIIndyData;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -110,7 +114,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
             if (resolvedType != null) {
                 guestType = toJVMCIType(resolvedType, objectTypeConstructor, arrayTypeConstructor, forBasicType, initCheck, context, meta);
             } else {
-                guestType = toJVMCIUnresolvedType(local.getType(), unresolvedTypeConstructor, context, meta);
+                guestType = toJVMCIUnresolvedType(local.getTypeOrDesc(), unresolvedTypeConstructor, context, meta);
             }
             localConstructor.call(result, meta.toGuestString(local.getNameAsString()), guestType, local.getStartBCI(), local.getEndBCI(), local.getSlot());
             return result;
@@ -118,7 +122,13 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
 
         @TruffleBoundary
         private static Klass getResolvedType(Local local, ObjectKlass declaringKlass, Meta meta) {
-            return meta.resolveSymbolOrNull(local.getType(), declaringKlass.getDefiningClassLoader(), declaringKlass.protectionDomain());
+            Symbol<Type> localType = null;
+            try {
+                localType = local.getTypeOrDesc().validateType(true);
+            } catch (ValidationException e) {
+                throw EspressoError.shouldNotReachHere("Local seems to come from a LocalTypeTable", e);
+            }
+            return meta.resolveSymbolOrNull(localType, declaringKlass.getDefiningClassLoader(), declaringKlass.protectionDomain());
         }
     }
 
@@ -185,15 +195,17 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
                 ExceptionHandler exceptionHandler = exceptionHandlers[i];
                 StaticObject jvmciExceptionHandler = meta.jvmci.ExceptionHandler.allocateInstance(context);
                 StaticObject catchType;
-                if (exceptionHandler.catchTypeCPI() == 0) {
+                int exceptionClassIndex = exceptionHandler.catchTypeCPI();
+                if (exceptionClassIndex == 0) {
                     catchType = StaticObject.NULL;
                 } else {
-                    ClassConstant classConstant = method.getConstantPool().classAt(exceptionHandler.catchTypeCPI());
-                    if (classConstant instanceof Resolvable.ResolvedConstant) {
-                        ObjectKlass catchKlass = (ObjectKlass) ((Resolvable.ResolvedConstant) classConstant).value();
+                    RuntimeConstantPool pool = method.getRuntimeConstantPool();
+                    ResolvedConstant resolvedConstant = pool.peekResolvedOrNull(exceptionClassIndex, meta);
+                    if (resolvedConstant != null) {
+                        ObjectKlass catchKlass = (ObjectKlass) resolvedConstant.value();
                         catchType = toJVMCIInstanceType(catchKlass, objectTypeConstructor, context, meta);
                     } else {
-                        ByteSequence type = TypeSymbols.nameToType(((ClassConstant.ImmutableClassConstant) classConstant).getName(method.getConstantPool()));
+                        ByteSequence type = TypeSymbols.nameToType(pool.className(exceptionClassIndex));
                         catchType = toJVMCIUnresolvedType(type, unresolvedTypeConstructor, context, meta);
                     }
                 }
@@ -201,7 +213,7 @@ final class Target_com_oracle_truffle_espresso_jvmci_meta_EspressoResolvedJavaMe
                                 exceptionHandler.getStartBCI(),
                                 exceptionHandler.getEndBCI(),
                                 exceptionHandler.getHandlerBCI(),
-                                exceptionHandler.catchTypeCPI(),
+                                exceptionClassIndex,
                                 catchType);
                 unwrapped[i] = jvmciExceptionHandler;
             }

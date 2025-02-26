@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,22 +20,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.classfile.constantpool;
+package com.oracle.truffle.espresso.constantpool;
 
-import java.nio.ByteBuffer;
+import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 
-public interface Resolvable extends PoolConstant {
+public interface ResolvedConstant {
+    Object value();
 
-    interface ResolvedConstant extends PoolConstant {
-        Object value();
-
-        @Override
-        default void dump(ByteBuffer buf) {
-            throw new IllegalStateException();
-        }
-
-        default boolean isSuccess() {
-            return true;
-        }
+    default boolean isSuccess() {
+        return true;
     }
+
+    Tag tag();
 }
