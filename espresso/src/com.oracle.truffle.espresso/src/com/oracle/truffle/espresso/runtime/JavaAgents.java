@@ -379,7 +379,7 @@ public final class JavaAgents extends ContextAccessImpl {
         for (int i = allNativePrefixes.length - 1; i >= 0; i--) {
             Symbol<Name> prefix = allNativePrefixes[i];
             if (resolvedName.contentStartsWith(prefix)) {
-                resolvedName = resolvedName.subSequence(prefix.length(), resolvedName.length() - prefix.length());
+                resolvedName = resolvedName.subSequence(prefix.length(), resolvedName.length());
             }
         }
         return getContext().getNames().getOrCreate(resolvedName);
