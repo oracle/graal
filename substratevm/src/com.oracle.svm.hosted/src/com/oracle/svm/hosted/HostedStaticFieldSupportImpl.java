@@ -34,42 +34,74 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
+import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @AutomaticallyRegisteredImageSingleton(StaticFieldsSupport.HostedStaticFieldSupport.class)
 public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedStaticFieldSupport {
 
-    @Override
-    public JavaConstant getStaticPrimitiveFieldsConstant(int layerNum, Function<Object, JavaConstant> toConstant) {
+    private enum State {
+        UNUSED,
+        CURRENT_LAYER,
+        PRIOR_LAYER,
+        FUTURE_APP_LAYER,
+    }
+
+    private State determineState(int layerNum) {
         if (layerNum == MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER) {
-            return toConstant.apply(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
+            return State.UNUSED;
         } else {
-            int currentLayerNum = DynamicImageLayerInfo.singleton().layerNumber;
+            int currentLayerNum = getCurrentLayerNumber();
             if (currentLayerNum == layerNum) {
-                return toConstant.apply(StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields());
-            } else {
+                return State.CURRENT_LAYER;
+            } else if (layerNum < currentLayerNum) {
                 assert layerNum == 0 && currentLayerNum == 1;
-                return HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields();
+                return State.PRIOR_LAYER;
+            } else {
+                assert layerNum == LayeredStaticFieldSupport.getAppLayerNumber() && currentLayerNum == 0;
+                return State.FUTURE_APP_LAYER;
             }
         }
     }
 
     @Override
-    public JavaConstant getStaticObjectFieldsConstant(int layerNum, Function<Object, JavaConstant> toConstant) {
-        if (layerNum == MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER) {
-            return toConstant.apply(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
-        } else {
-            int currentLayerNum = DynamicImageLayerInfo.singleton().layerNumber;
-            if (currentLayerNum == layerNum) {
-                return toConstant.apply(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
-            } else {
-                assert layerNum == 0 && currentLayerNum == 1;
-                return HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticObjectFields();
+    public JavaConstant getStaticFieldsBaseConstant(int layerNum, boolean primitive, Function<Object, JavaConstant> toConstant) {
+        return switch (determineState(layerNum)) {
+            case UNUSED, CURRENT_LAYER -> {
+                Object hostedObject = primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields();
+                yield toConstant.apply(hostedObject);
             }
-        }
+            case PRIOR_LAYER ->
+                primitive ? HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields()
+                                : HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticObjectFields();
+            case FUTURE_APP_LAYER ->
+                LayeredStaticFieldSupport.singleton().getAppLayerStaticFieldBaseConstant(primitive);
+        };
+    }
+
+    @Override
+    public FloatingNode getStaticFieldsBaseReplacement(int layerNum, boolean primitive, LoweringTool tool, StructuredGraph graph) {
+        return switch (determineState(layerNum)) {
+            case UNUSED, CURRENT_LAYER -> {
+                Object hostedObject = primitive ? StaticFieldsSupport.getCurrentLayerStaticPrimitiveFields() : StaticFieldsSupport.getCurrentLayerStaticObjectFields();
+                JavaConstant constant = tool.getSnippetReflection().forObject(hostedObject);
+                yield ConstantNode.forConstant(constant, tool.getMetaAccess(), graph);
+            }
+            case PRIOR_LAYER -> {
+                var constant = primitive ? HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticPrimitiveFields()
+                                : HostedImageLayerBuildingSupport.singleton().getLoader().getBaseLayerStaticObjectFields();
+                yield ConstantNode.forConstant(constant, tool.getMetaAccess(), graph);
+            }
+            case FUTURE_APP_LAYER ->
+                LayeredStaticFieldSupport.singleton().getAppLayerStaticFieldsBaseReplacement(primitive, tool, graph);
+        };
     }
 
     @Override
@@ -80,6 +112,17 @@ public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedS
         return ((HostedField) field).getStorageKind().isPrimitive();
     }
 
+    private int currentLayerCache = MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
+
+    private int getCurrentLayerNumber() {
+        if (currentLayerCache == MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED) {
+            int newLayerNumber = DynamicImageLayerInfo.getCurrentLayerNumber();
+            assert newLayerNumber != MultiLayeredImageSingleton.LAYER_NUM_UNINSTALLED;
+            currentLayerCache = newLayerNumber;
+        }
+        return currentLayerCache;
+    }
+
     @Override
     public int getInstalledLayerNum(ResolvedJavaField field) {
         assert ImageLayerBuildingSupport.buildingImageLayer();
@@ -87,7 +130,11 @@ public class HostedStaticFieldSupportImpl implements StaticFieldsSupport.HostedS
             return sField.getInstalledLayerNum();
         } else {
             AnalysisField aField = (AnalysisField) field;
-            return (ImageLayerBuildingSupport.buildingInitialLayer() || aField.isInBaseLayer()) ? 0 : 1;
+            return switch (LayeredStaticFieldSupport.singleton().getAssignmentStatus(aField)) {
+                case UNDECIDED -> getCurrentLayerNumber();
+                case PRIOR_LAYER -> LayeredStaticFieldSupport.singleton().getPriorInstalledLayerNum(aField);
+                case APP_LAYER_REQUESTED, APP_LAYER_DEFERRED -> LayeredStaticFieldSupport.getAppLayerNumber();
+            };
         }
     }
 }

@@ -229,6 +229,10 @@ public class AnalysisConstantReflectionProvider implements ConstantReflectionPro
             }
         }
 
+        if (field.preventConstantFolding()) {
+            return null;
+        }
+
         if (receiver instanceof ImageHeapInstance imageHeapInstance && imageHeapInstance.isInBaseLayer() && imageHeapInstance.nullFieldValues()) {
             return null;
         }

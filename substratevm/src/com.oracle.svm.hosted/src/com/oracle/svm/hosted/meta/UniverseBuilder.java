@@ -84,6 +84,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.imagelayer.DynamicImageLayerInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -93,7 +94,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.ameta.FieldValueInterceptionSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.config.DynamicHubLayout;
@@ -101,12 +101,13 @@ import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.imagelayer.HostedDynamicLayerInfo;
 import com.oracle.svm.hosted.imagelayer.HostedImageLayerBuildingSupport;
-import com.oracle.svm.hosted.imagelayer.SVMImageLayerLoader;
+import com.oracle.svm.hosted.imagelayer.LayeredStaticFieldSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.Indent;
 import jdk.internal.vm.annotation.Contended;
@@ -195,8 +196,6 @@ public class UniverseBuilder {
             collectMethodImplementations();
             VTableBuilder.buildTables(hUniverse, hMetaAccess);
             buildHubs();
-
-            processFieldLocations();
 
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
             Collections.sort(hUniverse.orderedMethods, HostedUniverse.METHOD_COMPARATOR);
@@ -722,15 +721,24 @@ public class UniverseBuilder {
         return alignedOffset - offset;
     }
 
+    private static boolean skipStaticField(HostedField field, LayeredStaticFieldSupport layeredStaticFieldSupport) {
+        if (layeredStaticFieldSupport != null) {
+            return layeredStaticFieldSupport.skipStaticField(field, UniverseBuilder::skipStaticField0);
+        } else {
+            return skipStaticField0(field);
+        }
+    }
+
     /**
      * Determines whether a static field does not need to be written to the native-image heap.
      */
-    private static boolean skipStaticField(HostedField field) {
-        if (field.wrapped.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped)) {
+    private static boolean skipStaticField0(HostedField field) {
+        AnalysisField aField = field.getWrapped();
+        if (aField.isWritten() || MaterializedConstantFields.singleton().contains(aField)) {
             return false;
         }
 
-        if (!field.wrapped.isAccessed()) {
+        if (!aField.isAccessed()) {
             // if the field is never accessed then it does not need to be materialized
             return true;
         }
@@ -739,7 +747,7 @@ public class UniverseBuilder {
          * The field can be treated as a constant. Check if constant is available.
          */
 
-        var interceptor = field.getWrapped().getFieldValueInterceptor();
+        var interceptor = aField.getFieldValueInterceptor();
         if (interceptor == null) {
             return true;
         }
@@ -758,44 +766,70 @@ public class UniverseBuilder {
         return available;
     }
 
+    public static class StaticFieldOffsets {
+        public int nextPrimitiveField = 0;
+        public int nextObjectField = 0;
+    }
+
     private void layoutStaticFields() {
-        ArrayList<HostedField> fields = new ArrayList<>();
+        ArrayList<HostedField> staticFields = new ArrayList<>();
         for (HostedField field : hUniverse.fields.values()) {
             if (Modifier.isStatic(field.getModifiers())) {
-                fields.add(field);
+                staticFields.add(field);
             }
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(fields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
+        Collections.sort(staticFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
-        int nextPrimitiveField = 0;
-        int nextObjectField = 0;
+        StaticFieldOffsets currentLayerOffsets = new StaticFieldOffsets();
+        LayeredStaticFieldSupport layeredStaticFieldSupport = null;
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            layeredStaticFieldSupport = LayeredStaticFieldSupport.singleton();
+            if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                layeredStaticFieldSupport.reinitializeKnownFields(staticFields);
+            }
+            if (ImageLayerBuildingSupport.buildingApplicationLayer()) {
+                currentLayerOffsets = layeredStaticFieldSupport.getAppLayerStaticFieldOffsets();
+            }
+        }
 
         @SuppressWarnings("unchecked")
         List<HostedField>[] fieldsOfTypes = (List<HostedField>[]) new ArrayList<?>[DynamicHubSupport.currentLayer().getMaxTypeId()];
 
-        SVMImageLayerLoader loader = ImageLayerBuildingSupport.buildingExtensionLayer() ? HostedImageLayerBuildingSupport.singleton().getLoader() : null;
-        for (HostedField field : fields) {
-            if (skipStaticField(field)) {
-                // does not require memory.
+        int currentLayer = DynamicImageLayerInfo.getCurrentLayerNumber();
+        boolean checkLayerNum = ImageLayerBuildingSupport.buildingImageLayer();
+        for (HostedField field : staticFields) {
+            if (skipStaticField(field, layeredStaticFieldSupport)) {
+                // no assignment needed
+                if (field.isReachable()) {
+                    // record that field was not materialized
+                    field.setUnmaterializedStaticConstant(currentLayer);
+                }
             } else {
-                int layerNum = StaticFieldsSupport.getInstalledLayerNum(field.wrapped);
-                if (field.wrapped.isInBaseLayer()) {
-                    field.setLocation(loader.getFieldLocation(field.wrapped), layerNum);
-                } else if (field.getStorageKind() == JavaKind.Object) {
-                    field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, nextObjectField)), layerNum);
-                    nextObjectField += 1;
+                int layerNum = StaticFieldsSupport.getInstalledLayerNum(field.getWrapped());
+                if (field.getLocation() != HostedField.LOC_UNINITIALIZED) {
+                    assert layeredStaticFieldSupport.wasReinitialized(field);
                 } else {
-                    int fieldSize = layout.sizeInBytes(field.getStorageKind());
-                    while (layout.getArrayElementOffset(JavaKind.Byte, nextPrimitiveField) % fieldSize != 0) {
-                        // Insert padding byte for alignment
-                        nextPrimitiveField++;
+                    StaticFieldOffsets offsets = currentLayerOffsets;
+                    if (checkLayerNum && currentLayer != layerNum) {
+                        assert currentLayer < layerNum : Assertions.errorMessage(currentLayer, layerNum);
+                        offsets = layeredStaticFieldSupport.getFutureLayerOffsets(field, layerNum);
                     }
-                    field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, nextPrimitiveField)), layerNum);
-                    nextPrimitiveField += fieldSize;
+                    if (field.getStorageKind() == JavaKind.Object) {
+                        field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Object, offsets.nextObjectField)), layerNum);
+                        offsets.nextObjectField += 1;
+                    } else {
+                        int fieldSize = layout.sizeInBytes(field.getStorageKind());
+                        while (layout.getArrayElementOffset(JavaKind.Byte, offsets.nextPrimitiveField) % fieldSize != 0) {
+                            // Insert padding byte for alignment
+                            offsets.nextPrimitiveField++;
+                        }
+                        field.setLocation(NumUtil.safeToInt(layout.getArrayElementOffset(JavaKind.Byte, offsets.nextPrimitiveField)), layerNum);
+                        offsets.nextPrimitiveField += fieldSize;
+                    }
                 }
             }
 
@@ -816,8 +850,8 @@ public class UniverseBuilder {
             }
         }
 
-        Object[] staticObjectFields = new Object[nextObjectField];
-        byte[] staticPrimitiveFields = new byte[nextPrimitiveField];
+        Object[] staticObjectFields = new Object[currentLayerOffsets.nextObjectField];
+        byte[] staticPrimitiveFields = new byte[currentLayerOffsets.nextPrimitiveField];
         StaticFieldsSupport.setData(staticObjectFields, staticPrimitiveFields);
         /* After initializing the static field arrays add them to the shadow heap. */
         aUniverse.getHeapScanner().rescanObject(StaticFieldsSupport.getCurrentLayerStaticObjectFields());
@@ -1002,17 +1036,6 @@ public class UniverseBuilder {
             return ReflectionUtil.newInstance(annotation.onlyIf()).getAsBoolean();
         }
         return false;
-    }
-
-    private void processFieldLocations() {
-        var fieldValueInterceptionSupport = FieldValueInterceptionSupport.singleton();
-        for (HostedField hField : hUniverse.fields.values()) {
-            AnalysisField aField = hField.wrapped;
-
-            if (hField.isReachable() && !hField.hasLocation() && Modifier.isStatic(hField.getModifiers()) && !aField.isWritten() && fieldValueInterceptionSupport.isValueAvailable(aField)) {
-                hField.setUnmaterializedStaticConstant();
-            }
-        }
     }
 }
 

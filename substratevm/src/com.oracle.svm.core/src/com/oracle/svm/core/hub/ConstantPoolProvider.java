@@ -44,7 +44,7 @@ import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_ConstantPo
  * {@link Target_jdk_internal_reflect_ConstantPool}.
  */
 public class ConstantPoolProvider implements MultiLayeredImageSingleton, UnsavedSingleton {
-    private final Target_jdk_internal_reflect_ConstantPool constantPool = new Target_jdk_internal_reflect_ConstantPool(DynamicImageLayerInfo.singleton().layerNumber);
+    private final Target_jdk_internal_reflect_ConstantPool constantPool = new Target_jdk_internal_reflect_ConstantPool(DynamicImageLayerInfo.getCurrentLayerNumber());
 
     public static ConstantPoolProvider[] singletons() {
         return MultiLayeredImageSingleton.getAllLayers(ConstantPoolProvider.class);

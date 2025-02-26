@@ -80,6 +80,10 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
     private boolean allowConstantFolding(ResolvedJavaField field, ConstantFieldTool<?> tool) {
         var aField = asAnalysisField(field);
 
+        if (aField.preventConstantFolding()) {
+            return false;
+        }
+
         /*
          * During compiler optimizations, it is possible to see field loads with a constant receiver
          * of a wrong type that might not even be an ImageHeapConstant. Also, we need to ensure that

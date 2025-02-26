@@ -133,10 +133,10 @@ public abstract class ImageHeapScanner {
         AnalysisType declaringClass = field.getDeclaringClass();
         if (field.isStatic()) {
             FieldScan reason = new FieldScan(field);
-            if (field.isInBaseLayer()) {
+            if (!field.installableInLayer()) {
                 /*
-                 * For base layer static fields we don't want to scan the constant value, but
-                 * instead inject its type state in the field flow. This will be propagated to any
+                 * For non-installable static fields we do not scan the constant value, but instead
+                 * inject its type state in the field flow. This will be propagated to any
                  * corresponding field loads.
                  * 
                  * GR-52421: the field state needs to be serialized from the base layer analysis
@@ -146,9 +146,7 @@ public abstract class ImageHeapScanner {
                 } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive()) {
                     ((PointsToAnalysisField) field).saturatePrimitiveField();
                 }
-                return;
-            }
-            if (isValueAvailable(field)) {
+            } else if (isValueAvailable(field)) {
                 JavaConstant fieldValue = readStaticFieldValue(field);
                 if (fieldValue instanceof ImageHeapConstant imageHeapConstant && field.isFinal()) {
                     AnalysisError.guarantee(imageHeapConstant.getOrigin() != null, "The origin of the constant %s should have been registered before", imageHeapConstant);

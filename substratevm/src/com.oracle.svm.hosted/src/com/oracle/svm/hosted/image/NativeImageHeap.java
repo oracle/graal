@@ -303,11 +303,7 @@ public final class NativeImageHeap implements ImageHeap {
          * fields manually.
          */
         for (HostedField field : hUniverse.getFields()) {
-            if (field.wrapped.isInBaseLayer()) {
-                /* Base layer static field values are accessed via the base layer arrays. */
-                continue;
-            }
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
+            if (field.getWrapped().installableInLayer() && Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
                 assert field.isWritten() || !field.isValueAvailable() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 /* GR-56699 currently static fields cannot be ImageHeapRelocatableConstants. */
                 addConstant(readConstantField(field, null), false, field);
@@ -630,8 +626,10 @@ public final class NativeImageHeap implements ImageHeap {
                 recursiveAddObject(hub, false, info);
                 if (hMetaAccess.isInstanceOf(constant, Object[].class)) {
                     VMError.guarantee(constant instanceof ImageHeapConstant, "Expected an ImageHeapConstant, found %s", constant);
-                    relocatable = addConstantArrayElements(constant, length, false, info);
+                    var result = addConstantArrayElements(constant, length, false, info);
                     references = true;
+                    relocatable = result.relocatable();
+                    patched = result.patched();
                 }
                 written = true; /* How to know if any of the array elements are written? */
             } catch (AnalysisError.TypeNotFoundError ex) {
@@ -774,17 +772,26 @@ public final class NativeImageHeap implements ImageHeap {
         return relocatable;
     }
 
-    private boolean addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason) {
+    record AddConstantArrayResult(boolean relocatable, boolean patched) {
+
+    }
+
+    private AddConstantArrayResult addConstantArrayElements(JavaConstant array, int length, boolean otherFieldsRelocatable, Object reason) {
         boolean relocatable = otherFieldsRelocatable;
+        boolean patched = false;
         for (int idx = 0; idx < length; idx++) {
             JavaConstant value = hConstantReflection.readArrayElement(array, idx);
             /* Object replacement is done as part as constant refection. */
             if (spawnIsolates()) {
                 relocatable = relocatable || value instanceof RelocatableConstant;
             }
-            recursiveAddConstant(value, false, reason);
+            if (value instanceof ImageHeapRelocatableConstant) {
+                patched = true;
+            } else {
+                recursiveAddConstant(value, false, reason);
+            }
         }
-        return relocatable;
+        return new AddConstantArrayResult(relocatable, patched);
     }
 
     /*
@@ -816,6 +823,7 @@ public final class NativeImageHeap implements ImageHeap {
             this.original = original;
             this.immutableFromParent = immutableFromParent;
             this.reason = reason;
+            VMError.guarantee(!(original instanceof ImageHeapRelocatableConstant));
         }
 
         final JavaConstant original;

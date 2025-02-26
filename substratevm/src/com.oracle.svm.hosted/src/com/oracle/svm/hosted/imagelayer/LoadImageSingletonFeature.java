@@ -319,7 +319,7 @@ public class LoadImageSingletonFeature implements InternalFeature, FeatureSingle
         if (ImageSingletons.contains(key)) {
             var singleton = LayeredImageSingletonSupport.singleton().lookup(key, true, true);
             JavaConstant singletonConstant = snippetReflectionProvider.forObject(singleton);
-            installElement.accept(singletonConstant, layerInfo.layerNumber);
+            installElement.accept(singletonConstant, DynamicImageLayerInfo.getCurrentLayerNumber());
         }
 
         // finally fill any missing holes
