@@ -665,6 +665,36 @@ final class BreakpointInterceptor {
         return handleResourceRegistration(jni, nullHandle(), callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), fromJniString(jni, name), null);
     }
 
+    private static boolean getZipEntry(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        String name = fromJniString(jni, getObjectArgument(thread, 1));
+        if (name == null) {
+            return true;
+        }
+
+        if (name.startsWith("META-INF") || name.endsWith(".class")) {
+            /*
+             * Ignore classfiles and META-INF entries that get queried during regular class loading.
+             * This is a heuristic; we might miss genuine program accesses here. It may be possible
+             * (though potentially expensive) to walk the call stack to determine whether this
+             * access comes from a class loader.
+             */
+            return true;
+        }
+        JNIObjectHandle zipFileReceiver = getReceiver(thread);
+        String zipFileName = fromJniString(jni, Support.callObjectMethod(jni, zipFileReceiver, agent.handles().getJavaUtilZipZipFileGetName(jni)));
+        if (!agent.classPathEntries.contains(zipFileName)) {
+            return true;
+        }
+
+        JNIObjectHandle selfClazz = jniFunctions().getGetObjectClass().invoke(jni, zipFileReceiver);
+        if (clearException(jni)) {
+            selfClazz = nullHandle();
+        }
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+
+        return handleResourceRegistration(jni, selfClazz, callerClass, bp.specification.methodName, state.getFullStackTraceOrNull(), name, null);
+    }
+
     private static boolean newProxyInstance(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle classLoader = getObjectArgument(thread, 0);
@@ -1593,6 +1623,7 @@ final class BreakpointInterceptor {
                      * NOTE: get(System)ResourceAsStream() generallys call get(System)Resource(), no
                      * additional breakpoints necessary
                      */
+                    brk("java/util/zip/ZipFile", "getEntry", "(Ljava/lang/String;)Ljava/util/zip/ZipEntry;", BreakpointInterceptor::getZipEntry),
 
                     brk("java/lang/reflect/Proxy", "getProxyClass", "(Ljava/lang/ClassLoader;[Ljava/lang/Class;)Ljava/lang/Class;", BreakpointInterceptor::getProxyClass),
                     brk("java/lang/reflect/Proxy", "newProxyInstance",

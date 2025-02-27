@@ -84,7 +84,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 }
                 return;
             }
-            case "getResource", "getSystemResource", "getSystemResourceAsStream", "getResources", "getSystemResources" -> {
+            case "getResource", "getSystemResource", "getSystemResourceAsStream", "getResources", "getSystemResources", "getEntry" -> {
                 String literal = singleElement(args);
                 if (!advisor.shouldIgnoreResourceLookup(lazyValue(literal), entry)) {
                     resourceConfiguration.addGlobPattern(condition, literal, null);
