@@ -79,6 +79,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
+import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.imagelayer.ImageLayerSection;
@@ -434,6 +435,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * result in deadlocks if ReferenceInternals.waitForReferenceProcessing() is called.
          */
         if (ReferenceHandler.useDedicatedThread()) {
+            ReferenceInternals.initializeLocking();
             ReferenceHandlerThread.start();
         }
 

@@ -35,6 +35,7 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.TimeUtils;
@@ -169,6 +170,14 @@ public final class ReferenceInternals {
 
     private static final Object processPendingLock = new Object();
     private static boolean processPendingActive = false;
+
+    public static void initializeLocking() {
+        /*
+         * Initialize the locking datastructures as early as possible. This makes it less likely
+         * that the reference handler thread fails with an OutOfMemoryError because of locking.
+         */
+        MonitorSupport.singleton().ensureInitialized(processPendingLock);
+    }
 
     @NeverInline("Ensure that every exception can be caught, including implicit exceptions.")
     public static void waitForPendingReferences() throws InterruptedException {
