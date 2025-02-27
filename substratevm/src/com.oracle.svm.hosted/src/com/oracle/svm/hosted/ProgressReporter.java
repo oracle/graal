@@ -867,6 +867,20 @@ public class ProgressReporter implements FeatureSingleton, UnsavedSingleton {
         lastGCStats = currentGCStats;
     }
 
+    public Object getJsonMetricValue(JsonMetric metric) {
+        if (jsonHelper == null) {
+            return null;
+        }
+        return metric.getValue(jsonHelper);
+    }
+
+    public boolean containsJsonMetricValue(JsonMetric metric) {
+        if (jsonHelper == null) {
+            return false;
+        }
+        return metric.containsValue(jsonHelper);
+    }
+
     public void recordJsonMetric(JsonMetric metric, Object value) {
         if (jsonHelper != null) {
             metric.record(jsonHelper, value);
