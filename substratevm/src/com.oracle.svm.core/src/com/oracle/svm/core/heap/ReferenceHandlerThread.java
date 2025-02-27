@@ -91,7 +91,7 @@ public final class ReferenceHandlerThread implements Runnable {
             if (t instanceof OutOfMemoryError && VMThreads.isTearingDown()) {
                 // Likely failed to allocate the InterruptedException, ignore either way.
             } else {
-                VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
+                throw VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
             }
         }
     }
