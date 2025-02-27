@@ -228,10 +228,6 @@ public final class ImageSingletonsSupportImpl extends ImageSingletonsSupport imp
 
                 if (singleton instanceof MultiLayeredImageSingleton || ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {
 
-                    if (!key.equals(singleton.getClass())) {
-                        throw UserError.abort("The implementation class must be the same as the key class. key: %s, singleton: %s", key, singleton);
-                    }
-
                     if (singleton instanceof MultiLayeredImageSingleton && ApplicationLayerOnlyImageSingleton.isSingletonInstanceOf(singleton)) {
                         throw UserError.abort("Singleton cannot implement both %s and %s. singleton: %s", MultiLayeredImageSingleton.class, ApplicationLayerOnlyImageSingleton.class, singleton);
                     }
