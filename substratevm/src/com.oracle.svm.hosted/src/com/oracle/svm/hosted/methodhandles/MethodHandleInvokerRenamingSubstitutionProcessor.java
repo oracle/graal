@@ -46,6 +46,7 @@ import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -100,8 +101,10 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
     private static final Method BOUND_METHOD_HANDLE_SPECIES_DATA_METHOD = ReflectionUtil.lookupMethod(BOUND_METHOD_HANDLE_CLASS, "speciesData");
     private static final Class<?> DIRECT_METHOD_HANDLE_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle");
     private static final Method DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD = ReflectionUtil.lookupMethod(DIRECT_METHOD_HANDLE_CLASS, "internalMemberName");
-    private static final Class<?> METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS = ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl$IntrinsicMethodHandle");
-    private static final Method METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_INTRINSIC_DATA_METHOD = ReflectionUtil.lookupMethod(METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS, "intrinsicData");
+    private static final Class<?> METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS = JavaVersionUtil.JAVA_SPEC > 21 ? null
+                    : ReflectionUtil.lookupClass("java.lang.invoke.MethodHandleImpl$IntrinsicMethodHandle");
+    private static final Method METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_INTRINSIC_DATA_METHOD = JavaVersionUtil.JAVA_SPEC > 21 ? null
+                    : ReflectionUtil.lookupMethod(METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS, "intrinsicData");
 
     private static final String DMH_CLASS_NAME_SUBSTRING = "LambdaForm$DMH";
     private static final String DMH_STABLE_NAME_TEMPLATE = "Ljava/lang/invoke/LambdaForm$DMH.s";
@@ -315,9 +318,11 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
                 Object resolvedHandle = NAMED_FUNCTION_RESOLVED_HANDLE_METHOD.invoke(function);
                 MethodType methodType = ((MethodHandle) resolvedHandle).type();
                 hash = hash * 31 + methodType.descriptorString().hashCode();
-                if (METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS.isInstance(resolvedHandle)) {
-                    if (METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_INTRINSIC_DATA_METHOD.invoke(resolvedHandle) instanceof Integer integer) {
-                        hash = hash * 31 + integer;
+                if (JavaVersionUtil.JAVA_SPEC <= 21) {
+                    if (METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_CLASS.isInstance(resolvedHandle)) {
+                        if (METHOD_HANDLE_IMPL_INTRINSIC_METHOD_HANDLE_INTRINSIC_DATA_METHOD.invoke(resolvedHandle) instanceof Integer integer) {
+                            hash = hash * 31 + integer;
+                        }
                     }
                 }
 
