@@ -93,8 +93,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate') + {
       gate_tag_suffix: '-quickbuild',
     } + truffle_native,
-    vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_native_tck,
-    vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_native_tck_wasm,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_native_tck,
+    vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_native_tck_wasm,
     vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'daily') + truffle_jvm,
     vm.vm_java_Latest + vm_common.vm_base('linux', 'amd64', 'gate')  + truffle_jvm,
     vm.vm_java_21     + vm_common.vm_base('linux', 'amd64', 'daily') + truffle_maven_downloader,
