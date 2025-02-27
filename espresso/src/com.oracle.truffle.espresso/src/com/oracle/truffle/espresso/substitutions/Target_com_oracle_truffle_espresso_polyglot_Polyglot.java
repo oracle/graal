@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -140,10 +141,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @Substitution
     abstract static class CastWithGenerics extends SubstitutionNode {
 
+        @Idempotent
+        static boolean isNull(StaticObject object) {
+            return StaticObject.isNull(object);
+        }
+
         static EspressoType getEspressoType(StaticObject targetType, Meta meta) {
-            if (StaticObject.isNull(targetType)) {
-                throw meta.throwException(meta.java_lang_NullPointerException);
-            }
             return (EspressoType) meta.polyglot.HIDDEN_TypeLiteral_internalType.getHiddenObject(targetType);
         }
 
@@ -159,24 +162,31 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @JavaType(Object.class) StaticObject value,
                         @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject targetType);
 
-        @Specialization(guards = "getEspressoType(targetType, context.getMeta()) == cachedTargetType", limit = "2")
+        @Specialization(guards = "isNull(targetType)")
+        @JavaType(Object.class)
+        static StaticObject doNull(
+                        @SuppressWarnings("unused") @JavaType(Object.class) StaticObject value,
+                        @SuppressWarnings("unused") @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject targetType,
+                        @SuppressWarnings("unused") @Bind Node node,
+                        @Bind("get(node)") EspressoContext context) {
+            throw context.getMeta().throwException(context.getMeta().java_lang_NullPointerException);
+        }
+
+        @Specialization(guards = {
+                        "!isNull(targetType)",
+                        "getEspressoType(targetType, context.getMeta()) == cachedTargetType"}, limit = "1")
         @JavaType(Object.class)
         static StaticObject doCached(
                         @JavaType(Object.class) StaticObject value,
                         @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/TypeLiteral;") StaticObject targetType,
                         @Bind Node node,
                         @SuppressWarnings("unused") @Bind("get(node)") EspressoContext context,
-                        @Cached InlinedBranchProfile nullTargetClassProfile,
                         @Cached InlinedBranchProfile reWrappingProfile,
                         @Cached InlinedBranchProfile errorProfile,
                         @SuppressWarnings("unused") @Cached("getEspressoType(targetType, context.getMeta())") EspressoType cachedTargetType,
                         @Cached("createInstanceOf(cachedTargetType.getRawType())") InstanceOf instanceOfTarget,
                         @Cached("createToEspressoNode(cachedTargetType, context.getMeta())") ToReference toEspressoNode) {
             Meta meta = context.getMeta();
-            if (StaticObject.isNull(targetType)) {
-                nullTargetClassProfile.enter(node);
-                throw meta.throwException(meta.java_lang_NullPointerException);
-            }
             if (StaticObject.isNull(value) || (!value.isForeignObject() && instanceOfTarget.execute(value.getKlass()))) {
                 return value;
             }
@@ -203,7 +213,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         }
 
         @ReportPolymorphism.Megamorphic
-        @Specialization(replaces = "doCached")
+        @Specialization(replaces = "doCached", guards = "!isNull(targetType)")
         @JavaType(Object.class)
         static StaticObject doGeneric(
                         @JavaType(Object.class) StaticObject value,
@@ -212,9 +222,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached InstanceOf.Dynamic instanceOfDynamic,
                         @Cached ToReference.DynamicToReference toEspressoNode) {
             Meta meta = EspressoContext.get(node).getMeta();
-            if (StaticObject.isNull(targetType)) {
-                throw meta.throwException(meta.java_lang_NullPointerException);
-            }
             if (StaticObject.isNull(value)) {
                 return value;
             }
