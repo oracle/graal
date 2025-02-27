@@ -65,6 +65,9 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
      * Determine if the given loop can be peeled.
      */
     public static boolean canPeel(Loop loop) {
+        if (loop.loopBegin().isAnyStripMinedOuter()) {
+            return false;
+        }
         return stateAllowsPeeling(loop.loopBegin().graph().getGraphState()) && loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0;
     }
 

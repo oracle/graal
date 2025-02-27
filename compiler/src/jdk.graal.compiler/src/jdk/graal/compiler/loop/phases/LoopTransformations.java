@@ -794,6 +794,9 @@ public abstract class LoopTransformations {
     }
 
     public static boolean isUnrollableLoop(Loop loop) {
+        if (loop.loopBegin().isAnyStripMinedOuter()) {
+            return false;
+        }
         if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.getCFGLoop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
             // loops without exits can be unrolled, inverted loops cannot be unrolled without

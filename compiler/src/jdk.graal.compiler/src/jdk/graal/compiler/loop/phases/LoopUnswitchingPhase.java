@@ -94,6 +94,9 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
     }
 
     private static boolean canUnswitch(Loop loop) {
+        if (loop.loopBegin().isAnyStripMinedOuter()) {
+            return false;
+        }
         return loop.canDuplicateLoop();
     }
 
