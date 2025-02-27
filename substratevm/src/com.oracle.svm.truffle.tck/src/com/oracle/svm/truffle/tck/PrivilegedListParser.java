@@ -25,12 +25,12 @@
 package com.oracle.svm.truffle.tck;
 
 import java.net.URI;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -38,54 +38,51 @@ import com.oracle.svm.hosted.ImageClassLoader;
 
 import jdk.graal.compiler.util.json.JsonParserException;
 
-final class AllowListParser extends AbstractMethodListParser {
+final class PrivilegedListParser extends AbstractMethodListParser {
 
-    AllowListParser(ImageClassLoader imageClassLoader, BigBang bb) {
+    private final Set<String> forModules;
+
+    PrivilegedListParser(ImageClassLoader imageClassLoader, BigBang bb, Collection<? extends Module> forModules) {
         super(imageClassLoader, bb);
+        this.forModules = forModules.stream().map(Module::getName).collect(Collectors.toSet());
     }
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        parseClassArray(castList(json, "First level of document must be an array of class descriptors"));
+        parseModuleArray(castList(json, "First level of document must be an array of module descriptors"));
+    }
+
+    private void parseModuleArray(List<Object> modules) {
+        for (Object module : modules) {
+            parseModule(castMap(module, "Second level of document must be module descriptor objects"));
+        }
+    }
+
+    private void parseModule(EconomicMap<String, Object> data) {
+        checkAttributes(data, "module descriptor object", Set.of("name", "classes"), Set.of());
+        String moduleName = castProperty(data.get("name"), String.class, "name");
+        if (forModules.contains(moduleName)) {
+            Object classes = data.get("classes");
+            parseClassArray(castList(classes, "Attribute 'classes' must be an array of method descriptors"));
+        }
     }
 
     private void parseClassArray(List<Object> classes) {
         for (Object clazz : classes) {
-            parseClass(castMap(clazz, "Second level of document must be class descriptor objects"));
+            parseClass(castMap(clazz, "Third level of document must be class descriptor objects"));
         }
     }
 
     private void parseClass(EconomicMap<String, Object> data) {
-        checkAttributes(data, "class descriptor object", Collections.singleton("name"), Arrays.asList("justification", "allDeclaredConstructors", "allDeclaredMethods", "methods"));
-        Object classObject = data.get("name");
-        String className = castProperty(classObject, String.class, "name");
-
+        checkAttributes(data, "class descriptor object", Set.of("name", "methods"), Set.of());
+        String className = castProperty(data.get("name"), String.class, "name");
+        List<Object> methods = castList(data.get("methods"), "Attribute 'methods' must be an array of method descriptors");
         try {
             AnalysisType clazz = resolve(className);
             if (clazz == null) {
                 throw new JsonParserException("Class " + className + " not found");
             }
-
-            MapCursor<String, Object> cursor = data.getEntries();
-            while (cursor.advance()) {
-                String name = cursor.getKey();
-                Object value = cursor.getValue();
-                switch (name) {
-                    case "allDeclaredConstructors":
-                        if (castProperty(value, Boolean.class, "allDeclaredConstructors")) {
-                            registerDeclaredConstructors(clazz);
-                        }
-                        break;
-                    case "allDeclaredMethods":
-                        if (castProperty(value, Boolean.class, "allDeclaredMethods")) {
-                            registerDeclaredMethods(clazz);
-                        }
-                        break;
-                    case "methods":
-                        parseMethods(castList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
-                        break;
-                }
-            }
+            parseMethods(methods, clazz);
         } catch (UnsupportedPlatformException unsupportedPlatform) {
             // skip the type not available on active platform
         }

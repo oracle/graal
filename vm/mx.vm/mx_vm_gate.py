@@ -697,7 +697,7 @@ def gate_truffle_native_tck_smoke_test(tasks):
                     'PrivilegedCallNode.doBehindBoundaryPrivilegedCall',
                     'PrivilegedCallNode.doInterrupt',
                     'PrivilegedCallNode.doPolymorphicCall',
-                    'PrivilegedCallNode.execute',
+                    'PrivilegedCallNode.doPrivilegedCall',
                     'ServiceImpl.execute',
                     'UnsafeCallNode.doBehindBoundaryUnsafeAccess',
                     'UnsafeCallNode.doUnsafeAccess',

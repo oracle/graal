@@ -59,23 +59,6 @@
     ]
   },
   {
-    "name" : "java.nio.file.spi.FileSystemProvider",
-    "methods" : [
-        { "name" : "checkPermission" ,
-          "justification" : "Only creation of a FileSystemProvider instance, not used for file system access.",
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "java.util.ServiceLoader",
-    "methods" : [
-      { "name" : "loadProvider" ,
-        "justification" : " Loads a service provider in a module."
-      }
-    ]
-  },
-  {
     "name" : "java.util.ServiceLoader$LazyClassPathLookupIterator",
     "methods" : [
         { "name" : "parse" ,
@@ -118,6 +101,9 @@
   {
     "name" : "java.util.concurrent.ForkJoinWorkerThread",
     "methods" : [
+        { "name":  "<init>",
+          "justification": "Used by java.util.concurrent.SynchronousQueue. We explicitly deny SynchronousQueue in languages code in PermissionsFeature."
+        },
         { "name" : "run" ,
           "parameterTypes" : [
         ]}
@@ -156,7 +142,7 @@
   {
     "name" : "java.security.ProtectionDomain",
     "methods" : [
-      { "name" : "seeAllp" ,
+      { "name" : "toString" ,
         "parameterTypes" : [],
         "justification" : "Safe operation, calls SecurityManager and catches a SecurityException to determine if toString should print all permissions."
       }
@@ -164,34 +150,19 @@
   },
   {
     "name" : "java.security.Provider",
-    "methods" : [
-        { "name" : "check" ,
-          "parameterTypes" : [
-              "java.lang.String"
-        ]}
-    ]
+    "allDeclaredMethods": true
   },
   {
-    "name" : "java.security.Provider$Service",
+    "name" : "java.security.Security$SecPropLoader",
     "methods" : [
-      { "name" : "getKeyClass" ,
+      { "name" : "loadInclude" ,
         "parameterTypes" : [
           "java.lang.String"
         ],
-        "justification" : "On SVM security providers are statically configured."
+        "justification" : "Internal method to read security configuration property files."
       }
-    ]
-  },
-  {
-    "name" : "java.security.Provider$Service",
-    "methods" : [
-      { "name" : "newInstance" ,
-        "parameterTypes" : [
-          "java.lang.Object"
-        ],
-        "justification" : "On SVM security providers are statically configured."
-      }
-    ]
+    ],
+    "justification": "java.security.Provider is not used by Truffle."
   },
   {
     "name" : "javax.security.auth.Subject$SecureSet",
@@ -211,67 +182,73 @@
     "methods" : [
         { "name" : "next" ,
           "parameterTypes" : [
+        ]},
+        { "name": "remove",
+          "parameterTypes": [
         ]}
     ]
   },
   {
-    "name" : "com.oracle.svm.core.handles.ObjectHandlesImpl",
-    "allDeclaredMethods" : true,
-    "justification" : "Internal SVM implementation of JNI object handles"
-  },
-  {
-    "name" : "com.oracle.svm.core.thread.JavaVMOperation",
+    "name" : "sun.security.provider.NativePRNG$RandomIO",
     "methods" : [
-        { "name" : "operate",
-          "justification" : "The JavaVMOperation is an VM internal concept for task executed in critical sections or safe points, cannot be used by guest language.",
-          "parameterTypes" : [
-            "com.oracle.svm.core.thread.NativeVMOperationData"
+      { "name" : "implSetSeed" ,
+        "parameterTypes" : [
+          "byte[]"
         ]}
     ]
   },
   {
-    "name": "sun.util.logging.PlatformLogger",
-    "methods" : [
-       {
-         "name" : "getLogger",
-         "parameterTypes" : [
-           "java.lang.String"
-         ]
-       }
+    "name": "jdk.internal.logger.BootstrapLogger",
+    "allDeclaredMethods": true,
+    "justification" : "Internal JDK logging manipulating Logger hierarchy when it's initialized."
+  },
+  {
+    "name": "jdk.internal.logger.DefaultLoggerFinder",
+    "methods": [
+      {
+        "name": "getLogger",
+        "parameterTypes" : [
+          "java.lang.String",
+          "java.lang.Module"
+        ],
+        "justification" : "Lookups java.lang.System.Logger for module."
+      }
     ]
   },
   {
     "name": "java.util.logging.LogManager",
     "methods" : [
       {
-        "name" : "checkPermission",
-        "parameterTypes" : []
+        "name" : "initializeGlobalHandlers",
+        "parameterTypes" : [
+        ],
+        "justification" : "Lazy loading of global LogHandlers."
       },
       {
-        "name" : "getLogManager",
-        "justification" : "substituted method has hook to install shutdown hook.",
-        "parameterTypes" : []
-      }
-    ]
-  },
-  {
-    "name": "java.lang.Class",
-    "methods": [
-      {
-        "name": "forName",
-        "justification": "Only classes that were present during the image build (on the classpath or predefined classes) can be accessed."
-      }
-    ]
-  },
-  {
-    "name": "java.lang.reflect.Proxy",
-    "methods": [
-      {
-        "name": "getInvocationHandler",
+        "name": "ensureLogManagerInitialized",
         "parameterTypes" : [
-          "java.lang.Object"
         ],
-        "justification": "On SVM proxies are statically configured."
+        "justification" : "Lazy initialization of LogManager, creating a root logger, setting initial levels."
+      }
+    ]
+  },
+  {
+    "name": "java.util.logging.LogManager$Cleaner",
+    "methods" : [
+      {
+        "name" : "<init>",
+        "justification" : "Thread subclass installed into Runtime.addedShutdownHook by LogManager."
+      }
+    ]
+  },
+  {
+    "name": "java.util.TimeZone",
+    "methods" : [
+      {
+        "name" : "setDefaultZone",
+        "parameterTypes" : [
+        ],
+        "justification" : "Reads system properties to initializes the default time zone."
       }
     ]
   },
@@ -294,6 +271,28 @@
       {
         "name": "enumSwitch",
         "justification": "Bootstrap method for switch on enum constants."
+      }
+    ]
+  },
+  {
+    "name": "sun.reflect.annotation.AnnotationInvocationHandler",
+    "methods":[
+      {
+        "name": "invoke",
+        "justification": "Dynamic implementation of java.lang.annotation.Annotation."
+      }
+    ]
+  },
+  {
+    "name": "sun.reflect.annotation.AnnotationParser",
+    "methods":[
+      {
+        "name": "annotationForMap",
+        "parameterTypes" : [
+          "java.lang.Class",
+          "java.util.Map"
+        ],
+        "justification": "Dynamic implementation of java.lang.annotation.Annotation."
       }
     ]
   },
@@ -321,26 +320,6 @@
     ]
   },
   {
-    "name": "java.util.ResourceBundle",
-    "methods": [
-      {
-        "name": "loadBundle",
-        "justification": "On SVM resource bundles are statically configured."
-      }
-    ]
-  },
-  {  
-    "name": "java.util.ServiceLoader$ModuleServicesLookupIterator",
-    "methods": [
-      {
-        "name": "loaderFor",
-        "parameterTypes" : [
-          "java.lang.Module"
-        ]
-      }
-    ]
-  },
-  {
     "name": "java.lang.ClassLoader",
     "methods": [
       {
@@ -348,7 +327,27 @@
         "parameterTypes" : [
           "java.lang.String"
         ],
-        "justification": "All the resources loaded by this method are registered using ResourcesFeature, so this call is safe."
+        "justification": "In native-image available classes are statically configured."
+      }
+    ]
+  },
+  {
+    "name": "java.util.ResourceBundle",
+    "methods": [
+      {
+        "name": "loadBundle",
+        "justification": "In native-image resource bundles are statically configured."
+      }
+    ]
+  },
+  {
+    "name": "jdk.internal.ref.Cleaner",
+    "methods": [
+      {
+        "name": "clean",
+        "parameterTypes" : [
+        ],
+        "justification": "Internal JDK Cleaner which does System.exit if it fails during JVM boot."
       }
     ]
   }
