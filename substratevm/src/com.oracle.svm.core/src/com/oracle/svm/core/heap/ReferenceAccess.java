@@ -41,7 +41,7 @@ import jdk.graal.compiler.word.Word;
  * <p>
  * Accessing hub references involves the reserved GC bits, compression shift and object alignment
  * and is defined by {@link SubstrateBasicLoweringProvider#createReadHub}.
- * 
+ * <p>
  * Regular references just require the heapbase register (for -H:+SpawnIsolates) and compression
  * shift (for -H:+UseCompressedReferences)
  * </p>

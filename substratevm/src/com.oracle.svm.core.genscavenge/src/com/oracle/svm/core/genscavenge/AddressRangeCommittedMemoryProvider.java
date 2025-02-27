@@ -144,16 +144,12 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
-        UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
+        UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         UnsignedWord reserved = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
         if (reserved.equal(0)) {
-            /*
-             * By default, always reserve at least 32 GB of address space. If a large maximum heap
-             * size was specified, then reserve 2x of that maximum heap size (assuming that the max.
-             * address space size is large enough for that).
-             */
-            UnsignedWord maxHeapSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize))).multiply(2);
-            reserved = UnsignedUtils.clamp(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE), addressSpaceSize);
+            /* Reserve a 32 GB address space, except if a larger heap size was specified. */
+            UnsignedWord maxHeapSize = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.MaxHeapSize)));
+            reserved = UnsignedUtils.clamp(maxHeapSize, Word.unsigned(MIN_RESERVED_ADDRESS_SPACE_SIZE), maxAddressSpaceSize);
         }
 
         UnsignedWord alignment = unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
@@ -790,7 +786,8 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
         return false;
     }
 
-    public UnsignedWord getReservedSpaceSize() {
+    @Override
+    public UnsignedWord getReservedAddressSpaceSize() {
         return reservedSpaceSize;
     }
 
