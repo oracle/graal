@@ -28,10 +28,9 @@ import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CO
 import static com.oracle.svm.core.util.PointerUtils.roundDown;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.VMError.guarantee;
-import static jdk.graal.compiler.word.Word.unsigned;
 import static jdk.graal.compiler.word.Word.nullPointer;
+import static jdk.graal.compiler.word.Word.unsigned;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -74,6 +73,7 @@ import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Reserves a fixed-size address range and provides memory from it by committing and uncommitting
@@ -144,7 +144,7 @@ public class AddressRangeCommittedMemoryProvider extends ChunkBasedCommittedMemo
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer heapBasePointer, IsolateArguments arguments) {
-        UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
+        UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         UnsignedWord reserved = Word.unsigned(IsolateArgumentAccess.readLong(arguments, IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize)));
         if (reserved.equal(0)) {
             /*

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateGCOptions;
@@ -33,6 +32,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
+
+import jdk.graal.compiler.word.Word;
 
 /**
  * Verifies that the heap size options are used consistently. Note that some checks seem redundant
@@ -100,7 +101,7 @@ public final class HeapSizeVerifier {
     }
 
     private static void verifyAgainstMaxAddressSpaceSize(UnsignedWord actualValue, String actualValueName) {
-        UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
+        UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         if (actualValue.aboveThan(maxAddressSpaceSize)) {
             throwError(actualValue, actualValueName, maxAddressSpaceSize, "largest possible heap address space");
         }

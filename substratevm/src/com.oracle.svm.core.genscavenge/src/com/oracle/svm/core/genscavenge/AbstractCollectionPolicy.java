@@ -327,7 +327,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     protected abstract long gcCount();
 
     protected SizeParameters computeSizeParameters(SizeParameters existing) {
-        UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
+        UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         UnsignedWord minYoungSpaces = minSpaceSize(); // eden
         if (HeapParameters.getMaxSurvivorSpaces() > 0) {
             minYoungSpaces = minYoungSpaces.add(minSpaceSize().multiply(2)); // survivor from and to
@@ -430,7 +430,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
             assert initialHeapSize.belowOrEqual(maxHeapSize);
             assert maxSurvivorSize().belowThan(maxYoungSize);
             assert maxYoungSize.add(maxOldSize()).equal(maxHeapSize);
-            assert maxHeapSize.belowOrEqual(ReferenceAccess.singleton().getAddressSpaceSize());
+            assert maxHeapSize.belowOrEqual(ReferenceAccess.singleton().getMaxAddressSpaceSize());
             assert initialEdenSize.add(initialSurvivorSize.multiply(2)).equal(initialYoungSize());
             assert initialYoungSize().add(initialOldSize()).equal(initialHeapSize);
         }
