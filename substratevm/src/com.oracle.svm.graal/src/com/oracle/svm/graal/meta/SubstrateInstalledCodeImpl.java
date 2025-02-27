@@ -105,9 +105,9 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
      * {@link #getEntryPoint()}), and the invocation of the entry point that was read.
      */
     @Override
-    public void invalidateWithoutDeoptimization() {
+    public void makeNonEntrant() {
         assert VMOperation.isInProgressAtSafepoint();
-        throw VMError.unimplemented("cannot invalidate without deoptimization");
+        throw VMError.unimplemented("cannot make non-entrant");
     }
 
     @Override

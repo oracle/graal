@@ -28,6 +28,9 @@ import static jdk.graal.compiler.core.common.Fields.translateInto;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static jdk.graal.compiler.graph.Edges.translateInto;
+import static jdk.graal.compiler.graph.Edges.NEXT_EDGE;
+import static jdk.graal.compiler.graph.Edges.LIST_MASK;
+import static jdk.graal.compiler.graph.Edges.OFFSET_MASK;
 import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static jdk.graal.compiler.graph.InputEdges.translateInto;
 import static jdk.graal.compiler.graph.Node.WithAllEdges;
@@ -94,11 +97,6 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private static final TimerKey Init_AllowedUsages = DebugContext.timer("NodeClass.Init.AllowedUsages");
     private static final TimerKey Init_IterableIds = DebugContext.timer("NodeClass.Init.IterableIds");
 
-    public static final long MAX_EDGES = 8;
-    public static final long MAX_LIST_EDGES = 6;
-    public static final long OFFSET_MASK = 0xFC;
-    public static final long LIST_MASK = 0x01;
-    public static final long NEXT_EDGE = 0x08;
     private static final int SHORT_INPUT_LIST_THRESHOLD = 3;
 
     @SuppressWarnings("try")
@@ -160,8 +158,6 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final int iterableId;
     private final EnumSet<InputType> allowedUsageTypes;
     private int[] iterableIds;
-    private final long inputsIteration;
-    private final long successorIteration;
 
     private static final CounterKey ITERABLE_NODE_TYPES = DebugContext.counter("IterableNodeTypes");
 
@@ -200,9 +196,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         try (DebugCloseable t1 = Init_Edges.start(debug)) {
             successors = new SuccessorEdges(fs.directSuccessors, fs.successors);
-            successorIteration = computeIterationMask(successors.type(), successors.getDirectCount(), successors.getOffsets());
             inputs = new InputEdges(fs.directInputs, fs.inputs);
-            inputsIteration = computeIterationMask(inputs.type(), inputs.getDirectCount(), inputs.getOffsets());
         }
         try (DebugCloseable t1 = Init_Data.start(debug)) {
             data = Fields.create(fs.data);
@@ -220,6 +214,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         NodeInfo info = getAnnotationTimed(clazz, NodeInfo.class, debug);
         assert info != null : "Missing NodeInfo annotation on " + clazz;
+        shortName = computeShortName(info);
         if (!info.nameTemplate().isEmpty()) {
             this.nameTemplate = info.nameTemplate();
         } else if (!info.shortName().isEmpty()) {
@@ -308,27 +303,6 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return size;
     }
 
-    public static long computeIterationMask(Edges.Type type, int directCount, long[] offsets) {
-        long mask = 0;
-        if (offsets.length > NodeClass.MAX_EDGES) {
-            throw new GraalError("Exceeded maximum of %d edges (%s)", NodeClass.MAX_EDGES, type);
-        }
-        if (offsets.length - directCount > NodeClass.MAX_LIST_EDGES) {
-            throw new GraalError("Exceeded maximum of %d list edges (%s)", NodeClass.MAX_LIST_EDGES, type);
-        }
-
-        for (int i = offsets.length - 1; i >= 0; i--) {
-            long offset = offsets[i];
-            assert ((offset & OFFSET_MASK) == offset) : Assertions.errorMessageContext("field offset too large or has low bits set", offset);
-            mask <<= NodeClass.NEXT_EDGE;
-            mask |= offset;
-            if (i >= directCount) {
-                mask |= 0x3;
-            }
-        }
-        return mask;
-    }
-
     private synchronized void addIterableId(int newIterableId) {
         assert !containsId(newIterableId, iterableIds);
         int[] copy = Arrays.copyOf(iterableIds, iterableIds.length + 1);
@@ -354,23 +328,23 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return false;
     }
 
-    private String shortName;
+    private final String shortName;
 
     public String shortName() {
-        if (shortName == null) {
-            NodeInfo info = getClazz().getAnnotation(NodeInfo.class);
-            if (!info.shortName().isEmpty()) {
-                shortName = info.shortName();
+        return shortName;
+    }
+
+    private String computeShortName(NodeInfo info) {
+        if (!info.shortName().isEmpty()) {
+            return info.shortName();
+        } else {
+            String localShortName = getClazz().getSimpleName();
+            if (localShortName.endsWith("Node") && !localShortName.equals("StartNode") && !localShortName.equals("EndNode")) {
+                return localShortName.substring(0, localShortName.length() - 4);
             } else {
-                String localShortName = getClazz().getSimpleName();
-                if (localShortName.endsWith("Node") && !localShortName.equals("StartNode") && !localShortName.equals("EndNode")) {
-                    shortName = localShortName.substring(0, localShortName.length() - 4);
-                } else {
-                    shortName = localShortName;
-                }
+                return localShortName;
             }
         }
-        return shortName;
     }
 
     @Override
@@ -422,7 +396,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     /**
      * Describes a field representing an input or successor edge in a node.
      */
-    protected static class EdgeInfo extends FieldsScanner.FieldInfo {
+    public static class EdgeInfo extends FieldsScanner.FieldInfo {
 
         public EdgeInfo(long offset, String name, Class<?> type, Class<?> declaringClass) {
             super(offset, name, type, declaringClass);
@@ -1075,7 +1049,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
                     int size = nodeList.size();
                     if (size != 0) {
                         // Set pointer to upper most index of node list.
-                        return ((mask >>> NEXT_EDGE) << 24) | (mask & 0xFD) | ((size - 1) << NEXT_EDGE);
+                        return ((mask >>> NEXT_EDGE) << 24) | (mask & 0xFD) | ((long) (size - 1) << NEXT_EDGE);
                     }
                 }
                 // Node list is empty or null => skip.
@@ -1146,7 +1120,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public NodeIterable<Node> getSuccessorIterable(final Node node) {
-        long mask = this.successorIteration;
+        long mask = this.successors.getIterationMask();
         return new NodeIterable<>() {
 
             @Override
@@ -1180,7 +1154,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public NodeIterable<Node> getInputIterable(final Node node) {
-        long mask = this.inputsIteration;
+        long mask = this.inputs.getIterationMask();
         return new NodeIterable<>() {
 
             @Override
@@ -1214,11 +1188,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public boolean equalSuccessors(Node node, Node other) {
-        return equalEdges(node, other, successorIteration);
+        return equalEdges(node, other, successors.getIterationMask());
     }
 
     public boolean equalInputs(Node node, Node other) {
-        return equalEdges(node, other, inputsIteration);
+        return equalEdges(node, other, inputs.getIterationMask());
     }
 
     private boolean equalEdges(Node node, Node other, long mask) {
@@ -1245,7 +1219,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public void pushInputs(Node node, NodeStack stack) {
-        long myMask = this.inputsIteration;
+        long myMask = this.inputs.getIterationMask();
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
@@ -1273,11 +1247,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public void applySuccessors(Node node, EdgeVisitor consumer) {
-        applyEdges(node, consumer, this.successorIteration, successors);
+        applyEdges(node, consumer, this.successors.getIterationMask(), successors);
     }
 
     public void applyInputs(Node node, EdgeVisitor consumer) {
-        applyEdges(node, consumer, this.inputsIteration, inputs);
+        applyEdges(node, consumer, this.inputs.getIterationMask(), inputs);
     }
 
     private static void applyEdges(Node node, EdgeVisitor consumer, long mask, Edges edges) {
@@ -1317,7 +1291,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public void unregisterAtSuccessorsAsPredecessor(Node node) {
-        long myMask = this.successorIteration;
+        long myMask = this.successors.getIterationMask();
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
@@ -1347,7 +1321,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public void registerAtSuccessorsAsPredecessor(Node node) {
-        long myMask = this.successorIteration;
+        long myMask = this.successors.getIterationMask();
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
@@ -1386,7 +1360,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     public boolean replaceFirstInput(Node node, Node key, Node replacement) {
         assert node.getNodeClass() == this : Assertions.errorMessageContext("node", node, "this", this);
-        return replaceFirstEdge(node, key, replacement, this.inputsIteration, inputs);
+        return replaceFirstEdge(node, key, replacement, this.inputs.getIterationMask(), inputs);
     }
 
     /**
@@ -1399,7 +1373,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
      */
     public boolean replaceFirstSuccessor(Node node, Node key, Node replacement) {
         assert node.getNodeClass() == this : Assertions.errorMessageContext("node", node, "this", this);
-        return replaceFirstEdge(node, key, replacement, this.successorIteration, successors);
+        return replaceFirstEdge(node, key, replacement, this.successors.getIterationMask(), successors);
     }
 
     private static boolean replaceFirstEdge(Node node, Node key, Node replacement, long mask, Edges edges) {
@@ -1426,7 +1400,8 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     void registerAtInputsAsUsage(Node node) {
-        long myMask = this.inputsIteration;
+        // GraalError.guarantee(this.inputsIteration != null, this.getClazz().getName());
+        long myMask = this.inputs.getIterationMask();
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {
@@ -1456,7 +1431,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     }
 
     public void unregisterAtInputsAsUsage(Node node) {
-        long myMask = this.inputsIteration;
+        long myMask = this.inputs.getIterationMask();
         while (myMask != 0) {
             long offset = (myMask & OFFSET_MASK);
             if ((myMask & LIST_MASK) == 0) {

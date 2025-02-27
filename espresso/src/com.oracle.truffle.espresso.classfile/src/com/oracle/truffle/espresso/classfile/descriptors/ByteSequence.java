@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.classfile.descriptors;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -137,11 +138,29 @@ public abstract class ByteSequence {
         return hashCode;
     }
 
-    public final ByteSequence subSequence(int offset, int length) {
-        if (offset == 0 && length == length()) {
+    /**
+     * Returns a subsequence of this symbol from the specified index to the end.
+     *
+     * @param from The starting index (inclusive)
+     * @return A ByteSequence representing the subsequence
+     */
+    public ByteSequence subSequence(int from) {
+        return subSequence(from, length());
+    }
+
+    /**
+     * Returns a subsequence of this symbol between the specified indices.
+     *
+     * @param startInclusive The starting index (inclusive)
+     * @param endExclusive The ending index (exclusive)
+     * @return A ByteSequence representing the subsequence
+     */
+    public ByteSequence subSequence(int startInclusive, int endExclusive) {
+        assert 0 <= startInclusive && startInclusive <= endExclusive && endExclusive <= length();
+        if (startInclusive == 0 && endExclusive == length()) {
             return this;
         }
-        return wrap(getUnderlyingBytes(), offset() + offset, length);
+        return wrap(getUnderlyingBytes(), offset() + startInclusive, endExclusive - startInclusive);
     }
 
     public final boolean contentEquals(ByteSequence other) {
@@ -245,5 +264,18 @@ public abstract class ByteSequence {
         writeTo(data, 0);
         next.writeTo(data, this.length());
         return wrap(data);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof ByteSequence that)) {
+            return false;
+        }
+        if (this.hashCode != that.hashCode) {
+            return false;
+        }
+        return Arrays.equals(
+                        this.value, this.offset(), this.offset() + this.length(),
+                        that.value, that.offset(), that.offset() + that.length());
     }
 }

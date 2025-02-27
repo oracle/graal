@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -407,13 +407,13 @@ public class AMD64Move {
             }
             switch (accessKind) {
                 case BYTE:
-                    masm.cmpxchgb(asRegister(newValue), address.toAddress(masm));
+                    masm.cmpxchgb(address.toAddress(masm), asRegister(newValue));
                     break;
                 case WORD:
-                    masm.cmpxchgw(asRegister(newValue), address.toAddress(masm));
+                    masm.cmpxchgw(address.toAddress(masm), asRegister(newValue));
                     break;
                 case DWORD:
-                    masm.cmpxchgl(asRegister(newValue), address.toAddress(masm));
+                    masm.cmpxchgl(address.toAddress(masm), asRegister(newValue));
                     break;
                 case QWORD:
                     masm.cmpxchgq(asRegister(newValue), address.toAddress(masm));

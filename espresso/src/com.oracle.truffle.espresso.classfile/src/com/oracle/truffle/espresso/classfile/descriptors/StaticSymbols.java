@@ -22,6 +22,11 @@
  */
 package com.oracle.truffle.espresso.classfile.descriptors;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import org.graalvm.collections.EconomicMap;
+
 /**
  * To be populated in static initializers, always before the first runtime symbol table is spawned.
  *
@@ -32,56 +37,56 @@ package com.oracle.truffle.espresso.classfile.descriptors;
 public final class StaticSymbols {
 
     private boolean frozen = false;
-    private final Symbols symbols;
+    private final EconomicMap<ByteSequence, Symbol<?>> symbols;
 
-    public StaticSymbols(StaticSymbols seed) {
-        this.symbols = new Symbols(seed.freeze());
+    public StaticSymbols(StaticSymbols seed, int initialCapacity) {
+        this.symbols = EconomicMap.create(initialCapacity);
+        this.symbols.putAll(seed.symbols);
     }
 
-    public StaticSymbols() {
-        this.symbols = new Symbols();
+    public StaticSymbols(int initialCapacity) {
+        this.symbols = EconomicMap.create(initialCapacity);
     }
 
     public Symbol<Name> putName(String nameString) {
         ErrorUtil.guarantee(!nameString.isEmpty(), "empty name");
         ByteSequence byteSequence = ByteSequence.create(nameString);
-        Symbol<Name> name = symbols.lookup(byteSequence);
-        if (name != null) {
-            return name;
-        }
-        ErrorUtil.guarantee(!isFrozen(), "static symbols are frozen");
-        return symbols.symbolify(byteSequence);
+        return getOrCreateSymbol(byteSequence);
     }
 
     public Symbol<Type> putType(String internalName) {
         ByteSequence byteSequence = ByteSequence.create(internalName);
         ErrorUtil.guarantee(Validation.validTypeDescriptor(byteSequence, true), "invalid type");
-        Symbol<Type> type = symbols.lookup(byteSequence);
-        if (type != null) {
-            return type;
-        }
-        ErrorUtil.guarantee(!isFrozen(), "static symbols are frozen");
-        return symbols.symbolify(byteSequence);
+        return getOrCreateSymbol(byteSequence);
     }
 
     @SafeVarargs
     public final Symbol<Signature> putSignature(Symbol<Type> returnType, Symbol<Type>... parameterTypes) {
         ByteSequence signatureBytes = SignatureSymbols.createSignature(returnType, parameterTypes);
         ErrorUtil.guarantee(Validation.validSignatureDescriptor(signatureBytes, false), "invalid signature");
-        Symbol<Signature> signature = symbols.lookup(signatureBytes);
-        if (signature != null) {
-            return signature;
-        }
-        ErrorUtil.guarantee(!isFrozen(), "static symbols are frozen");
-        return symbols.symbolify(signatureBytes);
+        return getOrCreateSymbol(signatureBytes);
     }
 
     public boolean isFrozen() {
         return frozen;
     }
 
-    public Symbols freeze() {
+    public Set<Symbol<?>> freeze() {
         frozen = true;
-        return symbols;
+        Set<Symbol<?>> result = new HashSet<>(symbols.size());
+        symbols.getValues().forEach(result::add);
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> Symbol<T> getOrCreateSymbol(ByteSequence byteSequence) {
+        Symbol<T> symbol = (Symbol<T>) symbols.get(byteSequence);
+        if (symbol != null) {
+            return symbol;
+        }
+        ErrorUtil.guarantee(!isFrozen(), "static symbols are frozen");
+        symbol = Symbols.createSymbolInstanceUnsafe(byteSequence);
+        symbols.put(symbol, symbol);
+        return symbol;
     }
 }

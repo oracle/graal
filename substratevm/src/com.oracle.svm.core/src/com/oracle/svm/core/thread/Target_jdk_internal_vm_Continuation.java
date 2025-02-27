@@ -92,8 +92,7 @@ public final class Target_jdk_internal_vm_Continuation {
     @Substitute
     @NeverInline("access stack pointer")
     private static int isPinned0(Target_jdk_internal_vm_ContinuationScope scope) {
-        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
-        Target_jdk_internal_vm_Continuation cont = carrier.cont;
+        Target_jdk_internal_vm_Continuation cont = ContinuationInternals.getContinuationFromCarrier();
         if (cont != null) {
             while (true) {
                 if (cont.pinCount != 0) {
@@ -148,8 +147,7 @@ public final class Target_jdk_internal_vm_Continuation {
 
     @Substitute
     private static int doYield() {
-        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
-        Target_jdk_internal_vm_Continuation cont = carrier.cont;
+        Target_jdk_internal_vm_Continuation cont = ContinuationInternals.getContinuationFromCarrier();
         int pinnedReason = isPinned0(cont.getScope());
         if (pinnedReason != 0) {
             return pinnedReason;
@@ -181,23 +179,23 @@ public final class Target_jdk_internal_vm_Continuation {
 
     @Substitute
     public static void pin() {
-        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
-        if (carrier.cont != null) {
-            if (carrier.cont.pinCount + 1 == 0) { // unsigned arithmetic
+        Target_jdk_internal_vm_Continuation cont = ContinuationInternals.getContinuationFromCarrier();
+        if (cont != null) {
+            if (cont.pinCount + 1 == 0) { // unsigned arithmetic
                 throw new IllegalStateException("Pin overflow");
             }
-            carrier.cont.pinCount++;
+            cont.pinCount++;
         }
     }
 
     @Substitute
     public static void unpin() {
-        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
-        if (carrier.cont != null) {
-            if (carrier.cont.pinCount == 0) {
+        Target_jdk_internal_vm_Continuation cont = ContinuationInternals.getContinuationFromCarrier();
+        if (cont != null) {
+            if (cont.pinCount == 0) {
                 throw new IllegalStateException("Pin underflow");
             }
-            carrier.cont.pinCount--;
+            cont.pinCount--;
         }
     }
 

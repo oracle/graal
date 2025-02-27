@@ -70,8 +70,8 @@ import com.oracle.truffle.api.source.SourceSection;
  * <p>
  * The {@link #getTier() tier} of a bytecode node initially always starts out as
  * {@link BytecodeTier#UNCACHED}. This means that no cached nodes were created yet. The
- * {@link #setUncachedThreshold(int) uncached threshold} determines how many calls, back-edges, and
- * yields are necessary for the node to transition to the cached tier. By default the uncached
+ * {@link #setUncachedThreshold(int) uncached threshold} determines how many calls/resumes and
+ * back-edges are necessary for the node to transition to the cached tier. By default the uncached
  * threshold is 16 if the {@link GenerateBytecode#enableUncachedInterpreter() uncached interpreter}
  * is enabled, and 0 if not (i.e., it will transition to cached on the first execution). The
  * intention of the uncached bytecode tier is to reduce the footprint of root nodes that are
@@ -937,7 +937,7 @@ public abstract class BytecodeNode extends Node {
     public abstract List<LocalVariable> getLocals();
 
     /**
-     * Sets the number of times the uncached interpreter must return, branch backwards, or yield
+     * Sets the number of times the uncached interpreter must be invoked/resumed or branch backwards
      * before transitioning to cached. See {@link GenerateBytecode#defaultUncachedThreshold} for
      * information about the default threshold and the meaning of different {@code threshold}
      * values.

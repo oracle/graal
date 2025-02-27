@@ -38,6 +38,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.pltgot.GOTAccess;
 import com.oracle.svm.core.pltgot.aarch64.AArch64MethodAddressResolutionDispatcher;
+import com.oracle.svm.core.aarch64.SubstrateAArch64MacroAssembler;
 import com.oracle.svm.hosted.image.NativeImage;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.pltgot.HostedPLTGOTConfiguration;
@@ -106,7 +107,7 @@ public class AArch64PLTStubGenerator implements PLTStubGenerator {
 
     @Override
     public byte[] generatePLT(SharedMethod[] got, SubstrateBackend substrateBackend) {
-        AArch64MacroAssembler masm = new AArch64MacroAssembler(ConfigurationValues.getTarget());
+        AArch64MacroAssembler masm = new SubstrateAArch64MacroAssembler(ConfigurationValues.getTarget());
         Label pltStart = new Label();
         masm.bind(pltStart);
         try (AArch64MacroAssembler.ScratchRegister scratchRegister1 = masm.getScratchRegister(); AArch64MacroAssembler.ScratchRegister scratchRegister2 = masm.getScratchRegister()) {

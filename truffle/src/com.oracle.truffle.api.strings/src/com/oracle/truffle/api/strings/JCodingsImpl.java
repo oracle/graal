@@ -156,7 +156,8 @@ final class JCodingsImpl implements JCodings {
         int end = a.byteArrayOffset() + a.length();
         int cpi = 0;
         int i = 0;
-        while (i < a.length() - extraOffsetRaw) {
+        int regionLength = a.length() - extraOffsetRaw;
+        while (i < regionLength) {
             if (cpi == index) {
                 return i;
             }
@@ -165,9 +166,9 @@ final class JCodingsImpl implements JCodings {
                 if (length < -1) {
                     // broken multibyte codepoint at end of string
                     if (isLength) {
-                        return a.length() - extraOffsetRaw;
+                        return regionLength;
                     } else {
-                        throw InternalErrors.indexOutOfBounds();
+                        throw InternalErrors.indexOutOfBounds(regionLength, index);
                     }
                 } else {
                     i += minLength;

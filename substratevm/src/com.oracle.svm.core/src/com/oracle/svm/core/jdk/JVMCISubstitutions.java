@@ -52,20 +52,11 @@ final class Target_jdk_vm_ci_services_Services {
     // Checkstyle: resume
 
     /**
-     * Ensure field returns false if seen by the analysis.
-     */
-    // Checkstyle: stop
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
-    public static boolean IS_BUILDING_NATIVE_IMAGE = false;
-    // Checkstyle: resume
-
-    /**
      * Redirect to {@link SystemPropertiesSupport#singleton()}.
      */
     @Substitute
     public static Map<String, String> getSavedProperties() {
-        return SystemPropertiesSupport.singleton().getSavedProperties();
+        return SystemPropertiesSupport.singleton().getInitialProperties();
     }
 
     @Delete //

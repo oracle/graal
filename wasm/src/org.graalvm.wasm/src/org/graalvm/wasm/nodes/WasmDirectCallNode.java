@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,12 +45,11 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 
 public final class WasmDirectCallNode extends WasmCallNode {
 
-    private final int bytecodeOffset;
     private final CallTarget target;
 
     WasmDirectCallNode(CallTarget target, int bytecodeOffset) {
+        super(bytecodeOffset);
         this.target = target;
-        this.bytecodeOffset = bytecodeOffset;
     }
 
     public CallTarget getTarget() {
@@ -59,11 +58,6 @@ public final class WasmDirectCallNode extends WasmCallNode {
 
     public Object execute(Object[] args) {
         return target.call(this, args);
-    }
-
-    @Override
-    public int getBytecodeOffset() {
-        return bytecodeOffset;
     }
 
     @NeverDefault

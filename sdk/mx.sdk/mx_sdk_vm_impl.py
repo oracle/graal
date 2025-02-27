@@ -3068,10 +3068,10 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             mx_sdk.graalvm_sdk_native_image_component
         ]
 
-        if mx.suite('graal-enterprise', fatalIfMissing=False) is not None:
-            import mx_graal_enterprise
-            if has_component(mx_graal_enterprise.truffle_enterprise.name):
-                default_components.append(mx_graal_enterprise.truffle_enterprise)
+        if mx.suite('truffle-enterprise', fatalIfMissing=False) is not None:
+            import mx_truffle_enterprise
+            if has_component(mx_truffle_enterprise.truffle_enterprise.name):
+                default_components.append(mx_truffle_enterprise.truffle_enterprise)
 
         return default_components
 
@@ -3290,8 +3290,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         )
 
     def isJDKDependent(self):
-        # because of -DLAUNCHER_JDK_VERSION (GR-57817)
-        return True
+        # This must always be False, the compiled thin launchers need to work on both latest LTS JDK and jdk-latest
+        return False
 
     @staticmethod
     def library_launcher_project_name(language_library_config, for_jvm_standalone=False):
@@ -3310,11 +3310,10 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
             '-DGRAALVM_VERSION=' + _suite.release_version(),
-            # Might not be needed anymore if GR-57817 gets fixed.
-            f'-DLAUNCHER_JDK_VERSION={mx_sdk_vm.base_jdk_version()}',
         ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
+            _dynamic_cflags += ['-Werror=undef'] # fail on undefined macro used in preprocessor
         if mx.is_linux():
             _dynamic_cflags += ['-stdlib=libc++'] # to link libc++ statically, see ldlibs
         if mx.is_darwin():

@@ -85,19 +85,21 @@ import com.oracle.graal.pointsto.meta.BaseLayerMethod;
 import com.oracle.graal.pointsto.meta.BaseLayerType;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.fieldfolding.StaticFinalFieldFoldingFeature;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.AnnotationValue;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.CEntryPointLiteralReference;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.ConstantReference;
@@ -109,6 +111,7 @@ import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedAnalysisType.WrappedType.SerializationGenerated;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant;
+import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.EnumConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PersistedConstant.Object.Relinking.StringConstant;
 import com.oracle.svm.hosted.imagelayer.SharedLayerSnapshotCapnProtoSchemaHolder.PrimitiveArray;
@@ -127,12 +130,14 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.iterators.NodeIterable;
 import jdk.graal.compiler.java.BytecodeParser;
 import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.EncodedGraph;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.nodes.MethodHandleNode;
 import jdk.graal.compiler.util.ObjectCopier;
 import jdk.internal.reflect.ReflectionFactory;
 import jdk.vm.ci.meta.JavaConstant;
@@ -151,6 +156,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final HostedImageLayerBuildingSupport imageLayerBuildingSupport;
     private final SharedLayerSnapshot.Reader snapshot;
     private final FileChannel graphsChannel;
+    private final ClassInitializationSupport classInitializationSupport;
 
     private HostedUniverse hostedUniverse;
 
@@ -164,13 +170,14 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     private final Map<Integer, BaseLayerMethod> baseLayerMethods = new ConcurrentHashMap<>();
     private final Map<Integer, BaseLayerField> baseLayerFields = new ConcurrentHashMap<>();
 
-    protected final Set<AnalysisFuture<Void>> heapScannerTasks = ConcurrentHashMap.newKeySet();
+    protected final Set<DebugContextRunnable> futureBigbangTasks = ConcurrentHashMap.newKeySet();
     protected final Map<Integer, Integer> typeToConstant = new ConcurrentHashMap<>();
     protected final Map<String, Integer> stringToConstant = new ConcurrentHashMap<>();
     protected final Map<Enum<?>, Integer> enumToConstant = new ConcurrentHashMap<>();
     protected final Map<Integer, Long> objectOffsets = new ConcurrentHashMap<>();
     protected final Map<AnalysisField, Integer> fieldLocations = new ConcurrentHashMap<>();
     private final Map<Class<?>, Boolean> capturingClasses = new ConcurrentHashMap<>();
+    private final Map<ResolvedJavaMethod, Boolean> methodHandleCallers = new ConcurrentHashMap<>();
 
     /** Map from {@link SVMImageLayerSnapshotUtil#getTypeDescriptor} to base layer type ids. */
     private final Map<String, Integer> typeDescriptorToBaseLayerId = new HashMap<>();
@@ -189,6 +196,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         this.snapshot = snapshot;
         this.graphsChannel = graphChannel;
         this.useSharedLayerGraphs = useSharedLayerGraphs;
+        classInitializationSupport = ClassInitializationSupport.singleton();
     }
 
     public AnalysisUniverse getUniverse() {
@@ -247,11 +255,56 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                         .forEach(c -> prepareConstantRelinking(c, c.getIdentityHashCode(), c.getId()));
     }
 
+    /**
+     * The non-transformed field values are prepared earlier because some constants can be loaded
+     * very early.
+     */
+    public void relinkNonTransformedStaticFinalFieldValues() {
+        relinkStaticFinalFieldValues(false);
+    }
+
+    /**
+     * The transformed field values need to be prepared after all the transformer are installed.
+     */
+    public void relinkTransformedStaticFinalFieldValues() {
+        relinkStaticFinalFieldValues(true);
+    }
+
+    /**
+     * Load each constant with a known static final {@code AnalysisField origin} in the base layer,
+     * create the corresponding {@code ImageHeapConstant baseLayerConstant}, and find its
+     * corresponding {@code JavaConstant hostedValue} reachable from the same field in the current
+     * hosted heap. Finally, register the {@code hostedValue->baseLayerConstant} mapping in the
+     * shadow heap. This registration ensures that any future lookup of {@code hostedValue} in the
+     * shadow heap will yield the same reconstructed constant. Relinking constants with known origin
+     * eagerly is necessary to ensure that the {@code hostedValue} always maps to the same
+     * reconstructed {@code baseLayerConstant}, even if the {@code hostedValue} is first reachable
+     * from other fields than the one saved as its {@code origin} in the base layer, or if it is
+     * reachable transitively from other constants.
+     */
+    private void relinkStaticFinalFieldValues(boolean isLateLoading) {
+        IntStream.range(0, snapshot.getConstants().size()).parallel().forEach(i -> {
+            var constantData = snapshot.getConstants().get(i);
+            var relinking = constantData.getObject().getRelinking();
+            if (relinking.isFieldConstant() && relinking.getFieldConstant().getRequiresLateLoading() == isLateLoading) {
+                ImageHeapConstant constant = getOrCreateConstant(constantData.getId());
+                /*
+                 * If the field value cannot be read, the hosted object will not be relinked. If
+                 * there's already an ImageHeapConstant registered for the same hosted value, the
+                 * registration will fail. That could mean that we try to register too late.
+                 */
+                if (constant.getHostedObject() != null) {
+                    universe.getHeapScanner().registerBaseLayerValue(constant, PERSISTED);
+                }
+            }
+        });
+    }
+
     private static IntStream streamInts(PrimitiveList.Int.Reader reader) {
         return IntStream.range(0, reader.size()).map(reader::get);
     }
 
-    private static Stream<String> streamStrings(TextList.Reader reader) {
+    public static Stream<String> streamStrings(TextList.Reader reader) {
         return IntStream.range(0, reader.size()).mapToObj(i -> reader.get(i).toString());
     }
 
@@ -291,7 +344,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return;
         }
 
-        PersistedConstant.Object.Relinking.Reader relinking = constantData.getObject().getRelinking();
+        Relinking.Reader relinking = constantData.getObject().getRelinking();
         if (relinking.isClassConstant()) {
             int typeId = relinking.getClassConstant().getTypeId();
             typeToConstant.put(typeId, id);
@@ -399,6 +452,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             String capturingClassName = wrappedType.getLambda().getCapturingClass().toString();
             Class<?> capturingClass = imageLayerBuildingSupport.lookupClass(false, capturingClassName);
             loadLambdaTypes(capturingClass);
+            return types.containsKey(typeData.getId());
         } else if (wrappedType.isProxyType()) {
             Class<?>[] interfaces = Stream.of(typeData.getInterfaces()).flatMapToInt(r -> IntStream.range(0, r.size()).map(r::get))
                             .mapToObj(i -> getAnalysisTypeForBaseLayerId(i).getJavaClass()).toArray(Class<?>[]::new);
@@ -417,31 +471,54 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
      */
     private void loadLambdaTypes(Class<?> capturingClass) {
         capturingClasses.computeIfAbsent(capturingClass, key -> {
-            LambdaParser.allExecutablesDeclaredInClass(universe.getOriginalMetaAccess().lookupJavaType(capturingClass))
+            LambdaParser.allExecutablesDeclaredInClass(universe.getBigbang().getMetaAccess().lookupJavaType(capturingClass))
                             .filter(m -> m.getCode() != null)
-                            .forEach(m -> loadLambdaTypes(m, universe.getBigbang()));
+                            .forEach(m -> loadLambdaTypes(((AnalysisMethod) m).getWrapped(), universe.getBigbang()));
             return true;
         });
     }
 
     private static void loadLambdaTypes(ResolvedJavaMethod m, BigBang bigBang) {
+        StructuredGraph graph = getMethodGraph(m, bigBang);
+        if (graph != null) {
+            NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
+
+            for (ConstantNode cNode : constantNodes) {
+                Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
+
+                if (lambdaClass != null) {
+                    bigBang.getMetaAccess().lookupJavaType(lambdaClass);
+                }
+            }
+        }
+    }
+
+    private void loadMethodHandleTargets(ResolvedJavaMethod m, BigBang bigBang) {
+        methodHandleCallers.computeIfAbsent(m, method -> {
+            StructuredGraph graph = getMethodGraph(m, bigBang);
+            if (graph != null) {
+                for (Node node : graph.getNodes()) {
+                    if (node instanceof MethodHandleNode methodHandleNode) {
+                        bigBang.getUniverse().lookup(methodHandleNode.getTargetMethod());
+                    }
+                }
+            }
+            return true;
+        });
+    }
+
+    private static StructuredGraph getMethodGraph(ResolvedJavaMethod m, BigBang bigBang) {
+        if (m instanceof BaseLayerMethod) {
+            return null;
+        }
         StructuredGraph graph;
         try {
             graph = createMethodGraph(m, bigBang.getOptions());
         } catch (NoClassDefFoundError | BytecodeParser.BytecodeParserError e) {
             /* Skip the method if it refers to a missing class */
-            return;
+            return null;
         }
-
-        NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
-
-        for (ConstantNode cNode : constantNodes) {
-            Class<?> lambdaClass = getLambdaClassFromConstantNode(cNode);
-
-            if (lambdaClass != null) {
-                bigBang.getMetaAccess().lookupJavaType(lambdaClass);
-            }
-        }
+        return graph;
     }
 
     private ResolvedJavaType getResolvedJavaTypeForBaseLayerId(int tid) {
@@ -609,17 +686,28 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             return;
         }
         PersistedAnalysisType.Reader td = findType(id);
-        registerFlag(td.getIsInstantiated(), () -> type.registerAsInstantiated(PERSISTED));
-        registerFlag(td.getIsUnsafeAllocated(), () -> type.registerAsUnsafeAllocated(PERSISTED));
-        registerFlag(td.getIsReachable(), () -> type.registerAsReachable(PERSISTED));
+        registerFlag(td.getIsInstantiated(), debug -> type.registerAsInstantiated(PERSISTED));
+        registerFlag(td.getIsUnsafeAllocated(), debug -> type.registerAsUnsafeAllocated(PERSISTED));
+        registerFlag(td.getIsReachable(), debug -> type.registerAsReachable(PERSISTED));
+
+        if (!td.getIsInstantiated() && td.getIsAnySubtypeInstantiated()) {
+            var subTypesReader = td.getSubTypes();
+            for (int i = 0; i < subTypesReader.size(); ++i) {
+                int tid = subTypesReader.get(i);
+                var subTypeReader = findType(tid);
+                if (subTypeReader.getIsInstantiated()) {
+                    registerFlag(true, debug -> getAnalysisTypeForBaseLayerId(subTypeReader.getId()));
+                }
+            }
+        }
     }
 
-    private void registerFlag(boolean flag, Runnable runnable) {
+    private void registerFlag(boolean flag, DebugContextRunnable task) {
         if (flag) {
             if (universe.getBigbang() != null) {
-                universe.getBigbang().postTask(debug -> runnable.run());
+                universe.getBigbang().postTask(task);
             } else {
-                heapScannerTasks.add(new AnalysisFuture<>(runnable));
+                futureBigbangTasks.add(task);
             }
         }
     }
@@ -735,6 +823,18 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
                 JNIAccessFeature.singleton().addMethod(member, (FeatureImpl.DuringAnalysisAccessImpl) universe.getConcurrentAnalysisAccess());
             }
             return true;
+        } else if (wrappedMethod.isPolymorphicSignature()) {
+            int id = methodData.getId();
+            WrappedMethod.PolymorphicSignature.Reader ps = wrappedMethod.getPolymorphicSignature();
+            var callers = ps.getCallers();
+            for (int i = 0; i < callers.size(); ++i) {
+                loadMethodHandleTargets(getAnalysisMethodForBaseLayerId(callers.get(i)).wrapped, universe.getBigbang());
+                if (methods.containsKey(id)) {
+                    return true;
+                }
+            }
+            LogUtils.warning("The PolymorphicSignature method %s.%s could not get loaded", methodData.getClassName().toString(), methodData.getName().toString());
+            return false;
         }
         return false;
     }
@@ -774,7 +874,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         Annotation[] annotations = getAnnotations(md.getAnnotationList());
 
         baseLayerMethods.computeIfAbsent(mid,
-                        methodId -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
+                        methodId -> new BaseLayerMethod(mid, type, name, md.getIsVarArgs(), md.getIsBridge(), signature, md.getCanBeStaticallyBound(), md.getIsConstructor(),
                                         md.getModifiers(), md.getIsSynthetic(), code, md.getCodeSize(), methodHandleIntrinsic, annotations));
         BaseLayerMethod baseLayerMethod = baseLayerMethods.get(mid);
 
@@ -806,11 +906,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         methods.putIfAbsent(analysisMethod.getId(), analysisMethod);
 
         PersistedAnalysisMethod.Reader md = getMethodData(analysisMethod);
-        registerFlag(md.getIsVirtualRootMethod(), () -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
-        registerFlag(md.getIsDirectRootMethod(), () -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
-        registerFlag(md.getIsInvoked(), () -> analysisMethod.registerAsInvoked(PERSISTED));
-        registerFlag(md.getIsImplementationInvoked(), () -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
-        registerFlag(md.getIsIntrinsicMethod(), () -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
+        registerFlag(md.getIsVirtualRootMethod(), debug -> analysisMethod.registerAsVirtualRootMethod(PERSISTED));
+        registerFlag(md.getIsDirectRootMethod(), debug -> analysisMethod.registerAsDirectRootMethod(PERSISTED));
+        registerFlag(md.getIsInvoked(), debug -> analysisMethod.registerAsInvoked(PERSISTED));
+        registerFlag(md.getIsImplementationInvoked(), debug -> analysisMethod.registerAsImplementationInvoked(PERSISTED));
+        registerFlag(md.getIsIntrinsicMethod(), debug -> analysisMethod.registerAsIntrinsicMethod(PERSISTED));
     }
 
     private PersistedAnalysisMethod.Reader getMethodData(AnalysisMethod analysisMethod) {
@@ -1046,12 +1146,6 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     @Override
     public void initializeBaseLayerField(AnalysisField analysisField) {
         PersistedAnalysisField.Reader fieldData = getFieldData(analysisField);
-
-        int fieldCheckIndex = fieldData.getFieldCheckIndex();
-        if (fieldCheckIndex != -1) {
-            StaticFinalFieldFoldingFeature.singleton().putBaseLayerFieldCheckIndex(analysisField.getId(), fieldCheckIndex);
-        }
-
         assert fieldData != null : "The field should be in the base layer";
         int location = fieldData.getLocation();
         if (location != 0) {
@@ -1063,10 +1157,10 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (!analysisField.isStatic() && (isAccessed || isRead)) {
             analysisField.getDeclaringClass().getInstanceFields(true);
         }
-        registerFlag(isAccessed, () -> analysisField.registerAsAccessed(PERSISTED));
-        registerFlag(isRead, () -> analysisField.registerAsRead(PERSISTED));
-        registerFlag(fieldData.getIsWritten(), () -> analysisField.registerAsWritten(PERSISTED));
-        registerFlag(fieldData.getIsFolded(), () -> analysisField.registerAsFolded(PERSISTED));
+        registerFlag(isAccessed, debug -> analysisField.registerAsAccessed(PERSISTED));
+        registerFlag(isRead, debug -> analysisField.registerAsRead(PERSISTED));
+        registerFlag(fieldData.getIsWritten(), debug -> analysisField.registerAsWritten(PERSISTED));
+        registerFlag(fieldData.getIsFolded(), debug -> analysisField.registerAsFolded(PERSISTED));
     }
 
     private PersistedAnalysisField.Reader getFieldData(AnalysisField analysisField) {
@@ -1094,10 +1188,11 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         return null;
     }
 
-    public void executeHeapScannerTasks() {
-        guarantee(universe.getHeapScanner() != null, "Those tasks should only be executed when the bigbang is not null.");
-        for (AnalysisFuture<Void> task : heapScannerTasks) {
-            task.ensureDone();
+    public void postFutureBigbangTasks() {
+        BigBang bigbang = universe.getBigbang();
+        guarantee(bigbang != null, "Those tasks should only be executed when the bigbang is not null.");
+        for (DebugContextRunnable task : futureBigbangTasks) {
+            bigbang.postTask(task);
         }
     }
 
@@ -1109,15 +1204,12 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
     @SuppressFBWarnings(value = "ES", justification = "Reference equality check needed to detect intern status")
     private boolean hasValueForObject(Object object) {
-        if (object instanceof DynamicHub dynamicHub) {
-            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(dynamicHub);
-            return typeToConstant.containsKey(type.getId());
-        } else if (object instanceof String string) {
-            return stringToConstant.containsKey(string) && string.intern() == string;
-        } else if (object instanceof Enum<?>) {
-            return enumToConstant.containsKey(object);
-        }
-        return false;
+        return switch (object) {
+            case DynamicHub dynamicHub -> typeToConstant.containsKey(((SVMHost) universe.hostVM()).lookupType(dynamicHub).getId());
+            case String string -> stringToConstant.containsKey(string) && string.intern() == string;
+            case Enum<?> e -> enumToConstant.containsKey(e);
+            default -> false;
+        };
     }
 
     @Override
@@ -1127,18 +1219,13 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
     }
 
     private ImageHeapConstant getValueForObject(Object object) {
-        if (object instanceof DynamicHub dynamicHub) {
-            AnalysisType type = ((SVMHost) universe.hostVM()).lookupType(dynamicHub);
-            int id = typeToConstant.get(type.getId());
-            return getOrCreateConstant(id);
-        } else if (object instanceof String string) {
-            int id = stringToConstant.get(string);
-            return getOrCreateConstant(id);
-        } else if (object instanceof Enum<?>) {
-            int id = enumToConstant.get(object);
-            return getOrCreateConstant(id);
-        }
-        throw AnalysisError.shouldNotReachHere("The constant was not in the persisted heap.");
+        return switch (object) {
+            case DynamicHub dynamicHub ->
+                getOrCreateConstant(typeToConstant.get(((SVMHost) universe.hostVM()).lookupType(dynamicHub).getId()));
+            case String string -> getOrCreateConstant(stringToConstant.get(string));
+            case Enum<?> e -> getOrCreateConstant(enumToConstant.get(e));
+            default -> throw AnalysisError.shouldNotReachHere("The constant was not in the persisted heap.");
+        };
     }
 
     @Override
@@ -1430,11 +1517,39 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
         if (!baseLayerConstant.isObject()) {
             return null;
         }
-        PersistedConstant.Object.Relinking.Reader relinking = baseLayerConstant.getObject().getRelinking();
+        Relinking.Reader relinking = baseLayerConstant.getObject().getRelinking();
         if (relinking.isNotRelinked()) {
             return null;
-        }
-        if (clazz.equals(Class.class)) {
+        } else if (relinking.isFieldConstant()) {
+            var fieldConstant = relinking.getFieldConstant();
+            AnalysisField analysisField = getAnalysisFieldForBaseLayerId(fieldConstant.getOriginFieldId());
+            if (!(analysisField.getWrapped() instanceof BaseLayerField)) {
+                VMError.guarantee(!baseLayerConstant.getIsSimulated(), "Should not alter the initialization status for simulated constants.");
+                /*
+                 * The declaring type of relinked fields was already initialized in the previous
+                 * layer (see SVMImageLayerWriter#shouldRelinkField).
+                 */
+                if (fieldConstant.getRequiresLateLoading()) {
+                    /*
+                     * Fields with a field value transformer are relinked later, after all possible
+                     * transformers have been registered. *Guarantee* that the declaring type has
+                     * been initialized by now. Note that reading the field below will prevent a
+                     * transformer to be installed at a later time.
+                     */
+                    VMError.guarantee(analysisField.getDeclaringClass().isInitialized());
+                } else {
+                    /*
+                     * All other fields are relinked earlier, before the constant is needed. *Force*
+                     * the build time initialization of the declaring type before reading the field
+                     * value.
+                     */
+                    Class<?> fieldDeclaringClass = analysisField.getDeclaringClass().getJavaClass();
+                    classInitializationSupport.initializeAtBuildTime(fieldDeclaringClass, "Already initialized in base layer.");
+                }
+                /* Read fields through the hostedValueProvider and apply object replacement. */
+                return hostedValuesProvider.readFieldValueWithReplacement(analysisField, null);
+            }
+        } else if (clazz.equals(Class.class)) {
             /* DynamicHub corresponding to $$TypeSwitch classes are not relinked */
             if (baseLayerConstant.isObject() && relinking.isClassConstant()) {
                 int typeId = relinking.getClassConstant().getTypeId();
@@ -1598,5 +1713,32 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
 
             return new ClassInitializationInfo(initState, initInfo.getHasInitializer(), initInfo.getIsBuildTimeInitialized(), isTracked);
         }
+    }
+
+    public static class JavaConstantSupplier {
+        private final ConstantReference.Reader constantReference;
+
+        JavaConstantSupplier(ConstantReference.Reader constantReference) {
+            this.constantReference = constantReference;
+        }
+
+        public JavaConstant get(SVMImageLayerLoader imageLayerLoader) {
+            return switch (constantReference.which()) {
+                case OBJECT_CONSTANT -> {
+                    int id = constantReference.getObjectConstant().getConstantId();
+                    yield id == 0 ? null : imageLayerLoader.getOrCreateConstant(id);
+                }
+                case NULL_POINTER -> JavaConstant.NULL_POINTER;
+                case PRIMITIVE_VALUE -> {
+                    PrimitiveValue.Reader pv = constantReference.getPrimitiveValue();
+                    yield JavaConstant.forPrimitive((char) pv.getTypeChar(), pv.getRawValue());
+                }
+                default -> throw GraalError.shouldNotReachHere("Unexpected constant reference: " + constantReference.which());
+            };
+        }
+    }
+
+    public static JavaConstantSupplier getConstant(ConstantReference.Reader constantReference) {
+        return new JavaConstantSupplier(constantReference);
     }
 }

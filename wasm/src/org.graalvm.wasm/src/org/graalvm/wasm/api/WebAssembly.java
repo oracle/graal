@@ -48,12 +48,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.EmbedderDataHolder;
 import org.graalvm.wasm.ImportDescriptor;
+import org.graalvm.wasm.ImportValueSupplier;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
@@ -73,6 +73,7 @@ import org.graalvm.wasm.globals.ExportedWasmGlobal;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryFactory;
+import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -83,7 +84,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import org.graalvm.wasm.memory.WasmMemoryLibrary;
 
 public class WebAssembly extends Dictionary {
     private final WasmContext currentContext;
@@ -157,7 +157,7 @@ public class WebAssembly extends Dictionary {
         return context.readInstance(module);
     }
 
-    private static Function<ImportDescriptor, Object> resolveModuleImports(WasmModule module, WasmContext context, Object importObject) {
+    private static ImportValueSupplier resolveModuleImports(WasmModule module, WasmContext context, Object importObject) {
         CompilerAsserts.neverPartOfCompilation();
         List<Object> resolvedImports = new ArrayList<>(module.numImportedSymbols());
 
@@ -181,7 +181,14 @@ public class WebAssembly extends Dictionary {
         }
 
         assert resolvedImports.size() == module.numImportedSymbols();
-        return importDesc -> resolvedImports.get(importDesc.importedSymbolIndex());
+        return (importDesc, instance) -> {
+            // Import values are only valid in the module where they were resolved.
+            if (instance.module() == module) {
+                return resolvedImports.get(importDesc.importedSymbolIndex());
+            } else {
+                return null;
+            }
+        };
     }
 
     private static Object requireImportObject(Object importObject) {

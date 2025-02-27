@@ -278,6 +278,7 @@ public class Graph implements EventCounter {
      */
     public void getDebugProperties(Map<Object, Object> properties) {
         properties.put("graph", toString());
+        properties.put("nodeIdCount", nodeIdCount());
     }
 
     /**

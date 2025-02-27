@@ -463,7 +463,13 @@ public final class Target_java_lang_Thread {
     @Alias //
     native void clearInterrupt();
 
-    /** Carrier threads only: the current innermost continuation. */
+    /**
+     * Carrier threads only: the current innermost continuation.
+     *
+     * Use {@link ContinuationInternals#getContinuationFromCarrier()} instead to avoid references to
+     * the current carrier thread from leaking into a stack frame, which prevents persisting
+     * continuation stacks in (auxiliary) image heaps.
+     */
     @Alias //
     Target_jdk_internal_vm_Continuation cont;
 

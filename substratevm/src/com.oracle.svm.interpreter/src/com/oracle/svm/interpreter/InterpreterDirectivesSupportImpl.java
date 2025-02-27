@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.interpreter;
 
+import static com.oracle.svm.hosted.pltgot.GOTEntryAllocator.GOT_NO_ENTRY;
 import static com.oracle.svm.interpreter.InterpreterUtil.traceInterpreter;
 import static com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod.EST_NO_ENTRY;
-import static com.oracle.svm.hosted.pltgot.GOTEntryAllocator.GOT_NO_ENTRY;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,7 +37,6 @@ import java.util.Map;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.jdk.InternalVMMethod;
@@ -50,6 +49,7 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @InternalVMMethod
@@ -106,7 +106,7 @@ final class InterpreterDirectivesSupportImpl implements InterpreterDirectivesSup
             return;
         }
         long previousEntry = rememberCompiledEntry.get(interpreterMethod);
-        writeGOTHelper(interpreterMethod, WordFactory.pointer(previousEntry));
+        writeGOTHelper(interpreterMethod, Word.pointer(previousEntry));
     }
 
     private class InterpreterOpToken {

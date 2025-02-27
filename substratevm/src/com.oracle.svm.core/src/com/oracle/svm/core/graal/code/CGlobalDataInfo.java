@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.code;
 
 import java.util.function.Supplier;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -53,6 +54,7 @@ public final class CGlobalDataInfo {
     /** Cache until writing the image in case the {@link Supplier} is costly or has side-effects. */
     @Platforms(HOSTED_ONLY.class) private byte[] bytes;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public CGlobalDataInfo(CGlobalDataImpl<?> data) {
         assert data != null;
         this.data = data;

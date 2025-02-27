@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package jdk.graal.compiler.util.args;
 
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.List;
 
 /**
@@ -153,18 +154,24 @@ public abstract class OptionValue<T> {
         return new ListValue<>(name, description, this);
     }
 
-    public String getUsage() {
-        String usage = String.format("<%s>", name);
-        if (defaultValue != null) {
-            usage += String.format(" (default: \"%s\")", defaultValue);
+    public final String getUsage(boolean detailed) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        printUsage(pw, detailed);
+        return sw.toString();
+    }
+
+    public void printUsage(PrintWriter writer, boolean detailed) {
+        writer.append(String.format(isRequired() && !detailed ? "<%s>" : "[%s]", name));
+        if (detailed && defaultValue != null) {
+            writer.append(String.format(" (default: \"%s\")", defaultValue));
         }
-        return usage;
     }
 
     static final String INDENT = "  ";
 
     private static void printIndentedLine(PrintWriter writer, String line, int indentLevel) {
-        for (int i = 0; i <= indentLevel; ++i) {
+        for (int i = 0; i < indentLevel; ++i) {
             writer.append(INDENT);
         }
         writer.println(line);

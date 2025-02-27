@@ -20,15 +20,11 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-
-import argparse
-
 import mx
 import mx_benchmark
 import mx_espresso
 
 from mx_benchmark import GuestVm, JavaVm
-from mx_sdk_benchmark import ScalaDaCapoBenchmarkSuite
 from mx_sdk_benchmark import _daCapoScalaConfig
 
 
@@ -187,71 +183,3 @@ scala_dacapo_warmup_iterations = {
     "specs"       : warmupIterations(1, 1 + _daCapoScalaConfig["specs"]       // 3, _daCapoScalaConfig["specs"]),
     "tmt"         : warmupIterations(1, 1 + _daCapoScalaConfig["tmt"]         // 3, _daCapoScalaConfig["tmt"]),
 }
-
-class ScalaDaCapoWarmupBenchmarkSuite(ScalaDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
-    """Scala DaCapo (warmup) benchmark suite implementation."""
-
-    def daCapoPath(self):
-        return mx.distribution("DACAPO_SCALA_WARMUP").path
-
-    def name(self):
-        return "scala-dacapo-warmup"
-
-    def warmupResults(self, results, warmupIterations, metricName="cumulative-warmup"):
-        """
-        Postprocess results to add new entries for specific iterations.
-        """
-        benchmarkNames = {r["benchmark"] for r in results}
-        for benchmark in benchmarkNames:
-            if benchmark in warmupIterations:
-                entries = [result for result in results if result["metric.name"] == metricName and result["benchmark"] == benchmark]
-                if entries:
-                    for entry in entries:
-                        for key, iteration in warmupIterations[benchmark].items():
-                            if entry["metric.iteration"] == iteration - 1: # scala_dacapo_warmup_iterations is 1-based, JSON output is 0-based
-                                newEntry = entry.copy()
-                                newEntry["metric.name"] = key
-                                results.append(newEntry)
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        super_rules = super(ScalaDaCapoWarmupBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-        return super_rules + [
-            mx_benchmark.StdOutRule(
-                r"===== DaCapo (?P<version>\S+) (?P<benchmark>[a-zA-Z0-9_]+) walltime [0-9]+ : (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "walltime",
-                    "metric.value": ("<time>", int),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": ("$iteration", int)
-                }
-            )
-        ]
-
-    def postprocessRunArgs(self, benchname, runArgs):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
-        args, remaining = parser.parse_known_args(runArgs)
-        result = ['-c', 'WallTimeCallback'] + remaining
-        if args.n:
-            if args.n.isdigit():
-                result = ["-n", args.n] + result
-        else:
-            iterations = scala_dacapo_warmup_iterations[benchname]["late-warmup"]
-            result = ["-n", str(iterations)] + result
-        return result
-
-    def run(self, benchmarks, bmSuiteArgs):
-        results = super(ScalaDaCapoWarmupBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
-        self.warmupResults(results, scala_dacapo_warmup_iterations, 'walltime')
-        # walltime entries are not accepted by the bench server
-        return [e for e in results if e["metric.name"] != "walltime"]
-
-mx_benchmark.add_bm_suite(ScalaDaCapoWarmupBenchmarkSuite())

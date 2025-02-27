@@ -57,6 +57,6 @@ public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testInSubprocess() throws IOException, InterruptedException {
-        SubprocessTest.launchSubprocess(getClass(), this::testBody, "--enable-preview");
+        SubprocessTest.launchSubprocess(getClass(), currentUnitTestName(), this::testBody, "--enable-preview");
     }
 }

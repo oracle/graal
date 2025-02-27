@@ -606,9 +606,19 @@ final class InstrumentationHandler {
             Object elm = binding.getElement();
             if (elm instanceof OutputStream) {
                 if (outputErrBindings.contains(binding)) {
-                    InstrumentAccessor.engineAccess().detachOutputConsumer(err, (OutputStream) elm);
+                    /*
+                     * err can be null if InstrumentationHandler#finalizeStore was called.
+                     */
+                    if (err != null) {
+                        InstrumentAccessor.engineAccess().detachOutputConsumer(err, (OutputStream) elm);
+                    }
                 } else if (outputStdBindings.contains(binding)) {
-                    InstrumentAccessor.engineAccess().detachOutputConsumer(out, (OutputStream) elm);
+                    /*
+                     * out can be null if InstrumentationHandler#finalizeStore was called.
+                     */
+                    if (out != null) {
+                        InstrumentAccessor.engineAccess().detachOutputConsumer(out, (OutputStream) elm);
+                    }
                 }
             } else if (elm instanceof ContextsListener) {
                 // binding disposed

@@ -291,7 +291,7 @@ public class StandardGraphBuilderPlugins {
     }
 
     public static final Field STRING_VALUE_FIELD;
-    private static final Field STRING_CODER_FIELD;
+    public static final Field STRING_CODER_FIELD;
 
     static {
         Field coder = null;
@@ -450,6 +450,10 @@ public class StandardGraphBuilderPlugins {
             this.kind = kind;
         }
 
+        public JavaKind getKind() {
+            return kind;
+        }
+
         @SuppressWarnings("try")
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
@@ -474,9 +478,9 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    static class StringEqualsInvocationPlugin extends InvocationPlugin {
+    public static class StringEqualsInvocationPlugin extends InvocationPlugin {
 
-        StringEqualsInvocationPlugin() {
+        public StringEqualsInvocationPlugin() {
             super("equals", Receiver.class, Object.class);
         }
 
@@ -847,8 +851,15 @@ public class StandardGraphBuilderPlugins {
             if (arrayType != null && arrayType.isArray()) {
                 unsafe.get(true);
                 var elementKind = b.getMetaAccessExtensionProvider().getStorageKind(arrayType.getComponentType());
-                int result = arrayBaseOffset ? b.getMetaAccess().getArrayBaseOffset(elementKind) : b.getMetaAccess().getArrayIndexScale(elementKind);
-                b.addPush(JavaKind.Int, ConstantNode.forInt(result));
+                if (arrayBaseOffset) {
+                    if (JavaVersionUtil.JAVA_SPEC > 21) {
+                        b.addPush(JavaKind.Long, ConstantNode.forLong(b.getMetaAccess().getArrayBaseOffset(elementKind)));
+                    } else {
+                        b.addPush(JavaKind.Int, ConstantNode.forInt(b.getMetaAccess().getArrayBaseOffset(elementKind)));
+                    }
+                } else {
+                    b.addPush(JavaKind.Int, ConstantNode.forInt(b.getMetaAccess().getArrayIndexScale(elementKind)));
+                }
                 return true;
             }
         }
@@ -2407,8 +2418,9 @@ public class StandardGraphBuilderPlugins {
             ResolvedJavaField embeddedCipherField = helper.getField(receiverType, "embeddedCipher");
             ValueNode embeddedCipher = b.nullCheckedValue(helper.loadField(receiver, embeddedCipherField));
             LogicNode typeCheck = InstanceOfNode.create(TypeReference.create(b.getAssumptions(), typeAESCrypt), embeddedCipher);
-            helper.doFallbackIfNot(typeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
-            return readFieldArrayStart(b, helper, typeAESCrypt, "K", embeddedCipher, JavaKind.Int);
+            GuardingNode guard = helper.doFallbackIfNot(typeCheck, GraalDirectives.UNLIKELY_PROBABILITY);
+            ValueNode cast = b.add(PiNode.create(embeddedCipher, StampFactory.objectNonNull(TypeReference.create(b.getAssumptions(), typeAESCrypt)), guard.asNode()));
+            return readFieldArrayStart(b, helper, typeAESCrypt, "K", cast, JavaKind.Int);
         }
     }
 

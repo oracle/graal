@@ -59,6 +59,9 @@
     logs+: [
         "*/gcutils_heapdump_*.hprof.gz",
     ],
+    catch_files+: [
+      "Report is located at: (?P<filename>.+\\.txt)"
+    ],
     targets: ["gate"],
     python_version: "3"
   },
@@ -83,10 +86,9 @@
     timelimit: "3:00:00",
   },
 
-  test:: s.base(no_warning_as_error=true),
+  test:: s.base(no_warning_as_error=true, extra_vm_args="-Djdk.graal.DetailedAsserts=true"),
   test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
   test_serialgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseSerialGC"),
-
 
   jacoco_gate_args:: ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
   upload_coverage:: ["mx", "sversions", "--print-repositories", "--json", "|", "coverage-uploader.py", "--associated-repos", "-"],
@@ -283,6 +285,7 @@
     "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
+      logs+: ["*/graal_dumps/*/*_failure.log"],
     },
 
     "weekly-compiler-test_vec16-labsjdk-latest-linux-amd64": {},
@@ -414,10 +417,9 @@
       "bootstrap_full"
     ]
 
-    # Run jobs on latest and last LTS (21)
+    # Run jobs on latest
     for jdk in [
-      self.jdk_latest,
-      "21"
+      self.jdk_latest
     ]
     for os_arch in all_os_arches
   ],
@@ -430,12 +432,12 @@
       "coverage_ctw",
     ]
     for jdk in [
-      "21"
+      self.jdk_latest
     ]
     for os_arch in all_os_arches
   ] + [
      # Run AVX3 tests only on linux-amd64
-     self.make_build("21", "linux-amd64", "coverage_avx3").build
+     self.make_build(self.jdk_latest, "linux-amd64", "coverage_avx3").build
   ],
 
     # Test ZGC on supported platforms.  Windows requires version 1083 or later which will

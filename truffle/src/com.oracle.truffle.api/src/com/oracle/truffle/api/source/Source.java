@@ -61,6 +61,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -71,6 +72,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -538,6 +540,29 @@ public abstract class Source {
      */
     public final int getLineLength(int lineNumber) throws IllegalArgumentException {
         return getTextMap().lineLength(lineNumber);
+    }
+
+    /**
+     * Returns the parsed option values of the given source for the given language. Options can be
+     * specified by implementing {@link TruffleLanguage#getSourceOptionDescriptors()}. When
+     * accessing source options during parsing, use {@link ParsingRequest#getOptionValues()} instead
+     * of this method, to avoid parsing the options twice.
+     * <p>
+     * Note that options may not be validated beforehand, which can result in an
+     * {@link IllegalArgumentException} if validation fails. If the source was parsed previously,
+     * all options are guaranteed to have been validated. Otherwise, this method validates only the
+     * options of the current language.
+     *
+     * @param language the language accessible via {@link LanguageReference}
+     * @return the parsed {@link OptionValues} for the specified source
+     * @throws IllegalArgumentException if option validation fails
+     * @see com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#getOptions(Source) to
+     *      access options from an instrument
+     * @since 25.0
+     */
+    public final OptionValues getOptions(TruffleLanguage<?> language) {
+        Objects.requireNonNull(language);
+        return SourceAccessor.ENGINE.parseLanguageSourceOptions(SourceAccessor.LANGUAGE.getPolyglotLanguageInstance(language), this);
     }
 
     /**
@@ -1593,7 +1618,7 @@ public abstract class Source {
          * @param value the option value (must not be null)
          * @see ParsingRequest#getOptionValues()
          * @see TruffleLanguage#getSourceOptionDescriptors()
-         * @see TruffleLanguage.Env#getOptions(Source)
+         * @see Source#getOptions(TruffleLanguage)
          *
          * @since 25.0
          */

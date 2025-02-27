@@ -125,8 +125,8 @@ public @interface GenerateBytecode {
     boolean enableUncachedInterpreter() default false;
 
     /**
-     * Sets the default number of times an uncached interpreter must return, branch backwards, or
-     * yield before transitioning to cached.
+     * Sets the default number of times an uncached interpreter must be invoked/resumed or branch
+     * backwards before transitioning to cached.
      * <p>
      * The default uncached threshold expression supports a subset of Java (see the
      * {@link com.oracle.truffle.api.dsl.Cached Cached} documentation). It should evaluate to an

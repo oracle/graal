@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,16 @@
  */
 package jdk.graal.compiler.core.common;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Edges;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -57,6 +61,11 @@ public class Fields {
 
     private final Class<?>[] declaringClasses;
 
+    /**
+     * @see #getStableOrder()
+     */
+    private final int[] stableOrder;
+
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
         Collections.sort(fields);
         this.offsets = new long[fields.size()];
@@ -71,10 +80,44 @@ public class Fields {
             declaringClasses[index] = f.declaringClass;
             index++;
         }
+        this.stableOrder = new int[fields.size()];
+        List<FieldsScanner.FieldInfo> stableFields = new ArrayList<>(fields);
+        stableFields.sort(FieldsScanner.FieldInfo.STABLE_COMPARATOR);
+        for (int i = 0; i < fields.size(); i++) {
+            FieldsScanner.FieldInfo f = stableFields.get(i);
+            stableOrder[i] = fields.indexOf(f);
+        }
+    }
+
+    public Field getField(int i) {
+        try {
+            return getDeclaringClass(i).getDeclaredField(getName(i));
+        } catch (NoSuchFieldException e) {
+            throw GraalError.shouldNotReachHere(e);
+        }
+    }
+
+    /**
+     * Recomputes the {@link Unsafe} based field offsets and the {@link Edges#getIterationMask()}
+     * derived from them.
+     *
+     * @param getFieldOffset provides the new offsets
+     * @return a pair (represented as a map entry) where the key is the new offsets and the value is
+     *         the iteration mask
+     *
+     */
+    public Map.Entry<long[], Long> recomputeOffsetsAndIterationMask(Function<Field, Long> getFieldOffset) {
+        long[] newOffsets = new long[offsets.length];
+        for (int i = 0; i < offsets.length; i++) {
+            Field field = getField(i);
+            long newOffset = getFieldOffset.apply(field);
+            newOffsets[i] = newOffset;
+        }
+        return Map.entry(newOffsets, 0L);
     }
 
     public static Fields create(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
-        if (fields.size() == 0) {
+        if (fields.isEmpty()) {
             return EMPTY_FIELDS;
         }
         return new Fields(fields);
@@ -94,33 +137,12 @@ public class Fields {
     }
 
     /**
-     * Function enabling an object field value to be replaced with another value when being copied
-     * within {@link Fields#copy(Object, Object, ObjectTransformer)}.
-     */
-    @FunctionalInterface
-    public interface ObjectTransformer {
-        Object apply(int index, Object from);
-    }
-
-    /**
      * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
      *
      * @param from the object from which the fields should be copied
      * @param to the object to which the fields should be copied
      */
     public void copy(Object from, Object to) {
-        copy(from, to, null);
-    }
-
-    /**
-     * Copies fields from {@code from} to {@code to}, both of which must be of the same type.
-     *
-     * @param from the object from which the fields should be copied
-     * @param to the object to which the fields should be copied
-     * @param trans function to applied to object field values as they are copied. If {@code null},
-     *            the value is copied unchanged.
-     */
-    public void copy(Object from, Object to, ObjectTransformer trans) {
         assert from.getClass() == to.getClass() : from + " " + to;
         for (int index = 0; index < offsets.length; index++) {
             long offset = offsets[index];
@@ -154,7 +176,7 @@ public class Fields {
                         obj = ((Object[]) obj).clone();
                     }
                 }
-                UNSAFE.putReference(to, offset, trans == null ? obj : trans.apply(index, obj));
+                UNSAFE.putReference(to, offset, obj);
             }
         }
     }
@@ -265,6 +287,21 @@ public class Fields {
     }
 
     /**
+     * Gets the indexes of the fields sorted by {@link FieldsScanner.FieldInfo#STABLE_COMPARATOR}.
+     * Here's an example of how to use this ordering:
+     *
+     * <pre>
+     * for (int idx : fields.getStableOrder()) {
+     *     String fieldName = fields.getName(idx);
+     *     // use fieldName
+     * }
+     * </pre>
+     */
+    public int[] getStableOrder() {
+        return stableOrder;
+    }
+
+    /**
      * Gets the name of a field.
      *
      * @param index index of a field
@@ -276,7 +313,7 @@ public class Fields {
     /**
      * Gets the type of a field.
      *
-     * @param index index of a field
+     * @param index index of the field
      */
     public Class<?> getType(int index) {
         return types[index];

@@ -26,7 +26,6 @@ package jdk.graal.compiler.hotspot;
 
 import jdk.graal.compiler.serviceprovider.ServiceProvider;
 
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.services.JVMCIServiceLocator;
@@ -59,8 +58,8 @@ public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
             return null;
         }
 
-        @NativeImageReinitialize private HotSpotGraalRuntime graalRuntime;
-        @NativeImageReinitialize private HotSpotGraalVMEventListener vmEventListener;
+        private HotSpotGraalRuntime graalRuntime;
+        private HotSpotGraalVMEventListener vmEventListener;
 
         /**
          * Notifies this object of the compiler created via {@link HotSpotGraalJVMCIServiceLocator}.

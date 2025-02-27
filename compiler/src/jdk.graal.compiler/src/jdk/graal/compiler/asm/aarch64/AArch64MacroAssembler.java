@@ -31,8 +31,6 @@ import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.LDP;
 import static jdk.graal.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.SIMD;
-import static jdk.vm.ci.aarch64.AArch64.rscratch1;
-import static jdk.vm.ci.aarch64.AArch64.rscratch2;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 
@@ -48,9 +46,7 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 
-public class AArch64MacroAssembler extends AArch64Assembler {
-
-    private final ScratchRegister[] scratchRegister = new ScratchRegister[]{new ScratchRegister(rscratch1), new ScratchRegister(rscratch2)};
+public abstract class AArch64MacroAssembler extends AArch64Assembler {
 
     // Points to the next free scratch register
     private int nextFreeScratchRegister = 0;
@@ -73,6 +69,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         this.neon = new AArch64ASIMDMacroAssembler(this);
     }
 
+    protected abstract ScratchRegister[] getScratchRegisters();
+
     public class ScratchRegister implements AutoCloseable {
         private final Register register;
 
@@ -92,10 +90,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public ScratchRegister getScratchRegister() {
-        if (nextFreeScratchRegister == scratchRegister.length) {
-            throw new GraalError("Out of scratch registers");
+        if (nextFreeScratchRegister == getScratchRegisters().length) {
+            throw new GraalError("Out of scratch registers: " + nextFreeScratchRegister);
         }
-        return scratchRegister[nextFreeScratchRegister++];
+        return getScratchRegisters()[nextFreeScratchRegister++];
     }
 
     @Override

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -249,13 +249,16 @@ def _is_jvmci_enabled(vmargs):
 
 def _ctw_jvmci_export_args(arg_prefix='--'):
     """
-    Gets the VM args needed to export JVMCI API required by CTW.
+    Gets the VM args needed to export JVMCI API and HotSpot internals required by CTW.
     """
-    args = ['add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
-            'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED']
+    args = [
+        'add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.hotspot=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+        'add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
+        'add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
+    ]
     return [arg_prefix + arg for arg in args]
 
 def _ctw_system_properties_suffix():
@@ -422,11 +425,25 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
         return
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
     vmargs += ['-Xmx8g', '-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
-    args = ['-n', str(iterations), '--preserve']
+    scratch_dir = os.path.abspath("./scratch")
+    args = ['-n', str(iterations), '--preserve', '--scratch-directory', scratch_dir]
+
+    # pmd validation fails on Windows, see official dacapobench issue #165
+    if name == 'pmd':
+        args += ['--no-validation']
+
     if threads is not None:
         args += ['-t', str(threads)]
-    return _run_benchmark('dacapo', name, args, vmargs)
 
+    # catch `*-report.txt` if the benchmark fails
+    try:
+        return _run_benchmark('dacapo', name, args, vmargs)
+    except BaseException as e:
+        file = os.path.join(scratch_dir, f"{name}-report.txt")
+        # not all benchmarks produce a report file
+        if os.path.isfile(file):
+            print("Report is located at: " + file)
+        raise e
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
@@ -518,7 +535,10 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         '-DCompileTheWorld.MultiThreaded=true', '-Djdk.graal.InlineDuringParsing=false', '-Djdk.graal.TrackNodeSourcePosition=true',
         '-DCompileTheWorld.Verbose=false', '-XX:ReservedCodeCacheSize=300m',
     ]
-    ctw_phaseplan_fuzzing_flags = ['-DCompileTheWorld.FuzzPhasePlan=true', '-Djdk.graal.PrintGraphStateDiff=true']
+    ctw_phaseplan_fuzzing_flags = [
+        '-DCompileTheWorld.FuzzPhasePlan=true',
+        '-Djdk.graal.PrintGraphStateDiff=true',
+    ]
     with Task('CTW:hosted', tasks, tags=GraalTags.ctw, report=True) as t:
         if t:
             ctw(ctw_flags, _remove_empty_entries(extraVMarguments))
@@ -827,6 +847,10 @@ class GraalUnittestConfig(mx_unittest.MxUnittestConfig):
 
         vmArgs.append('-Djdk.graal.TrackNodeSourcePosition=true')
         vmArgs.append('-esa')
+
+        if '-JUnitMaxTestTime' not in mainClassArgs:
+            # The max time (in seconds) for any compiler unit test
+            mainClassArgs.extend(['-JUnitMaxTestTime', '300'])
 
         # Always run unit tests without UseJVMCICompiler unless explicitly requested
         if _get_XX_option_value(vmArgs, 'UseJVMCICompiler', None) is None:
@@ -1479,6 +1503,7 @@ def _graal_config():
         __graal_config = GraalConfig()
     return __graal_config
 
+# The jars needed for jargraal.
 def _jvmci_jars():
     return [
         'compiler:GRAAL',

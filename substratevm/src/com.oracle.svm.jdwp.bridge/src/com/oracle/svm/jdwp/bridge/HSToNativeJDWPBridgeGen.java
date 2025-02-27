@@ -26,6 +26,12 @@
 // @formatter:off
 package com.oracle.svm.jdwp.bridge;
 
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JByteArray;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JClass;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JIntArray;
@@ -43,12 +49,8 @@ import com.oracle.svm.jdwp.bridge.nativebridge.JNIConfig;
 import com.oracle.svm.jdwp.bridge.nativebridge.NativeIsolate;
 import com.oracle.svm.jdwp.bridge.nativebridge.NativeIsolateThread;
 import com.oracle.svm.jdwp.bridge.nativebridge.NativeObjectHandles;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordFactory;
+
+import jdk.graal.compiler.word.Word;
 
 /* Checkout README.md before modifying */
 final class HSToNativeJDWPBridgeGen {
@@ -506,7 +508,7 @@ final class HSToNativeJDWPBridgeGen {
                 scope.setObjectResult(JNIUtil.createHSString(jniEnv, endPointResult));
             } catch (Throwable e) {
                 ForeignException.forThrowable(e, throwableMarshaller).throwUsingJNI(jniEnv);
-                scope.setObjectResult(WordFactory.nullPointer());
+                scope.setObjectResult(Word.nullPointer());
             }
             return scope.getObjectResult();
         }
@@ -541,7 +543,7 @@ final class HSToNativeJDWPBridgeGen {
                 }
             } catch (Throwable e) {
                 ForeignException.forThrowable(e, throwableMarshaller).throwUsingJNI(jniEnv);
-                scope.setObjectResult(WordFactory.nullPointer());
+                scope.setObjectResult(Word.nullPointer());
             }
             return scope.getObjectResult();
         }
@@ -595,7 +597,7 @@ final class HSToNativeJDWPBridgeGen {
                 scope.setObjectResult(JNIUtil.createHSString(jniEnv, endPointResult));
             } catch (Throwable e) {
                 ForeignException.forThrowable(e, throwableMarshaller).throwUsingJNI(jniEnv);
-                scope.setObjectResult(WordFactory.nullPointer());
+                scope.setObjectResult(Word.nullPointer());
             }
             return scope.getObjectResult();
         }
@@ -625,7 +627,7 @@ final class HSToNativeJDWPBridgeGen {
                 }
             } catch (Throwable e) {
                 ForeignException.forThrowable(e, throwableMarshaller).throwUsingJNI(jniEnv);
-                scope.setObjectResult(WordFactory.nullPointer());
+                scope.setObjectResult(Word.nullPointer());
             }
             return scope.getObjectResult();
         }
@@ -834,7 +836,7 @@ final class HSToNativeJDWPBridgeGen {
                 scope.setObjectResult(JNIUtil.createHSArray(jniEnv, endPointResult));
             } catch (Throwable e) {
                 ForeignException.forThrowable(e, throwableMarshaller).throwUsingJNI(jniEnv);
-                scope.setObjectResult(WordFactory.nullPointer());
+                scope.setObjectResult(Word.nullPointer());
             }
             return scope.getObjectResult();
         }
@@ -860,7 +862,7 @@ final class HSToNativeJDWPBridgeGen {
                 scope.setObjectResult(JNIUtil.createHSArray(jniEnv, endPointResult));
             } catch (Throwable e) {
                 ForeignException.forThrowable(e, throwableMarshaller).throwUsingJNI(jniEnv);
-                scope.setObjectResult(WordFactory.nullPointer());
+                scope.setObjectResult(Word.nullPointer());
             }
             return scope.getObjectResult();
         }

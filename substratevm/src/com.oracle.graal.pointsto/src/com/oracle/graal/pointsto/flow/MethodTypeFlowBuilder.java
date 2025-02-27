@@ -107,6 +107,7 @@ import jdk.graal.compiler.nodes.calc.CompareNode;
 import jdk.graal.compiler.nodes.calc.ConditionalNode;
 import jdk.graal.compiler.nodes.calc.FloatEqualsNode;
 import jdk.graal.compiler.nodes.calc.FloatLessThanNode;
+import jdk.graal.compiler.nodes.calc.IntegerBelowNode;
 import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
 import jdk.graal.compiler.nodes.calc.IntegerLowerThanNode;
 import jdk.graal.compiler.nodes.calc.IntegerTestNode;
@@ -1028,7 +1029,7 @@ public class MethodTypeFlowBuilder {
                     var y = lookup(equalsNode.getY());
                     var type = getNodeType(equalsNode);
                     result = TypeFlowBuilder.create(bb, method, getPredicate(), node, BooleanPrimitiveCheckTypeFlow.class, () -> {
-                        var flow = new BooleanPrimitiveCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, x.get(), y.get(), PrimitiveComparison.EQ);
+                        var flow = new BooleanPrimitiveCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, x.get(), y.get(), PrimitiveComparison.EQ, false);
                         flowsGraph.addMiscEntryFlow(flow);
                         return flow;
                     });
@@ -1037,9 +1038,10 @@ public class MethodTypeFlowBuilder {
                 } else if (node instanceof IntegerLowerThanNode lowerThan) {
                     var x = lookup(lowerThan.getX());
                     var y = lookup(lowerThan.getY());
+                    var isUnsigned = lowerThan instanceof IntegerBelowNode;
                     var type = getNodeType(lowerThan);
                     result = TypeFlowBuilder.create(bb, method, getPredicate(), node, BooleanPrimitiveCheckTypeFlow.class, () -> {
-                        var flow = new BooleanPrimitiveCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, x.get(), y.get(), PrimitiveComparison.LT);
+                        var flow = new BooleanPrimitiveCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, x.get(), y.get(), PrimitiveComparison.LT, isUnsigned);
                         flowsGraph.addMiscEntryFlow(flow);
                         return flow;
                     });
@@ -1311,7 +1313,7 @@ public class MethodTypeFlowBuilder {
             return returnBuilder;
         }
 
-        private void handleCompareNode(ValueNode source, CompareNode condition, PrimitiveComparison comparison) {
+        private void handleCompareNode(ValueNode source, CompareNode condition, PrimitiveComparison comparison, boolean isUnsigned) {
             var xNode = typeFlowUnproxify(condition.getX());
             var yNode = typeFlowUnproxify(condition.getY());
             var xConstant = xNode.isConstant();
@@ -1320,7 +1322,7 @@ public class MethodTypeFlowBuilder {
             var yFlow = state.lookup(yNode);
             if (!xConstant) {
                 var leftFlowBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), source, PrimitiveFilterTypeFlow.class, () -> {
-                    var flow = new PrimitiveFilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), xFlow.get().declaredType, xFlow.get(), yFlow.get(), comparison);
+                    var flow = new PrimitiveFilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), xFlow.get().declaredType, xFlow.get(), yFlow.get(), comparison, isUnsigned);
                     if (yConstant) {
                         flowsGraph.addNodeFlow(source, flow);
                     }
@@ -1334,7 +1336,7 @@ public class MethodTypeFlowBuilder {
             }
             if (!yConstant) {
                 var rightFlowBuilder = TypeFlowBuilder.create(bb, method, state.getPredicate(), source, PrimitiveFilterTypeFlow.class, () -> {
-                    var flow = new PrimitiveFilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), yFlow.get().declaredType, yFlow.get(), xFlow.get(), comparison.flip());
+                    var flow = new PrimitiveFilterTypeFlow(AbstractAnalysisEngine.sourcePosition(source), yFlow.get().declaredType, yFlow.get(), xFlow.get(), comparison.flip(), isUnsigned);
                     flowsGraph.addNodeFlow(source, flow);
                     return flow;
 
@@ -1359,9 +1361,10 @@ public class MethodTypeFlowBuilder {
         private void handleCondition(ValueNode source, LogicNode condition, boolean isTrue) {
             if (state.usePredicates()) {
                 if (condition instanceof IntegerLowerThanNode lowerThan) {
-                    handleCompareNode(source, lowerThan, isTrue ? PrimitiveComparison.LT : PrimitiveComparison.GE);
+                    var isUnsigned = lowerThan instanceof IntegerBelowNode;
+                    handleCompareNode(source, lowerThan, isTrue ? PrimitiveComparison.LT : PrimitiveComparison.GE, isUnsigned);
                 } else if (condition instanceof IntegerEqualsNode equalsNode) {
-                    handleCompareNode(source, equalsNode, isTrue ? PrimitiveComparison.EQ : PrimitiveComparison.NEQ);
+                    handleCompareNode(source, equalsNode, isTrue ? PrimitiveComparison.EQ : PrimitiveComparison.NEQ, false);
                 }
             }
             if (condition instanceof IsNullNode nullCheck) {

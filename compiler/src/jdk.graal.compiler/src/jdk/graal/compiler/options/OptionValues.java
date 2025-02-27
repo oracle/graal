@@ -204,43 +204,42 @@ public class OptionValues {
                 assert existing == null || existing == desc : "Option named \"" + name + "\" has multiple definitions: " + existing.getLocation() + " and " + desc.getLocation();
             }
         }
-        int size = 0;
-        if (all) {
-            size = sortedOptions.entrySet().size();
-        } else {
-            for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
-                OptionDescriptor desc = e.getValue();
-                if (!excludeOptionFromHelp(desc)) {
-                    size++;
-                }
-            }
-        }
-        int i = 0;
         for (Map.Entry<String, OptionDescriptor> e : sortedOptions.entrySet()) {
             String key = e.getKey();
             OptionDescriptor desc = e.getValue();
             if (all || !excludeOptionFromHelp(desc)) {
-                printHelp(out, namePrefix, key, desc);
-                if (i++ != size - 1) {
-                    // print new line between options
-                    out.printf("%n");
-                }
+                String edition = String.format("[%s edition]", OptionsParser.isEnterpriseOption(desc) ? "enterprise" : "community");
+                printHelp(out, namePrefix,
+                                key,
+                                desc.getOptionKey().getValue(this),
+                                desc.getOptionValueType(),
+                                containsKey(desc.getOptionKey()) ? ":=" : "=",
+                                edition,
+                                desc.getHelp(),
+                                desc.getExtraHelp());
             }
         }
     }
 
-    private void printHelp(PrintStream out, String namePrefix, String key, OptionDescriptor desc) {
-        Object value = desc.getOptionKey().getValue(this);
-        if (value instanceof String) {
-            value = '"' + String.valueOf(value) + '"';
+    private static Object quoteNonNullString(Class<?> valueType, Object value) {
+        if (valueType == String.class && value != null) {
+            return '"' + String.valueOf(value) + '"';
         }
+        return value;
+    }
+
+    public static void printHelp(PrintStream out, String namePrefix,
+                    String key,
+                    Object value,
+                    Class<?> valueType,
+                    String assign,
+                    String edition,
+                    String help,
+                    List<String> extraHelp) {
         String name = namePrefix + key;
-        String assign = containsKey(desc.getOptionKey()) ? ":=" : "=";
-        String typeName = desc.getOptionKey() instanceof EnumOptionKey ? "String" : desc.getOptionValueType().getSimpleName();
+        String linePrefix = String.format("%s %s %s %s", name, assign, quoteNonNullString(valueType, value), edition);
 
-        String edition = String.format("[%s edition]", OptionsParser.isEnterpriseOption(desc) ? "enterprise" : "community");
-        String linePrefix = String.format("%s %s %s %s", name, assign, value, edition);
-
+        String typeName = valueType.isEnum() ? "String" : valueType.getSimpleName();
         int typeStartPos = PROPERTY_LINE_WIDTH - typeName.length();
         int linePad = typeStartPos - linePrefix.length();
         if (linePad > 0) {
@@ -250,16 +249,17 @@ public class OptionValues {
         }
 
         List<String> helpLines;
-        String help = desc.getHelp();
-        if (help.length() != 0) {
+        if (!help.isEmpty()) {
             helpLines = wrap(help, PROPERTY_LINE_WIDTH - PROPERTY_HELP_INDENT);
-            helpLines.addAll(desc.getExtraHelp());
+            helpLines.addAll(extraHelp);
         } else {
-            helpLines = desc.getExtraHelp();
+            helpLines = extraHelp;
         }
         for (String line : helpLines) {
             out.printf("%" + PROPERTY_HELP_INDENT + "s%s%n", "", line);
         }
+        // print new line after each option
+        out.printf("%n");
     }
 
     private static boolean excludeOptionFromHelp(OptionDescriptor desc) {

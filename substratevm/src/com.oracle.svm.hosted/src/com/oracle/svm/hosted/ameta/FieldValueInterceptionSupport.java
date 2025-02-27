@@ -209,10 +209,8 @@ public final class FieldValueInterceptionSupport {
     public boolean isValueAvailable(AnalysisField field) {
         var interceptor = lookupFieldValueInterceptor(field);
         if (interceptor instanceof FieldValueTransformation transformation) {
-            if (transformation.getFieldValueTransformer() instanceof FieldValueTransformerWithAvailability transformerWithAvailability) {
-                if (!transformerWithAvailability.isAvailable()) {
-                    return false;
-                }
+            if (!transformation.getFieldValueTransformer().isAvailable()) {
+                return false;
             }
         } else if (interceptor instanceof FieldValueComputer computer) {
             if (!computer.isAvailable()) {
@@ -220,6 +218,20 @@ public final class FieldValueInterceptionSupport {
             }
         }
         return true;
+    }
+
+    /**
+     * Returns true if a field value interceptor ({@link FieldValueTransformation} or
+     * {@link FieldValueComputer}) has been registered for this field. Unlike
+     * {@link #hasFieldValueTransformer(AnalysisField)}, calling this method is side effect free.
+     */
+    public static boolean hasFieldValueInterceptor(AnalysisField field) {
+        var interceptor = field.getFieldValueInterceptor();
+        if (interceptor != null && interceptor != INTERCEPTOR_ACCESSED_MARKER) {
+            VMError.guarantee(interceptor instanceof FieldValueTransformation || interceptor instanceof FieldValueComputer);
+            return true;
+        }
+        return false;
     }
 
     /**

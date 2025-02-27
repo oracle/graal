@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.r10;
 import static jdk.vm.ci.aarch64.AArch64.r11;
 import static jdk.vm.ci.aarch64.AArch64.r12;
+import static jdk.vm.ci.aarch64.AArch64.r13;
 import static jdk.vm.ci.aarch64.AArch64.r7;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.v0;
@@ -74,8 +74,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/1d117f65f06456ae571aecc146542c2f79d402cf/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2986-L3266",
-          sha1 = "75a3a4dabdc42e5e23bbec0cb448d09fb0d7b129")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/642816538fbaa5b74c6beb8a14d1738cdde28c10/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2987-L3268",
+          sha1 = "462821b98f5b5cd3c4a2867e0a807437191479e3")
 // @formatter:on
 public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 
@@ -120,9 +120,9 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 
         this.gpTemps = new Value[]{
                         r7.asValue(),
-                        r10.asValue(),
                         r11.asValue(),
                         r12.asValue(),
+                        r13.asValue(),
         };
         this.simdTemps = Arrays.stream(AArch64.simdRegisters.toArray()).map(Register::asValue).toArray(Value[]::new);
     }
@@ -146,7 +146,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
         Register savedEncryptedCtr = asRegister(encryptedCounterValue);
         Register usedPtr = asRegister(usedPtrValue);
 
-        Register len = r10;
+        Register len = r13;
         Register used = r12;
         Register offset = r7;
         Register keylen = r11;

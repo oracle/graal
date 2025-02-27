@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,6 +135,7 @@ public final class ClassfileParser {
     private static final DebugTimer CODE_PARSE = DebugTimer.create("code parsing", PARSE_SINGLE_METHOD);
     private static final DebugTimer CODE_READ = DebugTimer.create("code read", CODE_PARSE);
     private static final DebugTimer EXCEPTION_HANDLERS = DebugTimer.create("exception handlers", CODE_PARSE);
+    private static final DebugTimer VALIDATION = DebugTimer.create("CP validation", KLASS_PARSE);
 
     private static final DebugCounter UTF8_ENTRY_COUNT = DebugCounter.create("UTF8 Constant Pool entries");
 
@@ -202,7 +203,7 @@ public final class ClassfileParser {
     private final boolean validate;
 
     private ClassfileParser(ParsingContext parsingContext, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, boolean isHidden,
-                    boolean forceAllowVMAnnotations) {
+                    boolean forceAllowVMAnnotations, boolean validate) {
         this.requestedClassType = requestedClassType;
         this.parsingContext = parsingContext;
         this.stream = Objects.requireNonNull(stream);
@@ -210,12 +211,12 @@ public final class ClassfileParser {
         this.loaderIsBootOrPlatform = loaderIsBootOrPlatform;
         this.isHidden = isHidden;
         this.forceAllowVMAnnotations = forceAllowVMAnnotations;
-        this.validate = true; // always validate
+        this.validate = validate;
     }
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ParsingContext parsingContext, ClassfileStream stream) {
-        this(parsingContext, stream, false, false, null, false, false);
+        this(parsingContext, stream, false, false, null, false, false, true);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -256,8 +257,8 @@ public final class ClassfileParser {
     }
 
     public static ParserKlass parse(ParsingContext parsingContext, ClassfileStream stream, boolean verifiable, boolean loaderIsBootOrPlatform, Symbol<Type> requestedClassType, boolean isHidden,
-                    boolean forceAllowVMAnnotations) throws ValidationException {
-        return new ClassfileParser(parsingContext, stream, verifiable, loaderIsBootOrPlatform, requestedClassType, isHidden, forceAllowVMAnnotations).parseClass();
+                    boolean forceAllowVMAnnotations, boolean validate) throws ValidationException {
+        return new ClassfileParser(parsingContext, stream, verifiable, loaderIsBootOrPlatform, requestedClassType, isHidden, forceAllowVMAnnotations, validate).parseClass();
     }
 
     private ParserKlass parseClass() throws ValidationException {
@@ -530,8 +531,10 @@ public final class ClassfileParser {
 
         // Validation
         if (validate) {
-            for (int j = 1; j < constantPool.length(); ++j) {
-                entries[j].validate(constantPool);
+            try (DebugCloseable handlers = VALIDATION.scope(parsingContext.getTimers())) {
+                for (int j = 1; j < constantPool.length(); ++j) {
+                    entries[j].validate(constantPool);
+                }
             }
         }
 
@@ -661,16 +664,18 @@ public final class ClassfileParser {
          * Classes in general have lots of methods: use a hash set rather than array lookup for dup
          * check.
          */
-        final HashSet<MethodKey> dup = new HashSet<>(methodCount);
+        final HashSet<MethodKey> dup = validate ? new HashSet<>(methodCount) : null;
         for (int i = 0; i < methodCount; ++i) {
             ParserMethod method;
             try (DebugCloseable closeable = PARSE_SINGLE_METHOD.scope(parsingContext.getTimers())) {
                 method = parseMethod(isInterface);
             }
             methods[i] = method;
-            try (DebugCloseable closeable = NO_DUP_CHECK.scope(parsingContext.getTimers())) {
-                if (!dup.add(new MethodKey(method))) {
-                    throw classFormatError("Duplicate method name and signature: " + method.getName() + " " + method.getSignature());
+            if (validate) {
+                try (DebugCloseable closeable = NO_DUP_CHECK.scope(parsingContext.getTimers())) {
+                    if (!dup.add(new MethodKey(method))) {
+                        throw classFormatError("Duplicate method name and signature: " + method.getName() + " " + method.getSignature());
+                    }
                 }
             }
         }
@@ -1695,7 +1700,7 @@ public final class ClassfileParser {
             }
         }
 
-        if (totalLocalTableCount > 0) {
+        if (validate && totalLocalTableCount > 0) {
             validateLocalTables(codeAttributes);
         }
 
@@ -1975,8 +1980,7 @@ public final class ClassfileParser {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof MethodKey) {
-                MethodKey other = (MethodKey) obj;
+            if (obj instanceof MethodKey other) {
                 return methodName.equals(other.methodName) && signature.equals(other.signature);
             }
             return false;

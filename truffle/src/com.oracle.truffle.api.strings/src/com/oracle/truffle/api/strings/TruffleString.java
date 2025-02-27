@@ -5095,7 +5095,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached InlinedBranchProfile compactProfile) {
             a.checkEncoding(expectedEncoding);
             if (n < 0) {
-                throw InternalErrors.illegalArgument("n must be positive");
+                throw InternalErrors.illegalArgument("n must be positive (was: %d)", n);
             }
             if (a.isEmpty() || n == 0) {
                 return expectedEncoding.getEmpty();

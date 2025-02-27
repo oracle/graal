@@ -41,7 +41,7 @@ import com.oracle.svm.hosted.imagelayer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.graal.compiler.hotspot.libgraal.LibGraalClassLoaderBase;
+import org.graalvm.nativeimage.libgraal.LibGraalLoader;
 import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -121,19 +121,10 @@ public class ClassLoaderFeature implements InternalFeature {
 
         var config = (FeatureImpl.DuringSetupAccessImpl) access;
         if (ImageLayerBuildingSupport.firstImageBuild()) {
-            LibGraalClassLoaderBase libGraalLoader = ((DuringSetupAccessImpl) access).imageClassLoader.classLoaderSupport.getLibGraalLoader();
+            LibGraalLoader libGraalLoader = ((DuringSetupAccessImpl) access).imageClassLoader.classLoaderSupport.getLibGraalLoader();
             if (libGraalLoader != null) {
-                ClassLoader libGraalClassLoader = libGraalLoader.getClassLoader();
+                ClassLoader libGraalClassLoader = (ClassLoader) libGraalLoader;
                 ClassForNameSupport.currentLayer().setLibGraalLoader(libGraalClassLoader);
-
-                ClassLoader runtimeLibGraalClassLoader = libGraalLoader.getRuntimeClassLoader();
-                if (runtimeLibGraalClassLoader != null) {
-                    /*
-                     * LibGraalLoader provides runtime-replacement ClassLoader instance. Make sure
-                     * LibGraalLoader gets replaced by runtimeLibGraalClassLoader instance in image.
-                     */
-                    access.registerObjectReplacer(obj -> obj == libGraalClassLoader ? runtimeLibGraalClassLoader : obj);
-                }
             }
             access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
             if (ImageLayerBuildingSupport.buildingInitialLayer()) {

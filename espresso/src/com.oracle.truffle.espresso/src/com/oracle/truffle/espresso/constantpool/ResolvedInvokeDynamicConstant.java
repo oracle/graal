@@ -27,6 +27,8 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
+import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.Resolvable;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
 import com.oracle.truffle.espresso.classfile.descriptors.Type;
@@ -37,7 +39,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
-public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynamicConstant {
+public final class ResolvedInvokeDynamicConstant implements InvokeDynamicConstant, Resolvable.ResolvedConstant {
     private final BootstrapMethodsAttribute.Entry bootstrapMethod;
     private final Symbol<Type>[] parsedInvokeSignature;
     private final Symbol<Name> nameSymbol;
@@ -82,7 +84,6 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
      *
      * @see RuntimeConstantPool#linkInvokeDynamic(ObjectKlass, int, Method, int)
      */
-    @Override
     public CallSiteLink link(RuntimeConstantPool pool, ObjectKlass accessingKlass, int thisIndex, Method method, int bci) {
         CallSiteLink existingLink = getCallSiteLink(method, bci);
         if (existingLink != null) {
@@ -104,7 +105,7 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
                     CallSiteLink link = existingLinks[i];
                     if (link == null) {
                         existingLinks[i] = newLink;
-                        return existingLinks[i];
+                        return newLink;
                     }
                     if (link.matchesCallSite(method, bci)) {
                         return link;
@@ -171,9 +172,12 @@ public final class ResolvedInvokeDynamicConstant implements LinkableInvokeDynami
             }
             StaticObject unboxedAppendix = appendix.get(meta.getLanguage(), 0);
 
-            return new CallSiteLink(method, bci, memberName, unboxedAppendix, parsedInvokeSignature);
+            return new SuccessfulCallSiteLink(method, bci, memberName, unboxedAppendix, parsedInvokeSignature);
         } catch (EspressoException e) {
-            throw new CallSiteLinkingFailure(e);
+            if (meta.java_lang_LinkageError.isAssignableFrom(e.getGuestException().getKlass())) {
+                return new FailedCallSiteLink(method, bci, e);
+            }
+            throw e;
         }
     }
 

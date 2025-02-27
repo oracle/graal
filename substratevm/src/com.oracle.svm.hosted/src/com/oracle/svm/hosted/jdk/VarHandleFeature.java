@@ -97,8 +97,20 @@ public class VarHandleFeature implements InternalFeature {
 
     class VarHandleSupportImpl extends VarHandleSupport {
         @Override
-        protected ResolvedJavaField findVarHandleField(Object varHandle) {
-            return hUniverse != null ? findVarHandleHostedField(varHandle) : findVarHandleAnalysisField(varHandle);
+        protected ResolvedJavaField findVarHandleField(Object varHandle, boolean guaranteeUnsafeAccessed) {
+            ResolvedJavaField result;
+            if (hUniverse != null) {
+                result = findVarHandleHostedField(varHandle);
+            } else {
+                result = findVarHandleAnalysisField(varHandle);
+            }
+
+            if (guaranteeUnsafeAccessed) {
+                AnalysisField aField = result instanceof AnalysisField ? (AnalysisField) result : ((HostedField) result).getWrapped();
+                VMError.guarantee(aField.isUnsafeAccessed(), "Field not registered as unsafe accessed %s", aField);
+            }
+
+            return result;
         }
     }
 

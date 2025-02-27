@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.classfile.descriptors;
 final class SymbolKey {
     private final int hash;
     // mutable
-    protected ByteSequence seq;
+    ByteSequence seq;
 
     SymbolKey(ByteSequence seq) {
         this.seq = seq;
@@ -34,36 +34,7 @@ final class SymbolKey {
 
     @Override
     public boolean equals(Object other) {
-        if (this == other) {
-            return true;
-        }
-        if (other == null) {
-            return false;
-        }
-        // Always a SymbolKey.
-        SymbolKey that = (SymbolKey) other;
-        ByteSequence thisSeq = seq;
-        ByteSequence thatSeq = that.seq;
-        if (thisSeq == thatSeq) {
-            return true;
-        }
-        if (thisSeq.hashCode != thatSeq.hashCode) {
-            return false;
-        }
-        int len = thisSeq.length();
-        if (len != thatSeq.length()) {
-            return false;
-        }
-        byte[] thisBytes = thisSeq.getUnderlyingBytes();
-        byte[] thatBytes = thatSeq.getUnderlyingBytes();
-        int thisOffset = thisSeq.offset();
-        int thatOffset = thatSeq.offset();
-        for (int i = 0; i < len; i++) {
-            if (thisBytes[i + thisOffset] != thatBytes[i + thatOffset]) {
-                return false;
-            }
-        }
-        return true;
+        return other instanceof SymbolKey that && this.seq.equals(that.seq);
     }
 
     @Override

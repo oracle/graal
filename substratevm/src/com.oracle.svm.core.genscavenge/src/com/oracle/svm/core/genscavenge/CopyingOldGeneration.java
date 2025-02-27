@@ -166,6 +166,11 @@ final class CopyingOldGeneration extends OldGeneration {
     }
 
     @Override
+    boolean printLocationInfo(Log log, Pointer ptr) {
+        return fromSpace.printLocationInfo(log, ptr) || toSpace.printLocationInfo(log, ptr);
+    }
+
+    @Override
     boolean verifyRememberedSets() {
         boolean success = true;
         success &= HeapVerifier.verifyRememberedSet(toSpace);

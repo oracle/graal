@@ -36,9 +36,12 @@ public final class CGlobalDataImpl<T extends PointerBase> extends CGlobalData<T>
      * The name of the symbol to create for this data (or null to create no symbol), or if the other
      * fields are null, the name of the symbol to be referenced by this instance.
      */
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public final String symbolName;
 
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public final Supplier<byte[]> bytesSupplier;
+    @Platforms(Platform.HOSTED_ONLY.class) //
     public final IntSupplier sizeSupplier;
     public final boolean nonConstant;
 
@@ -78,10 +81,5 @@ public final class CGlobalDataImpl<T extends PointerBase> extends CGlobalData<T>
         this.bytesSupplier = bytesSupplier;
         this.sizeSupplier = sizeSupplier;
         this.nonConstant = nonConstant;
-    }
-
-    @Override
-    public String toString() {
-        return "CGlobalData[symbol=" + symbolName + "]";
     }
 }

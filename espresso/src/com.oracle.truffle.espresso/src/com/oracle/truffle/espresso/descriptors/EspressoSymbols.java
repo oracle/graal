@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,9 @@ import com.oracle.truffle.espresso.classfile.descriptors.Type;
 
 public class EspressoSymbols {
 
-    public static final StaticSymbols SYMBOLS = new StaticSymbols(ParserSymbols.SYMBOLS);
+    // Pre-allocate enough slots to avoid resizing the underlying map.
+    // But not too much, since these maps will be persisted in the image heap (Native Image).
+    public static final StaticSymbols SYMBOLS = new StaticSymbols(ParserSymbols.SYMBOLS, 1 << 12);
 
     static {
         Names.ensureInitialized();
@@ -90,6 +92,8 @@ public class EspressoSymbols {
         public static final Symbol<Type> jdk_internal_loader_NativeLibraries = SYMBOLS.putType("Ljdk/internal/loader/NativeLibraries;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = SYMBOLS.putType("Lsun/misc/Launcher$ExtClassLoader;");
         public static final Symbol<Type> sun_instrument_InstrumentationImpl = SYMBOLS.putType("Lsun/instrument/InstrumentationImpl;");
+        public static final Symbol<Type> java_lang_instrument_ClassDefinition = SYMBOLS.putType("Ljava/lang/instrument/ClassDefinition;");
+        public static final Symbol<Type> java_lang_instrument_UnmodifiableClassException = SYMBOLS.putType("Ljava/lang/instrument/UnmodifiableClassException;");
         public static final Symbol<Type> jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = SYMBOLS.putType("Ljdk/internal/loader/RawNativeLibraries$RawNativeLibraryImpl;");
         public static final Symbol<Type> jdk_internal_util_ArraysSupport = SYMBOLS.putType("Ljdk/internal/util/ArraysSupport;");
         public static final Symbol<Type> java_io_InputStream = SYMBOLS.putType("Ljava/io/InputStream;");
@@ -522,6 +526,8 @@ public class EspressoSymbols {
         // java agents premain
         public static final Symbol<Name> loadClassAndCallPremain = SYMBOLS.putName("loadClassAndCallPremain");
         public static final Symbol<Name> transform = SYMBOLS.putName("transform");
+        public static final Symbol<Name> getDefinitionClass = SYMBOLS.putName("getDefinitionClass");
+        public static final Symbol<Name> getDefinitionClassFile = SYMBOLS.putName("getDefinitionClassFile");
         public static final Symbol<Name> appendToClassPathForInstrumentation = SYMBOLS.putName("appendToClassPathForInstrumentation");
 
         public static final Symbol<Name> main = SYMBOLS.putName("main");
@@ -588,6 +594,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> fillInStackTrace0 = SYMBOLS.putName("fillInStackTrace0");
         public static final Symbol<Name> getMessage = SYMBOLS.putName("getMessage");
         public static final Symbol<Name> getCause = SYMBOLS.putName("getCause");
+        public static final Symbol<Name> initCause = SYMBOLS.putName("initCause");
         public static final Symbol<Name> detailMessage = SYMBOLS.putName("detailMessage");
         public static final Symbol<Name> printStackTrace = SYMBOLS.putName("printStackTrace");
         public static final Symbol<Name> extendedMessageState = SYMBOLS.putName("extendedMessageState");
@@ -932,6 +939,7 @@ public class EspressoSymbols {
         public static final Symbol<Name> descriptor = SYMBOLS.putName("descriptor");
         public static final Symbol<Name> ofSystem = SYMBOLS.putName("ofSystem");
         public static final Symbol<Name> defineModule = SYMBOLS.putName("defineModule");
+        public static final Symbol<Name> transformedByAgent = SYMBOLS.putName("transformedByAgent");
         // Continuations
         public static final Symbol<Name> suspend = SYMBOLS.putName("suspend");
         public static final Symbol<Name> stackFrameHead = SYMBOLS.putName("stackFrameHead");
@@ -1019,6 +1027,7 @@ public class EspressoSymbols {
         public static final Symbol<Signature> _void_String_array = SYMBOLS.putSignature(Types._void, Types.java_lang_String_array);
         public static final Symbol<Signature> Class_String_boolean_ClassLoader = SYMBOLS.putSignature(Types.java_lang_Class, Types.java_lang_String, Types._boolean, Types.java_lang_ClassLoader);
         public static final Symbol<Signature> Throwable = SYMBOLS.putSignature(Types.java_lang_Throwable);
+        public static final Symbol<Signature> Throwable_Throwable = SYMBOLS.putSignature(Types.java_lang_Throwable, Types.java_lang_Throwable);
         public static final Symbol<Signature> _void_long_boolean_boolean = SYMBOLS.putSignature(Types._void, Types._long, Types._boolean, Types._boolean);
         public static final Symbol<Signature> _void_long_boolean_boolean_boolean = SYMBOLS.putSignature(Types._void, Types._long, Types._boolean, Types._boolean, Types._boolean);
         public static final Symbol<Signature> _byte_array_Module_ClassLoader_String_Class_ProtectionDomain_byte_array_boolean = SYMBOLS.putSignature(

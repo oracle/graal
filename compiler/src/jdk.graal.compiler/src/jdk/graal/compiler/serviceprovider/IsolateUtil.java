@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.serviceprovider;
 
+import jdk.graal.compiler.core.common.LibGraalSupport;
+
 /**
  * Utility methods that provide access to isolate details.
  */
@@ -33,22 +35,31 @@ public final class IsolateUtil {
      * Gets the address of the current isolate or 0 if this not an isolate-aware runtime.
      */
     public static long getIsolateAddress() {
-        return VMSupport.getIsolateAddress();
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            return libgraal.getIsolateAddress();
+        }
+        return 0L;
     }
 
     /**
-     * Gets a non-zero identifier for the current isolate or 0 if this not an isolate-aware runtime.
-     * The returned value is guaranteed to be unique for the first {@code 2^64 - 1} isolates in the
-     * process.
+     * Gets an identifier for the current isolate. This will return 0 if
+     * {@link #getIsolateAddress()} returns 0. The returned value is guaranteed to be unique for the
+     * first {@code 2^64 - 1} isolates in the process.
      */
     public static long getIsolateID() {
-        return VMSupport.getIsolateID();
+        LibGraalSupport libgraal = LibGraalSupport.INSTANCE;
+        if (libgraal != null) {
+            return libgraal.getIsolateID();
+        }
+        return 0L;
     }
 
     /**
      * Gets a string identifying the current isolate.
      *
-     * If this is not an isolate-aware runtime, an empty string is returned.
+     * If this is not an isolate-aware runtime (i.e. {@link #getIsolateAddress()} returns 0), an
+     * empty string is returned.
      *
      * If {@code withAddress == true}, then
      * {@code String.format("%d@%x", getIsolateID(), getIsolateAddress())} is returned.

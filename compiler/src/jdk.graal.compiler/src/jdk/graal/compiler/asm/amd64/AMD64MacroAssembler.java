@@ -503,7 +503,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     // This should guarantee that the alignment in AMD64Assembler.jcc methods will be not triggered.
     private void alignFusedPair(Label branchTarget, boolean isShortJmp, int prevOpInBytes) {
-        assert prevOpInBytes < 26 : "Fused pair may be longer than 0x20 bytes.";
+        GraalError.guarantee(prevOpInBytes < 26, "Fused pair may be longer than 0x20 bytes.");
         if (branchTarget == null) {
             mitigateJCCErratum(prevOpInBytes + 6);
         } else if (isShortJmp) {
@@ -542,15 +542,26 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         return beforeJcc;
     }
 
-    private int applyMIOpAndJcc(AMD64MIOp op, OperandSize size, AMD64Address src, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp, boolean annotateImm,
+    private int applyMIOpAndJcc(AMD64MIOp op, OperandSize size, AMD64Address address, int imm32, ConditionFlag cc, Label branchTarget, boolean isShortJmp, boolean annotateImm,
                     IntConsumer applyBeforeFusedPair) {
-        final int bytesToEmit = getPrefixInBytes(size, src) + OPCODE_IN_BYTES + addressInBytes(src) + op.immediateSize(size);
+        int bytesToEmit = getPrefixInBytes(size, address) + OPCODE_IN_BYTES + addressInBytes(address) + op.immediateSize(size);
+        // Address is "source" only if the op reads from memory.
+        if (op.isMemRead()) {
+            /**
+             * The extra bytes introduced by MemoryReadInterceptor are also included in the fused
+             * pair size, which may lead to imprecision. However, this does not affect the
+             * correctness of the Intel JCC erratum, as it ensures that both the instrumented logic
+             * and the fused pair remain within the 32-byte boundary. If the total size exceeds 32
+             * bytes, the assertion in alignFusedPair will detect it.
+             */
+            bytesToEmit += extraSourceAddressBytes(address);
+        }
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
         if (applyBeforeFusedPair != null) {
             applyBeforeFusedPair.accept(beforeFusedPair);
         }
-        op.emit(this, size, src, imm32, annotateImm);
+        op.emit(this, size, address, imm32, annotateImm);
         final int beforeJcc = position();
         assert beforeFusedPair + bytesToEmit == beforeJcc : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());
         jcc(cc, branchTarget, isShortJmp);
@@ -571,7 +582,14 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     private int applyRMOpAndJcc(AMD64RMOp op, OperandSize size, Register src1, AMD64Address src2, ConditionFlag cc, Label branchTarget, boolean isShortJmp, IntConsumer applyBeforeFusedPair) {
-        final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, src2) + OPCODE_IN_BYTES + addressInBytes(src2);
+        /**
+         * The extra bytes introduced by MemoryReadInterceptor are also included in the fused pair
+         * size, which may lead to imprecision. However, this does not affect the correctness of the
+         * Intel JCC erratum, as it ensures that both the instrumented logic and the fused pair
+         * remain within the 32-byte boundary. If the total size exceeds 32 bytes, the assertion in
+         * alignFusedPair will detect it.
+         */
+        final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, src2) + OPCODE_IN_BYTES + addressInBytes(src2) + extraSourceAddressBytes(src2);
         alignFusedPair(branchTarget, isShortJmp, bytesToEmit);
         final int beforeFusedPair = position();
         if (applyBeforeFusedPair != null) {
@@ -699,11 +717,11 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public final int cmpAndJcc(OperandSize size, Register src1, Supplier<AMD64Address> src2, ConditionFlag cc, Label branchTarget) {
         AMD64Address placeHolder = getPlaceholder(position());
+        AMD64Address src2AsAddress = src2.get();
         final AMD64RMOp op = AMD64BinaryArithmetic.CMP.getRMOpcode(size);
-        final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, placeHolder) + OPCODE_IN_BYTES + addressInBytes(placeHolder);
+        final int bytesToEmit = getPrefixInBytes(size, src1, op.dstIsByte, placeHolder) + OPCODE_IN_BYTES + addressInBytes(placeHolder) + extraSourceAddressBytes(src2AsAddress);
         alignFusedPair(branchTarget, false, bytesToEmit);
         final int beforeFusedPair = position();
-        AMD64Address src2AsAddress = src2.get();
         op.emit(this, size, src1, src2AsAddress);
         int beforeJcc = position();
         assert beforeFusedPair + bytesToEmit == beforeJcc : Assertions.errorMessage(beforeFusedPair, bytesToEmit, position());

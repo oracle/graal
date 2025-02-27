@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.core.code;
 
+import static com.oracle.svm.core.deopt.Deoptimizer.Options.LazyDeoptimization;
+
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.deopt.Deoptimizer.Options;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
 
@@ -56,6 +59,10 @@ public class CodeInfoQueryResult {
     protected long encodedFrameSize;
     protected long exceptionOffset;
     protected long referenceMapIndex;
+    /**
+     * Only set for deopt entry points and only if {@link Options#LazyDeoptimization} is enabled.
+     */
+    protected boolean deoptReturnValueIsObject;
     protected FrameInfoQueryResult frameInfo;
 
     /**
@@ -120,6 +127,11 @@ public class CodeInfoQueryResult {
      */
     public long getReferenceMapIndex() {
         return referenceMapIndex;
+    }
+
+    public boolean getDeoptReturnValueIsObject() {
+        assert LazyDeoptimization.getValue();
+        return deoptReturnValueIsObject;
     }
 
     /**

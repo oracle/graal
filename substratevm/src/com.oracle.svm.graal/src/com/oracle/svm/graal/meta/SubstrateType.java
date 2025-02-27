@@ -98,11 +98,16 @@ public class SubstrateType implements SharedType {
      */
     @Override
     public final JavaKind getStorageKind() {
-        if (WordBase.class.isAssignableFrom(DynamicHub.toClass(hub))) {
+        if (isWordType()) {
             return ConfigurationValues.getWordKind();
         } else {
             return getJavaKind();
         }
+    }
+
+    @Override
+    public boolean isWordType() {
+        return WordBase.class.isAssignableFrom(DynamicHub.toClass(hub));
     }
 
     @Override

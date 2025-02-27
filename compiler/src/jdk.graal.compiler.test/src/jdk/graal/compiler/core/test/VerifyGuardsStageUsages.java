@@ -63,6 +63,7 @@ public class VerifyGuardsStageUsages extends VerifyPhase<CoreProviders> {
             case "jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets.delayedCheckcastArraycopySnippet":
             case "jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets.delayedExactArraycopyWithExpandedLoopSnippet":
             case "jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets.delayedGenericArraycopySnippet":
+            case "jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets.checkTypesAndLimits":
                 // Exempted cases
                 return;
             default:

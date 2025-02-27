@@ -20,7 +20,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package com.oracle.truffle.espresso.impl;
 
 import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.CLASS_TO_STATIC;
@@ -78,8 +77,6 @@ import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
@@ -1261,13 +1258,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     public abstract Method.MethodVersion[] getDeclaredMethodVersions();
 
     /**
-     * Returns an array reflecting all the methods declared by this type. This method is similar to
-     * {@link Class#getDeclaredMethods()} in terms of returned methods.
-     */
-    @Override
-    public abstract MethodRef[] getDeclaredMethodRefs();
-
-    /**
      * Returns an array reflecting all the fields declared by this type. This method is similar to
      * {@link Class#getDeclaredFields()} in terms of returned fields.
      */
@@ -1863,11 +1853,6 @@ public abstract class Klass extends ContextAccessImpl implements KlassRef, Truff
     @Override
     public String getSourceDebugExtension() {
         return null;
-    }
-
-    @Override
-    public final ModuleRef getModule() {
-        return module();
     }
 
     // visible to TypeCheckNode

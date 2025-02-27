@@ -71,9 +71,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
 
-import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
 import org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
 import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
@@ -102,6 +100,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryLibrary;
 import org.graalvm.wasm.nodes.WasmCallStubNode;
 import org.graalvm.wasm.nodes.WasmDirectCallNode;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -109,7 +108,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.nodes.Node;
 
 public class Linker {
     public enum LinkState {
@@ -139,9 +139,9 @@ public class Linker {
     }
 
     /**
-     * @see #tryLinkOutsidePartialEvaluation(WasmInstance, Function)
+     * @see #tryLinkOutsidePartialEvaluation(WasmInstance, ImportValueSupplier)
      */
-    public void tryLink(WasmInstance instance, Function<ImportDescriptor, Object> imports) {
+    public void tryLink(WasmInstance instance, ImportValueSupplier imports) {
         if (instance.isNonLinked() || instance.isLinkFailed()) {
             tryLinkOutsidePartialEvaluation(instance, imports);
         } else {
@@ -170,7 +170,7 @@ public class Linker {
      *            the normal lookup from modules loaded in the context.
      */
     @CompilerDirectives.TruffleBoundary
-    private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance, Function<ImportDescriptor, Object> imports) {
+    private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance, ImportValueSupplier imports) {
         if (entryPointInstance.isLinkFailed()) {
             // If the linking of this module failed already, then throw.
             throw linkFailedError(entryPointInstance);
@@ -193,7 +193,7 @@ public class Linker {
         }
     }
 
-    private static int runLinkActions(WasmContext context, Map<String, WasmInstance> instances, Function<ImportDescriptor, Object> imports, ArrayList<Throwable> failures) {
+    private static int runLinkActions(WasmContext context, Map<String, WasmInstance> instances, ImportValueSupplier imports, ArrayList<Throwable> failures) {
         int maxStartFunctionIndex = 0;
         for (WasmInstance instance : instances.values()) {
             maxStartFunctionIndex = Math.max(maxStartFunctionIndex, instance.startFunctionIndex());
@@ -306,10 +306,12 @@ public class Linker {
     private static void checkFailures(ArrayList<Throwable> failures) {
         if (!failures.isEmpty()) {
             final Throwable first = failures.get(0);
-            if (first instanceof WasmException) {
-                throw (WasmException) first;
-            } else if (first instanceof RuntimeException) {
-                throw (RuntimeException) first;
+            if (first instanceof AbstractTruffleException e) {
+                throw e;
+            } else if (first instanceof RuntimeException e) {
+                throw e;
+            } else if (first instanceof Error e) { // includes ThreadDeath
+                throw e;
             } else {
                 throw new RuntimeException(first);
             }
@@ -317,11 +319,11 @@ public class Linker {
     }
 
     void resolveGlobalImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int globalIndex, byte valueType, byte mutability,
-                    Function<ImportDescriptor, Object> imports) {
+                    ImportValueSupplier imports) {
         final String importedGlobalName = importDescriptor.memberName();
         final String importedModuleName = importDescriptor.moduleName();
         final Runnable resolveAction = () -> {
-            final WasmGlobal externalGlobal = lookupImportObject(importDescriptor, imports, WasmGlobal.class);
+            final WasmGlobal externalGlobal = lookupImportObject(instance, importDescriptor, imports, WasmGlobal.class);
             final int globalAddress;
             final byte exportedValueType;
             final byte exportedMutability;
@@ -390,9 +392,9 @@ public class Linker {
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies.toArray(new Sym[0]), resolveAction);
     }
 
-    private static <T> T lookupImportObject(ImportDescriptor importDescriptor, Function<ImportDescriptor, Object> resolvedImports, Class<T> expectedType) {
+    private static <T> T lookupImportObject(WasmInstance instance, ImportDescriptor importDescriptor, ImportValueSupplier resolvedImports, Class<T> expectedType) {
         if (resolvedImports != null) {
-            Object resolvedImport = resolvedImports.apply(importDescriptor);
+            Object resolvedImport = resolvedImports.get(importDescriptor, instance);
             if (resolvedImport != null) {
                 return expectedType.cast(resolvedImport);
             }
@@ -411,12 +413,12 @@ public class Linker {
         }
     }
 
-    void resolveFunctionImport(WasmContext context, WasmInstance instance, WasmFunction function, Function<ImportDescriptor, Object> imports) {
+    void resolveFunctionImport(WasmContext context, WasmInstance instance, WasmFunction function, ImportValueSupplier imports) {
         final Runnable resolveAction = () -> {
             WasmModule module = instance.module();
             ImportDescriptor importDescriptor = function.importDescriptor();
             assert module.importedFunction(importDescriptor) == function;
-            Object externalFunctionInstance = lookupImportObject(importDescriptor, imports, Object.class);
+            Object externalFunctionInstance = lookupImportObject(instance, importDescriptor, imports, Object.class);
             if (externalFunctionInstance != null) {
                 if (externalFunctionInstance instanceof WasmFunctionInstance functionInstance) {
                     if (!function.type().equals(functionInstance.function().type())) {
@@ -499,14 +501,14 @@ public class Linker {
     }
 
     void resolveMemoryImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int memoryIndex, long declaredMinSize, long declaredMaxSize, boolean typeIndex64,
-                    boolean shared, Function<ImportDescriptor, Object> imports) {
+                    boolean shared, ImportValueSupplier imports) {
         final String importedModuleName = importDescriptor.moduleName();
         final String importedMemoryName = importDescriptor.memberName();
         // Special import of main module memory into WASI built-in module.
         final boolean importsMainMemory = instance.module().isBuiltin() && importedModuleName.equals("main") && importedMemoryName.equals("memory");
         final Runnable resolveAction = () -> {
             final WasmMemory importedMemory;
-            final WasmMemory externalMemory = lookupImportObject(importDescriptor, imports, WasmMemory.class);
+            final WasmMemory externalMemory = lookupImportObject(instance, importDescriptor, imports, WasmMemory.class);
             if (externalMemory != null) {
                 final int contextMemoryIndex = context.memories().registerExternal(externalMemory);
                 importedMemory = context.memories().memory(contextMemoryIndex);
@@ -798,9 +800,9 @@ public class Linker {
     }
 
     void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, byte elemType,
-                    Function<ImportDescriptor, Object> imports) {
+                    ImportValueSupplier imports) {
         final Runnable resolveAction = () -> {
-            WasmTable externalTable = lookupImportObject(importDescriptor, imports, WasmTable.class);
+            WasmTable externalTable = lookupImportObject(instance, importDescriptor, imports, WasmTable.class);
             final int tableAddress;
             if (externalTable != null) {
                 assert tableIndex == importDescriptor.targetIndex();

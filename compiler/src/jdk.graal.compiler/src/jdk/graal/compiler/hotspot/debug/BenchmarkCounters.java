@@ -39,7 +39,6 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-import jdk.graal.compiler.core.GraalServiceThread;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import jdk.graal.compiler.debug.CSVUtil;
 import jdk.graal.compiler.debug.GraalError;
@@ -468,7 +467,7 @@ public class BenchmarkCounters {
             if (ImageInfo.inImageRuntimeCode()) {
                 throw new GraalError("Use of %s is only supported in jargraal", Options.TimedDynamicCounters.getName());
             }
-            Thread thread = new GraalServiceThread(BenchmarkCounters.class.getSimpleName(), new Runnable() {
+            Thread thread = new Thread(new Runnable() {
                 long lastTime = System.nanoTime();
 
                 @Override
@@ -486,6 +485,7 @@ public class BenchmarkCounters {
                     }
                 }
             });
+            thread.setName(BenchmarkCounters.class.getSimpleName());
             thread.setDaemon(true);
             thread.setPriority(Thread.MAX_PRIORITY);
             thread.start();

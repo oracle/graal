@@ -51,6 +51,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
+import com.oracle.truffle.api.RootCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -683,4 +684,65 @@ public class RootNodeTest {
 
     }
 
+    @Test
+    public void testPrepareForCall() {
+        LazyInitializedRootNode root = new LazyInitializedRootNode();
+        assertEquals(false, root.execute(null));
+        RootCallTarget rootCallTarget = root.getCallTarget();
+        assertEquals(true, rootCallTarget.call());
+    }
+
+    static final class LazyInitializedRootNode extends RootNode {
+        private boolean isInitialized = false;
+
+        LazyInitializedRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return isInitialized;
+        }
+
+        @Override
+        protected void prepareForCall() {
+            isInitialized = true;
+        }
+    }
+
+    @Test
+    public void testPrepareForCallPreventCall() {
+        PreventCallWhenUninitializedRootNode root = new PreventCallWhenUninitializedRootNode();
+        assertEquals(false, root.execute(null));
+        root.initialize();
+        assertEquals(true, root.getCallTarget().call());
+
+        PreventCallWhenUninitializedRootNode root2 = new PreventCallWhenUninitializedRootNode();
+        assertEquals(false, root2.execute(null));
+        assertThrows(IllegalStateException.class, root2::getCallTarget);
+    }
+
+    static final class PreventCallWhenUninitializedRootNode extends RootNode {
+        private boolean isInitialized = false;
+
+        PreventCallWhenUninitializedRootNode() {
+            super(null);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return isInitialized;
+        }
+
+        public void initialize() {
+            isInitialized = true;
+        }
+
+        @Override
+        protected void prepareForCall() {
+            if (!isInitialized) {
+                throw new IllegalStateException("Root node is not ready to be used as a call target.");
+            }
+        }
+    }
 }

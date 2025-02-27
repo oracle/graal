@@ -170,7 +170,7 @@ public abstract class ThreadLocalHandshake {
     @TruffleBoundary
     protected final void processHandshake(Node location) {
         TruffleSafepointImpl s = getCurrent();
-        if (s.fastPendingSet) {
+        if (s != null && s.fastPendingSet) {
             s.processOrNotifyHandshakes(location, s.takeHandshakes(), null);
         }
     }
@@ -616,9 +616,9 @@ public abstract class ThreadLocalHandshake {
         void processOrNotifyHandshakes(Node location, List<HandshakeEntry> toProcessOrNotify, Boolean blockedNotification) {
             /*
              * blockedNotification == null -> claim and process handshakes
-             * 
+             *
              * blockedNotification == TRUE -> just notify handshakes blocked, don't claim them
-             * 
+             *
              * blockedNotification == FALSE -> just notify handshakes unblocked, don't claim them
              */
             if (toProcessOrNotify == null) {

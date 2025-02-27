@@ -1471,11 +1471,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     jlink=False,
 ))
 
+# Jars copied to the <graalvm-home>/lib/graalvm of the libgraal GraalVM that
+# are also added to the value of the `-imagecp` Native Image option when
+# building libgraal.
 libgraal_jar_distributions = [
     'sdk:NATIVEBRIDGE',
     'sdk:JNIUTILS',
-    'compiler:LIBGRAAL_LOADER',
-    'substratevm:LIBGRAAL_LIBRARY']
+    'compiler:LIBGRAAL',
+    'compiler:LIBGRAAL_LOADER']
 
 def allow_build_path_in_libgraal():
     """
@@ -1505,33 +1508,15 @@ def prevent_build_path_in_libgraal():
             return ['-H:NativeLinkerOption=-pdbaltpath:%_PDB%']
     return []
 
-libgraal_features = [
-    'com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'
-]
-
 libgraal_build_args = [
-    '--features=' + ','.join(libgraal_features),
+    '--features=jdk.graal.compiler.libgraal.LibGraalFeature',
 
-    ## Pass via JVM args opening up of packages needed for image builder early on
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.hotspot.libgraal=ALL-UNNAMED',
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.options=ALL-UNNAMED',
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.truffle=ALL-UNNAMED',
-    '-J--add-exports=jdk.graal.compiler/jdk.graal.compiler.truffle.hotspot=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.nativeimage/com.oracle.svm.core.annotate=ALL-UNNAMED',
-    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.option=ALL-UNNAMED',
-    ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
-    # LibGraalFeature implements com.oracle.svm.core.feature.InternalFeature (needed to be able to instantiate LibGraalFeature)
-    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.feature=ALL-UNNAMED',
-    # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
-    '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
-    # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
-    '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+    # Need jdk.internal.module.Modules to do exporting
+    '-J--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
 
-    '--initialize-at-build-time=jdk.graal.compiler,org.graalvm.libgraal,com.oracle.truffle',
+    # This is the truffle:TRUFFLE_COMPILER dependency that defines
+    # the Truffle compiler API.
+    '--initialize-at-build-time=com.oracle.truffle.compiler',
 
     '-H:+ReportExceptionStackTraces',
 
@@ -1541,6 +1526,8 @@ libgraal_build_args = [
     # If building on the console, use as many cores as available
     f'--parallelism={mx.cpu_count()}',
 ] if mx.is_interactive() else []) + svm_experimental_options([
+    "-H:LibGraalClassLoader=jdk.graal.compiler.libgraal.loader.HostedLibGraalClassLoader",
+    "-Dlibgraal.module.path=${.}/../../../graalvm/libgraal.jar",
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Dtruffle.TruffleRuntime=',
@@ -1548,6 +1535,7 @@ libgraal_build_args = [
     '-H:InitialCollectionPolicy=LibGraal',
 
     # Needed for initializing jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE.
+    # Remove after JDK-8346781.
     '-Djdk.vm.ci.services.aot=true',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal.
@@ -1580,6 +1568,9 @@ libgraal_build_args = [
     # Reduce image size by outlining all write barriers.
     # Benchmarking showed no performance degradation.
     '-H:+OutlineWriteBarriers',
+
+    # Libgraal must not change the process-wide locale settings.
+    '-H:-UseSystemLocale',
 ] + ([
     # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
     '-H:PageSize=64K'
@@ -1624,20 +1615,6 @@ libsvmjdwp_build_args = [
     "-H:+PreserveFramePointer",
 ]
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
-    suite=suite,
-    name='SubstrateVM JDWP Debugger Resident',
-    short_name='svmjdwp',
-    dir_name="svmjdwp",
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['SubstrateVM'],
-    builder_jar_distributions=['substratevm:SVM_JDWP_COMMON', 'substratevm:SVM_JDWP_RESIDENT'],
-    support_distributions=['substratevm:SVM_JDWP_RESIDENT_SUPPORT'],
-    stability="experimental",
-    jlink=False,
-))
-
 libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
     destination="<lib:svmjdwp>",
     jvm_library=True,
@@ -1652,7 +1629,7 @@ libsvmjdwp_lib_config = mx_sdk_vm.LibraryConfig(
 libsvmjdwp = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM JDWP Debugger',
-    short_name='svmjdwpserver',
+    short_name='svmjdwp',
     dir_name="svm",
     license_files=[],
     third_party_license_files=[],

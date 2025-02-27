@@ -95,13 +95,11 @@ import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaField;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaMethod;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedJavaType;
 import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
-import com.oracle.svm.interpreter.metadata.InterpreterUniverse;
 import com.oracle.svm.interpreter.metadata.InterpreterUniverseImpl;
 import com.oracle.svm.interpreter.metadata.MetadataUtil;
 import com.oracle.svm.interpreter.metadata.ReferenceConstant;
 import com.oracle.svm.interpreter.metadata.serialization.SerializationContext;
 import com.oracle.svm.interpreter.metadata.serialization.Serializers;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.SuppressFBWarnings;
@@ -139,26 +137,6 @@ public class DebuggerFeature implements InternalFeature {
     private Set<AnalysisMethod> methodsProcessedDuringAnalysis;
     private InvocationPlugins invocationPlugins;
     private static final String SYNTHETIC_ASSERTIONS_DISABLED_FIELD_NAME = "$assertionsDisabled";
-
-    public DebuggerFeature() {
-        if (ModuleSupport.modulePathBuild) {
-            /* SVM_JDWP_RESIDENT */
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterFeature.class, false,
-                            "jdk.internal.vm.ci", "jdk.vm.ci.code", "jdk.vm.ci.meta");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterFeature.class, false,
-                            "java.base", "jdk.internal.misc");
-
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterFeature.class, false,
-                            "org.graalvm.nativeimage", "org.graalvm.nativeimage.impl");
-
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterFeature.class, false,
-                            "org.graalvm.nativeimage.base");
-
-            /* SVM_JDWP_COMMON */
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, InterpreterUniverse.class, false,
-                            "jdk.internal.vm.ci", "jdk.vm.ci.meta");
-        }
-    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -270,7 +248,7 @@ public class DebuggerFeature implements InternalFeature {
         }
     }
 
-    private static boolean isReachable(AnalysisMethod m) {
+    static boolean isReachable(AnalysisMethod m) {
         return m.isReachable() || m.isDirectRootMethod() || m.isVirtualRootMethod();
     }
 
@@ -322,6 +300,13 @@ public class DebuggerFeature implements InternalFeature {
             SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(method);
 
             if (method.isReachable() && !methodsProcessedDuringAnalysis.contains(method)) {
+                methodsProcessedDuringAnalysis.add(method);
+                if (method.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution()) {
+                    if (subMethod.getOriginal().isNative()) {
+                        accessImpl.registerAsRoot(method, false, "compiled entry point of substitution needed for interpreter");
+                        continue;
+                    }
+                }
                 byte[] code = method.getCode();
                 if (code == null) {
                     continue;
@@ -367,7 +352,6 @@ public class DebuggerFeature implements InternalFeature {
                         }
                     }
                 }
-                methodsProcessedDuringAnalysis.add(method);
             }
         }
         supportImpl.trimForcedReferencesInImageHeap();
@@ -420,13 +404,12 @@ public class DebuggerFeature implements InternalFeature {
             if (isReachable(aMethod)) {
                 boolean needsMethodBody = InterpreterFeature.executableByInterpreter(aMethod);
                 // Test if the methods needs to be compiled for execution in the interpreter:
-                if (hMethod.hasBytecodes() && aMethod.getAnalyzedGraph() != null) {
-                    if (aMethod.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution() ||
-                                    invocationPlugins.lookupInvocation(aMethod, invocationLookupOptions) != null) {
-                        // The method is substituted, or an invocation plugin is registered
-                        SubstrateCompilationDirectives.singleton().registerForcedCompilation(hMethod);
-                        needsMethodBody = false;
-                    }
+                if (aMethod.getAnalyzedGraph() != null && //
+                                (aMethod.wrapped instanceof SubstitutionMethod subMethod && subMethod.isUserSubstitution() ||
+                                                invocationPlugins.lookupInvocation(aMethod, invocationLookupOptions) != null)) {
+                    // The method is substituted, or an invocation plugin is registered
+                    SubstrateCompilationDirectives.singleton().registerForcedCompilation(hMethod);
+                    needsMethodBody = false;
                 }
                 BuildTimeInterpreterUniverse.singleton().method(aMethod, needsMethodBody, aMetaAccess);
             }

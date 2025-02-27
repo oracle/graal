@@ -42,7 +42,4 @@ public interface ResolvedDynamicConstant extends DynamicConstant, Resolvable.Res
         }
         return Meta.box(meta, value);
     }
-
-    default void checkFail() {
-    }
 }

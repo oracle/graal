@@ -13,20 +13,25 @@ This document describes the Java Debug Wire Protocol (JDWP) debugging support fo
 
 ## Installation
 
-The JDWP feature is not included by default as part of Native Image. To use it, you need to [build GraalVM from source](https://github.com/oracle/graal/blob/master/vm/README.md) using the following [mx](https://github.com/graalvm/mx/) commands:
+The JDWP feature relies on a shared library, which is loaded only when the debugger is actively used.
+This library must be built once before building native images with JDWP enabled.
 ```shell
-mx --dynamicimports /substratevm build
-export JAVA_HOME=$(mx --dynamicimports /substratevm graalvm-home)
+native-image --macro:svmjdwp-library
 ```
+
+> Note: This is a one-time setup step. The same library will be used for all native images built with JDWP enabled.
+
+> Note: This library is stored in the GraalVM installation by default.
+> If that directory is not writable, provide an alternative destination path with `-o <path/to/writable/directory>/libsvmjdwp`, or on Windows, use `-o <path\\to\\writable\\directory>\\svmjdwp`.
 
 ## Usage
 
-> Note: JDWP debugging for Native Image is currently under development.
+> Note: JDWP debugging for Native Image is experimental.
 
-To include JDWP support in a native image, add the `--macro:svmjdwp` option to your `native-image` command:
+To include JDWP support in a native image, add the `-H:+JDWP` option to your `native-image` command:
 
 ```shell
-native-image --macro:svmjdwp ... -cp <class/path> YourApplication ...
+native-image -H:+UnlockExperimentalVMOptions -H:+JDWP ... -cp <class/path> YourApplication ...
 ```
 
 This command produces:
@@ -42,7 +47,7 @@ To launch the native image in debug mode, use the `-XX:JDWPOptions=` option, sim
 ./your-application -XX:JDWPOptions=transport=dt_socket,server=y,address=8000
 ```
 
-> Note: Debugging requires the _image-name.metadata_ file generated at build time and the `svmjdwp` shared library in the same directory as the native executable.  
+> Note: Debugging requires the _image-name.metadata_ file generated at build time and the `svmjdwp` shared library in the same directory as the native executable.
 
 For a complete list of supported JDWP options on Native Image, run:
 
@@ -71,24 +76,6 @@ Examples:
 - `-XX:JDWPOptions=...,vm.options=@argfile`: Also supports [Java Command-Line Argument Files](https://docs.oracle.com/en/java/javase/21/docs/specs/man/java.html#java-command-line-argument-files).
 
 Note: If `lib:svmjdwp` cannot be found, the application will terminate with error code 1.
-
-### Build `lib:svmjdwp`
-
-Run `mx --native-images=lib:svmjdwp build` to build the library.
-
-### Build a Native Executable with JDWP Support
-
-Add the `--macro:svmjdwp` option to the `native-image` command:
-```shell
-mx native-image --macro:svmjdwp -cp <class/path> MainClass ...
-```
-
-To build and include `lib:svmjdwp` as a build artifact, run:
-```shell
-mx --native-images=lib:svmjdwp native-image --macro:svmjdwp -cp <class/path> MainClass ...
-```
-
-Both commands produce a binary, an `<image-name>.metadata` file.
 
 ## Goals and Constraints
 

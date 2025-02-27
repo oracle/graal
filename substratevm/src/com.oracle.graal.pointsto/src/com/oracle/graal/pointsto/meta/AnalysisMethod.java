@@ -161,7 +161,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     @SuppressWarnings("unused") private volatile Object isVirtualRootMethod;
     /** Direct (special or static) invoked method registered as root. */
     @SuppressWarnings("unused") private volatile Object isDirectRootMethod;
-    private Object entryPointData;
+    private Object nativeEntryPointData;
     @SuppressWarnings("unused") private volatile Object isInvoked;
     @SuppressWarnings("unused") private volatile Object isImplementationInvoked;
     /**
@@ -475,6 +475,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
                 if (imageLayerLoader != null) {
                     imageLayerLoader.loadPriorStrengthenedGraphAnalysisElements(this);
                 }
+                ConcurrentLightHashSet.forEach(this, allImplementationsUpdater, AnalysisMethod::setReachableInCurrentLayer);
             });
         }
     }
@@ -489,12 +490,17 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, () -> onImplementationInvoked(reason));
     }
 
-    public void registerAsEntryPoint(Object newEntryPointData) {
+    /**
+     * Registers this method as a native entrypoint, i.e. a method callable from the host
+     * environment. Only direct root methods can be registered as entrypoints.
+     */
+    public void registerAsNativeEntryPoint(Object newEntryPointData) {
         assert newEntryPointData != null;
-        if (entryPointData != null && !entryPointData.equals(newEntryPointData)) {
-            throw new UnsupportedFeatureException("Method is registered as entry point with conflicting entry point data: " + entryPointData + ", " + newEntryPointData);
+        assert isDirectRootMethod() : "All native entrypoints must be direct root methods: " + this;
+        if (nativeEntryPointData != null && !nativeEntryPointData.equals(newEntryPointData)) {
+            throw new UnsupportedFeatureException("Method is registered as entry point with conflicting entry point data: " + nativeEntryPointData + ", " + newEntryPointData);
         }
-        entryPointData = newEntryPointData;
+        nativeEntryPointData = newEntryPointData;
         /* We need that to check that entry points are not invoked from other Java methods. */
         startTrackInvocations();
     }
@@ -565,12 +571,16 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     /** Get the list of all invoke locations for this method, as inferred by the static analysis. */
     public abstract List<BytecodePosition> getInvokeLocations();
 
-    public boolean isEntryPoint() {
-        return entryPointData != null;
+    /**
+     * Returns true if this method is a native entrypoint, i.e. it may be called from the host
+     * environment.
+     */
+    public boolean isNativeEntryPoint() {
+        return nativeEntryPointData != null;
     }
 
-    public Object getEntryPointData() {
-        return entryPointData;
+    public Object getNativeEntryPointData() {
+        return nativeEntryPointData;
     }
 
     public boolean isIntrinsicMethod() {
@@ -596,7 +606,10 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     /**
-     * Registers this method as a direct (special or static) root for the analysis.
+     * Registers this method as a direct (special or static) root for the analysis. Note that for
+     * `invokespecial` direct roots, this <b>does not</b> guarantee that the method is
+     * implementation invoked, as that registration is delayed until a suitable receiver type is
+     * marked as instantiated.
      */
     public boolean registerAsDirectRootMethod(Object reason) {
         getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as direct root");
@@ -908,7 +921,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     public String toString() {
         return "AnalysisMethod<" + format("%h.%n") + " -> " + wrapped.toString() + ", invoked: " + (isInvoked != null) +
                         ", implInvoked: " + (isImplementationInvoked != null) + ", intrinsic: " + (isIntrinsicMethod != null) + ", inlined: " + (isInlined != null) +
-                        (isVirtualRootMethod() ? ", virtual root" : "") + (isDirectRootMethod() ? ", direct root" : "") + (isEntryPoint() ? ", entry point" : "") + ">";
+                        (isVirtualRootMethod() ? ", virtual root" : "") + (isDirectRootMethod() ? ", direct root" : "") + (isNativeEntryPoint() ? ", entry point" : "") + ">";
     }
 
     @Override
@@ -1035,7 +1048,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         static GraphCacheEntry createLockEntry(Stage stage, GraphCacheEntry base, ReentrantLock lock) {
             return switch (stage) {
                 case BYTECODE_PARSED -> new GraphCacheEntry(lock, lock);
-                case OPTIMIZATIONS_APPLIED -> new GraphCacheEntry(base.bytecodeParsedObject, lock);
+                /*
+                 * If the stage 1 is skipped, the first stage needs to be locked too, to avoid
+                 * another thread stealing the unparsed state.
+                 */
+                case OPTIMIZATIONS_APPLIED -> base.bytecodeParsedObject == GRAPH_CACHE_UNPARSED ? new GraphCacheEntry(lock, lock) : new GraphCacheEntry(base.bytecodeParsedObject, lock);
             };
         }
 

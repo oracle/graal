@@ -43,10 +43,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Node that marks a static final field as initialized. This is basically just a store of the value
- * true in the {@link StaticFinalFieldFoldingFeature#fieldInitializationStatus} array. But we cannot
- * immediately emit a {@link StoreIndexedNode} in the bytecode parser because we do not know at the
- * time of parsing if the field can actually be optimized or not. So this node is emitted for every
- * static final field store, and then just removed if the field cannot be optimized.
+ * true in the {@link StaticFinalFieldFoldingSingleton#fieldInitializationStatus} array. But we
+ * cannot immediately emit a {@link StoreIndexedNode} in the bytecode parser because we do not know
+ * at the time of parsing if the field can actually be optimized or not. So this node is emitted for
+ * every static final field store, and then just removed if the field cannot be optimized.
  */
 @NodeInfo(size = NodeSize.SIZE_1, cycles = NodeCycles.CYCLES_1)
 public final class MarkStaticFinalFieldInitializedNode extends AbstractStateSplit implements Simplifiable {
@@ -75,10 +75,10 @@ public final class MarkStaticFinalFieldInitializedNode extends AbstractStateSpli
         }
         assert field instanceof HostedField;
 
-        StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
-        Integer fieldCheckIndex = feature.getFieldCheckIndex(field);
+        StaticFinalFieldFoldingSingleton singleton = StaticFinalFieldFoldingSingleton.singleton();
+        Integer fieldCheckIndex = singleton.getFieldCheckIndex(field);
         if (fieldCheckIndex != null) {
-            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
+            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(singleton.fieldInitializationStatus), tool.getMetaAccess(), graph());
             ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
             ConstantNode trueNode = ConstantNode.forBoolean(true, graph());
             StoreIndexedNode replacementNode = graph().add(new StoreIndexedNode(fieldInitializationStatusNode, fieldCheckIndexNode, null, null, JavaKind.Boolean, trueNode));

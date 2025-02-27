@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Node that checks if a static final field is initialized. This is basically just a load of the
- * value in the {@link StaticFinalFieldFoldingFeature#fieldInitializationStatus} array. But we
+ * value in the {@link StaticFinalFieldFoldingSingleton#fieldInitializationStatus} array. But we
  * cannot immediately emit a {@link LoadIndexedNode} in the bytecode parser because we do not know
  * at the time of parsing if the declaring class of the field is initialized at image build time.
  */
@@ -87,10 +87,10 @@ public final class IsStaticFinalFieldInitializedNode extends FixedWithNextNode i
             replacementNode = ConstantNode.forBoolean(true, graph());
 
         } else {
-            StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
-            Integer fieldCheckIndex = feature.getFieldCheckIndex(field);
+            StaticFinalFieldFoldingSingleton singleton = StaticFinalFieldFoldingSingleton.singleton();
+            Integer fieldCheckIndex = singleton.getFieldCheckIndex(field);
             assert fieldCheckIndex != null : "Field must be optimizable: " + field;
-            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
+            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(singleton.fieldInitializationStatus), tool.getMetaAccess(), graph());
             ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
 
             replacementNode = graph().addOrUniqueWithInputs(LoadIndexedNode.create(graph().getAssumptions(), fieldInitializationStatusNode, fieldCheckIndexNode,

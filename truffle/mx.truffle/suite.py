@@ -235,7 +235,6 @@ suite = {
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.21.0",
       "workingSets" : "API,Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -289,7 +288,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -324,7 +322,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -364,7 +361,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -425,7 +421,6 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -450,7 +445,6 @@ suite = {
       "annotationProcessors" : ["mx:JMH_1_21", "TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -519,7 +513,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle,Codegen",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -696,7 +689,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -719,7 +711,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -747,7 +738,6 @@ suite = {
       "workingSets" : "API,Truffle,Codegen,Test",
       "jacoco" : "exclude",
       "testProject" : True,
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -766,7 +756,6 @@ suite = {
       "javaCompliance" : "17+",
       "javadocType" : "api",
       "workingSets" : "API,Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -807,7 +796,6 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -886,7 +874,6 @@ suite = {
       "workingSets" : "Truffle,Test",
       "jacoco" : "exclude",
       "testProject" : True,
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
     "com.oracle.truffle.tck.instrumentation" : {
@@ -959,10 +946,11 @@ suite = {
           },
         },
       },
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
+    # PanamaNFILanguage itself must be 17+ so that PanamaNFILanguageProvider can be loaded without
+    # breaking the ServiceLoader which unfortunately cannot ignore newer class files (GR-59770)
     "com.oracle.truffle.nfi.backend.panama" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -970,9 +958,23 @@ suite = {
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
-      # GR-51699
+      "javaCompliance" : "17+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle",
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "com.oracle.truffle.nfi.backend.panama.jdk22" : {
+      "overlayTarget" : "com.oracle.truffle.nfi.backend.panama",
+      "multiReleaseJarVersion" : "22",
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.panama",
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "22+",
-      "forceJavac": True,
+      "forceJavac": True, # GR-51699
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       # disable SpotBugs and Jacoco as long as JDK 22 is unsupported [GR-49566]
@@ -994,7 +996,6 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -1074,7 +1075,6 @@ suite = {
       },
       "testProject" : True,
       "jacoco" : "exclude",
-      "javac.lint.overrides" : "none",
       "graalCompilerSourceEdition": "ignore",
     },
 
@@ -1368,16 +1368,12 @@ suite = {
     "com.oracle.truffle.libgraal.processor" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "dependencies" : [
-        "truffle:ANTLR4"
-      ],
       "requires" : [
         "java.compiler",
         "jdk.management"
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
-      "graalCompilerSourceEdition": "ignore",
     },
 
     "org.graalvm.shadowed.org.json" : {
@@ -1926,9 +1922,8 @@ suite = {
         ],
       },
       "subDir" : "src",
-      "javaCompliance" : "22+",
-      # GR-51699
-      "forceJavac": True,
+      "javaCompliance" : "17+",
+      "forceJavac": True, # GR-51699
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.panama",
       ],
@@ -2103,7 +2098,6 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
-      "graalCompilerSourceEdition": "ignore",
     },
 
     "TRUFFLE_SL" : {

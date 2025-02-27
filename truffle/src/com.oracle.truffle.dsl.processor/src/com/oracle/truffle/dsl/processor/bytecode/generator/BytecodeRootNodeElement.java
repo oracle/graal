@@ -385,6 +385,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         // Other root node overrides.
         this.add(createIsInstrumentable());
+        this.add(createPrepareForCall());
         this.addOptional(createPrepareForInstrumentation());
         this.addOptional(createPrepareForCompilation());
 
@@ -759,9 +760,11 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.startIf().string("node == null").end().startBlock();
             b.statement("return -1");
             b.end();
+            /*- TODO: GR-62198
             b.startAssert();
             b.startStaticCall(types.BytecodeNode, "get").string("node").end().instanceOf(abstractBytecodeNode.asType()).string(" : ").doubleQuote("invalid bytecode node passed");
             b.end();
+             */
             b.startReturn();
             b.startCall("frame.getInt").string("BCI_INDEX").end();
             b.end();
@@ -1619,6 +1622,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         } else {
             b.statement("return false");
         }
+        return ex;
+    }
+
+    private CodeExecutableElement createPrepareForCall() {
+        CodeExecutableElement ex = overrideImplementRootNodeMethod(model, "prepareForCall");
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startIf().string("!this.nodes.isParsed()").end().startBlock();
+        emitThrowIllegalStateException(ex, b, "A call target cannot be created until bytecode parsing completes. Request a call target after the parse is complete instead.");
+        b.end();
         return ex;
     }
 
@@ -4742,8 +4754,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.string("operationData.childBci");
                 b.end(2);
             } else if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                b.startStatement().startCall("afterChild");
-                b.string("true");
+                b.declaration(type(int.class), "nextBci");
+                b.startIf().string("operation.childCount <= 1").end().startBlock();
+                b.lineComment("Single child -> boxing elimination possible");
+                b.startStatement().string("nextBci = ");
                 ShortCircuitInstructionModel shortCircuitModel = operation.instruction.shortCircuitModel;
                 if (shortCircuitModel.returnConvertedBoolean()) {
                     // We emit a boolean converter instruction above. Compute its bci.
@@ -4752,6 +4766,16 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     // The child bci points to the instruction producing this last value.
                     b.string("operationData.childBci");
                 }
+                b.end();  // statement
+                b.end(); // if block
+
+                b.startElseBlock();
+                b.lineComment("Multi child -> boxing elimination not possible use short-circuit bci to disable it.");
+                b.statement("nextBci = operationData.shortCircuitBci");
+                b.end();
+
+                b.startStatement().startCall("afterChild");
+                b.string("true").string("nextBci");
                 b.end(2);
             } else {
                 b.startStatement().startCall("afterChild");
@@ -5886,6 +5910,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     b.startIf().string("this.reachable").end().startBlock();
                     b.statement("operationData.branchFixupBcis.add(bci + " + op.instruction.getImmediate("branch_target").offset() + ")");
                     b.end();
+
+                    b.statement("operationData.shortCircuitBci = bci");
 
                     // Emit the boolean check.
                     buildEmitInstruction(b, op.instruction, emitShortCircuitArguments(op.instruction));
@@ -7611,6 +7637,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         name = "CustomShortCircuitOperationData";
                         fields = List.of(//
                                         field(type(int.class), "childBci").withInitializer(UNINIT),
+                                        field(type(int.class), "shortCircuitBci").withInitializer(UNINIT),
                                         field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)"));
                         break;
                     default:
@@ -8393,6 +8420,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createGetParserImpl());
             this.add(createValidate());
             this.add(createGetLanguage());
+            this.add(createIsParsed());
 
             if (model.enableSerialization) {
                 this.add(createSerialize());
@@ -8615,6 +8643,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.typeLiteral(model.languageClass);
             b.end(2);
 
+            return ex;
+        }
+
+        public CodeExecutableElement createIsParsed() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "isParsed");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startReturn().string("nodes != null").end();
             return ex;
         }
 
@@ -13122,10 +13157,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.startDeclaration(types.Node, "prev").startCall("encapsulatingNode", "set").string("this").end().end();
                 b.startTryBlock();
 
-                b.statement("int uncachedExecuteCount = this.uncachedExecuteCount_");
-                b.startIf().string("uncachedExecuteCount <= 0 && uncachedExecuteCount != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
+                b.startIf().string("uncachedExecuteCount_ <= 1").end().startBlock();
+                b.startIf().string("uncachedExecuteCount_ != " + FORCE_UNCACHED_THRESHOLD).end().startBlock();
                 b.statement("$root.transitionToCached(frame, 0)");
                 b.startReturn().string("startState").end();
+                b.end(2);
+                b.startElseBlock();
+                b.statement("uncachedExecuteCount_--");
                 b.end();
             }
 
@@ -13551,14 +13589,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case BRANCH_BACKWARD:
                     if (tier.isUncached()) {
                         b.statement("bci = " + readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.BYTECODE_INDEX)));
-                        b.startIf().string("uncachedExecuteCount <= 1").end().startBlock();
-                        b.startIf().string("uncachedExecuteCount != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
+
+                        b.startIf().string("uncachedExecuteCount_ <= 1").end().startBlock();
+                        /*
+                         * The force uncached check is put in here so that we don't need to check it
+                         * in the common case (the else branch where we just decrement).
+                         */
+                        b.startIf().string("uncachedExecuteCount_ != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
                         b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
                         b.statement("$root.transitionToCached(frame, bci)");
                         b.statement("return ", encodeState("bci", "sp"));
-                        b.end();
-                        b.end().startElseBlock();
-                        b.statement("uncachedExecuteCount--");
+                        b.end(2);
+                        b.startElseBlock();
+                        b.statement("uncachedExecuteCount_--");
                         b.end();
                     } else {
                         emitReportLoopCount(b, CodeTreeBuilder.createBuilder().string("++loopCounter.value >= ").staticReference(loopCounter.asType(), "REPORT_LOOP_STRIDE").build(), true);
@@ -16202,21 +16245,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         }
 
         private void emitBeforeReturnProfiling(CodeTreeBuilder b) {
-            if (tier.isUncached()) {
-                b.startIf().string("uncachedExecuteCount <= 1").end().startBlock();
-                /*
-                 * The force uncached check is put in here so that we don't need to check it in the
-                 * common case (the else branch where we just decrement).
-                 */
-                b.startIf().string("uncachedExecuteCount != ", FORCE_UNCACHED_THRESHOLD).end().startBlock();
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                b.statement("$root.transitionToCached(frame, bci)");
-                b.end();
-                b.end().startElseBlock();
-                b.statement("uncachedExecuteCount--");
-                b.statement("this.uncachedExecuteCount_ = uncachedExecuteCount");
-                b.end();
-            } else {
+            if (tier.isCached()) {
                 emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
             }
         }

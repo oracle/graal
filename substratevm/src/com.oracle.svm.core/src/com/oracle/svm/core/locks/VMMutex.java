@@ -125,12 +125,8 @@ public class VMMutex extends VMLockingPrimitive {
      * Like {@linkplain #unlock()}. Only use this method if the lock was acquired via
      * {@linkplain #lockNoTransitionUnspecifiedOwner()}.
      */
-    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void unlockNoTransitionUnspecifiedOwner() {
-        /*
-         * Ideally, this method would be annotated with @Uninterruptible(callerMustBe = true) but
-         * this isn't possible because of legacy code, see GR-45784.
-         */
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
 

@@ -296,6 +296,20 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 iterations = iterations + int(self.getExtraIterationCount(iterations) * args.sf)
                 return ["-n", str(iterations)] + otherArgs
 
+    def jarPath(self, benchmark):
+        if self.version() == "23.11-MR2-chopin":
+            return os.path.join(self.dataLocation(), "launchers", benchmark + ".jar")
+        else:
+            return self.daCapoPath()
+
+    # The directory that contains `stats`, `launchers`, `dat` and `jar`
+    def dataLocation(self):
+        if self.version() == "23.11-MR2-chopin":
+            basePath = self.daCapoPath()
+            return os.path.join(basePath, "dacapo-23.11-MR2-chopin")
+        else:
+            raise "data location is only supported for version 23.11-MR2-chopin"
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         if benchmarks is None:
             raise RuntimeError(
@@ -303,12 +317,14 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         if len(benchmarks) != 1:
             raise RuntimeError(
                 "Suite runs only a single benchmark, got: {0}".format(benchmarks))
-        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
+
+        benchmark = benchmarks[0]
+        runArgs = self.postprocessRunArgs(benchmark, self.runArgs(bmSuiteArgs))
         if runArgs is None:
             return None
-        return (
-                self.vmArgs(bmSuiteArgs) + ["-jar"] + [self.daCapoPath()] +
-                [benchmarks[0]] + runArgs)
+
+        jarPath = self.jarPath(benchmark)
+        return self.vmArgs(bmSuiteArgs) + ["-jar"] + [jarPath, benchmark] + runArgs
 
     def benchmarkList(self, bmSuiteArgs):
         missing_sizes = set(self.daCapoIterations().keys()).difference(set(self.daCapoSizes().keys()))
@@ -343,7 +359,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
         if runArgs is None:
             return []
-        totalIterations = int(runArgs[runArgs.index("-n") + 1])
         return [
             # Due to the non-determinism of DaCapo version printing, we only match the name.
             mx_benchmark.StdOutRule(
@@ -363,25 +378,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                     "metric.iteration": 0
                 }
             ),
+            # The warmup metric should capture all warmup iterations (which print 'completed warmup X') in addition to
+            # the last final iteration (which prints 'PASSED').
             mx_benchmark.StdOutRule(
-                r"===== DaCapo (?P<version>[^\n]+) (?P<benchmark>[a-zA-Z0-9_]+) PASSED in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "config.vm-flags": self.shorten_vm_flags(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "warmup",
-                    "metric.value": ("<time>", int),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": totalIterations - 1
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"===== DaCapo (?P<version>[^\n]+) (?P<benchmark>[a-zA-Z0-9_]+) completed warmup [0-9]+ in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
+                r"===== DaCapo (?P<version>[^\n]+) (?P<benchmark>[a-zA-Z0-9_]+) ((completed warmup [0-9]+)|PASSED) in (?P<time>[0-9]+) msec =====", # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
                     "bench-suite": self.benchSuiteName(),
@@ -471,7 +471,7 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
         return self.availableSuiteVersions()[-1]
 
     def availableSuiteVersions(self):
-        return ["9.12-bach", "9.12-MR1-bach", "9.12-MR1-git+2baec49"]
+        return ["9.12-bach", "9.12-MR1-bach", "9.12-MR1-git+2baec49", "23.11-MR2-chopin"]
 
     def workloadSize(self):
         return "default"
@@ -486,6 +486,8 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             return "DACAPO_MR1_BACH"
         elif self.version() == "9.12-MR1-git+2baec49":  # commit from July 2018
             return "DACAPO_MR1_2baec49"
+        elif self.version() == "23.11-MR2-chopin":
+            return "DACAPO_23.11_MR2_chopin"
         else:
             return None
 

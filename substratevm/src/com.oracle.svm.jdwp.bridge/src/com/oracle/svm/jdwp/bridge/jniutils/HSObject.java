@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JNIEnv;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JObject;
 import com.oracle.svm.jdwp.bridge.jniutils.JNI.JWeak;
-import org.graalvm.word.WordFactory;
+import jdk.graal.compiler.word.Word;
 
 /**
  * Encapsulates a JNI handle to an object in the HotSpot heap. Depending on which constructor is
@@ -204,7 +204,7 @@ public class HSObject {
                 if (checkingGlobalDuplicates(allowGlobalDuplicates)) {
                     synchronized (this) {
                         delete(env);
-                        handle = WordFactory.nullPointer();
+                        handle = Word.nullPointer();
                     }
                 } else {
                     delete(env);

@@ -254,9 +254,13 @@ public class LoopUtility {
      * @param canonicalizer must not be {@code null}, will be applied incrementally to nodes whose
      *            inputs changed
      */
-    @SuppressWarnings("try")
     public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer) {
         LoopsData loopsData = context.getLoopsDataProvider().getLoopsData(graph);
+        removeObsoleteProxies(graph, context, canonicalizer, loopsData);
+    }
+
+    @SuppressWarnings("try")
+    public static void removeObsoleteProxies(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer, LoopsData loopsData) {
         final EconomicSetNodeEventListener inputChanges = new EconomicSetNodeEventListener(EnumSet.of(NodeEvent.INPUT_CHANGED));
         try (NodeEventScope s = graph.trackNodeEvents(inputChanges)) {
             for (Loop loop : loopsData.loops()) {

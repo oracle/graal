@@ -455,7 +455,7 @@ public final class ThreadLocalAllocation {
     }
 
     static void disableAndFlushForAllThreads() {
-        VMOperation.guaranteeInProgress("ThreadLocalAllocation.disableAndFlushForAllThreads");
+        VMOperation.guaranteeInProgressAtSafepoint("ThreadLocalAllocation.disableAndFlushForAllThreads");
 
         for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
             disableAndFlushForThread(vmThread);

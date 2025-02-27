@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,8 +61,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
 public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
-
-    static final int NO_BYTECODE_INDEX = -1;
 
     private final WasmContext context;
     private final WasmInstance moduleInstance;
@@ -147,7 +145,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
     @ExportMessage
     Object execute(Object[] arguments,
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached("create(NO_BYTECODE_INDEX)") WasmIndirectCallNode callNode) throws ArityException, UnsupportedTypeException {
+                    @Cached WasmIndirectCallNode callNode) throws ArityException, UnsupportedTypeException {
         TruffleContext c = getTruffleContext();
         Object prev = c.enter(self);
         try {

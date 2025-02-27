@@ -236,6 +236,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
+import com.oracle.svm.hosted.methodhandles.SVMMethodHandleWithExceptionPlugin;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
@@ -304,7 +305,6 @@ import jdk.graal.compiler.phases.tiers.MidTierContext;
 import jdk.graal.compiler.phases.tiers.Suites;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.graal.compiler.replacements.MethodHandleWithExceptionPlugin;
 import jdk.graal.compiler.replacements.NodeIntrinsificationProvider;
 import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
 import jdk.graal.compiler.word.WordOperationPlugin;
@@ -612,7 +612,7 @@ public class NativeImageGenerator {
 
                 /* Find the entry point methods in the hosted world. */
                 for (AnalysisMethod m : aUniverse.getMethods()) {
-                    if (m.isEntryPoint()) {
+                    if (m.isNativeEntryPoint()) {
                         HostedMethod found = hUniverse.lookup(m);
                         assert found != null;
                         hostedEntryPoints.add(found);
@@ -817,6 +817,14 @@ public class NativeImageGenerator {
                 try {
                     ConcurrentAnalysisAccessImpl concurrentConfig = new ConcurrentAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                     aUniverse.setConcurrentAnalysisAccess(concurrentConfig);
+                    if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+                        /*
+                         * All the field value transformers should be installed by this point.
+                         * Accessing some fields can trigger reachability callbacks, meaning the
+                         * concurrent analysis access needs to be set.
+                         */
+                        HostedImageLayerBuildingSupport.singleton().getLoader().relinkTransformedStaticFinalFieldValues();
+                    }
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
@@ -1025,7 +1033,7 @@ public class NativeImageGenerator {
                 }
                 ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 if (imageLayerLoader != null) {
-                    imageLayerLoader.executeHeapScannerTasks();
+                    imageLayerLoader.postFutureBigbangTasks();
                 }
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
                 aUniverse.setHeapVerifier(heapVerifier);
@@ -1165,6 +1173,14 @@ public class NativeImageGenerator {
             SubstitutionProcessor.extendsTheChain(substitutions, new SubstitutionProcessor[]{nativeSubstitutionProcessor});
         }
         SubstitutionProcessor.extendsTheChain(substitutions, aUniverse.getFeatureSubstitutions());
+
+        if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
+            /*
+             * The substitution processor need to be installed as some substituted types can be
+             * loaded at this point.
+             */
+            HostedImageLayerBuildingSupport.singleton().getLoader().relinkNonTransformedStaticFinalFieldValues();
+        }
 
         /*
          * System classes and fields are necessary to tell the static analysis that certain things
@@ -1371,7 +1387,7 @@ public class NativeImageGenerator {
         plugins.appendInlineInvokePlugin(replacements);
 
         if (reason.duringAnalysis()) {
-            plugins.appendNodePlugin(new MethodHandleWithExceptionPlugin(providers.getConstantReflection().getMethodHandleAccess(), false));
+            plugins.appendNodePlugin(new SVMMethodHandleWithExceptionPlugin(providers.getConstantReflection().getMethodHandleAccess(), false));
         }
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
@@ -1683,7 +1699,7 @@ public class NativeImageGenerator {
      */
     protected void checkForInvalidCallsToEntryPoints() {
         for (AnalysisMethod method : aUniverse.getMethods()) {
-            if (method.isEntryPoint()) {
+            if (method.isNativeEntryPoint()) {
                 Set<AnalysisMethod> invocations = method.getCallers();
                 if (invocations.size() > 0) {
                     String name = method.format("%H.%n(%p)");

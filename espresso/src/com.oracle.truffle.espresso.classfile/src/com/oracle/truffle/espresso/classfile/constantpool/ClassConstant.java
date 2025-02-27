@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.descriptors.Name;
 import com.oracle.truffle.espresso.classfile.descriptors.Symbol;
-import com.oracle.truffle.espresso.classfile.descriptors.Validation;
 import com.oracle.truffle.espresso.classfile.descriptors.ValidationException;
 
 /**
@@ -38,10 +37,6 @@ public interface ClassConstant extends PoolConstant {
 
     static ImmutableClassConstant create(int classNameIndex) {
         return new Index(classNameIndex);
-    }
-
-    static ImmutableClassConstant withString(Symbol<Name> name) {
-        return new WithString(name);
     }
 
     @Override
@@ -91,32 +86,6 @@ public interface ClassConstant extends PoolConstant {
         @Override
         public void dump(ByteBuffer buf) {
             buf.putChar(classNameIndex);
-        }
-    }
-
-    final class WithString implements ImmutableClassConstant, Resolvable {
-        private final Symbol<Name> name;
-
-        WithString(Symbol<Name> name) {
-            this.name = name;
-        }
-
-        @Override
-        public Symbol<Name> getName(ConstantPool pool) {
-            return name;
-        }
-
-        @Override
-        public void validate(ConstantPool pool) throws ValidationException {
-            // No UTF8 entry: cannot cache validation.
-            if (!Validation.validModifiedUTF8(name) || !Validation.validClassNameEntry(name)) {
-                throw ValidationException.raise("Invalid class name entry: " + name);
-            }
-        }
-
-        @Override
-        public void dump(ByteBuffer buf) {
-            buf.putChar((char) 0);
         }
     }
 }

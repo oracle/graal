@@ -88,9 +88,9 @@ public class GlobalMetrics {
     }
 
     static Path generateFileName(String metricsFile) {
-        long isolateID = IsolateUtil.getIsolateID();
         Path path;
-        if (isolateID != 0L) {
+        if (IsolateUtil.getIsolateAddress() != 0L) {
+            long isolateID = IsolateUtil.getIsolateID();
             int lastDot = metricsFile.lastIndexOf('.');
             if (lastDot != -1) {
                 path = Paths.get(metricsFile.substring(0, lastDot) + '@' + isolateID + metricsFile.substring(lastDot));

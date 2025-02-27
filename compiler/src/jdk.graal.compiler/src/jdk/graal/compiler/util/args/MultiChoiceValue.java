@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,8 @@ public class MultiChoiceValue<T> extends OptionValue<T> {
     @Override
     public boolean parseValue(String arg) throws InvalidArgumentException {
         if (arg == null) {
-            throw new InvalidArgumentException(getName(), "no value provided");
+            value = defaultValue;
+            return false;
         }
         value = choices.get(arg);
         if (value == null) {
@@ -77,20 +78,22 @@ public class MultiChoiceValue<T> extends OptionValue<T> {
     }
 
     @Override
-    public String getUsage() {
-        StringBuilder sb = new StringBuilder();
-        sb.append('{');
+    public void printUsage(PrintWriter writer, boolean detailed) {
+        super.printUsage(writer, false);
+        if (!detailed) {
+            return;
+        }
+        writer.append(" {");
         String sep = "";
         for (String choice : choices.getKeys()) {
-            sb.append(sep);
-            sb.append(choice);
+            writer.append(sep);
+            writer.append(choice);
             sep = ",";
         }
-        sb.append('}');
+        writer.append('}');
         if (defaultChoice != null) {
-            sb.append(String.format(" (default: %s)", defaultChoice));
+            writer.append(String.format(" (default: \"%s\")", defaultChoice));
         }
-        return sb.toString();
     }
 
     @Override

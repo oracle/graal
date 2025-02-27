@@ -372,14 +372,14 @@ def resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True):
     if use_optimized_runtime:
         enterprise_dist = _get_enterprise_truffle()
         if enterprise_dist and use_enterprise:
-            return ['graal-enterprise:TRUFFLE_ENTERPRISE']
+            return ['truffle-enterprise:TRUFFLE_ENTERPRISE']
         else:
             return ['truffle:TRUFFLE_RUNTIME']
     else:
         return ['truffle:TRUFFLE_API']
 
 def _get_enterprise_truffle():
-    return mx.distribution('graal-enterprise:TRUFFLE_ENTERPRISE', False)
+    return mx.distribution('truffle-enterprise:TRUFFLE_ENTERPRISE', False)
 
 def resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True):
     return ['TRUFFLE_SL', 'TRUFFLE_SL_LAUNCHER', 'TRUFFLE_NFI_LIBFFI'] + resolve_truffle_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
@@ -680,7 +680,7 @@ def sl_jvm_gate_tests():
     _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=False, supports_optimization=False)
     _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=True, supports_optimization=False)
 
-    _sl_jvm_comiler_on_upgrade_module_path_gate_tests(mx.get_jdk(tag='default'))
+    _sl_jvm_compiler_on_upgrade_module_path_gate_tests(mx.get_jdk(tag='default'))
 
 
 def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
@@ -730,7 +730,7 @@ def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
         _run_sl_tests(run_jvm_no_enterprise_jvmci_disabled)
 
 
-def _sl_jvm_comiler_on_upgrade_module_path_gate_tests(jdk):
+def _sl_jvm_compiler_on_upgrade_module_path_gate_tests(jdk):
     if mx_sdk.GraalVMJDKConfig.is_graalvm(jdk.home) or mx_sdk.GraalVMJDKConfig.is_libgraal_jdk(jdk.home):
         # Ignore tests for Truffle LTS gate using GraalVM as a base JDK
         mx.log(f'Ignoring SL JVM Optimized with Compiler on Upgrade Module Path on {jdk.home} because JDK is GraalVM')
@@ -739,6 +739,7 @@ def _sl_jvm_comiler_on_upgrade_module_path_gate_tests(jdk):
     vm_args = [
         '-XX:+UnlockExperimentalVMOptions',
         '-XX:+EnableJVMCI',
+        '-Djdk.graal.CompilationFailureAction=ExitVM',
         f'--upgrade-module-path={compiler.classpath_repr()}',
     ]
 
@@ -1465,7 +1466,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
 
         if build_for_current_platform:
             # 2. Register a project building the isolate library
-            isolate_deps = [language_pom_distribution, 'graal-enterprise:TRUFFLE_ENTERPRISE']
+            isolate_deps = [language_pom_distribution, 'truffle-enterprise:TRUFFLE_ENTERPRISE']
             build_library = mx_sdk_vm_impl.PolyglotIsolateLibrary(language_suite, language_id, isolate_deps, isolate_build_options)
             register_project(build_library)
 
@@ -1554,7 +1555,7 @@ def register_polyglot_isolate_distributions(language_suite, register_project, re
             distDependencies=[],
             runtimeDependencies=[
                 resources_dist_name,
-                'graal-enterprise:TRUFFLE_ENTERPRISE',
+                'truffle-enterprise:TRUFFLE_ENTERPRISE',
             ],
             theLicense=sorted(list(licenses)),
             **attrs)

@@ -417,7 +417,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         void append(TruffleStringBuilder sb, int codepoint, int repeat, boolean allowUTF16Surrogates,
                         @Cached AppendCodePointIntlNode appendCodePointIntlNode) {
             if (repeat < 1) {
-                throw InternalErrors.illegalArgument("number of repetitions must be at least 1");
+                throw InternalErrors.illegalArgument("number of repetitions must be at least 1 (was: %d)", repeat);
             }
             appendCodePointIntlNode.execute(this, sb, codepoint, repeat, allowUTF16Surrogates);
         }

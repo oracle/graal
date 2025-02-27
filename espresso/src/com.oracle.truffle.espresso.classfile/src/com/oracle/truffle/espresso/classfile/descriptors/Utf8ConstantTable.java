@@ -22,33 +22,116 @@
  */
 package com.oracle.truffle.espresso.classfile.descriptors;
 
+import java.lang.ref.WeakReference;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.constantpool.Utf8Constant;
 
 /**
  * Global Utf8Constant table.
+ *
+ * <p>
+ * A proper implementation would require an ephemeron e.g. consider the reference to Utf8Constant
+ * value strong iff the Symbol key is strongly reachable. But ephemerons cannot be implemented in
+ * Java. In this particular case, Utf8Constant(s) are strongly referenced by constant pools of
+ * loaded classes. Ut8Constants are likely to stay alive for a long time, unless classes are
+ * unloaded; which should be rare. In case the Utf8Constant value is collected, it is just
+ * re-created again since it can be re-constructed from the key/symbol.
  */
 public final class Utf8ConstantTable {
     private final Symbols symbols;
+    private final WeakHashMap<ByteSequence, WeakReference<Utf8Constant>> weakMap;
+    private final ConcurrentHashMap<ByteSequence, Utf8Constant> strongMap;
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
-    // TODO(peterssen): Set generous initial capacity.
-    private final ConcurrentHashMap<Symbol<?>, Utf8Constant> cache = new ConcurrentHashMap<>();
-
-    public Utf8ConstantTable(Symbols symbols) {
+    public Utf8ConstantTable(Symbols symbols, int initialCapacity) {
         this.symbols = symbols;
+        this.weakMap = new WeakHashMap<>(initialCapacity);
+        this.strongMap = new ConcurrentHashMap<>(initialCapacity);
     }
 
     @TruffleBoundary
-    public Utf8Constant getOrCreate(ByteSequence bytes) {
+    Utf8Constant lookup(ByteSequence byteSequence) {
+        // First check: Lock-free access to strongMap (common case)
+        Utf8Constant result = strongMap.get(byteSequence);
+        if (result != null) {
+            return result;
+        }
 
-        return cache.computeIfAbsent(symbols.symbolify(bytes), new Function<Symbol<?>, Utf8Constant>() {
-            @Override
-            public Utf8Constant apply(Symbol<?> value) {
-                return new Utf8Constant(value);
+        lock.readLock().lock();
+        try {
+            // Recheck strongMap under the lock, in case the symbol was promoted from weak to
+            // strong.
+            result = strongMap.get(byteSequence);
+            if (result != null) {
+                return result;
             }
-        });
+            WeakReference<Utf8Constant> weakRef = weakMap.get(byteSequence);
+            if (weakRef != null) {
+                result = weakRef.get();
+            }
+            return result;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    @TruffleBoundary
+    public Utf8Constant getOrCreate(ByteSequence byteSequence, boolean ensureStrongReference) {
+        // Lock-free fast path, common symbols are usually strongly referenced e.g.
+        // Ljava/lang/Object;
+        Utf8Constant result = strongMap.get(byteSequence);
+        if (result != null) {
+            return result;
+        }
+
+        Symbol<?> symbol = symbols.getOrCreate(byteSequence, ensureStrongReference);
+
+        lock.writeLock().lock();
+        try {
+            // Recheck strongMap under lock.
+            result = strongMap.get(symbol);
+            if (result != null) {
+                return result;
+            }
+
+            // Optimization to reduce the number of weak references, if the associated symbol is
+            // already strongly-referenced, then the Utf8Constant must be also strongly-referenced.
+            if (ensureStrongReference || !symbols.isWeak(symbol)) {
+                WeakReference<Utf8Constant> weakRef = weakMap.remove(symbol);
+                if (weakRef != null) {
+                    // Promote it to strong reference.
+                    result = weakRef.get();
+                    // The weak reference may have been collected.
+                    if (result != null) {
+                        var previous = strongMap.put(symbol, result);
+                        assert previous == null;
+                        return result;
+                    }
+                }
+                result = new Utf8Constant(symbol);
+                strongMap.put(symbol, result);
+                return result;
+            } else {
+                WeakReference<Utf8Constant> weakRef = weakMap.get(symbol);
+                if (weakRef != null) {
+                    // Already a weak reference.
+                    result = weakRef.get();
+                    // The weak reference may have been collected.
+                    if (result != null) {
+                        return result;
+                    }
+                }
+                result = new Utf8Constant(symbol);
+                weakMap.put(symbol, new WeakReference<>(result));
+                return result;
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 }

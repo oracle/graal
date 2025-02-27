@@ -61,6 +61,10 @@ public class TruffleTestAssumptions {
         Assume.assumeTrue(isOptimizingRuntime());
     }
 
+    public static void assumeEnterpriseRuntime() {
+        Assume.assumeTrue(isEnterpriseRuntime());
+    }
+
     public static void assumeFallbackRuntime() {
         Assume.assumeFalse(isOptimizingRuntime());
     }

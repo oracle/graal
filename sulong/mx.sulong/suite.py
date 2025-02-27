@@ -258,9 +258,6 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "jacoco" : "exclude",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
     },
     "com.oracle.truffle.llvm.tests.harness" : {
       "subDir" : "tests",
@@ -322,9 +319,12 @@ suite = {
         "sdk:POLYGLOT_TCK",
       ],
       "buildDependencies" : [
-        "NATIVE_MODE_SUPPORT",
         "SULONG_TCK_NATIVE",
       ],
+      "os" : {
+        "windows" : {"ignore": "Native mode is not supported on Windows"},
+        "<others>" : {},
+      },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle, LLVM",
@@ -450,9 +450,6 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
     },
 
     "com.oracle.truffle.llvm.nativemode.resources" : {
@@ -494,10 +491,7 @@ suite = {
       "license" : "BSD-new",
       "jacoco" : "include",
       # Using finalizer in signals implementation. GR-7018
-      # "javac.lint.overrides" : "-deprecation",
-      # "JDK-8332744: [REDO] 'internal proprietary API' diagnostics if --system is configured to an earlier JDK version"
-      # is a fatal error with -Werror, can only be suppressed with `-Xlint:none`.
-      "javac.lint.overrides" : "none",
+      "javac.lint.overrides" : "-deprecation",
     },
 
     "com.oracle.truffle.llvm.parser" : {

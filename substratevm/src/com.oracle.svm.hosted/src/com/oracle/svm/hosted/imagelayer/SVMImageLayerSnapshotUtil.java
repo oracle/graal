@@ -151,26 +151,31 @@ public class SVMImageLayerSnapshotUtil {
             for (String className : imageClassLoader.classLoaderSupport.classes(svmURI)) {
                 try {
                     Class<?> clazz = imageClassLoader.forName(className);
-
-                    String packageName = clazz.getPackageName();
-                    if (!shouldScanPackage(packageName)) {
-                        continue;
-                    }
-
-                    if (!shouldScanClass(clazz)) {
-                        continue;
-                    }
-
-                    /* The ObjectCopier needs to access the static fields by reflection */
-                    Module module = clazz.getModule();
-                    ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, module.getName(), packageName);
-
-                    ObjectCopier.addStaticFinalObjectFields(clazz, externalValueFields);
+                    externalValueFields.addAll(getStaticFinalObjectFields(clazz));
                 } catch (ClassNotFoundException e) {
                     throw AnalysisError.shouldNotReachHere("The class %s from the modulePath %s was not found".formatted(className, svmURI.getPath()), e);
                 }
             }
         }
+    }
+
+    public List<Field> getStaticFinalObjectFields(Class<?> clazz) {
+        String packageName = clazz.getPackageName();
+        if (!shouldScanPackage(packageName)) {
+            return List.of();
+        }
+
+        if (!shouldScanClass(clazz)) {
+            return List.of();
+        }
+
+        /* The ObjectCopier needs to access the static fields by reflection */
+        Module module = clazz.getModule();
+        if (module.getName() != null) {
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, ObjectCopier.class, false, module.getName(), packageName);
+        }
+
+        return ObjectCopier.getStaticFinalObjectFields(clazz);
     }
 
     protected Set<URI> getBuilderLocations() {
@@ -322,6 +327,19 @@ public class SVMImageLayerSnapshotUtil {
         return method.getSignature().getReturnType().toJavaName(true) + " " + method.getQualifiedName();
     }
 
+    public static void forcePersistConstant(ImageHeapConstant imageHeapConstant) {
+        AnalysisUniverse universe = imageHeapConstant.getType().getUniverse();
+        universe.getHeapScanner().markReachable(imageHeapConstant, ObjectScanner.OtherReason.PERSISTED);
+
+        imageHeapConstant.getType().registerAsTrackedAcrossLayers(imageHeapConstant);
+        /* If this is a Class constant persist the corresponding type. */
+        ConstantReflectionProvider constantReflection = universe.getBigbang().getConstantReflectionProvider();
+        AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(imageHeapConstant);
+        if (typeFromClassConstant != null) {
+            typeFromClassConstant.registerAsTrackedAcrossLayers(imageHeapConstant);
+        }
+    }
+
     public static class SVMGraphEncoder extends ObjectCopier.Encoder {
         @SuppressWarnings("this-escape")
         public SVMGraphEncoder(Map<Object, Field> externalValues) {
@@ -407,18 +425,7 @@ public class SVMImageLayerSnapshotUtil {
         @Override
         public void encode(ObjectCopier.Encoder encoder, ObjectCopierOutputStream stream, Object obj) throws IOException {
             ImageHeapConstant imageHeapConstant = (ImageHeapConstant) obj;
-
-            AnalysisUniverse universe = imageHeapConstant.getType().getUniverse();
-            universe.getHeapScanner().markReachable(imageHeapConstant, ObjectScanner.OtherReason.PERSISTED);
-
-            imageHeapConstant.getType().registerAsTrackedAcrossLayers(imageHeapConstant);
-            /* If this is a Class constant persist the corresponding type. */
-            ConstantReflectionProvider constantReflection = universe.getBigbang().getConstantReflectionProvider();
-            AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(imageHeapConstant);
-            if (typeFromClassConstant != null) {
-                typeFromClassConstant.registerAsTrackedAcrossLayers(imageHeapConstant);
-            }
-
+            forcePersistConstant(imageHeapConstant);
             stream.writePackedUnsignedInt(ImageHeapConstant.getConstantID(imageHeapConstant));
         }
 

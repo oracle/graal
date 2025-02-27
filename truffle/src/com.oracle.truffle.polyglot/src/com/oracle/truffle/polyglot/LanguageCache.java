@@ -62,8 +62,6 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.home.HomeFinder;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -273,7 +271,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
             if (loader == null) {
                 continue;
             }
-            loadProviders(loader).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> loadLanguageImpl(p, caches, optionalResources));
+
+            for (TruffleLanguageProvider provider : ServiceLoader.load(TruffleLanguageProvider.class, loader)) {
+                if (supplier.accepts(provider.getClass())) {
+                    loadLanguageImpl(provider, caches, optionalResources);
+                }
+            }
         }
 
         Map<String, LanguageCache> idToCache = new LinkedHashMap<>();
@@ -297,10 +300,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
          */
         maxStaticIndex = Math.max(maxStaticIndex, languageId);
         return idToCache;
-    }
-
-    private static Stream<? extends TruffleLanguageProvider> loadProviders(ClassLoader loader) {
-        return StreamSupport.stream(ServiceLoader.load(TruffleLanguageProvider.class, loader).spliterator(), false);
     }
 
     private static boolean hasSameCodeSource(LanguageCache first, LanguageCache second) {

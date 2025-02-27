@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,7 +112,7 @@ public final class RequestedJDWPEvents {
                 methodInfo.addSuspendPolicy(suspendPolicy);
                 eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
                 for (KlassRef klass : filter.getKlassRefPatterns()) {
-                    for (MethodRef method : klass.getDeclaredMethodRefs()) {
+                    for (MethodRef method : klass.getDeclaredMethods()) {
                         method.addMethodHook(methodInfo);
                         methodInfo.addMethod(method);
                     }
@@ -327,7 +327,7 @@ public final class RequestedJDWPEvents {
                     case METHOD_EXIT:
                         MethodBreakpointInfo methodInfo = (MethodBreakpointInfo) requestFilter.getBreakpointInfo();
                         for (MethodRef method : methodInfo.getMethods()) {
-                            method.removedMethodHook(requestFilter.getRequestId());
+                            method.removeMethodHook(requestFilter.getRequestId());
                         }
                         break;
                     case BREAKPOINT:

@@ -452,6 +452,9 @@ public class AnalysisUniverse implements Universe {
                 AnalysisMethod override = subtype.resolveConcreteMethod(method, null);
                 if (override != null && !override.equals(method)) {
                     ConcurrentLightHashSet.addElement(method, AnalysisMethod.allImplementationsUpdater, override);
+                    if (method.reachableInCurrentLayer()) {
+                        override.setReachableInCurrentLayer();
+                    }
                 }
             }
         }
@@ -595,6 +598,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     public void registerUnsafeAccessedStaticField(AnalysisField field) {
+        AnalysisError.guarantee(!field.getType().isWordType(), "static Word fields cannot be unsafe accessed %s", this);
         unsafeAccessedStaticFields.put(field, true);
     }
 

@@ -45,10 +45,9 @@ public interface ParsingContext {
 
     Symbol<Name> getOrCreateName(ByteSequence byteSequence);
 
-    // symbolify(Types.nameToType(byteSequence))
     Symbol<Type> getOrCreateTypeFromName(ByteSequence byteSequence);
 
-    Utf8Constant getOrCreateUtf8Constant(ByteSequence bytes);
+    Utf8Constant getOrCreateUtf8Constant(ByteSequence byteSequence);
 
     interface Logger {
         void log(String message);

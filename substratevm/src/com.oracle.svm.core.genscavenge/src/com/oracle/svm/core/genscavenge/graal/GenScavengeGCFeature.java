@@ -28,8 +28,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 
 import com.oracle.svm.core.GCRelatedMXBeans;
 import com.oracle.svm.core.SubstrateGCOptions;
@@ -42,6 +44,7 @@ import com.oracle.svm.core.genscavenge.GenScavengeMemoryPoolMXBeans;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapVerifier;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
+import com.oracle.svm.core.genscavenge.PinnedObjectSupportImpl;
 import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
@@ -97,6 +100,7 @@ class GenScavengeGCFeature implements InternalFeature {
         ImageSingletons.add(Heap.class, new HeapImpl());
         ImageSingletons.add(ImageHeapInfo.class, new ImageHeapInfo());
         ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
+        ImageSingletons.add(PinnedObjectSupport.class, new PinnedObjectSupportImpl());
 
         if (ImageSingletons.contains(PerfManager.class)) {
             ImageSingletons.lookup(PerfManager.class).register(createPerfData());
@@ -128,6 +132,9 @@ class GenScavengeGCFeature implements InternalFeature {
         if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
             ImageSingletons.add(CommittedMemoryProvider.class, createCommittedMemoryProvider());
         }
+
+        // If building libgraal, set system property showing gc algorithm
+        SystemPropertiesSupport.singleton().setLibGraalRuntimeProperty("gc", Heap.getHeap().getGC().getName());
 
         // Needed for the barrier set.
         access.registerAsUsed(Object[].class);

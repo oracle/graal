@@ -60,16 +60,16 @@ public final class Local implements LocalRef {
     private final Symbol<Name> name;
     private final Symbol<Type> type;
     private final Symbol<?> typeSignature;
-    private final int startBci;
-    private final int endBci;
-    private final int slot;
+    private final char startBci;
+    private final char endBci;
+    private final char slot;
 
     public Local(Symbol<Name> name, Symbol<Type> type, Symbol<?> typeSignature, int startBci, int endBci, int slot) {
         assert type != null || typeSignature != null;
         this.name = name;
-        this.startBci = startBci;
-        this.endBci = endBci;
-        this.slot = slot;
+        this.startBci = (char) startBci;
+        this.endBci = (char) endBci;
+        this.slot = (char) slot;
         this.type = type;
         this.typeSignature = typeSignature;
     }

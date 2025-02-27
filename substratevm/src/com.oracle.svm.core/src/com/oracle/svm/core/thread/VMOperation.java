@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -117,7 +119,8 @@ public abstract class VMOperation {
     }
 
     /**
-     * Returns true if the current thread is currently executing a VM operation.
+     * Returns true if the current thread is in the middle of executing a VM operation. Note that
+     * this includes VM operations that do not need a safepoint.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInProgress() {
@@ -126,7 +129,7 @@ public abstract class VMOperation {
     }
 
     /**
-     * Returns true if the current thread is currently executing a VM operation that causes a
+     * Returns true if the current thread is in the middle of executing a VM operation that needs a
      * safepoint.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -135,31 +138,36 @@ public abstract class VMOperation {
         return isInProgress(inProgress) && inProgress.operation.getCausesSafepoint();
     }
 
+    /**
+     * Returns true if the current thread is in the middle of executing a VM operation. Note that
+     * this includes VM operations that do not need a safepoint.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isInProgress(OpInProgress inProgress) {
         return inProgress.getExecutingThread() == CurrentIsolate.getCurrentThread();
     }
 
+    /** Returns true if the current thread is in the middle of performing a garbage collection. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isGCInProgress() {
         VMOperation op = VMOperationControl.get().getInProgress().getOperation();
         return op != null && op.isGC();
     }
 
-    /** Check that there is a VMOperation in progress. */
-    public static void guaranteeInProgress(String message) {
-        if (!isInProgress()) {
-            throw VMError.shouldNotReachHere(message);
-        }
-    }
-
-    /** Check that there is not a VMOperation in progress. */
+    /**
+     * Throws a fatal error if the current thread is in the middle of executing a VM operation. Note
+     * that this includes VM operations that do not need a safepoint.
+     */
     public static void guaranteeNotInProgress(String message) {
         if (isInProgress()) {
             throw VMError.shouldNotReachHere(message);
         }
     }
 
+    /**
+     * Verifies that the current thread is in the middle of executing a VM operation that needs a
+     * safepoint.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guaranteeInProgressAtSafepoint(String message) {
         if (!isInProgressAtSafepoint()) {
@@ -167,6 +175,8 @@ public abstract class VMOperation {
         }
     }
 
+    /** Verifies that the current thread is in the middle of performing a garbage collection. */
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static void guaranteeGCInProgress(String message) {
         if (!isGCInProgress()) {
             throw VMError.shouldNotReachHere(message);

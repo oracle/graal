@@ -188,7 +188,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                         nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT)));
         ValueNode value = canonical(object, stamp, (GuardingNode) guard, null);
         if (value == null) {
-            value = new PiNode(object, stamp);
+            value = new PiNode(object, stamp, guard);
         }
         b.push(JavaKind.Object, b.append(value));
         return true;

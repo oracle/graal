@@ -598,7 +598,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                MethodRef[] declaredMethods = klass.getDeclaredMethodRefs();
+                MethodRef[] declaredMethods = klass.getDeclaredMethods();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
                 for (MethodRef method : declaredMethods) {
@@ -669,7 +669,7 @@ public final class JDWP {
                 }
 
                 String sourceFile = null;
-                MethodRef[] methods = klass.getDeclaredMethodRefs();
+                MethodRef[] methods = klass.getDeclaredMethods();
                 for (MethodRef method : methods) {
                     // we need only look at one method to find
                     // the source file of the declaring class
@@ -889,7 +889,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                MethodRef[] declaredMethods = klass.getDeclaredMethodRefs();
+                MethodRef[] declaredMethods = klass.getDeclaredMethods();
                 int numDeclaredMethods = declaredMethods.length;
                 reply.writeInt(numDeclaredMethods);
                 for (MethodRef method : declaredMethods) {
@@ -1012,7 +1012,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                ModuleRef module = klass.getModule();
+                ModuleRef module = klass.module();
                 long moduleID = context.getIds().getIdAsLong(module);
                 reply.writeLong(moduleID);
 
@@ -2126,7 +2126,14 @@ public final class JDWP {
                 }
 
                 CallFrame[] frames = suspendedInfo.getStackFrames();
+                if (frames.length == 0 && startFrame == 0 && (requestedLength == -1 || requestedLength == 0)) {
+                    // in this special case we need to return an empty result
+                    controller.fine(() -> "returning zero frames for thread: " + controller.getContext().getThreadName(thread));
+                    reply.writeInt(0);
+                    return new CommandResult(reply);
+                }
                 if (startFrame < 0 || startFrame >= frames.length) {
+                    controller.fine(() -> "Invalid frame index requested when actual frames length is " + frames.length);
                     reply.errorCode(ErrorCodes.INVALID_INDEX);
                     return new CommandResult(reply);
                 }

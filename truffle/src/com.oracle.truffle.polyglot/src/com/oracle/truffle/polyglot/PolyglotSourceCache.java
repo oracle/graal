@@ -76,13 +76,13 @@ final class PolyglotSourceCache {
         this.sourceCacheListener = listener;
     }
 
-    CallTarget parseCached(PolyglotLanguageContext context, Source source, String[] argumentNames) {
+    CallTarget parseCached(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames) {
         CallTarget target;
         if (source.isCached()) {
             Cache strong = this.strongCache;
             boolean useStrong = context.getEngine().storeEngine;
             if (useStrong || !strong.isEmpty()) {
-                target = strong.lookup(context, source, argumentNames, useStrong);
+                target = strong.lookup(origin, context, source, argumentNames, useStrong);
                 if (target != null) {
                     // target found in strong cache
                     return target;
@@ -90,13 +90,13 @@ final class PolyglotSourceCache {
                     // fallback to weak cache.
                 }
             }
-            target = weakCache.lookup(context, source, argumentNames, true);
+            target = weakCache.lookup(origin, context, source, argumentNames, true);
         } else {
             long parseStart = 0;
             if (sourceCacheListener != null) {
                 parseStart = System.currentTimeMillis();
             }
-            target = parseImpl(context, argumentNames, source);
+            target = parseImpl(origin, context, argumentNames, source);
             if (sourceCacheListener != null) {
                 sourceCacheListener.onCacheMiss(source, target, SourceCacheListener.CacheType.UNCACHED, parseStart);
             }
@@ -113,9 +113,9 @@ final class PolyglotSourceCache {
         WeakCache.cleanupStaleEntries(weakCache.deadSources, sourceCacheListener);
     }
 
-    private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
+    private static CallTarget parseImpl(ParseOrigin origin, PolyglotLanguageContext context, String[] argumentNames, Source source) {
         validateSource(context, source);
-        CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, context.parseSourceOptions(source, null), null, argumentNames);
+        CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, context.getLanguageInstance().parseSourceOptions(origin, source, null), null, argumentNames);
         if (parsedTarget == null) {
             throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));
         }
@@ -243,11 +243,32 @@ final class PolyglotSourceCache {
         return language;
     }
 
+    enum ParseOrigin {
+
+        /**
+         * The parsing request originates from an internal language parse request. E.g.
+         * TruffleLanguage.Env#parseInternal.
+         */
+        LANGUAGE,
+
+        /**
+         * The parsing request originates from an internal instrument parse request. E.g.
+         * TruffleInstrument.Env#parseInternal.
+         */
+        INSTRUMENT,
+
+        /**
+         * The parsing request originates from the embedder, like with Context.eval.
+         */
+        EMBEDDING
+
+    }
+
     private abstract static class Cache {
 
         abstract boolean isEmpty();
 
-        abstract CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse);
+        abstract CallTarget lookup(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse);
 
         abstract void listSources(PolyglotImpl polyglot, Collection<Object> source);
     }
@@ -268,7 +289,7 @@ final class PolyglotSourceCache {
         private final ConcurrentHashMap<SourceKey, StrongCacheValue> sourceCache = new ConcurrentHashMap<>();
 
         @Override
-        CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
+        CallTarget lookup(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
             SourceKey key = new SourceKey(source, argumentNames);
             StrongCacheValue value = sourceCache.get(key);
             if (value == null) {
@@ -278,7 +299,7 @@ final class PolyglotSourceCache {
                         parseStart = System.currentTimeMillis();
                     }
                     try {
-                        value = new StrongCacheValue(parseImpl(context, argumentNames, source));
+                        value = new StrongCacheValue(parseImpl(origin, context, argumentNames, source));
                         StrongCacheValue prevValue = sourceCache.putIfAbsent(key, value);
                         if (prevValue != null) {
                             value = prevValue;
@@ -330,7 +351,7 @@ final class PolyglotSourceCache {
         }
 
         @Override
-        CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
+        CallTarget lookup(ParseOrigin origin, PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse) {
             cleanupStaleEntries(deadSources, sourceCacheListener);
             Object sourceId = EngineAccessor.SOURCE.getSourceIdentifier(source);
             Source sourceValue = EngineAccessor.SOURCE.copySource(source);
@@ -343,7 +364,7 @@ final class PolyglotSourceCache {
                         parseStart = System.currentTimeMillis();
                     }
                     try {
-                        value = new WeakCacheValue(parseImpl(context, argumentNames, sourceValue), sourceValue);
+                        value = new WeakCacheValue(parseImpl(origin, context, argumentNames, sourceValue), sourceValue);
                         WeakCacheValue prev = sourceCache.putIfAbsent(ref, value);
                         if (prev != null) {
                             /*
