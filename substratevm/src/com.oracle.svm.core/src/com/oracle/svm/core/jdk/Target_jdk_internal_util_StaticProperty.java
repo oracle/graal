@@ -136,8 +136,7 @@ final class Target_jdk_internal_util_StaticProperty {
 
     @Substitute
     private static String javaHome() {
-        /* Native images do not have a Java home directory. */
-        return null;
+        return SystemPropertiesSupport.singleton().savedProperties.get("java.home");
     }
 
     @Substitute
