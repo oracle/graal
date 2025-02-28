@@ -299,6 +299,10 @@ public abstract class HostVM {
         return true;
     }
 
+    public boolean sortFields() {
+        return false;
+    }
+
     public void clearInThread() {
     }
 

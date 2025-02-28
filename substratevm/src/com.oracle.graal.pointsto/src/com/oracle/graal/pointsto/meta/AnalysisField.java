@@ -408,6 +408,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public void setPosition(int newPosition) {
+        AnalysisError.guarantee(position == -1 || newPosition == position, "Position already set for field %s, old position: %d, new position: %d", this, position, newPosition);
         this.position = newPosition;
     }
 
