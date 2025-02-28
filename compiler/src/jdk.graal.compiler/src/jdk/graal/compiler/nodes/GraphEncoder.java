@@ -458,7 +458,7 @@ public class GraphEncoder {
 
     protected void writeProperties(Node node, Fields fields) {
         writeObjectId(node.getNodeSourcePosition());
-        for (int idx : fields.getStableOrder()) {
+        for (int idx = 0; idx < fields.getCount(); idx++) {
             if (fields.getType(idx).isPrimitive()) {
                 long primitive = fields.getRawPrimitive(node, idx);
                 writer.putSV(primitive);
@@ -556,7 +556,7 @@ public class GraphEncoder {
         }
         return optimizationLogCodec.verify(originalGraph, decodedGraph) && inliningLogCodec.verify(originalGraph, decodedGraph);
     }
-    
+
     protected GraphDecoder graphDecoderForVerification(StructuredGraph decodedGraph) {
         return new GraphDecoder(architecture, decodedGraph);
     }

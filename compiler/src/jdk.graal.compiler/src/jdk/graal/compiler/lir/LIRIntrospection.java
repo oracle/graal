@@ -80,15 +80,14 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
             }
         }
 
-        public static Values create(int directCount, ArrayList<ValueFieldInfo> fields) {
-            if (directCount == 0 && fields.size() == 0) {
+        public static Values create(OperandModeAnnotation mode) {
+            if (mode.directValues.isEmpty() && mode.indirectValues.isEmpty()) {
                 return EMPTY_VALUES;
             }
-            return new Values(directCount, fields);
-        }
-
-        public static Values create(OperandModeAnnotation mode) {
-            return create(mode.directCount, mode.values);
+            List<ValueFieldInfo> fields = new ArrayList<>(mode.directValues.size() + mode.indirectValues.size());
+            fields.addAll(mode.directValues);
+            fields.addAll(mode.indirectValues);
+            return new Values(mode.directValues.size(), fields);
         }
 
         public int getDirectCount() {
@@ -127,23 +126,6 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
             this.flags = flags;
         }
 
-        /**
-         * Sorts non-array fields before array fields.
-         */
-        @Override
-        public int compareTo(FieldsScanner.FieldInfo o) {
-            if (VALUE_ARRAY_CLASS.isAssignableFrom(o.type)) {
-                if (!VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
-                    return -1;
-                }
-            } else {
-                if (VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
-                    return 1;
-                }
-            }
-            return super.compareTo(o);
-        }
-
         @Override
         public String toString() {
             return super.toString() + flags;
@@ -153,10 +135,14 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
     protected static class OperandModeAnnotation {
 
         /**
-         * Number of non-array fields in {@link #values}.
+         * Fields of type {@link LIRIntrospection#VALUE_CLASS}.
          */
-        public int directCount;
-        public final ArrayList<ValueFieldInfo> values = new ArrayList<>();
+        public final List<ValueFieldInfo> directValues = new ArrayList<>();
+
+        /**
+         * Fields of type {@link LIRIntrospection#VALUE_ARRAY_CLASS}.
+         */
+        public final List<ValueFieldInfo> indirectValues = new ArrayList<>();
     }
 
     protected abstract static class LIRFieldsScanner extends FieldsScanner {
@@ -164,8 +150,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         public final EconomicMap<Class<? extends Annotation>, OperandModeAnnotation> valueAnnotations;
         public final ArrayList<FieldsScanner.FieldInfo> states = new ArrayList<>();
 
-        public LIRFieldsScanner(FieldsScanner.CalcOffset calc) {
-            super(calc);
+        public LIRFieldsScanner() {
             valueAnnotations = EconomicMap.create(Equivalence.DEFAULT);
         }
 
@@ -193,14 +178,13 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                 assert annotation != null : "Field must have operand mode annotation: " + field;
                 EnumSet<OperandFlag> flags = getFlags(field);
                 assert verifyFlags(field, type, flags);
-                annotation.values.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
-                annotation.directCount++;
+                annotation.directValues.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
             } else if (VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
                 assert annotation != null : "Field must have operand mode annotation: " + field;
                 EnumSet<OperandFlag> flags = getFlags(field);
                 assert verifyFlags(field, type.getComponentType(), flags);
-                annotation.values.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
+                annotation.indirectValues.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
             } else {
                 assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
                 assert field.getAnnotation(LIRInstruction.State.class) == null : "Field must not have state annotation: " + field;

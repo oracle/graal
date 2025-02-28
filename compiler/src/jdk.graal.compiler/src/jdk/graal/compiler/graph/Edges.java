@@ -28,8 +28,8 @@ import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static jdk.graal.compiler.graph.Node.NOT_ITERABLE;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -37,12 +37,12 @@ import jdk.graal.compiler.core.common.Fields;
 import jdk.graal.compiler.core.common.FieldsScanner;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.NodeClass.EdgeInfo;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Describes {@link Node} fields representing the set of inputs for the node or the set of the
- * node's successors.
+ * Describes {@link Node} fields representing the inputs for the node or the node's successors. The
+ * primary ordering is that {@linkplain #getDirectCount() direct} edges come before indirect edges.
+ * The secondary ordering is determined by {@link FieldsScanner#scan}.
  */
 public abstract class Edges extends Fields {
 
@@ -87,7 +87,7 @@ public abstract class Edges extends Fields {
     private final Type type;
     private final long iterationMask;
 
-    public Edges(Type type, int directCount, ArrayList<? extends FieldsScanner.FieldInfo> edges) {
+    public Edges(Type type, int directCount, List<? extends FieldsScanner.FieldInfo> edges) {
         super(edges);
         this.type = type;
         this.directCount = directCount;
@@ -99,12 +99,6 @@ public abstract class Edges extends Fields {
         Map.Entry<long[], Long> e = super.recomputeOffsetsAndIterationMask(getFieldOffset);
         long[] newOffsets = e.getKey();
         return Map.entry(newOffsets, computeIterationMask(type, directCount, newOffsets));
-    }
-
-    public static void translateInto(Edges edges, ArrayList<EdgeInfo> infos) {
-        for (int index = 0; index < edges.getCount(); index++) {
-            infos.add(new EdgeInfo(edges.offsets[index], edges.getName(index), edges.getType(index), edges.getDeclaringClass(index)));
-        }
     }
 
     public long getIterationMask() {

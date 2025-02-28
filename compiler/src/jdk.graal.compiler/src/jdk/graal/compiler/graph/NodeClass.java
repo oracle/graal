@@ -24,15 +24,12 @@
  */
 package jdk.graal.compiler.graph;
 
-import static jdk.graal.compiler.core.common.Fields.translateInto;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHere;
 import static jdk.graal.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
-import static jdk.graal.compiler.graph.Edges.translateInto;
 import static jdk.graal.compiler.graph.Edges.NEXT_EDGE;
 import static jdk.graal.compiler.graph.Edges.LIST_MASK;
 import static jdk.graal.compiler.graph.Edges.OFFSET_MASK;
 import static jdk.graal.compiler.graph.Graph.isNodeModificationCountsEnabled;
-import static jdk.graal.compiler.graph.InputEdges.translateInto;
 import static jdk.graal.compiler.graph.Node.WithAllEdges;
 
 import java.lang.annotation.Annotation;
@@ -43,9 +40,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -172,12 +171,12 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass) {
-        this(clazz, superNodeClass, new FieldsScanner.DefaultCalcOffset(), null, 0);
+        this(clazz, superNodeClass, null, 0);
     }
 
     @SuppressWarnings("try")
     @Platforms(Platform.HOSTED_ONLY.class)
-    private NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass, FieldsScanner.CalcOffset calcOffset, int[] presetIterableIds, int presetIterableId) {
+    private NodeClass(Class<T> clazz, NodeClass<? super T> superNodeClass, int[] presetIterableIds, int presetIterableId) {
         super(clazz);
         DebugContext debug = DebugContext.forCurrentThread();
         this.superNodeClass = superNodeClass;
@@ -189,17 +188,17 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.isNodeWithIdentity = NodeWithIdentity.class.isAssignableFrom(clazz);
         this.isMemoryKill = MemoryKillMarker.class.isAssignableFrom(clazz);
 
-        NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass, debug);
+        NodeFieldsScanner fs = new NodeFieldsScanner(debug);
         try (DebugCloseable t = Init_FieldScanning.start(debug)) {
-            fs.scan(clazz, clazz.getSuperclass(), false);
+            fs.scan(clazz, Node.class);
         }
 
         try (DebugCloseable t1 = Init_Edges.start(debug)) {
-            successors = new SuccessorEdges(fs.directSuccessors, fs.successors);
-            inputs = new InputEdges(fs.directInputs, fs.inputs);
+            successors = fs.createSuccessors();
+            inputs = fs.createInputs();
         }
         try (DebugCloseable t1 = Init_Data.start(debug)) {
-            data = Fields.create(fs.data);
+            data = fs.createData();
         }
 
         isLeafNode = inputs.getCount() + successors.getCount() == 0;
@@ -401,29 +400,12 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         public EdgeInfo(long offset, String name, Class<?> type, Class<?> declaringClass) {
             super(offset, name, type, declaringClass);
         }
-
-        /**
-         * Sorts non-list edges before list edges.
-         */
-        @Override
-        public int compareTo(FieldsScanner.FieldInfo o) {
-            if (NodeList.class.isAssignableFrom(o.type)) {
-                if (!NodeList.class.isAssignableFrom(type)) {
-                    return -1;
-                }
-            } else {
-                if (NodeList.class.isAssignableFrom(type)) {
-                    return 1;
-                }
-            }
-            return super.compareTo(o);
-        }
     }
 
     /**
      * Describes a field representing an {@linkplain Edges.Type#Inputs input} edge in a node.
      */
-    protected static class InputInfo extends EdgeInfo {
+    public static class InputInfo extends EdgeInfo {
         final InputType inputType;
         final boolean optional;
 
@@ -441,22 +423,24 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     protected static class NodeFieldsScanner extends FieldsScanner {
 
-        public final ArrayList<InputInfo> inputs = new ArrayList<>();
-        public final ArrayList<EdgeInfo> successors = new ArrayList<>();
-        int directInputs;
-        int directSuccessors;
-        final DebugContext debug;
+        private final List<InputInfo> directInputs = new ArrayList<>();
+        private final List<InputInfo> indirectInputs = new ArrayList<>();
+        private final List<EdgeInfo> directSuccessors = new ArrayList<>();
+        private final List<EdgeInfo> indirectSuccessors = new ArrayList<>();
+        private final DebugContext debug;
 
-        protected NodeFieldsScanner(FieldsScanner.CalcOffset calc, NodeClass<?> superNodeClass, DebugContext debug) {
-            super(calc);
+        protected NodeFieldsScanner(DebugContext debug) {
             this.debug = debug;
-            if (superNodeClass != null) {
-                translateInto(superNodeClass.inputs, inputs);
-                translateInto(superNodeClass.successors, successors);
-                translateInto(superNodeClass.data, data);
-                directInputs = superNodeClass.inputs.getDirectCount();
-                directSuccessors = superNodeClass.successors.getDirectCount();
-            }
+        }
+
+        public SuccessorEdges createSuccessors() {
+            List<EdgeInfo> successors = Stream.concat(directSuccessors.stream(), indirectSuccessors.stream()).toList();
+            return new SuccessorEdges(directSuccessors.size(), successors);
+        }
+
+        public InputEdges createInputs() {
+            List<InputInfo> inputs = Stream.concat(directInputs.stream(), indirectInputs.stream()).toList();
+            return new InputEdges(directInputs.size(), inputs);
         }
 
         @SuppressWarnings("try")
