@@ -117,22 +117,29 @@ final class ByteArraySequence implements ByteSequence {
     public int hashCode() {
         int h = hash;
         if (h == 0 && length > 0) {
-            int end = start + length;
-            h = 1;
-            int i = start;
-            for (; i + 3 < end; i += 4) {
-                int h0 = buffer[i + 0] & 0xff << 0;
-                int h1 = buffer[i + 1] & 0xff << 8;
-                int h2 = buffer[i + 2] & 0xff << 16;
-                int h3 = buffer[i + 3] & 0xff << 24;
-                h = 31 * h + (h0 | h1 | h2 | h3);
-            }
-            for (; i < end; i++) {
-                h = 31 * h + buffer[i];
+            if (start == 0 && length == buffer.length) {
+                h = Arrays.hashCode(buffer);
+            } else {
+                h = hashCode(buffer, start, length, 1);
             }
             hash = h;
         }
         return h;
+    }
+
+    /**
+     * Calculates the hash code for a subrange of a byte array in the same way as
+     * {@code jdk.internal.util.ArraysSupport.hashCode(byte[], int, int, int)}.
+     *
+     * @see Arrays#hashCode(byte[])
+     */
+    private static int hashCode(byte[] a, int fromIndex, int length, int initialValue) {
+        int result = initialValue;
+        int end = fromIndex + length;
+        for (int i = fromIndex; i < end; i++) {
+            result = 31 * result + a[i];
+        }
+        return result;
     }
 
     public ByteSequence subSequence(int startIndex, int endIndex) {
