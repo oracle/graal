@@ -35,7 +35,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -79,6 +78,8 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.graal.compiler.word.Word;
 
 @InternalVMMethod
 public class JavaMainWrapper {
@@ -216,6 +217,11 @@ public class JavaMainWrapper {
                  * the startup hooks after setting all option values.
                  */
                 VMRuntime.initialize();
+            }
+
+            if (SubstrateOptions.PrintVMInfoAndExit.getValue()) {
+                printVmInfo();
+                return 0;
             }
 
             if (SubstrateOptions.DumpHeapAndExit.getValue()) {
@@ -436,6 +442,12 @@ public class JavaMainWrapper {
             throw new UnsupportedOperationException("Argument vector support not available");
         }
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
+    }
+
+    private static void printVmInfo() {
+        VM vm = ImageSingletons.lookup(VM.class);
+        System.out.println(vm.formattedVmVersion);
+        System.out.println(vm.formattedJdkVersion);
     }
 
     private static final class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {
