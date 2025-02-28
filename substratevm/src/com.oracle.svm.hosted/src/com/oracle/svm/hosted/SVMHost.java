@@ -933,6 +933,15 @@ public class SVMHost extends HostVM {
         excludedFields.add(ReflectionUtil.lookupField(NativeLibraries.class, "nativeLibraryLockMap"));
     }
 
+    @Override
+    public boolean sortFields() {
+        /*
+         * If building layered images sort the fields by kind and name to ensure stable order.
+         * Sorting fields in general may lead to some issues. (GR-62599)
+         */
+        return ImageLayerBuildingSupport.buildingImageLayer();
+    }
+
     /**
      * This method cannot use an {@link AnalysisField} because it is used before the analysis is set
      * up.
