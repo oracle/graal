@@ -96,7 +96,7 @@ public final class LocationOpener implements Openable, Trackable {
                     CurrentNodeAnnotation.highlight(select);
                 } else if (select.size() >= 1 && select.get(0) instanceof Line.Part) {
                     Line.Part part = (Line.Part) select.get(0);
-                    part.getLine().show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT);
+                    part.getLine().show(Line.ShowOpenType.REUSE, focus ? Line.ShowVisibilityType.FRONT : Line.ShowVisibilityType.FRONT, part.getColumn());
                     CurrentNodeAnnotation.highlight(select);
                 } else {
                     // neither line nor offsets
@@ -221,7 +221,7 @@ public final class LocationOpener implements Openable, Trackable {
 
         @Override
         public String getAnnotationType() {
-            return "NodePositionCurrent";
+            return "NodePositionOffset";
         }
 
         @Override
