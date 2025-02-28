@@ -377,15 +377,11 @@ public abstract class Edges extends Fields {
     }
 
     public Iterable<Position> getPositionsIterable(final Node node) {
-        return new Iterable<>() {
-
-            @Override
-            public Iterator<Position> iterator() {
-                if (isNodeModificationCountsEnabled()) {
-                    return new EdgesWithModCountIterator(node, Edges.this);
-                } else {
-                    return new EdgesIterator(node, Edges.this);
-                }
+        return () -> {
+            if (isNodeModificationCountsEnabled()) {
+                return new EdgesWithModCountIterator(node, Edges.this);
+            } else {
+                return new EdgesIterator(node, Edges.this);
             }
         };
     }

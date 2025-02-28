@@ -63,8 +63,8 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
     private final boolean isValueMoveOp;
     private final boolean isLoadConstantOp;
 
-    private String opcodeConstant;
-    private int opcodeIndex;
+    private final String opcodeConstant;
+    private final int opcodeIndex;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public LIRInstructionClass(Class<T> clazz) {
@@ -177,8 +177,8 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
             if (field.getAnnotation(Opcode.class) != null) {
                 assert opcodeConstant == null && opcodeField == null : "Can have only one Opcode definition: " + type;
-                assert data.get(data.size() - 1).offset == offset : Assertions.errorMessage(data.get(data.size() - 1).offset, offset);
-                opcodeField = data.get(data.size() - 1);
+                assert data.getLast().offset == offset : Assertions.errorMessage(data.getLast().offset, offset);
+                opcodeField = data.getLast();
             }
         }
     }
@@ -307,8 +307,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
                 }
             } else {
                 Value[] hintValues = hints.getValueArray(obj, i);
-                for (int j = 0; j < hintValues.length; j++) {
-                    Value hintValue = hintValues[j];
+                for (Value hintValue : hintValues) {
                     Value result = proc.doValue(obj, hintValue, null, null);
                     if (result != null) {
                         return result;

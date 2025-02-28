@@ -163,27 +163,17 @@ public class Fields {
     }
 
     private static Object copyObjectAsArray(Object obj) {
-        Object objCopy;
-        if (obj instanceof int[]) {
-            objCopy = Arrays.copyOf((int[]) obj, ((int[]) obj).length);
-        } else if (obj instanceof short[]) {
-            objCopy = Arrays.copyOf((short[]) obj, ((short[]) obj).length);
-        } else if (obj instanceof long[]) {
-            objCopy = Arrays.copyOf((long[]) obj, ((long[]) obj).length);
-        } else if (obj instanceof float[]) {
-            objCopy = Arrays.copyOf((float[]) obj, ((float[]) obj).length);
-        } else if (obj instanceof double[]) {
-            objCopy = Arrays.copyOf((double[]) obj, ((double[]) obj).length);
-        } else if (obj instanceof boolean[]) {
-            objCopy = Arrays.copyOf((boolean[]) obj, ((boolean[]) obj).length);
-        } else if (obj instanceof byte[]) {
-            objCopy = Arrays.copyOf((byte[]) obj, ((byte[]) obj).length);
-        } else if (obj instanceof char[]) {
-            objCopy = Arrays.copyOf((char[]) obj, ((char[]) obj).length);
-        } else {
-            throw GraalError.shouldNotReachHereUnexpectedValue(obj);
-        }
-        return objCopy;
+        return switch (obj) {
+            case int[] ints -> Arrays.copyOf(ints, ints.length);
+            case short[] shorts -> Arrays.copyOf(shorts, shorts.length);
+            case long[] longs -> Arrays.copyOf(longs, longs.length);
+            case float[] floats -> Arrays.copyOf(floats, floats.length);
+            case double[] doubles -> Arrays.copyOf(doubles, doubles.length);
+            case boolean[] booleans -> Arrays.copyOf(booleans, booleans.length);
+            case byte[] bytes -> Arrays.copyOf(bytes, bytes.length);
+            case char[] chars -> Arrays.copyOf(chars, chars.length);
+            case null, default -> throw GraalError.shouldNotReachHereUnexpectedValue(obj);
+        };
     }
 
     /**
