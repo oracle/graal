@@ -44,6 +44,7 @@ import jdk.graal.compiler.nodes.loop.LoopPolicies.UnswitchingDecision;
 import jdk.graal.compiler.nodes.loop.LoopsData;
 import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 
 public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
     private static final CounterKey UNSWITCH_CANDIDATES = DebugContext.counter("UnswitchCandidates");
@@ -94,7 +95,7 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
     }
 
     private static boolean canUnswitch(Loop loop) {
-        if (loop.loopBegin().isAnyStripMinedOuter()) {
+        if (LoopUtility.excludeLoopFromOptimizer(loop)) {
             return false;
         }
         return loop.canDuplicateLoop();

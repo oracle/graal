@@ -62,6 +62,23 @@ import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUtility {
 
+    /**
+     * Policy method for the GraalVM compiler loop optimizer.
+     *
+     * If for any reason a loop should be left totally untouched by loop optimizations this method
+     * returns true.
+     */
+    public static boolean excludeLoopFromOptimizer(Loop loop) {
+        /*
+         * Strip mining should be considered a pure "structural" transformation. It rewrites IR to
+         * serve the purpose of enabling other optimizations. The outer loop created in this process
+         * is mere a means to achieve something else. The optimizer should not have to spend any
+         * time optimizing it since it is visited infrequently and only there to enable a more
+         * optimal inner loop.
+         */
+        return loop.loopBegin().isAnyStripMinedOuter();
+    }
+
     public static long tripCountSignedExact(CountedLoopInfo loop) {
         ValueNode maxTripCountNode = loop.maxTripCountNode();
         final long maxTripCountAsSigned = maxTripCountNode.asJavaConstant().asLong();

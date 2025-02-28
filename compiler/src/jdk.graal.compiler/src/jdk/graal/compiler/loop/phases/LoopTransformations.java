@@ -794,7 +794,7 @@ public abstract class LoopTransformations {
     }
 
     public static boolean isUnrollableLoop(Loop loop) {
-        if (loop.loopBegin().isAnyStripMinedOuter()) {
+        if (LoopUtility.excludeLoopFromOptimizer(loop)) {
             return false;
         }
         if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.getCFGLoop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
