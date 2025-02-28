@@ -73,7 +73,8 @@ public final class HeapSizeVerifier {
 
         UnsignedWord maxHeapSize = Word.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
         if (maxHeapSize.notEqual(0) && minHeapSize.aboveThan(maxHeapSize)) {
-            throwError(minHeapSize, MIN_HEAP_SIZE_NAME, maxHeapSize, MAX_HEAP_SIZE_NAME);
+            String message = formatError(minHeapSize, MIN_HEAP_SIZE_NAME, maxHeapSize, MAX_HEAP_SIZE_NAME);
+            throw reportError(message);
         }
     }
 
@@ -84,7 +85,8 @@ public final class HeapSizeVerifier {
 
         UnsignedWord maxHeapSize = Word.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
         if (maxHeapSize.notEqual(0) && maxNewSize.aboveThan(maxHeapSize)) {
-            throwError(maxNewSize, MAX_NEW_SIZE_NAME, maxHeapSize, MAX_HEAP_SIZE_NAME);
+            String message = formatError(maxNewSize, MAX_NEW_SIZE_NAME, maxHeapSize, MAX_HEAP_SIZE_NAME);
+            throw reportError(message);
         }
     }
 
@@ -103,24 +105,31 @@ public final class HeapSizeVerifier {
     private static void verifyAgainstMaxAddressSpaceSize(UnsignedWord actualValue, String actualValueName) {
         UnsignedWord maxAddressSpaceSize = ReferenceAccess.singleton().getMaxAddressSpaceSize();
         if (actualValue.aboveThan(maxAddressSpaceSize)) {
-            throwError(actualValue, actualValueName, maxAddressSpaceSize, "largest possible heap address space");
+            String message = formatError(actualValue, actualValueName, maxAddressSpaceSize, "largest possible heap address space");
+            if (ReferenceAccess.singleton().getCompressionShift() > 0) {
+                message += " To allow larger values, please disable compressed references when building the image by adding the option '-H:-UseCompressedReferences'";
+            }
+            throw reportError(message);
         }
     }
 
     private static void verifyAgainstReservedAddressSpaceSize(UnsignedWord actualValue, String actualValueName) {
         UnsignedWord reservedAddressSpaceSize = Word.unsigned(SubstrateGCOptions.ReservedAddressSpaceSize.getValue());
         if (reservedAddressSpaceSize.notEqual(0) && actualValue.aboveThan(reservedAddressSpaceSize)) {
-            throwError(actualValue, actualValueName, reservedAddressSpaceSize, "value of the option '" + SubstrateGCOptions.ReservedAddressSpaceSize.getName() + "'");
+            String message = formatError(actualValue, actualValueName, reservedAddressSpaceSize, SubstrateGCOptions.ReservedAddressSpaceSize.getName());
+            throw reportError(message);
         }
     }
 
-    private static void throwError(UnsignedWord actualValue, String actualValueName, UnsignedWord maxValue, String maxValueName) throws UserException {
+    private static RuntimeException reportError(String message) throws UserException {
         if (SubstrateUtil.HOSTED) {
-            throw UserError.abort("The specified %s (%s) must not be larger than the %s (%s).", actualValueName, format(actualValue), maxValueName, format(maxValue));
-        } else {
-            throw new IllegalArgumentException(
-                            "The specified " + actualValueName + " (" + format(actualValue) + ") must not be larger than the " + maxValueName + " (" + format(maxValue) + ").");
+            throw UserError.abort(message);
         }
+        throw new IllegalArgumentException(message);
+    }
+
+    private static String formatError(UnsignedWord actualValue, String actualValueName, UnsignedWord maxValue, String maxValueName) {
+        return "The specified " + actualValueName + " (" + format(actualValue) + ") must not be larger than the " + maxValueName + " (" + format(maxValue) + ").";
     }
 
     private static String format(UnsignedWord bytes) {
