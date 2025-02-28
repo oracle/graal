@@ -345,8 +345,12 @@ final class CompactingOldGeneration extends OldGeneration {
 
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
     private void fixupImageHeapRoots(ImageHeapInfo info) {
-        // Note that cards have already been cleaned and roots re-marked during the initial scan.
-        GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, false);
+        if (HeapImpl.usesImageHeapCardMarking()) {
+            // Note that cards have already been cleaned and roots re-marked during the initial scan
+            GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, false);
+        } else {
+            GCImpl.walkImageHeapRoots(info, fixupVisitor);
+        }
     }
 
     @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
