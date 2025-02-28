@@ -44,6 +44,7 @@ import jdk.graal.compiler.nodes.extended.PublishWritesNode;
 import jdk.graal.compiler.nodes.java.NewArrayNode;
 import jdk.graal.compiler.replacements.nodes.ReadRegisterNode;
 import jdk.graal.compiler.replacements.nodes.WriteRegisterNode;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -125,9 +126,14 @@ class ForeignGraphKit extends HostedGraphKit {
         return append(new ReadRegisterNode(register, kind, false, false));
     }
 
+    private JavaKind getRegisterKind(Register register) {
+        // GR-62468: possible incorrect backup/restore of XMM register (Windows only)
+        return AMD64.XMM.equals(register.getRegisterCategory()) ? JavaKind.Double : getWordTypes().getWordKind();
+    }
+
     public Map<Register, ValueNode> saveRegisters(Iterable<Register> registers) {
         return StreamSupport.stream(registers.spliterator(), false)
-                        .collect(Collectors.toMap(reg -> reg, register -> bindRegister(register, getWordTypes().getWordKind())));
+                        .collect(Collectors.toMap(reg -> reg, register -> bindRegister(register, getRegisterKind(register))));
     }
 
     public void restoreRegisters(Map<Register, ValueNode> save) {

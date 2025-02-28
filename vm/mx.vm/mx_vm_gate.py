@@ -73,9 +73,6 @@ class VmGateTasks:
     truffle_native_tck_js = 'truffle-native-tck-js'
     truffle_native_tck_python = 'truffle-native-tck-python'
     truffle_native_tck_wasm = 'truffle-native-tck-wasm'
-    truffle_jvm = 'truffle-jvm'
-    truffle_native = 'truffle-native'
-    truffle_native_quickbuild = 'truffle-native-quickbuild'
     maven_downloader = 'maven-downloader'
 
 def _get_CountUppercase_vmargs():
@@ -550,9 +547,6 @@ def gate_body(args, tasks):
     gate_truffle_native_tck_js(tasks)
     gate_truffle_native_tck_python(tasks)
     gate_truffle_native_tck_wasm(tasks)
-    gate_truffle_jvm(tasks)
-    gate_truffle_native(tasks)
-    gate_truffle_native(tasks, quickbuild=True)
     gate_maven_downloader(tasks)
 
 def graalvm_svm():
@@ -570,27 +564,6 @@ def graalvm_svm():
         with svm.extensions.native_image_context(common_args, hosted_assertions, native_image_cmd=native_image_cmd) as native_image:
             yield native_image
     return native_image_context, svm.extensions
-
-def gate_truffle_native(tasks, quickbuild=False):
-    tag = VmGateTasks.truffle_native_quickbuild if quickbuild else VmGateTasks.truffle_native
-    name_suffix = ' with quickbuild' if quickbuild else ''
-    truffle_suite = mx.suite('truffle')
-    with Task('Truffle SL Native Fallback' + name_suffix, tasks, tags=[tag]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.sl_native_fallback_gate_tests(quickbuild)
-    with Task('Truffle SL Native Optimized' + name_suffix, tasks, tags=[tag]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.sl_native_optimized_gate_tests(quickbuild)
-    with Task('Truffle API Native Tests' + name_suffix, tasks, tags=[tag]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_native_unit_tests_gate(True, quickbuild)
-            mx_truffle.truffle_native_unit_tests_gate(False, quickbuild)
 
 def gate_sulong(tasks):
     with Task('Run SulongSuite tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:
@@ -738,34 +711,6 @@ def gate_truffle_native_tck_wasm(tasks):
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 _svm_truffle_tck(native_image, 'wasm', wasm_language)
-
-def gate_truffle_jvm(tasks):
-    truffle_suite = mx.suite('truffle')
-    with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_jvm_module_path_optimized_unit_tests_gate()
-    with Task('Truffle ModulePath Unit Tests Fallback', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_jvm_module_path_fallback_unit_tests_gate()
-    with Task('Truffle ClassPath Unit Tests Optimized', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_jvm_class_path_optimized_unit_tests_gate()
-    with Task('Truffle ClassPath Unit Tests Fallback', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.truffle_jvm_class_path_fallback_unit_tests_gate()
-    with Task('Truffle SL JVM', tasks, tags=[VmGateTasks.truffle_jvm]) as t:
-        if t:
-            if not truffle_suite:
-                mx.abort("Cannot resolve truffle suite.")
-            mx_truffle.sl_jvm_gate_tests()
 
 def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:
