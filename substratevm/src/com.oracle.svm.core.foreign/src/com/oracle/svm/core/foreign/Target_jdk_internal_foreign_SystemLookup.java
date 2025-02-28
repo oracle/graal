@@ -27,7 +27,6 @@ package com.oracle.svm.core.foreign;
 import java.lang.foreign.MemorySegment;
 import java.util.Optional;
 
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -44,7 +43,11 @@ public final class Target_jdk_internal_foreign_SystemLookup {
     }
 }
 
+/*
+ * IMPORTANT: If the substitution target (i.e. enum
+ * 'jdk.internal.foreign.SystemLookup$WindowsFallbackSymbols') changes, ensure that the enum values
+ * are still in sync with 'com.oracle.svm.native.libchelper/src/syslookup.c'.
+ */
 @TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols", onlyWith = ForeignFunctionsEnabled.class)
-@Delete
 final class Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols {
 }

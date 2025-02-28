@@ -188,8 +188,11 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
         List<ValueNode> arguments = new ArrayList<>(kit.getInitialArguments());
 
         /*
-         * Prologue: save function-preserved registers, allocate return space if needed, transition
-         * from native to Java.
+         * Prologue: save callee-save registers, allocate return space if needed, transition from
+         * native to Java.
+         *
+         * Saving the callee-save registers is necessary because the invocation of the high-level
+         * stub uses the Java calling convention which may interfere with those registers.
          */
         assert !savedRegisters.asList().contains(registers.methodHandle());
         assert !savedRegisters.asList().contains(registers.isolate());
@@ -213,11 +216,11 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             FrameState frameState = new FrameState(BytecodeFrame.UNKNOWN_BCI);
             frameState.invalidateForDeoptimization();
             returnBuffer.setStateAfter(kit.getGraph().add(frameState));
-            arguments.add(0, returnBuffer);
+            arguments.addFirst(returnBuffer);
         }
 
         /* Transfers to the Java-side stub; note that exceptions should be handled there. */
-        arguments.add(0, mh);
+        arguments.addFirst(mh);
         InvokeWithExceptionNode returnValue = kit.createJavaCallWithException(CallTargetNode.InvokeKind.Static, highLevelStub, arguments.toArray(ValueNode.EMPTY_ARRAY));
         kit.exceptionPart();
         kit.append(new DeadEndNode());
@@ -232,6 +235,7 @@ final class LowLevelUpcallStub extends UpcallStub implements CustomCallingConven
             long offset = 0;
             for (AssignedLocation loc : AbiUtils.create().toMemoryAssignment(jep.returnAssignment(), true)) {
                 assert loc.assignsToRegister();
+                // an output location must not be a callee-save register
                 assert !save.containsKey(loc.register());
 
                 AddressNode address = new OffsetAddressNode(returnBuffer, ConstantNode.forLong(offset, kit.getGraph()));
@@ -307,7 +311,7 @@ class HighLevelUpcallStub extends UpcallStub {
 
         List<ValueNode> allArguments = new ArrayList<>(kit.getInitialArguments());
 
-        ValueNode mh = allArguments.remove(0);
+        ValueNode mh = allArguments.removeFirst();
         /* If adaptations are ever needed for upcalls, they should most likely be applied here */
         allArguments = kit.boxArguments(allArguments, jep.handleType());
         ValueNode arguments = kit.packArguments(allArguments);
