@@ -5,9 +5,16 @@ package com.oracle.svm.hosted.analysis.ai.domain.access;
  */
 public interface AccessPathElement {
 
-    String toString();
+    enum Kind {
+        FIELD,
+        ARRAY
+    }
 
     boolean equals(Object other);
 
     int hashCode();
+
+    Kind getKind();
+
+    boolean isStatic();
 }

@@ -1,12 +1,8 @@
 package com.oracle.svm.hosted.analysis.ai.domain.access;
 
-import jdk.graal.compiler.nodes.ParameterNode;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.java.LoadFieldNode;
-import jdk.graal.compiler.nodes.java.LoadIndexedNode;
-import jdk.graal.compiler.nodes.java.StoreFieldNode;
-import jdk.graal.compiler.nodes.java.StoreIndexedNode;
-import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,49 +10,67 @@ import java.util.Objects;
 
 /**
  * Represents a name of a memory ( stack/heap ) location via the path that is used to access it
- * e.g a.b[0].c, where a is the base variable and b[0].c is the access path
+ * e.g a.b[0].c, where 'a' is the base variable and b[0].c is the access path
  */
 public final class AccessPath {
 
-    private final String baseVariable;
+    private final AccessPathBase base;
     private final List<AccessPathElement> elements;
 
-    public AccessPath(String baseVariable) {
-        this.baseVariable = baseVariable;
+    public AccessPath(AccessPathBase base) {
+        this.base = base;
         this.elements = new ArrayList<>();
     }
 
-    public static AccessPath fromParameterNode(ParameterNode parameterNode) {
-        return new AccessPath("param_" + parameterNode.index());
+    public AccessPathBase getBase() {
+        return base;
     }
 
-    public AccessPath appendField(String fieldName) {
-        AccessPath newPath = new AccessPath(baseVariable);
+    public List<AccessPathElement> getElements() {
+        return elements;
+    }
+
+    /**
+     * Create a new AccessPath with the same base variable and elements as the given AccessPath
+     *
+     * @param fieldName String
+     * @return AccessPath
+     */
+    public AccessPath appendField(String fieldName, boolean isStatic) {
+        AccessPath newPath = new AccessPath(base);
         newPath.elements.addAll(this.elements);
-        newPath.elements.add(new FieldAccess(fieldName));
+        newPath.elements.add(new FieldAccess(fieldName, isStatic));
         return newPath;
     }
 
+    public AccessPath appendField(String fieldName) {
+        return appendField(fieldName, false);
+    }
+
     public AccessPath appendArrayAccess(String index) {
-        AccessPath newPath = new AccessPath(baseVariable);
+        AccessPath newPath = new AccessPath(base);
         newPath.elements.addAll(this.elements);
         newPath.elements.add(new ArrayAccess(index));
         return newPath;
     }
 
-    /***
-     * Check if two access paths share the same base variable and prefix
-     *
-     * @param other AccessPath
-     * @return true if the two access paths share the same base variable and prefix
-     */
-    public boolean sharesPrefix(AccessPath other) {
-        if (!baseVariable.equals(other.baseVariable)) {
+    public AccessPath appendAccesses(List<AccessPathElement> accesses) {
+        AccessPath newPath = new AccessPath(base);
+        newPath.elements.addAll(this.elements);
+        newPath.elements.addAll(accesses);
+        return newPath;
+    }
+
+    public boolean isPrefixOf(AccessPath other) {
+        if (!base.equals(other.base)) {
             return false;
         }
 
-        int minLength = Math.min(elements.size(), other.elements.size());
-        for (int i = 0; i < minLength - 1; i++) {
+        if (elements.size() > other.elements.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < elements.size(); i++) {
             if (!elements.get(i).equals(other.elements.get(i))) {
                 return false;
             }
@@ -64,9 +78,73 @@ public final class AccessPath {
         return true;
     }
 
+    public List<AccessPathElement> removePrefix(AccessPath prefix) {
+        if (prefix.isPrefixOf(this)) {
+            return new ArrayList<>(elements.subList(prefix.elements.size(), elements.size()));
+        }
+        return null;
+    }
+
+    public AccessPath replacePrefix(AccessPath prefix, AccessPath replaceWith) {
+        List<AccessPathElement> remainingElements = removePrefix(prefix);
+        if (remainingElements == null) {
+            return null;
+        }
+
+        AccessPath newPath = new AccessPath(replaceWith.base);
+        newPath.elements.addAll(replaceWith.elements);
+        newPath.elements.addAll(remainingElements);
+        return newPath;
+    }
+
+    /**
+     * Create a new access path by taking a subset of the elements
+     *
+     * @param endIndex The exclusive end index of the elements to include
+     * @return A new access path with only the elements up to endIndex
+     */
+    public AccessPath getPrefix(int endIndex) {
+        if (endIndex < 0 || endIndex > elements.size()) {
+            throw new IndexOutOfBoundsException("Invalid index: " + endIndex);
+        }
+
+        AccessPath newPath = new AccessPath(base);
+        newPath.elements.addAll(elements.subList(0, endIndex));
+        return newPath;
+    }
+
+    /**
+     * Create a new access path by taking a subset of the elements
+     *
+     * @param startIndex The inclusive start index of the elements to include
+     * @return A new access path with only the elements from startIndex onwards
+     */
+    public AccessPath getSuffix(int startIndex) {
+        if (startIndex < 0 || startIndex > elements.size()) {
+            throw new IndexOutOfBoundsException("Invalid index: " + startIndex);
+        }
+
+        AccessPath newPath = new AccessPath(base);
+        newPath.elements.addAll(elements.subList(startIndex, elements.size()));
+        return newPath;
+    }
+
+    /**
+     * Create an AccessPath from an AllocatedObjectNode.
+     *
+     * @param allocatedObject  AllocatedObjectNode
+     * @return AccessPath representing the allocatedObject
+     */
+    public static AccessPath fromAllocatedObject(AllocatedObjectNode allocatedObject) {
+        ResolvedJavaType type = allocatedObject.getVirtualObject().type();
+        NodeSourcePosition nodeSourcePosition = allocatedObject.getVirtualObject().getNodeSourcePosition();
+        AccessPathBase base = new ObjectAccessPathBase(type, nodeSourcePosition);
+        return new AccessPath(base);
+    }
+
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder(baseVariable);
+        StringBuilder sb = new StringBuilder(base.toString());
         for (AccessPathElement element : elements) {
             sb.append(element.toString());
         }
@@ -75,80 +153,13 @@ public final class AccessPath {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof AccessPath other)) return false;
-        return baseVariable.equals(other.baseVariable) && elements.equals(other.elements);
+        if (o == null || getClass() != o.getClass()) return false;
+        AccessPath that = (AccessPath) o;
+        return Objects.equals(base, that.base) && Objects.equals(elements, that.elements);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(baseVariable, elements);
+        return Objects.hash(base, elements);
     }
-
-    /**
-     * Create an AccessPath from a StoreFieldNode.
-     * @param storeFieldNode StoreFieldNode
-     * @return AccessPath representing the storeFieldNode
-     */
-    public static AccessPath fromStoreFieldNode(StoreFieldNode storeFieldNode) {
-        ResolvedJavaField field = storeFieldNode.field();
-        String baseVariable;
-        if (field.isStatic()) {
-            // For static fields, use the declaring class as the base variable
-            baseVariable = field.getDeclaringClass().toJavaName();
-        } else {
-            String declaringClass = field.getDeclaringClass().toJavaName();
-            String nodeSourcePosition = storeFieldNode.object().getNodeSourcePosition().toString();
-            String[] lst = nodeSourcePosition.split(" ");
-            /* lst[ 0 ] = "at", lst[ 1 ] = "actual source position", lst[ 2 ] = bci */
-            baseVariable = declaringClass + "@" + lst[1];
-        }
-
-        return new AccessPath(baseVariable).appendField(field.getName());
-    }
-
-
-    /**
-     * Create an AccessPath from a LoadFieldNode.
-     * @param loadFieldNode LoadFieldNode
-     * @return AccessPath representing the loadFieldNode
-     */
-    public static AccessPath fromLoadFieldNode(LoadFieldNode loadFieldNode) {
-        ResolvedJavaField field = loadFieldNode.field();
-        String baseVariable;
-        if (field.isStatic()) {
-            baseVariable = field.getDeclaringClass().toJavaName();
-        } else {
-            String declaringClass = field.getDeclaringClass().toJavaName();
-            String nodeSourcePosition = loadFieldNode.object().getNodeSourcePosition().toString();
-            String[] lst = nodeSourcePosition.split(" ");
-            /* lst[ 0 ] = "at", lst[ 1 ] = "actual source position", lst[ 2 ] = bci */
-            baseVariable = declaringClass + "@" + lst[1];
-        }
-        return new AccessPath(baseVariable).appendField(field.getName());
-    }
-
-    /**
-     * Create an AccessPath from a StoreIndexedNode.
-     * @param storeIndexedNode StoreIndexedNode
-     * @return AccessPath representing the storeIndexedNode
-     */
-    public static AccessPath fromStoreIndexedNode(StoreIndexedNode storeIndexedNode) {
-        ValueNode array = storeIndexedNode.array();
-        ValueNode index = storeIndexedNode.index();
-        String baseVariable = array.toString(); // Use the array's name as the base variable
-        return new AccessPath(baseVariable).appendArrayAccess(index.toString());
-    }
-
-    /**
-     * Create an AccessPath from a LoadIndexedNode.
-     * @param loadIndexedNode LoadIndexedNode
-     * @return AccessPath representing the loadIndexedNode
-     */
-    public static AccessPath fromLoadIndexedNode(LoadIndexedNode loadIndexedNode) {
-        ValueNode array = loadIndexedNode.array();
-        ValueNode index = loadIndexedNode.index();
-        String baseVariable = array.toString();
-        return new AccessPath(baseVariable).appendArrayAccess(index.toString());
-    }
-
 }

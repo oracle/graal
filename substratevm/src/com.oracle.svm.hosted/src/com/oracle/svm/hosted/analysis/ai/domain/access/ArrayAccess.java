@@ -3,14 +3,8 @@ package com.oracle.svm.hosted.analysis.ai.domain.access;
 /**
  * Represents an array access in an access path (e.g., [0], [i])
  */
-// TODO: try interpreting arrays
-
-/**
- * a[i] = 5;
- * a[j] = 6
- * ....
- */
 public final class ArrayAccess implements AccessPathElement {
+
     private final String index; // Could be a constant or symbolic
 
     public ArrayAccess(String index) {
@@ -31,5 +25,15 @@ public final class ArrayAccess implements AccessPathElement {
     @Override
     public int hashCode() {
         return index.hashCode();
+    }
+
+    @Override
+    public Kind getKind() {
+        return Kind.ARRAY;
+    }
+
+    @Override
+    public boolean isStatic() {
+        return false;
     }
 }

@@ -6,9 +6,11 @@ package com.oracle.svm.hosted.analysis.ai.domain.access;
 public final class FieldAccess implements AccessPathElement {
 
     private final String fieldName;
+    private final boolean isStatic;
 
-    public FieldAccess(String fieldName) {
+    public FieldAccess(String fieldName, boolean isStatic) {
         this.fieldName = fieldName;
+        this.isStatic = isStatic;
     }
 
     @Override
@@ -25,5 +27,16 @@ public final class FieldAccess implements AccessPathElement {
     @Override
     public int hashCode() {
         return fieldName.hashCode();
+    }
+
+
+    @Override
+    public Kind getKind() {
+        return Kind.FIELD;
+    }
+
+    @Override
+    public boolean isStatic() {
+        return isStatic;
     }
 }
