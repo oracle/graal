@@ -152,6 +152,8 @@ local common_json = import "../common.json";
         "@(?P<filename>.*SubprocessUtil-argfiles.*\\.argfile)",
         # Keep in sync with com.oracle.truffle.api.test.SubprocessTestUtils#makeArgfile
         "@(?P<filename>.*SubprocessTestUtils-argfiles.*\\.argfile)",
+        # Keep in sync with mx_gate.py:get_jacoco_agent_args
+        "JaCoCo agent config: '(?P<filename>[^']+)'",
       ],
     },
 
