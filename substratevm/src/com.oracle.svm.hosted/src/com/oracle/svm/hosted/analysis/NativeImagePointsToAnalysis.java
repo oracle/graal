@@ -44,7 +44,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.CustomTypeFieldHandler;
@@ -152,7 +152,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                 /* Rescan the component hub. This will be simplified by GR-60254. */
                 HostedImageLayerBuildingSupport.singleton().getLoader().rescanHub(type.getComponentType(), ((SVMHost) hostVM).dynamicHub(type).getComponentHub());
             }
-            if (SubstrateOptions.includeAll()) {
+            if (ImageLayerBuildingSupport.buildingSharedLayer()) {
                 /*
                  * Using getInstanceFields and getStaticFields allows to include the fields from the
                  * substitution class.
