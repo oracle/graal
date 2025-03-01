@@ -31,7 +31,7 @@ Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-1. Save the following code to a file named _SimpleJmx.java_. The application `main()` method registers a custom MBean, then loops endlessly, so you have time to inspect the process using VisualVM.
+1. Create and navigate to a directory named _jmx-test_. Save the following code to a file named _SimpleJmx.java_. The application `main()` method registers a custom MBean, then loops endlessly, so you have time to inspect the process using VisualVM.
     ```java
     import javax.management.MBeanServer;
     import javax.management.ObjectName;
@@ -79,13 +79,13 @@ For other installation options, visit the [Downloads section](https://www.graalv
     }
     ```
 
-2. Ccompile the application using the GraalVM JDK:
+2. Compile the application using the GraalVM JDK:
     ```shell 
     javac SimpleJmx.java
     ```
     This creates _SimpleJmx.class_, _SimpleJmx$Simple.class_, and _SimpleJmx$SimpleMBean.class_ files.
    
-3. Add dynamic proxy configuration. JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans. To be able to interact with the custom `SimpleMBean` at run time, you need to provide Native Image with additional [dynamic-proxy metadata](../ReachabilityMetadata.md#reflection) for the MBean interface. For this, create or modify a JSON file named _reachability-metadata.json_ with the following contents:
+3. Add dynamic proxy configuration. JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans. To be able to interact with the custom `SimpleMBean` at run time, you need to provide Native Image with additional [dynamic-proxy metadata](../ReachabilityMetadata.md#reflection) for the MBean interface. For this, create the _META-INF/native-image_ directory in the current working directory (_jmx-test_). In the _META-INF/native-image_ directory create a _reachability-metadata.json_ file with the following contents:
     ```json
     {
       "reflection": [
@@ -98,9 +98,9 @@ For other installation options, visit the [Downloads section](https://www.graalv
     }
     ```
 
-4. Build a native executable with the VM inspection enabled and pass the JSON configuration file to `native-image`:
+4. Build a native executable with the VM inspection enabled:
     ```shell
-    native-image --enable-monitoring=jmxserver,jmxclient,jvmstat -H:DynamicProxyConfigurationFiles=proxy-config.json SimpleJmx
+    native-image --enable-monitoring=jmxserver,jmxclient,jvmstat SimpleJmx
     ```
     
     The `--enable-monitoring=jmxserver` option enables the JMX Server feature (to accept incoming connections).
