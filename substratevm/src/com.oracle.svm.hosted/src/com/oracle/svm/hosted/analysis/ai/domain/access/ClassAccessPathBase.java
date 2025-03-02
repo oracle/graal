@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.domain.access;
 
-import jdk.vm.ci.code.BytecodePosition;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
@@ -9,7 +9,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public record ClassAccessPathBase(ResolvedJavaType type) implements AccessPathBase {
 
     @Override
-    public BytecodePosition getByteCodePosition() {
+    public NodeSourcePosition getByteCodePosition() {
         return null;
     }
 

@@ -1,13 +1,13 @@
 package com.oracle.svm.hosted.analysis.ai.domain.access;
 
-import jdk.vm.ci.code.BytecodePosition;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface AccessPathBase {
 
     ResolvedJavaType type();
 
-    BytecodePosition getByteCodePosition();
+    NodeSourcePosition getByteCodePosition();
 
     AccessPathBase addPrefix(String prefix);
 

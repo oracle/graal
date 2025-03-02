@@ -36,15 +36,11 @@ public final class AccessPath {
      * @param fieldName String
      * @return AccessPath
      */
-    public AccessPath appendField(String fieldName, boolean isStatic) {
+    public AccessPath appendField(String fieldName, int modifiers) {
         AccessPath newPath = new AccessPath(base);
         newPath.elements.addAll(this.elements);
-        newPath.elements.add(new FieldAccess(fieldName, isStatic));
+        newPath.elements.add(new FieldAccess(fieldName, modifiers));
         return newPath;
-    }
-
-    public AccessPath appendField(String fieldName) {
-        return appendField(fieldName, false);
     }
 
     public AccessPath appendArrayAccess(String index) {

@@ -32,8 +32,4 @@ public final class ArrayAccess implements AccessPathElement {
         return Kind.ARRAY;
     }
 
-    @Override
-    public boolean isStatic() {
-        return false;
-    }
 }

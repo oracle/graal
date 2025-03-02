@@ -10,11 +10,5 @@ public interface AccessPathElement {
         ARRAY
     }
 
-    boolean equals(Object other);
-
-    int hashCode();
-
     Kind getKind();
-
-    boolean isStatic();
 }

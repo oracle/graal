@@ -1,6 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.domain.access;
 
-import jdk.vm.ci.code.BytecodePosition;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 import java.util.Objects;
@@ -12,15 +12,15 @@ public final class ObjectAccessPathBase implements AccessPathBase {
 
     private String prefix;
     private final ResolvedJavaType type;
-    private final BytecodePosition position;
+    private final NodeSourcePosition position;
 
-    public ObjectAccessPathBase(ResolvedJavaType type, BytecodePosition position) {
+    public ObjectAccessPathBase(ResolvedJavaType type, NodeSourcePosition position) {
         this.prefix = "";
         this.type = type;
         this.position = position;
     }
 
-    public ObjectAccessPathBase(ResolvedJavaType type, BytecodePosition position, String prefix) {
+    public ObjectAccessPathBase(ResolvedJavaType type, NodeSourcePosition position, String prefix) {
         this.prefix = prefix;
         this.type = type;
         this.position = position;
@@ -32,7 +32,7 @@ public final class ObjectAccessPathBase implements AccessPathBase {
     }
 
     @Override
-    public BytecodePosition getByteCodePosition() {
+    public NodeSourcePosition getByteCodePosition() {
         return position;
     }
 
@@ -74,6 +74,7 @@ public final class ObjectAccessPathBase implements AccessPathBase {
         if (position == null) {
             return prefix + type.toJavaName();
         }
-        return prefix + type.toJavaName() + "@" + position.getMethod().getName();
+
+        return prefix + type.toJavaName() + '(' + position + ')';
     }
 }
