@@ -1,12 +1,13 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.InterProceduralAnalysisPayload;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WeakPartialOrdering;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wpo.WpoNode;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
@@ -36,30 +37,27 @@ public final class ConcurrentWpoFixpointIterator<
     private final HIRBlock entry;
     private final Map<HIRBlock, WorkNode> nodeToWork = new ConcurrentHashMap<>();
 
-    public ConcurrentWpoFixpointIterator(AnalysisPayload<Domain> payload) {
-        super(payload);
-        this.weakPartialOrdering = new WeakPartialOrdering(cfgGraph);
-        this.entry = cfgGraph.getStartBlock();
+    public ConcurrentWpoFixpointIterator(AnalysisMethod method,
+                                         DebugContext debug,
+                                         Domain initialDomain,
+                                         TransferFunction<Domain> transferFunction,
+                                         IteratorPayload iteratorPayload) {
 
-        if (payload instanceof InterProceduralAnalysisPayload<Domain> interPayload) {
-            interPayload.putMethodGraph(payload.getRoot(), cfgGraph);
-            interPayload.putMethodWpo(payload.getRoot(), weakPartialOrdering);
+        super(method, debug, initialDomain, transferFunction, iteratorPayload);
+        if (iteratorPayload.containsMethodWpo(method)) {
+            this.weakPartialOrdering = iteratorPayload.getMethodWpoMap().get(method);
+        } else {
+            this.weakPartialOrdering = new WeakPartialOrdering(cfgGraph);
+            iteratorPayload.addToMethodWpoMap(method, weakPartialOrdering);
         }
-    }
 
-    public ConcurrentWpoFixpointIterator(AnalysisPayload<Domain> payload, ControlFlowGraph cfgGraph, WeakPartialOrdering weakPartialOrdering) {
-        super(payload, cfgGraph);
-        this.weakPartialOrdering = weakPartialOrdering;
         this.entry = cfgGraph.getStartBlock();
     }
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
-        payload.getLogger().logToFile("ConcurrentWpoFixpointIterator::iterateUntilFixpoint");
-        payload.getLogger().logToFile("Weak Partial Ordering for given graph: " + weakPartialOrdering);
         buildWorkNodes();
         runAnalysis();
-        payload.getCheckerManager().checkAll(abstractStateMap);
         return abstractStateMap;
     }
 
@@ -96,7 +94,6 @@ public final class ConcurrentWpoFixpointIterator<
 
         while (!workQueue.isEmpty()) {
             WorkNode workNode = workQueue.poll();
-            payload.getLogger().logToFile("Processing work node: " + workNode.node);
             List<WorkNode> successors = workNode.update();
 
             for (WorkNode successor : successors) {
@@ -153,16 +150,12 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         List<WorkNode> updatePlain() {
-            payload.getLogger().logToFile("Updating plain node: " + node);
-            TransferFunction<Domain> transferFunction = payload.getTransferFunction();
-            transferFunction.analyzeBlock(node, abstractStateMap, payload);
+            transferFunction.analyzeBlock(node, abstractStateMap);
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             return successors;
         }
 
         List<WorkNode> updateHead() {
-            payload.getLogger().logToFile("Updating head node: " + node);
-            TransferFunction<Domain> transferFunction = payload.getTransferFunction();
             if (refCount.get() == weakPartialOrdering.getNumPredecessors(index)) {
                 for (WorkNode pred : predecessors) {
                     if (!weakPartialOrdering.isBackEdge(node, pred.node)) {
@@ -171,12 +164,11 @@ public final class ConcurrentWpoFixpointIterator<
                 }
             }
 
-            transferFunction.analyzeBlock(node, abstractStateMap, payload);
+            transferFunction.analyzeBlock(node, abstractStateMap);
             return successors;
         }
 
         List<WorkNode> updateExit() {
-            payload.getLogger().logToFile("Updating exit node: " + node);
             boolean converged = head.updateHeadBackEdge();
             refCount.set(weakPartialOrdering.getNumPredecessorsReducible(index));
             if (converged) {
@@ -188,9 +180,8 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         boolean updateHeadBackEdge() {
-            payload.getLogger().logToFile("Updating head back edge for node: " + node);
             Domain oldPre = abstractStateMap.getPreCondition(node.getBeginNode()).copyOf();
-            payload.getTransferFunction().collectInvariantsFromPredecessors(node.getBeginNode(), abstractStateMap);
+            transferFunction.collectInvariantsFromPredecessors(node.getBeginNode(), abstractStateMap);
             extrapolate(node.getBeginNode());
 
             if (oldPre.leq(abstractStateMap.getPreCondition(node.getBeginNode()))) {
@@ -202,7 +193,6 @@ public final class ConcurrentWpoFixpointIterator<
         }
 
         void handleIrreducible() {
-            payload.getLogger().logToFile("Handling irreducible node: " + node);
             for (Map.Entry<Integer, Integer> entry : weakPartialOrdering.getIrreducibles(index).entrySet()) {
                 nodeToWork.get(weakPartialOrdering.getNode(entry.getKey())).refCount.addAndGet(entry.getValue());
             }

@@ -36,8 +36,6 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
-        logger.logToFile("WorkListFixpointIterator::iterateUntilFixpoint");
-
         /* We will be using nodes instead of blocks in this fixpoint iterator
          * because this fixpoint is used for demonstration, and this is closer to the pseudocode. */
         Queue<Node> worklist = new LinkedList<>();
@@ -72,8 +70,7 @@ public final class WorkListFixpointIterator<Domain extends AbstractDomain<Domain
                 }
             }
         }
-
+        
         return abstractStateMap;
     }
-
 }

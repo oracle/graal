@@ -1,7 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.fixpoint.iterator;
 
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.AnalysisPayload;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.InterProceduralAnalysisPayload;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WeakTopologicalOrdering;
@@ -9,8 +9,8 @@ import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoComponent;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoCycle;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.wto.WtoVertex;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 
 /**
@@ -26,32 +26,27 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
 
     private final WeakTopologicalOrdering weakTopologicalOrdering;
 
-    public SequentialWtoFixpointIterator(AnalysisPayload<Domain> payload) {
-        super(payload);
-        this.weakTopologicalOrdering = new WeakTopologicalOrdering(cfgGraph);
+    public SequentialWtoFixpointIterator(AnalysisMethod method,
+                                         DebugContext debug,
+                                         Domain initialDomain,
+                                         TransferFunction<Domain> transferFunction,
+                                         IteratorPayload iteratorPayload) {
 
-        if (payload instanceof InterProceduralAnalysisPayload<Domain> interPayload) {
-            interPayload.putMethodGraph(payload.getRoot(), cfgGraph);
-            interPayload.putMethodWto(payload.getRoot(), weakTopologicalOrdering);
+        super(method, debug, initialDomain, transferFunction, iteratorPayload);
+        if (iteratorPayload.containsMethodWto(method)) {
+            this.weakTopologicalOrdering = iteratorPayload.getMethodWtoMap().get(method);
+        } else {
+            this.weakTopologicalOrdering = new WeakTopologicalOrdering(cfgGraph);
+            iteratorPayload.addToMethodWtoMap(method, weakTopologicalOrdering);
         }
-    }
-
-    /* This ctor is used when we have the graph + WTO for a method ready (we analyzed it in the past) */
-    public SequentialWtoFixpointIterator(AnalysisPayload<Domain> payload,
-                                         ControlFlowGraph cfgGraph,
-                                         WeakTopologicalOrdering weakTopologicalOrdering) {
-        super(payload, cfgGraph);
-        this.weakTopologicalOrdering = weakTopologicalOrdering;
     }
 
     @Override
     public AbstractStateMap<Domain> iterateUntilFixpoint() {
-        payload.getLogger().logToFile("SequentialWtoFixpointIterator::iterateUntilFixpoint");
         for (WtoComponent component : weakTopologicalOrdering.getComponents()) {
             analyzeComponent(component);
         }
 
-        payload.getCheckerManager().checkAll(abstractStateMap);
         return abstractStateMap;
     }
 
@@ -64,24 +59,20 @@ public final class SequentialWtoFixpointIterator<Domain extends AbstractDomain<D
     }
 
     private void analyzeVertex(WtoVertex vertex) {
-        payload.getLogger().logToFile("Analyzing vertex: " + vertex);
         Node node = vertex.block().getBeginNode();
         if (node == cfgGraph.graph.start()) {
-            abstractStateMap.setPreCondition(node, payload.getInitialDomain());
+            abstractStateMap.setPreCondition(node, initialDomain);
         }
-        TransferFunction<Domain> transferFunction = payload.getTransferFunction();
-        transferFunction.analyzeBlock(vertex.block(), abstractStateMap, payload);
+        transferFunction.analyzeBlock(vertex.block(), abstractStateMap);
     }
 
     private void analyzeCycle(WtoCycle cycle) {
-        payload.getLogger().logToFile("Analyzing cycle: " + cycle);
         Node head = cycle.block().getBeginNode();
-        TransferFunction<Domain> transferFunction = payload.getTransferFunction();
         boolean iterate = true;
 
         while (iterate) {
             /* Analyze the nodes inside outermost block */
-            transferFunction.analyzeBlock(cycle.block(), abstractStateMap, payload);
+            transferFunction.analyzeBlock(cycle.block(), abstractStateMap);
 
             /* Analyze all other nested WtoComponents */
             for (WtoComponent component : cycle.components()) {

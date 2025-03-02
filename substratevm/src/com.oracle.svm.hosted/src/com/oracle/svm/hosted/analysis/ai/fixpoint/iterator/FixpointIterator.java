@@ -18,10 +18,10 @@ public interface FixpointIterator<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Runs the fixpoint iteration algorith with a given initial {@link Domain}.
-     * This method performs a fixpoint iteration algorithm and returns the
+     * This analysisMethod performs a fixpoint iteration algorithm and returns the
      * resulting {@link AbstractStateMap} after the iteration is completed.
      * This is a good place to run checkers from {@link CheckerManager}, because
-     * we know the abstract context at every point in the method.
+     * we know the abstract context at every point in the analysisMethod.
      * NOTE:
      *      Currently, all implementations should call checkerManager.checkAll after the fixpoint is reached.
      *      This is not optimal when we have recursive methods.
