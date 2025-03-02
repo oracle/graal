@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -835,6 +835,18 @@ public final class FrameStateBuilder implements SideEffectsState {
      */
     public int stackSize() {
         return stackSize;
+    }
+
+    /**
+     * Whether locals should be retained in the state being built irrespective of whether they are
+     * dead according to a {@link LocalLiveness} object. This is true when a debugger has requested
+     * capabilities implying it wants to access variables that are live according Java source scope.
+     * The source scope of a variable is often larger than a compiler's liveness scope which ends at
+     * the last read of the exact value (that is the last read before the next write into that
+     * slot).
+     */
+    public boolean shouldRetainLocalVariables() {
+        return shouldRetainLocalVariables;
     }
 
     private boolean verifyKind(JavaKind slotKind, ValueNode x) {

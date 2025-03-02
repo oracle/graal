@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -266,6 +266,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Formatter;
 import java.util.List;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
@@ -2059,6 +2060,8 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
     }
 
     protected Invokable appendInvoke(InvokeKind initialInvokeKind, ResolvedJavaMethod initialTargetMethod, ValueNode[] args, ResolvedJavaType referencedType) {
+        clearNonLiveLocals();
+
         if (!parsingIntrinsic() && DeoptALot.getValue(options)) {
             append(new DeoptimizeNode(DeoptimizationAction.None, RuntimeConstraint));
             JavaKind resultType = initialTargetMethod.getSignature().getReturnKind();
@@ -5964,5 +5967,59 @@ public abstract class BytecodeParser extends CoreProvidersDelegate implements Gr
      */
     protected boolean mustClearNonLiveLocalsAtOSREntry() {
         return true;
+    }
+
+    /**
+     * Clear all locals that are determined to be dead at the position that is right before the
+     * current parsing point.
+     */
+    private void clearNonLiveLocals() {
+        FrameStateBuilder state = frameState;
+        if (state.shouldRetainLocalVariables()) {
+            return;
+        }
+
+        BytecodeStream reader = stream;
+        BciBlock block = currentBlock;
+        int parsingBci = bci();
+        LocalLiveness live = liveness;
+        Boolean[] localIsLive = new Boolean[state.localsSize()];
+
+        // Walk forward the block from this location, for each local slot. Consider the first access
+        // at the slot, if:
+        // 1. It is a load, then the slot is definitely live
+        // 2. It is a store, then the slot is definitely dead
+        // 3. We don't encounter a load or a store, then the liveness is the same as the liveout
+        IntConsumer localLoad = localIdx -> {
+            if (localIsLive[localIdx] == null) {
+                localIsLive[localIdx] = Boolean.TRUE;
+            }
+        };
+        IntConsumer localStore = localIdx -> {
+            if (localIsLive[localIdx] == null) {
+                localIsLive[localIdx] = Boolean.FALSE;
+            }
+        };
+        LocalLiveness.computeLocalLiveness(reader, block, localLoad, localStore);
+
+        ValueNode[] locals = state.locals;
+        for (int i = 0; i < state.localsSize(); i++) {
+            if (localIsLive[i] == Boolean.FALSE || (localIsLive[i] == null && !live.localIsLiveOut(block, i))) {
+                /*
+                 * Clearing a slot is equivalent to a storeLocal() of that slot: if the old value is
+                 * the upper half of a two-slot value, both slots need to be cleared. The liveness
+                 * analysis may not detect these cases to mark the previous slot as non-live because
+                 * at the beginning / end of the block the slot at index i - 1 can be occupied by a
+                 * live single-slot value.
+                 */
+                if (locals[i] == FrameState.TWO_SLOT_MARKER) {
+                    locals[i - 1] = null;
+                }
+                locals[i] = null;
+            }
+        }
+
+        // Restore the state of the stream
+        reader.setBCI(parsingBci);
     }
 }
