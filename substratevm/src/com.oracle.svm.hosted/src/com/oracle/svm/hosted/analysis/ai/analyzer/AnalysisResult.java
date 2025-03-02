@@ -5,16 +5,10 @@ package com.oracle.svm.hosted.analysis.ai.analyzer;
  */
 public enum AnalysisResult {
 
-    /* Analysis successfully finished */
-    OK,
-    /* Some internal error occurred ( RuntimeException, IOException ) */
-    ANALYSIS_FAILED,
-    /* The analysisMethod should be skipped according to the provided analysisMethod filters */
-    IN_SKIP_LIST,
-    /* Two methods calling each other recursively -> I have no solution for this */
-    MUTUAL_RECURSION_CYCLE,
-    /* The AnalysisMethod of an Invoke was not found in the current DebugContext */
-    UNKNOWN_METHOD,
-    /* The recursion limit was reached */
-    RECURSION_LIMIT_OVERFLOW,
+    OK, /* Analysis successfully finished */
+    ANALYSIS_FAILED, /* Some internal error occurred ( RuntimeException, IOException ) */
+    IN_SKIP_LIST, /* The analysisMethod should be skipped according to the provided analysisMethod filters */
+    MUTUAL_RECURSION_CYCLE, /* Two methods calling each other recursively -> I have no solution for this */ // TODO: ask how to solve this
+    UNKNOWN_METHOD, /* The AnalysisMethod of an Invoke was not found in the current DebugContext */
+    RECURSION_LIMIT_OVERFLOW, /* The recursion limit was reached */
 }
