@@ -109,7 +109,7 @@ public class HeapBreakdownProvider {
         Set<byte[]> seenStringByteArrays = Collections.newSetFromMap(new IdentityHashMap<>());
         final boolean reportStringBytesConstant = reportStringBytes;
         for (ObjectInfo o : access.getImage().getHeap().getObjects()) {
-            if (o.getConstant().isInBaseLayer()) {
+            if (o.getConstant().isWrittenInPreviousLayer()) {
                 continue;
             }
             long objectSize = o.getSize();

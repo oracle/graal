@@ -1497,6 +1497,7 @@ public class SVMImageLayerLoader extends ImageLayerLoader {
             }
             if (objectOffset != -1) {
                 objectOffsets.put(ImageHeapConstant.getConstantID(heapObj), objectOffset);
+                heapObj.markWrittenInPreviousLayer();
             }
             return heapObj;
         });
