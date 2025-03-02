@@ -580,7 +580,7 @@ class CrossLayerSingletonMappingInfo extends LoadImageSingletonFactory implement
             int slotAssignment;
             LoadImageSingletonDataImpl info = entry.getValue();
             var hType = metaAccess.lookupJavaType(info.getLoadType());
-            if (hType.isInstantiated()) {
+            if (hType.getWrapped().isAnySubtypeInstantiated()) {
                 Class<?> keyClass = entry.getKey();
                 SlotInfo slotInfo = priorKeyToSlotInfoMap.get(entry.getKey());
 
