@@ -1,21 +1,14 @@
 package com.oracle.svm.hosted.analysis.ai.analyzer.call;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.AnalysisMethodFilterManager;
 import com.oracle.svm.hosted.analysis.ai.checker.CheckerManager;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIterator;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.iterator.FixpointIteratorFactory;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
-import com.oracle.svm.hosted.analysis.ai.util.GraphUtils;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 
-public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>>
-        implements CallHandler<Domain> {
+// TODO: we should see some short output what holds after rootCall
+public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>> implements CallHandler<Domain> {
 
     protected final Domain initialDomain;
     protected final TransferFunction<Domain> transferFunction;
@@ -23,6 +16,7 @@ public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>>
     protected final AnalysisMethodFilterManager methodFilterManager;
     protected final IteratorPayload iteratorPayload;
 
+    @SuppressWarnings("this-escape")
     public BaseCallHandler(Domain initialDomain,
                            NodeInterpreter<Domain> nodeInterpreter,
                            CheckerManager checkerManager,
@@ -49,14 +43,5 @@ public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>>
 
     public IteratorPayload getIteratorPayload() {
         return iteratorPayload;
-    }
-
-    @Override
-    public void handleRootCall(AnalysisMethod root, DebugContext debug) {
-        FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(root, debug, initialDomain, transferFunction, iteratorPayload);
-        AbstractStateMap<Domain> abstractStateMap = fixpointIterator.iterateUntilFixpoint();
-        checkerManager.checkAll(abstractStateMap);
-        ControlFlowGraph cfg = iteratorPayload.getMethodGraph().get(root);
-        GraphUtils.printInferredGraph(cfg.graph, root, abstractStateMap);
     }
 }

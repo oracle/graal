@@ -32,8 +32,8 @@ public interface CallHandler<Domain extends AbstractDomain<Domain>> {
                                        AbstractStateMap<Domain> callerStateMap);
 
     /**
-     * The starting point of the analysis.
-     * We receive an {@link AnalysisMethod} and we start our abstract interpretation from this analysisMethod.
+     * The starting point of the analysis.to md
+     * We receive an {@link AnalysisMethod} and we start our abstract interpretation from this analysisMethod as the starting point.
      *
      * @param root the root {@link AnalysisMethod} that the abstract interpretation starts from
      * @param debug the debug context for the analysis
