@@ -25,9 +25,12 @@ public interface Checker {
      * @param abstractStateMap the abstract state map after the fixpoint iteration
      * @return the result of the check
      */
-    // TODO: abstract interpretation sometimes produces a lot of caught warnings/errors ( sometimes even false positives )
-    //  this can be discouraging. We need to think of a way to restrict this amount.
-    //  There are few possibilities here: we can either sort the warnings according to how severe they are and limit this amount,
-    //  or we won't show the  errors propagated from caller to callees
+
+    /**
+     * NOTE: Abstract interpretation sometimes produces a lot of caught warnings/errors ( sometimes even false positives )
+     * this can be discouraging for the person trying to analyze their program. We need to think of a way to restrict this amount.
+     * There are few possibilities here: we can either sort the warnings according to how severe they are and limit this amount,
+     * or we won't show the  errors propagated from caller to callees
+     */
     List<CheckerResult> check(AbstractStateMap<? extends AbstractDomain<?>> abstractStateMap);
 }

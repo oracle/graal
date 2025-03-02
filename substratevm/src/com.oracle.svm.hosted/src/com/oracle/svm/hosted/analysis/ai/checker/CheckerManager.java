@@ -1,6 +1,5 @@
 package com.oracle.svm.hosted.analysis.ai.checker;
 
-import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
 
@@ -24,7 +23,7 @@ public final class CheckerManager {
      *
      * @param checker the checker to register
      */
-    public <T extends AbstractDomain<T>> void registerChecker(Checker checker) {
+    public void registerChecker(Checker checker) {
         checkers.add(checker);
     }
 
@@ -32,9 +31,10 @@ public final class CheckerManager {
      * Executes all registered checkers on the given abstract state map and collects the summary of results.
      *
      * @param abstractStateMap the abstract state map to be checked, representing the state after the fixpoint iteration
-     * @return a list of {@code CheckerSummary} instances, each summarizing the results (e.g. warnings or errors) of a checker
      */
-    public List<CheckerSummary> checkAll(AbstractStateMap<?> abstractStateMap) {
+    public void checkAll(String methodName, AbstractStateMap<?> abstractStateMap) {
+        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
+        logger.logHighlightedDebugInfo("Running checks on method: " + methodName);
         logUsedCheckers();
         List<CheckerSummary> checkerSummaries = new ArrayList<>();
         for (Checker checker : checkers) {
@@ -43,15 +43,13 @@ public final class CheckerManager {
             checkerSummaries.add(summary);
             printCheckResult(checker, summary);
         }
-
-        return checkerSummaries;
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (Checker checker : checkers) {
-            sb.append(checker.getDescription()).append(":\n");
+            sb.append(checker.getDescription());
         }
         return sb.toString();
     }
@@ -89,12 +87,13 @@ public final class CheckerManager {
     private void logUsedCheckers() {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
         if (checkers.isEmpty()) {
-            logger.logToFile("No checkers were provided in the current analysis");
+            logger.logHighlightedDebugInfo("No checkers were provided in the current analysis");
+            return;
         }
 
-        logger.logToFile("Using the following checkers: ");
+        logger.logHighlightedDebugInfo("Using the following checkers: ");
         for (Checker checker : checkers) {
-            logger.logToFile(checker.getDescription());
+            logger.logDebugInfo(checker.getDescription());
         }
     }
 }

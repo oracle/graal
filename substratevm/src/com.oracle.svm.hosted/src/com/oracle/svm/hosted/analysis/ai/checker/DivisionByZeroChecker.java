@@ -7,11 +7,14 @@ import jdk.graal.compiler.nodes.calc.BinaryArithmeticNode;
 import jdk.graal.compiler.nodes.calc.FloatDivNode;
 import jdk.graal.compiler.nodes.calc.RemNode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Represents a simple example of how a checker can be implemented.
  * This DivisionByZeroChecker works on IntInterval domain.
  */
-public class DivisionByZeroChecker implements Checker {
+public final class DivisionByZeroChecker implements Checker {
 
     @Override
     public String getDescription() {
@@ -19,23 +22,25 @@ public class DivisionByZeroChecker implements Checker {
     }
 
     @Override
-    public CheckerResult check(AbstractStateMap<?> abstractStateMap) {
+    public List<CheckerResult> check(AbstractStateMap<?> abstractStateMap) {
+        List<CheckerResult> checkerResults = new ArrayList<>();
+
         var stateMap = abstractStateMap.getStateMap();
         for (Node node : stateMap.keySet()) {
             if (!(stateMap.get(node).getPreCondition() instanceof IntInterval)) {
-                return new CheckerResult(CheckerStatus.ERROR, "DivisionByZeroChecker works only on IntInterval domain");
+                checkerResults.add(new CheckerResult(CheckerStatus.ERROR, "DivisionByZeroChecker works only on IntInterval domain"));
             }
 
             if (node instanceof FloatDivNode || node instanceof RemNode) {
                 var divisorNode = ((BinaryArithmeticNode<?>) node).getY();
                 IntInterval divisorInterval = (IntInterval) abstractStateMap.getPostCondition(divisorNode);
                 if (divisorInterval.containsValue(0)) {
-                    // TODO: getNodeSourcePosition is very vague, we probably should print more information like where the 0 was assigned last etc.
-                    return new CheckerResult(CheckerStatus.ERROR, "Division by zero on line: " + node.getNodeSourcePosition().toString());
+                    // NOTE: getNodeSourcePosition is very vague, we probably should print more information like where the 0 was assigned last etc.
+                    checkerResults.add(new CheckerResult(CheckerStatus.ERROR, "Division by zero on line: " + node.getNodeSourcePosition().toString()));
                 }
             }
         }
 
-        return new CheckerResult(CheckerStatus.OK, "No potential division by zero found");
+        return checkerResults;
     }
 }
