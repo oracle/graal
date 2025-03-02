@@ -446,6 +446,10 @@ public final class NativeLibraries {
         List<String> allDeps = new ArrayList<>(Arrays.asList(dependencies));
         /* "jvm" is a basic dependence for static JNI libs */
         allDeps.add("jvm");
+        if (library.equals("nio")) {
+            /* "nio" implicitly depends on "net" */
+            allDeps.add("net");
+        }
         dependencyGraph.add(library, allDeps);
     }
 
