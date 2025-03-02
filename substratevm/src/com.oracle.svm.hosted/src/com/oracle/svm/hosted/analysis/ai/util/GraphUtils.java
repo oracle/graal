@@ -25,6 +25,7 @@ public final class GraphUtils {
 
     public static AnalysisMethod getInvokeAnalysisMethod(AnalysisMethod root, Invoke invoke) {
         for (InvokeInfo invokeInfo : root.getInvokes()) {
+            // TODO: try comparing bci, && invokeInfo.getPosition().getBCI() == invoke.bci()
             if (invoke.getTargetMethod().equals(invokeInfo.getTargetMethod())) {
                 return invokeInfo.getTargetMethod();
             }
@@ -32,42 +33,44 @@ public final class GraphUtils {
         throw AnalysisError.interruptAnalysis("Invoke not found in analysisMethod");
     }
 
-    public static void printGraph(AnalysisMethod root, DebugContext debug) {
-        debug.log("Printing the graph of AnalysisMethod " + root);
-        ControlFlowGraph graph = getGraph(root, debug);
+    public static void printGraph(AnalysisMethod root, ControlFlowGraph graph) {
         if (graph == null) {
             throw AnalysisError.interruptAnalysis("ControlFlowGraph is null");
         }
 
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.logToFile("Printing the graph of AnalysisMethod " + root);
+        logger.logToFile("Graph of AnalysisMethod: " + root);
         for (HIRBlock block : graph.getBlocks()) {
             logger.logToFile(block.toString());
 
             for (Node node : block.getNodes()) {
                 logger.logToFile(node.toString());
-                logger.logToFile("Successors: " + System.lineSeparator());
+                logger.logToFile("\tSuccessors: ");
                 for (Node successor : node.successors()) {
-                    logger.logToFile(successor + System.lineSeparator());
+                    logger.logToFile("\t\t" + successor.toString());
+                }
+                logger.logToFile("\tInputs: ");
+                for (Node input : node.inputs()) {
+                    logger.logToFile("\t\t" + input.toString());
                 }
             }
         }
 
-        logger.logToFile("Printing the invokes");
+        logger.logToFile("The Invokes of the AnalysisMethod: " + root);
         for (InvokeInfo invoke : root.getInvokes()) {
-            logger.logToFile("Invoke: " + invoke);
+            logger.logToFile("\tInvoke: " + invoke);
             for (AnalysisMethod callee : invoke.getOriginalCallees()) {
-                logger.logToFile("\tCallee: " + callee);
+                logger.logToFile("\t\tCallee: " + callee);
             }
         }
     }
 
     public static void printInferredGraph(StructuredGraph graph, AnalysisMethod analysisMethod, AbstractStateMap<?> abstractStateMap) {
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.logToFile("Printing the inferred graph of AnalysisMethod " + analysisMethod);
+        logger.logToFile("Computed postConditions of AnalysisMethod: " + analysisMethod);
         for (Node node : graph.getNodes()) {
             AbstractState<?> abstractState = abstractStateMap.getState(node);
-            logger.logToFile(node + " -> " + abstractState);
+            logger.logToFile(node + " -> " + abstractState.getPostCondition() + System.lineSeparator());
         }
     }
 }
