@@ -44,8 +44,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   vm_notifier_daily: vm_common.vm_base('linux', 'amd64', 'daily', deploy=true) + {
     name: 'daily-deploy-vm-notifier-linux-amd64',
     packages+: {
-      curl: '>=7.50.1',
-      git: '>=1.8.3',
+      curl: '==7.50.1',
     },
     run+: [
       ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
@@ -70,8 +69,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   vm_notifier_weekly: vm_common.vm_base('linux', 'amd64', 'weekly', deploy=true) + {
     name: 'weekly-deploy-vm-notifier-linux-amd64',
     packages+: {
-      curl: '>=7.50.1',
-      git: '>=1.8.3',
+      curl: '==7.50.1',
     },
     run+: [
       ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_indexer_service('java21', 'ce'),

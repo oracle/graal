@@ -286,7 +286,7 @@ local common_json = import "../common.json";
         if (self.os == "linux" && self.arch == "amd64") then {
           readline: '==6.3',
           pcre2: '==10.37',
-          curl: '>=7.50.1',
+          curl: '==7.50.1',
           gnur: '==4.0.3-gcc4.8.5-pcre2',
         }
         else if (self.os == "darwin" && self.arch == "amd64") then {

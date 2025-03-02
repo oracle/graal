@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -35,19 +34,19 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GCImpl;
-import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.HeapChunk;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
-import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
 import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.util.HostedByteBufferPointer;
 
 import jdk.graal.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.word.Word;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -176,28 +175,19 @@ public class CardTableBasedRememberedSet implements RememberedSet {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
-        AlignedChunkRememberedSet.walkDirtyObjects(chunk, visitor, clean);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean) {
-        UnalignedChunkRememberedSet.walkDirtyObjects(chunk, visitor, clean);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean) {
-        AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
+    public void walkDirtyObjects(AlignedHeader firstAlignedChunk, UnalignedHeader firstUnalignedChunk, UnalignedHeader lastUnalignedChunk, UninterruptibleObjectVisitor visitor, boolean clean) {
+        AlignedHeader aChunk = firstAlignedChunk;
         while (aChunk.isNonNull()) {
-            walkDirtyObjects(aChunk, visitor, clean);
+            AlignedChunkRememberedSet.walkDirtyObjects(aChunk, visitor, clean);
             aChunk = HeapChunk.getNext(aChunk);
         }
 
-        UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
+        UnalignedHeader uChunk = firstUnalignedChunk;
         while (uChunk.isNonNull()) {
-            walkDirtyObjects(uChunk, visitor, clean);
+            UnalignedChunkRememberedSet.walkDirtyObjects(uChunk, visitor, clean);
+            if (uChunk.equal(lastUnalignedChunk)) {
+                break;
+            }
             uChunk = HeapChunk.getNext(uChunk);
         }
     }

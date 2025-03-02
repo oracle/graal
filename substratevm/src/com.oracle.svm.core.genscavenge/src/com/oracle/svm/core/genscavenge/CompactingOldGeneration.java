@@ -147,7 +147,7 @@ final class CompactingOldGeneration extends OldGeneration {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void blackenDirtyCardRoots(GreyToBlackObjectVisitor visitor) {
-        RememberedSet.get().walkDirtyObjects(space, visitor, true);
+        RememberedSet.get().walkDirtyObjects(space.getFirstAlignedHeapChunk(), space.getFirstUnalignedHeapChunk(), Word.nullPointer(), visitor, true);
     }
 
     @Override
@@ -294,12 +294,12 @@ final class CompactingOldGeneration extends OldGeneration {
         Timer oldFixupImageHeapTimer = timers.oldFixupImageHeap.open();
         try {
             for (ImageHeapInfo info : HeapImpl.getImageHeapInfos()) {
-                GCImpl.walkImageHeapRoots(info, fixupVisitor);
+                fixupImageHeapRoots(info);
             }
             if (AuxiliaryImageHeap.isPresent()) {
                 ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
                 if (auxImageHeapInfo != null) {
-                    GCImpl.walkImageHeapRoots(auxImageHeapInfo, fixupVisitor);
+                    fixupImageHeapRoots(auxImageHeapInfo);
                 }
             }
         } finally {
@@ -340,6 +340,16 @@ final class CompactingOldGeneration extends OldGeneration {
             }
         } finally {
             oldFixupRuntimeCodeCacheTimer.close();
+        }
+    }
+
+    @Uninterruptible(reason = "Avoid unnecessary safepoint checks in GC for performance.")
+    private void fixupImageHeapRoots(ImageHeapInfo info) {
+        if (HeapImpl.usesImageHeapCardMarking()) {
+            // Note that cards have already been cleaned and roots re-marked during the initial scan
+            GCImpl.walkDirtyImageHeapChunkRoots(info, fixupVisitor, false);
+        } else {
+            GCImpl.walkImageHeapRoots(info, fixupVisitor);
         }
     }
 
