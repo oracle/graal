@@ -179,7 +179,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public int getLayerObjectCount() {
-        return (int) objects.values().stream().filter(o -> !o.constant.isInBaseLayer()).count();
+        return (int) objects.values().stream().filter(o -> !o.constant.isWrittenInPreviousLayer()).count();
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
@@ -418,7 +418,7 @@ public final class NativeImageHeap implements ImageHeap {
     public int countDynamicHubs() {
         int count = 0;
         for (ObjectInfo o : getObjects()) {
-            if (!o.constant.isInBaseLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
+            if (!o.constant.isWrittenInPreviousLayer() && hMetaAccess.isInstanceOf(o.getConstant(), DynamicHub.class)) {
                 count++;
             }
         }
@@ -648,7 +648,7 @@ public final class NativeImageHeap implements ImageHeap {
      * are reachable from regular constants in this layer.
      */
     private static boolean processBaseLayerConstant(JavaConstant constant, ObjectInfo info) {
-        if (((ImageHeapConstant) constant).isInBaseLayer()) {
+        if (((ImageHeapConstant) constant).isWrittenInPreviousLayer()) {
             info.setOffsetInPartition(HostedImageLayerBuildingSupport.singleton().getLoader().getObjectOffset(constant));
             info.setHeapPartition(BASE_LAYER_PARTITION);
             return true;
