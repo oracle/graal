@@ -32,14 +32,18 @@ package com.oracle.objectfile.elf.dwarf.constants;
 public enum DwarfForm {
     DW_FORM_null(0x0),
     DW_FORM_addr(0x1),
-    DW_FORM_data2(0x05),
+    DW_FORM_data2(0x5),
     DW_FORM_data4(0x6),
     @SuppressWarnings("unused")//
     DW_FORM_data8(0x7),
     @SuppressWarnings("unused")//
     DW_FORM_string(0x8),
     @SuppressWarnings("unused")//
-    DW_FORM_block1(0x0a),
+    DW_FORM_block1(0xa),
+    DW_FORM_data1(0xb),
+    DW_FORM_flag(0xc),
+    DW_FORM_strp(0xe),
+    DW_FORM_udata(0xf),
     DW_FORM_ref_addr(0x10),
     @SuppressWarnings("unused")//
     DW_FORM_ref1(0x11),
@@ -49,10 +53,8 @@ public enum DwarfForm {
     @SuppressWarnings("unused")//
     DW_FORM_ref8(0x14),
     DW_FORM_sec_offset(0x17),
-    DW_FORM_data1(0x0b),
-    DW_FORM_flag(0xc),
-    DW_FORM_strp(0xe),
     DW_FORM_expr_loc(0x18),
+    DW_FORM_line_strp(0x1f),
     DW_FORM_ref_sig8(0x20),
     DW_FORM_loclistx(0x22);
 

@@ -172,6 +172,10 @@ public class ClassEntry extends StructureTypeEntry {
         return getFileIdx(this.getFileEntry());
     }
 
+    public int getDirIdx() {
+        return getDirIdx(this.getFileEntry());
+    }
+
     /**
      * Returns the file index of a given file entry within this class entry.
      *

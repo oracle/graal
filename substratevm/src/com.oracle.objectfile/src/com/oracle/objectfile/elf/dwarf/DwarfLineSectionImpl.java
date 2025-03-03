@@ -30,6 +30,8 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfForm;
+import com.oracle.objectfile.elf.dwarf.constants.DwarfLineNumberHeaderEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
@@ -48,7 +50,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /**
      * Line header section always contains fixed number of bytes.
      */
-    private static final int LN_HEADER_SIZE = 28;
+    private static final int LN_HEADER_SIZE = 30;
     /**
      * Current generator follows C++ with line base -5.
      */
@@ -80,8 +82,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         instanceClassWithCompilationStream().forEachOrdered(classEntry -> {
             setLineIndex(classEntry, byteCount.get());
             int headerSize = headerSize();
-            int dirTableSize = computeDirTableSize(classEntry);
-            int fileTableSize = computeFileTableSize(classEntry);
+            int dirTableSize = writeDirTable(null, classEntry, null, 0);
+            int fileTableSize = writeFileTable(null, classEntry, null, 0);
             int prologueSize = headerSize + dirTableSize + fileTableSize;
             setLinePrologueSize(classEntry, prologueSize);
             // mark the start of the line table for this entry
@@ -103,6 +105,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>uint16 version</code>
          *
+         * <li><code>uint8 address_size</code>
+         *
+         * <li><code>uint8 segment_selector_size</code>
+         *
          * <li><code>uint32 header_length</code>
          *
          * <li><code>uint8 min_insn_length</code>
@@ -123,53 +129,6 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
 
         return LN_HEADER_SIZE;
-    }
-
-    private static int computeDirTableSize(ClassEntry classEntry) {
-        /*
-         * Table contains a sequence of 'nul'-terminated UTF8 dir name bytes followed by an extra
-         * 'nul'.
-         */
-        Cursor cursor = new Cursor();
-        classEntry.getDirs().forEach(dirEntry -> {
-            int length = countUTF8Bytes(dirEntry.getPathString());
-            // We should never have a null or zero length entry in local dirs
-            assert length > 0;
-            cursor.add(length + 1);
-        });
-        /*
-         * Allow for terminator nul.
-         */
-        cursor.add(1);
-        return cursor.get();
-    }
-
-    private int computeFileTableSize(ClassEntry classEntry) {
-        /*
-         * Table contains a sequence of file entries followed by an extra 'nul'
-         *
-         * each file entry consists of a 'nul'-terminated UTF8 file name, a dir entry idx and two 0
-         * time stamps
-         */
-        Cursor cursor = new Cursor();
-        classEntry.getFiles().forEach(fileEntry -> {
-            // We want the file base name excluding path.
-            String baseName = fileEntry.fileName();
-            int length = countUTF8Bytes(baseName);
-            // We should never have a null or zero length entry in local files.
-            assert length > 0;
-            cursor.add(length + 1);
-            // The dir index gets written as a ULEB
-            int dirIdx = classEntry.getDirIdx(fileEntry);
-            cursor.add(writeULEB(dirIdx, scratch, 0));
-            // The two zero timestamps require 1 byte each
-            cursor.add(2);
-        });
-        /*
-         * Allow for terminator nul.
-         */
-        cursor.add(1);
-        return cursor.get();
     }
 
     private int computeLineNumberTableSize(ClassEntry classEntry) {
@@ -218,14 +177,25 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
         pos = writeInt(0, buffer, pos);
         /*
-         * 2 ubyte version is always 2.
+         * 2 ubyte version is always 5.
          */
-        pos = writeDwarfVersion(DwarfVersion.DW_VERSION_4, buffer, pos);
+        pos = writeDwarfVersion(DwarfVersion.DW_VERSION_5, buffer, pos);
         /*
-         * 4 ubyte prologue length includes rest of header and dir + file table section.
+         * 1 ubyte address size field.
          */
-        int prologueSize = getLinePrologueSize(classEntry) - (4 + 2 + 4);
+        pos = writeByte((byte) 8, buffer, pos);
+        /*
+         * 1 ubyte segment selector size field.
+         */
+        pos = writeByte((byte) 0, buffer, pos);
+
+        /*
+         * TODO: fix this 4 ubyte prologue length includes rest of header and dir + file table
+         * section.
+         */
+        int prologueSize = getLinePrologueSize(classEntry) - (4 + 2 + 1 + 1 + 4);
         pos = writeInt(prologueSize, buffer, pos);
+
         /*
          * 1 ubyte min instruction length is always 1.
          */
@@ -281,52 +251,93 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeDirTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+        int pos = p;
         verboseLog(context, "  [0x%08x] Dir Name", p);
+
+        /*
+         * 1 ubyte directory entry format count field.
+         */
+        pos = writeByte((byte) 1, buffer, pos);
+        /*
+         * 1 ULEB128 pair for the directory entry format.
+         */
+        pos = writeULEB(DwarfLineNumberHeaderEntry.DW_LNCT_path.value(), buffer, pos);
+        // DW_FORM_strp is not supported by GDB but DW_FORM_line_strp is
+        pos = writeULEB(DwarfForm.DW_FORM_line_strp.value(), buffer, pos);
+
+        /*
+         * 1 ULEB128 for directory count.
+         */
+        pos = writeULEB(classEntry.getDirs().size() + 1, buffer, pos);
+
+        /*
+         * Write explicit 0 entry for current directory. (compilation directory)
+         */
+        String compilationDirectory = uniqueDebugLineString(dwarfSections.getCachePath());
+        pos = writeLineStrSectionOffset(compilationDirectory, buffer, pos);
+
         /*
          * Write out the list of dirs
          */
-        Cursor cursor = new Cursor(p);
+        Cursor cursor = new Cursor(pos);
         Cursor idx = new Cursor(1);
         classEntry.getDirs().forEach(dirEntry -> {
             int dirIdx = idx.get();
             assert (classEntry.getDirIdx(dirEntry) == dirIdx);
-            String dirPath = dirEntry.getPathString();
+            String dirPath = uniqueDebugLineString(dirEntry.getPathString());
             verboseLog(context, "  [0x%08x] %-4d %s", cursor.get(), dirIdx, dirPath);
-            cursor.set(writeUTF8StringBytes(dirPath, buffer, cursor.get()));
+            cursor.set(writeLineStrSectionOffset(dirPath, buffer, cursor.get()));
             idx.add(1);
         });
-        /*
-         * Separate dirs from files with a nul.
-         */
-        cursor.set(writeByte((byte) 0, buffer, cursor.get()));
+
         return cursor.get();
     }
 
     private int writeFileTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+        int pos = p;
         verboseLog(context, "  [0x%08x] Entry Dir  Name", p);
+
+        /*
+         * 1 ubyte file name entry format count field.
+         */
+        pos = writeByte((byte) 2, buffer, pos);
+        /*
+         * 2 ULEB128 pairs for the directory entry format.
+         */
+        pos = writeULEB(DwarfLineNumberHeaderEntry.DW_LNCT_path.value(), buffer, pos);
+        // DW_FORM_strp is not supported by GDB but DW_FORM_line_strp is
+        pos = writeULEB(DwarfForm.DW_FORM_line_strp.value(), buffer, pos);
+        pos = writeULEB(DwarfLineNumberHeaderEntry.DW_LNCT_directory_index.value(), buffer, pos);
+        pos = writeULEB(DwarfForm.DW_FORM_udata.value(), buffer, pos);
+
+        /*
+         * 1 ULEB128 for directory count.
+         */
+        pos = writeULEB(classEntry.getFiles().size() + 1, buffer, pos);
+
+        /*
+         * Write explicit 0 dummy entry.
+         */
+        String fileName = uniqueDebugLineString(classEntry.getFileName());
+        pos = writeLineStrSectionOffset(fileName, buffer, pos);
+        pos = writeULEB(classEntry.getDirIdx(), buffer, pos);
+
         /*
          * Write out the list of files
          */
-        Cursor cursor = new Cursor(p);
+        Cursor cursor = new Cursor(pos);
         Cursor idx = new Cursor(1);
         classEntry.getFiles().forEach(fileEntry -> {
-            int pos = cursor.get();
             int fileIdx = idx.get();
             assert classEntry.getFileIdx(fileEntry) == fileIdx;
             int dirIdx = classEntry.getDirIdx(fileEntry);
-            String baseName = fileEntry.fileName();
-            verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
-            pos = writeUTF8StringBytes(baseName, buffer, pos);
-            pos = writeULEB(dirIdx, buffer, pos);
-            pos = writeULEB(0, buffer, pos);
-            pos = writeULEB(0, buffer, pos);
-            cursor.set(pos);
+            String baseName = uniqueDebugLineString(fileEntry.fileName());
+            verboseLog(context, "  [0x%08x] %-5d %-5d %s", cursor.get(), fileIdx, dirIdx, baseName);
+            cursor.set(writeLineStrSectionOffset(baseName, buffer, cursor.get()));
+            cursor.set(writeULEB(dirIdx, buffer, cursor.get()));
             idx.add(1);
         });
-        /*
-         * Terminate files with a nul.
-         */
-        cursor.set(writeByte((byte) 0, buffer, cursor.get()));
+
         return cursor.get();
     }
 

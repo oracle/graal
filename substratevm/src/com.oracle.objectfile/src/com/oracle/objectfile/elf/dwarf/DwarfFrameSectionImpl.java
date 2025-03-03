@@ -46,8 +46,8 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     private static final int CFA_CIE_id_default = -1;
 
     public DwarfFrameSectionImpl(DwarfDebugInfo dwarfSections) {
-        // debug_frame section depends on debug_line section
-        super(dwarfSections, DwarfSectionName.DW_FRAME_SECTION, DwarfSectionName.DW_LINE_SECTION);
+        // debug_frame section depends on debug_line_str section
+        super(dwarfSections, DwarfSectionName.DW_FRAME_SECTION, DwarfSectionName.DW_LINE_STR_SECTION);
     }
 
     @Override

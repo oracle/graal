@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2025, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +31,12 @@ import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import jdk.graal.compiler.debug.DebugContext;
 
 /**
- * Generator for debug_str section.
+ * Generator for debug_line_str section.
  */
-public class DwarfStrSectionImpl extends DwarfSectionImpl {
-    public DwarfStrSectionImpl(DwarfDebugInfo dwarfSections) {
-        // debug_str section depends on info section
-        super(dwarfSections, DwarfSectionName.DW_STR_SECTION, DwarfSectionName.DW_INFO_SECTION);
+public class DwarfLineStrSectionImpl extends DwarfSectionImpl {
+    public DwarfLineStrSectionImpl(DwarfDebugInfo dwarfSections) {
+        // debug_line_str section depends on line section
+        super(dwarfSections, DwarfSectionName.DW_LINE_STR_SECTION, DwarfSectionName.DW_LINE_SECTION);
     }
 
     @Override
@@ -45,7 +44,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
         assert !contentByteArrayCreated();
 
         int pos = 0;
-        for (StringEntry stringEntry : dwarfSections.getStringTable()) {
+        for (StringEntry stringEntry : dwarfSections.getLineStringTable()) {
             stringEntry.setOffset(pos);
             String string = stringEntry.getString();
             pos = writeUTF8StringBytes(string, null, pos);
@@ -65,7 +64,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
         enableLog(context);
 
         verboseLog(context, " [0x%08x] DEBUG_STR", pos);
-        for (StringEntry stringEntry : dwarfSections.getStringTable()) {
+        for (StringEntry stringEntry : dwarfSections.getLineStringTable()) {
             assert stringEntry.getOffset() == pos;
             String string = stringEntry.getString();
             pos = writeUTF8StringBytes(string, buffer, pos);
