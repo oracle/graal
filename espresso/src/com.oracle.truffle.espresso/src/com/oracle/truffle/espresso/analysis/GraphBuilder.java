@@ -83,7 +83,7 @@ public final class GraphBuilder {
     private GraphBuilder(Method method) {
         this.bs = new BytecodeStream(method.getOriginalCode());
         this.status = new long[bs.endBCI()];
-        this.handlers = method.getExceptionHandlers();
+        this.handlers = method.getSymbolicExceptionHandlers();
     }
 
     private EspressoExecutionGraph build() {

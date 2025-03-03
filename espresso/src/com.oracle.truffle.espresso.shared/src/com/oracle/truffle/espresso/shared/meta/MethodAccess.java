@@ -69,5 +69,5 @@ public interface MethodAccess<C extends TypeAccess<C, M, F>, M extends MethodAcc
     /**
      * The {@link ExceptionHandler exception handlers} associated with this method.
      */
-    ExceptionHandler[] getExceptionHandlers();
+    ExceptionHandler[] getSymbolicExceptionHandlers();
 }

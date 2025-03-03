@@ -301,13 +301,13 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return getCodeAttribute().getOriginalCode();
     }
 
-    public ExceptionHandler[] getExceptionHandlers() {
+    public ExceptionHandler[] getSymbolicExceptionHandlers() {
         return getCodeAttribute().getExceptionHandlers();
     }
 
     public int[] getSOEHandlerInfo() {
         ArrayList<Integer> toArray = new ArrayList<>();
-        for (ExceptionHandler handler : getExceptionHandlers()) {
+        for (ExceptionHandler handler : getSymbolicExceptionHandlers()) {
             if (handler.isCatchAll() //
                             || handler.getCatchType() == Types.java_lang_StackOverflowError //
                             || handler.getCatchType() == Types.java_lang_VirtualMachineError //
@@ -886,11 +886,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     private boolean hasGetterBytecodes() {
         byte[] code = getOriginalCode();
         if (isStatic()) {
-            if (code.length == STATIC_GETTER_LENGTH && getExceptionHandlers().length == 0) {
+            if (code.length == STATIC_GETTER_LENGTH && getSymbolicExceptionHandlers().length == 0) {
                 return (code[0] == (byte) GETSTATIC) && (Bytecodes.isReturn(code[3])) && code[3] != (byte) RETURN;
             }
         } else {
-            if (code.length == GETTER_LENGTH && getExceptionHandlers().length == 0) {
+            if (code.length == GETTER_LENGTH && getSymbolicExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) GETFIELD) && (Bytecodes.isReturn(code[4])) && code[4] != (byte) RETURN;
             }
         }
@@ -909,11 +909,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     private boolean hasSetterBytecodes() {
         byte[] code = getOriginalCode();
         if (isStatic()) {
-            if (code.length == STATIC_SETTER_LENGTH && getExceptionHandlers().length == 0) {
+            if (code.length == STATIC_SETTER_LENGTH && getSymbolicExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) PUTSTATIC) && (code[4] == (byte) RETURN);
             }
         } else {
-            if (code.length == SETTER_LENGTH && getExceptionHandlers().length == 0) {
+            if (code.length == SETTER_LENGTH && getSymbolicExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (Bytecodes.isLoad1(code[1])) && (code[2] == (byte) PUTFIELD) && (code[5] == (byte) RETURN);
             }
         }
@@ -942,7 +942,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     public int getCatchLocation(int bci, StaticObject ex) {
-        ExceptionHandler[] handlers = getExceptionHandlers();
+        ExceptionHandler[] handlers = getSymbolicExceptionHandlers();
         ExceptionHandler resolved = null;
         for (ExceptionHandler toCheck : handlers) {
             if (toCheck.covers(bci)) {
