@@ -36,6 +36,8 @@ import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -94,6 +96,17 @@ public class SecurityServiceTest {
         } catch (NoSuchAlgorithmException e) {
             Assert.fail("Failed to fetch noop service with exception: " + e);
         }
+    }
+
+    @Delete
+    @TargetClass(className = "sun.security.pkcs11.SunPKCS11")
+    static final class Target_sun_security_pkcs11_SunPKCS11 {
+    }
+
+    @Test
+    public void testDeletedProvider() {
+        final Provider registered = Security.getProvider("SunPKCS11");
+        Assert.assertNull("Provider should not be present.", registered);
     }
 
     private static final class NoOpProvider extends Provider {
