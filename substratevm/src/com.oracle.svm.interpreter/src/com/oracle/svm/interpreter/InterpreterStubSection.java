@@ -74,6 +74,25 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalDouble;
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalFloat;
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalInt;
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalLong;
+import static com.oracle.svm.interpreter.EspressoFrame.setLocalObject;
+
 @InternalVMMethod
 public abstract class InterpreterStubSection {
     public static final SectionName SVM_INTERP = new SectionName.ProgbitsSectionName("svm_interp");
@@ -86,6 +105,7 @@ public abstract class InterpreterStubSection {
 
     private final Map<InterpreterResolvedJavaMethod, Integer> enterTrampolineOffsets = new HashMap<>();
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void createInterpreterEnterStubSection(AbstractImage image, Collection<InterpreterResolvedJavaMethod> methods) {
         ObjectFile objectFile = image.getObjectFile();
         byte[] stubsBlob = generateEnterStubs(methods);
@@ -109,6 +129,7 @@ public abstract class InterpreterStubSection {
         return "interp_enter_" + NativeImage.localSymbolNameForMethod(method);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void createInterpreterVtableEnterStubSection(AbstractImage image, int maxVtableIndex) {
         ObjectFile objectFile = image.getObjectFile();
         byte[] stubsBlob = generateVtableEnterStubs(maxVtableIndex);
@@ -146,10 +167,12 @@ public abstract class InterpreterStubSection {
 
     protected abstract byte[] generateVtableEnterStubs(int maxVtableIndex);
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void markEnterStubPatch(HostedMethod enterStub) {
         markEnterStubPatch(stubsBufferImpl, enterStub);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     protected abstract void markEnterStubPatch(ObjectFile.ProgbitsSectionImpl pltBuffer, ResolvedJavaMethod enterStub);
 
     @Deoptimizer.DeoptStub(stubType = Deoptimizer.StubType.InterpreterEnterStub)

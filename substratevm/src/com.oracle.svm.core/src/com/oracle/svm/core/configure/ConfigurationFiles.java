@@ -43,6 +43,8 @@ import com.oracle.svm.core.util.UserError;
 import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionStability;
 import jdk.graal.compiler.options.OptionType;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Gathers configuration files from specified directories without having to provide each
@@ -213,6 +215,7 @@ public final class ConfigurationFiles {
         return resources;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static UserError.UserException foundLockFile(String container) {
         throw UserError.abort("%s contains file '%s', which means an agent is currently writing to it." +
                         "The agent must finish execution before its generated configuration can be used to build a native image." +
