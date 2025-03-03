@@ -25,9 +25,7 @@
 package jdk.graal.compiler.core.common;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -37,12 +35,14 @@ import jdk.graal.compiler.graph.Edges;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Describes fields in a class, primarily for access via {@link Unsafe}.
+ * Describes fields in a class, primarily for access via {@link Unsafe}. The order of the fields is
+ * determined by the argument passed to {@link Fields#Fields(List)}} but it must be stable between
+ * two JVM processes for the same input class files.
  */
 public class Fields {
 
     private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-    private static final Fields EMPTY_FIELDS = new Fields(Collections.emptyList());
+    private static final Fields EMPTY_FIELDS = new Fields(List.of());
 
     /**
      * Offsets used with {@link Unsafe} to access the fields.
@@ -61,13 +61,7 @@ public class Fields {
 
     private final Class<?>[] declaringClasses;
 
-    /**
-     * @see #getStableOrder()
-     */
-    private final int[] stableOrder;
-
     protected Fields(List<? extends FieldsScanner.FieldInfo> fields) {
-        Collections.sort(fields);
         this.offsets = new long[fields.size()];
         this.names = new String[offsets.length];
         this.types = new Class<?>[offsets.length];
@@ -79,13 +73,6 @@ public class Fields {
             types[index] = f.type;
             declaringClasses[index] = f.declaringClass;
             index++;
-        }
-        this.stableOrder = new int[fields.size()];
-        List<FieldsScanner.FieldInfo> stableFields = new ArrayList<>(fields);
-        stableFields.sort(FieldsScanner.FieldInfo.STABLE_COMPARATOR);
-        for (int i = 0; i < fields.size(); i++) {
-            FieldsScanner.FieldInfo f = stableFields.get(i);
-            stableOrder[i] = fields.indexOf(f);
         }
     }
 
@@ -116,7 +103,7 @@ public class Fields {
         return Map.entry(newOffsets, 0L);
     }
 
-    public static Fields create(ArrayList<? extends FieldsScanner.FieldInfo> fields) {
+    public static Fields create(List<? extends FieldsScanner.FieldInfo> fields) {
         if (fields.isEmpty()) {
             return EMPTY_FIELDS;
         }
@@ -128,12 +115,6 @@ public class Fields {
      */
     public int getCount() {
         return offsets.length;
-    }
-
-    public static void translateInto(Fields fields, ArrayList<FieldsScanner.FieldInfo> infos) {
-        for (int index = 0; index < fields.getCount(); index++) {
-            infos.add(new FieldsScanner.FieldInfo(fields.offsets[index], fields.names[index], fields.types[index], fields.declaringClasses[index]));
-        }
     }
 
     /**
@@ -182,27 +163,17 @@ public class Fields {
     }
 
     private static Object copyObjectAsArray(Object obj) {
-        Object objCopy;
-        if (obj instanceof int[]) {
-            objCopy = Arrays.copyOf((int[]) obj, ((int[]) obj).length);
-        } else if (obj instanceof short[]) {
-            objCopy = Arrays.copyOf((short[]) obj, ((short[]) obj).length);
-        } else if (obj instanceof long[]) {
-            objCopy = Arrays.copyOf((long[]) obj, ((long[]) obj).length);
-        } else if (obj instanceof float[]) {
-            objCopy = Arrays.copyOf((float[]) obj, ((float[]) obj).length);
-        } else if (obj instanceof double[]) {
-            objCopy = Arrays.copyOf((double[]) obj, ((double[]) obj).length);
-        } else if (obj instanceof boolean[]) {
-            objCopy = Arrays.copyOf((boolean[]) obj, ((boolean[]) obj).length);
-        } else if (obj instanceof byte[]) {
-            objCopy = Arrays.copyOf((byte[]) obj, ((byte[]) obj).length);
-        } else if (obj instanceof char[]) {
-            objCopy = Arrays.copyOf((char[]) obj, ((char[]) obj).length);
-        } else {
-            throw GraalError.shouldNotReachHereUnexpectedValue(obj);
-        }
-        return objCopy;
+        return switch (obj) {
+            case int[] ints -> Arrays.copyOf(ints, ints.length);
+            case short[] shorts -> Arrays.copyOf(shorts, shorts.length);
+            case long[] longs -> Arrays.copyOf(longs, longs.length);
+            case float[] floats -> Arrays.copyOf(floats, floats.length);
+            case double[] doubles -> Arrays.copyOf(doubles, doubles.length);
+            case boolean[] booleans -> Arrays.copyOf(booleans, booleans.length);
+            case byte[] bytes -> Arrays.copyOf(bytes, bytes.length);
+            case char[] chars -> Arrays.copyOf(chars, chars.length);
+            case null, default -> throw GraalError.shouldNotReachHereUnexpectedValue(obj);
+        };
     }
 
     /**
@@ -287,21 +258,6 @@ public class Fields {
     }
 
     /**
-     * Gets the indexes of the fields sorted by {@link FieldsScanner.FieldInfo#STABLE_COMPARATOR}.
-     * Here's an example of how to use this ordering:
-     *
-     * <pre>
-     * for (int idx : fields.getStableOrder()) {
-     *     String fieldName = fields.getName(idx);
-     *     // use fieldName
-     * }
-     * </pre>
-     */
-    public int[] getStableOrder() {
-        return stableOrder;
-    }
-
-    /**
      * Gets the name of a field.
      *
      * @param index index of a field
@@ -319,6 +275,25 @@ public class Fields {
         return types[index];
     }
 
+    /**
+     * Gets the index of the field denoted by {@code declaringClass} and {@code name}.
+     */
+    public int getIndex(Class<?> declaringClass, String name) {
+        int res = -1;
+        for (int index = 0; index < getCount(); index++) {
+            if (getDeclaringClass(index) == declaringClass && names[index].equals(name)) {
+                if (res != -1) {
+                    throw new GraalError("More than one field %s.%s in %s", declaringClass.getName(), name, this);
+                }
+                res = index;
+            }
+        }
+        if (res == -1) {
+            throw new GraalError("Unknown field %s.%s in %s", declaringClass.getName(), name, this);
+        }
+        return res;
+    }
+
     public Class<?> getDeclaringClass(int index) {
         return declaringClasses[index];
     }
@@ -326,13 +301,15 @@ public class Fields {
     /**
      * Checks that a given field is assignable from a given value.
      *
+     * @param object object containing the field
      * @param index the index of the field to check
      * @param value a value that will be assigned to the field
      */
     private boolean checkAssignableFrom(Object object, int index, Object value) {
         if (value != null && !getType(index).isAssignableFrom(value.getClass())) {
-            throw new GraalError(String.format("Field %s.%s of type %s in %s is not assignable from %s", object.getClass().getSimpleName(),
-                            getName(index), object, getType(index).getSimpleName(), value.getClass().getSimpleName()));
+            throw new GraalError(String.format("Field %s.%s of type %s in %s is not assignable from %s",
+                            object.getClass().getSimpleName(),
+                            getName(index), getType(index).getSimpleName(), object, value.getClass().getSimpleName()));
         }
         return true;
     }

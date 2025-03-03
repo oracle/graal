@@ -80,15 +80,14 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
             }
         }
 
-        public static Values create(int directCount, ArrayList<ValueFieldInfo> fields) {
-            if (directCount == 0 && fields.size() == 0) {
+        public static Values create(OperandModeAnnotation mode) {
+            if (mode.directValues.isEmpty() && mode.indirectValues.isEmpty()) {
                 return EMPTY_VALUES;
             }
-            return new Values(directCount, fields);
-        }
-
-        public static Values create(OperandModeAnnotation mode) {
-            return create(mode.directCount, mode.values);
+            List<ValueFieldInfo> fields = new ArrayList<>(mode.directValues.size() + mode.indirectValues.size());
+            fields.addAll(mode.directValues);
+            fields.addAll(mode.indirectValues);
+            return new Values(mode.directValues.size(), fields);
         }
 
         public int getDirectCount() {
@@ -99,15 +98,15 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
             return flags[i];
         }
 
-        protected Value getValue(Object obj, int index) {
+        Value getValue(Object obj, int index) {
             return (Value) getObject(obj, index);
         }
 
-        protected void setValue(Object obj, int index, Value value) {
+        private void setValue(Object obj, int index, Value value) {
             putObjectChecked(obj, index, value);
         }
 
-        protected Value[] getValueArray(Object obj, int index) {
+        Value[] getValueArray(Object obj, int index) {
             return (Value[]) getObject(obj, index);
         }
     }
@@ -123,25 +122,8 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
         public ValueFieldInfo(long offset, String name, Class<?> type, Class<?> declaringClass, EnumSet<OperandFlag> flags) {
             super(offset, name, type, declaringClass);
-            assert VALUE_ARRAY_CLASS.isAssignableFrom(type) || VALUE_CLASS.isAssignableFrom(type);
+            GraalError.guarantee(VALUE_ARRAY_CLASS.isAssignableFrom(type) || VALUE_CLASS.isAssignableFrom(type), "%s", type);
             this.flags = flags;
-        }
-
-        /**
-         * Sorts non-array fields before array fields.
-         */
-        @Override
-        public int compareTo(FieldsScanner.FieldInfo o) {
-            if (VALUE_ARRAY_CLASS.isAssignableFrom(o.type)) {
-                if (!VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
-                    return -1;
-                }
-            } else {
-                if (VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
-                    return 1;
-                }
-            }
-            return super.compareTo(o);
         }
 
         @Override
@@ -153,10 +135,14 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
     protected static class OperandModeAnnotation {
 
         /**
-         * Number of non-array fields in {@link #values}.
+         * Fields of type {@link LIRIntrospection#VALUE_CLASS}.
          */
-        public int directCount;
-        public final ArrayList<ValueFieldInfo> values = new ArrayList<>();
+        public final List<ValueFieldInfo> directValues = new ArrayList<>();
+
+        /**
+         * Fields of type {@link LIRIntrospection#VALUE_ARRAY_CLASS}.
+         */
+        public final List<ValueFieldInfo> indirectValues = new ArrayList<>();
     }
 
     protected abstract static class LIRFieldsScanner extends FieldsScanner {
@@ -164,8 +150,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         public final EconomicMap<Class<? extends Annotation>, OperandModeAnnotation> valueAnnotations;
         public final ArrayList<FieldsScanner.FieldInfo> states = new ArrayList<>();
 
-        public LIRFieldsScanner(FieldsScanner.CalcOffset calc) {
-            super(calc);
+        public LIRFieldsScanner() {
             valueAnnotations = EconomicMap.create(Equivalence.DEFAULT);
         }
 
@@ -175,7 +160,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
             while (cursor.advance()) {
                 Annotation annotation = field.getAnnotation(cursor.getKey());
                 if (annotation != null) {
-                    assert result == null : "Field has two operand mode annotations: " + field;
+                    GraalError.guarantee(result == null, "Field has two operand mode annotations: %s", field);
                     result = cursor.getValue();
                 }
             }
@@ -188,55 +173,46 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         protected void scanField(Field field, long offset) {
             Class<?> type = field.getType();
             if (VALUE_CLASS.isAssignableFrom(type) && !CONSTANT_VALUE_CLASS.isAssignableFrom(type)) {
-                assert !Modifier.isFinal(field.getModifiers()) : "Value field must not be declared final because it is modified by register allocator: " + field;
+                GraalError.guarantee(!Modifier.isFinal(field.getModifiers()), "Value field must not be declared final because it is modified by register allocator: %s", field);
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
-                assert annotation != null : "Field must have operand mode annotation: " + field;
+                GraalError.guarantee(annotation != null, "Field must have operand mode annotation: %s", field);
                 EnumSet<OperandFlag> flags = getFlags(field);
-                assert verifyFlags(field, type, flags);
-                annotation.values.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
-                annotation.directCount++;
+                verifyFlags(field, type, flags);
+                annotation.directValues.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
             } else if (VALUE_ARRAY_CLASS.isAssignableFrom(type)) {
                 OperandModeAnnotation annotation = getOperandModeAnnotation(field);
-                assert annotation != null : "Field must have operand mode annotation: " + field;
+                GraalError.guarantee(annotation != null, "Field must have operand mode annotation: %s", field);
                 EnumSet<OperandFlag> flags = getFlags(field);
-                assert verifyFlags(field, type.getComponentType(), flags);
-                annotation.values.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
+                verifyFlags(field, type.getComponentType(), flags);
+                annotation.indirectValues.add(new ValueFieldInfo(offset, field.getName(), type, field.getDeclaringClass(), flags));
             } else {
-                assert getOperandModeAnnotation(field) == null : "Field must not have operand mode annotation: " + field;
-                assert field.getAnnotation(LIRInstruction.State.class) == null : "Field must not have state annotation: " + field;
+                GraalError.guarantee(getOperandModeAnnotation(field) == null, "Field must not have operand mode annotation: %s", field);
+                GraalError.guarantee(field.getAnnotation(LIRInstruction.State.class) == null, "Field must not have state annotation: %s", field);
                 super.scanField(field, offset);
             }
         }
 
-        private static boolean verifyFlags(Field field, Class<?> type, EnumSet<OperandFlag> flags) {
-            if (flags.contains(REG)) {
-                assert type.isAssignableFrom(REGISTER_VALUE_CLASS) || type.isAssignableFrom(VARIABLE_CLASS) : "Cannot assign RegisterValue / Variable to field with REG flag:" + field;
-            }
-            if (flags.contains(STACK)) {
-                assert type.isAssignableFrom(STACK_SLOT_CLASS) : "Cannot assign StackSlot to field with STACK flag:" + field;
-            }
-            if (flags.contains(CONST)) {
-                assert type.isAssignableFrom(CONSTANT_VALUE_CLASS) : "Cannot assign Constant to field with CONST flag:" + field;
-            }
-            return true;
+        private static void verifyFlags(Field field, Class<?> type, EnumSet<OperandFlag> flags) {
+            GraalError.guarantee(!flags.contains(REG) || type.isAssignableFrom(REGISTER_VALUE_CLASS) || type.isAssignableFrom(VARIABLE_CLASS),
+                            "Cannot assign RegisterValue / Variable to field with REG flag: %s", field);
+            GraalError.guarantee(!flags.contains(STACK) || type.isAssignableFrom(STACK_SLOT_CLASS), "Cannot assign StackSlot to field with STACK flag: %s", field);
+            GraalError.guarantee(!flags.contains(CONST) || type.isAssignableFrom(CONSTANT_VALUE_CLASS), "Cannot assign Constant to field with CONST flag: %s", field);
         }
     }
 
+    /**
+     * This method is called very frequently during linear scan so calling it from non-assertion
+     * code should only be done after careful performance evaluation.
+     */
     private static boolean verifyAssignment(LIRInstruction inst, Value newValue, EnumSet<OperandFlag> flags) {
-        Class<?> type = newValue.getClass();
-        if (!flags.contains(REG)) {
-            assert !type.isAssignableFrom(REGISTER_VALUE_CLASS) && !type.isAssignableFrom(VARIABLE_CLASS) : "Cannot assign RegisterValue / Variable to field without REG flag: " + inst + " newValue=" +
-                            newValue;
-        }
-        if (!flags.contains(STACK)) {
-            assert !type.isAssignableFrom(STACK_SLOT_CLASS) : "Cannot assign StackSlot to field without STACK flag: " + inst + " newValue=" +
-                            newValue;
-        }
-        if (!flags.contains(CONST)) {
-            assert !type.isAssignableFrom(CONSTANT_VALUE_CLASS) : "Cannot assign Constant to field without CONST flag: " + inst + " newValue=" +
-                            newValue;
-        }
+        assert flags.contains(REG) || !(newValue instanceof RegisterValue) && !LIRValueUtil.isVariable(newValue) : err(inst, newValue, REG);
+        assert flags.contains(STACK) || !(newValue instanceof StackSlot) : err(inst, newValue, STACK);
+        assert flags.contains(CONST) || !(newValue instanceof ConstantValue) : err(inst, newValue, CONST);
         return true;
+    }
+
+    private static String err(LIRInstruction inst, Value value, OperandFlag flag) {
+        return "Cannot assign " + value.getClass().getSimpleName() + "(" + value + ") to field without " + flag + " flag: " + inst;
     }
 
     protected static void forEach(LIRInstruction inst, Values values, OperandMode mode, InstructionValueProcedure proc) {
@@ -246,16 +222,13 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(inst, i);
                 Value newValue;
-                if (value instanceof CompositeValue) {
-                    CompositeValue composite = (CompositeValue) value;
+                if (value instanceof CompositeValue composite) {
                     newValue = composite.forEachComponent(inst, mode, proc);
                 } else {
                     newValue = proc.doValue(inst, value, mode, values.getFlags(i));
                 }
                 if (!value.identityEquals(newValue)) {
-                    if (!(value instanceof CompositeValue)) {
-                        assert verifyAssignment(inst, newValue, values.getFlags(i));
-                    }
+                    assert value instanceof CompositeValue || verifyAssignment(inst, newValue, values.getFlags(i));
                     GraalError.guarantee(newValue.getPlatformKind().equals(value.getPlatformKind()), "New assignment changes PlatformKind");
                     values.setValue(inst, i, newValue);
                 }
@@ -264,8 +237,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                 for (int j = 0; j < valueArray.length; j++) {
                     Value value = valueArray[j];
                     Value newValue;
-                    if (value instanceof CompositeValue) {
-                        CompositeValue composite = (CompositeValue) value;
+                    if (value instanceof CompositeValue composite) {
                         newValue = composite.forEachComponent(inst, mode, proc);
                     } else {
                         newValue = proc.doValue(inst, value, mode, values.getFlags(i));
@@ -285,18 +257,15 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
 
             if (i < values.getDirectCount()) {
                 Value value = values.getValue(inst, i);
-                if (value instanceof CompositeValue) {
-                    CompositeValue composite = (CompositeValue) value;
+                if (value instanceof CompositeValue composite) {
                     composite.visitEachComponent(inst, mode, proc);
                 } else {
                     proc.visitValue(inst, value, mode, values.getFlags(i));
                 }
             } else {
                 Value[] valueArray = values.getValueArray(inst, i);
-                for (int j = 0; j < valueArray.length; j++) {
-                    Value value = valueArray[j];
-                    if (value instanceof CompositeValue) {
-                        CompositeValue composite = (CompositeValue) value;
+                for (Value value : valueArray) {
+                    if (value instanceof CompositeValue composite) {
                         composite.visitEachComponent(inst, mode, proc);
                     } else {
                         proc.visitValue(inst, value, mode, values.getFlags(i));
@@ -359,15 +328,13 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         } else if (!type.getComponentType().isPrimitive()) {
             return Arrays.toString((Object[]) value);
         }
-        assert false : "unhandled field type: " + type;
-        return "";
+        throw new GraalError("unhandled field type: %s", type);
     }
 
     /**
-     * Tests if all values in this string are printable ASCII characters or value \0 (b in
+     * Tests if all values in {@code array} are printable ASCII characters or value \0 (b in
      * [0x20,0x7F]) or b == 0.
      *
-     * @param array
      * @return true if there are only printable ASCII characters and \0, false otherwise
      */
     private static boolean isPrintableAsciiString(byte[] array) {
