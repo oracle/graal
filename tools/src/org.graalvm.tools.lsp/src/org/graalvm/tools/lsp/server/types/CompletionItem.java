@@ -207,7 +207,7 @@ public class CompletionItem extends JSONBase {
 
     /**
      * The format of the insert text. The format applies to both the `insertText` property and the
-     * `newText` property of a provided `textEdit`. If ommitted defaults to
+     * `newText` property of a provided `textEdit`. If omitted defaults to
      * `InsertTextFormat.PlainText`.
      */
     public InsertTextFormat getInsertTextFormat() {

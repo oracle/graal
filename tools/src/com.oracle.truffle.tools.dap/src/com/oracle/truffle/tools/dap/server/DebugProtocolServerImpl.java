@@ -723,7 +723,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
             if (event.hasSourceElement(SourceElement.ROOT) && event.getBreakpoints().isEmpty()) {
                 if ((!event.hasSourceElement(SourceElement.STATEMENT) && event.getSuspendAnchor() == SuspendAnchor.BEFORE) ||
                                 (event.getSuspendAnchor() == SuspendAnchor.AFTER && returnValue == null)) {
-                    // We're at the begining of a `RootTag` node, or
+                    // We're at the beginning of a `RootTag` node, or
                     // we're at the end of `RootTag` node and have no return value.
                     // We use `RootTag` to intercept return values of functions during stepping.
                     // But if there's no return value, there's no point in suspending at the end of

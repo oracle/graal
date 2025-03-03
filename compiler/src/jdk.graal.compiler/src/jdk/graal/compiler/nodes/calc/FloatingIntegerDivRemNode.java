@@ -126,7 +126,7 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
     @Override
     public boolean verifyNode() {
         /*
-         * Special case unconditionally deopting rem operations: Other optimziations can lead to
+         * Special case unconditionally deopting rem operations: Other optimizations can lead to
          * graphs where the rem operation will unconditionally deopt.
          */
         boolean guardWillAlwaysDeopt = false;
