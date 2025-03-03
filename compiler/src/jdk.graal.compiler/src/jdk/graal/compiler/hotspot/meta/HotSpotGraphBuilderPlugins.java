@@ -66,7 +66,6 @@ import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.zip.CRC32;
 
-import jdk.graal.compiler.nodes.extended.ClassIsArrayNode;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.word.LocationIdentity;
 
@@ -411,14 +410,6 @@ public class HotSpotGraphBuilderPlugins {
                         LogicNode isNull = b.add(IsNullNode.create(klass));
                         b.addPush(JavaKind.Boolean, ConditionalNode.create(isNull, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
                     }
-                    return true;
-                }
-            });
-            r.register(new InvocationPlugin("isArray", Receiver.class) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    LogicNode isArray = b.add(ClassIsArrayNode.create(b.getConstantReflection(), receiver.get(true)));
-                    b.addPush(JavaKind.Boolean, ConditionalNode.create(isArray, NodeView.DEFAULT));
                     return true;
                 }
             });
