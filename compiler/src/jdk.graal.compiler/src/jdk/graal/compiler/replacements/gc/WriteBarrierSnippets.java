@@ -30,14 +30,30 @@ import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probabilit
 
 import org.graalvm.word.LocationIdentity;
 
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.FieldLocationIdentity;
 import jdk.graal.compiler.nodes.NamedLocationIdentity;
 import jdk.graal.compiler.nodes.PiNode;
 import jdk.graal.compiler.nodes.SnippetAnchorNode;
 import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public abstract class WriteBarrierSnippets {
     public static final LocationIdentity GC_CARD_LOCATION = NamedLocationIdentity.mutable("GC-Card");
+
+    public static FieldLocationIdentity getClassComponentTypeLocation(MetaAccessProvider metaAccessProvider) {
+        ResolvedJavaField componentTypeField;
+
+        try {
+            componentTypeField = metaAccessProvider.lookupJavaField(Class.class.getDeclaredField("componentType"));
+        } catch (NoSuchFieldException e) {
+            throw GraalError.shouldNotReachHere("Class.componentType is not present");
+        }
+
+        return new FieldLocationIdentity(componentTypeField);
+    }
 
     protected static void verifyNotArray(Object object) {
         if (probability(LIKELY_PROBABILITY, object != null)) {
