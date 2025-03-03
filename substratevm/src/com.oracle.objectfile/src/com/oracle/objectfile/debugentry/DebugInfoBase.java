@@ -71,10 +71,14 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 public abstract class DebugInfoBase {
     protected ByteOrder byteOrder;
     /**
-     * A table listing all known strings, some of which may be marked for insertion into the
-     * debug_str section.
+     * A table listing all known strings except strings in the debug line section.
      */
     private StringTable stringTable;
+
+    /**
+     * A table listing all known strings in the debug line section.
+     */
+    private StringTable lineStringTable;
 
     /**
      * List of all types present in the native image including instance classes, array classes,
@@ -231,10 +235,13 @@ public abstract class DebugInfoBase {
         assert objectAlignment == 8;
 
         stringTable = new StringTable();
+        lineStringTable = new StringTable();
         /* Ensure we have a null string at the start of the string table. */
         uniqueDebugString("");
+        uniqueDebugLineString("");
         /* Create the cachePath string entry which serves as base directory for source files */
         cachePath = uniqueDebugString(debugInfoProvider.cachePath());
+        uniqueDebugLineString(debugInfoProvider.cachePath());
 
         compiledMethods.addAll(debugInfoProvider.compiledMethodEntries());
         debugInfoProvider.typeEntries().forEach(typeEntry -> {
@@ -314,6 +321,10 @@ public abstract class DebugInfoBase {
         return stringTable;
     }
 
+    public StringTable getLineStringTable() {
+        return lineStringTable;
+    }
+
     /**
      * Indirects this call to the string table.
      *
@@ -324,6 +335,15 @@ public abstract class DebugInfoBase {
     }
 
     /**
+     * Indirects this call to the line string table.
+     *
+     * @param string the string whose index is required.
+     */
+    public String uniqueDebugLineString(String string) {
+        return lineStringTable.uniqueDebugString(string);
+    }
+
+    /**
      * Indirects this call to the string table.
      *
      * @param string the string whose index is required.
@@ -331,6 +351,16 @@ public abstract class DebugInfoBase {
      */
     public int debugStringIndex(String string) {
         return stringTable.debugStringIndex(string);
+    }
+
+    /**
+     * Indirects this call to the line string table.
+     *
+     * @param string the string whose index is required.
+     * @return the offset of the string in the .debug_line_str section.
+     */
+    public int debugLineStringIndex(String string) {
+        return lineStringTable.debugStringIndex(string);
     }
 
     public boolean useHeapBase() {

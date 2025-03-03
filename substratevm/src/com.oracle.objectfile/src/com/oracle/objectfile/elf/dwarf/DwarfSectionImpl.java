@@ -450,7 +450,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         if (buffer != null) {
             return putUTF8StringBytes(s, startChar, buffer, p);
         } else {
-            return s.substring(startChar).getBytes(StandardCharsets.UTF_8).length;
+            // +1 for null termination
+            return p + s.substring(startChar).getBytes(StandardCharsets.UTF_8).length + 1;
         }
     }
 
@@ -569,6 +570,15 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     private int writeStrSectionOffset(int offset, byte[] buffer, int pos) {
         return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_STR_SECTION, pos);
+    }
+
+    protected int writeLineStrSectionOffset(String value, byte[] buffer, int p) {
+        int idx = debugLineStringIndex(value);
+        return writeLineStrSectionOffset(idx, buffer, p);
+    }
+
+    private int writeLineStrSectionOffset(int offset, byte[] buffer, int pos) {
+        return writeDwarfSectionOffset(offset, buffer, DwarfSectionName.DW_LINE_STR_SECTION, pos);
     }
 
     protected int writeLocSectionOffset(int offset, byte[] buffer, int pos) {
@@ -822,8 +832,19 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.debugStringIndex(str);
     }
 
+    protected int debugLineStringIndex(String str) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.debugLineStringIndex(str);
+    }
+
     protected String uniqueDebugString(String str) {
         return dwarfSections.uniqueDebugString(str);
+    }
+
+    protected String uniqueDebugLineString(String str) {
+        return dwarfSections.uniqueDebugLineString(str);
     }
 
     protected ClassEntry lookupObjectClass() {

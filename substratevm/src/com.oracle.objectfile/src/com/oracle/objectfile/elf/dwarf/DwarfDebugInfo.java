@@ -69,6 +69,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         CLASS_LAYOUT_1,
         CLASS_LAYOUT_2,
         CLASS_LAYOUT_3,
+        CLASS_LAYOUT_4,
         TYPE_POINTER_SIG,
         TYPE_POINTER,
         FOREIGN_TYPEDEF,
@@ -128,6 +129,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
 
     /* Full byte/word values. */
     private final DwarfStrSectionImpl dwarfStrSection;
+    private final DwarfLineStrSectionImpl dwarfLineStrSection;
     private final DwarfAbbrevSectionImpl dwarfAbbrevSection;
     private final DwarfInfoSectionImpl dwarfInfoSection;
     private final DwarfLocSectionImpl dwarfLocSection;
@@ -167,6 +169,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
         super(byteOrder);
         this.elfMachine = elfMachine;
         dwarfStrSection = new DwarfStrSectionImpl(this);
+        dwarfLineStrSection = new DwarfLineStrSectionImpl(this);
         dwarfAbbrevSection = new DwarfAbbrevSectionImpl(this);
         dwarfInfoSection = new DwarfInfoSectionImpl(this);
         dwarfLocSection = new DwarfLocSectionImpl(this);
@@ -187,6 +190,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
 
     public DwarfStrSectionImpl getStrSectionImpl() {
         return dwarfStrSection;
+    }
+
+    public DwarfLineStrSectionImpl getLineStrSectionImpl() {
+        return dwarfLineStrSection;
     }
 
     public DwarfAbbrevSectionImpl getAbbrevSectionImpl() {
