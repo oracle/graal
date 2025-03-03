@@ -215,7 +215,8 @@
 
   # Converts the non-style gate jobs to dailies if in CE
   as_dailies(gate_jobs):: if config.graalvm_edition == "ce" then {
-    [std.strReplace(name, "gate", "daily")]: gate_jobs[name]
+    # Force daily timelimit (assumes it is greater than any specified gate timelimit)
+    [std.strReplace(name, "gate", "daily")]: gate_jobs[name] + {timelimit: $.daily.timelimit}
     for name in std.objectFields(gate_jobs) if !utils.contains(name, "style")
   } else {},
 

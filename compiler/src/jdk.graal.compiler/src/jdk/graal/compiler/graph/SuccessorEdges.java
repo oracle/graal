@@ -26,13 +26,13 @@ package jdk.graal.compiler.graph;
 
 import static jdk.graal.compiler.graph.Edges.Type.Successors;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import jdk.graal.compiler.graph.NodeClass.EdgeInfo;
 
 public final class SuccessorEdges extends Edges {
 
-    public SuccessorEdges(int directCount, ArrayList<EdgeInfo> edges) {
+    public SuccessorEdges(int directCount, List<EdgeInfo> edges) {
         super(Successors, directCount, edges);
     }
 

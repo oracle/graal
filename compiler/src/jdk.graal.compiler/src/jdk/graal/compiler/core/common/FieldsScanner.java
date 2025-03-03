@@ -27,7 +27,7 @@ package jdk.graal.compiler.core.common;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.List;
 
 import jdk.internal.misc.Unsafe;
 
@@ -36,45 +36,12 @@ import jdk.internal.misc.Unsafe;
  */
 public class FieldsScanner {
 
-    /**
-     * Determines the offset (in bytes) of a field.
-     */
-    public interface CalcOffset {
-
-        long getOffset(Field field);
-    }
-
-    /**
-     * Determines the offset (in bytes) of a field using {@code Unsafe#objectFieldOffset(Field)}.
-     */
-    public static class DefaultCalcOffset implements CalcOffset {
-
-        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-
-        @Override
-        public long getOffset(Field field) {
-            return UNSAFE.objectFieldOffset(field);
-        }
-    }
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
      * Describes a field in a class during {@linkplain FieldsScanner scanning}.
      */
-    public static class FieldInfo implements Comparable<FieldInfo> {
-
-        /**
-         * Sorts fields in ascending order by {@code field name + declaring class name + type name}.
-         */
-        public static final Comparator<FieldInfo> STABLE_COMPARATOR = (o1, o2) -> {
-            int res = o1.name.compareTo(o2.name);
-            if (res == 0) {
-                res = o1.declaringClass.getName().compareTo(o2.declaringClass.getName());
-                if (res == 0) {
-                    res = o1.type.getName().compareTo(o2.type.getName());
-                }
-            }
-            return res;
-        };
+    public static class FieldInfo {
 
         public final long offset;
         public final String name;
@@ -88,57 +55,45 @@ public class FieldsScanner {
             this.declaringClass = declaringClass;
         }
 
-        /**
-         * Sorts fields in ascending order by their {@link #offset}s.
-         */
-        @Override
-        public int compareTo(FieldInfo o) {
-            return offset < o.offset ? -1 : (offset > o.offset ? 1 : 0);
-        }
-
         @Override
         public String toString() {
             return "[" + offset + "]" + name + ":" + type.getSimpleName();
         }
     }
 
-    private final FieldsScanner.CalcOffset calc;
-
     /**
      * Fields not belonging to a more specific category defined by scanner subclasses are added to
      * this list.
      */
-    public final ArrayList<FieldsScanner.FieldInfo> data = new ArrayList<>();
-
-    public FieldsScanner(FieldsScanner.CalcOffset calc) {
-        this.calc = calc;
-    }
+    public final List<FieldInfo> data = new ArrayList<>();
 
     /**
-     * Scans the fields in a class hierarchy.
-     *
-     * @param clazz the class at which to start scanning
-     * @param endClazz scanning stops when this class is encountered (i.e. {@code endClazz} is not
-     *            scanned)
+     * Scans the non-static fields in the class hierarchy bounded by {@code startSubclass}
+     * (inclusive) and {@code endSuperclass} (exclusive). The classes are processed from superclass
+     * to subclass. The fields of a class are processed in the order returned by
+     * {@link Class#getDeclaredFields()}.
      */
-    public void scan(Class<?> clazz, Class<?> endClazz, boolean includeTransient) {
-        Class<?> currentClazz = clazz;
-        while (currentClazz != endClazz) {
+    public void scan(Class<?> startSubclass, Class<?> endSuperclass) {
+        List<Class<?>> hierarchy = new ArrayList<>();
+        for (Class<?> c = startSubclass; c != endSuperclass; c = c.getSuperclass()) {
+            hierarchy.add(c);
+        }
+        for (Class<?> currentClazz : hierarchy.reversed()) {
             for (Field field : currentClazz.getDeclaredFields()) {
                 if (Modifier.isStatic(field.getModifiers())) {
                     continue;
                 }
-                if (!includeTransient && Modifier.isTransient(field.getModifiers())) {
-                    continue;
-                }
-                long offset = calc.getOffset(field);
+                long offset = UNSAFE.objectFieldOffset(field);
                 scanField(field, offset);
             }
-            currentClazz = currentClazz.getSuperclass();
         }
     }
 
     protected void scanField(Field field, long offset) {
         data.add(new FieldsScanner.FieldInfo(offset, field.getName(), field.getType(), field.getDeclaringClass()));
+    }
+
+    public Fields createData() {
+        return Fields.create(data);
     }
 }

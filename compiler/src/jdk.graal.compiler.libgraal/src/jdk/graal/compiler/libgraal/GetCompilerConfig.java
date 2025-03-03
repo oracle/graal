@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.CompilerConfig;
 import jdk.graal.compiler.serviceprovider.GraalServices;
@@ -129,6 +130,11 @@ public class GetCompilerConfig {
             }
         }
 
+        if (Assertions.assertionsEnabled()) {
+            command.add("-esa");
+            command.add("-ea");
+        }
+
         command.add(CompilerConfig.class.getName());
         String base = GetCompilerConfig.class.getSimpleName() + "_" + ProcessHandle.current().pid();
         Path encodedConfigPath = Path.of(base + ".bin").toAbsolutePath();
@@ -158,8 +164,8 @@ public class GetCompilerConfig {
             byte[] encodedConfig = Files.readAllBytes(encodedConfigPath);
             if (DEBUG) {
                 System.out.printf("[%d] Executed: %s%n", p.pid(), quotedCommand);
-                System.out.printf("[%d] Output saved in %s%n", p.pid(), encodedConfigPath);
-                System.out.printf("[%d] Debug output saved in %s%n", p.pid(), debugPath);
+                System.out.printf("[%d] Compiler config output saved in '%s'%n", p.pid(), encodedConfigPath);
+                System.out.printf("[%d] Compiler config debug output saved in '%s'%n", p.pid(), debugPath);
             } else {
                 Files.deleteIfExists(encodedConfigPath);
                 Files.deleteIfExists(debugPath);

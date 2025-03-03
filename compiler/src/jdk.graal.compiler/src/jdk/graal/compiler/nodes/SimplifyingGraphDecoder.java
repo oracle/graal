@@ -34,6 +34,7 @@ import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TimerKey;
 import jdk.graal.compiler.graph.Edges;
 import jdk.graal.compiler.graph.Node;
@@ -44,6 +45,7 @@ import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.AnchoringNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.extended.IntegerSwitchNode;
+import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
 import jdk.graal.compiler.nodes.java.ArrayLengthNode;
 import jdk.graal.compiler.nodes.java.LoadFieldNode;
@@ -256,53 +258,53 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
+    /**
+     * Number of {@link IfNode} successor edges.
+     */
+    private static final long IF_NODE_SUCCESSORS_COUNT = 2L;
+
+    static {
+        /* Check assumptions made by earlyCanonicalization about IfNode. */
+        Edges edges = IfNode.TYPE.getSuccessorEdges();
+        GraalError.guarantee(edges.getDirectCount() == IF_NODE_SUCCESSORS_COUNT, "%s expected to have 2 direct successors", IfNode.class);
+        GraalError.guarantee(edges.getCount() == IF_NODE_SUCCESSORS_COUNT, "%s expected to have 0 indirect successors", IfNode.class);
+
+        /* Check assumptions made by earlyCanonicalization about IntegerSwitchNode. */
+        edges = IntegerSwitchNode.TYPE.getSuccessorEdges();
+        GraalError.guarantee(edges.getDirectCount() == 0, "%s expected to have 0 direct successor", IntegerSwitchNode.class);
+        GraalError.guarantee(edges.getCount() == 1, "%s expected to have 0 indirect successors", IntegerSwitchNode.class);
+    }
+
     @Override
     protected boolean earlyCanonicalization(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
-        if (node instanceof IfNode && ((IfNode) node).condition() instanceof LogicConstantNode) {
-            IfNode ifNode = (IfNode) node;
+        if (node instanceof IfNode ifNode && ifNode.condition() instanceof LogicConstantNode condition) {
 
-            assert !(ifNode.condition() instanceof LogicNegationNode) : "Negation of a constant must have been canonicalized before";
-
-            int survivingIndex = ((LogicConstantNode) ifNode.condition()).getValue() ? 0 : 1;
-
-            /* Check that the node has the expected encoding. */
-            if (Assertions.assertionsEnabled()) {
-                Edges edges = ifNode.getNodeClass().getSuccessorEdges();
-                assert edges.getDirectCount() == 2 : "IfNode expected to have 2 direct successors";
-                assert edges.getName(0).equals("trueSuccessor") : "Unexpected IfNode encoding";
-                assert edges.getName(1).equals("falseSuccessor") : "Unexpected IfNode encoding";
-                assert edges.getCount() == 2 : "IntegerSwitchNode expected to have 0 indirect successor";
-            }
+            Edges edges = ifNode.getNodeClass().getSuccessorEdges();
+            long survivingIndex = edges.getIndex(IfNode.class, condition.getValue() ? "trueSuccessor" : "falseSuccessor");
 
             /* Read the surviving successor order id. */
             long successorsByteIndex = methodScope.reader.getByteIndex();
             methodScope.reader.setByteIndex(successorsByteIndex + survivingIndex * methodScope.orderIdWidth);
             int survivingOrderId = readOrderId(methodScope);
-            methodScope.reader.setByteIndex(successorsByteIndex + 2 * methodScope.orderIdWidth);
+            // Reset decode position to first byte after successors
+            methodScope.reader.setByteIndex(successorsByteIndex + (IF_NODE_SUCCESSORS_COUNT * methodScope.orderIdWidth));
 
             removeSplit(methodScope, loopScope, ifNode, survivingOrderId);
             return true;
-        } else if (node instanceof IntegerSwitchNode && ((IntegerSwitchNode) node).value().isConstant()) {
+        } else if (node instanceof IntegerSwitchNode switchNode && switchNode.value().isConstant()) {
             /*
              * Avoid spawning all successors for trivially canonicalizable switches, this ensures
              * that bytecode interpreters with huge switches do not allocate nodes that are removed
              * straight away during PE.
              */
-            IntegerSwitchNode switchNode = (IntegerSwitchNode) node;
             int value = switchNode.value().asJavaConstant().asInt();
-            int survivingIndex = switchNode.successorIndexAtKey(value);
-
-            /* Check that the node has the expected encoding. */
-            if (Assertions.assertionsEnabled()) {
-                Edges edges = switchNode.getNodeClass().getSuccessorEdges();
-                assert edges.getDirectCount() == 0 : "IntegerSwitchNode expected to have 0 direct successor";
-                assert edges.getCount() == 1 : "IntegerSwitchNode expected to have 1 indirect successor";
-                assert edges.getName(0).equals("successors") : "Unexpected IntegerSwitchNode encoding";
-            }
+            long survivingIndex = switchNode.successorIndexAtKey(value);
 
             /* Read the surviving successor order id. */
-            int size = methodScope.reader.getSVInt();
-            long successorsByteIndex = methodScope.reader.getByteIndex();
+            Edges edges = switchNode.getNodeClass().getSuccessorEdges();
+            long size = methodScope.reader.getSVInt();
+            long successorsIndex = edges.getIndex(SwitchNode.class, "successors");
+            long successorsByteIndex = methodScope.reader.getByteIndex() + successorsIndex * methodScope.orderIdWidth;
             methodScope.reader.setByteIndex(successorsByteIndex + survivingIndex * methodScope.orderIdWidth);
             int survivingOrderId = readOrderId(methodScope);
             methodScope.reader.setByteIndex(successorsByteIndex + size * methodScope.orderIdWidth);

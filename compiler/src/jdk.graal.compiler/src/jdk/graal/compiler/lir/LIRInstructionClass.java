@@ -63,21 +63,16 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
     private final boolean isValueMoveOp;
     private final boolean isLoadConstantOp;
 
-    private String opcodeConstant;
-    private int opcodeIndex;
+    private final String opcodeConstant;
+    private final int opcodeIndex;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private LIRInstructionClass(Class<T> clazz) {
-        this(clazz, new FieldsScanner.DefaultCalcOffset());
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public LIRInstructionClass(Class<T> clazz, FieldsScanner.CalcOffset calcOffset) {
+    public LIRInstructionClass(Class<T> clazz) {
         super(clazz);
         assert INSTRUCTION_CLASS.isAssignableFrom(clazz);
 
-        LIRInstructionFieldsScanner ifs = new LIRInstructionFieldsScanner(calcOffset);
-        ifs.scan(clazz);
+        LIRInstructionFieldsScanner ifs = new LIRInstructionFieldsScanner();
+        ifs.scan(clazz, LIRInstruction.class);
 
         uses = Values.create(ifs.valueAnnotations.get(LIRInstruction.Use.class));
         alives = Values.create(ifs.valueAnnotations.get(LIRInstruction.Alive.class));
@@ -85,7 +80,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
         defs = Values.create(ifs.valueAnnotations.get(LIRInstruction.Def.class));
 
         states = Fields.create(ifs.states);
-        data = Fields.create(ifs.data);
+        data = ifs.createData();
 
         opcodeConstant = ifs.opcodeConstant;
         if (ifs.opcodeField == null) {
@@ -124,9 +119,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
          */
         private FieldsScanner.FieldInfo opcodeField;
 
-        LIRInstructionFieldsScanner(FieldsScanner.CalcOffset calc) {
-            super(calc);
-
+        LIRInstructionFieldsScanner() {
             valueAnnotations.put(LIRInstruction.Use.class, new OperandModeAnnotation());
             valueAnnotations.put(LIRInstruction.Alive.class, new OperandModeAnnotation());
             valueAnnotations.put(LIRInstruction.Temp.class, new OperandModeAnnotation());
@@ -154,16 +147,17 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             return result;
         }
 
-        public void scan(Class<?> clazz) {
-            if (clazz.getAnnotation(Opcode.class) != null) {
-                opcodeConstant = clazz.getAnnotation(Opcode.class).value();
+        @Override
+        public void scan(Class<?> startSubclass, Class<?> endSuperclass) {
+            if (startSubclass.getAnnotation(Opcode.class) != null) {
+                opcodeConstant = startSubclass.getAnnotation(Opcode.class).value();
             }
             opcodeField = null;
 
-            super.scan(clazz, LIRInstruction.class, false);
+            super.scan(startSubclass, endSuperclass);
 
             if (opcodeConstant == null && opcodeField == null) {
-                opcodeConstant = clazz.getSimpleName();
+                opcodeConstant = startSubclass.getSimpleName();
                 if (opcodeConstant.endsWith("Op")) {
                     opcodeConstant = opcodeConstant.substring(0, opcodeConstant.length() - 2);
                 }
@@ -183,8 +177,8 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
 
             if (field.getAnnotation(Opcode.class) != null) {
                 assert opcodeConstant == null && opcodeField == null : "Can have only one Opcode definition: " + type;
-                assert data.get(data.size() - 1).offset == offset : Assertions.errorMessage(data.get(data.size() - 1).offset, offset);
-                opcodeField = data.get(data.size() - 1);
+                assert data.getLast().offset == offset : Assertions.errorMessage(data.getLast().offset, offset);
+                opcodeField = data.getLast();
             }
         }
     }
@@ -313,8 +307,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
                 }
             } else {
                 Value[] hintValues = hints.getValueArray(obj, i);
-                for (int j = 0; j < hintValues.length; j++) {
-                    Value hintValue = hintValues[j];
+                for (Value hintValue : hintValues) {
                     Value result = proc.doValue(obj, hintValue, null, null);
                     if (result != null) {
                         return result;
