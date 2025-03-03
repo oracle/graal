@@ -3,3 +3,9 @@ files = ["libgraal.jsonnet", "mx_vm_gate.py"]
 any = [
     "doug.simon@oracle.com",
 ]
+
+[[rule]]
+files = ["mx_vm_benchmark.py"]
+any = [
+    "patrick.ziegler@oracle.com",
+]
