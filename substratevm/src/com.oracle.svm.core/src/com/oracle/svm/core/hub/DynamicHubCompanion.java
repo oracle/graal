@@ -39,6 +39,7 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.meta.SharedType;
 
 import jdk.internal.vm.annotation.Stable;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.repository.ClassRepository;
 
@@ -128,6 +129,7 @@ public final class DynamicHubCompanion {
      * {@link DynamicHub#NO_CLASS_LOADER}.
      */
     Object classLoader;
+    ResolvedJavaType interpreterType;
 
     String packageName;
     ProtectionDomain protectionDomain;
@@ -143,17 +145,18 @@ public final class DynamicHubCompanion {
     static DynamicHubCompanion createHosted(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
                     Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
 
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, null);
     }
 
     static DynamicHubCompanion createAtRuntime(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
-                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
+                    ClassLoader classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature,
+                    ResolvedJavaType interpreterType) {
         assert RuntimeClassLoading.isSupported();
-        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature);
+        return new DynamicHubCompanion(module, superHub, sourceFileName, modifiers, classLoader, nestHost, simpleBinaryName, declaringClass, signature, interpreterType);
     }
 
     private DynamicHubCompanion(Module module, DynamicHub superHub, String sourceFileName, int modifiers,
-                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature) {
+                    Object classLoader, Class<?> nestHost, String simpleBinaryName, Object declaringClass, String signature, ResolvedJavaType interpreterType) {
         this.module = module;
         this.superHub = superHub;
         this.sourceFileName = sourceFileName;
@@ -164,5 +167,6 @@ public final class DynamicHubCompanion {
         this.signature = signature;
 
         this.classLoader = classLoader;
+        this.interpreterType = interpreterType;
     }
 }

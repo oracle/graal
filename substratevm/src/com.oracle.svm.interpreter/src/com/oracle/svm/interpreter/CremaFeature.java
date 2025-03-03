@@ -24,18 +24,26 @@
  */
 package com.oracle.svm.interpreter;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.hub.RuntimeClassLoading;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.List;
 
-import com.oracle.svm.hosted.FeatureImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import java.util.Arrays;
-import java.util.List;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.hub.CremaSupport;
+import com.oracle.svm.core.hub.RuntimeClassLoading;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.interpreter.metadata.InterpreterResolvedObjectType;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * In this mode the interpreter is used to execute previously (= image build-time) unknown methods,
@@ -54,6 +62,44 @@ public class CremaFeature implements InternalFeature {
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return Arrays.asList(InterpreterFeature.class);
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(CremaSupport.class, new CremaSupportImpl());
+    }
+
+    private static boolean assertionsEnabled() {
+        boolean enabled = false;
+        assert (enabled = true) == true : "Enabling assertions";
+        return enabled;
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        AnalysisUniverse aUniverse = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
+        BuildTimeInterpreterUniverse btiUniverse = BuildTimeInterpreterUniverse.singleton();
+
+        if (assertionsEnabled()) {
+            for (AnalysisType analysisType : aUniverse.getTypes()) {
+                if (!analysisType.isReachable()) {
+                    continue;
+                }
+                assert btiUniverse.getOrCreateType(analysisType) != null : "type is reachable but not part of interpreter universe: " + analysisType;
+            }
+        }
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        FeatureImpl.BeforeCompilationAccessImpl accessImpl = (FeatureImpl.BeforeCompilationAccessImpl) access;
+        HostedUniverse hUniverse = accessImpl.getUniverse();
+        BuildTimeInterpreterUniverse iUniverse = BuildTimeInterpreterUniverse.singleton();
+        Field vtableHolderField = ReflectionUtil.lookupField(InterpreterResolvedObjectType.class, "vtableHolder");
+
+        for (HostedType hType : hUniverse.getTypes()) {
+            iUniverse.mirrorSVMVTable(hType, objectType -> accessImpl.getHeapScanner().rescanField(objectType, vtableHolderField));
+        }
     }
 
     @Override

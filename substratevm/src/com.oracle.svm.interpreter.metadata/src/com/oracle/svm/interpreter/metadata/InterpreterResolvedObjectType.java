@@ -24,16 +24,20 @@
  */
 package com.oracle.svm.interpreter.metadata;
 
+import static com.oracle.svm.core.BuildPhaseProvider.AfterAnalysis;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.metadata.serialization.VisibleForSerialization;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class InterpreterResolvedObjectType extends InterpreterResolvedJavaType {
@@ -42,6 +46,7 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
     private final int modifiers;
     private final InterpreterResolvedObjectType superclass;
     private final InterpreterResolvedObjectType[] interfaces;
+    private InterpreterResolvedJavaMethod[] declaredMethods;
 
     // Populated after analysis.
     private InterpreterConstantPool constantPool;
@@ -51,7 +56,9 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
     private final String sourceFileName;
 
     public static class VTableHolder {
+        @UnknownObjectField(availability = AfterAnalysis.class) //
         public InterpreterResolvedObjectType holder;
+        @UnknownObjectField(availability = AfterAnalysis.class) //
         public InterpreterResolvedJavaMethod[] vtable;
 
         public VTableHolder(InterpreterResolvedObjectType holder, InterpreterResolvedJavaMethod[] vtable) {
@@ -60,6 +67,7 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
         }
     }
 
+    @UnknownObjectField(availability = AfterAnalysis.class) //
     private VTableHolder vtableHolder = null;
 
     // Debugger side constructor, class is an opaque JavaConstant.
@@ -210,7 +218,6 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
     }
 
     public void setVtable(InterpreterResolvedJavaMethod[] vtable) {
-        VMError.guarantee(vtableHolder == null);
         this.vtableHolder = new VTableHolder(this, vtable);
     }
 
@@ -218,5 +225,14 @@ public final class InterpreterResolvedObjectType extends InterpreterResolvedJava
     public VTableHolder getVtableHolder() {
         assert !isArray();
         return vtableHolder;
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        return declaredMethods;
+    }
+
+    public void setDeclaredMethods(InterpreterResolvedJavaMethod[] declaredMethods) {
+        this.declaredMethods = declaredMethods;
     }
 }
