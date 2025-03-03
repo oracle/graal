@@ -370,6 +370,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             var.createInitBuilder().tree(DSLExpressionGenerator.write(model.defaultLocalValueExpression, null, Map.of()));
         }
 
+        if (model.variadicStackLimitExpression != null) {
+            CodeVariableElement var = this.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), type(int.class), "VARIADIC_STACK_LIMIT"));
+            CodeTreeBuilder b = var.createInitBuilder();
+            boolean needsValidation = model.variadicStackLimitExpression.resolveConstant() == null;
+            if (needsValidation) {
+                CodeExecutableElement validateVariadicStackLimit = this.add(createValidateVariadicStackLimit());
+                b.startCall(validateVariadicStackLimit.getSimpleName().toString());
+            }
+            b.tree(DSLExpressionGenerator.write(model.variadicStackLimitExpression, null, Map.of()));
+            if (needsValidation) {
+                b.end();
+            }
+
+        }
+
         // Define the generated node's constructor.
         this.add(createConstructor(initialBytecodeNode));
 
@@ -440,10 +455,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         this.add(createFindBytecodeIndex());
         this.add(createIsCaptureFramesForTrace());
 
-        // Define helpers for variadic accesses.
-        this.add(createReadVariadic());
-        this.add(createMergeVariadic());
-
         // Define helpers for locals.
         this.add(createGetBytecodeNode());
         this.add(createGetBytecodeNodeImpl());
@@ -489,6 +500,21 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         if (model.enableSerialization) {
             addMethodStubsToSerializationRootNode();
         }
+    }
+
+    private CodeExecutableElement createValidateVariadicStackLimit() {
+        CodeExecutableElement validateVariadicStackLimit = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(int.class), "validateVariadicStackLimit",
+                        new CodeVariableElement(type(int.class), "limit"));
+        CodeTreeBuilder b = validateVariadicStackLimit.createBuilder();
+        b.startIf().string("limit <= 1").end().startBlock();
+        b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("The variadic stack limit must be greater than 1.").end().end();
+        b.end().startElseIf().string("limit % 2 != 0").end().startBlock();
+        b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("The variadic stack limit must be a power of 2.").end().end();
+        b.end().startElseIf().string("limit > Short.MAX_VALUE").end().startBlock();
+        b.startThrow().startNew(type(IllegalStateException.class)).doubleQuote("The variadic stack limit must be smaller or equal to Short.MAX_VALUE").end().end();
+        b.end();
+        b.statement("return limit");
+        return validateVariadicStackLimit;
     }
 
     private CodeExecutableElement createConstructor(CodeTypeElement initialBytecodeNode) {
@@ -1285,60 +1311,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
         b.end();
 
         return withTruffleBoundary(method);
-    }
-
-    private CodeExecutableElement createReadVariadic() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(Object[].class), "readVariadic");
-
-        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "sp"));
-        ex.addParameter(new CodeVariableElement(type(int.class), "variadicCount"));
-
-        ex.addAnnotationMirror(createExplodeLoopAnnotation(null));
-
-        CodeTreeBuilder b = ex.createBuilder();
-
-        b.statement("Object[] result = new Object[variadicCount]");
-        b.startFor().string("int i = 0; i < variadicCount; i++").end().startBlock();
-        b.statement("int index = sp - variadicCount + i");
-        b.statement("result[i] = " + uncheckedGetFrameObject("index"));
-        b.statement(clearFrame("frame", "index"));
-        b.end();
-
-        b.statement("return result");
-
-        return ex;
-    }
-
-    private CodeExecutableElement createMergeVariadic() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), type(Object[].class), "mergeVariadic");
-
-        ex.addParameter(new CodeVariableElement(type(Object[].class), "array"));
-
-        CodeTreeBuilder b = ex.createBuilder();
-
-        b.statement("Object[] current = array");
-        b.statement("int length = 0");
-        b.startDoBlock();
-        b.statement("int currentLength = current.length - 1");
-        b.statement("length += currentLength");
-        b.statement("current = (Object[]) current[currentLength]");
-        b.end().startDoWhile().string("current != null").end();
-
-        b.statement("Object[] newArray = new Object[length]");
-        b.statement("current = array");
-        b.statement("int index = 0");
-
-        b.startDoBlock();
-        b.statement("int currentLength = current.length - 1");
-        b.statement("System.arraycopy(current, 0, newArray, index, currentLength)");
-        b.statement("index += currentLength");
-        b.statement("current = (Object[]) current[currentLength]");
-        b.end().startDoWhile().string("current != null").end();
-
-        b.startReturn().string("newArray").end();
-
-        return ex;
     }
 
     private CodeExecutableElement createGetBytecodeNode() {
@@ -2613,7 +2585,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             this.add(createCheckBci());
             this.add(createUpdateMaxStackHeight());
             this.add(createEnsureBytecodeCapacity());
-            this.add(createDoEmitVariadic());
+
+            if (model.hasCustomVariadic) {
+                this.add(createDoEmitVariadicBeforeChild());
+                this.add(createDoEmitVariadicEnd());
+                if (model.hasVariadicReturn) {
+                    this.add(createIsVariadicReturn());
+                }
+            }
+
             this.add(createDoEmitFinallyHandler());
             this.add(createDoCreateExceptionHandler());
             this.add(createDoEmitSourceInfo());
@@ -4705,10 +4685,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     buildEmitInstruction(b, model.tagLeaveValueInstruction, args);
                     b.end();
 
-                    b.startStatement().startCall("afterChild");
-                    b.string("true");
-                    b.string("bci - " + model.tagLeaveValueInstruction.getInstructionLength());
-                    b.end(2);
+                    emitCallAfterChild(b, operation, "true", "bci - " + model.tagLeaveValueInstruction.getInstructionLength());
 
                     b.end().startElseBlock();
 
@@ -4724,10 +4701,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     buildEmitInstruction(b, model.tagLeaveVoidInstruction, "operationData.nodeId");
                     b.end();
 
-                    b.startStatement().startCall("afterChild");
-                    b.string("false");
-                    b.string("-1");
-                    b.end(2);
+                    emitCallAfterChild(b, operation, "false", "-1");
 
                     b.end();
 
@@ -4749,10 +4723,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 // handled in tag section
             } else if (operation.isTransparent) {
                 // custom transparent operations have the operation cast on the stack
-                b.startStatement().startCall("afterChild");
-                b.string("operationData.producedValue");
-                b.string("operationData.childBci");
-                b.end(2);
+                emitCallAfterChild(b, operation, "operationData.producedValue", "operationData.childBci");
             } else if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                 b.declaration(type(int.class), "nextBci");
                 b.startIf().string("operation.childCount <= 1").end().startBlock();
@@ -4774,18 +4745,15 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.statement("nextBci = operationData.shortCircuitBci");
                 b.end();
 
-                b.startStatement().startCall("afterChild");
-                b.string("true").string("nextBci");
-                b.end(2);
+                emitCallAfterChild(b, operation, "true", "nextBci");
             } else {
-                b.startStatement().startCall("afterChild");
-                b.string(Boolean.toString(!operation.isVoid));
+                String nextBci;
                 if (operation.instruction != null) {
-                    b.string("bci - " + operation.instruction.getInstructionLength());
+                    nextBci = "bci - " + operation.instruction.getInstructionLength();
                 } else {
-                    b.string("-1");
+                    nextBci = "-1";
                 }
-                b.end(2);
+                emitCallAfterChild(b, operation, String.valueOf(!operation.isVoid), nextBci);
             }
 
             if (operation.isCustom() && !operation.customModel.implicitTags.isEmpty()) {
@@ -4796,6 +4764,13 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             return ex;
+        }
+
+        private void emitCallAfterChild(CodeTreeBuilder b, OperationModel op, String producedValue, String childBci) {
+            b.startStatement().startCall("afterChild");
+            b.tree(createOperationConstant(op));
+            b.string(producedValue).string(childBci);
+            b.end(2);
         }
 
         private void createSerializeEnd(OperationModel operation, CodeTreeBuilder b) {
@@ -5628,10 +5603,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     break;
             }
 
-            b.startStatement().startCall("afterChild");
-            b.string("" + !operation.isVoid);
-            b.string(operation.instruction != null ? "bci - " + operation.instruction.getInstructionLength() : "-1");
-            b.end(2);
+            emitCallAfterChild(b, operation, String.valueOf(!operation.isVoid), operation.instruction != null ? "bci - " + operation.instruction.getInstructionLength() : "-1");
 
             if (operation.isCustom() && !operation.customModel.implicitTags.isEmpty()) {
                 VariableElement tagConstants = lookupTagConstant(operation.customModel.implicitTags);
@@ -5755,12 +5727,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 throw new AssertionError("short circuit operations should not be emitted directly.");
             }
 
-            if (instruction.signature.isVariadic) {
-                // Before emitting a variadic instruction, we need to emit instructions to merge all
-                // of the operands on the stack into one array.
-                b.statement("doEmitVariadic(operation.childCount - " + (instruction.signature.dynamicOperandCount - 1) + ")");
-            }
-
             if (customChildBci != null && operation.numDynamicOperands() > 1) {
                 throw new AssertionError("customChildBci can only be used with a single child.");
             }
@@ -5774,6 +5740,24 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 } else {
                     emitCastOperationData(b, operation, sp);
                 }
+            }
+
+            if (operation.isVariadic) {
+                b.declaration(type(int.class), "variadicCount", "operation.childCount - " + (operation.instruction.signature.dynamicOperandCount - 1));
+
+                b.startIf().string("operationData.variadicCountPatchIndex != -1").end().startBlock();
+                b.statement(writeInt("bc", "operationData.variadicCountPatchIndex", "variadicCount"));
+                b.end();
+
+                b.startStatement().startCall("doEmitVariadicEnd");
+                if (model.maximumVariadicOffset > 0) {
+                    b.string(operation.variadicOffset);
+                }
+                b.string("variadicCount");
+                if (model.hasVariadicReturn) {
+                    b.string("operationData.variadicReturnIndices");
+                }
+                b.end().end();
             }
 
             List<InstructionImmediate> immediates = instruction.getImmediates();
@@ -5805,7 +5789,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     case CONSTANT -> constantOperandIndices.get(constantIndex++);
                     case NODE_PROFILE -> "allocateNode()";
                     case TAG_NODE -> "node";
-                    case FRAME_INDEX, LOCAL_INDEX, LOCAL_ROOT, SHORT, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
+                    case FRAME_INDEX, LOCAL_INDEX, LOCAL_ROOT, SHORT, INTEGER, BRANCH_PROFILE, STACK_POINTER -> throw new AssertionError(
                                     "Operation " + operation.name + " takes an immediate " + immediate.name() + " with unexpected kind " + immediate.kind() +
                                                     ". This is a bug in the Bytecode DSL processor.");
                 };
@@ -5839,6 +5823,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 SHORT_CIRCUIT,
                 UPDATE_REACHABLE,
                 EXCEPTION_HANDLER,
+                CUSTOM_VARIADIC,
                 DEFAULT,
             }
 
@@ -5865,6 +5850,8 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 } else if (op.kind == OperationKind.TRY_CATCH ||
                                 op.kind == OperationKind.TRY_CATCH_OTHERWISE) {
                     return BeforeChildKind.EXCEPTION_HANDLER;
+                } else if (op.kind == OperationKind.CUSTOM && op.isVariadic) {
+                    return BeforeChildKind.CUSTOM_VARIADIC;
                 } else {
                     return BeforeChildKind.DEFAULT;
                 }
@@ -5959,6 +5946,46 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 b.end();
             }
 
+            if (groupedOperations.containsKey(BeforeChildKind.CUSTOM_VARIADIC)) {
+                for (OperationModel op : groupedOperations.get(BeforeChildKind.CUSTOM_VARIADIC)) {
+                    b.startCase().tree(createOperationConstant(op)).end();
+                    b.startBlock();
+
+                    emitCastOperationData(b, op, "operationSp - 1");
+
+                    // Before emitting a variadic instruction, we need to emit instructions
+                    // to merge all
+                    // of the operands on the stack into one array.
+                    if (op.instruction.signature.dynamicOperandCount == 1) {
+                        // only argument is variadic
+                        b.startDeclaration(type(int.class), "patchIndex").startCall("doEmitVariadicBeforeChild");
+                        if (model.maximumVariadicOffset > 0) {
+                            b.string(op.variadicOffset);
+                        }
+                        b.string("childIndex");
+                        b.end().end();
+                        b.startIf().string("patchIndex != -1").end().startBlock();
+                        b.statement("operationData.variadicCountPatchIndex = patchIndex");
+                        b.end();
+                    } else {
+                        b.startIf().string("childIndex >= " + (op.instruction.signature.dynamicOperandCount - 1)).end().startBlock();
+                        b.startDeclaration(type(int.class), "patchIndex").startCall("doEmitVariadicBeforeChild");
+                        if (model.maximumVariadicOffset > 0) {
+                            b.string(op.variadicOffset);
+                        }
+                        b.string("childIndex - " + (op.instruction.signature.dynamicOperandCount - 1));
+                        b.end().end();
+                        b.startIf().string("patchIndex != -1").end().startBlock();
+                        b.statement("operationData.variadicCountPatchIndex = patchIndex");
+                        b.end();
+                        b.end();
+                    }
+
+                    b.statement("break");
+                    b.end();
+                }
+            }
+
             // Do nothing for every other operation.
             if (groupedOperations.containsKey(BeforeChildKind.DEFAULT)) {
                 for (OperationModel op : groupedOperations.get(BeforeChildKind.DEFAULT)) {
@@ -6012,6 +6039,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private CodeExecutableElement createAfterChild() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "afterChild");
+            ex.addParameter(new CodeVariableElement(type(int.class), "operation"));
             ex.addParameter(new CodeVariableElement(type(boolean.class), "producedValue"));
             ex.addParameter(new CodeVariableElement(type(int.class), "childBci"));
             CodeTreeBuilder b = ex.createBuilder();
@@ -6020,9 +6048,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             b.statement("return");
             b.end();
 
-            b.statement("int childIndex = operationStack[operationSp - 1].childCount");
+            b.declaration(operationStackEntry.asType(), "parentOperationStack", "operationStack[operationSp - 1]");
+            b.statement("int childIndex = parentOperationStack.childCount");
 
-            b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
+            b.startSwitch().string("parentOperationStack.operation").end().startBlock();
 
             Map<Boolean, List<OperationModel>> operationsByTransparency = model.getOperations().stream() //
                             .filter(OperationModel::hasChildren).collect(Collectors.partitioningBy(OperationModel::isTransparent));
@@ -6282,6 +6311,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         break;
                     case CUSTOM:
                     case CUSTOM_INSTRUMENTATION:
+
                         int immediateIndex = 0;
                         boolean elseIf = false;
                         boolean operationDataEmitted = false;
@@ -6297,6 +6327,34 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                 b.end();
                             }
                         }
+
+                        if (op.isVariadic && model.hasVariadicReturn) {
+                            if (!operationDataEmitted) {
+                                emitCastOperationData(b, op, "operationSp - 1");
+                                operationDataEmitted = true;
+                            }
+
+                            if (op.instruction.signature.dynamicOperandCount > 1) {
+                                b.startIf().string("childIndex > ").string(op.instruction.signature.dynamicOperandCount - 1).end().startBlock();
+                            }
+
+                            b.startIf().string("isVariadicReturn(operation)").end().startBlock();
+                            b.startIf().string("operationData.variadicReturnIndices == null").end().startBlock();
+                            b.startStatement();
+                            b.string("operationData.variadicReturnIndices = ");
+                            b.startNew(generic(context.getDeclaredType(ArrayList.class), type(Integer.class)));
+                            b.string("4");
+                            b.end(); // new
+                            b.end(); // statement
+                            b.end(); // if null
+                            b.statement("operationData.variadicReturnIndices.add(childIndex)");
+                            b.end(); // if isVariadicReturn
+
+                            if (op.instruction.signature.dynamicOperandCount > 1) {
+                                b.end();
+                            }
+                        }
+
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
                         emitCastOperationData(b, op, "operationSp - 1");
@@ -6310,7 +6368,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.end();
 
-            b.statement("operationStack[operationSp - 1].childCount = childIndex + 1");
+            b.statement("parentOperationStack.childCount = childIndex + 1");
 
             return ex;
         }
@@ -6592,58 +6650,195 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             return ex;
         }
 
-        private CodeExecutableElement createDoEmitVariadic() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "doEmitVariadic");
+        private CodeExecutableElement createDoEmitVariadicEnd() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(void.class), "doEmitVariadicEnd");
+            if (model.maximumVariadicOffset > 0) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "offset"));
+            }
             ex.addParameter(new CodeVariableElement(type(int.class), "count"));
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.statement("currentStackHeight -= count - 1");
-            b.startIf().string("!reachable").end().startBlock();
-            b.statement("return");
-            b.end();
-
-            int variadicCount = model.loadVariadicInstruction.length - 1;
-
-            b.startIf().string("count <= ").string(variadicCount).end().startBlock();
-
-            InstructionEncoding loadVariadicEncoding = model.loadVariadicInstruction[0].getInstructionEncoding();
-            for (int i = 1; i < model.loadVariadicInstruction.length; i++) {
-                if (!loadVariadicEncoding.equals(model.loadVariadicInstruction[i].getInstructionEncoding())) {
-                    throw new AssertionError("load.variadic instruction did not match expected encoding.");
-                }
+            if (model.hasVariadicReturn) {
+                ex.addParameter(new CodeVariableElement(generic(List.class, type(Integer.class)), "dynamicArguments"));
             }
 
-            b.startStatement().startCall(ensureDoEmitInstructionCreated(model.loadVariadicInstruction[0]).getSimpleName().toString());
-            b.startCall("safeCastShort").startGroup().tree(createInstructionConstant(model.loadVariadicInstruction[0])).string(" + count").end(2);
-            b.string("0");
-            b.end(2);
+            CodeTreeBuilder b = ex.createBuilder();
+
+            if (model.maximumVariadicOffset == 0) {
+                b.declaration(type(int.class), "offset", "0");
+            }
+
+            if (model.hasVariadicReturn) {
+                b.declaration(type(int.class), "mergeCount", "0");
+                b.startIf().string("dynamicArguments != null").end().startBlock();
+                b.startFor().string("int i = dynamicArguments.size() - 1; i >= 0; i--").end().startBlock();
+                b.startIf().string("mergeCount < count && dynamicArguments.get(i) == count - 1 - mergeCount").end().startBlock();
+                b.statement("mergeCount++");
+                b.end().startElseBlock();
+                b.statement("break");
+                b.end(); // else block
+                b.end(); // for
+                b.end(); // if dynamicArguments != null
+            }
+
+            b.startIf().string("offset == 0 && count == 0").end().startBlock();
+            if (model.hasVariadicReturn) {
+                b.statement("assert dynamicArguments == null");
+            }
+            buildEmitInstruction(b, model.emptyVariadicInstruction);
+
+            b.end().startElseIf().string("count <= VARIADIC_STACK_LIMIT").end().startBlock();
+
+            if (model.hasVariadicReturn) {
+                b.startIf().string("offset == 0 && count == 1 && mergeCount == 1").end().startBlock();
+                b.lineComment("pass dynamic variadics directly");
+                b.returnDefault();
+                b.end();
+            }
+
+            buildEmitInstructionStackEffect(b, model.createVariadicInstruction, "-count + 1", createCreateVariadicArguments("offset", "(short)count", "(short)mergeCount"));
+
             b.end().startElseBlock();
 
-            b.statement("updateMaxStackHeight(currentStackHeight + count)");
-            b.statement("int elementCount = count + 1");
-            buildEmitInstruction(b, model.storeNullInstruction);
-
-            b.startWhile().string("elementCount > 8").end().startBlock();
-            buildEmitInstruction(b, model.loadVariadicInstruction[variadicCount]);
-            b.statement("elementCount -= 7");
+            b.declaration(type(int.class), "stackCount", "count % VARIADIC_STACK_LIMIT");
+            b.startIf().string("stackCount == 0").end().startBlock();
+            b.statement("stackCount = VARIADIC_STACK_LIMIT");
             b.end();
 
-            b.startIf().string("elementCount > 0").end().startBlock();
+            if (model.hasVariadicReturn) {
+                b.startIf().string("mergeCount > stackCount").end().startBlock();
+                b.lineComment("if we can't merge in one go, splat is almost always more efficient");
+                b.statement("mergeCount = 0");
+                b.end();
+            }
 
-            b.startStatement().startCall(ensureDoEmitInstructionCreated(model.loadVariadicInstruction[0]).getSimpleName().toString());
-            b.startCall("safeCastShort").startGroup().tree(createInstructionConstant(model.loadVariadicInstruction[0])).string(" + elementCount").end(2);
-            b.string("0");
-            b.end(2);
-            b.end();
-            buildEmitInstruction(b, model.mergeVariadicInstruction);
+            buildEmitInstructionStackEffect(b, model.loadVariadicInstruction, "-stackCount", createLoadVariadicArguments("offset + count - stackCount", "(short)(stackCount)", "(short)mergeCount"));
+
+            if (model.hasVariadicReturn) {
+                b.end();
+            }
+
             b.end();
 
+            if (model.hasVariadicReturn) {
+                b.startIf().string("dynamicArguments != null").end().startBlock();
+                b.declaration(type(int.class), "prev", "-1");
+                b.declaration(type(int.class), "length", "0");
+                b.startFor().string("int i = dynamicArguments.size() - 1 - mergeCount; i >= 0; i--").end().startBlock();
+                b.declaration(type(int.class), "index", "dynamicArguments.get(i)");
+
+                b.startIf().string("prev == -1 ").end().startBlock();
+                b.lineComment("first element");
+                b.statement("length++");
+                b.end().startElseIf().string("prev == index + 1").end().startBlock();
+                b.lineComment("continuous range");
+                b.statement("length++");
+                b.end().startElseBlock();
+                b.lineComment("range not continuous");
+                buildEmitInstructionStackEffect(b, model.splatVariadicInstruction, "0", "offset + prev", "length");
+                b.statement("length = 1");
+                b.end();
+                b.statement("prev = index");
+
+                b.end();
+                b.startIf().string("length > 0").end().startBlock();
+                b.lineComment("emit last range");
+                b.statement("assert prev != -1");
+                buildEmitInstructionStackEffect(b, model.splatVariadicInstruction, "0", "offset + prev", "length");
+                b.end();
+
+                b.end(); // dynamicArguments != null
+            }
+
+            return ex;
+        }
+
+        private CodeExecutableElement createDoEmitVariadicBeforeChild() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(int.class), "doEmitVariadicBeforeChild");
+
+            if (model.maximumVariadicOffset > 0) {
+                ex.addParameter(new CodeVariableElement(type(int.class), "offset"));
+            }
+            ex.addParameter(new CodeVariableElement(type(int.class), "count"));
+
+            CodeTreeBuilder b = ex.createBuilder();
             b.startIf().string("count == 0").end().startBlock();
-            b.lineComment("pushed empty array");
-            b.statement("updateMaxStackHeight(currentStackHeight)");
+            b.startReturn().string("-1").end();
+            b.end();
+
+            b.declaration(type(int.class), "stackCount", "count % VARIADIC_STACK_LIMIT");
+            b.startIf().string("stackCount != 0").end().startBlock();
+            b.lineComment("nothing to emit yet");
+            b.startReturn().string("-1").end();
+            b.end();
+
+            b.startIf().string("count <= VARIADIC_STACK_LIMIT").end().startBlock();
+            b.declaration(type(int.class), "variadicSizePatchOffset", "bci + " + model.createVariadicInstruction.findImmediate(ImmediateKind.INTEGER, "count").offset());
+            buildEmitInstructionStackEffect(b, model.createVariadicInstruction, "-VARIADIC_STACK_LIMIT + 1", createCreateVariadicArguments("offset", "VARIADIC_STACK_LIMIT", "(short) 0"));
+            b.startReturn().string("variadicSizePatchOffset").end();
+            b.end().startElseBlock();
+            String offset;
+            if (model.maximumVariadicOffset > 0) {
+                offset = "offset + count - VARIADIC_STACK_LIMIT";
+            } else {
+                offset = "count - VARIADIC_STACK_LIMIT";
+            }
+            buildEmitInstructionStackEffect(b, model.loadVariadicInstruction, "-VARIADIC_STACK_LIMIT", createLoadVariadicArguments(offset, "(short)VARIADIC_STACK_LIMIT", "(short) 0"));
+            b.startReturn().string("-1").end();
             b.end();
 
             return ex;
+        }
+
+        private CodeExecutableElement createIsVariadicReturn() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), type(boolean.class), "isVariadicReturn");
+            ex.addParameter(new CodeVariableElement(type(int.class), "op"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startSwitch().string("op").end().startBlock();
+
+            for (OperationModel op : model.getOperations()) {
+                if (op.variadicReturn) {
+                    b.startCase().tree(createOperationConstant(op)).end();
+                }
+            }
+            b.startCaseBlock();
+            b.returnTrue();
+            b.end();
+
+            b.end(); // switch block
+            b.returnFalse();
+            return ex;
+        }
+
+        private String[] createCreateVariadicArguments(String offset, String count, String mergeCount) throws AssertionError {
+            List<InstructionImmediate> immediates = model.createVariadicInstruction.getImmediates();
+            String[] createArguments = new String[immediates.size()];
+            for (int i = 0; i < immediates.size(); i++) {
+                createArguments[i] = switch (immediates.get(i).name()) {
+                    case "offset" -> offset;
+                    case "count" -> count;
+                    case "merge_count" -> mergeCount;
+                    default -> {
+                        throw new AssertionError("invalid immediate " + immediates.get(i));
+                    }
+                };
+            }
+            return createArguments;
+        }
+
+        private String[] createLoadVariadicArguments(String offset, String count, String mergeCount) throws AssertionError {
+            List<InstructionImmediate> immediates = model.loadVariadicInstruction.getImmediates();
+            String[] createArguments = new String[immediates.size()];
+            for (int i = 0; i < immediates.size(); i++) {
+                createArguments[i] = switch (immediates.get(i).name()) {
+                    case "offset" -> offset;
+                    case "count" -> count;
+                    case "merge_count" -> mergeCount;
+                    default -> {
+                        throw new AssertionError("invalid immediate " + immediates.get(i));
+                    }
+                };
+            }
+            return createArguments;
         }
 
         private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String... arguments) {
@@ -6653,7 +6848,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                 LOAD_LOCAL_MATERIALIZED, CLEAR_LOCAL, YIELD -> {
                     yield 0;
                 }
-                case STORE_NULL, LOAD_VARIADIC, MERGE_VARIADIC -> {
+                case CREATE_VARIADIC, EMPTY_VARIADIC -> {
+                    yield 1;
+                }
+                case LOAD_VARIADIC, SPLAT_VARIADIC -> {
                     /*
                      * NB: These instructions *do* have stack effects. However, they are only used
                      * by doEmitVariadic, which does stack height computations itself. Use 0 so we
@@ -6687,6 +6885,10 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 default -> throw new UnsupportedOperationException();
             };
 
+            buildEmitInstructionStackEffect(b, instr, String.valueOf(stackEffect), arguments);
+        }
+
+        private void buildEmitInstructionStackEffect(CodeTreeBuilder b, InstructionModel instr, String stackEffect, String... arguments) throws AssertionError {
             CodeExecutableElement doEmitInstruction = ensureDoEmitInstructionCreated(instr);
             b.startStatement().startCall(doEmitInstruction.getSimpleName().toString());
             b.tree(createInstructionConstant(instr));
@@ -7627,11 +7829,19 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                                             field(type(int.class), "childBci").withInitializer(UNINIT));
                         } else {
                             name = "CustomOperationData";
-                            fields = List.of(//
-                                            field(arrayOf(type(int.class)), "childBcis").asFinal(),
-                                            field(arrayOf(type(int.class)), "constants").asFinal(),
-                                            field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs());
+                            fields = new ArrayList<>();
+                            fields.add(field(arrayOf(type(int.class)), "childBcis").asFinal());
+                            fields.add(field(arrayOf(type(int.class)), "constants").asFinal());
+                            fields.add(field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs());
+
+                            if (model.hasCustomVariadic) {
+                                fields.add(field(type(int.class), "variadicCountPatchIndex").withInitializer("-1"));
+                                if (model.hasVariadicReturn) {
+                                    fields.add(field(generic(List.class, Integer.class), "variadicReturnIndices").withInitializer("null"));
+                                }
+                            }
                         }
+
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
                         name = "CustomShortCircuitOperationData";
@@ -9485,6 +9695,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                 case LOCAL_INDEX:
                     return "LocalIndexArgument";
                 case SHORT:
+                case INTEGER:
                 case LOCAL_ROOT:
                 case STACK_POINTER:
                     return "IntegerArgument";
@@ -9505,7 +9716,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
         private static List<String> getImmediateArgumentArgs(ImmediateKind kind) {
             return switch (kind) {
-                case SHORT, LOCAL_ROOT, STACK_POINTER -> List.of(Integer.toString(kind.width.byteSize));
+                case SHORT, INTEGER, LOCAL_ROOT, STACK_POINTER -> List.of(Integer.toString(kind.width.byteSize));
                 default -> List.of();
             };
         }
@@ -9754,7 +9965,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                     case CONSTANT -> "CONSTANT";
                     case FRAME_INDEX -> "LOCAL_OFFSET";
                     case LOCAL_INDEX -> "LOCAL_INDEX";
-                    case SHORT, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
+                    case SHORT, INTEGER, LOCAL_ROOT, STACK_POINTER -> "INTEGER";
                     case NODE_PROFILE -> "NODE_PROFILE";
                     case TAG_NODE -> "TAG_NODE";
                 };
@@ -10658,6 +10869,7 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                             b.end();
                             break;
                         case SHORT:
+                        case INTEGER:
                             break;
                         case STACK_POINTER:
                             b.tree(declareImmediate);
@@ -14048,10 +14260,6 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
                     emitReturnTopOfStack(b);
                     break;
-                case STORE_NULL:
-                    b.statement(setFrameObject("sp", "null"));
-                    b.statement("sp += 1");
-                    break;
                 case CLEAR_LOCAL:
                     String index = readImmediate("bc", "bci", instr.getImmediate(ImmediateKind.FRAME_INDEX)).toString();
                     if (model.defaultLocalValueExpression != null) {
@@ -14060,26 +14268,58 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
                         b.statement(clearFrame("frame", index));
                     }
                     break;
-                case LOAD_VARIADIC:
-                    int effect = -instr.variadicPopCount + 1;
+                case CREATE_VARIADIC:
+
                     b.startStatement();
-                    if (instr.variadicPopCount == 0) {
-                        b.string(setFrameObject("sp", BytecodeRootNodeElement.this.emptyObjectArray.getSimpleName().toString()));
-                    } else {
-                        b.string(setFrameObject("sp - " + instr.variadicPopCount, "readVariadic(frame, sp, " + instr.variadicPopCount + ")"));
-                    }
+                    b.string("temp = ");
+                    b.tree(readImmediate("bc", "bci", instr.findImmediate(ImmediateKind.INTEGER, "count")));
                     b.end();
 
-                    if (effect != 0) {
-                        if (effect > 0) {
-                            b.statement("sp += " + effect);
-                        } else {
-                            b.statement("sp -= " + -effect);
-                        }
-                    }
+                    b.startStatement();
+                    b.startCall(lookupCreateVariadic(instr).getSimpleName().toString());
+                    b.string("frame").string("bc").string("bci").string("sp").string("(int)temp");
+                    b.end();
+                    b.end();
+
+                    b.statement("sp -= Math.min(((int)temp - 1), VARIADIC_STACK_LIMIT - 1)");
                     break;
-                case MERGE_VARIADIC:
-                    b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + uncheckedGetFrameObject("sp - 1") + ")"));
+                case LOAD_VARIADIC:
+
+                    b.startStatement();
+                    b.string("temp = ");
+                    b.tree(readImmediate("bc", "bci", instr.findImmediate(ImmediateKind.SHORT, "count")));
+                    b.end();
+
+                    b.startStatement();
+                    b.startCall(lookupLoadVariadic(instr).getSimpleName().toString());
+                    b.string("frame").string("bc").string("bci").string("sp").string("(int)temp");
+                    b.end();
+                    b.end();
+
+                    b.statement("sp -= ((int)temp)");
+                    break;
+                case EMPTY_VARIADIC:
+                    b.startStatement();
+                    startSetFrame(b, type(Object.class));
+                    b.string("frame");
+                    b.string("sp");
+                    b.startGroup();
+                    b.string("EMPTY_ARRAY");
+                    b.end(); // group
+                    b.end(); // setFrame
+                    b.end(); // statement
+                    b.statement("sp += 1");
+                    break;
+
+                case SPLAT_VARIADIC:
+
+                    b.startStatement();
+                    b.startCall(lookupSplatVariadic(instr).getSimpleName().toString());
+                    b.string("frame").string("bc").string("bci").string("sp");
+                    b.end();
+                    b.end();
+
+                    // no stack effect
                     break;
                 case CUSTOM:
                     if (tier.isUncached() && instr.operation.customModel.forcesCached()) {
@@ -14372,6 +14612,256 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
 
             b.statement("return node.findProbe().onReturnExceptionalOrUnwind(frame, exception, wasOnReturnExecuted)");
 
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupCreateVariadic(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(type(int.class), "count"));
+            method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
+
+            CodeTreeBuilder b = method.createBuilder();
+
+            InstructionImmediate offsetImmediate = instr.findImmediate(ImmediateKind.INTEGER, "offset");
+            if (offsetImmediate != null) {
+                b.declaration(type(int.class), "offset", readImmediate("bc", "bci", offsetImmediate));
+            }
+            String addOffset = (offsetImmediate == null ? "" : "offset + ");
+
+            b.declaration(type(int.class), "newSize", addOffset + "count");
+            if (model.hasVariadicReturn) {
+                b.declaration(type(int.class), "mergeCount", readImmediate("bc", "bci", instr.findImmediate(ImmediateKind.SHORT, "merge_count")));
+                b.startIf().string("mergeCount > 0").end().startBlock();
+                b.startFor().string("int i = 0; i < mergeCount; i++").end().startBlock();
+
+                b.startDeclaration(type(Object[].class), "dynamicArray");
+                b.startCall("ACCESS.uncheckedCast");
+                b.string(uncheckedGetFrameObject("sp - mergeCount + i"));
+                b.typeLiteral(type(Object[].class));
+                b.end();
+                b.end();
+                b.statement("newSize += dynamicArray.length - 1");
+
+                b.end(); // for mergeDynamicCount
+                b.end(); // if mergeDynamicCount > 0
+            }
+
+            b.declaration(type(Object[].class), "result", "new Object[newSize]");
+            b.declaration(type(int.class), "stackPopCount", "Math.min(count, VARIADIC_STACK_LIMIT)");
+
+            if (model.hasVariadicReturn) {
+                b.startFor().string("int i = 0; i < stackPopCount - mergeCount; i++").end().startBlock();
+            } else {
+                b.startFor().string("int i = 0; i < stackPopCount; i++").end().startBlock();
+            }
+            b.startStatement();
+            if (offsetImmediate == null) {
+                b.string("result[i] = ");
+            } else {
+                b.string("result[offset + i] = ");
+            }
+            b.string(uncheckedGetFrameObject("sp - stackPopCount + i"));
+            b.end();
+
+            b.end();
+
+            if (model.hasVariadicReturn) {
+                b.startIf().string("mergeCount > 0").end().startBlock();
+                b.declaration(type(int.class), "mergeIndex", addOffset + "stackPopCount - mergeCount");
+                b.startFor().string("int i = 0; i < mergeCount; i++").end().startBlock();
+
+                b.startDeclaration(type(Object[].class), "dynamicArray");
+                b.startCall("ACCESS.uncheckedCast");
+                b.string(uncheckedGetFrameObject("sp - mergeCount + i"));
+                b.typeLiteral(type(Object[].class));
+                b.end();
+                b.end();
+
+                b.declaration(type(int.class), "dynamicLength", "dynamicArray.length");
+                b.startStatement().startStaticCall(type(System.class), "arraycopy");
+                b.string("dynamicArray").string("0").string("result").string("mergeIndex").string("dynamicLength");
+                b.end().end(); // static call, statement
+
+                b.statement("mergeIndex += dynamicLength");
+
+                b.end(); // for mergeDynamicCount
+                b.end(); // if mergeDynamicCount > 0
+            }
+
+            b.startStatement();
+            startSetFrame(b, type(Object.class)).string("frame").string("sp - stackPopCount").string("result").end();
+            b.end();
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupSplatVariadic(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"));
+            method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
+
+            CodeTreeBuilder b = method.createBuilder();
+            b.declaration(type(int.class), "offset", readImmediate("bc", "bci", instr.findImmediate(ImmediateKind.INTEGER, "offset")));
+            b.declaration(type(int.class), "count", readImmediate("bc", "bci", instr.findImmediate(ImmediateKind.INTEGER, "count")));
+
+            b.startDeclaration(type(Object[].class), "oldArray");
+            b.startCall("ACCESS.uncheckedCast");
+            b.string(uncheckedGetFrameObject("sp - 1"));
+            b.typeLiteral(type(Object[].class));
+            b.end();
+            b.end();
+
+            b.declaration(type(int.class), "newSize", "oldArray.length");
+            b.startFor().string("int i = 0; i < count; i++").end().startBlock();
+
+            b.startDeclaration(type(Object[].class), "dynamicArray");
+            b.startCall("ACCESS.uncheckedCast");
+            b.string("oldArray[offset + i]");
+            b.typeLiteral(type(Object[].class));
+            b.end();
+            b.end();
+            b.statement("newSize += dynamicArray.length - 1");
+
+            b.end(); // for count
+
+            b.declaration(type(Object[].class), "newArray", "new Object[newSize]");
+
+            b.lineComment("copy prefixed elements");
+            b.startStatement().startStaticCall(type(System.class), "arraycopy");
+            b.string("oldArray").string("0").string("newArray").string("0").string("offset");
+            b.end().end();
+
+            // copy dynamic arrays
+            b.lineComment("copy dynamic elements");
+            b.declaration(type(int.class), "mergeIndex", "offset");
+            b.startFor().string("int i = 0; i < count; i++").end().startBlock();
+            b.startDeclaration(type(Object[].class), "dynamicArray");
+            b.startCall("ACCESS.uncheckedCast");
+            b.string("oldArray[offset + i]");
+            b.typeLiteral(type(Object[].class));
+            b.end();
+            b.end(); // declaration
+
+            b.startStatement().startStaticCall(type(System.class), "arraycopy");
+            b.string("dynamicArray").string("0").string("newArray").string("mergeIndex").string("dynamicArray.length");
+            b.end().end();
+            b.statement("mergeIndex += dynamicArray.length");
+            b.end(); // for count
+
+            b.lineComment("copy suffix elements");
+            b.startStatement().startStaticCall(type(System.class), "arraycopy");
+            b.string("oldArray").string("offset + count").string("newArray").string("mergeIndex").string("oldArray.length - offset - count");
+            b.end().end();
+
+            b.statement(setFrameObject("frame", "sp - 1", "newArray"));
+
+            doInstructionMethods.put(instr, method);
+            return method;
+
+        }
+
+        private CodeExecutableElement lookupLoadVariadic(InstructionModel instr) {
+            CodeExecutableElement method = doInstructionMethods.get(instr);
+            if (method != null) {
+                return method;
+            }
+            method = new CodeExecutableElement(
+                            Set.of(PRIVATE),
+                            type(void.class), instructionMethodName(instr),
+                            new CodeVariableElement(types.VirtualFrame, "frame"),
+                            new CodeVariableElement(type(byte[].class), "bc"),
+                            new CodeVariableElement(type(int.class), "bci"),
+                            new CodeVariableElement(type(int.class), "sp"),
+                            new CodeVariableElement(type(int.class), "count"));
+            method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.ExplodeLoop));
+
+            CodeTreeBuilder b = method.createBuilder();
+
+            b.declaration(type(int.class), "offset", readImmediate("bc", "bci", instr.findImmediate(ImmediateKind.INTEGER, "offset")));
+            b.startDeclaration(type(Object[].class), "result");
+            b.startCall("ACCESS.uncheckedCast");
+            b.string(uncheckedGetFrameObject("sp - count - 1"));
+            b.typeLiteral(type(Object[].class));
+            b.end();
+            b.end();
+
+            if (model.hasVariadicReturn) {
+                b.declaration(type(int.class), "newSize", "offset + count");
+                b.declaration(type(int.class), "mergeCount", readImmediate("bc", "bci", instr.findImmediate(ImmediateKind.SHORT, "merge_count")));
+                b.startIf().string("mergeCount > 0").end().startBlock();
+                b.startFor().string("int i = 0; i < mergeCount; i++").end().startBlock();
+
+                b.startDeclaration(type(Object[].class), "dynamicArray");
+                b.startCall("ACCESS.uncheckedCast");
+                b.string(uncheckedGetFrameObject("sp - mergeCount + i"));
+                b.typeLiteral(type(Object[].class));
+                b.end();
+                b.end();
+                b.statement("newSize += dynamicArray.length - 1");
+
+                b.end(); // for mergeDynamicCount
+
+                b.startStatement().string("result = ");
+                b.startStaticCall(type(Arrays.class), "copyOf").string("result").string("newSize").end();
+                b.end(); // statement
+                b.statement(setFrameObject("frame", "sp - count - 1", "result"));
+
+                b.end(); // if mergeDynamicCount > 0
+
+                b.startFor().string("int i = 0; i < count - mergeCount; i++").end().startBlock();
+            } else {
+                b.startFor().string("int i = 0; i < count; i++").end().startBlock();
+            }
+            b.startStatement();
+            b.string("result[offset + i] = ").string(uncheckedGetFrameObject("sp - count + i"));
+            b.end();
+            b.end(); // for
+
+            if (model.hasVariadicReturn) {
+                b.startIf().string("mergeCount > 0").end().startBlock();
+                b.declaration(type(int.class), "mergeIndex", "offset + count - mergeCount");
+                b.startFor().string("int i = 0; i < mergeCount; i++").end().startBlock();
+
+                b.startDeclaration(type(Object[].class), "dynamicArray");
+                b.startCall("ACCESS.uncheckedCast");
+                b.string(uncheckedGetFrameObject("sp - mergeCount + i"));
+                b.typeLiteral(type(Object[].class));
+                b.end();
+                b.end();
+
+                b.declaration(type(int.class), "dynamicLength", "dynamicArray.length");
+                b.startStatement().startStaticCall(type(System.class), "arraycopy");
+                b.string("dynamicArray").string("0").string("result").string("mergeIndex").string("dynamicLength");
+                b.end().end(); // static call, statement
+
+                b.statement("mergeIndex += dynamicLength");
+
+                b.end(); // for mergeDynamicCount
+                b.end(); // if mergeDynamicCount > 0
+            }
+            doInstructionMethods.put(instr, method);
             return method;
 
         }
@@ -16071,6 +16561,12 @@ final class BytecodeRootNodeElement extends CodeTypeElement {
             }
 
             buildCallExecute(b, instr, null, extraParams);
+
+            if (instr.nonNull && !instr.signature.isVoid) {
+                b.startStatement().startStaticCall(type(Objects.class), "requireNonNull");
+                b.string("result").doubleQuote("The operation " + instr.operation.name + " must return a non-null value, but did return a null value.");
+                b.end().end();
+            }
 
             // Update the stack.
             if (!instr.signature.isVoid) {

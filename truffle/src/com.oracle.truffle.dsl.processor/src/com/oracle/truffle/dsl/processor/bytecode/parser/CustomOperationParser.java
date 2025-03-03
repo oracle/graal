@@ -270,11 +270,35 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         }
 
+        AnnotationMirror variadicReturn = ElementUtils.findAnnotationMirror(typeElement.getAnnotationMirrors(), types.Variadic);
+        if (variadicReturn != null) {
+            if (kind != OperationKind.CUSTOM) {
+                customOperation.addError(variadicReturn, null,
+                                "@%s can only be used on on @%s annotated classes.",
+                                getSimpleName(types.Variadic),
+                                getSimpleName(types.Operation));
+            }
+            Integer startOffset = ElementUtils.getAnnotationValue(Integer.class, variadicReturn, "startOffset", false);
+            if (startOffset != null) {
+                customOperation.addError(variadicReturn, ElementUtils.getAnnotationValue(variadicReturn, "startOffset"),
+                                "@%s.startOffset is not supported for variadic return specifications. It supported for variadic operands only.",
+                                getSimpleName(types.Variadic));
+            }
+            if (!ElementUtils.typeEquals(signature.returnType, context.getType(Object[].class))) {
+                customOperation.addError(variadicReturn, null,
+                                "@%s annotated operations must return Object[] for all specializations.",
+                                getSimpleName(types.Variadic));
+            }
+
+            operation.variadicReturn = true;
+        }
+
         if (customOperation.hasErrors()) {
             return customOperation;
         }
 
         operation.isVariadic = signature.isVariadic || isShortCircuit();
+        operation.variadicOffset = signature.variadicOffset;
         operation.isVoid = signature.isVoid;
 
         DynamicOperandModel[] dynamicOperands = new DynamicOperandModel[signature.dynamicOperandCount];
@@ -873,6 +897,10 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
         instr.nodeType = generatedNode;
         instr.nodeData = parseGeneratedNode(customOperation, generatedNode, signature);
+
+        if (customOperation.operation.variadicReturn) {
+            instr.nonNull = true;
+        }
 
         OperationModel operation = customOperation.operation;
         for (int i = 0; i < operation.numConstantOperandsBefore(); i++) {
