@@ -281,7 +281,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
                 mx.abort("Mismatch between suite-defined workload size ('{}') "
                          "and user-provided one ('{}')!".format(self.workloadSize(), args.size))
 
-        otherArgs = ["-s", self.workloadSize()] + remaining
+        otherArgs = ["-s", self.workloadSize(), "--preserve"] + remaining
 
         if args.iterations:
             if args.iterations.isdigit():
