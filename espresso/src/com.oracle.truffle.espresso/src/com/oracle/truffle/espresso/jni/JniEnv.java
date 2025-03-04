@@ -2195,30 +2195,26 @@ public final class JniEnv extends NativeEnv {
             return handleNoSuchMethod(meta);
         }
         Method targetMethod = clazz.getMirrorKlass(getMeta()).lookupDeclaredMethod(name, signature);
-        if (targetMethod != null && targetMethod.isNative()) {
-            targetMethod.unregisterNative();
-            getSubstitutions().removeRuntimeSubstitution(targetMethod);
-        } else {
+        if (targetMethod == null || !targetMethod.isNative()) {
             // agents might have set native method prefix, so check with those as well
-            if (targetMethod == null || getContext().getJavaAgents() == null) {
-                return handleNoSuchMethod(meta);
-            }
-            if (findPrefixedNative(name, clazz, signature) != null) {
-                // we found a native wrapper method for the target method
-                // use the original target method which match the native implementation
-                targetMethod.unregisterNative();
-                getSubstitutions().removeRuntimeSubstitution(targetMethod);
-            } else {
-                return handleNoSuchMethod(meta);
-            }
+            targetMethod = findPrefixedNative(name, clazz, signature);
         }
+        if (targetMethod == null) {
+            // OK, nowhere to be found, so give up
+            return handleNoSuchMethod(meta);
+        }
+        // make sure we have the correct method name also for prefixed methods
+        name = targetMethod.getName();
+        targetMethod.unregisterNative();
+        getSubstitutions().removeRuntimeSubstitution(targetMethod);
 
         // Lookup known VM methods to shortcut native boundaries.
         Substitutions.EspressoRootNodeFactory factory = lookupKnownVmMethods(closure, targetMethod);
         if (factory == null) {
             NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
             final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns);
-            factory = createJniRootNodeFactory(() -> EspressoRootNode.createNative(getContext().getJNI(closure), targetMethod.getMethodVersion(), boundNative), targetMethod);
+            final Method finalTargetMethod = targetMethod;
+            factory = createJniRootNodeFactory(() -> EspressoRootNode.createNative(getContext().getJNI(closure), finalTargetMethod.getMethodVersion(), boundNative), targetMethod);
         }
 
         Symbol<Type> classType = clazz.getMirrorKlass(getMeta()).getType();
@@ -2227,6 +2223,9 @@ public final class JniEnv extends NativeEnv {
     }
 
     private Method findPrefixedNative(Symbol<Name> name, @JavaType(Class.class) StaticObject clazz, Symbol<Signature> signature) {
+        if (getContext().getJavaAgents() == null) {
+            return null;
+        }
         Symbol<Name>[] allNativePrefixes = getContext().getJavaAgents().getAllNativePrefixes();
         if (allNativePrefixes == Symbol.EMPTY_ARRAY) {
             return null;
