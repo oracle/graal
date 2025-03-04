@@ -62,22 +62,7 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
     public Pointer serializeStackTrace(Pointer rawStackTrace, Pointer bufferEnd, int sampleSize, int sampleHash,
                     boolean isTruncated, long sampleTick, long threadId, long threadState) {
         Pointer current = rawStackTrace;
-        CIntPointer statusPtr = StackValue.get(CIntPointer.class);
-        JfrStackTraceRepository.JfrStackTraceTableEntry entry = SubstrateJVM.getStackTraceRepo().getOrPutStackTrace(current, Word.unsigned(sampleSize), sampleHash, statusPtr);
-        long stackTraceId = entry.isNull() ? 0 : entry.getId();
-
-        int status = statusPtr.read();
-        if (status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.EXISTING_RAW) {
-            /* Walk the IPs and serialize the stacktrace. */
-            assert current.add(sampleSize).belowThan(bufferEnd);
-            boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId);
-            if (serialized) {
-                SubstrateJVM.getStackTraceRepo().commitSerializedStackTrace(entry);
-            }
-        } else {
-            /* Processing is not needed: skip the rest of the data. */
-            assert status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.EXISTING_SERIALIZED || status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.INSERT_FAILED;
-        }
+        long stackTraceId = deduplicateAndSerializeStackTrace(current, bufferEnd, sampleSize, sampleHash, isTruncated);
         current = current.add(sampleSize);
 
         /*
@@ -97,6 +82,28 @@ public final class SamplerJfrStackTraceSerializer implements SamplerStackTraceSe
 
         current = current.add(SamplerSampleWriter.END_MARKER_SIZE);
         return current;
+    }
+
+    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
+    public static long deduplicateAndSerializeStackTrace(Pointer rawStackTrace, Pointer bufferEnd, int sampleSize, int sampleHash, boolean isTruncated) {
+        Pointer current = rawStackTrace;
+        CIntPointer statusPtr = StackValue.get(CIntPointer.class);
+        JfrStackTraceRepository.JfrStackTraceTableEntry entry = SubstrateJVM.getStackTraceRepo().getOrPutStackTrace(current, Word.unsigned(sampleSize), sampleHash, statusPtr);
+        long stackTraceId = entry.isNull() ? 0 : entry.getId();
+
+        int status = statusPtr.read();
+        if (status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.EXISTING_RAW) {
+            /* Walk the IPs and serialize the stacktrace. */
+            assert current.add(sampleSize).belowThan(bufferEnd);
+            boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId);
+            if (serialized) {
+                SubstrateJVM.getStackTraceRepo().commitSerializedStackTrace(entry);
+            }
+        } else {
+            /* Processing is not needed: skip the rest of the data. */
+            assert status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.EXISTING_SERIALIZED || status == JfrStackTraceRepository.JfrStackTraceTableEntryStatus.INSERT_FAILED;
+        }
+        return stackTraceId;
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
