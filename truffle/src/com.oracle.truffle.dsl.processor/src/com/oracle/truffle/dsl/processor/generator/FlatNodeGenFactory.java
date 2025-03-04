@@ -2688,17 +2688,20 @@ public class FlatNodeGenFactory {
                 }
             }
 
-            TypeMirror returnType = forType.getReturnType();
-
-            TypeMirror type = specialization.lookupBoxingOverloadReturnType(forType);
-            if (!isVoid(returnType) && !isSubtypeBoxed(context, type, returnType) &&
-                            !isSubtypeBoxed(context, returnType, type)) {
-                continue outer;
+            TypeMirror executeReturnType = forType.getReturnType();
+            TypeMirror specializationReturnType = specialization.lookupBoxingOverloadReturnType(forType);
+            if (isReturnTypeCompatible(executeReturnType, specializationReturnType)) {
+                filteredSpecializations.add(specialization);
             }
-            filteredSpecializations.add(specialization);
         }
 
         return filteredSpecializations;
+    }
+
+    private boolean isReturnTypeCompatible(TypeMirror executeReturnType, TypeMirror specializationReturnType) {
+        return isVoid(executeReturnType) || isVoid(specializationReturnType) || //
+                        isSubtypeBoxed(context, specializationReturnType, executeReturnType) ||
+                        isSubtypeBoxed(context, executeReturnType, specializationReturnType);
     }
 
     private List<SpecializationData> filterImplementedSpecializations(List<SpecializationData> specializations, ExecutableTypeData forType) {
