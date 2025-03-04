@@ -44,6 +44,7 @@ import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.util.EconomicSetNodeEventListener;
+import jdk.graal.compiler.phases.common.util.LoopUtility;
 import jdk.graal.compiler.phases.util.GraphOrder;
 
 public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
@@ -65,6 +66,9 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
      * Determine if the given loop can be peeled.
      */
     public static boolean canPeel(Loop loop) {
+        if (LoopUtility.excludeLoopFromOptimizer(loop)) {
+            return false;
+        }
         return stateAllowsPeeling(loop.loopBegin().graph().getGraphState()) && loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0;
     }
 
