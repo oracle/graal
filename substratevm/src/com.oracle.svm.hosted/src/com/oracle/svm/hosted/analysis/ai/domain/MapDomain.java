@@ -38,6 +38,7 @@ public abstract class MapDomain<
         this.initialDomain = initialDomain;
     }
 
+    @SuppressWarnings("this-escape")
     public MapDomain(Map<Key, Domain> map, Domain initialDomain) {
         super(() -> new MapValue<>(initialDomain));
         this.initialDomain = initialDomain.copyOf();
@@ -104,13 +105,12 @@ public abstract class MapDomain<
 
     @Override
     public String toString() {
-        return "MapDomain{" +
-                "mapValue=" + getValue() +
-                ", kind=" + getKind() +
-                '}';
+        return "map: " + getValue().toString() +
+                System.lineSeparator() +
+                "kind: " + getKind();
     }
 
-    // NOTE: implement this in derived classes
+    /* NOTE: implement this in derived classes */
     @Override
     public abstract Self copyOf();
 }

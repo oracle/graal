@@ -67,6 +67,6 @@ public final class EmptyDomain extends AbstractDomain<EmptyDomain> {
 
     @Override
     public String toString() {
-        return "EmptyDomain{}";
+        return "Empty";
     }
 }
