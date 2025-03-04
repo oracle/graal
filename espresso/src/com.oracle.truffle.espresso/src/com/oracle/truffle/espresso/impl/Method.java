@@ -133,6 +133,7 @@ import com.oracle.truffle.espresso.shared.meta.MethodAccess;
 import com.oracle.truffle.espresso.shared.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
+import com.oracle.truffle.espresso.shared.vtable.PartialMethod;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM.EspressoStackElement;
@@ -174,6 +175,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
     Method(Method method) {
         this(method, method.getCodeAttribute());
+        assert method.getDeclaringKlass().isInterface();
     }
 
     private Method(Method method, CodeAttribute split) {
@@ -299,13 +301,13 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return getCodeAttribute().getOriginalCode();
     }
 
-    public ExceptionHandler[] getExceptionHandlers() {
+    public ExceptionHandler[] getSymbolicExceptionHandlers() {
         return getCodeAttribute().getExceptionHandlers();
     }
 
     public int[] getSOEHandlerInfo() {
         ArrayList<Integer> toArray = new ArrayList<>();
-        for (ExceptionHandler handler : getExceptionHandlers()) {
+        for (ExceptionHandler handler : getSymbolicExceptionHandlers()) {
             if (handler.isCatchAll() //
                             || handler.getCatchType() == Types.java_lang_StackOverflowError //
                             || handler.getCatchType() == Types.java_lang_VirtualMachineError //
@@ -442,9 +444,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     public boolean canOverride(Method other) {
-        if (other.isPrivate() || other.isStatic() || isPrivate() || isStatic()) {
-            return false;
-        }
+        assert !isPrivate() && !isStatic() && !other.isPrivate() && !other.isStatic();
         if (other.isPublic() || other.isProtected()) {
             return true;
         }
@@ -824,14 +824,6 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return (flags & required) == required;
     }
 
-    void setVTableIndex(int i) {
-        getMethodVersion().setVTableIndex(i);
-    }
-
-    void setVTableIndex(int i, boolean isRedefinition) {
-        getMethodVersion().setVTableIndex(i, isRedefinition);
-    }
-
     public int getVTableIndex() {
         return getMethodVersion().getVTableIndex();
     }
@@ -852,8 +844,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return !isStatic() && !isConstructor() && !isPrivate() && !getDeclaringKlass().isInterface();
     }
 
-    public void setPoisonPill() {
-        getMethodVersion().poisonPill = true;
+    public Method setPoisonPill() {
+        getMethodVersion().setPoisonPill();
+        return this;
     }
 
     @Override
@@ -893,11 +886,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     private boolean hasGetterBytecodes() {
         byte[] code = getOriginalCode();
         if (isStatic()) {
-            if (code.length == STATIC_GETTER_LENGTH && getExceptionHandlers().length == 0) {
+            if (code.length == STATIC_GETTER_LENGTH && getSymbolicExceptionHandlers().length == 0) {
                 return (code[0] == (byte) GETSTATIC) && (Bytecodes.isReturn(code[3])) && code[3] != (byte) RETURN;
             }
         } else {
-            if (code.length == GETTER_LENGTH && getExceptionHandlers().length == 0) {
+            if (code.length == GETTER_LENGTH && getSymbolicExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) GETFIELD) && (Bytecodes.isReturn(code[4])) && code[4] != (byte) RETURN;
             }
         }
@@ -916,11 +909,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     private boolean hasSetterBytecodes() {
         byte[] code = getOriginalCode();
         if (isStatic()) {
-            if (code.length == STATIC_SETTER_LENGTH && getExceptionHandlers().length == 0) {
+            if (code.length == STATIC_SETTER_LENGTH && getSymbolicExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (code[1] == (byte) PUTSTATIC) && (code[4] == (byte) RETURN);
             }
         } else {
-            if (code.length == SETTER_LENGTH && getExceptionHandlers().length == 0) {
+            if (code.length == SETTER_LENGTH && getSymbolicExceptionHandlers().length == 0) {
                 return (code[0] == (byte) ALOAD_0) && (Bytecodes.isLoad1(code[1])) && (code[2] == (byte) PUTFIELD) && (code[5] == (byte) RETURN);
             }
         }
@@ -949,7 +942,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     }
 
     public int getCatchLocation(int bci, StaticObject ex) {
-        ExceptionHandler[] handlers = getExceptionHandlers();
+        ExceptionHandler[] handlers = getSymbolicExceptionHandlers();
         ExceptionHandler resolved = null;
         for (ExceptionHandler toCheck : handlers) {
             if (toCheck.covers(bci)) {
@@ -1296,6 +1289,45 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         return instance;
     }
 
+    /**
+     * Returns the maximally specific method between the two given methods. If they are both
+     * maximally-specific, returns a proxy of the second, to which a poison pill has been set.
+     * <p>
+     * Determining maximally specific method works as follow:
+     * <li>If both methods are abstract, return any of the two.
+     * <li>If exactly one is non-abstract, return it.
+     * <li>If both are non-abstract, check if one of the declaring class subclasses the other. If
+     * that is the case, return the method that is lower in the hierarchy. Otherwise, return a
+     * freshly spawned proxy method pointing to either of them, which is set to fail on invocation.
+     */
+    public static MethodVersion resolveMaximallySpecific(Method m1, Method m2) {
+        ObjectKlass k1 = m1.getDeclaringKlass();
+        ObjectKlass k2 = m2.getDeclaringKlass();
+        if (k1.isAssignableFrom(k2)) {
+            return m2.getMethodVersion();
+        } else if (k2.isAssignableFrom(k1)) {
+            return m1.getMethodVersion();
+        } else {
+            boolean b1 = m1.isAbstract();
+            boolean b2 = m2.isAbstract();
+            if (b1 && b2) {
+                return m1.getMethodVersion();
+            }
+            if (b1) {
+                return m2.getMethodVersion();
+            }
+            if (b2) {
+                return m1.getMethodVersion();
+            }
+            // JVM specs:
+            // Can *declare* ambiguous default method (in bytecodes only, javac wouldn't compile
+            // it). (5.4.3.3.)
+            //
+            // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
+            return new Method(m2).setPoisonPill().getMethodVersion();
+        }
+    }
+
     // region MethodAccess impl
 
     @Override
@@ -1318,6 +1350,38 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
     @Override
     public boolean shouldSkipLoadingConstraints() {
         return isPolySignatureIntrinsic();
+    }
+
+    @Override
+    public boolean hasVTableIndex() {
+        return getVTableIndex() != -1;
+    }
+
+    @Override
+    public PartialMethod<Klass, Method, Field> withVTableIndex(int index) {
+        assert getVTableIndex() == -1;
+        if (getMethodVersion().isInterfaceMethod()) {
+            assert getITableIndex() != -1;
+            Method proxied = new Method(this);
+            proxied.getMethodVersion().setVTableIndex(index);
+            return proxied;
+        } else {
+            getMethodVersion().setVTableIndex(index);
+            return this;
+        }
+    }
+
+    @Override
+    public Method asMethodAccess() {
+        return this;
+    }
+
+    public boolean isProxy() {
+        return this != identity();
+    }
+
+    public boolean hasPoisonPill() {
+        return getMethodVersion().poisonPill;
     }
 
     // endregion MethodAccess impl
@@ -1523,10 +1587,19 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
      * new MethodVersion object.
      */
     public final class MethodVersion implements ModifiersProvider {
+        private static final int CODE_FLAGS_MASK = 0b00001111;
         private static final int CODE_FLAGS_READY = 0x1;
         private static final int CODE_FLAGS_HAS_JSR = 0x2;
         private static final int CODE_FLAGS_USES_MONITORS = 0x4;
         private static final int CODE_FLAGS_HAS_INDY = 0x8;
+
+        /**
+         * During KlassVersion initialization, the ObjectKlass is not yet linked to the newest
+         * KlassVersion. We therefore use this flag to know during that time if this method is
+         * declared in an interface, rather than using
+         * {@link #getDeclaringClass()}.{@link ObjectKlass#isInterface() isInterface()}.
+         */
+        private static final int METHOD_FLAGS_IS_INTERFACE_METHOD = 0b01000000;
 
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
@@ -1542,7 +1615,7 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         @CompilationFinal private int itableIndex = -1;
 
         @CompilationFinal private byte refKind;
-        @CompilationFinal private byte codeFlags;
+        @CompilationFinal private byte methodFlags;
 
         @CompilationFinal(dimensions = 1) //
         private ObjectKlass[] checkedExceptions;
@@ -1560,6 +1633,9 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             this.codeAttribute = codeAttribute;
             this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
             this.poisonPill = poisonPill;
+            if (klassVersion.isInterface()) {
+                methodFlags |= METHOD_FLAGS_IS_INTERFACE_METHOD;
+            }
             initRefKind();
         }
 
@@ -1657,12 +1733,13 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             return codeAttribute;
         }
 
-        void setVTableIndex(int i) {
-            setVTableIndex(i, false);
+        void resetTableIndexes() {
+            this.vtableIndex = -1;
+            this.itableIndex = -1;
         }
 
-        void setVTableIndex(int i, boolean isRedefinition) {
-            assert (vtableIndex == -1 || vtableIndex == i || isRedefinition);
+        void setVTableIndex(int i) {
+            assert vtableIndex == -1 || vtableIndex == i;
             assert itableIndex == -1;
             CompilerAsserts.neverPartOfCompilation();
             this.vtableIndex = i;
@@ -1681,6 +1758,11 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
 
         public int getITableIndex() {
             return itableIndex;
+        }
+
+        public Method.MethodVersion setPoisonPill() {
+            poisonPill = true;
+            return this;
         }
 
         public ExceptionHandler[] getExceptionHandlers() {
@@ -1908,6 +1990,10 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
             return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + getRawSignature() + ">";
         }
 
+        public boolean isInterfaceMethod() {
+            return (methodFlags & METHOD_FLAGS_IS_INTERFACE_METHOD) != 0;
+        }
+
         public boolean usesMonitors() {
             // Whether we need to use an additional frame slot for monitor unlock on kill.
             return isSynchronized() || (getCodeFlags() & CODE_FLAGS_USES_MONITORS) != 0;
@@ -1925,21 +2011,22 @@ public final class Method extends Member<Signature> implements MethodRef, Truffl
         }
 
         private byte getCodeFlags() {
-            byte localFlags = codeFlags;
-            if (localFlags == 0) {
+            byte localFlags = (byte) (methodFlags & CODE_FLAGS_MASK);
+            if ((localFlags & CODE_FLAGS_READY) == 0) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 if (codeAttribute == null) {
                     localFlags = CODE_FLAGS_READY;
                 } else {
-                    localFlags = computeFlags(codeAttribute.getOriginalCode());
+                    localFlags = computeCodeFlags(codeAttribute.getOriginalCode());
                 }
-                assert localFlags != 0;
-                codeFlags = localFlags;
+                assert (localFlags & CODE_FLAGS_READY) != 0;
+                assert localFlags == (localFlags & CODE_FLAGS_MASK);
+                methodFlags |= localFlags;
             }
             return localFlags;
         }
 
-        private static byte computeFlags(byte[] code) {
+        private static byte computeCodeFlags(byte[] code) {
             BytecodeStream bs = new BytecodeStream(code);
             int bci = 0;
             int flags = CODE_FLAGS_READY;

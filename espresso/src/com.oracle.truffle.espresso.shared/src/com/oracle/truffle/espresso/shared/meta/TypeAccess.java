@@ -167,6 +167,15 @@ public interface TypeAccess<C extends TypeAccess<C, M, F>, M extends MethodAcces
     M lookupInterfaceMethod(Symbol<Name> name, Symbol<Signature> signature);
 
     /**
+     * Returns the {@link MethodAccess method} appearing in this type's virtual table at index
+     * {@code vtableIndex}.
+     * <p>
+     * If {@code vtableIndex} is not within bounds of this type's virtual table length, this method
+     * should return {@code null}.
+     */
+    M lookupVTableEntry(int vtableIndex);
+
+    /**
      * @return {@code true} if {@code other} is a subtype of {@code this}, {@code false} otherwise.
      */
     boolean isAssignableFrom(C other);

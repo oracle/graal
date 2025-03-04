@@ -532,7 +532,7 @@ final class MethodVerifier<R extends RuntimeAccess<C, M, F>, C extends TypeAcces
         this.isStatic = m.isStatic();
         this.thisKlass = m.getDeclaringClass();
         this.methodName = m.getSymbolicName();
-        this.exceptionHandlers = m.getExceptionHandlers();
+        this.exceptionHandlers = m.getSymbolicExceptionHandlers();
 
         this.handlerStatus = new byte[exceptionHandlers.length];
         Arrays.fill(handlerStatus, UNENCOUNTERED);
