@@ -419,7 +419,7 @@ public final class JavaAgents extends ContextAccessImpl {
                     // we lost the race, so nothing to do
                     return;
                 }
-                getContext().getMeta().jdk_internal_module_Modules_transformedByAgent.invokeDirect(module.module());
+                getContext().getMeta().jdk_internal_module_Modules_transformedByAgent.invokeDirectStatic(module.module());
                 // no reason to call into guest for a module more than once,
                 // so flip the hasDefaultReads flag
                 module.setHasDefaultReads();
