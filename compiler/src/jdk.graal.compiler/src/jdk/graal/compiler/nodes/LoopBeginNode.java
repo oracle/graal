@@ -67,8 +67,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
-    protected boolean stripMinedOuter;
-    protected boolean stripMinedInner;
+    protected boolean nonCountedStripMinedOuter;
+    protected boolean nonCountedStripMinedInner;
+    protected boolean countedStripMinedOuter;
+    protected boolean countedStripMinedInner;
     protected boolean rotated;
     protected int stripMinedLimit = -1;
 
@@ -273,20 +275,44 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return loopExitsSafepointState;
     }
 
-    public void setStripMinedInner(boolean stripMinedInner) {
-        this.stripMinedInner = stripMinedInner;
+    public void markNonCountedStripMinedInner() {
+        this.nonCountedStripMinedInner = true;
     }
 
-    public void setStripMinedOuter(boolean stripMinedOuter) {
-        this.stripMinedOuter = stripMinedOuter;
+    public boolean isNonCountedStripMinedInner() {
+        return nonCountedStripMinedInner;
     }
 
-    public boolean isStripMinedInner() {
-        return stripMinedInner;
+    public void markNonCountedStripMinedOuter() {
+        this.nonCountedStripMinedOuter = true;
     }
 
-    public boolean isStripMinedOuter() {
-        return stripMinedOuter;
+    public boolean isNonCountedStripMinedOuter() {
+        return nonCountedStripMinedOuter;
+    }
+
+    public void markCountedStripMinedInner() {
+        this.countedStripMinedInner = true;
+    }
+
+    public boolean isCountedStripMinedInner() {
+        return countedStripMinedInner;
+    }
+
+    public void markCountedStripMinedOuter() {
+        this.countedStripMinedOuter = true;
+    }
+
+    public boolean isCountedStripMinedOuter() {
+        return countedStripMinedOuter;
+    }
+
+    public boolean isAnyStripMinedOuter() {
+        return isCountedStripMinedOuter() || isNonCountedStripMinedOuter();
+    }
+
+    public boolean isAnyStripMinedInner() {
+        return isCountedStripMinedInner() || isNonCountedStripMinedInner();
     }
 
     public boolean canNeverOverflow() {

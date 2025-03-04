@@ -78,7 +78,7 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
     void checkGraph(StructuredGraph graph, LoopsData loops) {
         loops.detectCountedLoops();
         for (Loop loop : loops.loops()) {
-            if (loop.loopBegin().isStripMinedOuter()) {
+            if (loop.loopBegin().isCountedStripMinedOuter()) {
                 continue;
             }
             // max trip count can only be used if a loop does not overflow
