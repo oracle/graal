@@ -53,7 +53,7 @@ import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.substitutions.Target_sun_instrument_InstrumentationImpl;
+import com.oracle.truffle.espresso.substitutions.standard.Target_sun_instrument_InstrumentationImpl;
 
 public final class JavaAgents extends ContextAccessImpl {
     @CompilationFinal(dimensions = 1) private JavaAgent[] agents;

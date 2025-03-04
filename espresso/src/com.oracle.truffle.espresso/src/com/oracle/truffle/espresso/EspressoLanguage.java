@@ -86,10 +86,10 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjec
 import com.oracle.truffle.espresso.shared.meta.SymbolPool;
 import com.oracle.truffle.espresso.substitutions.JImageExtensions;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.CompactGuestFieldOffsetStrategy;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.GraalGuestFieldOffsetStrategy;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.GuestFieldOffsetStrategy;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe.SafetyGuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.CompactGuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.GraalGuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.GuestFieldOffsetStrategy;
+import com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe.SafetyGuestFieldOffsetStrategy;
 
 // TODO: Update website once Espresso has one
 @Registration(id = EspressoLanguage.ID, //

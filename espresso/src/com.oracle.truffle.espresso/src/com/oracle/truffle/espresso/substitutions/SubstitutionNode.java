@@ -24,5 +24,5 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 
-abstract class SubstitutionNode extends EspressoNode {
+public abstract class SubstitutionNode extends EspressoNode {
 }

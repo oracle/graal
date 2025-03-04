@@ -28,21 +28,27 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
- * Hints that a parameter will be injected and is not part of the the Java method signature.
+ * Hints that a parameter will be injected and is not part of the Java method signature.
  *
  * <p>
- * Supported parameter types: {@link EspressoLanguage}, {@link Meta}, {@link EspressoContext} and
- * {@link SubstitutionProfiler}.
+ * Explicitly supported types: {@link EspressoLanguage}, {@link SubstitutionProfiler}, and
+ * {@link EspressoContext}.
+ * <p>
+ * Additionally, types that have a getter with the exact class name in
+ * {@link com.oracle.truffle.espresso.impl.ContextAccess} are also supported. Examples include:
+ * {@link com.oracle.truffle.espresso.meta.Meta} with {@link ContextAccess#getMeta()} and
+ * {@link com.oracle.truffle.espresso.vm.VM} with {@link ContextAccess#getVM()}.
  *
  * <pre>
  * {@code @Inject EspressoLanguage language}
  * {@code @Inject Meta meta}
  * {@code @Inject SubstitutionProfiler profiler}
  * {@code @Inject EspressoContext context}
+ * {@code @Inject VM vm}
  * </pre>
  */
 @Retention(RetentionPolicy.CLASS)

@@ -23,7 +23,7 @@
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
+import com.oracle.truffle.espresso.substitutions.standard.Target_sun_misc_Unsafe;
 
 /**
  * Helper for converting Java 8 strings to and from Java 11 strings. Taken from the java 11 String

@@ -37,7 +37,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 final class EspressoReferenceDrainer extends ContextAccessImpl {
