@@ -385,7 +385,7 @@ import com.oracle.truffle.espresso.shared.resolver.CallKind;
 import com.oracle.truffle.espresso.shared.resolver.CallSiteType;
 import com.oracle.truffle.espresso.shared.resolver.FieldAccessType;
 import com.oracle.truffle.espresso.shared.resolver.ResolvedCall;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.SiteTypes;
+import com.oracle.truffle.espresso.substitutions.standard.Target_java_lang_invoke_MethodHandleNatives.SiteTypes;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.continuation.HostFrameRecord;
 import com.oracle.truffle.espresso.vm.continuation.UnwindContinuationException;

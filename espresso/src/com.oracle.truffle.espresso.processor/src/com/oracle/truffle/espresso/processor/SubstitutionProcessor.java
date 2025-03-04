@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.processor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,9 +43,11 @@ import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 
 import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
 import com.oracle.truffle.espresso.processor.builders.IndentingStringBuilder;
 import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
 import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+import com.oracle.truffle.espresso.processor.builders.StatementBuilder;
 
 public final class SubstitutionProcessor extends EspressoProcessor {
     // @EspressoSubstitutions
@@ -60,8 +61,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private TypeElement javaType;
     // NoProvider.class
     private TypeElement noProvider;
-    // NoFilter.class
-    private TypeElement noFilter;
 
     // InlinedMethodPredicate.class
     private TypeElement noPredicate;
@@ -75,15 +74,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String INLINE_IN_BYTECODE = SUBSTITUTION_PACKAGE + "." + "InlineInBytecode";
     private static final String JAVA_TYPE = SUBSTITUTION_PACKAGE + "." + "JavaType";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
-    private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
 
     private static final String SUBSTITUTOR = "JavaSubstitution";
 
     private static final String GET_METHOD_NAME = "getMethodNames";
     private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
-    private static final String VERSION_FILTER_METHOD = "isValidFor";
-    private static final String INLINE_IN_BYTECODE_METHOD = "inlineInBytecode";
-    private static final String JAVA_VERSION = "com.oracle.truffle.espresso.classfile.JavaVersion";
 
     private static final String INSTANCE = "INSTANCE";
 
@@ -106,27 +101,36 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         final String returnType;
         final boolean hasReceiver;
         final TypeMirror nameProvider;
-        final TypeMirror versionFilter;
+        final TypeMirror languageFilter;
         final boolean inlineInBytecode;
         final TypeMirror guardValue;
+        final byte flags;
+        final TypeMirror group;
 
         SubstitutorHelper(EspressoProcessor processor, Element target, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
-                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter, boolean inlineInBytecode, TypeMirror guardValue) {
-            super(processor, target, processor.getTypeElement(SUBSTITUTION));
+                        boolean hasReceiver, TypeMirror nameProvider, TypeMirror languageFilter, boolean inlineInBytecode, TypeMirror guardValue, TypeElement substitutionClass,
+                        byte flags, TypeMirror group) {
+            super(processor, target, processor.getTypeElement(SUBSTITUTION), substitutionClass);
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
             this.guestTypeNames = guestTypeNames;
             this.returnType = returnType;
             this.hasReceiver = hasReceiver;
             this.nameProvider = nameProvider;
-            this.versionFilter = versionFilter;
+            this.languageFilter = languageFilter;
             this.inlineInBytecode = inlineInBytecode;
             this.guardValue = guardValue;
+            this.flags = flags;
+            this.group = group;
         }
 
+        @Override
+        public TypeMirror getCollectTarget() {
+            return group;
+        }
     }
 
-    private String extractInvocation(String className, int nParameters, SubstitutionHelper helper) {
+    private String extractInvocation(int nParameters, SubstitutorHelper helper) {
         StringBuilder str = new StringBuilder();
         if (helper.isNodeTarget()) {
             ExecutableElement nodeExecute = findNodeExecute(helper.getNodeTarget());
@@ -134,7 +138,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             str.append("this.node.").append(nodeMethodName).append("(");
         } else {
             String methodName = helper.getMethodTarget().getSimpleName().toString();
-            str.append(className).append(".").append(methodName).append("(");
+            str.append(helper.getEnclosingClass().getQualifiedName().toString()).append(".").append(methodName).append("(");
         }
         boolean first = true;
         for (int i = 0; i < nParameters; i++) {
@@ -161,14 +165,44 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private void processElement(Element substitution) {
         assert substitution.getKind() == ElementKind.CLASS;
         TypeElement typeElement = (TypeElement) substitution;
+        AnnotationMirror annotation = getAnnotation(substitution, espressoSubstitutions);
+        assert annotation != null;
+        String className = typeElement.getSimpleName().toString();
 
         // Extract the class name. (Of the form Target_[...]).
-        String className = typeElement.getSimpleName().toString();
-        // Extract the default name provider, if it is specified.
-        TypeMirror defaultNameProvider = getNameProvider(getAnnotation(substitution, espressoSubstitutions));
+        // Obtain the guest class that will be substituted.
+        String targetClassName = className;
+        if (className.startsWith("Target_")) {
+            // Simple default case: substitution is using the "Target_" scheme.
+            targetClassName = "L" + className.substring("Target_".length()).replace("_", "/") + ";";
+        }
+        int successfulScheme = 0;
+        // If it exists, collect the value of EspressoSubstitutions.value()
+        TypeMirror targetClass = getAnnotationValue(annotation, "value", TypeMirror.class);
+        assert targetClass != null; // Default value is EspressoSubstitutions.class
+        // If it exists, collect the value of EspressoSubstitutions.type()
+        String targetType = getAnnotationValue(annotation, "type", String.class);
+
+        if (!processingEnv.getTypeUtils().isSameType(targetClass, espressoSubstitutions.asType())) {
+            targetClassName = "L" + targetClass.toString().replace(".", "/") + ";";
+            successfulScheme++;
+        }
+        if (targetType != null && !targetType.isEmpty()) {
+            targetClassName = targetType;
+            successfulScheme++;
+        }
+        if (successfulScheme > 1) {
+            throw new AssertionError("Both 'value' and 'type' are specified for @EspressoSubstitution " + className);
+        }
+
+        // Get the name provider. Will override the previously obtained target class name.
+        TypeMirror defaultNameProvider = getNameProvider(annotation);
+
+        // Thr group to be used for the @Collect annotation
+        TypeMirror group = getAnnotationValue(annotation, "group", TypeMirror.class);
 
         for (Element element : substitution.getEnclosedElements()) {
-            processSubstitution(element, className, defaultNameProvider);
+            processSubstitution(element, className, defaultNameProvider, targetClassName, typeElement, group);
         }
     }
 
@@ -193,14 +227,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         if (injectMirror == null) {
             processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
                             headerMessage + " must be annotated with @Inject", element);
-        }
-
-        List<TypeElement> allowedTypes = Arrays.asList(espressoLanguage, meta, substitutionProfiler, espressoContext);
-        boolean unsupportedType = allowedTypes.stream().noneMatch(allowedType -> env().getTypeUtils().isSameType(typeMirror, allowedType.asType()));
-        if (unsupportedType) {
-            String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                            headerMessage + " type not supported, allowed types: " + allowedNames, element);
         }
     }
 
@@ -276,7 +302,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return name;
     }
 
-    void processSubstitution(Element element, String className, TypeMirror defaultNameProvider) {
+    void processSubstitution(Element element, String className, TypeMirror defaultNameProvider, String targetClassName, TypeElement substitutionClass, TypeMirror group) {
         assert element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CLASS;
         TypeElement declaringClass = (TypeElement) element.getEnclosingElement();
         String targetPackage = env().getElementUtils().getPackageOf(declaringClass).getQualifiedName().toString();
@@ -307,8 +333,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             // Spawn the name of the Substitutor we will create.
             String substitutorName = getSubstitutorClassName(className, element.getSimpleName().toString(), espressoTypes);
 
-            String actualMethodName = getSubstutitutedMethodName(element);
-
             // Obtain the hasReceiver() value from the @Substitution annotation.
             boolean hasReceiver = getAnnotationValue(subst, "hasReceiver", Boolean.class);
 
@@ -321,18 +345,28 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             TypeMirror nameProvider = getNameProvider(subst);
             nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
-            TypeMirror versionFilter = getVersionFilter(subst);
+            TypeMirror languageFilter = getLanguageFilter(subst);
+
+            List<Byte> flagsList = getAnnotationValueList(subst, "flags", Byte.class);
+            byte flags = 0;
+            for (Byte flag : flagsList) {
+                flags |= flag;
+            }
 
             TypeMirror encodedInlineGuard = getInlineValue(classWideInline, element);
             boolean inlineInBytecode = encodedInlineGuard != null ||
                             // Implicit inlining of trivial substitutions.
-                            isTrivial(element, substitutionAnnotation);
+                            isFlag(flags, SubstitutionFlag.IsTrivial);
             TypeMirror decodedInlineGuard = (encodedInlineGuard == null || processingEnv.getTypeUtils().isSameType(encodedInlineGuard, noPredicate.asType()))
                             ? null
                             : encodedInlineGuard;
 
-            SubstitutorHelper helper = new SubstitutorHelper(this, element, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter,
-                            inlineInBytecode, decodedInlineGuard);
+            if (inlineInBytecode) {
+                flags |= SubstitutionFlag.InlineInBytecode;
+            }
+
+            SubstitutorHelper helper = new SubstitutorHelper(this, element, targetClassName, targetMethodName, guestTypes, returnType, hasReceiver, nameProvider, languageFilter,
+                            inlineInBytecode, decodedInlineGuard, substitutionClass, flags, group);
 
             // Create the contents of the source file
             String classFile = spawnSubstitutor(
@@ -355,14 +389,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return null;
     }
 
-    private TypeMirror getVersionFilter(AnnotationMirror annotation) {
-        TypeMirror versionFilter = getAnnotationValue(annotation, "versionFilter", TypeMirror.class);
-        if (versionFilter != null) {
-            if (!processingEnv.getTypeUtils().isSameType(versionFilter, noFilter.asType())) {
-                return versionFilter;
-            }
-        }
-        return null;
+    private static TypeMirror getLanguageFilter(AnnotationMirror annotation) {
+        return getAnnotationValue(annotation, "languageFilter", TypeMirror.class);
     }
 
     /**
@@ -557,11 +585,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         this.inlineInBytecodeAnnotation = getTypeElement(INLINE_IN_BYTECODE);
         this.javaType = getTypeElement(JAVA_TYPE);
         this.noProvider = getTypeElement(NO_PROVIDER);
-        this.noFilter = getTypeElement(NO_FILTER);
         this.noPredicate = getTypeElement(INLINED_METHOD_PREDICATE_IMPORT);
 
         verifyAnnotationMembers(espressoSubstitutions, "value", "nameProvider");
-        verifyAnnotationMembers(substitutionAnnotation, "methodName", "nameProvider", "versionFilter");
+        verifyAnnotationMembers(substitutionAnnotation, "methodName", "nameProvider", "languageFilter");
         verifyAnnotationMembers(inlineInBytecodeAnnotation, "guard");
         verifyAnnotationMembers(javaType, "value", "internalName");
 
@@ -595,9 +622,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             if (!parameterTypeName.isEmpty()) {
                 expectedImports.add(ESPRESSO_FRAME_IMPORT);
             }
-            if (h.guardValue != null) {
-                expectedImports.add(INLINED_METHOD_PREDICATE_IMPORT);
-            }
         }
         if (parameterTypeName.contains("StaticObject") || h.returnType.equals("V")) {
             expectedImports.add(IMPORT_STATIC_OBJECT);
@@ -609,98 +633,41 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     }
 
     @Override
-    ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    FieldBuilder generateFactoryConstructor(FieldBuilder factoryBuilder, String substitutorName, String factoryType, String substitutorType, String targetMethodName, List<String> parameterTypeName,
+                    SubstitutionHelper helper) {
+        /*- Calls:
+            new Factory(Object methodName,
+                        Object substitutionClassName,
+                        String returnType,
+                        String[] parameterTypes,
+                        boolean hasReceiver,
+                        LanguageFilter filter,
+                        byte flags,
+                        InlinedMethodPredicate guard,
+                        Constructor<? extends JavaSubstitution> constructor);
+        }
+         */
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY) //
-                        .asConstructor() //
-                        .withModifiers(new ModifierBuilder().asPublic()) //
-                        .addBodyLine("super(") //
-                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.guestMethodName), ',') //
-                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.targetClassName), ',') //
-                        .addIndentedBodyLine(1, ProcessorUtils.stringify(h.returnType), ',') //
-                        .addIndentedBodyLine(1, generateParameterTypes(h.guestTypeNames, 4), ',') //
-                        .addIndentedBodyLine(1, h.hasReceiver) //
-                        .addBodyLine(");");
-        factoryBuilder.withMethod(factoryConstructor);
-
-        if (h.nameProvider != null) {
-            factoryBuilder.withMethod(generateGetMethodNames(h.guestMethodName, h));
-            factoryBuilder.withMethod(generateSubstitutionClassNames(h));
+        StatementBuilder declaration = new StatementBuilder();
+        declaration.addContent("new ", factoryType, "(").addLine().raiseIndent();
+        if (h.nameProvider == null) {
+            declaration.addContent(ProcessorUtils.stringify(h.guestMethodName), ',').addLine();
+            declaration.addContent(ProcessorUtils.stringify(h.targetClassName), ',').addLine();
+        } else {
+            declaration.addContent(h.nameProvider, '.', INSTANCE, '.', GET_METHOD_NAME, '(', ProcessorUtils.stringify(h.guestMethodName), "),").addLine();
+            declaration.addContent(h.nameProvider, '.', INSTANCE, '.', SUBSTITUTION_CLASS_NAMES, "(),").addLine();
         }
-
-        if (h.versionFilter != null) {
-            factoryBuilder.withMethod(generateIsValidFor(h));
-        }
+        declaration.addContent(ProcessorUtils.stringify(h.returnType), ",").addLine();
+        declaration.addContent(generateParameterTypes(h.guestTypeNames, 4), ',').addLine();
+        declaration.addContent(h.hasReceiver, ',').addLine();
+        declaration.addContent(h.languageFilter, '.', INSTANCE, ',').addLine();
+        declaration.addContent("(byte) ", h.flags, ',').addLine();
+        declaration.addContent(h.guardValue != null ? (h.guardValue + "." + INSTANCE) : "null", ',').addLine();
+        declaration.addContent(generateLookupConstructor(substitutorName, substitutorType)).addLine();
+        declaration.lowerIndent().addContent(")");
+        factoryBuilder.withDeclaration(declaration);
 
         return factoryBuilder;
-    }
-
-    @Override
-    protected ClassBuilder generateAdditionalFactoryMethods(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        super.generateAdditionalFactoryMethods(factoryBuilder, className, targetMethodName, parameterTypeName, helper);
-        SubstitutorHelper h = (SubstitutorHelper) helper;
-        if (h.inlineInBytecode) {
-            factoryBuilder.withMethod(generateInlinedInBytecode());
-            if (h.guardValue != null) {
-                factoryBuilder.withMethod(generateGuard(h.guardValue));
-            }
-        }
-        return factoryBuilder;
-    }
-
-    private static MethodBuilder generateGetMethodNames(String targetMethodName, SubstitutorHelper h) {
-        String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
-        MethodBuilder getMethodNamesMethod = new MethodBuilder(GET_METHOD_NAME) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withReturnType("String[]") //
-                        .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', GET_METHOD_NAME, '(', ProcessorUtils.stringify(targetMethodName), ");");
-        return getMethodNamesMethod;
-    }
-
-    private static MethodBuilder generateSubstitutionClassNames(SubstitutorHelper h) {
-        String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
-        MethodBuilder substitutionClassNamesMethod = new MethodBuilder(SUBSTITUTION_CLASS_NAMES) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withReturnType("String[]") //
-                        .addBodyLine("return ", nameProvider, '.', INSTANCE, '.', SUBSTITUTION_CLASS_NAMES, "();");
-        return substitutionClassNamesMethod;
-    }
-
-    private static MethodBuilder generateIsValidFor(SubstitutorHelper h) {
-        String versionFilter = h.versionFilter.toString();
-        MethodBuilder generateIsValidForMethod = new MethodBuilder(VERSION_FILTER_METHOD) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
-                        .withReturnType("boolean") //
-                        .withParams(JAVA_VERSION + " version") //
-                        .addBodyLine("return ", versionFilter, '.', INSTANCE, '.', VERSION_FILTER_METHOD, "(version);");
-        return generateIsValidForMethod;
-    }
-
-    /**
-     * Generates guard getter.
-     */
-    private static MethodBuilder generateGuard(TypeMirror guardValue) {
-        MethodBuilder guardMethod = new MethodBuilder(GUARD) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic()) //
-                        .withReturnType(INLINED_METHOD_PREDICATE) //
-                        .addBodyLine("return ", guardValue.toString(), ".", INSTANCE, ';');
-        return guardMethod;
-    }
-
-    /**
-     * Generates inlinedInBytecode method.
-     */
-    private static MethodBuilder generateInlinedInBytecode() {
-        MethodBuilder guardMethod = new MethodBuilder(INLINE_IN_BYTECODE_METHOD) //
-                        .withOverrideAnnotation() //
-                        .withModifiers(new ModifierBuilder().asPublic()) //
-                        .withReturnType("boolean") //
-                        .addBodyLine("return true;");
-        return guardMethod;
     }
 
     @Override
@@ -718,20 +685,20 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
         setEspressoContextVar(invoke, helper);
         if (h.returnType.equals("V")) {
-            invoke.addBodyLine(extractInvocation(className, argIndex, helper).trim(), ";\n");
+            invoke.addBodyLine(extractInvocation(argIndex, h).trim(), ";\n");
             invoke.addBodyLine("return StaticObject.NULL;");
         } else {
-            invoke.addBodyLine("return ", extractInvocation(className, argIndex, helper).trim(), ";\n");
+            invoke.addBodyLine("return ", extractInvocation(argIndex, h).trim(), ";\n");
         }
         classBuilder.withMethod(invoke);
         if (h.inlineInBytecode) {
-            return generateInvokeInlined(classBuilder, className, parameterTypeName, helper);
+            return generateInvokeInlined(classBuilder, parameterTypeName, helper);
         }
         return classBuilder;
     }
 
     @SuppressWarnings("fallthrough")
-    private ClassBuilder generateInvokeInlined(ClassBuilder classBuilder, String className, List<String> parameterTypeName, SubstitutionHelper helper) {
+    private ClassBuilder generateInvokeInlined(ClassBuilder classBuilder, List<String> parameterTypeName, SubstitutionHelper helper) {
         SubstitutorHelper h = (SubstitutorHelper) helper;
         MethodBuilder invoke = new MethodBuilder("invokeInlined") //
                         .withOverrideAnnotation() //
@@ -783,9 +750,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
         setEspressoContextVar(invoke, helper);
         if (h.returnType.equals("V")) {
-            invoke.addBodyLine(extractInvocation(className, argCount, helper).trim(), ";");
+            invoke.addBodyLine(extractInvocation(argCount, h).trim(), ";");
         } else {
-            invoke.addBodyLine("frameAccess.pushResult(frame, ", extractResultToPush(extractInvocation(className, argCount, helper).trim(), h), ");");
+            invoke.addBodyLine("frameAccess.pushResult(frame, ", extractResultToPush(extractInvocation(argCount, h).trim(), h), ");");
         }
         return classBuilder.withMethod(invoke);
     }
@@ -796,5 +763,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         } else {
             return invocation;
         }
+    }
+
+    private static boolean isFlag(byte flags, byte flag) {
+        return (flags & flag) != 0;
     }
 }
