@@ -24,15 +24,14 @@
  */
 package com.oracle.svm.core.libgraal;
 
-import com.oracle.svm.core.Isolates;
+import org.graalvm.nativeimage.libgraal.impl.LibGraalRuntimeSupport;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.util.VMError;
 
-import org.graalvm.nativeimage.libgraal.impl.LibGraalRuntimeSupport;
-
-@AutomaticallyRegisteredImageSingleton({LibGraalRuntimeSupport.class})
+@AutomaticallyRegisteredImageSingleton(value = LibGraalRuntimeSupport.class, onlyWith = LibGraalBuild.class)
 public final class LibGraalRuntimeSupportImpl implements LibGraalRuntimeSupport {
 
     @Override

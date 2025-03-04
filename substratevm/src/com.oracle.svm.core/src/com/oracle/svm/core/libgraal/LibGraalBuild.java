@@ -22,20 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.core.libgraal;
 
-import java.util.function.Supplier;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.libgraal.impl.GlobalDataSupport;
+import com.oracle.svm.core.SubstrateOptions;
 
-import com.oracle.svm.core.c.GlobalLongSupplier;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.libgraal.LibGraalBuild;
-
-@AutomaticallyRegisteredImageSingleton(value = GlobalDataSupport.class, onlyWith = LibGraalBuild.class)
-public final class GlobalDataSupportImpl implements GlobalDataSupport {
+public class LibGraalBuild implements BooleanSupplier {
     @Override
-    public Supplier<Long> createGlobal(long initialValue) {
-        return new GlobalLongSupplier(initialValue);
+    public boolean getAsBoolean() {
+        return !SubstrateOptions.LibGraalClassLoader.getValue().isBlank();
     }
 }
