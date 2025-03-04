@@ -28,20 +28,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.util.ReflectionUtil;
-import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
-import org.graalvm.nativeimage.libgraal.hosted.GlobalData;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.c.GlobalLongSupplier;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.GraalConfiguration;
+import com.oracle.svm.core.graal.RuntimeCompilation;
 import com.oracle.svm.graal.GraalCompilerSupport;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -64,8 +65,11 @@ public class GraalCompilerFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess c) {
-        ImageSingletons.add(GraalCompilerSupport.class, new GraalCompilerSupport());
+        if (!RuntimeCompilation.isEnabled()) {
+            return;
+        }
 
+        ImageSingletons.add(GraalCompilerSupport.class, new GraalCompilerSupport());
         ((FeatureImpl.DuringSetupAccessImpl) c).registerClassReachabilityListener(GraalCompilerSupport::registerPhaseStatistics);
     }
 
@@ -76,12 +80,17 @@ public class GraalCompilerFeature implements InternalFeature {
 
         @Override
         public Object transform(Object receiver, Object originalValue) {
-            return GlobalData.createGlobal(((GlobalAtomicLong) receiver).getInitialValue());
+            long initialValue = ((GlobalAtomicLong) receiver).getInitialValue();
+            return new GlobalLongSupplier(initialValue);
         }
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess c) {
+        if (!RuntimeCompilation.isEnabled()) {
+            return;
+        }
+
         DebugContext debug = DebugContext.forCurrentThread();
 
         new GlobalAtomicLongTransformer().register(c);
