@@ -287,6 +287,8 @@ public class NativeImage {
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
     final String oHLayerCreate = oH(SubstrateOptions.LayerCreate);
 
+    final String oHJavaAgent = oH(SubstrateOptions.JavaAgent);
+
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final Set<String> imageBuilderUniqueLeftoverArgs = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -1528,6 +1530,7 @@ public class NativeImage {
         String agentOptions = "";
         List<ArgumentEntry> traceClassInitializationOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHTraceClassInitialization);
         List<ArgumentEntry> traceObjectInstantiationOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHTraceObjectInstantiation);
+        List<ArgumentEntry> javaAgentOpts = getHostedOptionArgumentValues(imageBuilderArgs, oHJavaAgent);
         if (!traceClassInitializationOpts.isEmpty()) {
             agentOptions = getAgentOptions(traceClassInitializationOpts, "c");
         }
@@ -1544,6 +1547,12 @@ public class NativeImage {
                                 "/ + " + oHTraceObjectInstantiation + ").");
             }
             args.add("-agentlib:native-image-diagnostics-agent=" + agentOptions);
+        }
+
+        if (!javaAgentOpts.isEmpty()) {
+            for (ArgumentEntry javaAgentOpt : javaAgentOpts) {
+                args.add("-javaagent:" + javaAgentOpt.value);
+            }
         }
 
         return args;
