@@ -1,6 +1,7 @@
 {
   local c = (import '../../../ci/ci_common/common.jsonnet'),
   local bc = (import '../../../ci/ci_common/bench-common.libsonnet'),
+  local config = (import '../../../ci/repo-configuration.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
 
   local _suite_key(a) = a['suite'],
@@ -40,6 +41,17 @@
     suite:: "dacapo",
     run+: [
       self.benchmark_cmd + ["dacapo:*", "--"] + self.extra_vm_args
+    ],
+    logs+: [
+        "%s/*/scratch/%s" % [config.compiler.compiler_suite, file]
+        for file in [
+            "biojava.out",
+            "pmd-report.txt",
+        ] + [
+            "lusearch.out%d" % n
+            # only capture the files used for output validation; defined in lusearch.cnf
+            for n in [0, 1, 2, 3, 4, 5, 6, 7, 265, 511, 767, 1023, 1279, 1535, 1791, 2047]
+        ]
     ],
     timelimit: "1:30:00",
     forks_batches:: 2,
