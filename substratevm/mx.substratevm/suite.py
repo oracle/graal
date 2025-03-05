@@ -1179,7 +1179,6 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.vm",
                     "sun.security.jca",
-                    "jdk.internal.org.objectweb.asm"
                 ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta"
