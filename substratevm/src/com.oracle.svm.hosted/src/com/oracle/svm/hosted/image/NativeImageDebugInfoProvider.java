@@ -476,7 +476,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         if (method instanceof HostedMethod hostedMethod) {
             name = hostedMethod.getName();
             // replace <init> (method name of a constructor) with the class name
-            if (name.equals("<init>")) {
+            if (hostedMethod.isConstructor()) {
                 name = hostedMethod.getDeclaringClass().toJavaName();
                 if (name.indexOf('.') >= 0) {
                     name = name.substring(name.lastIndexOf('.') + 1);
@@ -561,7 +561,7 @@ class NativeImageDebugInfoProvider extends SharedDebugInfoProvider {
         ElementInfo elementInfo = nativeLibs.findElementInfo(type);
         if (elementInfo instanceof StructInfo) {
             elementInfo.getChildren().stream().filter(NativeImageDebugInfoProvider::isTypedField)
-                            .map(elt -> ((StructFieldInfo) elt))
+                            .map(StructFieldInfo.class::cast)
                             .sorted(Comparator.comparingInt(field -> field.getOffsetInfo().getProperty()))
                             .forEach(field -> {
                                 HostedType fieldType = getFieldType(field);
