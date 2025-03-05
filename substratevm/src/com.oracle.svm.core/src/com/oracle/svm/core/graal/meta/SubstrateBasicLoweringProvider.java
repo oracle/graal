@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
+import java.nio.ByteOrder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -43,6 +44,7 @@ import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
@@ -55,6 +57,7 @@ import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 import jdk.graal.compiler.core.common.type.AbstractObjectStamp;
+import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
@@ -74,7 +77,9 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.AddNode;
 import jdk.graal.compiler.nodes.calc.AndNode;
 import jdk.graal.compiler.nodes.calc.LeftShiftNode;
+import jdk.graal.compiler.nodes.calc.NarrowNode;
 import jdk.graal.compiler.nodes.calc.UnsignedRightShiftNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
 import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.LoadMethodNode;
 import jdk.graal.compiler.nodes.memory.FloatingReadNode;
@@ -248,33 +253,59 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
 
         GraalError.guarantee(!object.isConstant() || object.asJavaConstant().isNull(), "Object should either not be a constant or the null constant %s", object);
 
-        ObjectLayout objectLayout = getObjectLayout();
-        Stamp headerBitsStamp = StampFactory.forUnsignedInteger(8 * objectLayout.getReferenceSize());
-        ConstantNode headerOffset = ConstantNode.forIntegerKind(target.wordJavaKind, objectLayout.getHubOffset(), graph);
-        AddressNode headerAddress = graph.unique(new OffsetAddressNode(object, headerOffset));
-        ValueNode headerBits = graph.unique(new FloatingReadNode(headerAddress, NamedLocationIdentity.FINAL_LOCATION, null, headerBitsStamp, null, BarrierType.NONE));
-        ValueNode hubBits;
-        int reservedBitsMask = Heap.getHeap().getObjectHeader().getReservedBitsMask();
-        if (reservedBitsMask != 0) {
-            // get rid of the reserved header bits and extract the actual pointer to the hub
-            assert CodeUtil.isPowerOf2(reservedBitsMask + 1) : "only the lowest bits may be set";
-            int numReservedBits = CodeUtil.log2(reservedBitsMask + 1);
+        ObjectLayout ol = getObjectLayout();
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        int referenceSize = ol.getReferenceSize();
+
+        int hubOffset = ol.getHubOffset();
+        int bytesToRead = ol.getHubSize();
+        long reservedHeaderBitsMask = oh.getReservedBitsMask();
+        if (hubOffset > 0 && hubOffset + ol.getHubSize() <= Long.BYTES && target.arch.getByteOrder() == ByteOrder.LITTLE_ENDIAN) {
+            /* Prepare to emit a 64-bit read at offset 0 (reduces the code size). */
+            hubOffset = 0;
+            bytesToRead = Long.BYTES;
+            reservedHeaderBitsMask = (reservedHeaderBitsMask << Integer.SIZE) | ((1L << Integer.SIZE) - 1);
+        }
+
+        /* Read the raw hub data from the correct part of the object header. */
+        IntegerStamp readStamp = StampFactory.forUnsignedInteger(bytesToRead * Byte.SIZE);
+        ConstantNode hubOffsetNode = ConstantNode.forIntegerKind(target.wordJavaKind, hubOffset, graph);
+        AddressNode hubAddressNode = graph.unique(new OffsetAddressNode(object, hubOffsetNode));
+        ValueNode rawHubData = graph.unique(new FloatingReadNode(hubAddressNode, NamedLocationIdentity.FINAL_LOCATION, null, readStamp, null, BarrierType.NONE));
+
+        if (reservedHeaderBitsMask != 0L) {
+            /* Get rid of the reserved header bits and extract the actual hub bits. */
+            assert CodeUtil.isPowerOf2(reservedHeaderBitsMask + 1) : "only the lowest bits may be set";
+            int numReservedBits = CodeUtil.log2(reservedHeaderBitsMask + 1);
             int compressionShift = ReferenceAccess.singleton().getCompressionShift();
-            int numAlignmentBits = CodeUtil.log2(objectLayout.getAlignment());
+            int numAlignmentBits = CodeUtil.log2(ol.getAlignment());
             assert compressionShift <= numAlignmentBits : "compression discards bits";
+
             if (numReservedBits == numAlignmentBits && compressionShift == 0) {
-                hubBits = graph.unique(new AndNode(headerBits, ConstantNode.forIntegerStamp(headerBitsStamp, ~reservedBitsMask, graph)));
+                /* AND with a constant is slightly smaller than 2 shifts. */
+                rawHubData = graph.unique(new AndNode(rawHubData, ConstantNode.forIntegerStamp(readStamp, ~reservedHeaderBitsMask, graph)));
             } else {
-                hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(numReservedBits, graph)));
+                rawHubData = graph.unique(new UnsignedRightShiftNode(rawHubData, ConstantNode.forInt(numReservedBits, graph)));
                 if (compressionShift != numAlignmentBits) {
                     int shift = numAlignmentBits - compressionShift;
-                    hubBits = graph.unique(new LeftShiftNode(hubBits, ConstantNode.forInt(shift, graph)));
+                    rawHubData = graph.unique(new LeftShiftNode(rawHubData, ConstantNode.forInt(shift, graph)));
                 }
             }
-        } else {
-            hubBits = headerBits;
+
+            if (bytesToRead > referenceSize) {
+                /*
+                 * More bytes than necessary were read earlier. Now that we are done with extracting
+                 * the hub bits, we can discard the most-significant bits (must all be 0).
+                 */
+                rawHubData = graph.unique(new NarrowNode(rawHubData, referenceSize * Byte.SIZE));
+            }
+        } else if (bytesToRead < referenceSize) {
+            /* Zero extend the hub bits to the full reference size if needed. */
+            rawHubData = graph.unique(new ZeroExtendNode(rawHubData, referenceSize * Byte.SIZE));
         }
-        FloatingWordCastNode hubRef = graph.unique(new FloatingWordCastNode(hubStamp, hubBits));
+
+        /* Uncompress the hub pointer bits to a DynamicHub object. */
+        FloatingWordCastNode hubRef = graph.unique(new FloatingWordCastNode(hubStamp, rawHubData));
         return maybeUncompress(hubRef);
     }
 

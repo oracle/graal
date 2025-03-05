@@ -43,6 +43,7 @@ import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.ForcedSerialPostWriteBarrier;
 import com.oracle.svm.core.genscavenge.graal.SubstrateCardTableBarrierSet;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.heap.UninterruptibleObjectVisitor;
@@ -172,7 +173,8 @@ public class CardTableBasedRememberedSet implements RememberedSet {
             return;
         }
 
-        UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(holderObject);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        UnsignedWord objectHeader = oh.readHeaderFromObject(holderObject);
         if (hasRememberedSet(objectHeader)) {
             if (ObjectHeaderImpl.isAlignedObject(holderObject)) {
                 AlignedChunkRememberedSet.dirtyCardForObject(holderObject, false);

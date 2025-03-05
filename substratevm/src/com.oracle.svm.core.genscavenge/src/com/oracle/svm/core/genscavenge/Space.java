@@ -40,6 +40,7 @@ import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -416,7 +417,8 @@ public final class Space {
         UnsignedWord copySize = originalSize;
         boolean addIdentityHashField = false;
         if (ConfigurationValues.getObjectLayout().isIdentityHashFieldOptional()) {
-            Word header = ObjectHeader.readHeaderFromObject(originalObj);
+            ObjectHeader oh = Heap.getHeap().getObjectHeader();
+            Word header = oh.readHeaderFromObject(originalObj);
             if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
                 addIdentityHashField = true;
                 copySize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, true);

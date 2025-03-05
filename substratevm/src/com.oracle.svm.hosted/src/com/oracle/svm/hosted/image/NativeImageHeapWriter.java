@@ -51,6 +51,7 @@ import com.oracle.svm.core.graal.code.CGlobalDataBasePointer;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -272,7 +273,7 @@ public final class NativeImageHeapWriter {
         write(buffer, index, con, info);
     }
 
-    private void writeObjectHeader(RelocatableBuffer buffer, int index, ObjectInfo obj) {
+    private void writeHubPointer(RelocatableBuffer buffer, int index, ObjectInfo obj) {
         mustBeReferenceAligned(index);
 
         DynamicHub hub = obj.getClazz().getHub();
@@ -281,14 +282,22 @@ public final class NativeImageHeapWriter {
         assert hubInfo != null : "Unknown object " + hub + " found. Static field or an object referenced from a static field changed during native image generation?";
 
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
+        int hubSize = heap.objectLayout.getHubSize();
         if (NativeImageHeap.useHeapBase()) {
             long targetOffset = hubInfo.getOffset();
-            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(obj, targetOffset);
-            writeReferenceValue(buffer, index, headerBits);
+            long encoding = objectHeader.encodeAsImageHeapObjectHeader(obj, targetOffset);
+
+            if (hubSize == Long.BYTES) {
+                buffer.getByteBuffer().putLong(index, encoding);
+            } else {
+                assert hubSize == Integer.BYTES;
+                buffer.getByteBuffer().putInt(index, NumUtil.safeToUInt(encoding));
+            }
         } else {
+            assert hubSize == referenceSize();
             // The address of the DynamicHub target will be added by the link editor.
-            long headerBits = objectHeader.encodeAsImageHeapObjectHeader(obj, 0L);
-            addDirectRelocationWithAddend(buffer, index, hub, headerBits);
+            long encoding = objectHeader.encodeAsImageHeapObjectHeader(obj, 0L);
+            addDirectRelocationWithAddend(buffer, index, hub, encoding);
         }
     }
 
@@ -371,7 +380,7 @@ public final class NativeImageHeapWriter {
         DynamicHubLayout dynamicHubLayout = heap.dynamicHubLayout;
         assert objectLayout.isAligned(getIndexInBuffer(info, 0));
 
-        writeObjectHeader(buffer, getIndexInBuffer(info, objectLayout.getHubOffset()), info);
+        writeHubPointer(buffer, getIndexInBuffer(info, objectLayout.getHubOffset()), info);
 
         ByteBuffer bufferBytes = buffer.getByteBuffer();
         HostedClass clazz = info.getClazz();
@@ -443,7 +452,6 @@ public final class NativeImageHeapWriter {
                 idHashOffset = hybridLayout.getIdentityHashOffset(length);
                 instanceFields = instanceFields.filter(field -> !field.equals(hybridArrayField));
             } else {
-
                 idHashOffset = instanceClazz.getIdentityHashOffset();
             }
 
@@ -459,9 +467,8 @@ public final class NativeImageHeapWriter {
             });
 
             /* Write the identity hashcode */
-            assert idHashOffset > 0;
-            bufferBytes.putInt(getIndexInBuffer(info, idHashOffset), info.getIdentityHashCode());
-
+            assert idHashOffset >= 0;
+            IdentityHashCodeSupport.writeIdentityHashCodeToImageHeap(bufferBytes, getIndexInBuffer(info, idHashOffset), info.getIdentityHashCode());
         } else if (clazz.isArray()) {
 
             JavaKind kind = clazz.getComponentType().getStorageKind();
@@ -469,7 +476,7 @@ public final class NativeImageHeapWriter {
 
             int length = heap.hConstantReflection.readArrayLength(constant);
             bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayLengthOffset()), length);
-            bufferBytes.putInt(getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)), info.getIdentityHashCode());
+            IdentityHashCodeSupport.writeIdentityHashCodeToImageHeap(bufferBytes, getIndexInBuffer(info, objectLayout.getArrayIdentityHashOffset(kind, length)), info.getIdentityHashCode());
 
             if (clazz.getComponentType().isPrimitive()) {
                 ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;

@@ -573,11 +573,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public void setSharedData(int layoutEncoding, int monitorOffset, int identityHashOffset, long referenceMapIndex,
                     boolean isInstantiated) {
         VMError.guarantee(monitorOffset == (char) monitorOffset, "Class %s has an invalid monitor field offset. Most likely, its objects are larger than supported.", name);
-        VMError.guarantee(identityHashOffset == (char) identityHashOffset, "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
+        VMError.guarantee(identityHashOffset == -1 || identityHashOffset == (char) identityHashOffset,
+                        "Class %s has an invalid identity hash code field offset. Most likely, its objects are larger than supported.", name);
 
         this.layoutEncoding = layoutEncoding;
         this.monitorOffset = (char) monitorOffset;
-        this.identityHashOffset = (char) identityHashOffset;
+        this.identityHashOffset = identityHashOffset == -1 ? 0 : (char) identityHashOffset;
 
         if ((int) referenceMapIndex != referenceMapIndex) {
             throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");

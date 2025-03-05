@@ -35,6 +35,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -241,7 +242,8 @@ public class HeapVerifier {
             return false;
         }
 
-        Word header = ObjectHeader.readHeaderFromPointer(ptr);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromPointer(ptr);
         if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a zapped header: ").zhex(header).newline();
             return false;
@@ -352,7 +354,8 @@ public class HeapVerifier {
             return false;
         }
 
-        Word header = ObjectHeader.readHeaderFromPointer(referencedObject);
+        ObjectHeader oh = Heap.getHeap().getObjectHeader();
+        Word header = oh.readHeaderFromPointer(referencedObject);
         if (!ObjectHeaderImpl.getObjectHeaderImpl().isEncodedObjectHeader(header)) {
             Log.log().string("Object reference at ").zhex(reference).string(" does not point to a Java object or the object header of the Java object is invalid: ").zhex(referencedObject)
                             .string(". ");
