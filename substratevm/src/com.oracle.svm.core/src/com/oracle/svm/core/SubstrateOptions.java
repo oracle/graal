@@ -1034,9 +1034,8 @@ public class SubstrateOptions {
         return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
     }
 
-    // TODO: change default to 0
-    @Option(help = "Number of threads used to generate debug info.", deprecated = true) //
-    public static final HostedOptionKey<Integer> DebugInfoGenerationThreadCount = new HostedOptionKey<>(256, SubstrateOptions::validateDebugInfoGenerationThreadCount);
+    @Option(help = "Number of threads used to generate debug info.") //
+    public static final HostedOptionKey<Integer> DebugInfoGenerationThreadCount = new HostedOptionKey<>(0, SubstrateOptions::validateDebugInfoGenerationThreadCount);
 
     private static void validateDebugInfoGenerationThreadCount(HostedOptionKey<Integer> optionKey) {
         int value = optionKey.getValue();
