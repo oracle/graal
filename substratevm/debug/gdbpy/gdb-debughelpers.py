@@ -96,14 +96,6 @@ class SVMUtil:
 
     hlreps = dict()
 
-    # AMD64 registers
-    AMD64_RSP = 7
-    AMD64_RIP = 16
-
-    # aarch64 registers
-    AARCH64_RSP = 30
-    AARCH64_RIP = 31
-
     # static methods
     @staticmethod
     def get_deopt_stub_adr() -> int:
@@ -141,24 +133,6 @@ class SVMUtil:
         cls.parents.clear()
         cls.selfref_cycles.clear()
         SVMCommandPrint.cache.clear()
-
-    @classmethod
-    def get_rsp(cls) -> int:
-        arch = gdb.selected_frame().architecture().name()
-        if "x86-64" in arch:
-            return cls.AMD64_RSP
-        elif "aarch64" in arch:
-            return cls.AARCH64_RSP
-        return 0
-
-    @classmethod
-    def get_rip(cls) -> int:
-        arch = gdb.selected_frame().architecture().name()
-        if "x86-64" in arch:
-            return cls.AMD64_RIP
-        elif "aarch64" in arch:
-            return cls.AARCH64_RIP
-        return 0
 
     @classmethod
     # checks if node this is reachable from node other (this node is parent of other node)
@@ -1631,26 +1605,26 @@ class SVMFrameUnwinder(gdb.unwinder.Unwinder):
         if self.deopt_stub_adr == 0:
             self.deopt_stub_adr = SVMUtil.get_deopt_stub_adr()
 
-        rsp = 0
+        sp = 0
         try:
-            rsp = pending_frame.read_register('sp')
-            rip = pending_frame.read_register('pc')
-            if int(rip) == self.deopt_stub_adr:
-                deopt_frame_stack_slot = rsp.cast(self.svm_util.stack_type.pointer()).dereference()
+            sp = pending_frame.read_register('sp')
+            pc = pending_frame.read_register('pc')
+            if int(pc) == self.deopt_stub_adr:
+                deopt_frame_stack_slot = sp.cast(self.svm_util.stack_type.pointer()).dereference()
                 deopt_frame = deopt_frame_stack_slot.cast(self.svm_util.get_compressed_type(self.svm_util.object_type).pointer())
                 rtt = self.svm_util.get_rtt(deopt_frame)
                 deopt_frame = self.svm_util.cast_to(deopt_frame, rtt)
                 encoded_frame_size = self.svm_util.get_int_field(deopt_frame, 'sourceEncodedFrameSize')
                 source_frame_size = encoded_frame_size & ~self.svm_util.frame_size_status_mask
                 # Now find the register-values for the caller frame
-                unwind_info = pending_frame.create_unwind_info(gdb.unwinder.FrameId(rsp, rip))
-                caller_rsp = rsp + int(source_frame_size)
-                unwind_info.add_saved_register(SVMUtil.get_rsp(), gdb.Value(caller_rsp))
-                caller_rip = gdb.Value(caller_rsp - 8).cast(self.svm_util.stack_type.pointer()).dereference()
-                unwind_info.add_saved_register(SVMUtil.get_rip(), gdb.Value(caller_rip))
+                unwind_info = pending_frame.create_unwind_info(gdb.unwinder.FrameId(sp, pc))
+                caller_sp = sp + int(source_frame_size)
+                unwind_info.add_saved_register('sp', gdb.Value(caller_sp))
+                caller_pc = gdb.Value(caller_sp - 8).cast(self.svm_util.stack_type.pointer()).dereference()
+                unwind_info.add_saved_register('pc', gdb.Value(caller_pc))
                 return unwind_info
         except Exception as ex:
-            trace(f'<SVMFrameUnwinder> - Failed to unwind frame at {hex(rsp)}')
+            trace(f'<SVMFrameUnwinder> - Failed to unwind frame at {hex(sp)}')
             trace(ex)
             # Fallback to default frame unwinding via debug_frame (dwarf)
 
@@ -1717,9 +1691,9 @@ class SVMFrameDeopt(SVMFrame):
         super().__init__(frame)
 
         # fetch deoptimized frame from stack
-        rsp = frame.read_register('sp')
+        sp = frame.read_register('sp')
         assert deopt_stub_adr and frame.pc() == deopt_stub_adr
-        deopt_frame_stack_slot = rsp.cast(svm_util.stack_type.pointer()).dereference()
+        deopt_frame_stack_slot = sp.cast(svm_util.stack_type.pointer()).dereference()
         deopt_frame = deopt_frame_stack_slot.cast(svm_util.get_compressed_type(svm_util.object_type).pointer())
         rtt = svm_util.get_rtt(deopt_frame)
         deopt_frame = svm_util.cast_to(deopt_frame, rtt)
@@ -1759,11 +1733,13 @@ class SVMFrameDeopt(SVMFrame):
             return None
 
         source_class = self.__svm_util.get_obj_field(self.__frame_info, 'sourceClass')
+        companion = self.__svm_util.get_obj_field(source_class, 'companion')
+        source_file_name = self.__svm_util.get_obj_field(companion, 'sourceFileName')
 
-        if self.__svm_util.is_null(source_class):
+        if self.__svm_util.is_null(source_file_name):
             source_file_name = ''
         else:
-            source_file_name = str(self.__svm_util.get_obj_field(source_class, 'sourceFileName'))[1:-1]
+            source_file_name = str(source_file_name)[1:-1]
 
         return source_file_name
 

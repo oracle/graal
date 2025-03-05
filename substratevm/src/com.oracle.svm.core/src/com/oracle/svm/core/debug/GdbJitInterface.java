@@ -50,10 +50,10 @@ import com.oracle.svm.core.c.ProjectHeaderFile;
 
 import jdk.graal.compiler.word.Word;
 
-@CContext(GDBJITInterface.GDBJITInterfaceDirectives.class)
-public class GDBJITInterface {
+@CContext(GdbJitInterface.GdbJitInterfaceDirectives.class)
+public class GdbJitInterface {
 
-    public static class GDBJITInterfaceDirectives implements CContext.Directives {
+    public static class GdbJitInterfaceDirectives implements CContext.Directives {
         @Override
         public boolean isInConfiguration() {
             return SubstrateOptions.RuntimeDebugInfo.getValue();

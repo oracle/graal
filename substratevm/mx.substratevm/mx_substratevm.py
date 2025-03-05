@@ -1169,7 +1169,7 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
                 '-iex', f"set auto-load safe-path {join(build_dir, 'gdb-debughelpers.py')}",
                 '-x', testfile, join(build_dir, image_name)
             ]
-            mx.log(' '.join([(f"'{c}'" if ' ' in c else c) for c in gdb_command]))
+            log_gdb_command(gdb_command)
             # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
             return mx.run(gdb_command, cwd=build_dir, nonZeroIsFatal=False)
         return 0
@@ -1196,7 +1196,11 @@ def _gdbdebughelperstest(native_image, path, with_isolates_only, args):
         mx.abort(status)
 
 
-def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=None):
+def log_gdb_command(gdb_command):
+    mx.log(' '.join([(f"'{c}'" if ' ' in c else c) for c in gdb_command]))
+
+
+def _runtimedebuginfotest(native_image, output_path, args=None):
     """Build and run the runtimedebuginfotest"""
 
     args = [] if args is None else args
@@ -1248,7 +1252,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         '-iex', f"set auto-load safe-path {join(output_path, 'gdb-debughelpers.py')}",
         '-x', test_runtime_compilation_py, runtime_compile_binary
     ]
-    mx.log(' '.join([(f"'{c}'" if ' ' in c else c) for c in gdb_command]))
+    log_gdb_command(gdb_command)
     # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
     status = mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
 
@@ -1270,7 +1274,7 @@ def _runtimedebuginfotest(native_image, output_path, with_isolates_only, args=No
         '-iex', f"set auto-load safe-path {join(output_path, 'gdb-debughelpers.py')}",
         '-x', test_runtime_deopt_py, '--args', js_launcher, testdeopt_js
     ]
-    mx.log(' '.join([(f"'{c}'" if ' ' in c else c) for c in gdb_command]))
+    log_gdb_command(gdb_command)
     # unittest may result in different exit code, nonZeroIsFatal ensures that we can go on with other test
     status |= mx.run(gdb_command, cwd=output_path, nonZeroIsFatal=False)
 
@@ -1880,14 +1884,12 @@ def runtimedebuginfotest(args, config=None):
     all_args = ['--output-path', '--with-isolates-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[join(svmbuild_dir(), "runtimedebuginfotest")])
-    parser.add_argument(all_args[1], action='store_true', help='Only build and test the native image with isolates')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
-    with_isolates_only = parsed.with_isolates_only
     native_image_context_run(
         lambda native_image, a:
-        _runtimedebuginfotest(native_image, output_path, with_isolates_only, a), unmask(parsed.image_args),
+        _runtimedebuginfotest(native_image, output_path, a), unmask(parsed.image_args),
         config=config
     )
 

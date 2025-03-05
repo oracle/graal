@@ -28,13 +28,10 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.oracle.svm.core.ReservedRegisters;
-import jdk.graal.compiler.word.Word;
-import com.oracle.svm.core.code.CodeInfoDecoder;
-import jdk.vm.ci.code.Architecture;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -52,9 +49,10 @@ import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.debug.BFDNameProvider;
-import com.oracle.svm.core.debug.GDBJITInterface;
+import com.oracle.svm.core.debug.GdbJitInterface;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -71,6 +69,7 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.word.Word;
+import jdk.vm.ci.code.Architecture;
 
 @AutomaticallyRegisteredFeature
 @SuppressWarnings("unused")
@@ -146,7 +145,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
          */
         if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
             Architecture arch = ConfigurationValues.getTarget().arch;
-            ByteBuffer buffer = ByteBuffer.allocate(SizeOf.get(GDBJITInterface.JITDescriptor.class)).order(arch.getByteOrder());
+            ByteBuffer buffer = ByteBuffer.allocate(SizeOf.get(GdbJitInterface.JITDescriptor.class)).order(arch.getByteOrder());
 
             /*
              * Set version to 1. Must be 1 otherwise GDB does not register breakpoints for the GDB
@@ -155,7 +154,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             buffer.putInt(1);
 
             /* Set action flag to JIT_NOACTION (0). */
-            buffer.putInt(GDBJITInterface.JITActions.JIT_NOACTION.ordinal());
+            buffer.putInt(GdbJitInterface.JITActions.JIT_NOACTION.ordinal());
 
             /*
              * Set relevant entry to nullptr. This is the pointer to the debug info entry that is
@@ -186,7 +185,15 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getHostedMetaAccess(),
                             runtimeConfiguration);
             var objectFile = image.getObjectFile();
-            objectFile.installDebugInfo(provider);
+
+            int debugInfoGenerationThreadCount = SubstrateOptions.DebugInfoGenerationThreadCount.getValue();
+            if (debugInfoGenerationThreadCount > 0) {
+                try (ForkJoinPool threadPool = new ForkJoinPool(debugInfoGenerationThreadCount)) {
+                    threadPool.submit(() -> objectFile.installDebugInfo(provider)).join();
+                }
+            } else {
+                objectFile.installDebugInfo(provider);
+            }
 
             if (Platform.includedIn(Platform.LINUX.class) && SubstrateOptions.UseImagebuildDebugSections.getValue()) {
                 /*-

@@ -123,10 +123,10 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         int RELEASED = 2;
 
         @RawField
-        GDBJITInterface.JITCodeEntry getRawHandle();
+        GdbJitInterface.JITCodeEntry getRawHandle();
 
         @RawField
-        void setRawHandle(GDBJITInterface.JITCodeEntry value);
+        void setRawHandle(GdbJitInterface.JITCodeEntry value);
 
         @RawField
         NonmovableArray<Byte> getDebugInfoData();
@@ -141,12 +141,12 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         void setState(int value);
     }
 
-    static final class GDBJITAccessor implements InstalledCodeObserverHandleAccessor {
+    static final class GdbJitAccessor implements InstalledCodeObserverHandleAccessor {
 
         static Handle createHandle(NonmovableArray<Byte> debugInfoData) {
             Handle handle = NativeMemory.malloc(SizeOf.get(Handle.class), NmtCategory.Code);
-            GDBJITInterface.JITCodeEntry entry = NativeMemory.calloc(SizeOf.get(GDBJITInterface.JITCodeEntry.class), NmtCategory.Code);
-            handle.setAccessor(ImageSingletons.lookup(GDBJITAccessor.class));
+            GdbJitInterface.JITCodeEntry entry = NativeMemory.calloc(SizeOf.get(GdbJitInterface.JITCodeEntry.class), NmtCategory.Code);
+            handle.setAccessor(ImageSingletons.lookup(GdbJitAccessor.class));
             handle.setRawHandle(entry);
             handle.setDebugInfoData(debugInfoData);
             handle.setState(Handle.INITIALIZED);
@@ -162,7 +162,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
             NonmovableArray<Byte> debugInfoData = handle.getDebugInfoData();
             CCharPointer address = NonmovableArrays.addressOf(debugInfoData, 0);
             int size = NonmovableArrays.lengthOf(debugInfoData);
-            GDBJITInterface.registerJITCode(address, size, handle.getRawHandle());
+            GdbJitInterface.registerJITCode(address, size, handle.getRawHandle());
 
             handle.setState(Handle.ACTIVATED);
         }
@@ -171,10 +171,10 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void release(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
-            GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
+            GdbJitInterface.JITCodeEntry entry = handle.getRawHandle();
             // Handle may still be just initialized here, so it never got registered in GDB.
             if (handle.getState() == Handle.ACTIVATED) {
-                GDBJITInterface.unregisterJITCode(entry);
+                GdbJitInterface.unregisterJITCode(entry);
                 handle.setState(Handle.RELEASED);
             }
             NativeMemory.free(entry);
@@ -198,10 +198,10 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void releaseOnTearDown(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
-            GDBJITInterface.JITCodeEntry entry = handle.getRawHandle();
+            GdbJitInterface.JITCodeEntry entry = handle.getRawHandle();
             // Handle may still be just initialized here, so it never got registered in GDB.
             if (handle.getState() == Handle.ACTIVATED) {
-                GDBJITInterface.unregisterJITCode(entry);
+                GdbJitInterface.unregisterJITCode(entry);
                 handle.setState(Handle.RELEASED);
             }
             NativeMemory.free(entry);
@@ -214,7 +214,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
     @SuppressWarnings("try")
     public InstalledCodeObserverHandle install() {
         NonmovableArray<Byte> debugInfoData = writeDebugInfoData();
-        Handle handle = GDBJITAccessor.createHandle(debugInfoData);
+        Handle handle = GdbJitAccessor.createHandle(debugInfoData);
         try (DebugContext.Scope s = debug.scope("RuntimeCompilation")) {
             debug.log(toString(handle));
         }

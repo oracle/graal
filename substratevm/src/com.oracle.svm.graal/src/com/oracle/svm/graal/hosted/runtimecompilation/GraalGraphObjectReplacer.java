@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
@@ -283,10 +284,14 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
                  * infinite recursion.
                  */
                 LocalVariableTable localVariableTable;
-                try {
-                    localVariableTable = createLocalVariableTable(aMethod.getLocalVariableTable());
-                } catch (IllegalStateException e) {
-                    LogUtils.warning("Omit invalid local variable table from method %s", sMethod.getName());
+                if (SubstrateOptions.RuntimeDebugInfo.getValue()) {
+                    try {
+                        localVariableTable = createLocalVariableTable(aMethod.getLocalVariableTable());
+                    } catch (IllegalStateException e) {
+                        LogUtils.warning("Omit invalid local variable table from method %s", sMethod.getName());
+                        localVariableTable = null;
+                    }
+                } else {
                     localVariableTable = null;
                 }
                 sMethod.setLinks(createSignature(aMethod.getSignature()), createType(aMethod.getDeclaringClass()), localVariableTable);

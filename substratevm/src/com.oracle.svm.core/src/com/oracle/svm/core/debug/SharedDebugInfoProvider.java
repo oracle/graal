@@ -788,7 +788,7 @@ public abstract class SharedDebugInfoProvider implements DebugInfoProvider {
     protected String getMethodName(SharedMethod method) {
         String name = method.getName();
         // replace <init> (method name of a constructor) with the class name
-        if (name.equals("<init>")) {
+        if (method.isConstructor()) {
             name = method.format("%h");
             if (name.indexOf('$') >= 0) {
                 name = name.substring(name.lastIndexOf('$') + 1);

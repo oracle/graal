@@ -48,7 +48,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
@@ -492,22 +491,6 @@ public class SubstrateOptions {
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
-
-    @Option(help = "Directory where Java source-files will be placed for the debugger")//
-    public static final RuntimeOptionKey<String> RuntimeSourceDestDir = new RuntimeOptionKey<>(null, RelevantForCompilationIsolates);
-
-    public static Path getRuntimeSourceDestDir() {
-        String sourceDestDir = RuntimeSourceDestDir.getValue();
-        if (sourceDestDir != null) {
-            return Paths.get(sourceDestDir);
-        }
-        Path result = Paths.get("sources");
-        Path exeDir = Paths.get(ProcessProperties.getExecutableName()).getParent();
-        if (exeDir != null) {
-            result = exeDir.resolve(result);
-        }
-        return result;
-    }
 
     @Option(help = "Provide debuginfo for runtime-compiled code.")//
     public static final HostedOptionKey<Boolean> RuntimeDebugInfo = new HostedOptionKey<>(false);
@@ -1049,6 +1032,17 @@ public class SubstrateOptions {
 
     public static boolean useDebugInfoGeneration() {
         return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
+    }
+
+    // TODO: change default to 0
+    @Option(help = "Number of threads used to generate debug info.", deprecated = true) //
+    public static final HostedOptionKey<Integer> DebugInfoGenerationThreadCount = new HostedOptionKey<>(256, SubstrateOptions::validateDebugInfoGenerationThreadCount);
+
+    private static void validateDebugInfoGenerationThreadCount(HostedOptionKey<Integer> optionKey) {
+        int value = optionKey.getValue();
+        if (value <= 0) {
+            throw UserError.invalidOptionValue(optionKey, value, "The value must be bigger than 0");
+        }
     }
 
     @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//

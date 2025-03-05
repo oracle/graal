@@ -223,7 +223,7 @@ public abstract class ObjectFile {
             case ELF -> new ELFObjectFile(pageSize, runtimeDebugInfoGeneration);
             case MACH_O -> new MachOObjectFile(pageSize);
             case PECOFF -> new PECoffObjectFile(pageSize);
-            default -> throw new AssertionError("Unreachable");
+            case LLVM -> throw new AssertionError("Unsupported NativeObjectFile for format " + ObjectFile.getNativeFormat());
         };
     }
 
