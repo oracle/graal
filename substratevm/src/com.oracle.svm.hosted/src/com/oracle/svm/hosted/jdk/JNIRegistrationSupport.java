@@ -31,17 +31,15 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -127,7 +125,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
             isSunMSCAPIProviderReachable = optSunMSCAPIClass.isPresent() && access.isReachable(optSunMSCAPIClass.get());
         }
         if (ImageLayerBuildingSupport.buildingExtensionLayer()) {
-            for (String library : jniRegistrationSupportSingleton.baseLayerRegisteredLibraries) {
+            for (String library : jniRegistrationSupportSingleton.prevLayerRegisteredLibraries) {
                 addLibrary(library);
             }
         }
@@ -159,7 +157,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     }
 
     void registerLibrary(String libname) {
-        if (libname != null && jniRegistrationSupportSingleton.registeredLibraries.putIfAbsent(libname, Boolean.TRUE) == null) {
+        if (libname != null && !jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.contains(libname)) {
+            jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.add(libname);
             addLibrary(libname);
         }
     }
@@ -175,7 +174,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     }
 
     public boolean isRegisteredLibrary(String libname) {
-        return jniRegistrationSupportSingleton.registeredLibraries.containsKey(libname);
+        return jniRegistrationSupportSingleton.currentLayerRegisteredLibraries.contains(libname);
     }
 
     /** Adds exports that `jvm` shim should re-export. */
@@ -262,8 +261,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         DebugContext debug = accessImpl.getDebugContext();
         try (Scope s = debug.scope("copy");
                         Indent i = debug.logAndIndent("from: %s", jdkLibDir)) {
-            for (String libname : new TreeSet<>(jniRegistrationSupportSingleton.registeredLibraries.keySet())) {
-                if (jniRegistrationSupportSingleton.baseLayerRegisteredLibraries.contains(libname)) {
+            for (String libname : new TreeSet<>(jniRegistrationSupportSingleton.currentLayerRegisteredLibraries)) {
+                if (jniRegistrationSupportSingleton.prevLayerRegisteredLibraries.contains(libname)) {
                     /* Skip libraries copied in the base layer. */
                     debug.log(DebugContext.INFO_LEVEL, "%s: SKIPPED", libname);
                     continue;
@@ -372,8 +371,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     }
 
     private static final class JNIRegistrationSupportSingleton implements LayeredImageSingleton {
-        private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
-        private final Set<String> baseLayerRegisteredLibraries = new HashSet<>();
+        private final List<String> currentLayerRegisteredLibraries = new CopyOnWriteArrayList<>();
+        private final List<String> prevLayerRegisteredLibraries = new ArrayList<>();
 
         public static JNIRegistrationSupportSingleton singleton() {
             return ImageSingletons.lookup(JNIRegistrationSupportSingleton.class);
@@ -387,7 +386,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         @Override
         public PersistFlags preparePersist(ImageSingletonWriter writer) {
             var snapshotWriter = ((SVMImageLayerWriter.ImageSingletonWriterImpl) writer).getSnapshotBuilder();
-            SVMImageLayerWriter.initStringList(snapshotWriter::initRegisteredJNILibraries, registeredLibraries.keySet().stream());
+            SVMImageLayerWriter.initStringList(snapshotWriter::initRegisteredJNILibraries, currentLayerRegisteredLibraries.stream());
             return PersistFlags.CREATE;
         }
 
@@ -395,7 +394,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         public static Object createFromLoader(ImageSingletonLoader loader) {
             JNIRegistrationSupportSingleton singleton = new JNIRegistrationSupportSingleton();
             var snapshotReader = ((SVMImageLayerSingletonLoader.ImageSingletonLoaderImpl) loader).getSnapshotReader();
-            SVMImageLayerLoader.streamStrings(snapshotReader.getRegisteredJNILibraries()).forEach(singleton.baseLayerRegisteredLibraries::add);
+            SVMImageLayerLoader.streamStrings(snapshotReader.getRegisteredJNILibraries()).forEach(singleton.prevLayerRegisteredLibraries::add);
             return singleton;
         }
     }
