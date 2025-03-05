@@ -51,13 +51,13 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 
-@TruffleLanguage.Registration(name = TStringTestDummyLanguage.NAME, id = TStringTestDummyLanguage.ID, characterMimeTypes = TStringTestDummyLanguage.MIME_TYPE, version = "0.1")
+@TruffleLanguage.Registration(name = TStringBenchDummyLanguage.NAME, id = TStringBenchDummyLanguage.ID, characterMimeTypes = TStringBenchDummyLanguage.MIME_TYPE, version = "0.1")
 @SuppressWarnings("truffle-inlining")
-public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLanguage.DummyLanguageContext> {
+public class TStringBenchDummyLanguage extends TruffleLanguage<TStringBenchDummyLanguage.DummyLanguageContext> {
 
-    public static final String NAME = "TRUFFLE_STRING_DUMMY_LANG";
-    public static final String ID = "tStringDummyLang";
-    public static final String MIME_TYPE = "application/tstringdummy";
+    public static final String NAME = "TRUFFLE_STRING_BENCH_DUMMY_LANG";
+    public static final String ID = "tStringBenchDummyLang";
+    public static final String MIME_TYPE = "application/tstringdummybench";
 
     @Override
     protected CallTarget parse(ParsingRequest parsingRequest) {
@@ -69,7 +69,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "rawIterateBytes":
                 return new RootNode(this) {
 
-                    @Child RawIterateBytesNode benchNode = TStringTestDummyLanguageFactory.RawIterateBytesNodeGen.create();
+                    @Child RawIterateBytesNode benchNode = TStringBenchDummyLanguageFactory.RawIterateBytesNodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -79,7 +79,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "rawIterateTStringBytes":
                 return new RootNode(this) {
 
-                    @Child RawIterateTStringBytesNode benchNode = TStringTestDummyLanguageFactory.RawIterateTStringBytesNodeGen.create();
+                    @Child RawIterateTStringBytesNode benchNode = TStringBenchDummyLanguageFactory.RawIterateTStringBytesNodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -89,7 +89,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "rawIterateTStringChars":
                 return new RootNode(this) {
 
-                    @Child RawIterateTStringCharsNode benchNode = TStringTestDummyLanguageFactory.RawIterateTStringCharsNodeGen.create();
+                    @Child RawIterateTStringCharsNode benchNode = TStringBenchDummyLanguageFactory.RawIterateTStringCharsNodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -99,7 +99,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "compareTString":
                 return new RootNode(this) {
 
-                    @Child CompareTStringNode benchNode = TStringTestDummyLanguageFactory.CompareTStringNodeGen.create();
+                    @Child CompareTStringNode benchNode = TStringBenchDummyLanguageFactory.CompareTStringNodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -110,7 +110,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "byteIndexOfAnyByteTString":
                 return new RootNode(this) {
 
-                    @Child ByteIndexOfAnyByteTStringNode benchNode = TStringTestDummyLanguageFactory.ByteIndexOfAnyByteTStringNodeGen.create();
+                    @Child ByteIndexOfAnyByteTStringNode benchNode = TStringBenchDummyLanguageFactory.ByteIndexOfAnyByteTStringNodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -121,7 +121,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "codePointIndexToByteIndexUTF8":
                 return new RootNode(this) {
 
-                    @Child CodePointIndexToByteIndexBenchNode benchNode = TStringTestDummyLanguageFactory.CodePointIndexToByteIndexBenchNodeGen.create();
+                    @Child CodePointIndexToByteIndexBenchNode benchNode = TStringBenchDummyLanguageFactory.CodePointIndexToByteIndexBenchNodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -132,7 +132,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "codePointIndexToByteIndexUTF16":
                 return new RootNode(this) {
 
-                    @Child CodePointIndexToByteIndexBenchNode benchNode = TStringTestDummyLanguageFactory.CodePointIndexToByteIndexBenchNodeGen.create();
+                    @Child CodePointIndexToByteIndexBenchNode benchNode = TStringBenchDummyLanguageFactory.CodePointIndexToByteIndexBenchNodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -143,7 +143,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "calcStringAttributesUTF8":
                 return new RootNode(this) {
 
-                    @Child CalcStringAttributesUTF8Node benchNode = TStringTestDummyLanguageFactory.CalcStringAttributesUTF8NodeGen.create();
+                    @Child CalcStringAttributesUTF8Node benchNode = TStringBenchDummyLanguageFactory.CalcStringAttributesUTF8NodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -154,7 +154,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "calcStringAttributesUTF16":
                 return new RootNode(this) {
 
-                    @Child CalcStringAttributesUTF16Node benchNode = TStringTestDummyLanguageFactory.CalcStringAttributesUTF16NodeGen.create();
+                    @Child CalcStringAttributesUTF16Node benchNode = TStringBenchDummyLanguageFactory.CalcStringAttributesUTF16NodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -165,7 +165,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "fromByteArrayUTF16":
                 return new RootNode(this) {
 
-                    @Child FromByteArrayUTF16Node benchNode = TStringTestDummyLanguageFactory.FromByteArrayUTF16NodeGen.create();
+                    @Child FromByteArrayUTF16Node benchNode = TStringBenchDummyLanguageFactory.FromByteArrayUTF16NodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -176,7 +176,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
             case "fromByteArrayUTF32":
                 return new RootNode(this) {
 
-                    @Child FromByteArrayUTF32Node benchNode = TStringTestDummyLanguageFactory.FromByteArrayUTF32NodeGen.create();
+                    @Child FromByteArrayUTF32Node benchNode = TStringBenchDummyLanguageFactory.FromByteArrayUTF32NodeGen.create();
 
                     @Override
                     public Object execute(VirtualFrame frame) {
@@ -342,7 +342,7 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
 
     public static final class DummyLanguageContext {
 
-        private static final ContextReference<DummyLanguageContext> REFERENCE = ContextReference.create(TStringTestDummyLanguage.class);
+        private static final ContextReference<DummyLanguageContext> REFERENCE = ContextReference.create(TStringBenchDummyLanguage.class);
 
         @CompilationFinal private Env env;
 

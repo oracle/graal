@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,54 +38,63 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
+package com.oracle.truffle.api.strings.test;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.Node;
 
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
-public class VectorizedMismatchBenchmark extends TStringBenchmarkBase {
+@TruffleLanguage.Registration(name = TStringTestDummyLanguage.NAME, id = TStringTestDummyLanguage.ID, characterMimeTypes = TStringTestDummyLanguage.MIME_TYPE, version = "0.1")
+@SuppressWarnings("truffle-inlining")
+public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLanguage.DummyLanguageContext> {
 
-    @State(Scope.Benchmark)
-    public static class BenchState {
+    public static final String NAME = "TRUFFLE_STRING_TEST_DUMMY_LANG";
+    public static final String ID = "tStringTestDummyLang";
+    public static final String MIME_TYPE = "application/tstringdummytest";
 
-        @Param({"64"}) int length;
-        // Checkstyle: stop
-        String str = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
-        // Checkstyle: resume
-        byte[] a = str.getBytes(StandardCharsets.UTF_8);
-        byte[] b;
+    @Override
+    protected CallTarget parse(ParsingRequest parsingRequest) {
+        return null;
+    }
 
-        public BenchState() {
+    @Override
+    protected DummyLanguageContext createContext(Env env) {
+        return new DummyLanguageContext(env);
+    }
+
+    @Override
+    protected boolean patchContext(DummyLanguageContext context, Env newEnv) {
+        context.patchContext(newEnv);
+        return true;
+    }
+
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
+
+    public static final class DummyLanguageContext {
+
+        private static final ContextReference<DummyLanguageContext> REFERENCE = ContextReference.create(TStringTestDummyLanguage.class);
+
+        @CompilationFinal private Env env;
+
+        DummyLanguageContext(Env env) {
+            this.env = env;
         }
 
-        @Setup
-        public void setUp() {
-            b = createDiff(a, length);
+        void patchContext(Env patchedEnv) {
+            this.env = patchedEnv;
         }
-    }
 
-    private static byte[] createDiff(byte[] a, int pos) {
-        byte[] ret = Arrays.copyOf(a, a.length);
-        ret[pos] = '!';
-        return ret;
-    }
+        public Env getEnv() {
+            return env;
+        }
 
-    @Benchmark
-    public int clamped(BenchState state) {
-        return Arrays.mismatch(state.a, 0, state.length + 1, state.b, 0, state.length + 1);
-    }
-
-    @Benchmark
-    public int full(BenchState state) {
-        return Arrays.mismatch(state.a, state.b);
+        public static DummyLanguageContext get(Node node) {
+            return REFERENCE.get(node);
+        }
     }
 }

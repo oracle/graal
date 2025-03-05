@@ -505,6 +505,7 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.memory=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.strings=ALL-UNNAMED',
+                 '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.strings.bench=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api=ALL-UNNAMED']
         return extra + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()

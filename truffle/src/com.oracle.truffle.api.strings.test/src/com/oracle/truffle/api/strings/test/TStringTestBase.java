@@ -77,7 +77,6 @@ import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
-import com.oracle.truffle.api.strings.bench.TStringTestDummyLanguage;
 
 import sun.misc.Unsafe;
 

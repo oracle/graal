@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,50 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
-
-import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeUnit;
+package truffle.micro.benchmarks;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.OutputTimeUnit;
-import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
-public class CalcStringAttributesUTF8Benchmark extends TStringBenchmarkBase {
+public class JsJsonBenchmark extends TStringBenchmarkBase {
 
     @State(Scope.Benchmark)
     public static class BenchState {
-
-        @Param({"64"}) int length;
-        // Checkstyle: stop
-        String strAscii = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
-        // Checkstyle: resume
-        final byte[] ascii = strAscii.getBytes(StandardCharsets.UTF_8);
-        final byte[] firstNonAscii = (((char) 0xe4) + strAscii).getBytes(StandardCharsets.UTF_8);
-        final byte[] nonAscii;
         Context context;
-        Value bench;
+        final Value jsonParse;
 
         public BenchState() {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < 128; i++) {
-                sb.appendCodePoint(128 + i);
-            }
-            this.nonAscii = sb.toString().getBytes(StandardCharsets.UTF_8);
-        }
-
-        @Setup
-        public void setUp() {
-            context = Context.newBuilder(TStringTestDummyLanguage.ID).build();
+            context = Context.newBuilder("js").build();
             context.enter();
-            bench = context.parse(TStringTestDummyLanguage.ID, "calcStringAttributesUTF8");
+            context.eval("js", """
+                            const OBJECT_SIZE = 500;
+                            const obj = {};
+
+                            for (let i = 0; i < OBJECT_SIZE; i++) {
+                                obj["double_key" + i] = Math.random();
+                                obj["str_key" + i] = '#'.repeat(50);
+                            };
+
+                            function jsonParseStringify() {
+                                return JSON.parse(JSON.stringify(obj));
+                            };
+                            """);
+            jsonParse = context.parse("js", "jsonParseStringify()");
         }
 
         @TearDown
@@ -92,17 +81,8 @@ public class CalcStringAttributesUTF8Benchmark extends TStringBenchmarkBase {
     }
 
     @Benchmark
-    public Value ascii(BenchState state) {
-        return state.bench.execute(state.ascii, state.length);
+    public Value jsonParse(BenchState state) {
+        return state.jsonParse.execute();
     }
 
-    @Benchmark
-    public Value firstNonAscii(BenchState state) {
-        return state.bench.execute(state.firstNonAscii, state.length);
-    }
-
-    @Benchmark
-    public Value nonAscii(BenchState state) {
-        return state.bench.execute(state.nonAscii, state.length);
-    }
 }

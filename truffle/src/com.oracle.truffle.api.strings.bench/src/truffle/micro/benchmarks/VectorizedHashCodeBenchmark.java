@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
+package truffle.micro.benchmarks;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.invoke.MethodHandle;
@@ -47,7 +47,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Assert;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -175,7 +174,9 @@ public class VectorizedHashCodeBenchmark extends TStringBenchmarkBase {
     }
 
     private static void checkResult(int expectedHashCode, int hashCode) {
-        Assert.assertEquals(expectedHashCode, hashCode);
+        if (expectedHashCode != hashCode) {
+            throw new RuntimeException();
+        }
     }
 
     private static int hashCodeFromArray(int[] a) {

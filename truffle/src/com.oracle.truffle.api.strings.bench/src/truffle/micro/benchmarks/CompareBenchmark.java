@@ -38,12 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
-
-import static com.oracle.truffle.api.strings.test.TStringTestUtil.toStride;
+package truffle.micro.benchmarks;
 
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.strings.bench.TStringBenchDummyLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -54,34 +53,34 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-public class CompressBenchmark extends TStringBenchmarkBase {
+public class CompareBenchmark extends TStringBenchmarkBase {
+
+    public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_16;
 
     @State(Scope.Benchmark)
     public static class BenchState {
 
         @Param({"64"}) int length;
         // Checkstyle: stop
-        String strAscii = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
-        String strBmp = '\u2020' + strAscii;
+        String str = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
         // Checkstyle: resume
-        byte[] asciiUTF16 = toStride(strAscii, 1);
-        byte[] asciiUTF32 = toStride(strAscii, 2);
-        byte[] bmpUTF32 = toStride(strBmp, 2);
-
+        TruffleString a = TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16);
+        TruffleString b;
         Context context;
-        Value utf16;
-        Value utf32;
+        Value compare;
 
         public BenchState() {
         }
 
         @Setup
         public void setUp() {
-            context = Context.newBuilder(TStringTestDummyLanguage.ID).build();
+            context = Context.newBuilder(TStringBenchDummyLanguage.ID).build();
             context.enter();
-            utf16 = context.parse(TStringTestDummyLanguage.ID, "fromByteArrayUTF16");
-            utf32 = context.parse(TStringTestDummyLanguage.ID, "fromByteArrayUTF32");
+            compare = context.parse(TStringBenchDummyLanguage.ID, "compareTString");
+            b = createDiff(a, length);
         }
 
         @TearDown
@@ -91,18 +90,15 @@ public class CompressBenchmark extends TStringBenchmarkBase {
         }
     }
 
-    @Benchmark
-    public Value compress20(BenchState state) {
-        return state.utf32.execute(state.asciiUTF32, state.length * 4);
+    private static TruffleString createDiff(TruffleString s, int pos) {
+        int charPos = pos < 0 ? s.byteLength(ENCODING) + (pos * 2) : pos * 2;
+        return s.substringByteIndexUncached(0, charPos, ENCODING, true).concatUncached(
+                        TruffleString.fromCodePointUncached('!', ENCODING), ENCODING, false).concatUncached(
+                                        s.substringByteIndexUncached(charPos, s.byteLength(ENCODING) - charPos, ENCODING, true), ENCODING, false);
     }
 
     @Benchmark
-    public Value compress21(BenchState state) {
-        return state.utf32.execute(state.bmpUTF32, state.length * 4);
-    }
-
-    @Benchmark
-    public Value compress10(BenchState state) {
-        return state.utf16.execute(state.asciiUTF16, state.length * 2);
+    public Value compare(BenchState state) {
+        return state.compare.execute(state.a, state.b);
     }
 }

@@ -38,20 +38,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
+package truffle.micro.benchmarks;
 
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Warmup;
 
-@Warmup(iterations = TStringBenchmarkBase.Defaults.WARMUP_ITERATIONS, time = 2)
-@Measurement(iterations = TStringBenchmarkBase.Defaults.MEASUREMENT_ITERATIONS, time = 2)
+@Warmup(iterations = TStringBenchmarkBase.Defaults.WARMUP_ITERATIONS, time = TStringBenchmarkBase.Defaults.ITERATIONS_DURATION)
+@Measurement(iterations = TStringBenchmarkBase.Defaults.MEASUREMENT_ITERATIONS, time = TStringBenchmarkBase.Defaults.ITERATIONS_DURATION)
 @Fork(TStringBenchmarkBase.Defaults.FORKS)
 public class TStringBenchmarkBase {
 
     public static class Defaults {
         public static final int MEASUREMENT_ITERATIONS = 3;
-        public static final int WARMUP_ITERATIONS = 5;
+        public static final int WARMUP_ITERATIONS = 3;
+        public static final int ITERATIONS_DURATION = 5;
         public static final int FORKS = 1;
     }
 }

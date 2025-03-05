@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,10 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
+package truffle.micro.benchmarks;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.strings.bench.TStringBenchDummyLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -52,56 +54,35 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
-
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-public class CodepointIndexToByteIndexUTF16Benchmark extends TStringBenchmarkBase {
-
-    public static final int LENGTH = 256;
+public class CalcStringAttributesUTF8Benchmark extends TStringBenchmarkBase {
 
     @State(Scope.Benchmark)
     public static class BenchState {
 
-        @Param({"64"}) int index;
-        TruffleString ascii;
-        TruffleString nonAscii;
+        @Param({"64"}) int length;
+        // Checkstyle: stop
+        String strAscii = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
+        // Checkstyle: resume
+        final byte[] ascii = strAscii.getBytes(StandardCharsets.UTF_8);
+        final byte[] firstNonAscii = (((char) 0xe4) + strAscii).getBytes(StandardCharsets.UTF_8);
+        final byte[] nonAscii;
         Context context;
         Value bench;
 
-        private static boolean isValid(TruffleString s) {
-            return s.byteLength(TruffleString.Encoding.UTF_16) == LENGTH && s.isValidUncached(TruffleString.Encoding.UTF_16);
+        public BenchState() {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 128; i++) {
+                sb.appendCodePoint(128 + i);
+            }
+            this.nonAscii = sb.toString().getBytes(StandardCharsets.UTF_8);
         }
 
         @Setup
         public void setUp() {
-            int byteIndex = index << 1;
-            TruffleStringBuilder sb = TruffleStringBuilder.create(TruffleString.Encoding.UTF_16, LENGTH);
-            if (byteIndex > LENGTH / 2) {
-                sb.appendCodePointUncached(0x10000);
-            }
-            for (int i = 0; i < LENGTH - 4; i += 2) {
-                sb.appendCodePointUncached(i & 0xffff);
-            }
-            if (byteIndex <= LENGTH / 2) {
-                sb.appendCodePointUncached(0x10000);
-            }
-            ascii = sb.toStringUncached();
-            sb = TruffleStringBuilder.create(TruffleString.Encoding.UTF_16, LENGTH);
-            for (int i = 0; i < LENGTH; i++) {
-                int offset = sb.byteLength() + 2 == byteIndex || sb.byteLength() + 2 == LENGTH ? 0 : 0x10000;
-                sb.appendCodePointUncached(offset + (i & 0xffff));
-                if (sb.byteLength() == LENGTH) {
-                    break;
-                }
-            }
-            nonAscii = sb.toStringUncached();
-            if (!isValid(ascii) || !isValid(nonAscii)) {
-                throw new IllegalStateException();
-            }
-            context = Context.newBuilder(TStringTestDummyLanguage.ID).build();
+            context = Context.newBuilder(TStringBenchDummyLanguage.ID).build();
             context.enter();
-            bench = context.parse(TStringTestDummyLanguage.ID, "codePointIndexToByteIndexUTF16");
+            bench = context.parse(TStringBenchDummyLanguage.ID, "calcStringAttributesUTF8");
         }
 
         @TearDown
@@ -113,11 +94,16 @@ public class CodepointIndexToByteIndexUTF16Benchmark extends TStringBenchmarkBas
 
     @Benchmark
     public Value ascii(BenchState state) {
-        return state.bench.execute(state.ascii, 0, state.index);
+        return state.bench.execute(state.ascii, state.length);
+    }
+
+    @Benchmark
+    public Value firstNonAscii(BenchState state) {
+        return state.bench.execute(state.firstNonAscii, state.length);
     }
 
     @Benchmark
     public Value nonAscii(BenchState state) {
-        return state.bench.execute(state.nonAscii, 0, state.index);
+        return state.bench.execute(state.nonAscii, state.length);
     }
 }

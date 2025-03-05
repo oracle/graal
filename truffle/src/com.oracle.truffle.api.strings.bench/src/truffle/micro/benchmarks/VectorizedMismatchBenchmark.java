@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,64 +38,54 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
+package truffle.micro.benchmarks;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
-
-import com.oracle.truffle.api.strings.TruffleString;
 
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-public class IterationBenchmark extends TStringBenchmarkBase {
+public class VectorizedMismatchBenchmark extends TStringBenchmarkBase {
 
     @State(Scope.Benchmark)
     public static class BenchState {
+
+        @Param({"64"}) int length;
         // Checkstyle: stop
-        String input = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
+        String str = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
         // Checkstyle: resume
-        TruffleString inputTStringUTF8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8);
-        TruffleString inputTStringUTF16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16);
-        byte[] inputBytes = input.getBytes(StandardCharsets.ISO_8859_1);
-        Context context;
-        final Value rawIterateBytes;
-        final Value rawIterateTStringBytes;
-        final Value rawIterateTStringChars;
+        byte[] a = str.getBytes(StandardCharsets.UTF_8);
+        byte[] b;
 
         public BenchState() {
-            context = Context.newBuilder(TStringTestDummyLanguage.ID).build();
-            context.enter();
-            rawIterateBytes = context.parse(TStringTestDummyLanguage.ID, "rawIterateBytes");
-            rawIterateTStringBytes = context.parse(TStringTestDummyLanguage.ID, "rawIterateTStringBytes");
-            rawIterateTStringChars = context.parse(TStringTestDummyLanguage.ID, "rawIterateTStringChars");
         }
 
-        @TearDown
-        public void tearDown() {
-            context.leave();
-            context.close();
+        @Setup
+        public void setUp() {
+            b = createDiff(a, length);
         }
     }
 
-    @Benchmark
-    public Value rawIterateBytes(BenchState state) {
-        return state.rawIterateBytes.execute(state.inputBytes);
+    private static byte[] createDiff(byte[] a, int pos) {
+        byte[] ret = Arrays.copyOf(a, a.length);
+        ret[pos] = '!';
+        return ret;
     }
 
     @Benchmark
-    public Value rawIterateTStringBytes(BenchState state) {
-        return state.rawIterateTStringBytes.execute(state.inputTStringUTF8);
+    public int clamped(BenchState state) {
+        return Arrays.mismatch(state.a, 0, state.length + 1, state.b, 0, state.length + 1);
     }
 
     @Benchmark
-    public Value rawIterateTStringChars(BenchState state) {
-        return state.rawIterateTStringChars.execute(state.inputTStringUTF16);
+    public int full(BenchState state) {
+        return Arrays.mismatch(state.a, state.b);
     }
 }

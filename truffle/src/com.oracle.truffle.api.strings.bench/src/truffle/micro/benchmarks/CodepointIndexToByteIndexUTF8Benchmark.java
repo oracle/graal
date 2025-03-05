@@ -38,10 +38,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
+package truffle.micro.benchmarks;
 
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.strings.bench.TStringBenchDummyLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -98,9 +99,9 @@ public class CodepointIndexToByteIndexUTF8Benchmark extends TStringBenchmarkBase
             if (!isValid(ascii) || !isValid(nonAscii)) {
                 throw new IllegalStateException();
             }
-            context = Context.newBuilder(TStringTestDummyLanguage.ID).build();
+            context = Context.newBuilder(TStringBenchDummyLanguage.ID).build();
             context.enter();
-            bench = context.parse(TStringTestDummyLanguage.ID, "codePointIndexToByteIndexUTF8");
+            bench = context.parse(TStringBenchDummyLanguage.ID, "codePointIndexToByteIndexUTF8");
         }
 
         @TearDown

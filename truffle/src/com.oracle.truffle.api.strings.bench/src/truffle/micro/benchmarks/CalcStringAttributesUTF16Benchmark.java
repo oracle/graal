@@ -38,10 +38,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.strings.bench;
+package truffle.micro.benchmarks;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
+import com.oracle.truffle.api.strings.bench.TStringBenchDummyLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -52,34 +54,33 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-public class CompareBenchmark extends TStringBenchmarkBase {
-
-    public static final TruffleString.Encoding ENCODING = TruffleString.Encoding.UTF_16;
+public class CalcStringAttributesUTF16Benchmark extends TStringBenchmarkBase {
 
     @State(Scope.Benchmark)
     public static class BenchState {
 
         @Param({"64"}) int length;
         // Checkstyle: stop
-        String str = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
+        String strAscii = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
         // Checkstyle: resume
-        TruffleString a = TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16);
-        TruffleString b;
+        final byte[] latin1 = strAscii.getBytes(StandardCharsets.UTF_16LE);
+        final byte[] bmp = ('\u2020' + strAscii).getBytes(StandardCharsets.UTF_16LE);
+        final byte[] astral = new StringBuilder().appendCodePoint(Character.MAX_CODE_POINT).append(strAscii).toString().getBytes(StandardCharsets.UTF_16LE);
+        final byte[] broken = ('0' + strAscii).getBytes(StandardCharsets.UTF_16LE);
         Context context;
-        Value compare;
+        Value bench;
 
         public BenchState() {
+            broken[0] = (byte) (Character.MIN_LOW_SURROGATE);
+            broken[1] = (byte) (Character.MIN_LOW_SURROGATE >>> 8);
         }
 
         @Setup
         public void setUp() {
-            context = Context.newBuilder(TStringTestDummyLanguage.ID).build();
+            context = Context.newBuilder(TStringBenchDummyLanguage.ID).build();
             context.enter();
-            compare = context.parse(TStringTestDummyLanguage.ID, "compareTString");
-            b = createDiff(a, length);
+            bench = context.parse(TStringBenchDummyLanguage.ID, "calcStringAttributesUTF16");
         }
 
         @TearDown
@@ -89,15 +90,23 @@ public class CompareBenchmark extends TStringBenchmarkBase {
         }
     }
 
-    private static TruffleString createDiff(TruffleString s, int pos) {
-        int charPos = pos < 0 ? s.byteLength(ENCODING) + (pos * 2) : pos * 2;
-        return s.substringByteIndexUncached(0, charPos, ENCODING, true).concatUncached(
-                        TruffleString.fromCodePointUncached('!', ENCODING), ENCODING, false).concatUncached(
-                                        s.substringByteIndexUncached(charPos, s.byteLength(ENCODING) - charPos, ENCODING, true), ENCODING, false);
+    @Benchmark
+    public Value latin1(BenchState state) {
+        return state.bench.execute(state.latin1, state.length * 2);
     }
 
     @Benchmark
-    public Value compare(BenchState state) {
-        return state.compare.execute(state.a, state.b);
+    public Value bmp(BenchState state) {
+        return state.bench.execute(state.bmp, state.length * 2);
+    }
+
+    @Benchmark
+    public Value astral(BenchState state) {
+        return state.bench.execute(state.astral, state.length * 2);
+    }
+
+    @Benchmark
+    public Value broken(BenchState state) {
+        return state.bench.execute(state.broken, state.length * 2);
     }
 }

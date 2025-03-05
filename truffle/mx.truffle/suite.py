@@ -720,6 +720,30 @@ suite = {
       "dependencies" : [
         "TRUFFLE_API",
         "mx:JUNIT",
+        "TRUFFLE_JCODINGS",
+      ],
+      "requires" : [
+        "jdk.unsupported", # sun.misc.Unsafe
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
+      "annotationProcessors" : [
+        "TRUFFLE_DSL_PROCESSOR",
+      ],
+      "requiresConcealed" : {
+        "java.base" : ["jdk.internal.loader"],
+      },
+      "workingSets" : "API,Truffle,Codegen,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+      "graalCompilerSourceEdition": "ignore",
+    },
+
+    "com.oracle.truffle.api.strings.bench" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "TRUFFLE_API",
         "mx:JMH_1_21",
         "TRUFFLE_JCODINGS",
       ],
@@ -735,12 +759,11 @@ suite = {
       "requiresConcealed" : {
         "java.base" : ["jdk.internal.loader"],
       },
-      "workingSets" : "API,Truffle,Codegen,Test",
+      "workingSets" : "API,Truffle,Codegen,Bench",
       "jacoco" : "exclude",
       "testProject" : True,
       "graalCompilerSourceEdition": "ignore",
     },
-
 
     "com.oracle.truffle.api.staticobject" : {
       "subDir" : "src",
@@ -2265,6 +2288,24 @@ suite = {
       "maven" : False,
       "graalCompilerSourceEdition": "ignore",
      },
+
+     "TRUFFLE_MICRO_BENCHMARKS" : {
+       "subDir" : "src",
+       "javaCompliance" : "17+",
+       "dependencies" : [
+         "com.oracle.truffle.api.strings.bench",
+       ],
+       "distDependencies" : [
+         "mx:JMH_1_21",
+         "TRUFFLE_API",
+         "TRUFFLE_RUNTIME",
+         "TRUFFLE_JCODINGS",
+        ],
+       "testDistribution": True,
+       "maven" : False,
+       "graalCompilerSourceEdition": "ignore",
+     },
+
 
     "TRUFFLE_NFI_TEST": {
        "subDir": "src",
