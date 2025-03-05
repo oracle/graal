@@ -156,7 +156,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         @Override
         public void activate(InstalledCodeObserverHandle installedCodeObserverHandle) {
             Handle handle = (Handle) installedCodeObserverHandle;
-            VMOperation.guaranteeInProgress("SubstrateDebugInfoInstaller.Accessor.activate must run in a VMOperation");
+            VMOperation.guaranteeInProgressAtSafepoint("SubstrateDebugInfoInstaller.Accessor.activate must run in a VMOperation");
             VMError.guarantee(handle.getState() == Handle.INITIALIZED);
 
             NonmovableArray<Byte> debugInfoData = handle.getDebugInfoData();
@@ -197,16 +197,7 @@ public final class SubstrateDebugInfoInstaller implements InstalledCodeObserver 
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void releaseOnTearDown(InstalledCodeObserverHandle installedCodeObserverHandle) {
-            Handle handle = (Handle) installedCodeObserverHandle;
-            GdbJitInterface.JITCodeEntry entry = handle.getRawHandle();
-            // Handle may still be just initialized here, so it never got registered in GDB.
-            if (handle.getState() == Handle.ACTIVATED) {
-                GdbJitInterface.unregisterJITCode(entry);
-                handle.setState(Handle.RELEASED);
-            }
-            NativeMemory.free(entry);
-            NonmovableArrays.releaseUnmanagedArray(handle.getDebugInfoData());
-            NativeMemory.free(handle);
+            release(installedCodeObserverHandle);
         }
     }
 
