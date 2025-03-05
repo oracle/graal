@@ -53,8 +53,8 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraphInfo;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -110,8 +110,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     protected final boolean trackTypeFlowInputs;
     protected final boolean reportAnalysisStatistics;
 
-    private ConcurrentMap<AbstractUnsafeLoadTypeFlow, Boolean> unsafeLoads;
-    private ConcurrentMap<AbstractUnsafeStoreTypeFlow, Boolean> unsafeStores;
+    private ConcurrentMap<UnsafeLoadTypeFlow, Boolean> unsafeLoads;
+    private ConcurrentMap<UnsafeStoreTypeFlow, Boolean> unsafeStores;
 
     public final AtomicLong numParsedGraphs = new AtomicLong();
     private final CompletionExecutor.Timing timing;
@@ -200,11 +200,11 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         return new MethodTypeFlowBuilder(bb, method, flowsGraph, graphKind);
     }
 
-    public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
+    public void registerUnsafeLoad(UnsafeLoadTypeFlow unsafeLoad) {
         unsafeLoads.putIfAbsent(unsafeLoad, true);
     }
 
-    public void registerUnsafeStore(AbstractUnsafeStoreTypeFlow unsafeStore) {
+    public void registerUnsafeStore(UnsafeStoreTypeFlow unsafeStore) {
         unsafeStores.putIfAbsent(unsafeStore, true);
     }
 
@@ -222,7 +222,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
          */
 
         // force update of the unsafe loads
-        for (AbstractUnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
+        for (UnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
             /* Force update for unsafe accessed static fields. */
             unsafeLoad.forceUpdate(this);
 
@@ -237,7 +237,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         }
 
         // force update of the unsafe stores
-        for (AbstractUnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
+        for (UnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
             /* Force update for unsafe accessed static fields. */
             unsafeStore.forceUpdate(this);
 
