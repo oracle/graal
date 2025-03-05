@@ -576,6 +576,17 @@ public final class Deoptimizer {
         @Override
         protected void operate() {
             CodePointer ip = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
+            /*
+             * These checks for pre-existing deoptimizations are necessary because the code before
+             * entering this VM Operation is interruptible, and deoptimizeFrame expects the IP to be
+             * the address of the deopt source method.
+             */
+            if (checkEagerDeoptimized(targetThread, sourceSp) != null) {
+                return;
+            } else if (checkLazyDeoptimized(targetThread, sourceSp)) {
+                uninstallLazyDeoptStubReturnAddress(sourceSp, targetThread);
+                ip = FrameAccess.singleton().readReturnAddress(targetThread, sourceSp);
+            }
             deoptimizeFrame(targetThread, sourceSp, ip, ignoreNonDeoptimizable, speculation, deoptEagerly);
         }
     }
