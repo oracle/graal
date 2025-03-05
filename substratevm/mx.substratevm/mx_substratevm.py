@@ -1823,11 +1823,10 @@ def java_agent_test(args):
         mx.log('Run agent with JVM as baseline')
         test_cp = os.pathsep.join([classpath('com.oracle.svm.test')])
         java_run_cp = os.pathsep.join([test_cp, mx.dependency('org.graalvm.nativeimage').classpath_repr()])
-        mx.run_java( agents_arg +  ['--add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED',
-                     '-cp', java_run_cp, 'com.oracle.svm.test.javaagent.AgentTest'])
+        mx.run_java( agents_arg +  ['-cp', java_run_cp, 'com.oracle.svm.test.javaagent.AgentTest'])
         test_cp = os.pathsep.join([test_cp] + agents)
         native_agent_premain_options = ['-XXpremain:com.oracle.svm.test.javaagent.agent1.TestJavaAgent1:test.agent1=true', '-XXpremain:com.oracle.svm.test.javaagent.agent2.TestJavaAgent2:test.agent2=true']
-        image_args = ['-cp', test_cp, '-J-ea', '-J-esa', '-H:+ReportExceptionStackTraces', '-J--add-exports=java.base/jdk.internal.org.objectweb.asm=ALL-UNNAMED', '-H:Class=com.oracle.svm.test.javaagent.AgentTest']
+        image_args = ['-cp', test_cp, '-J-ea', '-J-esa', '-H:+ReportExceptionStackTraces', '-H:Class=com.oracle.svm.test.javaagent.AgentTest']
         native_image(image_args + svm_experimental_options(agents_arg) + ['-o', binary_path] + args)
         mx.run([binary_path] + native_agent_premain_options)
 
