@@ -29,21 +29,19 @@ import com.oracle.svm.test.javaagent.AgentPremainHelper;
 import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
 
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
+import java.lang.classfile.MethodModel;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.Collections;
 import java.util.Set;
-import jdk.internal.org.objectweb.asm.ClassReader;
-import jdk.internal.org.objectweb.asm.ClassWriter;
-import jdk.internal.org.objectweb.asm.ClassVisitor;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
 
 public class TestJavaAgent1 {
 
     public static void premain(
-                    String agentArgs, Instrumentation inst) {
+            String agentArgs, Instrumentation inst) {
         AgentPremainHelper.parseOptions(agentArgs);
         System.setProperty("instrument.enable", "true");
         AgentPremainHelper.load(TestJavaAgent1.class);
@@ -146,40 +144,29 @@ public class TestJavaAgent1 {
 
         @Override
         public byte[] transform(
-                        ClassLoader loader,
-                        String className,
-                        Class<?> classBeingRedefined,
-                        ProtectionDomain protectionDomain,
-                        byte[] classfileBuffer) {
+                ClassLoader loader,
+                String className,
+                Class<?> classBeingRedefined,
+                ProtectionDomain protectionDomain,
+                byte[] classfileBuffer) {
             if (internalClassName.equals(className)) {
-                ClassReader cr = new ClassReader(classfileBuffer);
-                ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                ClassFile classFile = ClassFile.of();
+                ClassModel classModel = classFile.parse(classfileBuffer);
 
-                ClassVisitor cv = new ClassVisitor(Opcodes.ASM9, cw) {
-                    @Override
-                    public MethodVisitor visitMethod(int access, String name, String descriptor,
-                                    String signature, String[] exceptions) {
-                        MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-                        if ("getCounter".equals(name) && "()I".equals(descriptor)) {
-                            return new MethodVisitor(api, mv) {
-                                @Override
-                                public void visitInsn(int opcode) {
-                                    if (opcode == Opcodes.IRETURN) {
-                                        super.visitLdcInsn(11);
-                                    }
-                                    super.visitInsn(opcode);
-                                }
-                            };
-                        }
-                        return mv;
+                return classFile.transformClass(classModel, (classbuilder, ce) -> {
+                    if (ce instanceof MethodModel mm && mm.methodName().equalsString("getCounter")
+                            && mm.methodType().equalsString("()I")) {
+                        classbuilder.transformMethod(mm, (mb, me) -> {
+                            mb.withCode(cb -> {
+                                cb.loadConstant(11);
+                                cb.ireturn();
+                            });
+                        });
+                    } else {
+                        classbuilder.with(ce);
                     }
-                };
-
-                cr.accept(cv, 0);
-
-                return cw.toByteArray();
+                });
             }
-
             return null;
         }
     }
