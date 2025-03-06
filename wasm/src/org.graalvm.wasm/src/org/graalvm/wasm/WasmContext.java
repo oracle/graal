@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -195,14 +195,8 @@ public final class WasmContext {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
-        // Reread code sections if module is instantiated multiple times
-        if (!module.hasCodeEntries()) {
-            BytecodeParser.readCodeEntries(module);
-        }
         final WasmInstantiator translator = new WasmInstantiator(language);
         final WasmInstance instance = translator.createInstance(this, module, environment().getContext());
-        // Remove code entries from module to reduce memory footprint at runtime
-        module.setCodeEntries(null);
         this.register(instance);
         return instance;
     }
