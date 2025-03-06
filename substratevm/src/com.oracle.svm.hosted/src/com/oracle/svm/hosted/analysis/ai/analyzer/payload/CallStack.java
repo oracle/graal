@@ -15,7 +15,6 @@ public final class CallStack {
 
     private final Deque<AnalysisMethod> callStack = new LinkedList<>();
     private final int maxRecursionDepth;
-    public static final int DEFAULT_MAX_RECURSION_DEPTH = 10;
 
     public CallStack(int maxRecursionDepth) {
         this.maxRecursionDepth = maxRecursionDepth;
@@ -41,14 +40,6 @@ public final class CallStack {
         return maxRecursionDepth;
     }
 
-    public String getCallStackString() {
-        StringBuilder sb = new StringBuilder();
-        for (AnalysisMethod method : callStack) {
-            sb.append(method.getQualifiedName()).append(" -> ");
-        }
-        return sb.toString();
-    }
-
     /**
      * Counts the number of recursive calls of the specified analysisMethod in the call stack.
      *
@@ -68,9 +59,10 @@ public final class CallStack {
 
     @Override
     public String toString() {
-        return "CallStack{" +
-                "callStack=" + callStack +
-                ", maxRecursionDepth=" + maxRecursionDepth +
-                '}';
+        StringBuilder sb = new StringBuilder();
+        for (AnalysisMethod method : callStack) {
+            sb.append(method.getQualifiedName()).append(" <- ");
+        }
+        return sb.toString();
     }
 }

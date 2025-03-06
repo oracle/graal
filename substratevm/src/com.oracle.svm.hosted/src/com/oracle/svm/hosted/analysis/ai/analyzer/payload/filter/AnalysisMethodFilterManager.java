@@ -31,10 +31,10 @@ public final class AnalysisMethodFilterManager {
     }
 
     /**
-     * Checks if the given method should be skipped based on the registered filters.
+     * Checks if the given analysisMethod should be skipped based on the registered filters.
      *
-     * @param method the method to check
-     * @return true if the method should be skipped, false otherwise
+     * @param method the analysisMethod to check
+     * @return true if the analysisMethod should be skipped, false otherwise
      */
     public boolean shouldSkipMethod(AnalysisMethod method) {
         for (AnalysisMethodFilter filter : filters) {
