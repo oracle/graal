@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,14 +40,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.util.json.JsonWriter;
 
-<<<<<<< HEAD
-=======
-/**
- * Test that validates the configuration metadata produced by the agent. This test is invoked
- * manually from mx.
- */
-@AddExports({"org.graalvm.nativeimage/org.graalvm.nativeimage.impl", "jdk.graal.compiler/jdk.graal.compiler.util", "jdk.graal.compiler/jdk.graal.compiler.util.json"})
->>>>>>> 1ea7c8fcf95 (Add jdk.graal.compiler.util.json export to com.oracle.svm.configure.test)
 public class ConfigurationVerifier {
 
     public static final String CONFIG_PATH_PROPERTY = ConfigurationVerifier.class.getName() + ".configpath";
