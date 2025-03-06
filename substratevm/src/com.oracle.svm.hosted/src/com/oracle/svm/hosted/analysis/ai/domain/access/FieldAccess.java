@@ -16,24 +16,13 @@ public final class FieldAccess implements AccessPathElement {
     }
 
     @Override
-    public String toString() {
-        return "." + fieldName;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof FieldAccess)) return false;
-        return fieldName.equals(((FieldAccess) o).fieldName);
-    }
-
-    @Override
-    public int hashCode() {
-        return fieldName.hashCode();
-    }
-
-    @Override
     public Kind getKind() {
         return Kind.FIELD;
+    }
+
+    @Override
+    public String getName() {
+        return fieldName;
     }
 
     public boolean isStatic() {
@@ -80,4 +69,19 @@ public final class FieldAccess implements AccessPathElement {
         return Modifier.isStrict(modifiers);
     }
 
+    @Override
+    public String toString() {
+        return "." + fieldName;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof FieldAccess)) return false;
+        return fieldName.equals(((FieldAccess) o).fieldName);
+    }
+
+    @Override
+    public int hashCode() {
+        return fieldName.hashCode();
+    }
 }

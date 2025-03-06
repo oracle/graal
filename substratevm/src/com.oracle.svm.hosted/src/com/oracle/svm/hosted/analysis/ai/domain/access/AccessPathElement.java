@@ -11,4 +11,6 @@ public interface AccessPathElement {
     }
 
     Kind getKind();
+
+    String getName();
 }

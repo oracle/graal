@@ -12,6 +12,16 @@ public final class ArrayAccess implements AccessPathElement {
     }
 
     @Override
+    public Kind getKind() {
+        return Kind.ARRAY;
+    }
+
+    @Override
+    public String getName() {
+        return index;
+    }
+
+    @Override
     public String toString() {
         return "[" + index + "]";
     }
@@ -26,10 +36,4 @@ public final class ArrayAccess implements AccessPathElement {
     public int hashCode() {
         return index.hashCode();
     }
-
-    @Override
-    public Kind getKind() {
-        return Kind.ARRAY;
-    }
-
 }

@@ -22,6 +22,11 @@ public final class AccessPath {
         this.elements = new ArrayList<>();
     }
 
+    public AccessPath(AccessPathBase base, List<AccessPathElement> elements) {
+        this.base = base;
+        this.elements = elements;
+    }
+
     public AccessPathBase getBase() {
         return base;
     }
