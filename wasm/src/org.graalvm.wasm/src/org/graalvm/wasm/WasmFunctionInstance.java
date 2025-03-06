@@ -40,6 +40,8 @@
  */
 package org.graalvm.wasm;
 
+import java.util.Objects;
+
 import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.api.Vector128;
 import org.graalvm.wasm.exception.Failure;
@@ -71,26 +73,16 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
 
     /**
      * Represents a call target that is a WebAssembly function or an imported function.
-     * <p>
-     * If the function is imported, then context UID and the function are set to {@code null}.
      */
     public WasmFunctionInstance(WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
         this(moduleInstance.context(), moduleInstance, function, target);
     }
 
-    /**
-     * Constructor for custom (test) functions not defined in a wasm module.
-     */
-    public WasmFunctionInstance(WasmContext context, CallTarget target) {
-        this(context, null, null, target);
-    }
-
     public WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
-        Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
         this.context = context;
-        this.moduleInstance = moduleInstance;
-        this.function = function;
-        this.target = target;
+        this.moduleInstance = Objects.requireNonNull(moduleInstance, "module instance must be non-null");
+        this.function = Objects.requireNonNull(function, "function must be non-null");
+        this.target = Objects.requireNonNull(target, "Call target must be non-null");
         this.truffleContext = context.environment().getContext();
         assert ((RootCallTarget) target).getRootNode().getLanguage(WasmLanguage.class) == context.language();
     }
