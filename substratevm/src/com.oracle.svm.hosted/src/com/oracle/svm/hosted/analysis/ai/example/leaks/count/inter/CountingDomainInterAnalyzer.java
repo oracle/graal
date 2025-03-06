@@ -1,30 +1,30 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.count.inter;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.inter.InterProceduralSequentialAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.analyzer.payload.filter.SkipJavaLangMethodFilter;
-import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
+import com.oracle.svm.hosted.analysis.ai.analyzer.InterProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.count.LeaksCountingDomainNodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.summary.SummarySupplier;
 import jdk.graal.compiler.debug.DebugContext;
 
+import java.io.IOException;
+
 /**
- * Example of a simple inter procedural leaks analysis domain
- * that counts the number of FileInputStream objects opened in a method.
+ * Example of a simple inter-procedural leaks analysis domain
+ * that counts the number of FileInputStream objects opened in a analysisMethod.
  */
 public class CountingDomainInterAnalyzer {
-    private final InterProceduralSequentialAnalyzer<CountingDomain> analyzer;
-    private final NodeInterpreter<CountingDomain> nodeInterpreter;
 
-    public CountingDomainInterAnalyzer(AnalysisMethod root, DebugContext debug) {
-        SummarySupplier<CountingDomain> supplier = new LeakCountingSummarySupplier();
-        analyzer = new InterProceduralSequentialAnalyzer<>(root, debug, supplier, new SkipJavaLangMethodFilter());
-        nodeInterpreter = new LeaksCountingDomainNodeInterpreter();
+    private final InterProceduralAnalyzer<CountDomain> analyzer;
+
+    public CountingDomainInterAnalyzer() {
+        analyzer = new InterProceduralAnalyzer.Builder<>(
+                new CountDomain(1024),
+                new LeaksCountingDomainNodeInterpreter(),
+                new LeakCountingSummaryFactory())
+                .build();
     }
 
-    public void run() {
-        CountingDomain initialDomain = new CountingDomain();
-        analyzer.run(initialDomain, nodeInterpreter);
+    public void run(AnalysisMethod root, DebugContext debug) throws IOException {
+        analyzer.analyzeMethod(root, debug);
     }
 }

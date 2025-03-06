@@ -1,27 +1,28 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.count.intra;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.hosted.analysis.ai.analyzer.intra.IntraProceduralSequentialAnalyzer;
-import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
+import com.oracle.svm.hosted.analysis.ai.analyzer.IntraProceduralAnalyzer;
+import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.example.leaks.count.LeaksCountingDomainNodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import jdk.graal.compiler.debug.DebugContext;
 
+import java.io.IOException;
+
 /**
- * Example of a simple intra procedural leaks analysis domain that
- * counts the number of FileInputStream objects opened in a method.
+ * Example of a simple intra-procedural leaks analysis domain that
+ * counts the number of FileInputStream objects opened in a analysisMethod.
  */
 public class CountingDomainIntraAnalyzer {
-    private final IntraProceduralSequentialAnalyzer<CountingDomain> analyzer;
-    private final NodeInterpreter<CountingDomain> nodeInterpreter;
+    private final IntraProceduralAnalyzer<CountDomain> analyzer;
 
     public CountingDomainIntraAnalyzer(AnalysisMethod root, DebugContext debug) {
-        analyzer = new IntraProceduralSequentialAnalyzer<>(root, debug);
-        nodeInterpreter = new LeaksCountingDomainNodeInterpreter();
+        analyzer = new IntraProceduralAnalyzer.Builder<>(
+                new CountDomain(1024),
+                new LeaksCountingDomainNodeInterpreter())
+                .build();
     }
 
-    public void run() {
-        CountingDomain initialDomain = new CountingDomain();
-        analyzer.run(initialDomain, nodeInterpreter);
+    public void run(AnalysisMethod method, DebugContext debug) throws IOException {
+        analyzer.analyzeMethod(method, debug);
     }
 }
