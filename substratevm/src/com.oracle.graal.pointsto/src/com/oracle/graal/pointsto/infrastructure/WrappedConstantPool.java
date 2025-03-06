@@ -26,10 +26,12 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -41,6 +43,7 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.UnresolvedJavaMethod;
 
 public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
