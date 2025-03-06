@@ -34,7 +34,28 @@ For this, perform the following steps:
 2. Run your instrumented application with a representative workload to generate profiling information. Profiles collected from this run are stored by default in the _default.iprof_ file.
 3. Rebuild your application with the `--pgo` option. You can pass a custom _.iprof_ file with `--pgo=<your>.iprof`, otherwise _default.iprof_ is used. This will rebuild your image and generate an optimized version of your application.
 
+> Note: Not available in GraalVM Community Edition.
+
 Find more information on this topic in [Basic Usage of Profile-Guided Optimization](../PGO-Basic-Usage.md).
+
+### ML-Powered Profile Inference for Enhanced Performance
+ 
+Native Image supports machine learning-driven static profiling, as a built-in capability.
+By default, GraalVM runs at the `-O2` optimization level, which uses the simple and fast XGBoost ML model for profile inference.
+This model is optimized for a wide range of applications.
+
+As of GraalVM for JDK 24, the new Graph Neural Network (GNN) ML model can be used for profile inference, offering even better performance.
+Enable it by passing the `-O3` option to Native Image. 
+
+> Note: Not available in GraalVM Community Edition.
+
+Note that if Profile-Guided Optimization (PGO) is enabled, ML inference is automatically disabled, as PGO utilizes high-quality profile data that makes additional ML inference unnecessary.
+Thus, passing the `--pgo` option will disable the ML inference feature.
+
+Key Points:
+
+* **XGBoost ML model** (simple model) is used with `-O2` by default.
+* **GNN ML model** (advanced model) is used with `-O3` by default.
 
 ### Optimizing for Specific Machines
 
