@@ -29,7 +29,7 @@ public class AccessPathTest {
     @Test
     public void testAppendField() {
         AccessPath path = new AccessPath(placeholderBase);
-        AccessPath newPath = path.appendField("field1", false);
+        AccessPath newPath = path.appendField("field1", 0);
 
         Assert.assertEquals(placeholderBase, newPath.getBase());
         Assert.assertEquals(1, newPath.getElements().size());
@@ -51,7 +51,7 @@ public class AccessPathTest {
     @Test
     public void testAppendAccesses() {
         List<AccessPathElement> elements = new ArrayList<>();
-        elements.add(new FieldAccess("field1", false));
+        elements.add(new FieldAccess("field1", 0));
         elements.add(new ArrayAccess("0"));
 
         AccessPath path = new AccessPath(placeholderBase);
@@ -66,14 +66,14 @@ public class AccessPathTest {
     @Test
     public void testIsPrefixOf() {
         AccessPath path1 = new AccessPath(placeholderBase)
-                .appendField("field1", false);
+                .appendField("field1", 0);
 
         AccessPath path2 = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("field2", false);
+                .appendField("field1", 0)
+                .appendField("field2", 0);
 
         AccessPath path3 = new AccessPath(placeholderBase)
-                .appendField("field1", false);
+                .appendField("field1", 0);
 
         Assert.assertTrue(path1.isPrefixOf(path2));
         Assert.assertFalse(path2.isPrefixOf(path1));
@@ -84,11 +84,11 @@ public class AccessPathTest {
     @Test
     public void testRemovePrefix() {
         AccessPath prefix = new AccessPath(placeholderBase)
-                .appendField("field1", false);
+                .appendField("field1", 0);
 
         AccessPath path = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("field2", false)
+                .appendField("field1", 0)
+                .appendField("field2", 0)
                 .appendArrayAccess("0");
 
         List<AccessPathElement> remaining = path.removePrefix(prefix);
@@ -100,22 +100,22 @@ public class AccessPathTest {
 
         // Test removing non-matching prefix
         AccessPath nonMatchingPrefix = new AccessPath(placeholderBase)
-                .appendField("differentField", false);
+                .appendField("differentField", 0);
         Assert.assertNull(path.removePrefix(nonMatchingPrefix));
     }
 
     @Test
     public void testReplacePrefix() {
         AccessPath prefix = new AccessPath(placeholderBase)
-                .appendField("field1", false);
+                .appendField("field1", 0);
 
         AccessPath path = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("field2", false)
+                .appendField("field1", 0)
+                .appendField("field2", 0)
                 .appendArrayAccess("0");
 
         AccessPath replaceWith = new AccessPath(placeholderBase)
-                .appendField("newField", false);
+                .appendField("newField", 0);
 
         AccessPath result = path.replacePrefix(prefix, replaceWith);
 
@@ -128,15 +128,15 @@ public class AccessPathTest {
 
         // Test replacing non-matching prefix
         AccessPath nonMatchingPrefix = new AccessPath(placeholderBase)
-                .appendField("differentField", false);
+                .appendField("differentField", 0);
         Assert.assertNull(path.replacePrefix(nonMatchingPrefix, replaceWith));
     }
 
     @Test
     public void testGetPrefix() {
         AccessPath path = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("field2", false)
+                .appendField("field1", 0)
+                .appendField("field2", 0)
                 .appendArrayAccess("0");
 
         AccessPath prefix = path.getPrefix(2);
@@ -170,8 +170,8 @@ public class AccessPathTest {
     @Test
     public void testGetSuffix() {
         AccessPath path = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("field2", false)
+                .appendField("field1", 0)
+                .appendField("field2", 0)
                 .appendArrayAccess("0");
 
         AccessPath suffix = path.getSuffix(1);
@@ -208,20 +208,20 @@ public class AccessPathTest {
     @Test
     public void testEqualsAndHashCode() {
         AccessPath path1 = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("field2", false);
+                .appendField("field1", 0)
+                .appendField("field2", 0);
 
         AccessPath path2 = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("field2", false);
+                .appendField("field1", 0)
+                .appendField("field2", 0);
 
         AccessPath path3 = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("differentField", false);
+                .appendField("field1", 0)
+                .appendField("differentField", 0);
 
         AccessPath path4 = new AccessPath(placeholderBase)
-                .appendField("field1", false)
-                .appendField("field2", false);
+                .appendField("field1", 0)
+                .appendField("field2", 0);
 
         Assert.assertEquals(path1, path2);
         Assert.assertEquals(path1.hashCode(), path2.hashCode());
@@ -235,13 +235,13 @@ public class AccessPathTest {
     @Test
     public void testToString() {
         AccessPath path = new AccessPath(placeholderBase)
-                .appendField("field1", false)
+                .appendField("field1", 0)
                 .appendArrayAccess("0");
 
         Assert.assertEquals("placeholder.field1[0]", path.toString());
 
         AccessPath placeholderPath = new AccessPath(placeholderBase)
-                .appendField("field", false);
+                .appendField("field", 0);
 
         Assert.assertEquals("placeholder.field", placeholderPath.toString());
     }
