@@ -1852,6 +1852,7 @@ def java_agent_test(args):
                 agent_test_classpath = join('com', 'oracle', 'svm', 'test', 'javaagent', 'agent' + str(i))
                 class_list = [join('com', 'oracle', 'svm', 'test', 'javaagent', 'agent' + str(i), f) for f in os.listdir(agent_test_classpath) if os.path.isfile(os.path.join(agent_test_classpath, f)) and f.endswith(".class")]
                 class_list.append(join('com', 'oracle', 'svm', 'test', 'javaagent', 'AgentPremainHelper.class'))
+                class_list.append(join('com', 'oracle', 'svm', 'test', 'javaagent', 'AssertInAgent.class'))
                 mx.run([mx.get_jdk().jar, 'cmf', join(test_classpath, 'resources', 'javaagent' + str(i), 'MANIFEST.MF'), agent] + class_list, cwd = test_classpath)
                 agents.append(agent)
                 os.chdir(current_dir)

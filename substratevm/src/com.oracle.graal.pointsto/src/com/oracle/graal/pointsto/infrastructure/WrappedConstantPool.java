@@ -26,12 +26,10 @@ package com.oracle.graal.pointsto.infrastructure;
 
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
@@ -43,7 +41,6 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.UnresolvedJavaMethod;
 
 public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
@@ -120,26 +117,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     @Override
     public JavaMethod lookupMethod(int cpi, int opcode, ResolvedJavaMethod caller) {
         try {
-            JavaMethod ret = universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode, OriginalMethodProvider.getOriginalMethod(caller)));
-            /**
-             * The java agent classes are loaded by appClassloader, but their dependencies could be
-             * loaded by NativeImageClassloader. So if the required method could not be resolved, we
-             * look further into classes loaded by nativeImageClassloader.
-             */
-            if (ret instanceof UnresolvedJavaMethod && universe.hostVM().isFromJavaAgent(OriginalClassProvider.getJavaClass(caller.getDeclaringClass()))) {
-                UnresolvedJavaMethod unresolvedResult = (UnresolvedJavaMethod) ret;
-                String className = unresolvedResult.format("%H");
-                String methodNameWithSignature = unresolvedResult.format("%n(%P)");
-                try {
-                    Class<?> loadedClass = ((AnalysisUniverse) universe).getConcurrentAnalysisAccess().findClassByName(className);
-                    ResolvedJavaType resolvedType = ((AnalysisUniverse) universe).getOriginalMetaAccess().lookupJavaType(loadedClass);
-                    ResolvedJavaMethod resolvedMethod = Arrays.stream(resolvedType.getDeclaredMethods(false)).filter(m -> m.format("%n(%P)").equals(methodNameWithSignature)).findFirst().get();
-                    return universe.lookupAllowUnresolved(resolvedMethod);
-                } catch (Exception e) {
-                    // Could not get the resolved method, get to the unresolved path
-                }
-            }
-            return ret;
+            return universe.lookupAllowUnresolved(wrapped.lookupMethod(cpi, opcode, OriginalMethodProvider.getOriginalMethod(caller)));
         } catch (Throwable ex) {
             Throwable cause = ex;
             if (ex instanceof ExceptionInInitializerError && ex.getCause() != null) {

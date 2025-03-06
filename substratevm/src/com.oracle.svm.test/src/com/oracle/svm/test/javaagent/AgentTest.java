@@ -42,8 +42,8 @@ public class AgentTest {
     }
 
     private static void testPremainSequence() {
-        String first = AgentPremainHelper.getFirst();
-        String second = AgentPremainHelper.getSecond();
+        String first = System.getProperty("first.load.agent");
+        String second = System.getProperty("second.load.agent");
         Assert.assertNotNull(first);
         if (second != null) {
             String agentName = TestJavaAgent1.class.getName();
