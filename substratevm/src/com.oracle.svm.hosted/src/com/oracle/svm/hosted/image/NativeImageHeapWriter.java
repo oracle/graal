@@ -278,7 +278,7 @@ public final class NativeImageHeapWriter {
         DynamicHub hub = obj.getClazz().getHub();
         assert hub != null : "Null DynamicHub found during native image generation.";
         ObjectInfo hubInfo = heap.getObjectInfo(hub);
-        assert hubInfo != null : "Unknown object " + hub.toString() + " found. Static field or an object referenced from a static field changed during native image generation?";
+        assert hubInfo != null : "Unknown object " + hub + " found. Static field or an object referenced from a static field changed during native image generation?";
 
         ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
         if (NativeImageHeap.useHeapBase()) {
@@ -356,7 +356,7 @@ public final class NativeImageHeapWriter {
         if (referenceSize() == Long.BYTES) {
             buffer.getByteBuffer().putLong(index, value);
         } else if (referenceSize() == Integer.BYTES) {
-            buffer.getByteBuffer().putInt(index, NumUtil.safeToInt(value));
+            buffer.getByteBuffer().putInt(index, NumUtil.safeToUInt(value));
         } else {
             throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
         }

@@ -158,7 +158,7 @@ public class ChunkedImageHeapLayouter implements ImageHeapLayouter {
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             partition.layout(allocator);
         }
-        return populateInfoObjects(imageHeap.countDynamicHubs(), pageSize);
+        return populateInfoObjects(imageHeap.countAndVerifyDynamicHubs(), pageSize);
     }
 
     private ImageHeapLayoutInfo populateInfoObjects(int dynamicHubCount, int pageSize) {
