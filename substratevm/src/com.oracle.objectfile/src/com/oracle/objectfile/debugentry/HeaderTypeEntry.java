@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,28 +26,14 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugHeaderTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-
-import jdk.graal.compiler.debug.DebugContext;
-
 public class HeaderTypeEntry extends StructureTypeEntry {
 
-    public HeaderTypeEntry(String typeName, int size) {
-        super(typeName, size);
+    public HeaderTypeEntry(String typeName, int size, long typeSignature) {
+        super(typeName, size, -1, typeSignature, typeSignature, typeSignature);
     }
 
     @Override
-    public DebugTypeKind typeKind() {
-        return DebugTypeKind.HEADER;
-    }
-
-    @Override
-    public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        super.addDebugInfo(debugInfoBase, debugTypeInfo, debugContext);
-        assert debugTypeInfo.typeName().equals(typeName);
-        DebugHeaderTypeInfo debugHeaderTypeInfo = (DebugHeaderTypeInfo) debugTypeInfo;
-        debugHeaderTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
+    public boolean isHeader() {
+        return true;
     }
 }
