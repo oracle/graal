@@ -7,7 +7,10 @@ import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.interpreter.TransferFunction;
 
-// TODO: we should see some short output what holds after rootCall
+/**
+ * Base class for call handlers.
+ * @param <Domain> the type of the abstract domain used for the analysis.
+ */
 public abstract class BaseCallHandler<Domain extends AbstractDomain<Domain>> implements CallHandler<Domain> {
 
     protected final Domain initialDomain;

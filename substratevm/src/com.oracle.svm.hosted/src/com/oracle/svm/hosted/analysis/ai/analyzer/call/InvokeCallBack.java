@@ -7,7 +7,7 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
 @FunctionalInterface
-public interface CallCallback<Domain extends AbstractDomain<Domain>> {
-    
+public interface InvokeCallBack<Domain extends AbstractDomain<Domain>> {
+
     AnalysisOutcome<Domain> handleCall(Invoke invoke, Node node, AbstractStateMap<Domain> abstractStateMap);
 }

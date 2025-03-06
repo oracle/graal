@@ -24,7 +24,6 @@ import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -72,30 +71,27 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
                                               AbstractStateMap<Domain> callerStateMap) {
 
         AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance();
-        logger.logToFile("InterProceduralCallHandler::execInvoke invokeNode: " + invoke + " with arguments: " + invoke.callTarget().arguments());
-        logger.logToFile("InterProceduralCallHandler::execInvoke params: " + Arrays.toString(invoke.getTargetMethod().getParameters()));
-
         String calleeName = invoke.callTarget().targetName();
-        AnalysisMethod analysisMethod;
         DebugContext debug = invokeNode.getDebug();
+        AnalysisMethod analysisMethod;
 
         try {
             analysisMethod = GraphUtils.getInvokeAnalysisMethod(callStack.getCurrentAnalysisMethod(), invoke);
         } catch (Exception e) {
             /* For some reason we are not able to get the AnalysisMethod of the Invoke */
-            logger.logToFile("Could not get the target analysis analysisMethod for invoke: " + invoke);
-            return AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
+            AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.UNKNOWN_METHOD);
+            logger.logDebugError(outcome.toString());
+            return outcome;
         }
 
         if (methodFilterManager.shouldSkipMethod(analysisMethod)) {
-            return AnalysisOutcome.error(AnalysisResult.IN_SKIP_LIST);
+            AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.IN_SKIP_LIST);
+            logger.logDebugError(outcome.toString());
+            return outcome;
         }
 
-        // TODO: think if passing nodeInterpreter to summaryFactory would be better
         List<Domain> actualArgs = convertActualArgs(invoke, callerStateMap);
         Summary<Domain> summary = summaryManager.createSummary(invoke, callerStateMap.getPreCondition(invokeNode), actualArgs);
-        logger.logHighlightedDebugInfo("Analyzing AnalysisMethod: " + analysisMethod.getQualifiedName());
-
         /* If the summaryCache contains the summary for the target analysisMethod, we return it */
         if (summaryManager.containsSummaryForResolvedJavaName(calleeName, summary)) {
             logger.logToFile("Summary cache contains targetMethod: " + calleeName);
@@ -105,36 +101,41 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         }
 
         /* At this point we know that we don't have a complete summary for this analysisMethod, therefore we must compute it.
-         * However, we need to check if we have surpassed our recursion limit */
+         * However, we need to check if we have reached our recursion limit */
         if (callStack.countRecursiveCalls(analysisMethod) > callStack.getMaxRecursionDepth()) {
-            logger.logToFile("Recursion limit reached for analysisMethod: " + calleeName + " clearing the call stack");
+            AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
+            logger.logDebugError(outcome.toString());
             callStack.pop();
-            return AnalysisOutcome.error(AnalysisResult.RECURSION_LIMIT_OVERFLOW);
+            return outcome;
         }
 
-        /* Push the analysisMethod to the call stack */
-        callStack.push(analysisMethod);
-        logger.logToFile("Call stack: " + callStack);
+        if (callStack.containsMethod(analysisMethod)) {
+            AnalysisOutcome<Domain> outcome = AnalysisOutcome.error(AnalysisResult.MUTUAL_RECURSION_CYCLE);
+            logger.logDebugError(outcome.toString());
+            return outcome;
+        }
 
+        callStack.push(analysisMethod);
         /* Create new fixpoint iterator for the target analysisMethod and run the fixpoint iteration */
         FixpointIterator<Domain> fixpointIterator = FixpointIteratorFactory.createIterator(analysisMethod, debug, summary.getPreCondition(), transferFunction, iteratorPayload);
+        logger.logHighlightedDebugInfo("Running fixpoint iteration on: " + analysisMethod.getQualifiedName());
+        logger.logHighlightedDebugInfo("The current call stack: " + callStack);
         AbstractStateMap<Domain> invokeAbstractStateMap = fixpointIterator.iterateUntilFixpoint();
+
         AbstractState<Domain> returnAbstractState = invokeAbstractStateMap.getReturnState();
-
-//        logger.logToFile("Analyzing AnalysisMethod [" + calleeName + "] finished with abstract context: " + System.lineSeparator() + returnAbstractState.toString());
-
-        /* Update the summary in the cache and apply it */
-        summary.finalizeSummary(returnAbstractState.getPostCondition());
+        summary.finalizeSummary(returnAbstractState.getPostCondition()); /* Update the summary in the cache and apply it */
         summaryManager.putSummary(calleeName, summary);
         callStack.pop();
 
-        String qualifiedName = analysisMethod.getQualifiedName();
+        logger.logHighlightedDebugInfo("Fixpoint iteration on: " + analysisMethod.getQualifiedName() + " finished with abstract context: ");
+        logger.logDebugInfo(returnAbstractState.getPostCondition().toString());
+        logger.logHighlightedDebugInfo("The summary pre-condition");
+        logger.logDebugInfo(summary.getPreCondition().toString());
+        logger.logHighlightedDebugInfo("The summary post-condition");
+        logger.logDebugInfo(summary.getPostCondition().toString());
         GraphUtils.printInferredGraph(iteratorPayload.getMethodGraph().get(analysisMethod).graph, analysisMethod, invokeAbstractStateMap);
-
         checkerManager.checkAll(calleeName, callerStateMap);
-        invoke.getTargetMethod().getName();
-        // TODO: this checking is kinda awkward at the end
-        logger.logToFile("Checker results for analysisMethod " + qualifiedName + ": " + System.lineSeparator());
+
         return new AnalysisOutcome<>(AnalysisResult.OK, summary);
     }
 
@@ -155,7 +156,6 @@ public final class InterProceduralCallHandler<Domain extends AbstractDomain<Doma
         for (Node argument : invoke.callTarget().arguments()) {
             result.add(transferFunction.analyzeNode(argument, callerStateMap));
         }
-
         return result;
     }
 }
