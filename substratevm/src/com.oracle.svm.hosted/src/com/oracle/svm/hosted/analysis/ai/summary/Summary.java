@@ -1,7 +1,6 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
@@ -17,6 +16,33 @@ import jdk.graal.compiler.nodes.Invoke;
  * @param <Domain> type of the derived {@link AbstractDomain} used in abstract interpretation
  */
 public interface Summary<Domain extends AbstractDomain<Domain>> {
+
+    /**
+     * Gets the invokeNode of the analysisMethod that this summary represents.
+     * @return the invokeNode of the analysisMethod
+     */
+    Invoke getInvoke();
+
+    /**
+     * Returns the pre-condition of the summary.
+     * Pre-condition of a summary is the abstract context before the method body is executed.
+     * NOTE:
+     *      This doesn't have to be the same as the abstract context at the invocation point.
+     *      {@link SummaryFactory} implementations can choose only the relevant information from the abstract context
+     *      and create a summary pre-condition. This is done to reduce the size of the summary.
+     *
+     * @return the pre-condition of the summary
+     */
+    Domain getPreCondition();
+
+    /**
+     * Returns the post-condition of the summary.
+     * NOTE:
+     *      Same as in {@code getPreCondition}, this doesn't have to be the same as the abstract context at the return point.
+     *      We can remove information that won't be needed in applySummary (in the caller abstract context).
+     * @return the post-condition of the summary
+     */
+    Domain getPostCondition();
 
     /**
      * Checks if this summary covers the other summary.
@@ -35,11 +61,11 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
 
     /**
      * This analysisMethod is called by the framework after the fixpoint computation of the analysisMethod body.
-     * It should finalize the summary by setting the post-condition of the summary.
+     * It should finalize the summary by correctly modifying the post-condition of the summary.
      *
-     * @param postCondition the post-condition of the analysisMethod body
+     * @param calleePostCondition the post-condition of the analysisMethod body
      */
-    void finalizeSummary(Domain postCondition);
+    void finalizeSummary(Domain calleePostCondition);
 
     /**
      * This analysisMethod ensures that the analysis is inter-procedural.
@@ -50,13 +76,7 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
      *
      * @param invoke of the invokeNode
      * @param invokeNode the invoke node that we are applying the summary to
-     * @param callerStateMap the state map of the caller
+     * @param callerPreCondition the abstract context of the caller at the invocation site
      */
-    void applySummary(Invoke invoke, Node invokeNode, AbstractStateMap<Domain> callerStateMap);
-
-    /**
-     * All summaries should be able to be represented as a string.
-     * @return a string representation of the summary
-     */
-    String toString();
+    Domain applySummary(Invoke invoke, Node invokeNode, Domain callerPreCondition);
 }

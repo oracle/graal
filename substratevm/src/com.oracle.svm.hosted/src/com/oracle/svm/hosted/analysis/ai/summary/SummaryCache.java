@@ -16,12 +16,13 @@ import java.util.Map;
  */
 public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
 
+    // FIXME: probably don't use String here, but some kind of ResolvedJavaMethod
     private final Map<String, List<Summary<Domain>>> cache = new HashMap<>();
     private int cacheCalls = 0;
     private int cacheHits = 0;
 
     /**
-     * Gets the complete summary of the function with the given target name and summary precondition.
+     * Gets the complete summary of the {@param calleeName} with the given target name and summary precondition.
      * NOTE:
      *      If we want to get a complete summary, we first should call {@link #contains(String, Summary)}
      *      When there are multiple summaries that are subsuming {@param summaryPrecondition}, we should return the most general one.
@@ -29,14 +30,14 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
      *      or we can take all the subsuming summaries, perform some kind of merge
      *      (would require meet operation in {@link Summary} api) and return the result.
      *
-     * @param targetName          the name of the function
-     * @param summaryPrecondition the precondition of the function
+     * @param calleeName          the name of the callee
+     * @param summaryPrecondition the precondition of the callee
      * @return the summary for targetName with given summaryPrecondition
      */
-    public Summary<Domain> getSummary(String targetName, Summary<Domain> summaryPrecondition) {
+    public Summary<Domain> getSummary(String calleeName, Summary<Domain> summaryPrecondition) {
         Summary<Domain> mostGeneralSummary = null;
 
-        for (Summary<Domain> existingSummary : cache.get(targetName)) {
+        for (Summary<Domain> existingSummary : cache.get(calleeName)) {
             if (existingSummary.subsumes(summaryPrecondition)) {
                 if (mostGeneralSummary == null ||
                         existingSummary.subsumes(mostGeneralSummary)) {
@@ -61,15 +62,15 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Checks if the cache contains a summary for the given target name and precondition.
+     * Checks if the cache contains a summary for the given {@param calleeName} and precondition.
      *
-     * @param targetName          the name of the function
-     * @param summaryPrecondition the precondition of the function
+     * @param calleeName          the name of the function
+     * @param summaryPrecondition the precondition of the callee
      * @return true if the cache contains the summary, false otherwise
      */
-    public boolean contains(String targetName, Summary<Domain> summaryPrecondition) {
+    public boolean contains(String calleeName, Summary<Domain> summaryPrecondition) {
         cacheCalls++;
-        List<Summary<Domain>> summaries = cache.get(targetName);
+        List<Summary<Domain>> summaries = cache.get(calleeName);
         if (summaries != null) {
             for (Summary<Domain> summary : summaries) {
                 if (summary.subsumes(summaryPrecondition)) {
@@ -82,22 +83,27 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Puts a summary into the cache.
+     * Puts a summary for a callee into the cache.
      * The summary should be complete, meaning it has a computed post-condition.
      *
-     * @param targetName the name of the function
+     * @param calleeName the name of the callee
      * @param summary    the summary to put
      */
-    public void put(String targetName, Summary<Domain> summary) {
-        cache.computeIfAbsent(targetName, k -> new ArrayList<>()).add(summary);
+    public void put(String calleeName, Summary<Domain> summary) {
+        cache.computeIfAbsent(calleeName, k -> new ArrayList<>()).add(summary);
     }
 
     @Override
     public String toString() {
-        return "SummaryCache{" +
-                "cache=" + cache +
-                ", cacheCalls=" + cacheCalls +
-                ", cacheHits=" + cacheHits +
-                '}';
+        StringBuilder sb = new StringBuilder();
+        for (var entry : cache.entrySet()) {
+            sb.append(entry.getKey()).append(System.lineSeparator());
+            for (var summary : entry.getValue()) {
+                sb.append(summary.toString()).append(System.lineSeparator());
+            }
+
+            sb.append(System.lineSeparator());
+        }
+        return sb.toString();
     }
 }
