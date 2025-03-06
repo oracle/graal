@@ -497,6 +497,8 @@ def gate_truffle_jvm(tasks):
         additional_jvm_args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+UseJVMCINativeLibrary', '-XX:-UnlockExperimentalVMOptions']
     else:
         additional_jvm_args = []
+    # GR-62632: Debug VM exception translation failure
+    additional_jvm_args += ['-Djdk.internal.vm.TranslatedException.debug=true']
     with Task('Truffle ModulePath Unit Tests Optimized', tasks, tags=TruffleGateTags.truffle_jvm) as t:
         if t:
             truffle_jvm_module_path_optimized_unit_tests_gate(additional_jvm_args)
