@@ -5,11 +5,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
-/*
-    Represents a set of elements in the abstract domain.
+/**
+ * Represents an AbstractValue that contains a set of elements
+ *
+ * @param <Element> type of the elements in the set
  */
-public final class SetValue<Element>
-        implements AbstractValue<SetValue<Element>> {
+public final class SetValue<Element> implements AbstractValue<SetValue<Element>> {
 
     private final HashSet<Element> set;
 

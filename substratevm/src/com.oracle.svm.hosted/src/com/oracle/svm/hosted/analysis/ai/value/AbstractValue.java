@@ -7,7 +7,6 @@ package com.oracle.svm.hosted.analysis.ai.value;
  *
  * @param <Derived> the type of the derived value
  */
-
 public interface AbstractValue<Derived extends AbstractValue<Derived>> {
 
     /**

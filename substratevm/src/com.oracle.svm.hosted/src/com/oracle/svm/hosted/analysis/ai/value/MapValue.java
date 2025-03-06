@@ -93,6 +93,10 @@ public final class MapValue<
 
     @Override
     public String toString() {
+        if (map.isEmpty()) {
+            return "{}";
+        }
+
         return map.entrySet()
                 .stream()
                 .map(entry -> entry.getKey() + " : " + entry.getValue())
