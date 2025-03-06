@@ -19,7 +19,7 @@ import java.util.Map;
 public final class IteratorPayload {
 
     private final IteratorPolicy iteratorPolicy;
-
+    
     /* AnalysisMethod to the corresponding control flow graph mapping -> to avoid getting the cfg on every fixpoint creation */
     private final Map<AnalysisMethod, ControlFlowGraph> methodGraphMap = new HashMap<>();
 

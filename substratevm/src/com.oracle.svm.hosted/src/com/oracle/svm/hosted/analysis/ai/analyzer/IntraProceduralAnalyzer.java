@@ -5,10 +5,7 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.call.IntraProceduralCallHandle
 import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
 import jdk.graal.compiler.debug.DebugContext;
-
-import java.io.IOException;
 
 /**
  * An intra-procedural analyzer that performs an intra-procedural analysis on the given method.
@@ -21,16 +18,10 @@ public final class IntraProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     }
 
     @Override
-    public void analyzeMethod(AnalysisMethod method, DebugContext debug) throws IOException {
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(method, debug, null);
-
+    public void analyzeMethod(AnalysisMethod method, DebugContext debug) {
         IteratorPayload iteratorPayload = new IteratorPayload(iteratorPolicy);
         IntraProceduralCallHandler<Domain> callHandler = new IntraProceduralCallHandler<>(initialDomain, nodeInterpreter, checkerManager, methodFilterManager, iteratorPayload);
-
-        logger.logHighlightedDebugInfo("Running intra-procedural analysis");
         callHandler.handleRootCall(method, debug);
-
-        logger.logHighlightedDebugInfo("Analysis finished, you can see the analysis output at " + logger.fileName());
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {

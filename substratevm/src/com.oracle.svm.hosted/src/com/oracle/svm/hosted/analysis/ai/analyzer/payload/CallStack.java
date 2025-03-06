@@ -6,11 +6,9 @@ import java.util.Deque;
 import java.util.LinkedList;
 
 /**
- * Represents a call stack used to manage stack frames during execution or analysis processes.
- * This class provides functionality to push, pop, and query stack records. It also manages
- * recursion depth and provides mechanisms to count recursive invocations of specified methods.
- * Instances of this class are immutable with respect to their maximum recursion depth.
+ * Represents a call stack used to keep track and manage invoked methods during analysis.
  */
+// TODO: analysisMethod probably is too broad, we can have like resolvedJavaMethod or something lighter
 public final class CallStack {
 
     private final Deque<AnalysisMethod> callStack = new LinkedList<>();
@@ -55,6 +53,41 @@ public final class CallStack {
             }
         }
         return count;
+    }
+
+    public boolean containsMethod(AnalysisMethod method) {
+        return callStack.contains(method);
+    }
+
+    public String formatCycleWithMethod(AnalysisMethod method) {
+        StringBuilder sb = new StringBuilder();
+        int index = 0;
+        AnalysisMethod firstOccurrence = null;
+
+        for (AnalysisMethod callStackMethod : callStack) {
+            if (callStackMethod.equals(method)) {
+                firstOccurrence = callStackMethod;
+                break;
+            }
+            index++;
+        }
+
+        if (firstOccurrence != null) {
+            // Format the cycle path
+            int count = 0;
+            for (AnalysisMethod callStackMethod : callStack) {
+                if (count >= index) {
+                    sb.append(callStackMethod.getQualifiedName());
+                    sb.append(" → ");
+                }
+                count++;
+            }
+            sb.append(method.getQualifiedName());
+        } else {
+            sb.append("Unknown cycle with ").append(method.getQualifiedName());
+        }
+
+        return sb.toString();
     }
 
     @Override

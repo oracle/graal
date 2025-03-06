@@ -6,11 +6,8 @@ import com.oracle.svm.hosted.analysis.ai.analyzer.payload.IteratorPayload;
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
 import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import com.oracle.svm.hosted.analysis.ai.summary.SummaryFactory;
-import com.oracle.svm.hosted.analysis.ai.util.AbstractInterpretationLogger;
 import com.oracle.svm.hosted.analysis.ai.util.InterAnalysisConstants;
 import jdk.graal.compiler.debug.DebugContext;
-
-import java.io.IOException;
 
 /**
  * An inter-procedural analyzer that performs an inter-procedural analysis on the given method.
@@ -28,16 +25,10 @@ public final class InterProceduralAnalyzer<Domain extends AbstractDomain<Domain>
     }
 
     @Override
-    public void analyzeMethod(AnalysisMethod method, DebugContext debug) throws IOException {
-        AbstractInterpretationLogger logger = AbstractInterpretationLogger.getInstance(method, debug, null);
-        logger.logHighlightedDebugInfo("Inter Procedural Analyzer running on analysisMethod: " + method.toString());
-
+    public void analyzeMethod(AnalysisMethod method, DebugContext debug) {
         IteratorPayload iteratorPayload = new IteratorPayload(iteratorPolicy);
         InterProceduralCallHandler<Domain> callHandler = new InterProceduralCallHandler<>(initialDomain, nodeInterpreter, checkerManager, methodFilterManager, iteratorPayload, summaryFactory, maxRecursionDepth);
         callHandler.handleRootCall(method, debug);
-
-        logger.logHighlightedDebugInfo("The computed summaries are: ");
-        logger.logDebugInfo(callHandler.getSummaryCache().toString());
     }
 
     public static class Builder<Domain extends AbstractDomain<Domain>> extends Analyzer.Builder<Builder<Domain>, Domain> {
