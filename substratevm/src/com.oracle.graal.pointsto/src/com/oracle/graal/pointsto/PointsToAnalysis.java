@@ -145,8 +145,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             PointsToStats.init(this);
         }
 
-        unsafeLoads = new ConcurrentHashMap<>();
-        unsafeStores = new ConcurrentHashMap<>();
+        unsafeLoads = analysisPolicy.useConservativeUnsafeAccess() ? null : new ConcurrentHashMap<>();
+        unsafeStores = analysisPolicy.useConservativeUnsafeAccess() ? null : new ConcurrentHashMap<>();
 
         timing = PointstoOptions.ProfileAnalysisOperations.getValue(options) ? new AnalysisTiming() : null;
         executor.init(timing);
@@ -216,6 +216,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      *            unsafe access flows that need to be updated.
      */
     public void forceUnsafeUpdate(AnalysisField field) {
+        if (analysisPolicy.useConservativeUnsafeAccess()) {
+            return;
+        }
         /*
          * It is cheaper to post the flows of all loads and stores even if they are not related to
          * the provided field.

@@ -69,6 +69,7 @@ public abstract class AnalysisPolicy {
     protected final boolean limitObjectArrayLength;
     protected final int maxObjectSetSize;
     protected final boolean hybridStaticContext;
+    protected final boolean useConservativeUnsafeAccess;
 
     public AnalysisPolicy(OptionValues options) {
         this.options = options;
@@ -82,6 +83,7 @@ public abstract class AnalysisPolicy {
         limitObjectArrayLength = PointstoOptions.LimitObjectArrayLength.getValue(options);
         maxObjectSetSize = PointstoOptions.MaxObjectSetSize.getValue(options);
         hybridStaticContext = PointstoOptions.HybridStaticContext.getValue(options);
+        useConservativeUnsafeAccess = PointstoOptions.UseConservativeUnsafeAccess.getValue(options);
     }
 
     public abstract boolean isContextSensitiveAnalysis();
@@ -116,6 +118,10 @@ public abstract class AnalysisPolicy {
 
     public boolean useHybridStaticContext() {
         return hybridStaticContext;
+    }
+
+    public boolean useConservativeUnsafeAccess() {
+        return useConservativeUnsafeAccess;
     }
 
     public abstract MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method);
