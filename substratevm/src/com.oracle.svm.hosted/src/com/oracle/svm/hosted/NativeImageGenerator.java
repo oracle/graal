@@ -71,9 +71,12 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 import org.graalvm.nativeimage.impl.CConstantValueSupport;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.SizeOfSupport;
 import org.graalvm.word.PointerBase;
 
@@ -1076,6 +1079,14 @@ public class NativeImageGenerator {
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
 
                 loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(cls -> bb.registerTypeForBaseImage(cls));
+
+                var runtimeReflection = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+                loader.classLoaderSupport.getClassesToPreserve().parallel()
+                                .filter(ClassInclusionPolicy::isClassIncludedBase)
+                                .forEach(c -> runtimeReflection.registerClassFully(ConfigurationCondition.alwaysTrue(), c));
+                for (String className : loader.classLoaderSupport.getClassNamesToPreserve()) {
+                    RuntimeReflection.registerClassLookup(className);
+                }
 
                 registerEntryPointStubs(entryPoints);
             }

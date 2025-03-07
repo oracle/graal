@@ -152,6 +152,7 @@ public class JDKInitializationFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.security.sasl", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("java.security", JDK_CLASS_REASON);
+        rci.initializeAtRunTime("sun.security.pkcs11.P11Util", "Cleaner reference");
 
         rci.initializeAtBuildTime("javax.crypto", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.security.auth", JDK_CLASS_REASON);

@@ -238,10 +238,12 @@ class NativeImageBenchmarkConfig:
             base_image_build_args += ['--gc=' + vm.gc] + ['-H:+SpawnIsolates']
         if vm.native_architecture:
             base_image_build_args += ['-march=native']
+        if vm.preserve_all:
+            base_image_build_args += ['-H:Preserve=all']
+        if vm.preserve_classpath:
+            base_image_build_args += ['-H:Preserve=module=ALL-UNNAMED']
         if vm.analysis_context_sensitivity:
             base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
-        if vm.no_inlining_before_analysis:
-            base_image_build_args += ['-H:-InlineBeforeAnalysis']
         if vm.optimization_level:
             base_image_build_args += ['-' + vm.optimization_level]
         if vm.async_sampler:
@@ -530,6 +532,8 @@ class NativeImageVM(GraalVm):
         self.is_llvm = False
         self.gc = None
         self.native_architecture = False
+        self.preserve_all = False
+        self.preserve_classpath = False
         self.use_upx = False
         self.use_open_type_world = False
         self.use_compacting_gc = False
@@ -545,7 +549,6 @@ class NativeImageVM(GraalVm):
         self.force_profile_inference = False
         self.profile_inference_debug = False
         self.analysis_context_sensitivity = None
-        self.no_inlining_before_analysis = False
         self.optimization_level = None
         self._configure_comma_separated_configs(config_name)
         if ',' in config_name:
@@ -567,6 +570,10 @@ class NativeImageVM(GraalVm):
         config = []
         if self.native_architecture is True:
             config += ["native-architecture"]
+        if self.preserve_all is True:
+            config += ["preserve-all"]
+        if self.preserve_classpath is True:
+            config += ["preserve-classpath"]
         if self.use_string_inlining is True:
             config += ["string-inlining"]
         if self.use_open_type_world is True:
@@ -601,8 +608,6 @@ class NativeImageVM(GraalVm):
             if sensitivity.startswith("_"):
                 sensitivity = sensitivity[1:]
             config += [sensitivity]
-        if self.no_inlining_before_analysis is True:
-            config += ["no-inline"]
         if self.jdk_profiles_collect is True:
             config += ["jdk-profiles-collect"]
         if self.adopted_jdk_pgo is True:
@@ -638,7 +643,8 @@ class NativeImageVM(GraalVm):
             mx.abort(f"config_name must be set. Use 'default' for the default {self.__class__.__name__} configuration.")
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<otw>otw-)?(?P<compacting_gc>compacting-gc-)?(?P<preserve_all>preserve-all-)?(?P<preserve_classpath>preserve-classpath-)?' \
+               r'(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?' \
                r'(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-sampler-)?(?P<inliner>inline-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-|profile-inference-pgo-|profile-inference-debug-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-|Os-)?(default-)?(?P<edition>ce-|ee-)?$'
@@ -652,6 +658,14 @@ class NativeImageVM(GraalVm):
         if matching.group("native_architecture") is not None:
             mx.logv(f"'native-architecture' is enabled for {config_name}")
             self.native_architecture = True
+
+        if matching.group("preserve_all") is not None:
+            mx.logv(f"'preserve-all' is enabled for {config_name}")
+            self.preserve_all = True
+
+        if matching.group("preserve_classpath") is not None:
+            mx.logv(f"'preserve-classpath' is enabled for {config_name}")
+            self.preserve_classpath = True
 
         if matching.group("string_inlining") is not None:
             mx.logv(f"'string-inlining' is enabled for {config_name}")
@@ -787,14 +801,6 @@ class NativeImageVM(GraalVm):
                 self.optimization_level = olevel
             else:
                 mx.abort(f"Unknown configuration for optimization level: {olevel}")
-
-        if matching.group("no_inlining_before_analysis") is not None:
-            option = matching.group("no_inlining_before_analysis")[:-1]
-            if option == "no-inline":
-                mx.logv(f"not doing inlining before analysis for {config_name}")
-                self.no_inlining_before_analysis = True
-            else:
-                mx.abort(f"Unknown configuration for no inlining before analysis: {option}")
 
         if matching.group("analysis_context_sensitivity") is not None:
             context_sensitivity = matching.group("analysis_context_sensitivity")[:-1]
@@ -1936,18 +1942,15 @@ def register_graalvm_vms():
             mx_polybenchmarks_benchmark.rules = polybenchmark_rules
 
     optimization_levels = ['O0', 'O1', 'O2', 'O3', 'Os']
-
-    # Inlining before analysis is done by default
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
-    analysis_context_sensitivity_no_inline = [f"{analysis_component}-no-inline" for analysis_component in analysis_context_sensitivity]
 
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
                 final_config_name = f'{main_config}-{config_suffix}'
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name, ['--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED']), _suite, 10)
                 # ' '  force the empty O<> configs as well
-            for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', ''] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
+            for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', 'preserve-all', 'preserve-classpath'] + analysis_context_sensitivity:
                 for optimization_level in optimization_levels:
                     if len(main_config) > 0:
                         final_config_name = f'{main_config}-{optimization_level}-{config_suffix}'

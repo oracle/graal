@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,23 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
+import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
+import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
+
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // needed as reflection-specific ImageSingletons key
     void registerAllMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
 
     void registerAllDeclaredMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
 
-    void registerAllFieldsQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllFields(ConfigurationCondition condition, Class<?> clazz);
 
-    void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz);
+    void registerAllDeclaredFields(ConfigurationCondition condition, Class<?> clazz);
 
     void registerAllConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
 
@@ -67,4 +75,49 @@ public interface RuntimeReflectionSupport extends ReflectionRegistry {
     void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz);
 
     void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t);
+
+    default void registerClassFully(ConfigurationCondition condition, Class<?> clazz) {
+        boolean unsafeAllocated = !(clazz.isArray() || clazz.isInterface() || clazz.isPrimitive() || Modifier.isAbstract(clazz.getModifiers()));
+        register(condition, unsafeAllocated, clazz);
+
+        // GR-62143 Register all fields is very slow.
+        // registerAllDeclaredFields(condition, clazz);
+        // registerAllFields(condition, clazz);
+        registerAllDeclaredMethodsQuery(condition, false, clazz);
+        registerAllMethodsQuery(condition, false, clazz);
+        registerAllDeclaredConstructorsQuery(condition, false, clazz);
+        registerAllConstructorsQuery(condition, false, clazz);
+        registerAllClassesQuery(condition, clazz);
+        registerAllDeclaredClassesQuery(condition, clazz);
+        registerAllNestMembersQuery(condition, clazz);
+        registerAllPermittedSubclassesQuery(condition, clazz);
+        registerAllRecordComponentsQuery(condition, clazz);
+        registerAllSignersQuery(condition, clazz);
+
+        /* Register every single-interface proxy */
+        // GR-62293 can't register proxies from jdk modules.
+        if (clazz.getModule() == null && clazz.isInterface()) {
+            RuntimeProxyCreation.register(clazz);
+        }
+
+        RuntimeJNIAccess.register(clazz);
+        try {
+            for (Method declaredMethod : clazz.getDeclaredMethods()) {
+                RuntimeJNIAccess.register(declaredMethod);
+            }
+            for (Constructor<?> declaredConstructor : clazz.getDeclaredConstructors()) {
+                RuntimeJNIAccess.register(declaredConstructor);
+            }
+            for (Field declaredField : clazz.getDeclaredFields()) {
+                RuntimeJNIAccess.register(declaredField);
+                // GR-62143 Registering all fields is very slow.
+                // RuntimeReflection.register(declaredField);
+            }
+        } catch (LinkageError e) {
+            /* If we can't link we can not register for JNI */
+        }
+
+        // GR-62143 Registering all fields is very slow.
+        // RuntimeSerialization.register(clazz);
+    }
 }

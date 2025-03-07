@@ -530,7 +530,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllFieldsQuery(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAllFields(ConfigurationCondition condition, Class<?> clazz) {
         registerAllFieldsQuery(condition, false, clazz);
     }
 
@@ -549,7 +549,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz) {
+    public void registerAllDeclaredFields(ConfigurationCondition condition, Class<?> clazz) {
         registerAllDeclaredFieldsQuery(condition, false, clazz);
     }
 
@@ -582,13 +582,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         boolean exists = classFields.containsKey(analysisField);
         boolean shouldRegisterReachabilityHandler = classFields.isEmpty();
         var cndValue = classFields.computeIfAbsent(analysisField, f -> new ConditionalRuntimeValue<>(RuntimeConditionSet.emptySet(), reflectField));
-        if (!queriedOnly) {
-            /* queryOnly methods are conditioned by the type itself */
-            cndValue.getConditions().addCondition(cnd);
-        }
-
         if (!exists) {
-            registerTypesForField(analysisField, reflectField, true);
+            registerTypesForField(analysisField, reflectField, queriedOnly);
 
             /*
              * The image needs to know about subtypes shadowing fields registered for reflection to
@@ -620,6 +615,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * registered as queried.
          */
         if (!queriedOnly) {
+            /* queryOnly methods are conditioned on the type itself */
+            cndValue.getConditions().addCondition(cnd);
             registerTypesForField(analysisField, reflectField, false);
         }
     }
@@ -1067,11 +1064,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private static <T> T queryGenericInfo(Callable<T> callable) {
         try {
             return callable.call();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError e) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError | AssertionError e) {
             /* These are rethrown at run time, so we can simply ignore them when querying. */
             return null;
         } catch (Throwable t) {
-            throw VMError.shouldNotReachHere(t);
+            throw VMError.shouldNotReachHere(callable.toString(), t);
         }
     }
 
@@ -1327,7 +1324,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public int getReflectionMethodsCount() {
-        return registeredMethods.size();
+        return registeredMethods.values().stream()
+                        .map(Map::size)
+                        .reduce(0, Integer::sum);
     }
 
     @Override

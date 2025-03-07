@@ -43,17 +43,13 @@ import com.oracle.svm.util.LogUtils;
 
 public class LayerArchiveSupport {
 
-    protected static final String MODULE_OPTION = "module";
-    public static final String PACKAGE_OPTION = "package";
-    protected static final String PATH_OPTION = "path";
-
     private static final int LAYER_FILE_FORMAT_VERSION_MAJOR = 0;
     private static final int LAYER_FILE_FORMAT_VERSION_MINOR = 1;
 
     protected static final String LAYER_INFO_MESSAGE_PREFIX = "Native Image Layers";
     protected static final String LAYER_TEMP_DIR_PREFIX = "layerRoot-";
 
-    protected static final String LAYER_FILE_EXTENSION = ".nil";
+    public static final String LAYER_FILE_EXTENSION = ".nil";
 
     protected final LayerProperties layerProperties;
     protected final ArchiveSupport archiveSupport;
