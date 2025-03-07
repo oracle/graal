@@ -37,13 +37,14 @@ import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.imagelayer.CrossLayerConstantRegistry;
-import com.oracle.svm.hosted.imagelayer.ObjectToConstantFieldValueTransformer;
+import com.oracle.svm.core.fieldvaluetransformer.ObjectToConstantFieldValueTransformer;
 import com.oracle.svm.hosted.jdk.HostedClassLoaderPackageManagement;
 import com.oracle.svm.util.ReflectionUtil;
 
 import org.graalvm.nativeimage.libgraal.LibGraalLoader;
 import jdk.internal.loader.ClassLoaders;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @AutomaticallyRegisteredFeature
 public class ClassLoaderFeature implements InternalFeature {
@@ -217,7 +218,7 @@ public class ClassLoaderFeature implements InternalFeature {
         final CrossLayerConstantRegistry registry = CrossLayerConstantRegistry.singletonOrNull();
 
         @Override
-        public JavaConstant transformToConstant(Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant) {
+        public JavaConstant transformToConstant(ResolvedJavaField field, Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant) {
             if (receiver == nativeImageSystemClassLoader.defaultSystemClassLoader) {
                 /*
                  * This map will be assigned within the application layer. Within this layer we

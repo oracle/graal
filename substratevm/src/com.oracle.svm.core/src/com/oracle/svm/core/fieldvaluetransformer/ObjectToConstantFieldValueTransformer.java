@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.imagelayer;
+package com.oracle.svm.core.fieldvaluetransformer;
 
 import java.util.function.Function;
 
-import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Special field value transformer which, instead of returning an object, returns an
@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public interface ObjectToConstantFieldValueTransformer extends FieldValueTransformerWithAvailability {
 
-    JavaConstant transformToConstant(Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant);
+    JavaConstant transformToConstant(ResolvedJavaField field, Object receiver, Object originalValue, Function<Object, JavaConstant> toConstant);
 
     @Override
     default Object transform(Object receiver, Object originalValue) {

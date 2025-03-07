@@ -51,8 +51,10 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.imagelayer.ImageLayerBuildingSupport;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -169,7 +171,18 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         if (!self.isField() || !self.isStatic()) {
             throw new InternalError("Static field required");
         }
-        return ((Field) self.reflectAccess).getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
+        Field field = (Field) self.reflectAccess;
+        int layerNumber;
+        if (ImageLayerBuildingSupport.buildingImageLayer()) {
+            layerNumber = SubstrateUtil.cast(field, Target_java_lang_reflect_Field.class).installedLayerNumber;
+        } else {
+            layerNumber = MultiLayeredImageSingleton.UNUSED_LAYER_NUMBER;
+        }
+        if (field.getType().isPrimitive()) {
+            return StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(layerNumber);
+        } else {
+            return StaticFieldsSupport.getStaticObjectFieldsAtRuntime(layerNumber);
+        }
     }
 
     @Substitute

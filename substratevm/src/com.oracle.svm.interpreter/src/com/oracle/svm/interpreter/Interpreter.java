@@ -266,6 +266,7 @@ import static com.oracle.svm.interpreter.metadata.Bytecodes.WIDE;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.layeredimagesingleton.MultiLayeredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.interpreter.debug.DebuggerEvents;
 import com.oracle.svm.interpreter.debug.EventKind;
@@ -1450,7 +1451,8 @@ public final class Interpreter {
 
         int slotCount = kind.getSlotCount();
         Object receiver = (opcode == PUTSTATIC)
-                        ? (kind.isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields())
+                        ? (kind.isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
+                                        : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER))
                         : nullCheck(popObject(frame, top - slotCount - 1));
 
         if (field.isStatic()) {
@@ -1493,7 +1495,8 @@ public final class Interpreter {
         assert kind != JavaKind.Illegal;
 
         Object receiver = opcode == GETSTATIC
-                        ? (kind.isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields())
+                        ? (kind.isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER)
+                                        : StaticFieldsSupport.getStaticObjectFieldsAtRuntime(MultiLayeredImageSingleton.UNKNOWN_LAYER_NUMBER))
                         : nullCheck(popObject(frame, top - 1));
 
         if (field.isStatic()) {
