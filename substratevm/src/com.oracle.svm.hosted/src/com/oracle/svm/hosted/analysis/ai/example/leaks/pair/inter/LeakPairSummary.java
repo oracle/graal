@@ -1,43 +1,56 @@
 package com.oracle.svm.hosted.analysis.ai.example.leaks.pair.inter;
 
 import com.oracle.svm.hosted.analysis.ai.domain.BooleanOrDomain;
-import com.oracle.svm.hosted.analysis.ai.domain.CountingDomain;
+import com.oracle.svm.hosted.analysis.ai.domain.CountDomain;
 import com.oracle.svm.hosted.analysis.ai.domain.PairDomain;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractState;
-import com.oracle.svm.hosted.analysis.ai.fixpoint.state.AbstractStateMap;
 import com.oracle.svm.hosted.analysis.ai.summary.Summary;
-import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.nodes.Invoke;
 
-public record LeakPairSummary(int summaryCount,
-                              boolean returnsResource)
-        implements Summary<PairDomain<CountingDomain, BooleanOrDomain>> {
+public class LeakPairSummary implements Summary<PairDomain<CountDomain, BooleanOrDomain>> {
 
-    @Override
-    public PairDomain<CountingDomain, BooleanOrDomain> getPreCondition() {
-        return new PairDomain<>(new CountingDomain(0), new BooleanOrDomain(false));
+    private final PairDomain<CountDomain, BooleanOrDomain> preCondition;
+    private PairDomain<CountDomain, BooleanOrDomain> postCondition;
+    private final Invoke invoke;
+
+    public LeakPairSummary(PairDomain<CountDomain, BooleanOrDomain> preCondition, Invoke invoke) {
+        this.preCondition = preCondition;
+        this.postCondition = this.preCondition.copyOf();
+        this.invoke = invoke;
     }
 
     @Override
-    public PairDomain<CountingDomain, BooleanOrDomain> getPostCondition() {
-        return new PairDomain<>(new CountingDomain(summaryCount), new BooleanOrDomain(returnsResource));
+    public Invoke getInvoke() {
+        return invoke;
     }
 
     @Override
-    public boolean subsumes(Summary<PairDomain<CountingDomain, BooleanOrDomain>> other) {
-        return true;
+    public PairDomain<CountDomain, BooleanOrDomain> getPreCondition() {
+        return preCondition;
     }
 
     @Override
-    public void applySummary(Invoke invoke, Node invokeNode, AbstractStateMap<PairDomain<CountingDomain, BooleanOrDomain>> callerStateMap) {
-        AbstractState<PairDomain<CountingDomain, BooleanOrDomain>> preState = callerStateMap.getState(invokeNode);
-        BooleanOrDomain preReturns = preState.getPreCondition().getSecond().copyOf();
-        CountingDomain newCount = new CountingDomain(preState.getPreCondition().getFirst().getValue() + summaryCount);
-        callerStateMap.setPostCondition(invokeNode, new PairDomain<>(newCount, preReturns));
+    public PairDomain<CountDomain, BooleanOrDomain> getPostCondition() {
+        return postCondition;
     }
 
     @Override
-    public void replaceFormalArgsWithActual(AbstractStateMap<PairDomain<CountingDomain, BooleanOrDomain>> calleeMap) {
-        // NO-OP for this example
+    public boolean subsumes(Summary<PairDomain<CountDomain, BooleanOrDomain>> other) {
+        if (!(other instanceof LeakPairSummary)) {
+            return false;
+        }
+
+        return invoke.getTargetMethod().equals(other.getInvoke().getTargetMethod());
+    }
+
+    @Override
+    public void finalizeSummary(PairDomain<CountDomain, BooleanOrDomain> postCondition) {
+        this.postCondition = postCondition.copyOf();
+    }
+
+    @Override
+    public PairDomain<CountDomain, BooleanOrDomain> applySummary(PairDomain<CountDomain, BooleanOrDomain> callerPreCondition) {
+        int newCount = postCondition.getFirst().getValue() + callerPreCondition.getFirst().getValue();
+        int maxValue = callerPreCondition.getFirst().getMaxValue();
+        return new PairDomain<>(new CountDomain(newCount, maxValue), postCondition.getSecond());
     }
 }
