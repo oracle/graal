@@ -1,25 +1,24 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
-import jdk.graal.compiler.graph.Node;
+import com.oracle.svm.hosted.analysis.ai.interpreter.NodeInterpreter;
 import jdk.graal.compiler.nodes.Invoke;
 
 /**
- * Represents a summary of a analysisMethod, used to avoid reanalyzing the analysisMethod's body at every call site.
+ * Represents a summary of a method. It is used to avoid reanalyzing the method's body at every call site.
+ * For instance when the analysis has already analyzed method foo(), we already know the effects of it, and it is not necessary to reanalyze it.
  * New summaries are created in the provided {@link SummaryFactory} and then checked for subsumption in {@link SummaryCache}.
  * When we are creating a summary, we only know the abstract context at the invocation site, actual + formal parameters and other info from {@link Invoke}
  * Therefore, {@link SummaryFactory} can only create incomplete summaries (summaries only with their pre-condition known). -> check {@link SummaryFactory} docs.
- * After the framework does the necessary fixpoint computation of the analysisMethod body, we know everything to create a complete summary in {@code finalizeSummary}.
- * Calling {@code finalizeSummary} should create the summary post-condition.
- * And for this reason, {@link Summary} implementations should remember both pre-condition and post-condition in their internal structures.
+ * After the framework does the necessary fixpoint computation of the method body, we know everything to create a complete summary in {@code finalizeSummary}.
  *
  * @param <Domain> type of the derived {@link AbstractDomain} used in abstract interpretation
  */
 public interface Summary<Domain extends AbstractDomain<Domain>> {
 
     /**
-     * Gets the invokeNode of the analysisMethod that this summary represents.
-     * @return the invokeNode of the analysisMethod
+     * Gets the invokeNode of the method that this summary represents.
+     * @return the invokeNode of the method
      */
     Invoke getInvoke();
 
@@ -60,7 +59,7 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     boolean subsumes(Summary<Domain> other);
 
     /**
-     * This analysisMethod is called by the framework after the fixpoint computation of the analysisMethod body.
+     * This method is called by the framework after the fixpoint computation of the analysisMethod body.
      * It should finalize the summary by correctly modifying the post-condition of the summary.
      *
      * @param calleePostCondition the post-condition of the analysisMethod body
@@ -68,15 +67,14 @@ public interface Summary<Domain extends AbstractDomain<Domain>> {
     void finalizeSummary(Domain calleePostCondition);
 
     /**
-     * This analysisMethod ensures that the analysis is inter-procedural.
-     * Applies the summary of the callee to the current abstract state of the caller (at the invocation site).
-     * This can be done in multiple steps, like converting the actual arguments to the callee's formal arguments,
-     * converting the summary into an abstract domain, etc.
-     * NOTE: this will be only called after {@code finalizeSummary} is called
-     *
-     * @param invoke of the invokeNode
-     * @param invokeNode the invoke node that we are applying the summary to
-     * @param callerPreCondition the abstract context of the caller at the invocation site
+     * This method is called by the framework when applying the summary to the caller's abstract context.
+     * It should return the abstract context after applying the summary.
+     * NOTE:
+     *      This method should not modify the caller's abstract context, but rather return a new one.
+     *      This is done so that {@link NodeInterpreter} has more control over how to apply the summary,
+     *      and this way we don't have to write interpretation logic in the summary.
+     * @param callerPreCondition the abstract context we want to apply the summary to
+     * @return the domain which is the result of applying the summary to the caller's abstract context
      */
-    Domain applySummary(Invoke invoke, Node invokeNode, Domain callerPreCondition);
+    Domain applySummary(Domain callerPreCondition);
 }

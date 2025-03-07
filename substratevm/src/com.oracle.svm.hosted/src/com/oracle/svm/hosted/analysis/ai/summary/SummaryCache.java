@@ -1,6 +1,7 @@
 package com.oracle.svm.hosted.analysis.ai.summary;
 
 import com.oracle.svm.hosted.analysis.ai.domain.AbstractDomain;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,28 +17,26 @@ import java.util.Map;
  */
 public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
 
-    // FIXME: probably don't use String here, but some kind of ResolvedJavaMethod
-    private final Map<String, List<Summary<Domain>>> cache = new HashMap<>();
+    private final Map<ResolvedJavaMethod, List<Summary<Domain>>> cache = new HashMap<>();
     private int cacheCalls = 0;
     private int cacheHits = 0;
 
     /**
-     * Gets the complete summary of the {@param calleeName} with the given target name and summary precondition.
+     * Gets the summary of the {@param calleeName} with the given target name and summary precondition.
      * NOTE:
-     *      If we want to get a complete summary, we first should call {@link #contains(String, Summary)}
      *      When there are multiple summaries that are subsuming {@param summaryPrecondition}, we should return the most general one.
      *      However, there are many ways how to do this, we can choose the most precise summary,
      *      or we can take all the subsuming summaries, perform some kind of merge
      *      (would require meet operation in {@link Summary} api) and return the result.
      *
-     * @param calleeName          the name of the callee
+     * @param method the method we are searching summary for
      * @param summaryPrecondition the precondition of the callee
      * @return the summary for targetName with given summaryPrecondition
      */
-    public Summary<Domain> getSummary(String calleeName, Summary<Domain> summaryPrecondition) {
+    public Summary<Domain> getSummary(ResolvedJavaMethod method, Summary<Domain> summaryPrecondition) {
         Summary<Domain> mostGeneralSummary = null;
 
-        for (Summary<Domain> existingSummary : cache.get(calleeName)) {
+        for (Summary<Domain> existingSummary : cache.get(method)) {
             if (existingSummary.subsumes(summaryPrecondition)) {
                 if (mostGeneralSummary == null ||
                         existingSummary.subsumes(mostGeneralSummary)) {
@@ -49,8 +48,8 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
         return mostGeneralSummary;
     }
 
-    public int getMethodSummariesAmount(String targetName) {
-        return cache.get(targetName).size();
+    public int getMethodSummariesAmount(ResolvedJavaMethod method) {
+        return cache.get(method).size();
     }
 
     public int getCacheCalls() {
@@ -62,15 +61,15 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
     }
 
     /**
-     * Checks if the cache contains a summary for the given {@param calleeName} and precondition.
+     * Checks if the cache contains a summary for the given {@param method} and precondition.
      *
-     * @param calleeName          the name of the function
+     * @param method          the method we are searching summary for
      * @param summaryPrecondition the precondition of the callee
      * @return true if the cache contains the summary, false otherwise
      */
-    public boolean contains(String calleeName, Summary<Domain> summaryPrecondition) {
+    public boolean contains(ResolvedJavaMethod method, Summary<Domain> summaryPrecondition) {
         cacheCalls++;
-        List<Summary<Domain>> summaries = cache.get(calleeName);
+        List<Summary<Domain>> summaries = cache.get(method);
         if (summaries != null) {
             for (Summary<Domain> summary : summaries) {
                 if (summary.subsumes(summaryPrecondition)) {
@@ -84,13 +83,13 @@ public final class SummaryCache<Domain extends AbstractDomain<Domain>> {
 
     /**
      * Puts a summary for a callee into the cache.
-     * The summary should be complete, meaning it has a computed post-condition.
+     * The summary must be complete, meaning {@code finalizeSummary} must be called before putting it into the cache.
      *
-     * @param calleeName the name of the callee
+     * @param method     the method we are putting the summary for
      * @param summary    the summary to put
      */
-    public void put(String calleeName, Summary<Domain> summary) {
-        cache.computeIfAbsent(calleeName, k -> new ArrayList<>()).add(summary);
+    public void put(ResolvedJavaMethod method, Summary<Domain> summary) {
+        cache.computeIfAbsent(method, k -> new ArrayList<>()).add(summary);
     }
 
     @Override

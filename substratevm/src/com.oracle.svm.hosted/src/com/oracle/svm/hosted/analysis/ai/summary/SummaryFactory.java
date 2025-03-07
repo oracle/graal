@@ -28,11 +28,11 @@ public interface SummaryFactory<Domain extends AbstractDomain<Domain>> {
      *       You can see {@link AccessPathIntervalSummaryFactory} for a simple demo.
      *
      * @param invoke contains information about the invocation
-     * @param callSitePreCondition the abstract context precondition at the call site
+     * @param callerPreCondition the abstract context precondition at the call site
      * @param arguments converted to the used abstract domain using the provided {@link NodeInterpreter}
      * @return a {@link Summary} containing only the pre-condition of the summary
      */
     Summary<Domain> createSummary(Invoke invoke,
-                                  Domain callSitePreCondition,
+                                  Domain callerPreCondition,
                                   List<Domain> arguments);
 }
