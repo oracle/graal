@@ -409,6 +409,7 @@ public final class DebuggerController implements ContextsListener {
     }
 
     private void doStepOut(SuspendedInfo susp) {
+        assert susp != null && !(susp instanceof UnknownSuspendedInfo);
         RootNode callerRoot = susp.getCallerRootNode();
         int stepOutBCI = context.getNextBCI(callerRoot, susp.getCallerFrame());
         SteppingInfo steppingInfo = commandRequestIds.get(susp.getThread());
@@ -1191,7 +1192,7 @@ public final class DebuggerController implements ContextsListener {
                     break;
                 case STEP_OUT:
                     SuspendedInfo info = getSuspendedInfo(thread);
-                    if (info != null) {
+                    if (info != null && !(info instanceof UnknownSuspendedInfo)) {
                         doStepOut(info);
                     }
                     break;
